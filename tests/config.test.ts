@@ -16,6 +16,12 @@ describe("provider configuration", () => {
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.4");
+    expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).allowedChecks).toEqual([
+      "test",
+      "typecheck",
+      "lint",
+      "build"
+    ]);
   });
 
   test("rejects unknown providers and invalid step budgets", () => {
@@ -23,6 +29,18 @@ describe("provider configuration", () => {
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ schemaVersion: 2 })).toThrow("Unsupported config schema");
+    expect(() => resolveHarnessConfig({ allowedChecks: ["test", "../../escape"] })).toThrow("Invalid allowed check");
+    expect(() => resolveHarnessConfig({
+      allowedChecks: Array.from({ length: 51 }, (_, index) => `check-${index}`)
+    })).toThrow("more than 50");
+  });
+
+  test("supports an explicit, deduplicated check allowlist", () => {
+    expect(resolveHarnessConfig({ allowedChecks: ["format", "test:unit", "format"] }).allowedChecks).toEqual([
+      "format",
+      "test:unit"
+    ]);
+    expect(resolveHarnessConfig({ allowedChecks: [] }).allowedChecks).toEqual([]);
   });
 
   test("builds native provider models without making a request", () => {

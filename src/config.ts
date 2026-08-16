@@ -7,6 +7,8 @@ import type { LanguageModel } from "@zhivex-ai/agents";
 
 export const PROVIDERS = ["meta", "qwen", "openai"] as const;
 
+export const DEFAULT_ALLOWED_CHECKS = ["test", "typecheck", "lint", "build"] as const;
+
 export const HARNESS_CONFIG_SCHEMA_VERSION = 1 as const;
 
 export type HarnessProvider = (typeof PROVIDERS)[number];
@@ -72,6 +74,7 @@ export interface HarnessConfig {
   workspace: string;
   stateDirectory: string;
   maxSteps: number;
+  allowedChecks: readonly string[];
 }
 
 export interface HarnessConfigInput {
@@ -81,7 +84,27 @@ export interface HarnessConfigInput {
   workspace?: string;
   stateDirectory?: string;
   maxSteps?: number;
+  allowedChecks?: readonly string[];
 }
+
+const resolveAllowedChecks = (configured: readonly string[] | undefined) => {
+  const source = configured ?? (
+    process.env.ZHIVEX_HARNESS_ALLOWED_CHECKS === undefined
+      ? DEFAULT_ALLOWED_CHECKS
+      : process.env.ZHIVEX_HARNESS_ALLOWED_CHECKS.split(",")
+  );
+  const checks = [...new Set(source.map((value) => value.trim()).filter(Boolean))];
+  if (checks.length > 50) {
+    throw new Error("allowedChecks cannot contain more than 50 script names.");
+  }
+  const invalid = checks.find((value) => !/^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/.test(value));
+  if (invalid) {
+    throw new Error(
+      `Invalid allowed check name: ${invalid}. Use 1-64 letters, digits, colon, underscore, or hyphen.`
+    );
+  }
+  return checks;
+};
 
 export const parseProvider = (value: string | undefined): HarnessProvider => {
   const normalized = (value ?? "openai").trim().toLowerCase();
@@ -125,7 +148,8 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
     stateDirectory: path.resolve(
       input.stateDirectory ?? path.join(workspace, ".zhivex-harness", "runs")
     ),
-    maxSteps
+    maxSteps,
+    allowedChecks: resolveAllowedChecks(input.allowedChecks)
   };
 };
 

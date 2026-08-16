@@ -69,6 +69,7 @@ try {
     "package/ROADMAP.md",
     "package/CHANGELOG.md",
     "package/docs/CLI.md",
+    "package/docs/REPOSITORY_EDITING.md",
     "package/docs/RELEASE.md",
     "package/dist/index.js",
     "package/dist/index.d.ts",
@@ -129,12 +130,14 @@ try {
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { createHarness, runHarness } from "@zhivex-ai/harness";
+import { createEditProposal, createHarness, runHarness } from "@zhivex-ai/harness";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 const workspace = process.cwd();
 const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "exactly-once\\n" }];
+const proposal = createEditProposal({ changes });
 const firstStore = createFileAgentRunStore({ directory: stateDirectory });
 const firstHarness = await createHarness({
   provider: "openai",
@@ -143,17 +146,30 @@ const firstHarness = await createHarness({
   modelInstance: createMockLanguageModel({
     provider: "installed-mock",
     modelId: "installed-mock-model",
-    streamEvents: [[
-      {
-        type: "tool-call",
-        toolCall: {
-          id: "installed-write-1",
-          name: "write_file",
-          input: { path: "installed-approved.txt", content: "exactly-once\\n", overwrite: false }
-        }
-      },
-      { type: "finish", finishReason: "tool-calls" }
-    ]]
+    streamEvents: [
+      [
+        {
+          type: "tool-call",
+          toolCall: {
+            id: "installed-proposal-1",
+            name: "propose_edits",
+            input: { changes }
+          }
+        },
+        { type: "finish", finishReason: "tool-calls" }
+      ],
+      [
+        {
+          type: "tool-call",
+          toolCall: {
+            id: "installed-apply-1",
+            name: "apply_patch",
+            input: { proposalId: proposal.proposalId, changes }
+          }
+        },
+        { type: "finish", finishReason: "tool-calls" }
+      ]
+    ]
   })
 });
 
@@ -187,6 +203,7 @@ const completed = await runHarness(restartedHarness, {
   }))
 });
 assert.equal(completed.status, "completed");
+assert.equal(completed.toolResults.filter((result) => result.toolName === "apply_patch").length, 1);
 assert.equal(await readFile(path.join(workspace, "installed-approved.txt"), "utf8"), "exactly-once\\n");
 console.log("INSTALLED_HARNESS_SMOKE_OK");
 `;

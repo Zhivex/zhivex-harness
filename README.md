@@ -4,23 +4,25 @@ Zhivex Harness is a Bun-first coding-agent harness portable across Meta, Qwen, a
 
 The model provides capability; the harness provides repository context, narrow tools, limits, approvals, durable state, diagnostics, and verification. Every provider uses the same agent loop and local-tool contract.
 
-Version `0.2.0` is prepared for its first public package release but has not been published to the npm registry yet. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), and the [release process](./docs/RELEASE.md).
+Version `0.3.0` is an active private development milestone. It is intentionally blocked from registry publication while trusted repository editing is completed and dogfooded. The validated `0.2.0` source baseline is preserved by the local `v0.2.0` tag. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
 
-## What 0.2 includes
+## What 0.3 includes
 
 - one-shot execution and interactive chat;
 - provider and model selection through the CLI;
 - versioned configuration and JSON output contracts;
 - a local `doctor` command that diagnoses Bun, workspace, Git, scripts, state, credentials, endpoints, and provider capabilities without making provider requests or exposing secret values;
-- bounded workspace listing, search, and reading;
-- file creation and exact replacement with human approval;
-- `test`, `typecheck`, `lint`, and `build` through declared `package.json` scripts and Bun;
-- read-only inspection of Git status and unstaged diff;
+- deterministic, cursor-paginated workspace listing and search with SHA-256 content digests;
+- reviewed multi-file proposals and approved atomic application with stale-content rejection;
+- approved moves plus recoverable quarantine and restore operations;
+- an explicit, configurable allowlist of declared `package.json` checks executed through Bun;
+- read-only inspection of staged, unstaged, renamed, deleted, and untracked Git state;
+- per-process mutation audit evidence and a final diff summary;
 - durable run state and approval resumption;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
 - Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
 
-It does not include arbitrary shell access, file deletion or renaming, MCP, subagents, a desktop UI, or a managed sandbox. Tools run inside the workspace with the permissions of the local process.
+It does not include arbitrary shell access, permanent deletion, Git writes, MCP, subagents, a desktop UI, or a managed sandbox. Tools run inside the workspace with the permissions of the local process.
 
 ## Requirements
 
@@ -30,14 +32,7 @@ It does not include arbitrary shell access, file deletion or renaming, MCP, suba
 
 ## Installation
 
-After the first registry publication, install the CLI globally:
-
-```bash
-bun add --global @zhivex-ai/harness
-zhivex-harness --version
-```
-
-Until then, run the source checkout:
+The project is private and is not published to a package registry. Run the source checkout:
 
 ```bash
 bun install --frozen-lockfile
@@ -116,13 +111,21 @@ zhivex-harness run --provider qwen --json "analyze the issue without modifying f
 
 The JSON shapes and exit codes are documented in [docs/CLI.md](./docs/CLI.md).
 
+Repository edits use digest-bound proposals. Discovery returns `nextCursor` when another deterministic page is available; mutating tools reject stale content instead of merging or overwriting it. Deletions move files into harness-owned quarantine and return a recovery identifier. The complete contract and migration from `0.2.x` are documented in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
+
+The default check allowlist is `test`, `typecheck`, `lint`, and `build`. Replace it with repeatable CLI flags when a repository uses different declared scripts:
+
+```bash
+zhivex-harness run --allow-check test:unit --allow-check format "apply the fix and validate it"
+```
+
 ## Providers and defaults
 
-| Provider | Default model | Credential | 0.2 support |
-| --- | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` | Provisional |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` | Certified |
-| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` | Certified |
+| Provider | Default model | Current support |
+| --- | --- | --- |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Provisional |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · Certified for 0.3 tools |
+| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · Certified for 0.3 tools |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
 
@@ -134,10 +137,11 @@ Meta remains available for evaluation, but its automatic tool selection was not 
 - Reads and writes that cross an external symlink are rejected.
 - Dependencies, build output, Git internals, harness state, `.env`, `.npmrc`, and private keys are excluded from model exploration.
 - The model has no generic shell.
-- Only supported, declared package scripts can run; the model must provide the exact script text for approval binding.
+- Only explicitly allowed, declared package scripts can run; the model must provide the exact script text for approval binding.
 - Checks run without automatic `.env` loading and with a reduced environment.
-- Writes, replacements, and command execution require interruptible approval.
-- New-file creation is exclusive, so concurrent non-overwrite attempts cannot silently replace each other.
+- Patch application, moves, quarantine, restore, and command execution require interruptible approval.
+- Every edit carries the digest observed during inspection; stale creates and updates fail closed.
+- Existing file modes are preserved and successful replacements are published atomically.
 - Unsafe state roots, protected workspace paths, files, and symlink targets are rejected before a run store is created.
 - Environment values are not injected into prompts, diagnostics, or tool responses.
 

@@ -1,7 +1,8 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Provider-portable coding agent harness powered by Zhivex AI SDK.",
+  "private": true,
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -19,9 +20,6 @@
     "harness",
     "zhivex"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "bin": {
     "zhivex-harness": "./dist/cli.js"
   },

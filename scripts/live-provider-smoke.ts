@@ -11,6 +11,7 @@ import {
   providerDescriptor,
   type HarnessProvider
 } from "../src/config.js";
+import { createEditProposal } from "../src/edit-contracts.js";
 import { createHarness, runHarness } from "../src/harness.js";
 
 const OPT_IN_VARIABLE = "ZHIVEX_HARNESS_LIVE";
@@ -162,16 +163,22 @@ const providerRunInput = (provider: HarnessProvider, prompt: string): AgentRunIn
         ...(provider === "qwen" ? { providerOptions: { apiMode: "responses" } } : {})
       }
     : {
-        toolChoice: { type: "tool" as const, toolName: "write_file" },
+        toolChoice: { type: "tool" as const, toolName: "apply_patch" },
         providerOptions: { apiMode: "responses" }
       })
 });
 
-const expectedApprovalArguments = (provider: HarnessProvider) => ({
-  path: certificationPath(provider),
-  content: certificationContent(provider),
-  overwrite: false
-});
+const expectedApprovalArguments = (provider: HarnessProvider) => {
+  const changes = [{
+    path: certificationPath(provider),
+    expectedDigest: null,
+    content: certificationContent(provider)
+  }];
+  return {
+    proposalId: createEditProposal({ changes }).proposalId,
+    changes
+  };
+};
 
 const createLiveHarness = async (args: PhaseArguments, store = createFileAgentRunStore({
   directory: args.stateDirectory
@@ -191,7 +198,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
   const expected = expectedApprovalArguments(args.provider);
   const result = await runHarness(harness, providerRunInput(
     args.provider,
-    `Call write_file exactly once with this exact JSON input: ${JSON.stringify(expected)}. ` +
+    `Call apply_patch exactly once with this exact JSON input: ${JSON.stringify(expected)}. ` +
       `Do not call any other tool. After the tool result, reply exactly ${completionToken(args.provider)}.`
   ));
 
@@ -207,8 +214,8 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
         error: toolResult.error?.message
       })))}; error=${JSON.stringify(result.error?.message)}`
   );
-  const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "write_file");
-  assert.ok(approval, "The provider did not request the write_file approval.");
+  const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
+  assert.ok(approval, "The provider did not request the apply_patch approval.");
   assert.equal(approval.kind, "local-tool");
   assert.deepEqual(JSON.parse(approval.arguments), expected);
   assert.equal(result.state.pendingApprovals.length, 1);
@@ -231,8 +238,8 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
   const store = createFileAgentRunStore({ directory: args.stateDirectory });
   const state = await store.load(args.runId);
   assert.equal(state?.status, "waiting_approval");
-  const approval = state.pendingApprovals.find((candidate) => candidate.name === "write_file");
-  assert.ok(approval, "The persisted run has no write_file approval.");
+  const approval = state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
+  assert.ok(approval, "The persisted run has no apply_patch approval.");
   assert.deepEqual(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
 
   const harness = await createLiveHarness(args, store);
@@ -248,7 +255,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
 
   assert.equal(result.status, "completed", result.outputText || result.error?.message);
   assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
-  const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "write_file");
+  const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
   assert.equal(writeResults.length, 1);
   assert.equal(writeResults[0]?.isError, false);
   assert.equal(
@@ -257,7 +264,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
   );
 
   const journal = await store.listToolCalls?.(args.runId);
-  const writeEntries = journal?.filter((entry) => entry.toolName === "write_file") ?? [];
+  const writeEntries = journal?.filter((entry) => entry.toolName === "apply_patch") ?? [];
   assert.equal(writeEntries.length, 1);
   assert.equal(writeEntries[0]?.status, "completed");
   return {

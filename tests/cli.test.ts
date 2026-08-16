@@ -12,7 +12,8 @@ import {
   formatDoctorReport,
   parseCliArgs,
   providersDocument,
-  runResultDocument
+  runResultDocument,
+  summarizeApproval
 } from "../src/cli.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
@@ -48,6 +49,10 @@ describe("CLI parsing", () => {
       "/tmp/repo",
       "--max-steps",
       "8",
+      "--allow-check",
+      "test:unit",
+      "--allow-check",
+      "format",
       "fix",
       "the tests"
     ])).toMatchObject({
@@ -56,6 +61,7 @@ describe("CLI parsing", () => {
       model: "qwen3.8-max",
       workspace: "/tmp/repo",
       maxSteps: 8,
+      allowedChecks: ["test:unit", "format"],
       prompt: "fix the tests"
     });
   });
@@ -93,8 +99,33 @@ describe("CLI parsing", () => {
     expect(() => parseCliArgs(["run", "--wat"])).toThrow("Unknown option");
     expect(() => parseCliArgs(["run", "--provider", "unknown"])).toThrow("Unknown provider");
     expect(() => parseCliArgs(["run", "--max-steps", "many"])).toThrow("--max-steps");
+    expect(() => parseCliArgs(["run", "--allow-check", "../../escape"])).toThrow("--allow-check");
+    expect(() => parseCliArgs([
+      "run",
+      ...Array.from({ length: 51 }, (_, index) => ["--allow-check", `check-${index}`]).flat()
+    ])).toThrow("more than 50");
     expect(cliExitCodeForError(new CliUsageError("bad input"))).toBe(CLI_EXIT_CODES.usageError);
     expect(cliExitCodeForError(new Error("boom"))).toBe(CLI_EXIT_CODES.runtimeError);
+  });
+});
+
+describe("approval review", () => {
+  test("shows complete patch proposals while bounding unrelated approval arguments", () => {
+    const argumentsText = JSON.stringify({ content: "x".repeat(2000) });
+    const patchSummary = summarizeApproval({
+      kind: "local-tool",
+      name: "apply_patch",
+      arguments: argumentsText
+    } as never);
+    const checkSummary = summarizeApproval({
+      kind: "local-tool",
+      name: "run_check",
+      arguments: argumentsText
+    } as never);
+
+    expect(patchSummary).toContain(argumentsText);
+    expect(checkSummary).toContain("…");
+    expect(checkSummary).not.toContain(argumentsText);
   });
 });
 
@@ -127,7 +158,8 @@ describe("versioned JSON contracts", () => {
         pendingApprovals: []
       }
     } as never, {
-      config: { stateDirectory: "/tmp/state" }
+      config: { stateDirectory: "/tmp/state" },
+      workspace: { mutationAudit: () => [] }
     } as never);
 
     expect(document).toMatchObject({
@@ -135,7 +167,8 @@ describe("versioned JSON contracts", () => {
       kind: "run-result",
       runId: "run-1",
       status: "completed",
-      stateDirectory: "/tmp/state"
+      stateDirectory: "/tmp/state",
+      mutations: []
     });
   });
 });

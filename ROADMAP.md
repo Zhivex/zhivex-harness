@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-16
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` implementation is now the active release candidate. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally and the private `0.3.0` trusted-editing milestone is active. Registry publication remains a separate external operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -34,8 +34,8 @@ The release candidate keeps `@zhivex-ai/core@1.5.0`. Although `1.6.0` is publish
 
 | Version | Theme | Primary outcome | Status | Relative size |
 | --- | --- | --- | --- | --- |
-| `0.2.0` | Releasable foundation | A versioned, installable, diagnosable CLI | Release candidate | M |
-| `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Planned | M |
+| `0.2.0` | Releasable foundation | A versioned, installable, diagnosable CLI | Local release baseline | M |
+| `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private milestone in progress | M |
 | `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Planned | L |
 | `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Planned | L |
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Planned | XL |
@@ -70,9 +70,11 @@ Exit criteria:
 
 Goal: let the agent make realistic multi-file changes while every mutation remains bounded, reviewable, conflict-safe, and recoverable.
 
+Status: active private milestone. It is not configured for registry publication. Contract and migration details live in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
+
 Scope:
 
-- Respect `.gitignore` plus a harness-specific ignore file while preserving hard secret exclusions.
+- Respect hierarchical `.gitignore` files plus `.zhivex-harnessignore` while preserving hard secret exclusions.
 - Add paginated file discovery and search with deterministic ordering and explicit truncation cursors.
 - Add a patch proposal/apply flow with expected-content digests, atomic writes, file-mode preservation, and stale-workspace rejection.
 - Extend Git inspection to staged, unstaged, renamed, deleted, and untracked files without exposing Git writes.
@@ -86,6 +88,15 @@ Exit criteria:
 - Every mutation produces a before/after audit record and appears in the final diff summary.
 - Delete/restore and interrupted atomic-write tests pass on supported platforms.
 - Real repository fixtures prove a complete inspect, edit, validate, and summarize loop.
+
+Required release evidence:
+
+- focused workspace and fixture-repository tests pass on Linux and macOS;
+- pagination is deterministic and cursors reject incompatible reuse;
+- a stale precondition leaves every proposed target unchanged;
+- move, quarantine, restore, failed check, and final Git/audit summaries are exercised from a real Git repository;
+- migration and safety boundaries are documented without claiming host isolation or permanent deletion;
+- `0.3.0` remains private until an explicit publication decision is made.
 
 ## 0.4.0 — Durable operations and evaluation
 
@@ -196,8 +207,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Finish and record the fail-closed live matrix for Meta, Qwen, and OpenAI.
-2. Decide whether to make the GitHub repository public for public npm provenance or explicitly release without that claim.
-3. Confirm `@zhivex-ai` scope publishing rights and the trusted-publisher boundary before the first registry mutation.
-4. Commit the exact release candidate only after deterministic, installed-package, documentation, and live gates are green.
-5. Keep `0.3.0` feature work out of the release candidate until `0.2.0` is published and verified, or explicitly deferred without overstating release status.
+1. Complete the `0.3.0` Workspace and tool contracts with digest-bound conflict checks and non-overridable protected paths.
+2. Pass the real-repository fixture matrix, focused workspace/security tests, typecheck, documentation gate, build, and installed-package smoke.
+3. Record the supported-platform evidence and any filesystem-specific atomicity limitation.
+4. Keep `0.3.0` private and separate from the tagged `0.2.0` baseline until its exit criteria are green.
+5. Revisit registry visibility, scope rights, and provenance only as an explicit release operation; do not infer publication from local tests or tags.

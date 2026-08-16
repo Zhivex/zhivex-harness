@@ -30,6 +30,7 @@ export interface CliOptions {
   workspace?: string;
   stateDirectory?: string;
   maxSteps?: number;
+  allowedChecks?: string[];
   prompt?: string;
   runId?: string;
   yes: boolean;
@@ -111,6 +112,21 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
+      case "--allow-check": {
+        const value = optionValue(argv, index, argument);
+        if (!/^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/.test(value)) {
+          throw new CliUsageError(
+            "--allow-check must use 1-64 letters, digits, colon, underscore, or hyphen."
+          );
+        }
+        options.allowedChecks ??= [];
+        options.allowedChecks.push(value);
+        if (options.allowedChecks.length > 50) {
+          throw new CliUsageError("--allow-check cannot be repeated more than 50 times.");
+        }
+        index += 1;
+        break;
+      }
       case "--yes":
         options.yes = true;
         break;
@@ -180,6 +196,7 @@ Options:
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
   --max-steps <1-50>             Maximum agent steps (default: 12)
+  --allow-check <script>         Allow one package.json script; repeatable
   --yes                          Automatically approve writes and checks
   --json                         Emit structured final output
   -h, --help                     Show this help
@@ -196,8 +213,9 @@ Credentials:
   Meta:   MODEL_API_KEY
   Qwen:   DASHSCOPE_API_KEY or QWEN_API_KEY`;
 
-const summarizeApproval = (approval: AgentApprovalRequest) => {
-  const argumentsText = approval.arguments.length > 1200
+export const summarizeApproval = (approval: AgentApprovalRequest) => {
+  const mustShowCompleteProposal = approval.name === "apply_patch";
+  const argumentsText = !mustShowCompleteProposal && approval.arguments.length > 1200
     ? `${approval.arguments.slice(0, 1200)}…`
     : approval.arguments;
   return `[${approval.kind ?? "provider"}] ${approval.name}\n${argumentsText}`;
@@ -256,6 +274,7 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
   output: result.outputText,
   steps: result.steps.length,
   toolCalls: result.toolResults.length,
+  mutations: harness.workspace.mutationAudit(),
   pendingApprovals: result.state.pendingApprovals.map((approval) => ({
     id: approval.id,
     kind: approval.kind ?? "provider",
@@ -278,9 +297,12 @@ const printTerminalResult = (result: AgentRunOutput, harness: ZhivexHarness, jso
     process.stdout.write("\n");
   }
   process.stderr.write(
-    `\nrun ${result.state.runId} · ${result.state.provider}/${result.state.modelId} · ${result.status} · ${result.steps.length} steps\n`
+    `\nrun ${result.state.runId} · ${result.state.provider}/${result.state.modelId} · ${result.status} · ${result.steps.length} steps · ${harness.workspace.mutationAudit().length} mutations\n`
   );
   if (result.status === "waiting_approval") {
+    for (const approval of result.state.pendingApprovals) {
+      process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+    }
     process.stderr.write(
       `The state was persisted. Resume with: zhivex-harness resume ${result.state.runId} --approve\n`
     );
@@ -330,6 +352,10 @@ const resumeRun = async (options: CliOptions) => {
   }
   if (state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
     throw new Error(`Run ${options.runId} is not waiting for approval (status: ${state.status}).`);
+  }
+
+  for (const approval of state.pendingApprovals) {
+    process.stderr.write(`\nResuming approval:\n${summarizeApproval(approval)}\n`);
   }
 
   const harness = await createHarness({
@@ -456,6 +482,7 @@ export interface DoctorReport {
     workspace: string;
     stateDirectory: string;
     maxSteps: number;
+    allowedChecks: readonly string[];
   };
   checks: DoctorCheck[];
   providers: ReturnType<typeof providerAvailability>;
@@ -466,7 +493,6 @@ export interface DoctorContext {
   bunVersion?: string;
 }
 
-const supportedCheckScripts = ["test", "typecheck", "lint", "build"] as const;
 const sensitiveStateSegments = new Set([
   ".git",
   ".env",
@@ -568,7 +594,7 @@ const inspectGit = async (workspace: string): Promise<DoctorCheck> => {
   }
 };
 
-const inspectScripts = async (workspace: string): Promise<DoctorCheck> => {
+const inspectScripts = async (workspace: string, allowedChecks: readonly string[]): Promise<DoctorCheck> => {
   const packagePath = path.join(workspace, "package.json");
   try {
     const packageStat = await stat(packagePath);
@@ -582,8 +608,8 @@ const inspectScripts = async (workspace: string): Promise<DoctorCheck> => {
     const scripts = packageJson.scripts && typeof packageJson.scripts === "object"
       ? packageJson.scripts as Record<string, unknown>
       : {};
-    const available = supportedCheckScripts.filter((name) => typeof scripts[name] === "string");
-    const missing = supportedCheckScripts.filter((name) => typeof scripts[name] !== "string");
+    const available = allowedChecks.filter((name) => typeof scripts[name] === "string");
+    const missing = allowedChecks.filter((name) => typeof scripts[name] !== "string");
     return diagnostic(
       "scripts",
       available.length > 0 ? "pass" : "warn",
@@ -699,7 +725,7 @@ const inspectStateDirectory = async (workspace: string, stateDirectory: string):
 };
 
 export const createDoctorReport = async (
-  options: Pick<CliOptions, "provider" | "model" | "workspace" | "stateDirectory" | "maxSteps"> = {},
+  options: Pick<CliOptions, "provider" | "model" | "workspace" | "stateDirectory" | "maxSteps" | "allowedChecks"> = {},
   context: DoctorContext = {}
 ): Promise<DoctorReport> => {
   const env = context.env ?? process.env;
@@ -708,6 +734,9 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_MODEL ? { model: env.ZHIVEX_HARNESS_MODEL } : {}),
     ...(env.ZHIVEX_HARNESS_MAX_STEPS
       ? { maxSteps: Number(env.ZHIVEX_HARNESS_MAX_STEPS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_ALLOWED_CHECKS !== undefined
+      ? { allowedChecks: env.ZHIVEX_HARNESS_ALLOWED_CHECKS.split(",") }
       : {}),
     ...options
   });
@@ -726,7 +755,7 @@ export const createDoctorReport = async (
   ));
   checks.push(await inspectWorkspace(config.workspace));
   checks.push(await inspectGit(config.workspace));
-  checks.push(await inspectScripts(config.workspace));
+  checks.push(await inspectScripts(config.workspace, config.allowedChecks));
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
 
   for (const provider of providers) {
@@ -780,7 +809,8 @@ export const createDoctorReport = async (
       model: config.model,
       workspace: config.workspace,
       stateDirectory: config.stateDirectory,
-      maxSteps: config.maxSteps
+      maxSteps: config.maxSteps,
+      allowedChecks: config.allowedChecks
     },
     checks,
     providers
