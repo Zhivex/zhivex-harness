@@ -4,8 +4,10 @@ import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 
 const {
   assertLiveOptIn,
+  certificationPrompt,
   errorEvidence,
   parsePhaseArguments,
+  providerRunInput,
   redacted,
   requireCredentials,
   selectedProviders
@@ -73,5 +75,17 @@ describe("live provider smoke contract", () => {
       "--workspace", "/tmp/workspace",
       "--state-dir", "/tmp/workspace/.zhivex-harness/runs"
     ])).toThrow("runId");
+  });
+
+  test("certifies the proposal before requesting approval to apply it", () => {
+    const prompt = certificationPrompt("meta");
+    expect(prompt).toContain("Call propose_edits exactly once");
+    expect(prompt).toContain("then call apply_patch exactly once");
+    expect(prompt.indexOf("propose_edits")).toBeLessThan(prompt.indexOf("apply_patch"));
+
+    const input = providerRunInput("meta", prompt);
+    expect(input.toolChoice).toBe("auto");
+    expect(input.providerOptions).toBeUndefined();
+    expect(providerRunInput("openai", prompt).providerOptions).toEqual({ apiMode: "responses" });
   });
 });

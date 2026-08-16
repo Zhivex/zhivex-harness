@@ -6,7 +6,7 @@ The live provider smoke is an explicit release gate. It is not part of the deter
 
 For each selected provider, the smoke:
 
-1. starts a fresh process and asks the real model for one exact digest-bound `apply_patch` call;
+1. starts a fresh process and asks the real model to create one exact digest-bound proposal and apply that returned proposal;
 2. verifies that interrupt approval persists while the target file is still absent;
 3. exits that process and starts a second process against the same file-backed run store;
 4. approves and resumes the saved run;
@@ -16,7 +16,7 @@ The temporary workspace and state store are removed after each provider. Credent
 
 Success and failure evidence is emitted as JSON. A success record identifies the provider and model and records the approval, restart, tool-execution, and journal checks; it never contains a credential value. The complete default matrix continues after an individual provider failure, reports every provider result, and exits non-zero when any entry fails.
 
-Meta supports only automatic tool choice. Qwen 3.8 thinking also cannot use named or required tool choice. Their gates therefore use automatic selection with an exact imperative prompt and fail unless `apply_patch` is selected with the complete proposal. OpenAI uses named tool choice through Responses. This keeps Qwen's thinking budget available for the tool decision and avoids the OpenAI Chat streaming path, which currently loses a fragmented tool call when the final `tool_calls` finish chunk contains no tool delta.
+Meta supports only automatic tool choice, and Qwen 3.8 thinking cannot use named or required tool choice. The complete matrix therefore uses automatic selection and an exact two-tool prompt: `propose_edits` must run first, and its returned `proposalId` must then be passed unchanged to `apply_patch`. Qwen and OpenAI run through Responses; Meta intentionally runs through Chat streaming to cover the fragmented tool-call assembler fixed in `@zhivex-ai/meta@0.2.1`.
 
 ## Run it
 
@@ -48,15 +48,15 @@ Because `0.3.0` replaces the legacy write tools with digest-bound proposals and 
 
 ## 0.3.0 private-milestone evidence
 
-Evidence collected on 2026-08-16 with the default models and locally configured account. The supported Qwen/OpenAI matrix passed at `2026-08-16T21:48:49.278Z`.
+Evidence collected on 2026-08-16 with the default models and locally configured account. After aligning the gate with the required proposal-first workflow, Qwen and OpenAI passed together at `2026-08-16T23:37:23.791Z`. After upgrading to `@zhivex-ai/meta@0.2.1`, Meta passed four consecutive runs from `2026-08-16T23:32:50.716Z` through `2026-08-16T23:33:27.161Z`.
 
 | Provider | Model | Result | Evidence |
 | --- | --- | --- | --- |
 | Qwen | `qwen3.8-max` | Certified | Digest-bound patch approval persisted, the process restarted, and exactly one patch execution and completed journal entry were observed. |
 | OpenAI | `gpt-5.4` | Certified | Digest-bound patch approval persisted through Responses, the process restarted, and exactly one patch execution and completed journal entry were observed. |
-| Meta | `muse-spark-1.2` | Provisional | The separate evaluation at `2026-08-16T21:49:11.027Z` selected `apply_patch` but emitted no `proposalId` or `changes`; schema validation failed closed before approval or side effect. |
+| Meta | `muse-spark-1.2` | Certified | Four consecutive proposal-first runs produced complete tool arguments, persisted approval, restarted the process, and observed exactly one patch execution and completed journal entry. |
 
-The supported `0.3.0` live matrix is Qwen and OpenAI. Meta remains integrated but excluded from the supported matrix until automatic tool arguments are repeatably valid.
+The supported `0.3.0` live matrix is Meta, Qwen, and OpenAI. Earlier Meta failures remain relevant historical evidence: `@zhivex-ai/meta@0.2.0` split one streamed Chat tool call across `id` and `index` buffers, while a direct-apply smoke prompt could also be rejected because it skipped `propose_edits`. The adapter and gate now cover those separate failures.
 
 ## 0.2.0 release-candidate evidence
 

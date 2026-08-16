@@ -20,6 +20,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Repository discovery respects Git and harness-specific ignore rules while keeping secret and state exclusions non-overridable.
 - File replacement is published atomically, preserves existing modes, and rejects content changed after inspection.
 - Repository-editing tools require reviewed content digests and emit before/after evidence.
+- Upgraded `@zhivex-ai/meta` to `0.2.1`; Meta Chat streaming now preserves fragmented tool arguments and passed four consecutive proposal/approval/restart live gates.
+- Live certification now exercises the contractual `propose_edits` then `apply_patch` sequence for every provider.
 
 ### Migration
 

@@ -7,7 +7,7 @@
       "dependencies": {
         "@zhivex-ai/agents": "1.2.0",
         "@zhivex-ai/core": "1.5.0",
-        "@zhivex-ai/meta": "0.2.0",
+        "@zhivex-ai/meta": "0.2.1",
         "@zhivex-ai/openai": "0.9.4",
         "@zhivex-ai/qwen": "0.10.1",
         "zod": "4.4.3",
@@ -27,7 +27,7 @@
 
     "@zhivex-ai/core": ["@zhivex-ai/core@1.5.0", "", { "dependencies": { "zod": "^4.4.3" } }, "sha512-v3+E3WRd6JEiFM16nDdWeGTWY8SXgGpgZi7LTMdNeZGs3Zvpv7prECKAEYFmFYjqEPqFYlj6odmHKV7kjUzKNw=="],
 
-    "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.0", "", { "dependencies": { "@zhivex-ai/core": "^1.3.0", "zod": "^4.4.3" } }, "sha512-NhlSPf80V9mQW/Xsaj64ng2TXce1Ai5HS/p8ypNiWegnNhFP3z6SPJvNv+Yz5p4e435cpJJMcDBEurmWv9r0Fg=="],
+    "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.1", "", { "dependencies": { "@zhivex-ai/core": "^1.3.0", "zod": "^4.4.3" } }, "sha512-iEEj9uSvWhQuL1hIPwsDFkK1AyACyPJZmOIjZoqSLTJiVkH2rV0NsqlXUz0+fskB/EPMNzBHgseNdOCDfRn45w=="],
 
     "@zhivex-ai/openai": ["@zhivex-ai/openai@0.9.4", "", { "dependencies": { "@zhivex-ai/core": "^1.0.2", "zod": "^4.4.3" } }, "sha512-0tnVeRRvB516MK59gbQPrtl7qx6NQ9pmNSmqrFaktftT/Hsh/DE+poS3OnRXVKxc5REbU2bwvag90bJ6PvdtlQ=="],
 

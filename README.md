@@ -123,13 +123,13 @@ zhivex-harness run --allow-check test:unit --allow-check format "apply the fix a
 
 | Provider | Default model | Current support |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Provisional |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Certified for 0.3 tools |
 | Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · Certified for 0.3 tools |
 | OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · Certified for 0.3 tools |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
 
-Meta remains available for evaluation, but its automatic tool selection was not repeatable enough to enter the supported release matrix. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md). Credential detection and deterministic tests do not replace real provider evidence.
+Meta, Qwen, and OpenAI have completed the 0.3 proposal, approval, restart, and exactly-once patch gate. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md). Credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 

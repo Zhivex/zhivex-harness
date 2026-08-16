@@ -38,7 +38,7 @@ export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = [
     defaultModel: "muse-spark-1.2",
     credentialNames: ["MODEL_API_KEY"],
     capabilities: HARNESS_PROVIDER_CAPABILITIES,
-    support: "provisional"
+    support: "certified"
   },
   {
     id: "qwen",

@@ -157,15 +157,10 @@ const completionToken = (provider: HarnessProvider) => `ZHIVEX_HARNESS_${provide
 const providerRunInput = (provider: HarnessProvider, prompt: string): AgentRunInput => ({
   prompt,
   maxSteps: 4,
-  ...(provider === "meta" || provider === "qwen"
-    ? {
-        toolChoice: "auto" as const,
-        ...(provider === "qwen" ? { providerOptions: { apiMode: "responses" } } : {})
-      }
-    : {
-        toolChoice: { type: "tool" as const, toolName: "apply_patch" },
-        providerOptions: { apiMode: "responses" }
-      })
+  toolChoice: "auto" as const,
+  ...(provider === "qwen" || provider === "openai"
+    ? { providerOptions: { apiMode: "responses" } }
+    : {})
 });
 
 const expectedApprovalArguments = (provider: HarnessProvider) => {
@@ -178,6 +173,15 @@ const expectedApprovalArguments = (provider: HarnessProvider) => {
     proposalId: createEditProposal({ changes }).proposalId,
     changes
   };
+};
+
+const certificationPrompt = (provider: HarnessProvider) => {
+  const { changes } = expectedApprovalArguments(provider);
+  return `Perform this exact reviewed-edit workflow:
+1. Call propose_edits exactly once with this exact JSON input: ${JSON.stringify({ changes })}.
+2. Read proposalId from that tool result, then call apply_patch exactly once with that proposalId and the same changes.
+Do not invent or calculate proposalId, do not skip propose_edits, and do not call any other tool.
+After the approved apply_patch result, reply exactly ${completionToken(provider)}.`;
 };
 
 const createLiveHarness = async (args: PhaseArguments, store = createFileAgentRunStore({
@@ -198,8 +202,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
   const expected = expectedApprovalArguments(args.provider);
   const result = await runHarness(harness, providerRunInput(
     args.provider,
-    `Call apply_patch exactly once with this exact JSON input: ${JSON.stringify(expected)}. ` +
-      `Do not call any other tool. After the tool result, reply exactly ${completionToken(args.provider)}.`
+    certificationPrompt(args.provider)
   ));
 
   assert.equal(
@@ -431,8 +434,10 @@ const errorEvidence = (error: unknown, env: NodeJS.ProcessEnv) => {
 
 export const liveProviderSmokeInternals = {
   assertLiveOptIn,
+  certificationPrompt,
   errorEvidence,
   parsePhaseArguments,
+  providerRunInput,
   redacted,
   requireCredentials,
   selectedProviders

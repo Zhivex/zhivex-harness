@@ -77,9 +77,9 @@ describe("provider configuration", () => {
     expect(JSON.stringify(providers)).not.toContain("user:secret");
   });
 
-  test("keeps Meta provisional until its automatic tool selection is repeatably certified", () => {
+  test("reports the repeatably certified provider matrix", () => {
     const providers = providerAvailability({ MODEL_API_KEY: "present" });
-    expect(providers.find((provider) => provider.id === "meta")?.support).toBe("provisional");
+    expect(providers.find((provider) => provider.id === "meta")?.support).toBe("certified");
     expect(providers.find((provider) => provider.id === "qwen")?.support).toBe("certified");
   });
 
