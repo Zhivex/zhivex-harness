@@ -6,13 +6,14 @@
       "name": "@zhivex-ai/harness",
       "dependencies": {
         "@zhivex-ai/agents": "1.2.0",
+        "@zhivex-ai/core": "1.5.0",
         "@zhivex-ai/meta": "0.2.0",
         "@zhivex-ai/openai": "0.9.4",
         "@zhivex-ai/qwen": "0.10.1",
         "zod": "4.4.3",
       },
       "devDependencies": {
-        "@types/bun": "latest",
+        "@types/bun": "1.3.14",
         "typescript": "6.0.3",
       },
     },

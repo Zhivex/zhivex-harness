@@ -1,3 +1,6 @@
+import { lstat } from "node:fs/promises";
+import path from "node:path";
+
 import { Agent, tool, type AgentApprovalRequest, type AgentApprovalResponse, type AgentRunInput, type AgentRunOutput, type AgentStreamEvent, type LanguageModel } from "@zhivex-ai/agents";
 import { createFileAgentRunStore, type AgentRunStore } from "@zhivex-ai/agents/ops";
 import { serializeJsonValue, type ModelMessage } from "@zhivex-ai/core";
@@ -10,8 +13,68 @@ import {
   type HarnessConfigInput
 } from "./config.js";
 import { Workspace, type HarnessCheck } from "./workspace.js";
+import { HARNESS_VERSION } from "./version.js";
 
 const APPROVAL_VERSION = "2026-08-16-v1";
+const SENSITIVE_STATE_SEGMENTS = new Set([".git", ".env", ".npmrc", "dist", "node_modules", "src"]);
+
+const isInside = (root: string, candidate: string) => {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
+};
+
+const validateStateDirectory = async (workspace: string, stateDirectory: string) => {
+  if (stateDirectory === workspace || stateDirectory === path.parse(stateDirectory).root) {
+    throw new Error("The state directory cannot be the workspace or filesystem root.");
+  }
+
+  const insideWorkspace = isInside(workspace, stateDirectory);
+  const relativeSegments = insideWorkspace
+    ? path.relative(workspace, stateDirectory).split(path.sep).filter(Boolean)
+    : stateDirectory.slice(path.parse(stateDirectory).root.length).split(path.sep).filter(Boolean);
+  const sensitiveSegment = insideWorkspace
+    ? relativeSegments.find((segment) => SENSITIVE_STATE_SEGMENTS.has(segment))
+    : undefined;
+  if (sensitiveSegment) {
+    throw new Error(`The state directory is inside the protected workspace path: ${sensitiveSegment}.`);
+  }
+
+  if (!insideWorkspace) {
+    try {
+      const externalEntry = await lstat(stateDirectory);
+      if (externalEntry.isSymbolicLink()) {
+        throw new Error(`The state directory must not be a symbolic link: ${stateDirectory}.`);
+      }
+      if (!externalEntry.isDirectory()) {
+        throw new Error(`The state directory is not a directory: ${stateDirectory}.`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+    return;
+  }
+
+  let current = workspace;
+  for (const segment of relativeSegments) {
+    current = path.join(current, segment);
+    try {
+      const entry = await lstat(current);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`The state directory must not resolve through a symbolic link: ${current}.`);
+      }
+      if (!entry.isDirectory()) {
+        throw new Error(`The state directory path contains a non-directory entry: ${current}.`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        break;
+      }
+      throw error;
+    }
+  }
+};
 
 export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable coding agent operating inside one workspace.
 
@@ -130,6 +193,7 @@ const createWorkspaceTools = (workspace: Workspace) => ({
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options);
   const workspace = await Workspace.open(config.workspace);
+  await validateStateDirectory(config.workspace, config.stateDirectory);
   const model = options.modelInstance ?? createProviderModel(config, options.env ?? process.env);
   const store = options.store ?? createFileAgentRunStore({ directory: config.stateDirectory });
 
@@ -143,7 +207,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
       timeoutMs: 15 * 60_000
     },
     metadata: {
-      harnessVersion: "0.1.0",
+      harnessVersion: HARNESS_VERSION,
       provider: config.provider,
       model: config.model
     },

@@ -319,6 +319,9 @@ export class Workspace {
       if (current.isSymbolicLink()) {
         throw new Error("Writing through a symbolic link is not allowed.");
       }
+      if (!current.isFile()) {
+        throw new Error("The destination exists and is not a regular file.");
+      }
       if (!overwrite) {
         throw new Error("The file already exists; set overwrite=true or use replace_in_file.");
       }
@@ -328,7 +331,18 @@ export class Workspace {
       }
     }
     await mkdir(path.dirname(target), { recursive: true });
-    await writeFile(target, content, { encoding: "utf8", mode: 0o644 });
+    try {
+      await writeFile(target, content, {
+        encoding: "utf8",
+        mode: 0o644,
+        flag: overwrite ? "w" : "wx"
+      });
+    } catch (error) {
+      if (!overwrite && (error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error("The file already exists; set overwrite=true or use replace_in_file.");
+      }
+      throw error;
+    }
     return { path: path.relative(this.root, target), bytes: Buffer.byteLength(content), overwritten: overwrite };
   }
 

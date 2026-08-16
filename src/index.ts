@@ -1,4 +1,5 @@
 export {
+  HARNESS_CONFIG_SCHEMA_VERSION,
   PROVIDERS,
   PROVIDER_DESCRIPTORS,
   createProviderModel,
@@ -11,8 +12,12 @@ export type {
   HarnessConfig,
   HarnessConfigInput,
   HarnessProvider,
-  ProviderDescriptor
+  ProviderCapability,
+  ProviderDescriptor,
+  ProviderSupport
 } from "./config.js";
+
+export { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
 
 export {
   HARNESS_INSTRUCTIONS,
