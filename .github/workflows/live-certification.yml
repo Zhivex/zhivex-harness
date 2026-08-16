@@ -1,0 +1,53 @@
+name: Live provider certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      providers:
+        description: Comma-separated providers to certify; include meta only for provisional evaluation
+        required: true
+        default: qwen,openai
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-provider-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: live-certification
+
+    env:
+      ZHIVEX_HARNESS_LIVE: "1"
+      ZHIVEX_HARNESS_LIVE_PROVIDERS: ${{ inputs.providers }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+      DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+      META_BASE_URL: ${{ secrets.META_BASE_URL }}
+      QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+      QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+      QWEN_REGION: ${{ secrets.QWEN_REGION }}
+      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.7
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Run fail-closed live certification
+        run: bun run smoke:live

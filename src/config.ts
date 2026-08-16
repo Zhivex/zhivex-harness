@@ -7,6 +7,10 @@ import type { LanguageModel } from "@zhivex-ai/agents";
 
 export const PROVIDERS = ["meta", "qwen", "openai"] as const;
 
+export const DEFAULT_ALLOWED_CHECKS = ["test", "typecheck", "lint", "build"] as const;
+
+export const HARNESS_CONFIG_SCHEMA_VERSION = 1 as const;
+
 export type HarnessProvider = (typeof PROVIDERS)[number];
 
 export interface ProviderDescriptor {
@@ -14,26 +18,43 @@ export interface ProviderDescriptor {
   name: string;
   defaultModel: string;
   credentialNames: readonly string[];
+  capabilities: readonly ProviderCapability[];
+  support: ProviderSupport;
 }
+
+export type ProviderCapability = "streaming" | "tool-calling" | "approval-resume";
+export type ProviderSupport = "certified" | "provisional";
+
+const HARNESS_PROVIDER_CAPABILITIES = [
+  "streaming",
+  "tool-calling",
+  "approval-resume"
+] as const satisfies readonly ProviderCapability[];
 
 export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = [
   {
     id: "meta",
     name: "Meta Model API",
     defaultModel: "muse-spark-1.2",
-    credentialNames: ["MODEL_API_KEY"]
+    credentialNames: ["MODEL_API_KEY"],
+    capabilities: HARNESS_PROVIDER_CAPABILITIES,
+    support: "certified"
   },
   {
     id: "qwen",
     name: "Qwen / Alibaba Cloud Model Studio",
     defaultModel: "qwen3.8-max",
-    credentialNames: ["DASHSCOPE_API_KEY", "QWEN_API_KEY"]
+    credentialNames: ["DASHSCOPE_API_KEY", "QWEN_API_KEY"],
+    capabilities: HARNESS_PROVIDER_CAPABILITIES,
+    support: "certified"
   },
   {
     id: "openai",
     name: "OpenAI",
     defaultModel: "gpt-5.4",
-    credentialNames: ["OPENAI_API_KEY"]
+    credentialNames: ["OPENAI_API_KEY"],
+    capabilities: HARNESS_PROVIDER_CAPABILITIES,
+    support: "certified"
   }
 ] as const;
 
@@ -47,20 +68,43 @@ const QWEN_REGIONS = [
 ] as const satisfies readonly QwenRegion[];
 
 export interface HarnessConfig {
+  schemaVersion: typeof HARNESS_CONFIG_SCHEMA_VERSION;
   provider: HarnessProvider;
   model: string;
   workspace: string;
   stateDirectory: string;
   maxSteps: number;
+  allowedChecks: readonly string[];
 }
 
 export interface HarnessConfigInput {
+  schemaVersion?: number;
   provider?: string;
   model?: string;
   workspace?: string;
   stateDirectory?: string;
   maxSteps?: number;
+  allowedChecks?: readonly string[];
 }
+
+const resolveAllowedChecks = (configured: readonly string[] | undefined) => {
+  const source = configured ?? (
+    process.env.ZHIVEX_HARNESS_ALLOWED_CHECKS === undefined
+      ? DEFAULT_ALLOWED_CHECKS
+      : process.env.ZHIVEX_HARNESS_ALLOWED_CHECKS.split(",")
+  );
+  const checks = [...new Set(source.map((value) => value.trim()).filter(Boolean))];
+  if (checks.length > 50) {
+    throw new Error("allowedChecks cannot contain more than 50 script names.");
+  }
+  const invalid = checks.find((value) => !/^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/.test(value));
+  if (invalid) {
+    throw new Error(
+      `Invalid allowed check name: ${invalid}. Use 1-64 letters, digits, colon, underscore, or hyphen.`
+    );
+  }
+  return checks;
+};
 
 export const parseProvider = (value: string | undefined): HarnessProvider => {
   const normalized = (value ?? "openai").trim().toLowerCase();
@@ -79,6 +123,14 @@ export const providerDescriptor = (provider: HarnessProvider): ProviderDescripto
 };
 
 export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessConfig => {
+  if (
+    input.schemaVersion !== undefined &&
+    input.schemaVersion !== HARNESS_CONFIG_SCHEMA_VERSION
+  ) {
+    throw new Error(
+      `Unsupported config schema version: ${input.schemaVersion}. Expected ${HARNESS_CONFIG_SCHEMA_VERSION}.`
+    );
+  }
   const provider = parseProvider(input.provider ?? process.env.ZHIVEX_HARNESS_PROVIDER);
   const descriptor = providerDescriptor(provider);
   const workspace = path.resolve(input.workspace ?? process.cwd());
@@ -89,13 +141,15 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
   }
 
   return {
+    schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
     provider,
     model: input.model ?? process.env.ZHIVEX_HARNESS_MODEL ?? descriptor.defaultModel,
     workspace,
     stateDirectory: path.resolve(
       input.stateDirectory ?? path.join(workspace, ".zhivex-harness", "runs")
     ),
-    maxSteps
+    maxSteps,
+    allowedChecks: resolveAllowedChecks(input.allowedChecks)
   };
 };
 
@@ -161,8 +215,58 @@ export const createProviderModel = (
   }
 };
 
+const endpointConfiguration = (value: string | undefined) => {
+  const configured = Boolean(value?.trim());
+  if (!configured) {
+    return {
+      customEndpoint: false,
+      endpointValid: true,
+      endpointSecure: true
+    };
+  }
+  try {
+    const endpoint = new URL(value!.trim());
+    const supportedProtocol = endpoint.protocol === "https:" || endpoint.protocol === "http:";
+    return {
+      customEndpoint: true,
+      endpointValid: supportedProtocol && !endpoint.username && !endpoint.password && !endpoint.hash,
+      endpointSecure: endpoint.protocol === "https:"
+    };
+  } catch {
+    return {
+      customEndpoint: true,
+      endpointValid: false,
+      endpointSecure: false
+    };
+  }
+};
+
 export const providerAvailability = (env: NodeJS.ProcessEnv = process.env) =>
-  PROVIDER_DESCRIPTORS.map((descriptor) => ({
-    ...descriptor,
-    configured: descriptor.credentialNames.some((name) => Boolean(env[name]?.trim()))
-  }));
+  PROVIDER_DESCRIPTORS.map((descriptor) => {
+    const credentials = descriptor.credentialNames.map((name) => ({
+      name,
+      present: Boolean(env[name]?.trim())
+    }));
+    const endpointVariable = descriptor.id === "meta"
+      ? "META_BASE_URL"
+      : descriptor.id === "qwen"
+        ? "QWEN_BASE_URL"
+        : "OPENAI_BASE_URL";
+    const regionValue = descriptor.id === "qwen" ? env.QWEN_REGION?.trim() : undefined;
+
+    return {
+      ...descriptor,
+      configured: credentials.some((credential) => credential.present),
+      credentials,
+      configuration: {
+        ...endpointConfiguration(env[endpointVariable]),
+        ...(descriptor.id === "qwen"
+          ? {
+              workspaceIdConfigured: Boolean(env.QWEN_WORKSPACE_ID?.trim()),
+              regionConfigured: Boolean(regionValue),
+              regionValid: !regionValue || (QWEN_REGIONS as readonly string[]).includes(regionValue)
+            }
+          : {})
+      }
+    };
+  });
