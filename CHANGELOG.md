@@ -18,6 +18,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 - Resolved configuration uses schema version `4` and adds a discriminated `execution` policy. The default remains `none`, where generic shell is unavailable.
 - Repository tools and subagents use the acquired snapshot while OCI execution is active. Host `git_diff` is omitted from the model tool set, and MCP is rejected before discovery rather than executing undeclared operations outside the no-network environment boundary.
+- CLI runs persist their resolved non-secret configuration so a locator-only `resume --approve|--deny` restores the original OCI policy instead of falling back to `execution=none`.
+- Environment patches compare, review, bind, import, and roll back file permission modes, including mode-only changes and newly created executable files.
 - The Zhivex SDK dependency batch now resolves one `@zhivex-ai/core@1.6.0` runtime; OpenAI is updated to `0.9.5`.
 - The release workflow is OIDC-only and runs the enforced OCI gate before packaging or live-provider certification.
 

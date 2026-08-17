@@ -8,13 +8,17 @@ import {
   CLI_JSON_SCHEMA_VERSION,
   CliUsageError,
   cliExitCodeForError,
+  createHarnessResumeMetadata,
   createDoctorReport,
   formatDoctorReport,
   parseCliArgs,
   providersDocument,
+  readHarnessResumeConfig,
+  resumeCommand,
   runResultDocument,
   summarizeApproval
 } from "../src/cli.js";
+import { resolveHarnessConfig } from "../src/config.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 const runCli = async (arguments_: string[]) => {
@@ -227,6 +231,52 @@ describe("approval review", () => {
     expect(patchSummary).toContain(argumentsText);
     expect(checkSummary).toContain("…");
     expect(checkSummary).not.toContain(argumentsText);
+  });
+
+  test("persists the complete OCI policy for a locator-only resume command", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-resume-oci-"));
+    try {
+      const config = resolveHarnessConfig({
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
+        storeBackend: "file",
+        tenantId: "tenant-a",
+        userId: "user-a",
+        namespace: "namespace-a",
+        executionBackend: "oci",
+        ociRuntime: "podman",
+        ociImage: "example/harness@sha256:fixture",
+        ociAllowedCommands: ["bun", "git"],
+        ociMaxProcessRuntimeMs: 42_000,
+        ociMaxProcessOutputBytes: 12_345,
+        ociMaxMemoryMb: 512,
+        ociMaxPids: 64,
+        ociMaxCpus: 1,
+        ociMaxWorkspaceBytes: 16 * 1024 * 1024,
+        ociMaxFileWriteBytes: 512 * 1024,
+        ociTmpfsMb: 32
+      });
+      const metadata = createHarnessResumeMetadata(config);
+      const restoredInput = readHarnessResumeConfig({ metadata });
+      expect(restoredInput).toBeDefined();
+      const restored = resolveHarnessConfig(restoredInput!);
+      expect(restored.execution).toEqual(config.execution);
+      expect(restored.workspace).toBe(config.workspace);
+      expect(restored.stateDirectory).toBe(config.stateDirectory);
+      expect(restored.storeBackend).toBe(config.storeBackend);
+      expect(restored.scope).toEqual(config.scope);
+
+      const command = resumeCommand("run-oci", config);
+      expect(command).toContain("resume 'run-oci' --approve");
+      expect(command).toContain(`--workspace '${config.workspace}'`);
+      expect(command).toContain(`--state-dir '${config.stateDirectory}'`);
+      expect(command).toContain("--store file");
+      expect(command).toContain("--tenant 'tenant-a'");
+      expect(command).toContain("--user 'user-a'");
+      expect(command).toContain("--namespace 'namespace-a'");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 });
 

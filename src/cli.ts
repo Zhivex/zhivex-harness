@@ -9,7 +9,9 @@ import {
   getAgentBudgetStatus,
   type AgentApprovalRequest,
   type AgentApprovalResponse,
+  type AgentRunInput,
   type AgentRunOutput,
+  type AgentRunState,
   type AgentStatus,
   type AgentStreamEvent
 } from "@zhivex-ai/agents";
@@ -20,6 +22,8 @@ import {
   parseProvider,
   providerAvailability,
   resolveHarnessConfig,
+  type HarnessConfig,
+  type HarnessConfigInput,
   type HarnessProvider,
   type HarnessSubagentProfile
 } from "./config.js";
@@ -53,6 +57,8 @@ import {
 } from "./execution-environment.js";
 
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
+export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
+export const HARNESS_RESUME_METADATA_SCHEMA_VERSION = 1 as const;
 
 export const CLI_EXIT_CODES = {
   success: 0,
@@ -145,6 +151,115 @@ export class CliUsageError extends Error {
     this.name = "CliUsageError";
   }
 }
+
+const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput => ({
+  schemaVersion: config.schemaVersion,
+  provider: config.provider,
+  model: config.model,
+  workspace: config.workspace,
+  stateDirectory: config.stateDirectory,
+  storeBackend: config.storeBackend,
+  tenantId: config.scope.tenantId,
+  ...(config.scope.userId ? { userId: config.scope.userId } : {}),
+  ...(config.scope.namespace ? { namespace: config.scope.namespace } : {}),
+  maxSteps: config.maxSteps,
+  timeoutMs: config.timeoutMs,
+  maxToolCalls: config.budget.maxToolCalls,
+  maxToolErrors: config.budget.maxToolErrors,
+  maxInputTokens: config.budget.maxInputTokens,
+  maxOutputTokens: config.budget.maxOutputTokens,
+  maxTotalTokens: config.budget.maxTotalTokens,
+  ...(config.costBudget
+    ? {
+        maxCostUsd: config.costBudget.maxCostUsd,
+        inputCostPerMillion: config.costBudget.inputCostPer1kTokens * 1_000,
+        outputCostPerMillion: config.costBudget.outputCostPer1kTokens * 1_000
+      }
+    : {}),
+  compactionMaxMessages: config.compaction.maxMessages,
+  compactionMaxEstimatedInputTokens: config.compaction.maxEstimatedInputTokens,
+  compactionKeepRecentMessages: config.compaction.keepRecentMessages,
+  allowedChecks: [...config.allowedChecks],
+  requiredCapabilities: [...config.requiredCapabilities],
+  subagentProfiles: [...config.orchestration.profiles],
+  subagentMaxSteps: config.orchestration.childBudget.maxSteps,
+  subagentMaxToolCalls: config.orchestration.childBudget.maxToolCalls,
+  subagentMaxToolErrors: config.orchestration.childBudget.maxToolErrors,
+  subagentMaxInputTokens: config.orchestration.childBudget.maxInputTokens,
+  subagentMaxOutputTokens: config.orchestration.childBudget.maxOutputTokens,
+  subagentMaxTotalTokens: config.orchestration.childBudget.maxTotalTokens,
+  subagentTimeoutMs: config.orchestration.childTimeoutMs,
+  maxParallelReviews: config.orchestration.maxParallelReviews,
+  executionBackend: config.execution.backend,
+  ...(config.execution.backend === "oci"
+    ? {
+        ociRuntime: config.execution.runtime,
+        ociImage: config.execution.image,
+        ociAllowedCommands: [...config.execution.allowedCommands],
+        ociMaxProcessRuntimeMs: config.execution.maxProcessRuntimeMs,
+        ociMaxProcessOutputBytes: config.execution.maxProcessOutputBytes,
+        ociMaxMemoryMb: config.execution.maxMemoryMb,
+        ociMaxPids: config.execution.maxPids,
+        ociMaxCpus: config.execution.maxCpus,
+        ociMaxWorkspaceBytes: config.execution.maxWorkspaceBytes,
+        ociMaxFileWriteBytes: config.execution.maxFileWriteBytes,
+        ociTmpfsMb: config.execution.tmpfsMb
+      }
+    : {}),
+  ...(config.mcpConfigPath ? { mcpConfigPath: config.mcpConfigPath } : {})
+});
+
+export const createHarnessResumeMetadata = (
+  config: HarnessConfig
+): NonNullable<AgentRunInput["metadata"]> => ({
+  [HARNESS_RESUME_METADATA_KEY]: JSON.parse(JSON.stringify({
+    schemaVersion: HARNESS_RESUME_METADATA_SCHEMA_VERSION,
+    config
+  }))
+});
+
+export const readHarnessResumeConfig = (
+  state: Pick<AgentRunState, "metadata">
+): HarnessConfigInput | undefined => {
+  const value = state.metadata?.[HARNESS_RESUME_METADATA_KEY];
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Persisted harness resume metadata is invalid.");
+  }
+  const document = value as { schemaVersion?: unknown; config?: unknown };
+  if (
+    document.schemaVersion !== HARNESS_RESUME_METADATA_SCHEMA_VERSION ||
+    !document.config ||
+    typeof document.config !== "object" ||
+    Array.isArray(document.config)
+  ) {
+    throw new Error("Persisted harness resume metadata is invalid.");
+  }
+  try {
+    return harnessConfigInput(document.config as HarnessConfig);
+  } catch {
+    throw new Error("Persisted harness resume metadata is invalid.");
+  }
+};
+
+const shellArgument = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`;
+
+export const resumeCommand = (runId: string, config: HarnessConfig, approve = true) => [
+  "zhivex-harness",
+  "resume",
+  shellArgument(runId),
+  approve ? "--approve" : "--deny",
+  "--workspace",
+  shellArgument(config.workspace),
+  "--state-dir",
+  shellArgument(config.stateDirectory),
+  "--store",
+  config.storeBackend,
+  "--tenant",
+  shellArgument(config.scope.tenantId),
+  ...(config.scope.userId ? ["--user", shellArgument(config.scope.userId)] : []),
+  ...(config.scope.namespace ? ["--namespace", shellArgument(config.scope.namespace)] : [])
+].join(" ");
 
 const optionValue = (argv: string[], index: number, name: string) => {
   const value = argv[index + 1];
@@ -709,7 +824,7 @@ const printTerminalResult = (result: AgentRunOutput, harness: ZhivexHarness, jso
       process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
     }
     process.stderr.write(
-      `The state was persisted. Resume with: zhivex-harness resume ${result.state.runId} --approve\n`
+      `The state was persisted. Resume with: ${resumeCommand(result.state.runId, harness.config)}\n`
     );
   }
 };
@@ -744,6 +859,7 @@ const runOnce = async (options: CliOptions) => {
       {
         prompt: options.prompt,
         scope: harness.config.scope,
+        metadata: createHarnessResumeMetadata(harness.config),
         ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {})
       },
       {
@@ -843,7 +959,25 @@ const resumeRun = async (options: CliOptions) => {
       process.stderr.write(`\nResuming approval:\n${summarizeApproval(approval)}\n`);
     }
 
+    const persistedResumeInput = readHarnessResumeConfig(state);
+    let persistedResumeOptions: HarnessConfigInput = {};
+    if (persistedResumeInput) {
+      const persistedConfig = resolveHarnessConfig(persistedResumeInput);
+      if (
+        persistedConfig.workspace !== initialConfig.workspace ||
+        persistedConfig.stateDirectory !== initialConfig.stateDirectory ||
+        persistedConfig.storeBackend !== initialConfig.storeBackend ||
+        JSON.stringify(persistedConfig.scope) !== JSON.stringify(initialConfig.scope)
+      ) {
+        throw new Error(
+          "Resume locator options do not match the persisted workspace, state directory, store, or scope."
+        );
+      }
+      persistedResumeOptions = harnessConfigInput(persistedConfig);
+    }
+
     const harness = await createHarness({
+      ...persistedResumeOptions,
       ...options,
       provider: state.provider as HarnessProvider,
       model: state.modelId,
@@ -913,8 +1047,16 @@ const chat = async (options: CliOptions) => {
       const result = await runHarness(
         harness,
         messages.length === 0
-          ? { prompt, scope: harness.config.scope }
-          : { messages: appendUserMessage(messages, prompt), scope: harness.config.scope },
+          ? {
+              prompt,
+              scope: harness.config.scope,
+              metadata: createHarnessResumeMetadata(harness.config)
+            }
+          : {
+              messages: appendUserMessage(messages, prompt),
+              scope: harness.config.scope,
+              metadata: createHarnessResumeMetadata(harness.config)
+            },
         {
           onEvent: streamSink(false, tracker),
           resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))

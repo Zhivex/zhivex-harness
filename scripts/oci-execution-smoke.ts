@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -68,7 +68,7 @@ try {
   const command = await session.runCommand("bun", [
     "-e",
     [
-      "import { access, writeFile } from 'node:fs/promises';",
+      "import { access, chmod, writeFile } from 'node:fs/promises';",
       "let secretMounted = true;",
       "try { await access('/workspace/.env'); } catch { secretMounted = false; }",
       "if (secretMounted) throw new Error('secret file was mounted');",
@@ -79,6 +79,7 @@ try {
       "try { await writeFile('/escape.txt', 'escape'); } catch { rootWriteDenied = true; }",
       "if (!rootWriteDenied) throw new Error('read-only root was writable');",
       "await writeFile('/workspace/src/generated.ts', 'export const isolated = true;\\n');",
+      "await chmod('/workspace/src/generated.ts', 0o750);",
       "console.log('oci-boundaries-ok');"
     ].join(" ")
   ]);
@@ -105,6 +106,7 @@ try {
     inspection.entries.map((entry) => [entry.path, entry.operation]),
     [["src/generated.ts", "create"]]
   );
+  assert.equal(inspection.entries[0]?.afterMode, 0o750);
   await assert.rejects(readFile(path.join(root, "src", "generated.ts"), "utf8"));
   const imported = await session.importPatch(workspace, inspection.patchId);
   assert.equal(imported.changes.length, 1);
@@ -112,6 +114,7 @@ try {
     await readFile(path.join(root, "src", "generated.ts"), "utf8"),
     "export const isolated = true;\n"
   );
+  assert.equal((await stat(path.join(root, "src", "generated.ts"))).mode & 0o777, 0o750);
   assert.equal(await readFile(path.join(root, ".env"), "utf8"), "SMOKE_SECRET=must-not-be-mounted\n");
 
   const controller = new AbortController();

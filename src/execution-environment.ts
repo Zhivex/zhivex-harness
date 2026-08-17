@@ -721,6 +721,8 @@ interface EnvironmentPatchEntry {
   operation: "create" | "update" | "delete";
   beforeDigest?: FileDigest;
   afterDigest?: FileDigest;
+  beforeMode?: number;
+  afterMode?: number;
   beforeContent?: string;
   afterContent?: string;
   bytes: number;
@@ -774,7 +776,7 @@ const createEnvironmentPatch = async (
   for (const filePath of paths) {
     const oldFile = before.get(filePath);
     const newFile = after.get(filePath);
-    if (oldFile?.digest === newFile?.digest) continue;
+    if (oldFile?.digest === newFile?.digest && oldFile?.mode === newFile?.mode) continue;
     const operation = !oldFile ? "create" : !newFile ? "delete" : "update";
     const beforeContent = oldFile ? textContent(oldFile, maxFileWriteBytes) : undefined;
     const afterContent = newFile ? textContent(newFile, maxFileWriteBytes) : undefined;
@@ -784,8 +786,10 @@ const createEnvironmentPatch = async (
       path: filePath,
       operation,
       ...(oldFile ? { beforeDigest: oldFile.digest } : {}),
+      ...(oldFile ? { beforeMode: oldFile.mode } : {}),
       ...(beforeContent !== undefined ? { beforeContent } : {}),
       ...(newFile ? { afterDigest: newFile.digest } : {}),
+      ...(newFile ? { afterMode: newFile.mode } : {}),
       ...(afterContent !== undefined ? { afterContent } : {}),
       bytes
     });
@@ -803,13 +807,17 @@ const createEnvironmentPatch = async (
 const inspectHostPrecondition = async (
   workspace: Workspace,
   filePath: string,
-  expectedDigest: FileDigest | undefined
+  expectedDigest: FileDigest | undefined,
+  expectedMode: number | undefined
 ) => {
   try {
-    const current = await workspace.readFile(filePath, 1, 1);
+    const current = await workspace.inspectFile(filePath);
     if (!expectedDigest) throw new Error(`Host patch target already exists: ${filePath}.`);
     if (current.digest !== expectedDigest) {
       throw new Error(`Host patch target changed after the environment snapshot: ${filePath}.`);
+    }
+    if (expectedMode !== undefined && current.mode !== expectedMode) {
+      throw new Error(`Host patch target mode changed after the environment snapshot: ${filePath}.`);
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT" && !expectedDigest) return;
@@ -831,7 +839,7 @@ const importPatch = async (
   }
   if (patch.entries.length === 0) throw new Error("Environment patch contains no changes.");
   for (const entry of patch.entries) {
-    await inspectHostPrecondition(host, entry.path, entry.beforeDigest);
+    await inspectHostPrecondition(host, entry.path, entry.beforeDigest, entry.beforeMode);
   }
   const writes = patch.entries.filter((entry) => entry.operation !== "delete");
   const deletes = patch.entries.filter((entry) => entry.operation === "delete");
@@ -843,7 +851,11 @@ const importPatch = async (
       content: entry.afterContent!
     }));
     const proposal = createEditProposal({ changes });
-    const result = await host.applyPatch({ proposalId: proposal.proposalId, changes });
+    const modes = new Map(writes.map((entry) => [entry.path, {
+      ...(entry.beforeMode !== undefined ? { beforeMode: entry.beforeMode } : {}),
+      afterMode: entry.afterMode!
+    }]));
+    const result = await host.applyPatchWithModes({ proposalId: proposal.proposalId, changes }, modes);
     audits.push(...result.changes);
   }
   const quarantined: Array<{ quarantineId: string; path: string; digest: FileDigest }> = [];
@@ -871,7 +883,11 @@ const importPatch = async (
           content: entry.beforeContent!
         }));
         const proposal = createEditProposal({ changes });
-        await host.applyPatch({ proposalId: proposal.proposalId, changes });
+        const modes = new Map(updatedWrites.map((entry) => [entry.path, {
+          beforeMode: entry.afterMode!,
+          afterMode: entry.beforeMode!
+        }]));
+        await host.applyPatchWithModes({ proposalId: proposal.proposalId, changes }, modes);
       } catch (rollbackError) {
         rollbackErrors.push(rollbackError);
       }

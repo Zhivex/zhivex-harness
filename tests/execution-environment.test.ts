@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -225,6 +225,59 @@ describe("enforced OCI execution environment", () => {
     expect((await session.inspectPatch()).entries).toContainEqual(
       expect.objectContaining({ path: "generated.txt", operation: "create" })
     );
+    await session.release?.({ status: "completed" });
+  });
+
+  test("binds and imports executable modes, including mode-only changes", async () => {
+    const { root, workspace } = await workspaceFixture();
+    await mkdir(path.join(root, "scripts"), { recursive: true });
+    await writeFile(path.join(root, "scripts", "existing.sh"), "#!/bin/sh\necho existing\n");
+    await chmod(path.join(root, "scripts", "existing.sh"), 0o644);
+    const runtime = new FakeOciRuntime(undefined, async (request) => {
+      await chmod(path.join(request.snapshotRoot, "scripts", "existing.sh"), 0o755);
+      await writeFile(path.join(request.snapshotRoot, "scripts", "created.sh"), "#!/bin/sh\necho created\n");
+      await chmod(path.join(request.snapshotRoot, "scripts", "created.sh"), 0o750);
+    });
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "mode-import-run" });
+    await session.runCommand("bun", ["test"]);
+
+    const inspection = await session.inspectPatch();
+    expect(inspection.entries).toEqual([
+      expect.objectContaining({
+        path: "scripts/created.sh",
+        operation: "create",
+        afterMode: 0o750
+      }),
+      expect.objectContaining({
+        path: "scripts/existing.sh",
+        operation: "update",
+        beforeMode: 0o644,
+        afterMode: 0o755
+      })
+    ]);
+    const existing = inspection.entries.find((entry) => entry.path === "scripts/existing.sh");
+    expect(existing?.beforeDigest).toBe(existing?.afterDigest);
+
+    await chmod(path.join(session.workspace.root, "scripts", "created.sh"), 0o700);
+    await expect(session.importPatch(workspace, inspection.patchId)).rejects.toThrow("changed after review");
+    await chmod(path.join(session.workspace.root, "scripts", "created.sh"), 0o750);
+    const rebound = await session.inspectPatch();
+    expect(rebound.patchId).toBe(inspection.patchId);
+    await chmod(path.join(root, "scripts", "existing.sh"), 0o600);
+    await expect(session.importPatch(workspace, rebound.patchId)).rejects.toThrow("mode changed");
+    await chmod(path.join(root, "scripts", "existing.sh"), 0o644);
+    await session.importPatch(workspace, rebound.patchId);
+
+    expect((await stat(path.join(root, "scripts", "existing.sh"))).mode & 0o777).toBe(0o755);
+    expect((await stat(path.join(root, "scripts", "created.sh"))).mode & 0o777).toBe(0o750);
     await session.release?.({ status: "completed" });
   });
 

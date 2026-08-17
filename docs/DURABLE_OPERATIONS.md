@@ -12,6 +12,8 @@ Every durable key is isolated by:
 
 Use the same workspace, state directory, backend, tenant, user, and namespace for `run`, `resume`, and every `runs` command. A run fingerprint is bound to the canonical workspace, durable scope, provider/model, tool contract, approval policy, config schema, harness version, and execution-environment policy. Under OCI, the resolved image identity is also bound. Resume fails closed when a current binding differs.
 
+CLI-created runs persist the resolved non-secret harness configuration in versioned run metadata. The terminal prints a scope-complete locator command, and `resume` restores the original OCI policy before fingerprint validation, so approval restart does not silently fall back to `execution=none`. Explicit conflicting overrides are rejected by the existing binding check.
+
 ```bash
 zhivex-harness run \
   --tenant acme \

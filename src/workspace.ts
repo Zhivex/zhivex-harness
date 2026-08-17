@@ -393,6 +393,16 @@ export class Workspace {
     };
   }
 
+  async inspectFile(relativePath: string) {
+    const file = await this.readStableFile(relativePath);
+    return {
+      path: file.path,
+      digest: file.digest,
+      mode: file.mode,
+      bytes: file.contents.byteLength
+    };
+  }
+
   async searchFiles(query: string, relativePath = ".", options: SearchFilesOptions = {}) {
     if (!query || query.length > 200) throw new Error("The search query must be between 1 and 200 characters.");
     const start = await this.safePath(relativePath);
@@ -507,7 +517,25 @@ export class Workspace {
   }
 
   async applyPatch(input: ApplyEditProposalInput): Promise<ApplyPatchResult> {
+    return this.applyPatchWithModes(input, new Map());
+  }
+
+  async applyPatchWithModes(
+    input: ApplyEditProposalInput,
+    modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>
+  ): Promise<ApplyPatchResult> {
     const proposal = validateEditProposal(input);
+    const targetPaths = new Set(proposal.changes.map((change) => change.path));
+    for (const [targetPath, binding] of modes) {
+      if (!targetPaths.has(targetPath)) {
+        throw new Error(`Patch mode binding has no matching content target: ${targetPath}.`);
+      }
+      for (const [label, mode] of [["before", binding.beforeMode], ["after", binding.afterMode]] as const) {
+        if (mode !== undefined && (!Number.isSafeInteger(mode) || mode < 0 || mode > 0o777)) {
+          throw new Error(`Patch ${label} mode must be an integer between 0 and 0777: ${targetPath}.`);
+        }
+      }
+    }
     const ordered = [...proposal.changes].sort((a, b) => a.path < b.path ? -1 : 1);
     for (let index = 1; index < ordered.length; index += 1) {
       const previous = ordered[index - 1];
@@ -516,22 +544,45 @@ export class Workspace {
         throw new Error(`Patch targets conflict as ancestor and descendant: ${previous.path}, ${current.path}.`);
       }
     }
-    const prepared: Array<{ change: (typeof proposal.changes)[number]; target: string; before?: StableFile; temporary: string }> = [];
+    const prepared: Array<{
+      change: (typeof proposal.changes)[number];
+      target: string;
+      before?: StableFile;
+      modeBinding?: { beforeMode?: number; afterMode: number };
+      temporary: string;
+    }> = [];
     try {
       for (const change of proposal.changes) {
         const safe = await this.safePath(change.path, { allowMissing: true });
+        const modeBinding = modes.get(change.path);
         let before: StableFile | undefined;
         if (change.expectedDigest === null) {
           if (safe.exists) throw new Error(`The patch target already exists: ${change.path}.`);
+          if (modeBinding?.beforeMode !== undefined) {
+            throw new Error(`Create-only patch mode binding cannot declare a before mode: ${change.path}.`);
+          }
         } else {
           if (!safe.exists) throw new Error(`The patch target no longer exists: ${change.path}.`);
           before = await this.readStableFile(change.path);
           if (before.digest !== change.expectedDigest) {
             throw new Error(`Stale patch rejected for ${change.path}: expected ${change.expectedDigest}, found ${before.digest}.`);
           }
+          if (modeBinding?.beforeMode !== undefined && before.mode !== modeBinding.beforeMode) {
+            throw new Error(`Stale patch mode rejected for ${change.path}: expected ${modeBinding.beforeMode.toString(8)}, found ${before.mode.toString(8)}.`);
+          }
         }
-        const temporary = await this.stageFile(safe.path, change.content, before?.mode ?? 0o644);
-        prepared.push({ change, target: safe.path, ...(before ? { before } : {}), temporary });
+        const temporary = await this.stageFile(
+          safe.path,
+          change.content,
+          modeBinding?.afterMode ?? before?.mode ?? 0o644
+        );
+        prepared.push({
+          change,
+          target: safe.path,
+          ...(before ? { before } : {}),
+          ...(modeBinding ? { modeBinding } : {}),
+          temporary
+        });
       }
     } catch (error) {
       await Promise.all(prepared.map((item) => unlink(item.temporary).catch(() => {})));
@@ -544,6 +595,9 @@ export class Workspace {
         if (item.before) {
           const current = await this.readStableFile(item.change.path);
           if (current.digest !== item.change.expectedDigest) throw new Error(`Stale patch rejected for ${item.change.path}.`);
+          if (item.modeBinding?.beforeMode !== undefined && current.mode !== item.modeBinding.beforeMode) {
+            throw new Error(`Stale patch mode rejected for ${item.change.path}.`);
+          }
           await rename(item.temporary, item.target);
         } else {
           try {
