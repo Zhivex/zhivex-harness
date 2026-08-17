@@ -4,15 +4,20 @@ export {
   PROVIDERS,
   PROVIDER_DESCRIPTORS,
   createProviderModel,
+  defaultHarnessNamespace,
   parseProvider,
   providerAvailability,
   providerDescriptor,
   resolveHarnessConfig
 } from "./config.js";
 export type {
+  HarnessBudget,
+  HarnessCompactionConfig,
   HarnessConfig,
   HarnessConfigInput,
+  HarnessCostBudget,
   HarnessProvider,
+  HarnessStoreBackend,
   ProviderCapability,
   ProviderDescriptor,
   ProviderSupport
@@ -67,6 +72,25 @@ export {
   createHarness,
   runHarness
 } from "./harness.js";
+
+export {
+  HARNESS_OPERATIONS_SCHEMA_VERSION,
+  HARNESS_SQLITE_FILE,
+  TERMINAL_RUN_STATUSES,
+  cancelHarnessRun,
+  cleanupHarnessRuns,
+  inspectHarnessRun,
+  listHarnessRuns,
+  migrateLegacyFileRuns,
+  openHarnessPersistence
+} from "./operations.js";
+
+export { validateStateDirectory } from "./state-directory.js";
+export type {
+  HarnessMigrationResult,
+  HarnessPersistence,
+  HarnessRunQuery
+} from "./operations.js";
 export type {
   CreateHarnessOptions,
   HarnessRunOptions,

@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       providers:
-        description: Comma-separated providers to certify; include meta only for provisional evaluation
+        description: Comma-separated certified providers; keep the default for full release evidence
         required: true
-        default: qwen,openai
+        default: meta,qwen,openai
         type: string
 
 permissions:

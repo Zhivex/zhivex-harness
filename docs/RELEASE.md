@@ -1,6 +1,6 @@
 # Release process
 
-This repository prepares and certifies release artifacts but does not publish automatically. The active `0.3.x` milestone is explicitly private (`private: true`, without `publishConfig`); packing is retained only to verify installability. Publication is a separate irreversible operation that remains disabled until a later visibility decision.
+This repository prepares and certifies release artifacts but does not publish automatically. The active `0.4.x` milestone is explicitly private (`private: true`, without `publishConfig`); packing is retained only to verify installability. Publication is a separate irreversible operation that remains disabled until a later visibility decision.
 
 ## Deterministic gates
 
@@ -15,7 +15,7 @@ git diff --check
 git status --short
 ```
 
-`bun run check` performs typechecking, deterministic tests, a dependency-externalized build, package-content validation, clean tarball installation, direct binary execution, public import, mock run, approval persistence, process-style store restart, and exactly-once side-effect verification.
+`bun run check` performs documentation validation, typechecking, deterministic tests, the golden evaluation gate, a dependency-externalized build, package-content validation, clean tarball installation, direct binary execution, public import, SQLite restart/resume, redacted inspection, and exactly-once side-effect verification.
 
 CI repeats the deterministic and installed-package gates on Linux and macOS. Build output is ignored and must not create tracked changes.
 
@@ -33,7 +33,7 @@ The gate must pass for every provider in the supported release matrix. Integrate
 
 `bun run pack:inspect` must include only the intended runtime files, documentation, manifest, license, and changelog. It must exclude `.env`, source tests, Git metadata, local run state, and workspace build inputs.
 
-The tagged `0.2.0` baseline was prepared with public-package metadata, but it was not published. The active `0.3.x` manifest intentionally prevents registry publication. The registry had no existing `@zhivex-ai/harness` package when `0.2.0` was prepared, so scope permission, visibility, provenance, and first-package creation remain deferred external prerequisites.
+The tagged `0.2.0` baseline was prepared with public-package metadata, but it was not published. The `0.3.0` milestone remained a private checkpoint and the active `0.4.x` manifest intentionally prevents registry publication. Scope permission, visibility, provenance, and first-package creation remain deferred external prerequisites.
 
 ## Publication stop conditions
 
@@ -47,4 +47,4 @@ Do not publish when any of these is true:
 - trusted publishing or the publication credential boundary has not been configured and tested;
 - version, changelog, tag, registry metadata, or source commit disagree.
 
-The repository is currently private and `0.3.x` is a development milestone, so it must not claim public npm provenance or be published. Revalidate the current requirements against the official [npm provenance guide](https://docs.npmjs.com/generating-provenance-statements/) and [Bun publish documentation](https://bun.com/docs/pm/cli/publish) before any future registry mutation.
+The repository is currently private and `0.4.x` is a development milestone, so it must not claim public npm provenance or be published. Revalidate the current requirements against the official [npm provenance guide](https://docs.npmjs.com/generating-provenance-statements/) and [Bun publish documentation](https://bun.com/docs/pm/cli/publish) before any future registry mutation.

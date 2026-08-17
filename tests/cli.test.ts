@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -94,6 +94,47 @@ describe("CLI parsing", () => {
     });
   });
 
+  test("parses durable run operations and budget limits", () => {
+    expect(parseCliArgs([
+      "runs",
+      "list",
+      "--status",
+      "waiting_approval",
+      "--limit",
+      "25",
+      "--store",
+      "sqlite",
+      "--tenant",
+      "acme",
+      "--json"
+    ])).toMatchObject({
+      command: "runs",
+      runsCommand: "list",
+      statuses: ["waiting_approval"],
+      limit: 25,
+      storeBackend: "sqlite",
+      tenantId: "acme",
+      json: true
+    });
+    expect(parseCliArgs([
+      "run",
+      "--idempotency-key",
+      "request-42",
+      "--max-tool-calls",
+      "10",
+      "--max-total-tokens",
+      "50000",
+      "inspect"
+    ])).toMatchObject({
+      idempotencyKey: "request-42",
+      maxToolCalls: 10,
+      maxTotalTokens: 50_000,
+      prompt: "inspect"
+    });
+    expect(() => parseCliArgs(["runs", "inspect"])).toThrow("runId");
+    expect(() => parseCliArgs(["runs", "cleanup"])).toThrow("--before");
+  });
+
   test("rejects ambiguous or unknown options", () => {
     expect(() => parseCliArgs(["resume", "run-1", "--approve", "--deny"])).toThrow("combine");
     expect(() => parseCliArgs(["run", "--wat"])).toThrow("Unknown option");
@@ -152,13 +193,33 @@ describe("versioned JSON contracts", () => {
       toolResults: [],
       usage: {},
       state: {
+        schemaVersion: 1,
         runId: "run-1",
         provider: "openai",
         modelId: "gpt-test",
+        status: "completed",
+        messages: [],
+        steps: [],
+        toolResults: [],
+        currentStep: 0,
+        maxSteps: 12,
+        outputText: "done",
         pendingApprovals: []
       }
     } as never, {
-      config: { stateDirectory: "/tmp/state" },
+      config: {
+        stateDirectory: "/tmp/state",
+        storeBackend: "sqlite",
+        budget: {
+          maxSteps: 12,
+          maxToolCalls: 32,
+          maxToolErrors: 4,
+          maxInputTokens: 100_000,
+          maxOutputTokens: 30_000,
+          maxTotalTokens: 120_000,
+          includeChildRuns: true
+        }
+      },
       workspace: { mutationAudit: () => [] }
     } as never);
 
@@ -200,6 +261,30 @@ describe("CLI process contract", () => {
       ok: false
     });
   });
+
+  test("lists durable runs without provider credentials", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-runs-cli-"));
+    try {
+      const result = await runCli([
+        "runs",
+        "list",
+        "--workspace",
+        workspace,
+        "--state-dir",
+        path.join(workspace, ".zhivex-harness", "runs"),
+        "--json"
+      ]);
+      expect(result.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(JSON.parse(result.stdout)).toMatchObject({
+        schemaVersion: 1,
+        kind: "run-list",
+        backend: "sqlite",
+        runs: []
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("doctor", () => {
@@ -228,7 +313,7 @@ describe("doctor", () => {
         harnessVersion: HARNESS_VERSION,
         configuration: {
           provider: "openai",
-          stateDirectory: path.join(workspace, ".zhivex-harness", "runs")
+          stateDirectory: path.join(await realpath(workspace), ".zhivex-harness", "runs")
         }
       });
       expect(report.checks.map((check) => check.id)).toEqual(expect.arrayContaining([

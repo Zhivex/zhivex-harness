@@ -253,26 +253,27 @@ describe("security regressions", () => {
         ]
       ]
     });
+    const store = createInMemoryAgentRunStore();
     const harness = await createHarness({
       provider: "openai",
       workspace: root,
       modelInstance: model,
-      store: createInMemoryAgentRunStore()
+      store
     });
 
-    const result = await runHarness(harness, { prompt: "Create denied.txt" }, {
+    await expect(runHarness(harness, { runId: "denied-security-run", prompt: "Create denied.txt" }, {
       resolveApprovals: async (approvals) => approvals.map((approval) => ({
         provider: approval.provider,
         approvalRequestId: approval.id,
         approve: false,
         reason: "Security regression denial."
       }))
-    });
+    })).rejects.toThrow("Security regression denial");
 
-    expect(result.status).toBe("completed");
-    expect(result.outputText).toBe("The write was denied.");
     await expect(readFile(path.join(root, "denied.txt"), "utf8")).rejects.toThrow();
-    expect(result.state.approvalHistory).toContainEqual(expect.objectContaining({
+    const state = await store.load("denied-security-run");
+    expect(state?.status).toBe("failed");
+    expect(state?.approvalHistory).toContainEqual(expect.objectContaining({
       kind: "local-tool",
       approve: false
     }));

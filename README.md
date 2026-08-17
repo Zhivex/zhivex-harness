@@ -4,9 +4,9 @@ Zhivex Harness is a Bun-first coding-agent harness portable across Meta, Qwen, a
 
 The model provides capability; the harness provides repository context, narrow tools, limits, approvals, durable state, diagnostics, and verification. Every provider uses the same agent loop and local-tool contract.
 
-Version `0.3.0` is an active private development milestone. It is intentionally blocked from registry publication while trusted repository editing is completed and dogfooded. The validated `0.2.0` source baseline is preserved by the local `v0.2.0` tag. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+Version `0.4.0` is a validated private durable-operations candidate. It remains intentionally blocked from registry publication until an explicit visibility, scope-rights, and provenance decision is made. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
 
-## What 0.3 includes
+## What 0.4 includes
 
 - one-shot execution and interactive chat;
 - provider and model selection through the CLI;
@@ -18,7 +18,10 @@ Version `0.3.0` is an active private development milestone. It is intentionally 
 - an explicit, configurable allowlist of declared `package.json` checks executed through Bun;
 - read-only inspection of staged, unstaged, renamed, deleted, and untracked Git state;
 - per-process mutation audit evidence and a final diff summary;
-- durable run state and approval resumption;
+- scoped SQLite run/memory state, idempotency, approval resumption, leases, and exactly-once tool journals;
+- run list, redacted inspect/export, cancellation, and retention cleanup commands;
+- production safety policy plus step, time, tool, token, and optional operator-priced cost budgets;
+- bounded context compaction with durable records and a deterministic golden evaluation gate;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
 - Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
 
@@ -90,12 +93,30 @@ Interactive mode:
 zhivex-harness chat --provider meta
 ```
 
-Writes and checks pause for approval. In a non-interactive execution, state is saved under `.zhivex-harness/runs`:
+Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
 ```bash
 zhivex-harness resume <runId> --approve
 zhivex-harness resume <runId> --deny
 ```
+
+Duplicate external requests can share a durable run identity:
+
+```bash
+zhivex-harness run --idempotency-key issue-482 "fix the reported regression"
+```
+
+Operate on runs without loading a provider or requiring its credential:
+
+```bash
+zhivex-harness runs list --status waiting_approval
+zhivex-harness runs inspect <runId> --json
+zhivex-harness runs export <runId> --json
+zhivex-harness runs cancel <runId> --reason "superseded"
+zhivex-harness runs cleanup --before 2026-08-01T00:00:00Z
+```
+
+Operations are scope-bound. The defaults are tenant `local` and a namespace derived from the canonical workspace. Supply the same `--tenant`, `--user`, and `--namespace` values across run and operator commands. Migration, budgets, redaction, retention, and compatibility limits are documented in [docs/DURABLE_OPERATIONS.md](./docs/DURABLE_OPERATIONS.md).
 
 `--yes` automatically approves tools with side effects. Use it only inside a disposable or isolated workspace:
 
@@ -123,13 +144,13 @@ zhivex-harness run --allow-check test:unit --allow-check format "apply the fix a
 
 | Provider | Default model | Current support |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Certified for 0.3 tools |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · Certified for 0.3 tools |
-| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · Certified for 0.3 tools |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Certified for 0.4 tools/runtime |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · Certified for 0.4 tools/runtime |
+| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · Certified for 0.4 tools/runtime |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
 
-Meta, Qwen, and OpenAI have completed the 0.3 proposal, approval, restart, and exactly-once patch gate. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md). Credential detection and deterministic tests do not replace real provider evidence.
+Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, process restart, and exactly-once patch gate on 2026-08-17. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
@@ -153,6 +174,7 @@ These controls reduce risk but do not provide strong isolation. Use a dedicated 
 bun run typecheck
 bun test
 bun run build
+bun run evaluate
 bun run smoke:package
 bun run pack:inspect
 bun run check
