@@ -144,7 +144,7 @@ jobs:
 
       - name: Publish exact artifact with provenance
         if: steps.registry.outputs.status == 'absent'
-        run: npm publish "$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"
+        run: npm publish "./$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"
         env:
           # Required only to bootstrap the first package version. Remove this
           # secret after npm Trusted Publishing is configured for release.yml.
