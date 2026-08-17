@@ -153,7 +153,7 @@ for (const required of [
   "bun run smoke:artifact",
   "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
   "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
-  "shasum -a 512 -c release-artifacts/SHA512SUMS",
+  "(cd release-artifacts && shasum -a 512 -c SHA512SUMS)",
   'npm publish "$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"',
   'bun run release:status -- "$ARTIFACT"',
   'bun run release:verify -- "$ARTIFACT" "$RELEASE_CHANNEL"'
