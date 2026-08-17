@@ -163,6 +163,38 @@ describe("CLI parsing", () => {
     expect(() => parseCliArgs(["review", "--reviewer", "implementer", "task"])).toThrow("--reviewer");
   });
 
+  test("parses enforced OCI execution limits and command allowlists", () => {
+    expect(parseCliArgs([
+      "run",
+      "--execution",
+      "oci",
+      "--oci-runtime",
+      "podman",
+      "--oci-image",
+      "example/harness@sha256:fixture",
+      "--oci-allow-command",
+      "bun",
+      "--oci-allow-command",
+      "git",
+      "--oci-max-memory-mb",
+      "512",
+      "--oci-max-pids",
+      "64",
+      "isolated",
+      "task"
+    ])).toMatchObject({
+      executionBackend: "oci",
+      ociRuntime: "podman",
+      ociImage: "example/harness@sha256:fixture",
+      ociAllowedCommands: ["bun", "git"],
+      ociMaxMemoryMb: 512,
+      ociMaxPids: 64,
+      prompt: "isolated task"
+    });
+    expect(() => parseCliArgs(["run", "--oci-allow-command", "../sh", "task"]))
+      .toThrow("bare executable");
+  });
+
   test("rejects ambiguous or unknown options", () => {
     expect(() => parseCliArgs(["resume", "run-1", "--approve", "--deny"])).toThrow("combine");
     expect(() => parseCliArgs(["run", "--wat"])).toThrow("Unknown option");
@@ -370,6 +402,7 @@ describe("doctor", () => {
         "git",
         "scripts",
         "state-directory",
+        "execution-environment",
         "provider:meta",
         "provider:qwen",
         "provider:openai"
@@ -378,6 +411,42 @@ describe("doctor", () => {
       expect(serialized).not.toContain("do-not-print-this-key");
       expect(serialized).not.toContain("secret-host");
       expect(formatDoctorReport(report)).toContain("Doctor completed without blocking problems.");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("checks the immutable OCI image when enforced execution is selected", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-oci-"));
+    try {
+      await writeFile(path.join(workspace, "package.json"), JSON.stringify({ scripts: { test: "bun test" } }));
+      const runtime = {
+        inspectImage: async (imageReference: string) => ({
+          runtime: "docker" as const,
+          runtimeVersion: "fixture-1",
+          imageReference,
+          imageId: `sha256:${"a".repeat(64)}`,
+          imageDigest: `sha256:${"a".repeat(64)}`
+        }),
+        run: async () => { throw new Error("not used"); },
+        removeRunContainers: async () => 0,
+        cleanupOrphans: async () => 0
+      };
+      const report = await createDoctorReport({
+        provider: "openai",
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
+        executionBackend: "oci"
+      }, {
+        bunVersion: "1.3.7",
+        env: { OPENAI_API_KEY: "present" },
+        ociRuntimeAdapter: runtime
+      });
+      expect(report.configuration.execution).toMatchObject({ backend: "oci", runtime: "docker" });
+      expect(report.checks.find((check) => check.id === "execution-environment")).toMatchObject({
+        status: "pass",
+        details: { network: "deny", shellAvailable: true }
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

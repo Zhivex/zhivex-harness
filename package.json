@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Provider-portable coding agent harness powered by Zhivex AI SDK.",
   "type": "module",
   "license": "MIT",
@@ -57,24 +57,31 @@
     "smoke:package": "bun run build && bun run scripts/package-smoke.ts",
     "smoke:artifact": "bun run scripts/package-smoke.ts",
     "smoke:mcp": "bun run scripts/mcp-interoperability-smoke.ts",
+    "smoke:mcp:official": "bun run scripts/mcp-official-sdk-smoke.ts",
+    "smoke:oci": "bun run scripts/oci-execution-smoke.ts",
     "smoke:live": "bun --env-file=.env run scripts/live-provider-smoke.ts",
     "smoke:live:orchestration": "bun --env-file=.env run scripts/live-orchestration-smoke.ts",
+    "smoke:live:execution": "bun --env-file=.env run scripts/live-execution-smoke.ts",
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:mcp && bun run smoke:package",
+    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
     "release:check": "bun run check && bun audit && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
     "release:status": "bun run scripts/check-registry-release-status.ts",
     "release:verify": "bun run scripts/verify-registry-release.ts"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.2.0",
-    "@zhivex-ai/core": "1.5.0",
+    "@zhivex-ai/core": "1.6.0",
     "@zhivex-ai/meta": "0.2.1",
-    "@zhivex-ai/openai": "0.9.4",
+    "@zhivex-ai/openai": "0.9.5",
     "@zhivex-ai/qwen": "0.10.1",
     "zod": "4.4.3"
   },
+  "overrides": {
+    "@zhivex-ai/core": "1.6.0"
+  },
   "devDependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
     "@types/bun": "1.3.14",
     "typescript": "6.0.3"
   },

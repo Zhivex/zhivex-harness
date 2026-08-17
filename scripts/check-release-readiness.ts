@@ -61,8 +61,8 @@ const manifest = JSON.parse(
 if (manifest.name !== "@zhivex-ai/harness") {
   failures.push("package name must be @zhivex-ai/harness");
 }
-if (!manifest.version || !/^0\.5\.\d+$/.test(manifest.version)) {
-  failures.push("package version must be a stable 0.5.x version");
+if (!manifest.version || !/^0\.6\.\d+$/.test(manifest.version)) {
+  failures.push("package version must be a stable 0.6.x version");
 }
 if (manifest.private === true) {
   failures.push("package.json is still private");
@@ -119,7 +119,7 @@ if (manifest.engines?.bun !== ">=1.3.7" || manifest.packageManager !== "bun@1.3.
 if (!manifest.scripts?.["release:check"]?.includes("check-release-readiness.ts")) {
   failures.push("package scripts do not expose the release readiness gate");
 }
-if (!manifest.scripts?.["artifact:check"] || !manifest.scripts?.["smoke:artifact"]) {
+if (!manifest.scripts?.["artifact:check"] || !manifest.scripts?.["smoke:artifact"] || !manifest.scripts?.["smoke:oci"]) {
   failures.push("package scripts do not expose exact-artifact inspection and installation gates");
 }
 
@@ -148,6 +148,8 @@ for (const required of [
   "package-manager-cache: false",
   "bun install --frozen-lockfile --ignore-scripts",
   "bun run release:check",
+  "docker pull oven/bun:1.3.7-slim",
+  "ZHIVEX_HARNESS_OCI_REQUIRED",
   "bun pm pack",
   "bun run artifact:check",
   "bun run smoke:artifact",

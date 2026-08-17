@@ -42,7 +42,7 @@ Optional model overrides are:
 
 Endpoint, Qwen workspace, and Qwen region overrides use the normal `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL` variables.
 
-The separate `0.5.x` delegation matrix uses the same opt-in, provider selection, credentials, and model overrides:
+The separate delegation matrix uses the same opt-in, provider selection, credentials, and model overrides:
 
 ```bash
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:orchestration
@@ -82,13 +82,54 @@ The complete delegation matrix passed at `2026-08-17T02:21:45.553Z`. Each provid
 
 This certifies the bounded reviewer-delegation path, not arbitrary task quality or every subagent profile.
 
-The separate controlled MCP interoperability gate passed at `2026-08-17T13:05:05.542Z` against a real loopback Streamable HTTP server. It exercised protocol `2025-06-18`, authorization and protocol headers, session negotiation, `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, JSON and SSE responses, schema-backed discovery, bounded output, and the forced interrupt-approval policy for network tools. Run it with:
+The separate controlled MCP interoperability gate passed at `2026-08-17T16:48:09.043Z` against a real loopback Streamable HTTP server. It exercised protocol `2025-06-18`, authorization and protocol headers, session negotiation, `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, JSON and SSE responses, schema-backed discovery, bounded output, and the forced interrupt-approval policy for network tools. Run it with:
 
 ```bash
 bun run smoke:mcp
 ```
 
 This is stronger than an injected `fetch` fixture because it uses the operating system network stack and a running server. It certifies the harness transport contract against the controlled implementation; it does not claim compatibility with every third-party MCP server or unsupported `stdio` transport.
+
+## 0.6.0 execution and interoperability status
+
+`0.6.0` adds a third, independent MCP transport gate implemented with the official `@modelcontextprotocol/server@2.0.0` package. It passed at `2026-08-17T16:48:09.141Z` over a real loopback Streamable HTTP endpoint. The harness negotiated its supported `2025-06-18` protocol through the server's documented legacy-stateless compatibility mode, discovered one schema-backed tool, preserved the mandatory network approval, called it exactly once, and validated the bounded response.
+
+```bash
+bun run smoke:mcp:official
+```
+
+This is interoperability evidence for that exact SDK version and compatibility mode, not a claim that the harness implements the newer `2026-07-28` wire protocol or every official SDK feature.
+
+Enforced execution has separate evidence layers:
+
+- deterministic injected-runtime tests for environment/session semantics;
+- installed-package proof for the exported execution API;
+- `ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci` for the real Docker/Podman boundary;
+- billable provider matrices for model-directed tools and delegation.
+
+The final real Docker gate passed on macOS/Docker Desktop at `2026-08-17T16:48Z` with Docker `29.7.2` and image digest `sha256:b7d0366ff1c11bd3897aeaca2e3d215ee1e5902932073434ffc9186ca0a3ac96`. It verified secret exclusion, denied outbound network, a read-only root, total-workspace and changed-file quotas, read-only dependency reuse without snapshot persistence, the configured cgroup PID ceiling under a spawn burst, memory exhaustion containment, combined-output termination, prompt cancellation with immediate container removal, transactional snapshot publication, isolated package checks, approved host patch import, terminal artifact cleanup, and zero remaining harness-labeled containers or volumes.
+
+The live workflow requires this real OCI gate before provider execution. Date-bound model-directed environment results are recorded only after the provider commands complete; implementation, credential presence, or the container result alone is not provider certification.
+
+The billable model-directed matrix is:
+
+```bash
+ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
+```
+
+For each selected provider it requires exactly one approved argv-only environment command, one patch inspection, and one separately approved host import. It verifies exact tool order, durable journal completion, host contents, image/environment binding, and the provider-specific completion token.
+
+The complete Meta/Qwen/OpenAI enforced-execution matrix passed together against the final quota-backed workspace implementation at `2026-08-17T16:49:12.975Z` and image digest `sha256:b7d0366ff1c11bd3897aeaca2e3d215ee1e5902932073434ffc9186ca0a3ac96`.
+
+| Provider | Model | Result | Evidence |
+| --- | --- | --- | --- |
+| Meta | `muse-spark-1.2` | Certified | One approved OCI command, one patch inspection, one separately approved import, exact host contents, and environment binding. |
+| Qwen | `qwen3.8-max` | Certified | One approved OCI command, one patch inspection, one separately approved import, exact host contents, and environment binding. |
+| OpenAI | `gpt-5.4` | Certified | Responses mode persisted across both approval continuations; exact OCI tool order, host import, journal, and binding passed. |
+
+The base proposal/approval/process-restart matrix passed again for all three providers at `2026-08-17T16:22:34.885Z`. The reviewer-delegation/child-persistence/SQLite-reopen/hierarchy/aggregate-budget matrix passed again at `2026-08-17T16:24:14.381Z`. These refreshes cover the `0.6.0` dependency and harness candidate; they do not prove registry publication.
+
+The full deterministic gate then passed with 99 tests, 468 assertions, seven golden evaluations, both MCP implementations, real OCI, and installed-package smoke. The exact local 31-file tarball also passed SHA-512 inspection and isolated consumer execution. npm still reports `0.5.0` as latest and no `0.6.0` version; registry publication/provenance remain deliberately unclaimed.
 
 ## 0.3.0 private-milestone evidence
 

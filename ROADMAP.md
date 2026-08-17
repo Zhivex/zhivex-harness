@@ -1,9 +1,9 @@
 # Zhivex Harness Roadmap
 
 - Status: active
-- Baseline date: 2026-08-16
+- Baseline date: 2026-08-17
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` is a publication-ready extensibility-and-orchestration candidate. Registry publication remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, `0.5.0` is published on npm, and `0.6.0` is implemented locally as the enforced-execution candidate. Publishing another immutable registry version remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -26,9 +26,9 @@ The tagged source baseline provides:
 - durable file-backed runs and approval resume;
 - path traversal, external symlink, secret-file, size, output, step, and timeout guards.
 
-The deterministic baseline, TypeScript typechecking, dependency-externalized build, package inspection, and installed-tarball smoke are implemented. The package is configured for a first public release with MIT metadata, CI, changelog, CLI/config schema versioning, `doctor`, and negative security regressions. All three provider credentials are configured locally without being exposed by diagnostics. Live certification is date-bound and recorded separately; publication and provenance remain external release operations.
+The deterministic baseline, TypeScript typechecking, dependency-externalized build, package inspection, and installed-tarball smoke are implemented. The package has public MIT metadata, CI, changelog, CLI/config schema versioning, `doctor`, and negative security regressions. All three provider credentials are configured locally without being exposed by diagnostics. Live certification is date-bound and recorded separately; each later publication and provenance verification remains an external release operation.
 
-The release candidate keeps `@zhivex-ai/core@1.5.0`. Although `1.6.0` is published, the installed `agents@1.2.0` and provider adapters still resolve their compatible runtime to `1.5.0`; upgrading only the direct dependency produced duplicate core types. The `1.6.0` move is deferred until the agents/providers batch can be installed and certified against one runtime version.
+The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaining `@zhivex-ai/agents@1.2.0`, Meta `0.2.1`, Qwen `0.10.1`, and updating OpenAI to `0.9.5`. The Bun lockfile resolves one core runtime rather than duplicating SDK contract identities.
 
 ## Release sequence
 
@@ -37,8 +37,8 @@ The release candidate keeps `@zhivex-ai/core@1.5.0`. Although `1.6.0` is publish
 | `0.2.0` | Releasable foundation | A versioned, installable, diagnosable CLI | Local release baseline | M |
 | `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private checkpoint | M |
 | `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Private checkpoint | L |
-| `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Publication-ready candidate | L |
-| `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Planned | XL |
+| `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Published on npm | L |
+| `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Implemented locally; certification pending | XL |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -140,7 +140,7 @@ Validation snapshot (2026-08-17):
 
 Goal: support larger tasks through governed external tools and bounded delegation without weakening workspace policy.
 
-Status: publication-ready candidate. Configuration, migration, MCP, and orchestration contracts live in [docs/EXTENSIBILITY.md](./docs/EXTENSIBILITY.md); registry publication remains pending an explicit maintainer dispatch and the external prerequisites in [docs/RELEASE.md](./docs/RELEASE.md).
+Status: published on npm. Configuration, migration, MCP, and orchestration contracts live in [docs/EXTENSIBILITY.md](./docs/EXTENSIBILITY.md). Its Trusted Publisher/OIDC release path is the baseline for later immutable versions.
 
 Scope:
 
@@ -163,13 +163,16 @@ Validation snapshot (2026-08-17 UTC):
 
 - deterministic tests, the seven-case golden evaluation gate, typecheck, docs, build, dependency audit, dry-run package inspection, and installed-tarball smoke pass;
 - malformed MCP, HTTP handshake/session, injection/output bounds, approval/restart, child mutation exactly-once, cancellation, scoped hierarchy, aggregate budget, and parallel review have regression coverage;
-- controlled Streamable HTTP MCP interoperability passed over a real loopback server with session negotiation, JSON and SSE responses, tool discovery, bounded execution, and forced network approval at `2026-08-17T13:05:05.542Z`;
+- controlled Streamable HTTP MCP interoperability passed over a real loopback server with session negotiation, JSON and SSE responses, tool discovery, bounded execution, and forced network approval at `2026-08-17T16:48:09.043Z`;
+- independent interoperability with `@modelcontextprotocol/server@2.0.0` passed over loopback in its documented `2025-06-18` legacy-stateless compatibility mode at `2026-08-17T16:48:09.141Z`;
 - Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.4` passed the separate model-directed reviewer delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage matrix at `2026-08-17T02:21:45.553Z`;
-- exact-artifact and publication controls are prepared, while registry publication, provenance, tag creation, and push have not been attempted or claimed.
+- the exact `0.5.0` artifact was published and its post-publication registry/provenance verification completed; that evidence does not pre-certify `0.6.0`.
 
 ## 0.6.0 — Enforced execution environments
 
 Goal: introduce shell-class capabilities only when the declared filesystem, process, network, and resource controls are real.
+
+Status: 0.6.0 is implemented locally. Deterministic, exact installed-artifact, real-OCI, MCP-interoperability, and all-provider live gates pass. Publication remains distinct and has not been requested or claimed.
 
 Scope:
 
@@ -187,6 +190,21 @@ Exit criteria:
 - Host workspace changes occur only through the approved patch import path.
 - Installed-artifact and live-provider tests exercise the enforced backend.
 - The product is described as a local enforced runner, not a managed sandbox service.
+
+Implementation snapshot (2026-08-17):
+
+- the SDK execution-environment contract is implemented with a Docker/Podman adapter, immutable image identity, per-tool-call isolation, manifest authorization, and run fingerprint binding;
+- the enforced policy denies network and undeclared tools, uses a non-root identity, read-only root, dropped capabilities, no-new-privileges, and bounded memory, CPU, PIDs, time, output, snapshot, imported-file, and tmpfs resources;
+- repository tools and subagents share an ephemeral secret-free snapshot; package checks and argv-only commands run inside OCI, while network MCP fails closed under the no-network policy;
+- content- and run-bound patch inspection plus a separate durable import approval are the only environment-to-host mutation path; deletes remain recoverable through quarantine;
+- lifecycle metadata, cancellation removal, run-labeled container and quota-volume cleanup, terminal artifact retention cleanup, deterministic regression tests, installed-package smoke, and required Linux OCI workflow gates are implemented;
+- the real Docker smoke passed again at `2026-08-17T16:48Z` against Docker `29.7.2` and the pinned Bun image digest, covering network/root/secret boundaries, total-workspace and per-file capacity, read-only dependency reuse, memory/PID/output limits, cancellation, transactional snapshot synchronization, patch import, and zero labeled orphans;
+- the installed-package smoke passed with the public execution-environment API and snapshot/import flow;
+- the exact local `0.6.0` tarball passed the 31-file allowlist, SHA-512 generation, isolated consumer install, binary, public API, durability, and execution-environment smoke;
+- Meta, Qwen, and OpenAI passed the final model-directed OCI command, patch review, separate import approval, journal, host-content, and binding matrix together at `2026-08-17T16:49:12.975Z`;
+- the base approval/restart matrix and bounded reviewer-delegation/persistence/hierarchy matrix passed again at `2026-08-17T16:22:34.885Z` and `2026-08-17T16:24:14.381Z` respectively;
+- `@zhivex-ai/core@1.6.0` resolves as one runtime through the aligned dependency batch;
+- publication, tag, push, provenance, and registry proof for `0.6.0` remain pending the explicit release operation.
 
 ## 1.0.0 — Stable CLI and library contract
 
@@ -233,7 +251,6 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Dogfood governed MCP and bounded delegation on representative repositories before freezing the contract.
-2. Validate additional third-party Streamable HTTP servers without broadening the transport or trust claims.
-3. Make the repository public, enable private vulnerability reporting, protect the `npm` environment, and verify `@zhivex-ai` scope rights before dispatching publication.
-4. Bootstrap the first npm version through the protected workflow, configure `release.yml` as the package Trusted Publisher, revoke the temporary bootstrap token, and verify registry integrity/provenance against the tagged commit.
+1. Review the diff and create a clean release commit; the readiness checker currently blocks only on the intentionally dirty worktree.
+2. Continue governed MCP/delegation dogfood on representative repositories beyond the controlled and official-SDK interoperability gates.
+3. Merge/push the reviewed release commit, create the annotated `v0.6.0` tag, then dispatch the protected OIDC workflow and verify registry integrity/provenance against the exact tagged artifact.

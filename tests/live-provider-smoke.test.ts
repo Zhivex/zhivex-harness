@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 import { liveOrchestrationSmokeInternals } from "../scripts/live-orchestration-smoke.js";
+import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 
 const {
   assertLiveOptIn,
@@ -97,5 +98,20 @@ describe("live provider smoke contract", () => {
     expect(prompt).toContain("Do not call any other tool");
     expect(prompt).toContain(liveOrchestrationSmokeInternals.childPrompt("openai"));
     expect(prompt).toContain(liveOrchestrationSmokeInternals.parentToken("openai"));
+  });
+
+  test("requires the command, review, and separate import sequence for execution certification", () => {
+    const prompt = liveExecutionSmokeInternals.executionPrompt("qwen");
+    const command = liveExecutionSmokeInternals.executionCommandInput("qwen");
+    expect(command.command).toBe("bun");
+    expect(command.args.join(" ")).toContain("live-execution/qwen.txt");
+    expect(prompt).toContain(JSON.stringify(command));
+    expect(prompt.indexOf("run_environment_command")).toBeLessThan(
+      prompt.indexOf("inspect_environment_patch")
+    );
+    expect(prompt.indexOf("inspect_environment_patch")).toBeLessThan(
+      prompt.indexOf("apply_environment_patch")
+    );
+    expect(prompt).toContain(liveExecutionSmokeInternals.completionToken("qwen"));
   });
 });

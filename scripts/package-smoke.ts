@@ -147,16 +147,19 @@ try {
 
   const installedSmokeSource = `
 import assert from "node:assert/strict";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   HARNESS_SQLITE_FILE,
+  Workspace,
   createEditProposal,
   createHarness,
+  createHarnessOciExecutionEnvironment,
   inspectHarnessModelCapabilities,
   inspectHarnessRun,
   listHarnessRuns,
   normalizeHarnessMcpConfiguration,
+  resolveHarnessConfig,
   runHarness
 } from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
@@ -204,7 +207,7 @@ const waiting = await runHarness(firstHarness, {
   idempotencyKey: "installed-request-42",
   scope: firstHarness.config.scope
 });
-assert.equal(firstHarness.config.schemaVersion, 3);
+assert.equal(firstHarness.config.schemaVersion, 4);
 assert.deepEqual([...firstHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
 assert.equal(inspectHarnessModelCapabilities(firstHarness.agent.model).capabilities.tools, true);
 assert.throws(() => normalizeHarnessMcpConfiguration({
@@ -266,6 +269,48 @@ assert.equal(inspection.kind, "run-inspection");
 assert(!JSON.stringify(inspection).includes("fixture-sensitive-payload"));
 assert((await stat(path.join(stateDirectory, HARNESS_SQLITE_FILE))).isFile());
 restartedHarness.close();
+
+const executionConfig = resolveHarnessConfig({ workspace, stateDirectory, executionBackend: "oci" });
+assert.equal(executionConfig.execution.backend, "oci");
+if (executionConfig.execution.backend !== "oci") throw new Error("Expected installed OCI config.");
+const fakeRuntime = {
+  inspectImage: async (imageReference) => ({
+    runtime: "docker",
+    runtimeVersion: "installed-fixture",
+    imageReference,
+    imageId: "sha256:" + "a".repeat(64),
+    imageDigest: "sha256:" + "a".repeat(64)
+  }),
+  run: async (request) => {
+    await writeFile(path.join(request.snapshotRoot, "isolated-installed.txt"), "isolated-installed-ok\\n");
+    return {
+      command: request.command,
+      exitCode: 0,
+      stdout: "installed-oci-ok\\n",
+      stderr: "",
+      timedOut: false,
+      cancelled: false,
+      outputLimitExceeded: false
+    };
+  },
+  removeRunContainers: async () => 0,
+  cleanupOrphans: async () => 0
+};
+const installedWorkspace = await Workspace.open(workspace);
+const installedEnvironment = await createHarnessOciExecutionEnvironment({
+  config: executionConfig.execution,
+  workspace: installedWorkspace,
+  stateDirectory,
+  runtime: fakeRuntime
+});
+const installedSession = await installedEnvironment.acquire({ runId: "installed-oci-run" });
+await installedSession.runCommand("bun", ["test"]);
+await assert.rejects(readFile(path.join(workspace, "isolated-installed.txt"), "utf8"));
+const installedPatch = await installedSession.inspectPatch();
+assert.equal(installedPatch.entries.some((entry) => entry.path === "isolated-installed.txt"), true);
+await installedSession.importPatch(installedWorkspace, installedPatch.patchId);
+assert.equal(await readFile(path.join(workspace, "isolated-installed.txt"), "utf8"), "isolated-installed-ok\\n");
+await installedSession.release?.({ status: "completed" });
 console.log("INSTALLED_HARNESS_SMOKE_OK");
 `;
   const installedSmokePath = path.join(consumer, "installed-smoke.ts");

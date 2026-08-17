@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.5.0` is configured as a public npm package, but publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.5.0` is public on npm. `0.6.0` is implemented as the next source candidate, but publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
 
 ## Deterministic gates
 
@@ -13,7 +13,7 @@ git diff --check
 git status --short
 ```
 
-`bun run release:check` performs documentation validation, typechecking, deterministic tests, the golden evaluation gate, a dependency-externalized build, package-content validation, clean tarball installation, direct binary execution, public import, SQLite restart/resume, redacted inspection, exactly-once side-effect verification, dependency audit, untrusted lifecycle-script inspection, dry-run packing, and release metadata validation.
+`bun run release:check` performs documentation validation, typechecking, deterministic tests, the golden evaluation gate, the required real-OCI boundary gate, a dependency-externalized build, package-content validation, clean tarball installation, direct binary execution, public import, SDK execution-environment import, SQLite restart/resume, redacted inspection, exactly-once side-effect verification, dependency audit, untrusted lifecycle-script inspection, dry-run packing, and release metadata validation.
 
 CI repeats the deterministic and installed-package gates on Linux and macOS. Build output is ignored and must not create tracked changes.
 
@@ -24,9 +24,11 @@ Provider behavior is certified separately because it is credential-, account-, m
 ```bash
 ZHIVEX_HARNESS_LIVE=1 bun run scripts/live-provider-smoke.ts
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:orchestration
+ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
+ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci
 ```
 
-The base reviewed-edit gate and the separate `0.5.x` delegation gate must pass for every provider in the supported release matrix. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs the controlled loopback Streamable HTTP MCP interoperability gate; third-party server claims remain separate. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The `0.6.x` workflow must additionally pass the real OCI boundary before live model execution; model-directed environment use is recorded separately from deterministic container enforcement. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
 
 ## Exact artifact gate
 
@@ -46,31 +48,24 @@ For a local artifact rehearsal after the source gate:
 
 ```bash
 mkdir -p release-artifacts
-bun pm pack --filename release-artifacts/zhivex-ai-harness-0.5.0.tgz --ignore-scripts
-bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.5.0.tgz
-bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.5.0.tgz
+bun pm pack --filename release-artifacts/zhivex-ai-harness-0.6.0.tgz --ignore-scripts
+bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.6.0.tgz
+bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.6.0.tgz
 ```
 
 `release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
 
 ## External prerequisites
 
-Before the first dispatch:
+Before a `0.6.0` dispatch, reverify rather than assuming the previous release state:
 
-- make `Zhivex/zhivex-harness` public; npm cannot generate public provenance from a private repository;
+- confirm `Zhivex/zhivex-harness` remains public; npm cannot generate public provenance from a private repository;
 - enable GitHub private vulnerability reporting;
 - protect the GitHub `npm` environment with required reviewers and restrict it to `main`/release tags;
-- verify an npm account with 2FA can create public packages in the `@zhivex-ai` scope; and
-- verify `@zhivex-ai/harness` is still unclaimed.
+- verify an npm account with 2FA still administers the public `@zhivex-ai/harness` package; and
+- confirm the npm Trusted Publisher is organization `Zhivex`, repository `zhivex-harness`, workflow `release.yml`, environment `npm`, allowed action `npm publish`.
 
-The package does not yet exist on npm, and npm requires a package to exist before Trusted Publishing can be configured. For `0.5.0` only, create a temporary granular npm token with the minimum available organization scope, store it as `NPM_TOKEN` in the protected `npm` environment, and remove it immediately after the first successful publication. The workflow still publishes from GitHub Actions with `--provenance`.
-
-After `0.5.0` exists:
-
-1. configure its npm Trusted Publisher as organization `Zhivex`, repository `zhivex-harness`, workflow `release.yml`, environment `npm`, allowed action `npm publish`;
-2. set package publishing access to require 2FA and disallow tokens;
-3. delete the GitHub `NPM_TOKEN` secret and revoke the temporary token; and
-4. use OIDC-only workflow publication for every later version.
+The one-time `0.5.0` bootstrap is complete: the package exists, Trusted Publishing is configured, and the temporary token was removed/revoked. The release workflow intentionally supplies no `NODE_AUTH_TOKEN` or npm token. Do not reintroduce one as a fallback; a failed OIDC assertion is a stop condition to diagnose.
 
 Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.0` or newer. The workflow follows npm's current Node 24 guidance and uses npm only for the OIDC/provenance-aware registry transaction; dependency management, build, tests, packing, and artifact installation remain Bun-first.
 
@@ -79,10 +74,10 @@ Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.
 After the release commit is reviewed, merged, and pushed to `main`:
 
 ```bash
-git tag -a v0.5.0 -m "Release v0.5.0"
-git push origin v0.5.0
+git tag -a v0.6.0 -m "Release v0.6.0"
+git push origin v0.6.0
 gh workflow run release.yml \
-  -f tag=v0.5.0 \
+  -f tag=v0.6.0 \
   -f channel=latest \
   -f confirm_publication=true
 ```
@@ -100,7 +95,7 @@ Do not dispatch or approve publication when any of these is true:
 - package scope ownership, 2FA, the intended `public` access level, or the protected environment is unclear;
 - the inspected package contents and the to-be-published artifact are not the same file;
 - the package version already exists in npm;
-- the temporary first-release credential is broader or longer-lived than necessary;
+- an npm token or `NODE_AUTH_TOKEN` has been reintroduced into the OIDC-only workflow;
 - Trusted Publishing is expected but its repository, workflow filename, environment, or allowed action disagrees with the workflow; or
 - version, changelog, tag, registry metadata, source commit, integrity, or provenance disagree.
 

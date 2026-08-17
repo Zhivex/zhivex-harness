@@ -12,9 +12,27 @@ export const PROVIDERS = ["meta", "qwen", "openai"] as const;
 
 export const DEFAULT_ALLOWED_CHECKS = ["test", "typecheck", "lint", "build"] as const;
 
-export const HARNESS_CONFIG_SCHEMA_VERSION = 3 as const;
+export const HARNESS_CONFIG_SCHEMA_VERSION = 4 as const;
 
 export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
+
+export const HARNESS_EXECUTION_BACKENDS = ["none", "oci"] as const;
+export const HARNESS_OCI_RUNTIMES = ["docker", "podman"] as const;
+export const HARNESS_EXECUTION_POLICY_VERSION = "2026-08-17-v1" as const;
+
+export const DEFAULT_OCI_EXECUTION = {
+  runtime: "docker",
+  image: "oven/bun:1.3.7-slim",
+  allowedCommands: ["bun"],
+  maxProcessRuntimeMs: 120_000,
+  maxProcessOutputBytes: 20_000,
+  maxMemoryMb: 1_024,
+  maxPids: 128,
+  maxCpus: 2,
+  maxWorkspaceBytes: 64 * 1024 * 1024,
+  maxFileWriteBytes: 1024 * 1024,
+  tmpfsMb: 256
+} as const;
 
 export const HARNESS_REQUIRED_CAPABILITIES = [
   "streaming",
@@ -58,6 +76,8 @@ export const DEFAULT_SUBAGENT_BUDGET = {
 } as const;
 
 export type HarnessStoreBackend = (typeof HARNESS_STORE_BACKENDS)[number];
+export type HarnessExecutionBackend = (typeof HARNESS_EXECUTION_BACKENDS)[number];
+export type HarnessOciRuntime = (typeof HARNESS_OCI_RUNTIMES)[number];
 export type HarnessRequiredCapability = (typeof HARNESS_REQUIRED_CAPABILITIES)[number];
 export type HarnessSubagentProfile = (typeof HARNESS_SUBAGENT_PROFILES)[number];
 
@@ -89,6 +109,24 @@ export interface HarnessOrchestrationConfig {
   childTimeoutMs: number;
   maxParallelReviews: number;
 }
+
+export type HarnessExecutionConfig =
+  | { backend: "none" }
+  | {
+      backend: "oci";
+      policyVersion: typeof HARNESS_EXECUTION_POLICY_VERSION;
+      runtime: HarnessOciRuntime;
+      image: string;
+      allowedCommands: readonly string[];
+      maxProcessRuntimeMs: number;
+      maxProcessOutputBytes: number;
+      maxMemoryMb: number;
+      maxPids: number;
+      maxCpus: number;
+      maxWorkspaceBytes: number;
+      maxFileWriteBytes: number;
+      tmpfsMb: number;
+    };
 
 export type HarnessProvider = (typeof PROVIDERS)[number];
 
@@ -162,6 +200,7 @@ export interface HarnessConfig {
   allowedChecks: readonly string[];
   requiredCapabilities: readonly HarnessRequiredCapability[];
   orchestration: HarnessOrchestrationConfig;
+  execution: HarnessExecutionConfig;
   mcpConfigPath?: string;
 }
 
@@ -199,6 +238,18 @@ export interface HarnessConfigInput {
   subagentMaxTotalTokens?: number;
   subagentTimeoutMs?: number;
   maxParallelReviews?: number;
+  executionBackend?: string;
+  ociRuntime?: string;
+  ociImage?: string;
+  ociAllowedCommands?: readonly string[];
+  ociMaxProcessRuntimeMs?: number;
+  ociMaxProcessOutputBytes?: number;
+  ociMaxMemoryMb?: number;
+  ociMaxPids?: number;
+  ociMaxCpus?: number;
+  ociMaxWorkspaceBytes?: number;
+  ociMaxFileWriteBytes?: number;
+  ociTmpfsMb?: number;
   mcpConfigPath?: string;
 }
 
@@ -326,6 +377,82 @@ const resolveSubagentProfiles = (configured: readonly string[] | undefined) => {
     );
   }
   return profiles as HarnessSubagentProfile[];
+};
+
+const resolveOciAllowedCommands = (configured: readonly string[] | undefined) => {
+  const values = commaSeparatedValues(
+    configured,
+    process.env.ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS,
+    DEFAULT_OCI_EXECUTION.allowedCommands
+  );
+  const commands = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  if (commands.length === 0 || commands.length > 50) {
+    throw new Error("ociAllowedCommands must contain between 1 and 50 executable names.");
+  }
+  const invalid = commands.find((value) => !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/.test(value));
+  if (invalid) {
+    throw new Error(`Invalid OCI command name: ${invalid}. Use a bare executable name without a path.`);
+  }
+  if (!commands.includes("bun")) {
+    throw new Error("ociAllowedCommands must include bun so declared package checks remain available.");
+  }
+  return commands;
+};
+
+const resolveExecutionConfig = (input: HarnessConfigInput): HarnessExecutionConfig => {
+  const backend = (input.executionBackend ?? process.env.ZHIVEX_HARNESS_EXECUTION ?? "none")
+    .trim()
+    .toLowerCase();
+  if (!(HARNESS_EXECUTION_BACKENDS as readonly string[]).includes(backend)) {
+    throw new Error(`executionBackend must be one of: ${HARNESS_EXECUTION_BACKENDS.join(", ")}.`);
+  }
+  if (backend === "none") {
+    return { backend: "none" };
+  }
+  const runtime = (input.ociRuntime ?? process.env.ZHIVEX_HARNESS_OCI_RUNTIME ?? DEFAULT_OCI_EXECUTION.runtime)
+    .trim()
+    .toLowerCase();
+  if (!(HARNESS_OCI_RUNTIMES as readonly string[]).includes(runtime)) {
+    throw new Error(`ociRuntime must be one of: ${HARNESS_OCI_RUNTIMES.join(", ")}.`);
+  }
+  const image = (input.ociImage ?? process.env.ZHIVEX_HARNESS_OCI_IMAGE ?? DEFAULT_OCI_EXECUTION.image).trim();
+  if (!image || image.length > 512 || /[\u0000-\u001f\u007f\s]/.test(image) || image.startsWith("-")) {
+    throw new Error("ociImage must be a non-empty OCI image reference without whitespace or control characters.");
+  }
+  const maxWorkspaceBytes = integerOption(
+    "ociMaxWorkspaceBytes",
+    input.ociMaxWorkspaceBytes,
+    process.env.ZHIVEX_HARNESS_OCI_MAX_WORKSPACE_BYTES,
+    DEFAULT_OCI_EXECUTION.maxWorkspaceBytes,
+    1024 * 1024,
+    1024 * 1024 * 1024
+  );
+  const maxFileWriteBytes = integerOption(
+    "ociMaxFileWriteBytes",
+    input.ociMaxFileWriteBytes,
+    process.env.ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES,
+    DEFAULT_OCI_EXECUTION.maxFileWriteBytes,
+    1024,
+    16 * 1024 * 1024
+  );
+  if (maxFileWriteBytes > maxWorkspaceBytes) {
+    throw new Error("ociMaxFileWriteBytes cannot exceed ociMaxWorkspaceBytes.");
+  }
+  return {
+    backend: "oci",
+    policyVersion: HARNESS_EXECUTION_POLICY_VERSION,
+    runtime: runtime as HarnessOciRuntime,
+    image,
+    allowedCommands: resolveOciAllowedCommands(input.ociAllowedCommands),
+    maxProcessRuntimeMs: integerOption("ociMaxProcessRuntimeMs", input.ociMaxProcessRuntimeMs, process.env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS, DEFAULT_OCI_EXECUTION.maxProcessRuntimeMs, 1_000, 60 * 60_000),
+    maxProcessOutputBytes: integerOption("ociMaxProcessOutputBytes", input.ociMaxProcessOutputBytes, process.env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_OUTPUT_BYTES, DEFAULT_OCI_EXECUTION.maxProcessOutputBytes, 1_024, 1024 * 1024),
+    maxMemoryMb: integerOption("ociMaxMemoryMb", input.ociMaxMemoryMb, process.env.ZHIVEX_HARNESS_OCI_MAX_MEMORY_MB, DEFAULT_OCI_EXECUTION.maxMemoryMb, 64, 64 * 1024),
+    maxPids: integerOption("ociMaxPids", input.ociMaxPids, process.env.ZHIVEX_HARNESS_OCI_MAX_PIDS, DEFAULT_OCI_EXECUTION.maxPids, 16, 4_096),
+    maxCpus: integerOption("ociMaxCpus", input.ociMaxCpus, process.env.ZHIVEX_HARNESS_OCI_MAX_CPUS, DEFAULT_OCI_EXECUTION.maxCpus, 1, 64),
+    maxWorkspaceBytes,
+    maxFileWriteBytes,
+    tmpfsMb: integerOption("ociTmpfsMb", input.ociTmpfsMb, process.env.ZHIVEX_HARNESS_OCI_TMPFS_MB, DEFAULT_OCI_EXECUTION.tmpfsMb, 16, 4_096)
+  };
 };
 
 const canonicalWorkspaceFile = (
@@ -491,6 +618,7 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
     workspace,
     input.mcpConfigPath ?? process.env.ZHIVEX_HARNESS_MCP_CONFIG
   );
+  const execution = resolveExecutionConfig(input);
 
   return {
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -520,6 +648,7 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
     allowedChecks: resolveAllowedChecks(input.allowedChecks),
     requiredCapabilities: resolveRequiredCapabilities(input.requiredCapabilities),
     orchestration,
+    execution,
     ...(mcpConfigPath ? { mcpConfigPath } : {})
   };
 };

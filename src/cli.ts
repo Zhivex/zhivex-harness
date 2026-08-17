@@ -46,6 +46,11 @@ import { validateStateDirectory } from "./state-directory.js";
 import { loadHarnessMcpConfiguration } from "./mcp.js";
 import { runHarnessReviewGroup } from "./orchestration.js";
 import { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
+import {
+  CliOciRuntimeAdapter,
+  cleanupHarnessExecutionArtifacts,
+  type HarnessOciRuntimeAdapter
+} from "./execution-environment.js";
 
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
 
@@ -91,6 +96,18 @@ export interface CliOptions {
   subagentMaxTotalTokens?: number;
   subagentTimeoutMs?: number;
   maxParallelReviews?: number;
+  executionBackend?: string;
+  ociRuntime?: string;
+  ociImage?: string;
+  ociAllowedCommands?: string[];
+  ociMaxProcessRuntimeMs?: number;
+  ociMaxProcessOutputBytes?: number;
+  ociMaxMemoryMb?: number;
+  ociMaxPids?: number;
+  ociMaxCpus?: number;
+  ociMaxWorkspaceBytes?: number;
+  ociMaxFileWriteBytes?: number;
+  ociTmpfsMb?: number;
   mcpConfigPath?: string;
   prompt?: string;
   runId?: string;
@@ -189,6 +206,28 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.mcpConfigPath = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--execution":
+        options.executionBackend = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--oci-runtime":
+        options.ociRuntime = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--oci-image":
+        options.ociImage = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--oci-allow-command": {
+        const value = optionValue(argv, index, argument);
+        if (!/^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/.test(value)) {
+          throw new CliUsageError("--oci-allow-command requires a bare executable name.");
+        }
+        options.ociAllowedCommands ??= [];
+        options.ociAllowedCommands.push(value);
+        index += 1;
+        break;
+      }
       case "--store":
         options.storeBackend = optionValue(argv, index, argument);
         index += 1;
@@ -253,6 +292,29 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         if (argument === "--subagent-max-total-tokens") options.subagentMaxTotalTokens = value;
         if (argument === "--subagent-timeout-ms") options.subagentTimeoutMs = value;
         if (argument === "--max-parallel-reviews") options.maxParallelReviews = value;
+        index += 1;
+        break;
+      }
+      case "--oci-max-process-runtime-ms":
+      case "--oci-max-process-output-bytes":
+      case "--oci-max-memory-mb":
+      case "--oci-max-pids":
+      case "--oci-max-cpus":
+      case "--oci-max-workspace-bytes":
+      case "--oci-max-file-write-bytes":
+      case "--oci-tmpfs-mb": {
+        const value = Number(optionValue(argv, index, argument));
+        if (!Number.isSafeInteger(value) || value < 1) {
+          throw new CliUsageError(`${argument} must be a positive integer.`);
+        }
+        if (argument === "--oci-max-process-runtime-ms") options.ociMaxProcessRuntimeMs = value;
+        if (argument === "--oci-max-process-output-bytes") options.ociMaxProcessOutputBytes = value;
+        if (argument === "--oci-max-memory-mb") options.ociMaxMemoryMb = value;
+        if (argument === "--oci-max-pids") options.ociMaxPids = value;
+        if (argument === "--oci-max-cpus") options.ociMaxCpus = value;
+        if (argument === "--oci-max-workspace-bytes") options.ociMaxWorkspaceBytes = value;
+        if (argument === "--oci-max-file-write-bytes") options.ociMaxFileWriteBytes = value;
+        if (argument === "--oci-tmpfs-mb") options.ociTmpfsMb = value;
         index += 1;
         break;
       }
@@ -456,6 +518,18 @@ Options:
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
+  --execution <none|oci>         Enforced execution backend (default: none)
+  --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
+  --oci-image <reference>        Preloaded immutable-capable OCI image
+  --oci-allow-command <name>     Allow one argv executable in OCI; repeatable, must include bun
+  --oci-max-process-runtime-ms <n> Per-command timeout (default: 120000)
+  --oci-max-process-output-bytes <n> Combined output ceiling (default: 20000)
+  --oci-max-memory-mb <n>        Container memory ceiling (default: 1024)
+  --oci-max-pids <n>             Container process ceiling (default: 128)
+  --oci-max-cpus <n>             Container CPU ceiling (default: 2)
+  --oci-max-workspace-bytes <n>  Snapshot size ceiling (default: 67108864)
+  --oci-max-file-write-bytes <n> Patch file ceiling (default: 1048576)
+  --oci-tmpfs-mb <n>            Writable /tmp ceiling (default: 256)
   --store <sqlite|file>          Durable backend (default: sqlite)
   --tenant <id>                  Durable tenant scope (default: local)
   --user <id>                    Optional durable user scope
@@ -601,6 +675,13 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
     childBudget: harness.config.orchestration.childBudget,
     mcpServers: harness.mcpConfiguration.servers.map((server) => server.name)
   },
+  execution: harness.executionEnvironment
+    ? {
+        backend: "oci" as const,
+        binding: result.state.executionEnvironment,
+        image: harness.executionEnvironment.image
+      }
+    : { backend: "none" as const },
   store: {
     backend: harness.config.storeBackend,
     stateDirectory: harness.config.stateDirectory,
@@ -903,6 +984,7 @@ export interface DoctorReport {
     allowedChecks: readonly string[];
     requiredCapabilities: ReturnType<typeof resolveHarnessConfig>["requiredCapabilities"];
     orchestration: ReturnType<typeof resolveHarnessConfig>["orchestration"];
+    execution: ReturnType<typeof resolveHarnessConfig>["execution"];
     mcpConfigPath?: string;
   };
   checks: DoctorCheck[];
@@ -912,6 +994,7 @@ export interface DoctorReport {
 export interface DoctorContext {
   env?: NodeJS.ProcessEnv;
   bunVersion?: string;
+  ociRuntimeAdapter?: HarnessOciRuntimeAdapter;
 }
 
 const sensitiveStateSegments = new Set([
@@ -1213,6 +1296,39 @@ const inspectMcpConfiguration = async (
   }
 };
 
+const inspectExecutionEnvironment = async (
+  execution: ReturnType<typeof resolveHarnessConfig>["execution"],
+  runtimeOverride?: HarnessOciRuntimeAdapter
+): Promise<DoctorCheck> => {
+  if (execution.backend === "none") {
+    return diagnostic("execution-environment", "pass", "Enforced OCI execution is disabled; shell-class tools remain unavailable.", {
+      backend: "none",
+      shellAvailable: false
+    });
+  }
+  try {
+    const runtime = runtimeOverride ?? new CliOciRuntimeAdapter(execution.runtime);
+    const image = await runtime.inspectImage(execution.image);
+    return diagnostic("execution-environment", "pass", "OCI runtime and preloaded image are available.", {
+      backend: "oci",
+      runtime: image.runtime,
+      runtimeVersion: image.runtimeVersion,
+      imageReference: image.imageReference,
+      imageDigest: image.imageDigest,
+      network: "deny",
+      shellAvailable: true
+    });
+  } catch (error) {
+    return diagnostic("execution-environment", "fail", "OCI execution was requested, but the runtime or preloaded image is unavailable.", {
+      backend: "oci",
+      runtime: execution.runtime,
+      imageReference: execution.image,
+      error: error instanceof Error ? error.message : String(error),
+      shellAvailable: false
+    });
+  }
+};
+
 export const createDoctorReport = async (
   options: Pick<
     CliOptions,
@@ -1245,6 +1361,18 @@ export const createDoctorReport = async (
     | "subagentMaxTotalTokens"
     | "subagentTimeoutMs"
     | "maxParallelReviews"
+    | "executionBackend"
+    | "ociRuntime"
+    | "ociImage"
+    | "ociAllowedCommands"
+    | "ociMaxProcessRuntimeMs"
+    | "ociMaxProcessOutputBytes"
+    | "ociMaxMemoryMb"
+    | "ociMaxPids"
+    | "ociMaxCpus"
+    | "ociMaxWorkspaceBytes"
+    | "ociMaxFileWriteBytes"
+    | "ociTmpfsMb"
     | "mcpConfigPath"
   > = {},
   context: DoctorContext = {}
@@ -1329,6 +1457,30 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS
       ? { maxParallelReviews: Number(env.ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS) }
       : {}),
+    ...(env.ZHIVEX_HARNESS_EXECUTION ? { executionBackend: env.ZHIVEX_HARNESS_EXECUTION } : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_RUNTIME ? { ociRuntime: env.ZHIVEX_HARNESS_OCI_RUNTIME } : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_IMAGE ? { ociImage: env.ZHIVEX_HARNESS_OCI_IMAGE } : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS !== undefined
+      ? { ociAllowedCommands: env.ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS.split(",") }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS
+      ? { ociMaxProcessRuntimeMs: Number(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_OUTPUT_BYTES
+      ? { ociMaxProcessOutputBytes: Number(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_OUTPUT_BYTES) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_MEMORY_MB
+      ? { ociMaxMemoryMb: Number(env.ZHIVEX_HARNESS_OCI_MAX_MEMORY_MB) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_PIDS ? { ociMaxPids: Number(env.ZHIVEX_HARNESS_OCI_MAX_PIDS) } : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_CPUS ? { ociMaxCpus: Number(env.ZHIVEX_HARNESS_OCI_MAX_CPUS) } : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_WORKSPACE_BYTES
+      ? { ociMaxWorkspaceBytes: Number(env.ZHIVEX_HARNESS_OCI_MAX_WORKSPACE_BYTES) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES
+      ? { ociMaxFileWriteBytes: Number(env.ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_TMPFS_MB ? { ociTmpfsMb: Number(env.ZHIVEX_HARNESS_OCI_TMPFS_MB) } : {}),
     ...(env.ZHIVEX_HARNESS_MCP_CONFIG ? { mcpConfigPath: env.ZHIVEX_HARNESS_MCP_CONFIG } : {}),
     ...options
   });
@@ -1351,6 +1503,7 @@ export const createDoctorReport = async (
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
   checks.push(await inspectOperationsStore(config.stateDirectory, config.storeBackend));
   checks.push(await inspectMcpConfiguration(config.workspace, config.mcpConfigPath));
+  checks.push(await inspectExecutionEnvironment(config.execution, context.ociRuntimeAdapter));
 
   for (const provider of providers) {
     const invalidRegion = provider.id === "qwen" && provider.configuration.regionValid === false;
@@ -1413,6 +1566,7 @@ export const createDoctorReport = async (
       allowedChecks: config.allowedChecks,
       requiredCapabilities: config.requiredCapabilities,
       orchestration: config.orchestration,
+      execution: config.execution,
       ...(config.mcpConfigPath ? { mcpConfigPath: config.mcpConfigPath } : {})
     },
     checks,
@@ -1500,6 +1654,17 @@ const manageRuns = async (options: CliOptions) => {
           ...(options.statuses ? { statuses: options.statuses } : {}),
           ...(options.limit ? { limit: options.limit } : {})
         });
+        document = {
+          ...(document as Record<string, unknown>),
+          executionArtifacts: await cleanupHarnessExecutionArtifacts(config.stateDirectory, options.before!),
+          ...(config.execution.backend === "oci"
+            ? {
+                orphanContainersRemoved: await new CliOciRuntimeAdapter(
+                  config.execution.runtime
+                ).cleanupOrphans()
+              }
+            : {})
+        };
         break;
       default:
         throw new CliUsageError("runs requires one of: list, inspect, cancel, cleanup, export.");

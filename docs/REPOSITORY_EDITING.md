@@ -82,6 +82,8 @@ Checks do not load the workspace `.env` automatically. A non-zero exit, timeout,
 
 `git_diff` is read-only and reports the repository status, unstaged diff, and staged diff as separate results, including renamed, deleted, and untracked paths. `mutation_audit` returns the harness mutation history for the current workspace process.
 
+With enforced OCI execution, `git_diff` is intentionally omitted from the model tool set because the Git repository remains on the canonical host outside the snapshot boundary. The model reviews `mutation_audit` and the content-bound environment patch instead; the CLI/library result reports canonical host Git evidence after an approved import.
+
 Every mutation audit entry includes an identifier, operation, affected path, timestamp, and the available before/after digest evidence. Move and restore operations may include a destination; quarantine-related entries may include a quarantine identifier.
 
 Before completion, an editing run should report:
@@ -115,4 +117,4 @@ The new quarantine and audit state is harness-owned and must remain excluded fro
 - Git rename detection is heuristic and may display a delete plus add for heavily rewritten content.
 - Ignore evaluation and filesystem behavior can differ by platform; Linux and macOS fixtures are required release gates.
 - Quarantine does not replace version control or an external backup.
-- Checks execute with the local process permissions. Enforced shell and filesystem isolation is planned for `0.6.0`.
+- With the default `execution=none`, checks use the narrow host check runner and generic shell remains unavailable. With `execution=oci`, repository tools and checks operate on a secret-free snapshot and only a separately approved digest-bound environment patch may change the host workspace.

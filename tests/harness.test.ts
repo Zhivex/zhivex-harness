@@ -176,6 +176,67 @@ describe("Zhivex harness", () => {
     }
   });
 
+  test("preserves provider options across automatic approval continuations", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-provider-options-"));
+    try {
+      const changes = [{ path: "continued.txt", expectedDigest: null, content: "continued\n" }];
+      const proposal = createEditProposal({ changes });
+      const baseModel = createMockLanguageModel({
+        streamEvents: [
+          [
+            {
+              type: "tool-call",
+              toolCall: {
+                id: "continued-apply",
+                name: "apply_patch",
+                input: { proposalId: proposal.proposalId, changes }
+              }
+            },
+            { type: "finish", finishReason: "tool-calls" }
+          ],
+          [
+            { type: "text-delta", textDelta: "continued" },
+            { type: "finish", finishReason: "stop" }
+          ]
+        ]
+      });
+      const seen: unknown[] = [];
+      const model = new Proxy(baseModel, {
+        get(target, property, receiver) {
+          if (property === "stream") {
+            return (input: { providerOptions?: unknown }) => {
+              seen.push(input.providerOptions);
+              return target.stream(input as never);
+            };
+          }
+          return Reflect.get(target, property, receiver);
+        }
+      });
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: model,
+        store: createInMemoryAgentRunStore()
+      });
+      const result = await runHarness(harness, {
+        prompt: "Apply the fixture",
+        providerOptions: { apiMode: "responses" }
+      }, {
+        resolveApprovals: async (approvals) => approvals.map((approval) => ({
+          provider: approval.provider,
+          approvalRequestId: approval.id,
+          approve: true
+        }))
+      });
+      expect(result.status).toBe("completed");
+      expect(seen).toEqual([{ apiMode: "responses" }, { apiMode: "responses" }]);
+      expect(await readFile(path.join(root, "continued.txt"), "utf8")).toBe("continued\n");
+      harness.close();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("rejects a durable resume in a different canonical workspace", async () => {
     const firstRoot = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-binding-a-"));
     const secondRoot = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-binding-b-"));

@@ -131,6 +131,6 @@ Human terminal mode reports child start and finish telemetry. `run-result` JSON 
 - The built-in MCP transport implements bounded JSON-RPC over Streamable HTTP response forms; it does not support OAuth discovery, server-initiated sampling, roots, subscriptions, elicitation, or arbitrary SSE reconnection.
 - MCP prompt-injection detection is a safety filter, not a proof that remote content is trustworthy.
 - Parallel review groups have a durable shared parent identifier, but the group itself is not a standalone persisted agent state.
-- Subagents share the host process and workspace. They are policy boundaries, not OS isolation.
-- Generic shell, `stdio` MCP, containers, network namespaces, and remote workers remain `0.6.x` scope.
+- With `execution=none`, subagents share the host process and workspace and are policy boundaries rather than OS isolation. With `execution=oci`, they inherit the same acquired snapshot and environment authorization; this does not turn the local container runtime into a VM.
+- Generic host shell, `stdio` MCP, network-enabled OCI policies, and remote workers remain unavailable. The `0.6.x` OCI policy rejects all MCP before discovery rather than executing an undeclared client outside the acquired boundary.
 - Provider-specific orchestration behavior requires date-bound live certification and is separate from deterministic implementation evidence.
