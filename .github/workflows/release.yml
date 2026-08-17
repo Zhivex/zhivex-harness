@@ -128,7 +128,7 @@ jobs:
       - name: Verify transferred artifact bytes
         run: |
           ARTIFACT="release-artifacts/zhivex-ai-harness-${RELEASE_TAG#v}.tgz"
-          shasum -a 512 -c release-artifacts/SHA512SUMS
+          (cd release-artifacts && shasum -a 512 -c SHA512SUMS)
           bun run artifact:check -- "$ARTIFACT"
           echo "ARTIFACT=$ARTIFACT" >> "$GITHUB_ENV"
 
