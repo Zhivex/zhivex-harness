@@ -14,6 +14,9 @@ const markdownFiles = [
   path.join(workspace, "README.md"),
   path.join(workspace, "ROADMAP.md"),
   path.join(workspace, "CHANGELOG.md"),
+  path.join(workspace, "CONTRIBUTING.md"),
+  path.join(workspace, "SECURITY.md"),
+  path.join(workspace, "SUPPORT.md"),
   ...(await readdir(path.join(workspace, "docs"), { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
     .map((entry) => path.join(workspace, "docs", entry.name))
@@ -143,6 +146,104 @@ if (manifest.version.startsWith("0.4.")) {
   }
 }
 
+if (manifest.version.startsWith("0.5.")) {
+  const extensibilityPath = path.join(workspace, "docs", "EXTENSIBILITY.md");
+  let extensibility = "";
+  try {
+    extensibility = await readFile(extensibilityPath, "utf8");
+  } catch {
+    failures.push("docs/EXTENSIBILITY.md is required for the 0.5.x orchestration contract.");
+  }
+  for (const required of [
+    "## Capability gate",
+    "## Declarative MCP configuration",
+    "## MCP result boundary",
+    "## Named subagent profiles",
+    "## Budgets and cancellation",
+    "## Application-owned parallel review",
+    "## Progress and JSON",
+    "## Migration from 0.4.x",
+    "## Known limits"
+  ]) {
+    if (extensibility && !extensibility.includes(required)) {
+      failures.push(`docs/EXTENSIBILITY.md is missing ${required}.`);
+    }
+  }
+  if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 3")) {
+    failures.push("src/config.ts must identify configuration schema version 3 for 0.5.x.");
+  }
+  if (!changelog.includes("## 0.5.0 -") || !changelog.includes("### Migration")) {
+    failures.push("CHANGELOG.md must include the 0.5.0 entry and migration notes.");
+  }
+  if (!roadmap.includes("Publication-ready candidate")) {
+    failures.push("ROADMAP.md does not identify 0.5.0 as a publication-ready candidate.");
+  }
+  const publishConfig = manifest.publishConfig as {
+    access?: string;
+    provenance?: boolean;
+    registry?: string;
+  } | undefined;
+  if (
+    manifest.private === true ||
+    publishConfig?.access !== "public" ||
+    publishConfig.provenance !== true ||
+    publishConfig.registry !== "https://registry.npmjs.org/"
+  ) {
+    failures.push("package.json must configure the 0.5.x artifact for public npm publication with provenance.");
+  }
+  if (manifest.scripts?.evaluate !== "bun run scripts/evaluate.ts" || !manifest.scripts?.check?.includes("bun run evaluate")) {
+    failures.push("package.json must retain the deterministic evaluation gate for 0.5.x.");
+  }
+  if (manifest.scripts?.["smoke:live:orchestration"] !== "bun --env-file=.env run scripts/live-orchestration-smoke.ts") {
+    failures.push("package.json must expose the opt-in 0.5.x live orchestration gate.");
+  }
+  if (
+    manifest.scripts?.["smoke:mcp"] !== "bun run scripts/mcp-interoperability-smoke.ts" ||
+    !manifest.scripts?.check?.includes("bun run smoke:mcp")
+  ) {
+    failures.push("package.json must retain the controlled MCP interoperability gate.");
+  }
+  if (!manifest.files?.includes("evaluations") || !manifest.files?.includes("examples")) {
+    failures.push("package.json must include evaluation and example assets in packed artifacts.");
+  }
+  for (const requiredFile of ["SECURITY.md", "SUPPORT.md"]) {
+    if (!manifest.files?.includes(requiredFile)) {
+      failures.push(`package.json must include ${requiredFile} in packed artifacts.`);
+    }
+  }
+  if (
+    manifest.scripts?.["release:check"] === undefined ||
+    manifest.scripts?.["release:status"] === undefined ||
+    manifest.scripts?.["release:verify"] === undefined ||
+    manifest.scripts?.["artifact:check"] === undefined ||
+    manifest.scripts?.["smoke:artifact"] === undefined
+  ) {
+    failures.push("package.json must expose prepublish, postpublish, exact-artifact, and installed-artifact gates.");
+  }
+  try {
+    const golden = JSON.parse(await readFile(
+      path.join(workspace, "evaluations", "golden-expectations.json"),
+      "utf8"
+    )) as { schemaVersion?: number; cases?: unknown[] };
+    if (golden.schemaVersion !== 1 || golden.cases?.length !== 7) {
+      failures.push("evaluations/golden-expectations.json must contain seven schema-version-1 cases.");
+    }
+  } catch {
+    failures.push("evaluations/golden-expectations.json is required and must be valid JSON.");
+  }
+  try {
+    const example = JSON.parse(await readFile(
+      path.join(workspace, "examples", "mcp-config.json"),
+      "utf8"
+    )) as { schemaVersion?: number; servers?: unknown[] };
+    if (example.schemaVersion !== 1 || !example.servers?.length) {
+      failures.push("examples/mcp-config.json must contain a schema-version-1 server example.");
+    }
+  } catch {
+    failures.push("examples/mcp-config.json is required and must be valid JSON.");
+  }
+}
+
 const providerDescriptorMatches = [...providerConfig.matchAll(
   /\{\s*id:\s*"([^"]+)",[\s\S]*?support:\s*"(certified|provisional)"\s*\}/g
 )];
@@ -156,6 +257,9 @@ if (certifiedProviders.length === 0) {
   failures.push(
     `.github/workflows/live-certification.yml must default to every certified provider (${certifiedProviders.join(", ")}).`
   );
+}
+if (manifest.version.startsWith("0.5.") && !liveCertificationWorkflow.includes("bun run smoke:live:orchestration")) {
+  failures.push(".github/workflows/live-certification.yml must run the 0.5.x orchestration matrix.");
 }
 
 if (failures.length > 0) {

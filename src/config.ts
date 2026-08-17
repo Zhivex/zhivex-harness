@@ -12,9 +12,25 @@ export const PROVIDERS = ["meta", "qwen", "openai"] as const;
 
 export const DEFAULT_ALLOWED_CHECKS = ["test", "typecheck", "lint", "build"] as const;
 
-export const HARNESS_CONFIG_SCHEMA_VERSION = 2 as const;
+export const HARNESS_CONFIG_SCHEMA_VERSION = 3 as const;
 
 export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
+
+export const HARNESS_REQUIRED_CAPABILITIES = [
+  "streaming",
+  "tools",
+  "structured-output",
+  "parallel-tools",
+  "reasoning",
+  "web-search"
+] as const;
+
+export const HARNESS_SUBAGENT_PROFILES = [
+  "explorer",
+  "implementer",
+  "tester",
+  "reviewer"
+] as const;
 
 export const DEFAULT_HARNESS_BUDGET = {
   maxToolCalls: 32,
@@ -31,7 +47,19 @@ export const DEFAULT_HARNESS_COMPACTION = {
   keepRecentMessages: 12
 } as const;
 
+export const DEFAULT_SUBAGENT_BUDGET = {
+  maxSteps: 8,
+  maxToolCalls: 16,
+  maxToolErrors: 3,
+  maxInputTokens: 30_000,
+  maxOutputTokens: 8_000,
+  maxTotalTokens: 36_000,
+  includeChildRuns: false
+} as const;
+
 export type HarnessStoreBackend = (typeof HARNESS_STORE_BACKENDS)[number];
+export type HarnessRequiredCapability = (typeof HARNESS_REQUIRED_CAPABILITIES)[number];
+export type HarnessSubagentProfile = (typeof HARNESS_SUBAGENT_PROFILES)[number];
 
 export interface HarnessBudget {
   maxSteps: number;
@@ -53,6 +81,13 @@ export interface HarnessCostBudget {
   maxCostUsd: number;
   inputCostPer1kTokens: number;
   outputCostPer1kTokens: number;
+}
+
+export interface HarnessOrchestrationConfig {
+  profiles: readonly HarnessSubagentProfile[];
+  childBudget: HarnessBudget;
+  childTimeoutMs: number;
+  maxParallelReviews: number;
 }
 
 export type HarnessProvider = (typeof PROVIDERS)[number];
@@ -125,6 +160,9 @@ export interface HarnessConfig {
   costBudget?: HarnessCostBudget;
   compaction: HarnessCompactionConfig;
   allowedChecks: readonly string[];
+  requiredCapabilities: readonly HarnessRequiredCapability[];
+  orchestration: HarnessOrchestrationConfig;
+  mcpConfigPath?: string;
 }
 
 export interface HarnessConfigInput {
@@ -151,6 +189,17 @@ export interface HarnessConfigInput {
   compactionMaxEstimatedInputTokens?: number;
   compactionKeepRecentMessages?: number;
   allowedChecks?: readonly string[];
+  requiredCapabilities?: readonly string[];
+  subagentProfiles?: readonly string[];
+  subagentMaxSteps?: number;
+  subagentMaxToolCalls?: number;
+  subagentMaxToolErrors?: number;
+  subagentMaxInputTokens?: number;
+  subagentMaxOutputTokens?: number;
+  subagentMaxTotalTokens?: number;
+  subagentTimeoutMs?: number;
+  maxParallelReviews?: number;
+  mcpConfigPath?: string;
 }
 
 const integerOption = (
@@ -235,6 +284,68 @@ const resolveAllowedChecks = (configured: readonly string[] | undefined) => {
     );
   }
   return checks;
+};
+
+const commaSeparatedValues = (
+  configured: readonly string[] | undefined,
+  envValue: string | undefined,
+  fallback: readonly string[]
+) => configured ?? (envValue === undefined ? fallback : envValue.split(","));
+
+const resolveRequiredCapabilities = (configured: readonly string[] | undefined) => {
+  const values = commaSeparatedValues(
+    configured,
+    process.env.ZHIVEX_HARNESS_REQUIRED_CAPABILITIES,
+    ["streaming", "tools"]
+  );
+  const capabilities = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  const invalid = capabilities.find((value) =>
+    !(HARNESS_REQUIRED_CAPABILITIES as readonly string[]).includes(value)
+  );
+  if (invalid) {
+    throw new Error(
+      `Unknown required capability: ${invalid}. Use ${HARNESS_REQUIRED_CAPABILITIES.join(", ")}.`
+    );
+  }
+  return capabilities as HarnessRequiredCapability[];
+};
+
+const resolveSubagentProfiles = (configured: readonly string[] | undefined) => {
+  const values = commaSeparatedValues(
+    configured,
+    process.env.ZHIVEX_HARNESS_SUBAGENTS,
+    HARNESS_SUBAGENT_PROFILES
+  );
+  const profiles = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  const invalid = profiles.find((value) =>
+    !(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(value)
+  );
+  if (invalid) {
+    throw new Error(
+      `Unknown subagent profile: ${invalid}. Use ${HARNESS_SUBAGENT_PROFILES.join(", ")}.`
+    );
+  }
+  return profiles as HarnessSubagentProfile[];
+};
+
+const canonicalWorkspaceFile = (
+  requestedWorkspace: string,
+  canonicalWorkspace: string,
+  configured: string | undefined
+) => {
+  if (!configured?.trim()) {
+    return undefined;
+  }
+  const requestedPath = path.resolve(requestedWorkspace, configured.trim());
+  const relative = path.relative(requestedWorkspace, requestedPath);
+  const insideRequestedWorkspace = relative === "" || (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+  return insideRequestedWorkspace
+    ? path.resolve(canonicalWorkspace, relative)
+    : requestedPath;
 };
 
 export const parseProvider = (value: string | undefined): HarnessProvider => {
@@ -343,6 +454,43 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
   if (compaction.keepRecentMessages >= compaction.maxMessages) {
     throw new Error("compactionKeepRecentMessages must be smaller than compactionMaxMessages.");
   }
+  const childBudget: HarnessBudget = {
+    maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, 30),
+    maxToolCalls: integerOption("subagentMaxToolCalls", input.subagentMaxToolCalls, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS, DEFAULT_SUBAGENT_BUDGET.maxToolCalls, 0, 200),
+    maxToolErrors: integerOption("subagentMaxToolErrors", input.subagentMaxToolErrors, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_ERRORS, DEFAULT_SUBAGENT_BUDGET.maxToolErrors, 0, 50),
+    maxInputTokens: integerOption("subagentMaxInputTokens", input.subagentMaxInputTokens, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS, DEFAULT_SUBAGENT_BUDGET.maxInputTokens, 1, 2_000_000),
+    maxOutputTokens: integerOption("subagentMaxOutputTokens", input.subagentMaxOutputTokens, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS, DEFAULT_SUBAGENT_BUDGET.maxOutputTokens, 1, 2_000_000),
+    maxTotalTokens: integerOption("subagentMaxTotalTokens", input.subagentMaxTotalTokens, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOTAL_TOKENS, DEFAULT_SUBAGENT_BUDGET.maxTotalTokens, 1, 4_000_000),
+    includeChildRuns: false
+  };
+  if (childBudget.maxTotalTokens < childBudget.maxInputTokens || childBudget.maxTotalTokens < childBudget.maxOutputTokens) {
+    throw new Error("subagentMaxTotalTokens must be greater than or equal to the child input and output token limits.");
+  }
+  const orchestration: HarnessOrchestrationConfig = {
+    profiles: resolveSubagentProfiles(input.subagentProfiles),
+    childBudget,
+    childTimeoutMs: integerOption(
+      "subagentTimeoutMs",
+      input.subagentTimeoutMs,
+      process.env.ZHIVEX_HARNESS_SUBAGENT_TIMEOUT_MS,
+      Math.min(timeoutMs, 5 * 60_000),
+      1_000,
+      24 * 60 * 60_000
+    ),
+    maxParallelReviews: integerOption(
+      "maxParallelReviews",
+      input.maxParallelReviews,
+      process.env.ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS,
+      2,
+      1,
+      4
+    )
+  };
+  const mcpConfigPath = canonicalWorkspaceFile(
+    requestedWorkspace,
+    workspace,
+    input.mcpConfigPath ?? process.env.ZHIVEX_HARNESS_MCP_CONFIG
+  );
 
   return {
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -369,7 +517,10 @@ export const resolveHarnessConfig = (input: HarnessConfigInput = {}): HarnessCon
           }
         }),
     compaction,
-    allowedChecks: resolveAllowedChecks(input.allowedChecks)
+    allowedChecks: resolveAllowedChecks(input.allowedChecks),
+    requiredCapabilities: resolveRequiredCapabilities(input.requiredCapabilities),
+    orchestration,
+    ...(mcpConfigPath ? { mcpConfigPath } : {})
   };
 };
 

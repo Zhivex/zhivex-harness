@@ -4,7 +4,40 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## 0.4.0 - Unreleased
+## 0.5.0 - 2026-08-17
+
+### Added
+
+- Model capability inspection, fail-fast requirements, and deterministic candidate selection before MCP or agent execution.
+- Schema-versioned declarative MCP configuration with explicit server/tool allowlists, permissions, environment-backed headers, bounded discovery, timeouts, and output-size ceilings.
+- A bounded HTTPS/loopback-HTTP MCP JSON-RPC client plus injectable custom clients for library consumers.
+- Named `explorer`, `implementer`, `tester`, and `reviewer` subagent profiles with independent durable budgets, leases, fingerprints, and inherited workspace/scope policy.
+- Application-owned parallel read-only review groups through the `review` CLI command and `runHarnessReviewGroup` library API.
+- Hierarchical child progress, approval identity, usage, cost/budget aggregation, and redacted run-tree inspection.
+- An opt-in Meta/Qwen/OpenAI live orchestration matrix that verifies exact reviewer delegation, child persistence, SQLite reopen, hierarchy, and aggregate usage independently from the legacy reviewed-edit gate.
+- Public npm metadata, security and support policies, exact-tarball inspection and installation gates, and a confirmation-gated GitHub Actions release workflow with npm provenance.
+
+### Changed
+
+- Resolved configuration uses schema version `3` and binds required capabilities, normalized MCP configuration, enabled profiles, and child policy into the harness fingerprint.
+- Parent and child token guards enforce aggregate durable usage after each provider step, avoiding double reservation after a child consumes budget.
+- The deterministic evaluation gate adds governed MCP and bounded-subagent scenarios.
+
+### Migration
+
+- Review schema-version-pinned configuration and replace `schemaVersion: 2` with `3`; existing scoped SQLite data needs no database rewrite.
+- Named subagents are enabled by default. Pass `subagentProfiles: []` or set an empty `ZHIVEX_HARNESS_SUBAGENTS` value for a parent-only library run.
+- Complete fingerprinted paused `0.4.x` runs with the `0.4.x` binary. They are not silently rebound to the new MCP, capability, approval, or child-policy contract.
+- Keep MCP JSON configuration inside the canonical workspace and store only environment-variable names, never credential values.
+
+### Security
+
+- Network MCP calls always require durable interrupt approval, regardless of remote read-only annotations.
+- MCP configuration rejects symlinks, workspace escapes, URL credentials, insecure non-loopback HTTP, unsafe headers, duplicate prefixes, and missing allowlists/permissions.
+- MCP discovery and results fail closed on malformed schemas, prompt-injection directives, timeout, cancellation, and oversized output.
+- Parallel review accepts only the read-only explorer/reviewer profiles; generic shell and `stdio` MCP remain unavailable until enforced execution environments.
+
+## 0.4.0 - 2026-08-17 (private checkpoint)
 
 ### Added
 

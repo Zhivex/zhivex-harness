@@ -13,9 +13,13 @@ const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
   name: string;
   version: string;
+  publishConfig?: { access?: string; provenance?: boolean; registry?: string };
 };
 const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-package-smoke-"));
-const tarball = path.join(temporaryDirectory, "zhivex-harness.tgz");
+const providedTarball = process.argv[2];
+const tarball = providedTarball
+  ? path.resolve(process.cwd(), providedTarball)
+  : path.join(temporaryDirectory, "zhivex-harness.tgz");
 const consumer = path.join(temporaryDirectory, "consumer");
 
 const commandEnvironment = { ...process.env };
@@ -58,7 +62,9 @@ const run = async (
 let succeeded = false;
 try {
   await mkdir(consumer, { recursive: true });
-  await run(["bun", "pm", "pack", "--quiet", "--ignore-scripts", "--filename", tarball]);
+  if (!providedTarball) {
+    await run(["bun", "pm", "pack", "--quiet", "--ignore-scripts", "--filename", tarball]);
+  }
   assert((await stat(tarball)).isFile(), "bun pm pack did not create a tarball");
 
   const archive = await run(["tar", "-tzf", tarball]);
@@ -68,11 +74,15 @@ try {
     "package/README.md",
     "package/ROADMAP.md",
     "package/CHANGELOG.md",
+    "package/SECURITY.md",
+    "package/SUPPORT.md",
     "package/docs/CLI.md",
     "package/docs/DURABLE_OPERATIONS.md",
+    "package/docs/EXTENSIBILITY.md",
     "package/docs/REPOSITORY_EDITING.md",
     "package/docs/RELEASE.md",
     "package/evaluations/golden-expectations.json",
+    "package/examples/mcp-config.json",
     "package/dist/index.js",
     "package/dist/index.d.ts",
     "package/dist/cli.js"
@@ -103,9 +113,16 @@ try {
 
   const installedManifest = JSON.parse(
     await readFile(path.join(consumer, "node_modules", "@zhivex-ai", "harness", "package.json"), "utf8")
-  ) as { name: string; version: string };
+  ) as {
+    name: string;
+    version: string;
+    private?: boolean;
+    publishConfig?: { access?: string; provenance?: boolean; registry?: string };
+  };
   assert.equal(installedManifest.name, manifest.name);
   assert.equal(installedManifest.version, manifest.version);
+  assert.notEqual(installedManifest.private, true, "installed package is still private");
+  assert.deepEqual(installedManifest.publishConfig, manifest.publishConfig);
 
   const installedCli = path.join(consumer, "node_modules", ".bin", "zhivex-harness");
   const version = await run([installedCli, "--version"], { cwd: consumer });
@@ -136,8 +153,10 @@ import {
   HARNESS_SQLITE_FILE,
   createEditProposal,
   createHarness,
+  inspectHarnessModelCapabilities,
   inspectHarnessRun,
   listHarnessRuns,
+  normalizeHarnessMcpConfiguration,
   runHarness
 } from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
@@ -185,6 +204,19 @@ const waiting = await runHarness(firstHarness, {
   idempotencyKey: "installed-request-42",
   scope: firstHarness.config.scope
 });
+assert.equal(firstHarness.config.schemaVersion, 3);
+assert.deepEqual([...firstHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
+assert.equal(inspectHarnessModelCapabilities(firstHarness.agent.model).capabilities.tools, true);
+assert.throws(() => normalizeHarnessMcpConfiguration({
+  schemaVersion: 1,
+  servers: [{
+    name: "unsafe",
+    transport: "http",
+    url: "http://example.com",
+    includeTools: ["lookup"],
+    permissions: ["network"]
+  }]
+}));
 assert.equal(waiting.status, "waiting_approval");
 await assert.rejects(readFile(path.join(workspace, "installed-approved.txt"), "utf8"));
 firstHarness.close();

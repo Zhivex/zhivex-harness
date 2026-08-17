@@ -17,6 +17,7 @@ import type {
 } from "@zhivex-ai/agents/ops";
 import {
   createAgentTraceArtifact,
+  createHierarchicalAgentTrace,
   createFileAgentMemoryStore,
   createFileAgentRunStore,
   createProductionTraceOptions,
@@ -68,6 +69,7 @@ const runSummary = (state: AgentRunState) => {
     provider: state.provider,
     model: state.modelId,
     agentId: state.agentId,
+    parentRunId: state.parentRunId,
     idempotencyKey: state.idempotencyKey,
     scope: state.scope,
     steps: consumption.steps,
@@ -75,6 +77,7 @@ const runSummary = (state: AgentRunState) => {
     toolErrors: consumption.toolErrors,
     pendingApprovals: state.pendingApprovals.length,
     compactions: state.compactions?.length ?? 0,
+    childRuns: state.childRuns?.length ?? 0,
     usage: state.usage,
     startedAt: state.startedAt,
     updatedAt: state.updatedAt,
@@ -143,6 +146,15 @@ export const inspectHarnessRun = async (
   const ledger = { ...rawLedger, snapshot: ledgerSnapshot };
   const snapshot = ledgerSnapshot;
   const journal = await store.listToolCalls?.(runId, config.scope) ?? [];
+  // The SDK hierarchy helper operates on an unscoped store view. Bind every
+  // lookup to the harness scope so tenant-local runs cannot disappear from an
+  // inspection or be mixed with another namespace.
+  const hierarchyStore: AgentRunStore = {
+    load: (candidateRunId) => store.load(candidateRunId, config.scope),
+    save: (candidateState, options) => store.save(candidateState, options),
+    findByParentRunId: (parentRunId) => store.findByParentRunId?.(parentRunId, config.scope) ?? []
+  };
+  const hierarchy = await createHierarchicalAgentTrace(hierarchyStore, runId, traceOptions);
 
   return {
     schemaVersion: HARNESS_OPERATIONS_SCHEMA_VERSION,
@@ -151,6 +163,7 @@ export const inspectHarnessRun = async (
     budget: getAgentBudgetStatus(state, config.budget),
     snapshot,
     trace: createAgentTraceArtifact(state, traceOptions),
+    hierarchy,
     ledger,
     toolJournal: journal.map((entry) => ({
       toolCallId: entry.toolCallId,

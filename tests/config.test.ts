@@ -16,7 +16,13 @@ describe("provider configuration", () => {
       storeBackend: "sqlite",
       scope: { tenantId: "local" },
       budget: { maxToolCalls: 32, maxTotalTokens: 120_000 },
-      compaction: { maxMessages: 60, keepRecentMessages: 12 }
+      compaction: { maxMessages: 60, keepRecentMessages: 12 },
+      requiredCapabilities: ["streaming", "tools"],
+      orchestration: {
+        profiles: ["explorer", "implementer", "tester", "reviewer"],
+        childBudget: { maxSteps: 8, maxToolCalls: 16, maxTotalTokens: 36_000 },
+        maxParallelReviews: 2
+      }
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.4");
@@ -32,7 +38,7 @@ describe("provider configuration", () => {
     expect(() => parseProvider("deepseek")).toThrow("Unknown provider");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
-    expect(() => resolveHarnessConfig({ schemaVersion: 3 })).toThrow("Unsupported config schema");
+    expect(() => resolveHarnessConfig({ schemaVersion: 4 })).toThrow("Unsupported config schema");
     expect(() => resolveHarnessConfig({ storeBackend: "postgres" })).toThrow("storeBackend");
     expect(() => resolveHarnessConfig({ maxToolErrors: -1 })).toThrow("maxToolErrors");
     expect(() => resolveHarnessConfig({ maxInputTokens: 10_000, maxTotalTokens: 5_000 })).toThrow("maxTotalTokens");
@@ -42,6 +48,9 @@ describe("provider configuration", () => {
     expect(() => resolveHarnessConfig({
       allowedChecks: Array.from({ length: 51 }, (_, index) => `check-${index}`)
     })).toThrow("more than 50");
+    expect(() => resolveHarnessConfig({ requiredCapabilities: ["telepathy"] })).toThrow("Unknown required capability");
+    expect(() => resolveHarnessConfig({ subagentProfiles: ["deployer"] })).toThrow("Unknown subagent profile");
+    expect(() => resolveHarnessConfig({ subagentMaxInputTokens: 50, subagentMaxTotalTokens: 10 })).toThrow("subagentMaxTotalTokens");
   });
 
   test("resolves explicit scope, budgets, compaction, and cost pricing", () => {

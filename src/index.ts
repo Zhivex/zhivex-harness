@@ -1,6 +1,9 @@
 export {
   DEFAULT_ALLOWED_CHECKS,
+  DEFAULT_SUBAGENT_BUDGET,
   HARNESS_CONFIG_SCHEMA_VERSION,
+  HARNESS_REQUIRED_CAPABILITIES,
+  HARNESS_SUBAGENT_PROFILES,
   PROVIDERS,
   PROVIDER_DESCRIPTORS,
   createProviderModel,
@@ -16,12 +19,55 @@ export type {
   HarnessConfig,
   HarnessConfigInput,
   HarnessCostBudget,
+  HarnessOrchestrationConfig,
   HarnessProvider,
+  HarnessRequiredCapability,
   HarnessStoreBackend,
+  HarnessSubagentProfile,
   ProviderCapability,
   ProviderDescriptor,
   ProviderSupport
 } from "./config.js";
+
+export {
+  assertHarnessModelCapabilities,
+  inspectHarnessModelCapabilities,
+  selectHarnessModel
+} from "./capabilities.js";
+export type {
+  HarnessModelCandidate,
+  HarnessModelCapabilityReport,
+  HarnessModelSelection
+} from "./capabilities.js";
+
+export {
+  HARNESS_MCP_CONFIG_SCHEMA_VERSION,
+  HARNESS_MCP_PERMISSIONS,
+  createHarnessMcpTools,
+  createHttpMcpClient,
+  loadHarnessMcpConfiguration,
+  normalizeHarnessMcpConfiguration
+} from "./mcp.js";
+export type {
+  HarnessMcpClients,
+  HarnessMcpConfiguration,
+  HarnessMcpPermission,
+  HarnessMcpServerConfig,
+  HarnessMcpTransport,
+  McpClient,
+  McpListedTool
+} from "./mcp.js";
+
+export {
+  HARNESS_SUBAGENT_PROFILE_DESCRIPTORS,
+  createHarnessSubagents,
+  runHarnessReviewGroup
+} from "./orchestration.js";
+export type {
+  HarnessReviewGroupResult,
+  HarnessSubagentProfileDescriptor,
+  HarnessSubagentRuntime
+} from "./orchestration.js";
 
 export { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
 

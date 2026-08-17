@@ -193,6 +193,10 @@ const createLiveHarness = async (args: PhaseArguments) => createHarness({
   workspace: args.workspace,
   stateDirectory: args.stateDirectory,
   maxSteps: 4,
+  // This matrix preserves the 0.4 single-agent certification contract. The
+  // 0.5 orchestration matrix is tracked separately so delegation cannot make
+  // this smoke pass without exercising the exact reviewed-edit path.
+  subagentProfiles: [],
   env: process.env
 });
 

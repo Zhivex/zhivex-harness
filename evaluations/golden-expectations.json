@@ -25,6 +25,16 @@
       "name": "provider-switch",
       "status": "completed",
       "toolCalls": []
+    },
+    {
+      "name": "governed-mcp",
+      "status": "completed",
+      "toolCalls": ["remote_lookup"]
+    },
+    {
+      "name": "bounded-subagent",
+      "status": "completed",
+      "toolCalls": ["delegate_reviewer"]
     }
   ]
 }

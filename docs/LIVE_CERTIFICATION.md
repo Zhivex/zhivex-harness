@@ -42,6 +42,14 @@ Optional model overrides are:
 
 Endpoint, Qwen workspace, and Qwen region overrides use the normal `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL` variables.
 
+The separate `0.5.x` delegation matrix uses the same opt-in, provider selection, credentials, and model overrides:
+
+```bash
+ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:orchestration
+```
+
+For every provider it requires exactly one `delegate_reviewer` call, verifies the bounded child response and aggregate token accounting, closes and reopens SQLite, and confirms the persisted parent/child link through the redacted hierarchical inspection. It does not make the legacy reviewed-edit smoke pass through delegation.
+
 Certification evidence is date-bound and account-bound. A local deterministic pass, installed-package pass, or one provider's live pass does not certify the other providers.
 
 Because `0.4.0` adds the production safety policy, harness binding, scoped SQLite persistence, required leases, budgets, and exactly-once journal recovery, `0.3.0` live evidence does not certify the new runtime path. The supported providers must pass the refreshed `apply_patch` approval/restart gate before the private milestone is considered complete.
@@ -57,6 +65,30 @@ Evidence collected on 2026-08-17 with the default models and locally configured 
 | OpenAI | `gpt-5.4` | Certified | Responses completed the proposal-first workflow with an upstream-compatible output ceiling, process restart, and exactly-once patch journaling. |
 
 This evidence certifies provider interaction for the private `0.4.0` candidate only. It does not prove registry publication, provenance, or availability of a public artifact.
+
+## 0.5.0 orchestration status
+
+The `0.4.0` matrix remains valid evidence for the shared proposal, approval, SQLite restart, and exactly-once patch path, but it does not certify model-directed delegation or provider behavior with the expanded MCP/subagent tool surface.
+
+`0.5.0` has deterministic evidence for capability rejection, MCP discovery/approval/resume, prompt-injection and output bounds, durable child approval promotion, exactly-once child mutation, cancellation propagation, scoped hierarchical inspection, aggregate budgets, and application-owned parallel review.
+
+The complete delegation matrix passed at `2026-08-17T02:21:45.553Z`. Each provider made exactly one model-directed `delegate_reviewer` call, completed the bounded child, accounted for aggregate tokens, persisted parent and child, reopened SQLite, and exposed a redacted two-run hierarchy.
+
+| Provider | Model | Result | Evidence |
+| --- | --- | --- | --- |
+| Meta | `muse-spark-1.2` | Certified | One reviewer delegation completed; parent and child survived reopen with a two-run hierarchy and aggregate usage. |
+| Qwen | `qwen3.8-max` | Certified | Responses parent delegation and generated child output completed; persistence, hierarchy, and aggregate usage passed. |
+| OpenAI | `gpt-5.4` | Certified | Responses parent delegation and generated child output completed; persistence, hierarchy, and aggregate usage passed. |
+
+This certifies the bounded reviewer-delegation path, not arbitrary task quality or every subagent profile.
+
+The separate controlled MCP interoperability gate passed at `2026-08-17T13:05:05.542Z` against a real loopback Streamable HTTP server. It exercised protocol `2025-06-18`, authorization and protocol headers, session negotiation, `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, JSON and SSE responses, schema-backed discovery, bounded output, and the forced interrupt-approval policy for network tools. Run it with:
+
+```bash
+bun run smoke:mcp
+```
+
+This is stronger than an injected `fetch` fixture because it uses the operating system network stack and a running server. It certifies the harness transport contract against the controlled implementation; it does not claim compatibility with every third-party MCP server or unsupported `stdio` transport.
 
 ## 0.3.0 private-milestone evidence
 

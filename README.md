@@ -4,9 +4,9 @@ Zhivex Harness is a Bun-first coding-agent harness portable across Meta, Qwen, a
 
 The model provides capability; the harness provides repository context, narrow tools, limits, approvals, durable state, diagnostics, and verification. Every provider uses the same agent loop and local-tool contract.
 
-Version `0.4.0` is a validated private durable-operations candidate. It remains intentionally blocked from registry publication until an explicit visibility, scope-rights, and provenance decision is made. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+Version `0.5.0` is a publication-ready extensibility-and-orchestration candidate. The package manifest and protected release workflow are ready, but the immutable npm publication has not been executed. Public availability begins only after the repository and npm prerequisites in the [release guide](./docs/RELEASE.md) are completed and a maintainer explicitly dispatches the workflow. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
 
-## What 0.4 includes
+## What 0.5 includes
 
 - one-shot execution and interactive chat;
 - provider and model selection through the CLI;
@@ -22,10 +22,14 @@ Version `0.4.0` is a validated private durable-operations candidate. It remains 
 - run list, redacted inspect/export, cancellation, and retention cleanup commands;
 - production safety policy plus step, time, tool, token, and optional operator-priced cost budgets;
 - bounded context compaction with durable records and a deterministic golden evaluation gate;
+- fail-fast model capability requirements and deterministic library-side candidate selection;
+- governed MCP over bounded HTTPS/loopback HTTP with explicit server/tool allowlists, permissions, timeouts, approvals, output limits, and environment-backed credentials;
+- named explorer, implementer, tester, and reviewer subagents with independent durable budgets and promoted approvals;
+- deterministic application-owned parallel read-only review groups with child progress, hierarchy, usage, and cost evidence;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
 - Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
 
-It does not include arbitrary shell access, permanent deletion, Git writes, MCP, subagents, a desktop UI, or a managed sandbox. Tools run inside the workspace with the permissions of the local process.
+It does not include arbitrary shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, OS isolation, or a managed sandbox. Tools and subagents run inside the workspace with the permissions of the local process.
 
 ## Requirements
 
@@ -35,7 +39,14 @@ It does not include arbitrary shell access, permanent deletion, Git writes, MCP,
 
 ## Installation
 
-The project is private and is not published to a package registry. Run the source checkout:
+After `0.5.0` is published to npm:
+
+```bash
+bun add @zhivex-ai/harness
+bunx zhivex-harness --version
+```
+
+Until then, run the source checkout:
 
 ```bash
 bun install --frozen-lockfile
@@ -118,6 +129,16 @@ zhivex-harness runs cleanup --before 2026-08-01T00:00:00Z
 
 Operations are scope-bound. The defaults are tenant `local` and a namespace derived from the canonical workspace. Supply the same `--tenant`, `--user`, and `--namespace` values across run and operator commands. Migration, budgets, redaction, retention, and compatibility limits are documented in [docs/DURABLE_OPERATIONS.md](./docs/DURABLE_OPERATIONS.md).
 
+Use governed MCP and bounded subagents explicitly:
+
+```bash
+zhivex-harness run --mcp-config examples/mcp-config.json "consult the allowed documentation tools"
+zhivex-harness run --subagent explorer --subagent reviewer "analyze the boundary"
+zhivex-harness review --reviewer explorer --reviewer reviewer --json "review the durable runtime"
+```
+
+MCP configuration, capability gates, child budgets, promoted approvals, review groups, migration, and known limits are documented in [docs/EXTENSIBILITY.md](./docs/EXTENSIBILITY.md).
+
 `--yes` automatically approves tools with side effects. Use it only inside a disposable or isolated workspace:
 
 ```bash
@@ -144,13 +165,13 @@ zhivex-harness run --allow-check test:unit --allow-check format "apply the fix a
 
 | Provider | Default model | Current support |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · Certified for 0.4 tools/runtime |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · Certified for 0.4 tools/runtime |
-| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · Certified for 0.4 tools/runtime |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.4 runtime and 0.5 delegation certified |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.4 runtime and 0.5 delegation certified |
+| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · 0.4 runtime and 0.5 delegation certified |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
 
-Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, process restart, and exactly-once patch gate on 2026-08-17. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, process restart, and exactly-once patch gate on 2026-08-17. They also completed the separate 0.5 model-directed reviewer-delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage gate at `2026-08-17T02:21:45.553Z`. Controlled Streamable HTTP MCP interoperability over a real loopback server passed at `2026-08-17T13:05:05.542Z`; third-party server compatibility is not implied. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
@@ -165,6 +186,9 @@ Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, proce
 - Existing file modes are preserved and successful replacements are published atomically.
 - Unsafe state roots, protected workspace paths, files, and symlink targets are rejected before a run store is created.
 - Environment values are not injected into prompts, diagnostics, or tool responses.
+- Remote MCP output is bounded, schema-checked, treated as untrusted, and rejected on common prompt-injection directives.
+- Network MCP always pauses for approval; custom read-only annotation trust must be explicit and injected by the host application.
+- Subagent children inherit scope, workspace, cancellation, approval, and store policy while retaining independent budgets and fingerprints.
 
 These controls reduce risk but do not provide strong isolation. Use a dedicated container or microVM and a disposable workspace for autonomous execution.
 

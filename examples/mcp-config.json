@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "servers": [
+    {
+      "name": "docs",
+      "transport": "http",
+      "url": "https://mcp.example.com/rpc",
+      "includeTools": ["search_docs", "read_page"],
+      "permissions": ["read", "network"],
+      "headerEnv": {
+        "x-api-key": "DOCS_MCP_API_KEY"
+      },
+      "callToolTimeoutMs": 30000,
+      "maxOutputBytes": 262144
+    }
+  ]
+}

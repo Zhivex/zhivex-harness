@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-16
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` is a private trusted-editing checkpoint, and `0.4.0` is the validated private durable-operations candidate. Registry publication remains a separate external operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` is a publication-ready extensibility-and-orchestration candidate. Registry publication remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -36,8 +36,8 @@ The release candidate keeps `@zhivex-ai/core@1.5.0`. Although `1.6.0` is publish
 | --- | --- | --- | --- | --- |
 | `0.2.0` | Releasable foundation | A versioned, installable, diagnosable CLI | Local release baseline | M |
 | `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private checkpoint | M |
-| `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Validated private candidate | L |
-| `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Planned | L |
+| `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Private checkpoint | L |
+| `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Publication-ready candidate | L |
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Planned | XL |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
@@ -140,6 +140,8 @@ Validation snapshot (2026-08-17):
 
 Goal: support larger tasks through governed external tools and bounded delegation without weakening workspace policy.
 
+Status: publication-ready candidate. Configuration, migration, MCP, and orchestration contracts live in [docs/EXTENSIBILITY.md](./docs/EXTENSIBILITY.md); registry publication remains pending an explicit maintainer dispatch and the external prerequisites in [docs/RELEASE.md](./docs/RELEASE.md).
+
 Scope:
 
 - Add capability-based provider/model selection and reject unsupported requested capabilities before a run begins.
@@ -156,6 +158,14 @@ Exit criteria:
 - Child approval pause/resume, cancellation propagation, exactly-once recovery, hierarchy traces, and aggregate budgets pass end-to-end tests.
 - MCP prompt injection and oversized/malformed result tests fail safely.
 - Provider-specific limitations are recorded in a live support matrix.
+
+Validation snapshot (2026-08-17 UTC):
+
+- deterministic tests, the seven-case golden evaluation gate, typecheck, docs, build, dependency audit, dry-run package inspection, and installed-tarball smoke pass;
+- malformed MCP, HTTP handshake/session, injection/output bounds, approval/restart, child mutation exactly-once, cancellation, scoped hierarchy, aggregate budget, and parallel review have regression coverage;
+- controlled Streamable HTTP MCP interoperability passed over a real loopback server with session negotiation, JSON and SSE responses, tool discovery, bounded execution, and forced network approval at `2026-08-17T13:05:05.542Z`;
+- Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.4` passed the separate model-directed reviewer delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage matrix at `2026-08-17T02:21:45.553Z`;
+- exact-artifact and publication controls are prepared, while registry publication, provenance, tag creation, and push have not been attempted or claimed.
 
 ## 0.6.0 — Enforced execution environments
 
@@ -223,8 +233,7 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Dogfood durable operations on representative repositories and record any contract-breaking finding before release.
-2. Decide explicitly whether `0.4.0` remains an internal checkpoint or becomes the first public `@zhivex-ai/harness` package.
-3. If publication is approved, verify repository visibility, `@zhivex-ai` scope rights, trusted publishing, provenance, and rollback boundaries before changing the private manifest.
-4. Rerun deterministic, installed-package, package-inspection, and live-provider gates against the exact clean release commit before tagging.
-5. After any publication, verify registry version, installed artifact, integrity, provenance, and tag-to-commit agreement before announcing availability.
+1. Dogfood governed MCP and bounded delegation on representative repositories before freezing the contract.
+2. Validate additional third-party Streamable HTTP servers without broadening the transport or trust claims.
+3. Make the repository public, enable private vulnerability reporting, protect the `npm` environment, and verify `@zhivex-ai` scope rights before dispatching publication.
+4. Bootstrap the first npm version through the protected workflow, configure `release.yml` as the package Trusted Publisher, revoke the temporary bootstrap token, and verify registry integrity/provenance against the tagged commit.

@@ -14,7 +14,15 @@ import {
   type AgentStreamEvent
 } from "@zhivex-ai/agents";
 
-import { parseProvider, providerAvailability, resolveHarnessConfig, type HarnessProvider } from "./config.js";
+import {
+  HARNESS_REQUIRED_CAPABILITIES,
+  HARNESS_SUBAGENT_PROFILES,
+  parseProvider,
+  providerAvailability,
+  resolveHarnessConfig,
+  type HarnessProvider,
+  type HarnessSubagentProfile
+} from "./config.js";
 import {
   appendUserMessage,
   createHarness,
@@ -24,6 +32,7 @@ import {
 } from "./harness.js";
 import {
   estimateAgentRunCost,
+  type AgentTelemetryObserver,
   type TokenPricing
 } from "@zhivex-ai/agents/ops";
 import {
@@ -34,6 +43,8 @@ import {
   openHarnessPersistence
 } from "./operations.js";
 import { validateStateDirectory } from "./state-directory.js";
+import { loadHarnessMcpConfiguration } from "./mcp.js";
+import { runHarnessReviewGroup } from "./orchestration.js";
 import { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
 
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
@@ -45,7 +56,7 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-type Command = "run" | "chat" | "providers" | "doctor" | "resume" | "runs" | "help" | "version";
+type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "help" | "version";
 type RunsCommand = "list" | "inspect" | "cancel" | "cleanup" | "export";
 
 export interface CliOptions {
@@ -69,6 +80,18 @@ export interface CliOptions {
   inputCostPerMillion?: number;
   outputCostPerMillion?: number;
   allowedChecks?: string[];
+  requiredCapabilities?: string[];
+  subagentProfiles?: string[];
+  reviewers?: HarnessSubagentProfile[];
+  subagentMaxSteps?: number;
+  subagentMaxToolCalls?: number;
+  subagentMaxToolErrors?: number;
+  subagentMaxInputTokens?: number;
+  subagentMaxOutputTokens?: number;
+  subagentMaxTotalTokens?: number;
+  subagentTimeoutMs?: number;
+  maxParallelReviews?: number;
+  mcpConfigPath?: string;
   prompt?: string;
   runId?: string;
   idempotencyKey?: string;
@@ -85,7 +108,7 @@ export interface CliOptions {
   json: boolean;
 }
 
-const COMMANDS = new Set<Command>(["run", "chat", "providers", "doctor", "resume", "runs", "help", "version"]);
+const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "help", "version"]);
 const RUNS_COMMANDS = new Set<RunsCommand>(["list", "inspect", "cancel", "cleanup", "export"]);
 const RUN_STATUSES = new Set<AgentStatus>([
   "queued",
@@ -162,6 +185,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.stateDirectory = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--mcp-config":
+        options.mcpConfigPath = optionValue(argv, index, argument);
+        index += 1;
+        break;
       case "--store":
         options.storeBackend = optionValue(argv, index, argument);
         index += 1;
@@ -199,7 +226,15 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--max-tool-errors":
       case "--max-input-tokens":
       case "--max-output-tokens":
-      case "--max-total-tokens": {
+      case "--max-total-tokens":
+      case "--subagent-max-steps":
+      case "--subagent-max-tool-calls":
+      case "--subagent-max-tool-errors":
+      case "--subagent-max-input-tokens":
+      case "--subagent-max-output-tokens":
+      case "--subagent-max-total-tokens":
+      case "--subagent-timeout-ms":
+      case "--max-parallel-reviews": {
         const value = Number(optionValue(argv, index, argument));
         if (!Number.isSafeInteger(value) || value < 0) {
           throw new CliUsageError(`${argument} must be a non-negative integer.`);
@@ -210,6 +245,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         if (argument === "--max-input-tokens") options.maxInputTokens = value;
         if (argument === "--max-output-tokens") options.maxOutputTokens = value;
         if (argument === "--max-total-tokens") options.maxTotalTokens = value;
+        if (argument === "--subagent-max-steps") options.subagentMaxSteps = value;
+        if (argument === "--subagent-max-tool-calls") options.subagentMaxToolCalls = value;
+        if (argument === "--subagent-max-tool-errors") options.subagentMaxToolErrors = value;
+        if (argument === "--subagent-max-input-tokens") options.subagentMaxInputTokens = value;
+        if (argument === "--subagent-max-output-tokens") options.subagentMaxOutputTokens = value;
+        if (argument === "--subagent-max-total-tokens") options.subagentMaxTotalTokens = value;
+        if (argument === "--subagent-timeout-ms") options.subagentTimeoutMs = value;
+        if (argument === "--max-parallel-reviews") options.maxParallelReviews = value;
         index += 1;
         break;
       }
@@ -238,6 +281,38 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         if (options.allowedChecks.length > 50) {
           throw new CliUsageError("--allow-check cannot be repeated more than 50 times.");
         }
+        index += 1;
+        break;
+      }
+      case "--require-capability": {
+        const value = optionValue(argv, index, argument);
+        if (!(HARNESS_REQUIRED_CAPABILITIES as readonly string[]).includes(value)) {
+          throw new CliUsageError(
+            `--require-capability must be one of: ${HARNESS_REQUIRED_CAPABILITIES.join(", ")}.`
+          );
+        }
+        options.requiredCapabilities ??= [];
+        options.requiredCapabilities.push(value);
+        index += 1;
+        break;
+      }
+      case "--subagent": {
+        const value = optionValue(argv, index, argument);
+        if (!(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(value)) {
+          throw new CliUsageError(`--subagent must be one of: ${HARNESS_SUBAGENT_PROFILES.join(", ")}.`);
+        }
+        options.subagentProfiles ??= [];
+        options.subagentProfiles.push(value);
+        index += 1;
+        break;
+      }
+      case "--reviewer": {
+        const value = optionValue(argv, index, argument) as HarnessSubagentProfile;
+        if (value !== "explorer" && value !== "reviewer") {
+          throw new CliUsageError("--reviewer must be explorer or reviewer.");
+        }
+        options.reviewers ??= [];
+        options.reviewers.push(value);
         index += 1;
         break;
       }
@@ -348,7 +423,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`runs ${runsCommand} received unexpected positional arguments.`);
     }
-  } else if (options.command === "run") {
+  } else if (options.command === "run" || options.command === "review") {
     const prompt = positional.join(" ").trim();
     if (prompt) {
       options.prompt = prompt;
@@ -364,6 +439,7 @@ const help = `Zhivex Harness v${HARNESS_VERSION}
 
 Usage:
   zhivex-harness run [options] "task"
+  zhivex-harness review [options] "review task"
   zhivex-harness chat [options]
   zhivex-harness providers [--json]
   zhivex-harness doctor [options] [--json]
@@ -379,6 +455,7 @@ Options:
   --model <id>                   Override the default model
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
+  --mcp-config <path>            Declarative governed MCP JSON configuration
   --store <sqlite|file>          Durable backend (default: sqlite)
   --tenant <id>                  Durable tenant scope (default: local)
   --user <id>                    Optional durable user scope
@@ -395,6 +472,14 @@ Options:
   --output-cost-per-million <n>  Output-token pricing for the cost ceiling
   --timeout-ms <n>               Wall-clock timeout (default: 900000)
   --allow-check <script>         Allow one package.json script; repeatable
+  --require-capability <name>    Reject incompatible models before a run; repeatable
+  --subagent <profile>           Enable explorer, implementer, tester, or reviewer; repeatable
+  --subagent-max-steps <n>       Independent child step budget (default: 8)
+  --subagent-max-tool-calls <n>  Independent child tool budget (default: 16)
+  --subagent-max-total-tokens <n> Independent child token budget (default: 36000)
+  --subagent-timeout-ms <n>      Independent child timeout (default: 300000)
+  --reviewer <profile>           Read-only review group member; repeatable
+  --max-parallel-reviews <1-4>   Review group concurrency ceiling (default: 2)
   --yes                          Automatically approve writes and checks
   --json                         Emit structured final output
   -h, --help                     Show this help
@@ -485,7 +570,19 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
     id: approval.id,
     kind: approval.kind ?? "provider",
     name: approval.name,
-    arguments: approval.arguments
+    arguments: approval.arguments,
+    ...(approval.childRunId ? { childRunId: approval.childRunId } : {}),
+    ...(approval.childAgentId ? { childAgentId: approval.childAgentId } : {})
+  })),
+  children: (result.state.childRuns ?? []).map((child) => ({
+    runId: child.runId,
+    agentId: child.agentId,
+    toolName: child.toolName,
+    status: child.status,
+    steps: child.steps,
+    toolCalls: child.toolCalls,
+    toolErrors: child.toolErrors,
+    usage: child.usage
   })),
   usage: result.usage,
   budget: getAgentBudgetStatus(result.state, harness.config.budget, result),
@@ -498,6 +595,12 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
       }
     : {}),
   scope: result.state.scope,
+  capabilities: harness.capabilities,
+  orchestration: {
+    profiles: harness.config.orchestration.profiles,
+    childBudget: harness.config.orchestration.childBudget,
+    mcpServers: harness.mcpConfiguration.servers.map((server) => server.name)
+  },
   store: {
     backend: harness.config.storeBackend,
     stateDirectory: harness.config.stateDirectory,
@@ -537,11 +640,22 @@ const streamSink = (json: boolean, tracker: { streamedText: boolean }) => async 
   }
 };
 
+const orchestrationObserver = (json: boolean): AgentTelemetryObserver => async (event) => {
+  if (json) return;
+  if (event.type === "subagent-start") {
+    process.stderr.write(`\nsubagent start · ${event.childAgentId ?? event.toolName}\n`);
+  } else if (event.type === "subagent-finish") {
+    process.stderr.write(
+      `\nsubagent finish · ${event.childRun.agentId ?? event.childRun.toolName} · ${event.childRun.status}\n`
+    );
+  }
+};
+
 const runOnce = async (options: CliOptions) => {
   if (!options.prompt) {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
-  const harness = await createHarness(options);
+  const harness = await createHarness({ ...options, onTelemetryEvent: orchestrationObserver(options.json) });
   try {
     const tracker = { streamedText: false };
     const result = await runHarness(
@@ -558,6 +672,65 @@ const runOnce = async (options: CliOptions) => {
     );
     printTerminalResult(result, harness, options.json, tracker.streamedText);
     if (result.status === "failed" || result.status === "timed_out") {
+      process.exitCode = CLI_EXIT_CODES.runtimeError;
+    }
+  } finally {
+    harness.close();
+  }
+};
+
+const reviewOnce = async (options: CliOptions) => {
+  if (!options.prompt) {
+    throw new CliUsageError("Missing review task. Example: zhivex-harness review \"review the state boundary\".");
+  }
+  const requestedReviewers = options.reviewers ?? ["explorer", "reviewer"];
+  const enabledProfiles = [...new Set([
+    ...(options.subagentProfiles ?? []),
+    ...requestedReviewers
+  ])];
+  const harness = await createHarness({
+    ...options,
+    subagentProfiles: enabledProfiles,
+    onTelemetryEvent: orchestrationObserver(options.json)
+  });
+  try {
+    const result = await runHarnessReviewGroup(
+      harness,
+      { prompt: options.prompt, scope: harness.config.scope },
+      requestedReviewers
+    );
+    const document = {
+      schemaVersion: CLI_JSON_SCHEMA_VERSION,
+      kind: "review-group" as const,
+      groupId: result.groupId,
+      status: result.status,
+      profiles: result.profiles,
+      outputs: result.outputs.map((member) => ({
+        name: member.name,
+        agentId: member.agentId,
+        status: member.status,
+        ...(member.output
+          ? {
+              runId: member.output.state.runId,
+              runStatus: member.output.status,
+              output: member.output.outputText,
+              steps: member.output.steps.length,
+              usage: member.output.usage
+            }
+          : {}),
+        ...(member.error ? { error: member.error } : {})
+      }))
+    };
+    if (options.json) {
+      process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+    } else {
+      for (const output of document.outputs) {
+        process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
+        if ("output" in output && output.output) process.stdout.write(`${output.output}\n`);
+        if (output.error) process.stdout.write(`Error: ${output.error.message}\n`);
+      }
+    }
+    if (result.status === "failed") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
   } finally {
@@ -594,7 +767,8 @@ const resumeRun = async (options: CliOptions) => {
       provider: state.provider as HarnessProvider,
       model: state.modelId,
       store: persistence.store,
-      memory: persistence.memory
+      memory: persistence.memory,
+      onTelemetryEvent: orchestrationObserver(options.json)
     });
     const approve = options.approve;
     const tracker = { streamedText: false };
@@ -630,7 +804,7 @@ const chat = async (options: CliOptions) => {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("Chat mode requires an interactive terminal. Use run for automation.");
   }
-  const harness = await createHarness(options);
+  const harness = await createHarness({ ...options, onTelemetryEvent: orchestrationObserver(false) });
   const readline = createInterface({ input: process.stdin, output: process.stdout });
   let messages: AgentRunOutput["messages"] = [];
 
@@ -727,6 +901,9 @@ export interface DoctorReport {
     costBudget?: ReturnType<typeof resolveHarnessConfig>["costBudget"];
     compaction: ReturnType<typeof resolveHarnessConfig>["compaction"];
     allowedChecks: readonly string[];
+    requiredCapabilities: ReturnType<typeof resolveHarnessConfig>["requiredCapabilities"];
+    orchestration: ReturnType<typeof resolveHarnessConfig>["orchestration"];
+    mcpConfigPath?: string;
   };
   checks: DoctorCheck[];
   providers: ReturnType<typeof providerAvailability>;
@@ -1010,6 +1187,32 @@ const inspectOperationsStore = async (
   }
 };
 
+const inspectMcpConfiguration = async (
+  workspace: string,
+  configPath: string | undefined
+): Promise<DoctorCheck> => {
+  if (!configPath) {
+    return diagnostic("mcp-config", "pass", "No MCP servers are configured.", {
+      configured: false,
+      servers: 0
+    });
+  }
+  try {
+    const configuration = await loadHarnessMcpConfiguration(workspace, configPath);
+    return diagnostic("mcp-config", "pass", "Governed MCP configuration is valid.", {
+      configured: true,
+      servers: configuration.servers.length,
+      names: configuration.servers.map((server) => server.name)
+    });
+  } catch (error) {
+    return diagnostic("mcp-config", "fail", "MCP configuration is invalid or unsafe.", {
+      configured: true,
+      servers: 0,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
 export const createDoctorReport = async (
   options: Pick<
     CliOptions,
@@ -1032,6 +1235,17 @@ export const createDoctorReport = async (
     | "inputCostPerMillion"
     | "outputCostPerMillion"
     | "allowedChecks"
+    | "requiredCapabilities"
+    | "subagentProfiles"
+    | "subagentMaxSteps"
+    | "subagentMaxToolCalls"
+    | "subagentMaxToolErrors"
+    | "subagentMaxInputTokens"
+    | "subagentMaxOutputTokens"
+    | "subagentMaxTotalTokens"
+    | "subagentTimeoutMs"
+    | "maxParallelReviews"
+    | "mcpConfigPath"
   > = {},
   context: DoctorContext = {}
 ): Promise<DoctorReport> => {
@@ -1085,6 +1299,37 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_ALLOWED_CHECKS !== undefined
       ? { allowedChecks: env.ZHIVEX_HARNESS_ALLOWED_CHECKS.split(",") }
       : {}),
+    ...(env.ZHIVEX_HARNESS_REQUIRED_CAPABILITIES !== undefined
+      ? { requiredCapabilities: env.ZHIVEX_HARNESS_REQUIRED_CAPABILITIES.split(",") }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENTS !== undefined
+      ? { subagentProfiles: env.ZHIVEX_HARNESS_SUBAGENTS.split(",") }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS
+      ? { subagentMaxSteps: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS
+      ? { subagentMaxToolCalls: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_ERRORS
+      ? { subagentMaxToolErrors: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_ERRORS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS
+      ? { subagentMaxInputTokens: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS
+      ? { subagentMaxOutputTokens: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOTAL_TOKENS
+      ? { subagentMaxTotalTokens: Number(env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOTAL_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_SUBAGENT_TIMEOUT_MS
+      ? { subagentTimeoutMs: Number(env.ZHIVEX_HARNESS_SUBAGENT_TIMEOUT_MS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS
+      ? { maxParallelReviews: Number(env.ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MCP_CONFIG ? { mcpConfigPath: env.ZHIVEX_HARNESS_MCP_CONFIG } : {}),
     ...options
   });
   const bunVersion = context.bunVersion ?? Bun.version;
@@ -1105,6 +1350,7 @@ export const createDoctorReport = async (
   checks.push(await inspectScripts(config.workspace, config.allowedChecks));
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
   checks.push(await inspectOperationsStore(config.stateDirectory, config.storeBackend));
+  checks.push(await inspectMcpConfiguration(config.workspace, config.mcpConfigPath));
 
   for (const provider of providers) {
     const invalidRegion = provider.id === "qwen" && provider.configuration.regionValid === false;
@@ -1164,7 +1410,10 @@ export const createDoctorReport = async (
       budget: config.budget,
       ...(config.costBudget ? { costBudget: config.costBudget } : {}),
       compaction: config.compaction,
-      allowedChecks: config.allowedChecks
+      allowedChecks: config.allowedChecks,
+      requiredCapabilities: config.requiredCapabilities,
+      orchestration: config.orchestration,
+      ...(config.mcpConfigPath ? { mcpConfigPath: config.mcpConfigPath } : {})
     },
     checks,
     providers
@@ -1290,6 +1539,9 @@ export const main = async (argv = process.argv.slice(2)) => {
       return;
     case "run":
       await runOnce(options);
+      return;
+    case "review":
+      await reviewOnce(options);
   }
 };
 

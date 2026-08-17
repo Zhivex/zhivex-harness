@@ -135,6 +135,34 @@ describe("CLI parsing", () => {
     expect(() => parseCliArgs(["runs", "cleanup"])).toThrow("--before");
   });
 
+  test("parses governed MCP, capability, and review-group options", () => {
+    expect(parseCliArgs([
+      "review",
+      "--mcp-config",
+      "harness.mcp.json",
+      "--require-capability",
+      "tools",
+      "--subagent",
+      "explorer",
+      "--reviewer",
+      "reviewer",
+      "--subagent-max-total-tokens",
+      "12000",
+      "review",
+      "durability"
+    ])).toMatchObject({
+      command: "review",
+      mcpConfigPath: "harness.mcp.json",
+      requiredCapabilities: ["tools"],
+      subagentProfiles: ["explorer"],
+      reviewers: ["reviewer"],
+      subagentMaxTotalTokens: 12_000,
+      prompt: "review durability"
+    });
+    expect(() => parseCliArgs(["run", "--require-capability", "telepathy"])).toThrow("require-capability");
+    expect(() => parseCliArgs(["review", "--reviewer", "implementer", "task"])).toThrow("--reviewer");
+  });
+
   test("rejects ambiguous or unknown options", () => {
     expect(() => parseCliArgs(["resume", "run-1", "--approve", "--deny"])).toThrow("combine");
     expect(() => parseCliArgs(["run", "--wat"])).toThrow("Unknown option");
@@ -210,6 +238,18 @@ describe("versioned JSON contracts", () => {
       config: {
         stateDirectory: "/tmp/state",
         storeBackend: "sqlite",
+        orchestration: {
+          profiles: ["explorer", "reviewer"],
+          childBudget: {
+            maxSteps: 8,
+            maxToolCalls: 16,
+            maxToolErrors: 3,
+            maxInputTokens: 30_000,
+            maxOutputTokens: 8_000,
+            maxTotalTokens: 36_000,
+            includeChildRuns: false
+          }
+        },
         budget: {
           maxSteps: 12,
           maxToolCalls: 32,
@@ -220,6 +260,8 @@ describe("versioned JSON contracts", () => {
           includeChildRuns: true
         }
       },
+      capabilities: { provider: "openai", model: "gpt-test", capabilities: {} },
+      mcpConfiguration: { schemaVersion: 1, servers: [] },
       workspace: { mutationAudit: () => [] }
     } as never);
 
@@ -302,7 +344,9 @@ describe("doctor", () => {
         bunVersion: "1.3.7",
         env: {
           OPENAI_API_KEY: "do-not-print-this-key",
-          OPENAI_BASE_URL: "https://secret-host.invalid/v1"
+          OPENAI_BASE_URL: "https://secret-host.invalid/v1",
+          ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS: "3",
+          ZHIVEX_HARNESS_MAX_PARALLEL_REVIEWS: "1"
         }
       });
 
@@ -313,7 +357,11 @@ describe("doctor", () => {
         harnessVersion: HARNESS_VERSION,
         configuration: {
           provider: "openai",
-          stateDirectory: path.join(await realpath(workspace), ".zhivex-harness", "runs")
+          stateDirectory: path.join(await realpath(workspace), ".zhivex-harness", "runs"),
+          orchestration: {
+            childBudget: { maxSteps: 3 },
+            maxParallelReviews: 1
+          }
         }
       });
       expect(report.checks.map((check) => check.id)).toEqual(expect.arrayContaining([

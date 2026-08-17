@@ -1,8 +1,7 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Provider-portable coding agent harness powered by Zhivex AI SDK.",
-  "private": true,
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -13,6 +12,11 @@
     "url": "https://github.com/Zhivex/zhivex-harness/issues"
   },
   "homepage": "https://github.com/Zhivex/zhivex-harness#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
   "keywords": [
     "ai",
     "agents",
@@ -34,9 +38,12 @@
     "README.md",
     "ROADMAP.md",
     "CHANGELOG.md",
+    "SECURITY.md",
+    "SUPPORT.md",
     "LICENSE",
     "docs",
-    "evaluations"
+    "evaluations",
+    "examples"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",
@@ -48,9 +55,16 @@
     "test": "bun test",
     "evaluate": "bun run scripts/evaluate.ts",
     "smoke:package": "bun run build && bun run scripts/package-smoke.ts",
+    "smoke:artifact": "bun run scripts/package-smoke.ts",
+    "smoke:mcp": "bun run scripts/mcp-interoperability-smoke.ts",
     "smoke:live": "bun --env-file=.env run scripts/live-provider-smoke.ts",
+    "smoke:live:orchestration": "bun --env-file=.env run scripts/live-orchestration-smoke.ts",
+    "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:package"
+    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:mcp && bun run smoke:package",
+    "release:check": "bun run check && bun audit && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
+    "release:status": "bun run scripts/check-registry-release-status.ts",
+    "release:verify": "bun run scripts/verify-registry-release.ts"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.2.0",

@@ -6,6 +6,7 @@ import type { AgentApprovalRequest, AgentRunOutput, AgentRunState } from "@zhive
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createAgentRunLedger, promoteAgentGoldenTrace } from "@zhivex-ai/agents/control-plane";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+import type { McpClient } from "@zhivex-ai/core";
 
 import { createEditProposal } from "../src/edit-contracts.js";
 import { createHarness, runHarness } from "../src/harness.js";
@@ -312,6 +313,100 @@ const providerSwitch = async () => {
   return evaluateState(expected("provider-switch"), representative, startedAt, failures);
 };
 
+const governedMcp = async () => {
+  const workspace = await temporaryWorkspace("mcp");
+  let calls = 0;
+  const mcpClient: McpClient = {
+    async listTools() {
+      return { tools: [{
+        name: "lookup",
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        annotations: { readOnlyHint: true }
+      }] };
+    },
+    async callTool() {
+      calls += 1;
+      return { content: [{ type: "text", text: "bounded evidence" }] };
+    }
+  };
+  const harness = await createHarness({
+    provider: "openai",
+    workspace,
+    subagentProfiles: [],
+    mcpConfiguration: {
+      schemaVersion: 1,
+      servers: [{
+        name: "remote",
+        transport: "http",
+        url: "https://mcp.example.invalid/rpc",
+        includeTools: ["lookup"],
+        permissions: ["read", "network"]
+      }]
+    },
+    mcpClients: { remote: mcpClient },
+    modelInstance: createMockLanguageModel({
+      streamEvents: [
+        [
+          { type: "tool-call", toolCall: { id: "eval-mcp", name: "remote_lookup", input: {} } },
+          { type: "finish", finishReason: "tool-calls" }
+        ],
+        [
+          { type: "text-delta", textDelta: "MCP evaluated" },
+          { type: "finish", finishReason: "stop" }
+        ]
+      ]
+    }),
+    store: createInMemoryAgentRunStore()
+  });
+  const startedAt = Date.now();
+  const output = await runHarness(harness, { prompt: "Use governed MCP" }, {
+    resolveApprovals: async (approvals) => approveAll(approvals)
+  });
+  harness.close();
+  return evaluateState(expected("governed-mcp"), output, startedAt, [
+    ...(calls === 1 ? [] : [`Expected one MCP call, got ${calls}.`])
+  ]);
+};
+
+const boundedSubagent = async () => {
+  const workspace = await temporaryWorkspace("subagent");
+  const harness = await createHarness({
+    provider: "openai",
+    workspace,
+    subagentProfiles: ["reviewer"],
+    modelInstance: createMockLanguageModel({
+      streamEvents: [
+        [
+          { type: "tool-call", toolCall: { id: "eval-reviewer", name: "delegate_reviewer", input: { prompt: "Review the boundary" } } },
+          { type: "finish", finishReason: "tool-calls" }
+        ],
+        [
+          { type: "text-delta", textDelta: "review complete" },
+          { type: "finish", finishReason: "stop" }
+        ]
+      ]
+    }),
+    subagentModels: {
+      reviewer: createMockLanguageModel({
+        responses: [{
+          messages: [{ role: "assistant", parts: [{ type: "text", text: "independent evidence" }] }],
+          text: "independent evidence",
+          finishReason: "stop"
+        }]
+      })
+    },
+    store: createInMemoryAgentRunStore()
+  });
+  const startedAt = Date.now();
+  const output = await runHarness(harness, { prompt: "Delegate review" });
+  harness.close();
+  const child = output.state.childRuns?.[0];
+  return evaluateState(expected("bounded-subagent"), output, startedAt, [
+    ...(child?.agentId === "zhivex-harness-reviewer" ? [] : ["Expected reviewer child run."]),
+    ...(child?.status === "completed" ? [] : ["Reviewer child did not complete."])
+  ]);
+};
+
 let results: EvaluatedCase[] = [];
 try {
   results = [
@@ -319,7 +414,9 @@ try {
     await editAndTest(),
     await deniedApproval(),
     await failureRecovery(),
-    await providerSwitch()
+    await providerSwitch(),
+    await governedMcp(),
+    await boundedSubagent()
   ];
 } finally {
   await Promise.all(temporaryDirectories.splice(0).map((directory) =>

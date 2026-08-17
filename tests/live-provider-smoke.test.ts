@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
+import { liveOrchestrationSmokeInternals } from "../scripts/live-orchestration-smoke.js";
 
 const {
   assertLiveOptIn,
@@ -88,5 +89,13 @@ describe("live provider smoke contract", () => {
     expect(input.providerOptions).toBeUndefined();
     expect(providerRunInput("qwen", prompt).providerOptions).toEqual({ apiMode: "responses" });
     expect(providerRunInput("openai", prompt).providerOptions).toEqual({ apiMode: "responses" });
+  });
+
+  test("requires one exact bounded reviewer delegation for orchestration certification", () => {
+    const prompt = liveOrchestrationSmokeInternals.orchestrationPrompt("openai");
+    expect(prompt).toContain("Call delegate_reviewer exactly once");
+    expect(prompt).toContain("Do not call any other tool");
+    expect(prompt).toContain(liveOrchestrationSmokeInternals.childPrompt("openai"));
+    expect(prompt).toContain(liveOrchestrationSmokeInternals.parentToken("openai"));
   });
 });

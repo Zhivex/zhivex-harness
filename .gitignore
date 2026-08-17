@@ -3,5 +3,7 @@ dist/
 .env
 .zhivex-harness/
 coverage/
+release-artifacts/
+*.tgz
 *.log
 .DS_Store
