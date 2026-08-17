@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Provider-portable coding agent harness powered by Zhivex AI SDK.",
   "private": true,
   "type": "module",
@@ -35,7 +35,8 @@
     "ROADMAP.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs"
+    "docs",
+    "evaluations"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",
@@ -45,10 +46,11 @@
     "docs:check": "bun run scripts/check-docs.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "evaluate": "bun run scripts/evaluate.ts",
     "smoke:package": "bun run build && bun run scripts/package-smoke.ts",
     "smoke:live": "bun --env-file=.env run scripts/live-provider-smoke.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run docs:check && bun run typecheck && bun test && bun run smoke:package"
+    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:package"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.2.0",

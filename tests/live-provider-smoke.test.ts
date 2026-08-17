@@ -86,6 +86,7 @@ describe("live provider smoke contract", () => {
     const input = providerRunInput("meta", prompt);
     expect(input.toolChoice).toBe("auto");
     expect(input.providerOptions).toBeUndefined();
+    expect(providerRunInput("qwen", prompt).providerOptions).toEqual({ apiMode: "responses" });
     expect(providerRunInput("openai", prompt).providerOptions).toEqual({ apiMode: "responses" });
   });
 });

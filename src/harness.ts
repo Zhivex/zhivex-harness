@@ -1,14 +1,36 @@
-import { lstat } from "node:fs/promises";
-import path from "node:path";
+import { createHash } from "node:crypto";
 
-import { Agent, tool, type AgentApprovalRequest, type AgentApprovalResponse, type AgentRunInput, type AgentRunOutput, type AgentStreamEvent, type LanguageModel } from "@zhivex-ai/agents";
-import { createFileAgentRunStore, type AgentRunStore } from "@zhivex-ai/agents/ops";
+import {
+  Agent,
+  applySafetyPolicyToAgent,
+  createBudgetGuard,
+  createProductionSafetyPolicy,
+  createRedactionPolicy,
+  getAgentBudgetStatus,
+  tool,
+  type AgentApprovalRequest,
+  type AgentApprovalResponse,
+  type AgentInputGuardrail,
+  type AgentOutputGuardrail,
+  type AgentRunInput,
+  type AgentRunOutput,
+  type AgentStreamEvent,
+  type LanguageModel
+} from "@zhivex-ai/agents";
+import {
+  createProductionTraceCollector,
+  estimateTokenCost,
+  type AgentMemoryStore,
+  type AgentRunStore,
+  type AgentTraceCollector
+} from "@zhivex-ai/agents/ops";
 import { serializeJsonValue, type ModelMessage } from "@zhivex-ai/core";
 import { z } from "zod";
 
 import {
   createProviderModel,
   resolveHarnessConfig,
+  HARNESS_CONFIG_SCHEMA_VERSION,
   type HarnessConfig,
   type HarnessConfigInput
 } from "./config.js";
@@ -24,68 +46,30 @@ import {
   type EditChange
 } from "./edit-contracts.js";
 import { Workspace } from "./workspace.js";
+import { openHarnessPersistence, type HarnessPersistence } from "./operations.js";
+import { validateStateDirectory } from "./state-directory.js";
 import { HARNESS_VERSION } from "./version.js";
 
-const APPROVAL_VERSION = "2026-08-16-v2";
-const SENSITIVE_STATE_SEGMENTS = new Set([".git", ".env", ".npmrc", "dist", "node_modules", "src"]);
+const APPROVAL_VERSION = "2026-08-16-v3";
+const TOOL_CONTRACT_VERSION = "trusted-editing-v2";
 
-const isInside = (root: string, candidate: string) => {
-  const relative = path.relative(root, candidate);
-  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
-};
-
-const validateStateDirectory = async (workspace: string, stateDirectory: string) => {
-  if (stateDirectory === workspace || stateDirectory === path.parse(stateDirectory).root) {
-    throw new Error("The state directory cannot be the workspace or filesystem root.");
-  }
-
-  const insideWorkspace = isInside(workspace, stateDirectory);
-  const relativeSegments = insideWorkspace
-    ? path.relative(workspace, stateDirectory).split(path.sep).filter(Boolean)
-    : stateDirectory.slice(path.parse(stateDirectory).root.length).split(path.sep).filter(Boolean);
-  const sensitiveSegment = insideWorkspace
-    ? relativeSegments.find((segment) => SENSITIVE_STATE_SEGMENTS.has(segment))
-    : undefined;
-  if (sensitiveSegment) {
-    throw new Error(`The state directory is inside the protected workspace path: ${sensitiveSegment}.`);
-  }
-
-  if (!insideWorkspace) {
-    try {
-      const externalEntry = await lstat(stateDirectory);
-      if (externalEntry.isSymbolicLink()) {
-        throw new Error(`The state directory must not be a symbolic link: ${stateDirectory}.`);
-      }
-      if (!externalEntry.isDirectory()) {
-        throw new Error(`The state directory is not a directory: ${stateDirectory}.`);
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw error;
-      }
-    }
-    return;
-  }
-
-  let current = workspace;
-  for (const segment of relativeSegments) {
-    current = path.join(current, segment);
-    try {
-      const entry = await lstat(current);
-      if (entry.isSymbolicLink()) {
-        throw new Error(`The state directory must not resolve through a symbolic link: ${current}.`);
-      }
-      if (!entry.isDirectory()) {
-        throw new Error(`The state directory path contains a non-directory entry: ${current}.`);
-      }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        break;
-      }
-      throw error;
-    }
-  }
-};
+const createHarnessBinding = (config: HarnessConfig) => ({
+  schemaVersion: 1 as const,
+  id: "zhivex-harness",
+  version: HARNESS_VERSION,
+  fingerprint: `sha256:${createHash("sha256")
+    .update(JSON.stringify({
+      configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
+      approvalVersion: APPROVAL_VERSION,
+      toolContractVersion: TOOL_CONTRACT_VERSION,
+      workspace: config.workspace,
+      provider: config.provider,
+      model: config.model,
+      scope: config.scope
+    }))
+    .digest("hex")}`,
+  algorithm: "sha256" as const
+});
 
 export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable coding agent operating inside one workspace.
 
@@ -106,12 +90,17 @@ export interface CreateHarnessOptions extends HarnessConfigInput {
   env?: NodeJS.ProcessEnv;
   modelInstance?: LanguageModel;
   store?: AgentRunStore;
+  memory?: AgentMemoryStore;
 }
 
 export interface ZhivexHarness {
   config: HarnessConfig;
   workspace: Workspace;
   agent: Agent<LanguageModel>;
+  store: AgentRunStore;
+  traceCollector: AgentTraceCollector;
+  persistence?: HarnessPersistence;
+  close(): void;
 }
 
 export interface HarnessRunOptions {
@@ -143,11 +132,23 @@ const verifyEditPreconditions = async (workspace: Workspace, changes: readonly E
   }
 };
 
+const toolMetadata = (
+  permissions: readonly ("read" | "write" | "filesystem" | "code-execution")[],
+  riskLevel: "low" | "high"
+) => ({
+  advancedRegistry: {
+    permissions: [...permissions],
+    audit: { riskLevel }
+  }
+});
+
+const readOnlyMetadata = toolMetadata(["read"], "low");
+
 const mutationApproval = {
   requiresApproval: true,
   approvalMode: "interrupt" as const,
   approvalVersion: APPROVAL_VERSION,
-  metadata: { permissions: ["filesystem", "write"], risk: "high" }
+  metadata: toolMetadata(["filesystem", "write"], "high")
 };
 
 const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
@@ -159,6 +160,7 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
       limit: z.number().int().min(1).max(500).default(200),
       cursor: z.string().min(1).max(2000).optional()
     }),
+    metadata: readOnlyMetadata,
     execute: async ({ path, limit, cursor }) => serializeJsonValue(await workspace.listFiles(path, {
       limit,
       ...(cursor ? { cursor } : {})
@@ -172,6 +174,7 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
       startLine: z.number().int().min(1).default(1),
       endLine: z.number().int().min(1).optional()
     }),
+    metadata: readOnlyMetadata,
     execute: async ({ path, startLine, endLine }) => serializeJsonValue(await workspace.readFile(path, startLine, endLine))
   }),
   search_files: tool({
@@ -184,6 +187,7 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
       limit: z.number().int().min(1).max(500).default(100),
       cursor: z.string().min(1).max(2000).optional()
     }),
+    metadata: readOnlyMetadata,
     execute: async ({ query, path, caseSensitive, limit, cursor }) =>
       serializeJsonValue(await workspace.searchFiles(query, path, {
         caseSensitive,
@@ -195,6 +199,7 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
     name: "propose_edits",
     description: "Validate a bounded multi-file edit against current SHA-256 digests and return a deterministic proposalId for operator review. This tool does not write files.",
     schema: editProposalInputSchema,
+    metadata: readOnlyMetadata,
     execute: async ({ changes }) => {
       await verifyEditPreconditions(workspace, changes);
       return serializeJsonValue(createEditProposal({ changes }));
@@ -247,7 +252,7 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
     requiresApproval: true,
     approvalMode: "interrupt",
     approvalVersion: APPROVAL_VERSION,
-    metadata: { permissions: ["code-execution"], risk: "high" },
+    metadata: toolMetadata(["code-execution"], "high"),
     execute: async ({ check, expectedScript }) =>
       serializeJsonValue(await workspace.runCheck(check, expectedScript, allowedChecks))
   }),
@@ -255,12 +260,14 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
     name: "mutation_audit",
     description: "Inspect the immutable in-memory audit journal for file mutations made by this harness instance.",
     schema: z.object({}),
+    metadata: readOnlyMetadata,
     execute: async () => serializeJsonValue(editContractDocument("mutation-audit", workspace.mutationAudit()))
   }),
   git_diff: tool({
     name: "git_diff",
     description: "Inspect final Git status, unstaged diff, staged diff, and this harness instance's mutation audit. This tool is read-only and does not commit, stage, reset, or push.",
     schema: z.object({}),
+    metadata: readOnlyMetadata,
     execute: async () => serializeJsonValue(editContractDocument("workspace-diff", {
       ...(await workspace.gitDiff()),
       mutations: workspace.mutationAudit()
@@ -268,31 +275,170 @@ const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly stri
   })
 });
 
+const estimateMessageTokens = (messages: readonly ModelMessage[]) =>
+  Math.max(1, Math.ceil(JSON.stringify(messages).length / 4));
+
+const createHarnessCompactor = () => {
+  const redaction = createRedactionPolicy({ includeEmails: true });
+  return async ({ messages }: { messages: ModelMessage[] }) => {
+    const summaries = messages.map((message, index) => {
+      const record = message as unknown as { role?: string; parts?: Array<Record<string, unknown>> };
+      const parts = (record.parts ?? []).map((part) => {
+        if (part.type === "text" && typeof part.text === "string") {
+          const text = redaction.redactText(part.text).replace(/\s+/g, " ").trim();
+          return text.length > 160 ? `${text.slice(0, 160)}…` : text;
+        }
+        if (part.type === "tool-call") {
+          const call = part.toolCall as { name?: unknown } | undefined;
+          return `tool-call:${typeof call?.name === "string" ? call.name : "unknown"}`;
+        }
+        if (part.type === "tool-result") {
+          const result = part.toolResult as { toolName?: unknown } | undefined;
+          return `tool-result:${typeof result?.toolName === "string" ? result.toolName : "unknown"}`;
+        }
+        return typeof part.type === "string" ? part.type : "part";
+      });
+      return `${index + 1}. ${record.role ?? "message"}: ${parts.join(" | ")}`;
+    });
+    const summary = summaries.join("\n");
+    return {
+      summary: summary.length > 4_000 ? `${summary.slice(0, 4_000)}…` : summary,
+      metadata: {
+        strategy: "deterministic-redacted-transcript",
+        sourceMessages: messages.length
+      }
+    };
+  };
+};
+
+const createCostGuardrails = (config: HarnessConfig) => {
+  if (!config.costBudget) {
+    return {};
+  }
+  const pricing = {
+    inputCostPer1kTokens: config.costBudget.inputCostPer1kTokens,
+    outputCostPer1kTokens: config.costBudget.outputCostPer1kTokens,
+    currency: "USD"
+  };
+  const evaluate = (
+    state: AgentRunOutput["state"],
+    output?: { usage?: AgentRunOutput["usage"] }
+  ) => {
+    const status = getAgentBudgetStatus(state, { includeChildRuns: true }, output);
+    const estimate = estimateTokenCost({
+      inputTokens: status.consumption.inputTokens,
+      outputTokens: status.consumption.outputTokens,
+      totalTokens: status.consumption.totalTokens
+    }, pricing);
+    if ((estimate.totalCost ?? 0) >= config.costBudget!.maxCostUsd) {
+      return {
+        triggered: true as const,
+        reason: `Agent cost budget exhausted: USD ${config.costBudget!.maxCostUsd}.`,
+        metadata: {
+          budgetLimit: "maxCostUsd",
+          limit: config.costBudget!.maxCostUsd,
+          actual: estimate.totalCost ?? 0,
+          currency: "USD"
+        }
+      };
+    }
+    return undefined;
+  };
+  const inputGuardrail: AgentInputGuardrail = ({ state }) => evaluate(state);
+  const outputGuardrail: AgentOutputGuardrail = ({ state, output }) => evaluate(
+    state,
+    { usage: "usage" in output ? output.usage : undefined }
+  );
+  return {
+    inputGuardrails: [inputGuardrail],
+    outputGuardrails: [outputGuardrail]
+  };
+};
+
+const createProviderCompatibleBudget = (config: HarnessConfig) => {
+  if (config.provider !== "qwen") {
+    return config.budget;
+  }
+  const durableBudget = createBudgetGuard(config.budget);
+  const transportBudget = createBudgetGuard({
+    maxSteps: config.budget.maxSteps,
+    maxToolCalls: config.budget.maxToolCalls,
+    maxToolErrors: config.budget.maxToolErrors,
+    includeChildRuns: config.budget.includeChildRuns
+  });
+  return {
+    ...transportBudget,
+    inputGuardrail: durableBudget.inputGuardrail,
+    outputGuardrail: durableBudget.outputGuardrail
+  };
+};
+
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options);
   const workspace = await Workspace.open(config.workspace);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const model = options.modelInstance ?? createProviderModel(config, options.env ?? process.env);
-  const store = options.store ?? createFileAgentRunStore({ directory: config.stateDirectory });
+  const persistence = options.store ? undefined : await openHarnessPersistence(config);
+  const store = options.store ?? persistence!.store;
+  const memory = options.memory ?? persistence?.memory;
+  const traceCollector = createProductionTraceCollector({
+    maxRuns: 100,
+    maxEventsPerRun: 2_000,
+    retentionMs: 24 * 60 * 60_000
+  });
+  const costGuardrails = createCostGuardrails(config);
 
-  const agent = new Agent<LanguageModel>({
+  const baseAgent = {
     id: `zhivex-harness-${config.provider}`,
     model,
     instructions: HARNESS_INSTRUCTIONS,
     maxSteps: config.maxSteps,
     tools: createWorkspaceTools(workspace, config.allowedChecks),
+    harness: createHarnessBinding(config),
+    compaction: {
+      ...config.compaction,
+      estimateTokens: estimateMessageTokens,
+      compactor: createHarnessCompactor()
+    },
     policy: {
-      timeoutMs: 15 * 60_000
+      timeoutMs: config.timeoutMs,
+      allowLegacyHarnessResume: true,
+      maxStateBytes: 4 * 1024 * 1024,
+      leaseMode: "required" as const
     },
     metadata: {
       harnessVersion: HARNESS_VERSION,
       provider: config.provider,
       model: config.model
     },
-    store
-  });
+    store,
+    ...(memory ? { memory } : {}),
+    onTelemetryEvent: traceCollector.observer,
+    hookFailurePolicy: {
+      telemetry: "ignore" as const,
+      memory: "ignore" as const
+    }
+  };
+  const agent = new Agent<LanguageModel>(applySafetyPolicyToAgent(
+    baseAgent,
+    createProductionSafetyPolicy({
+      budget: createProviderCompatibleBudget(config),
+      toolExecution: { parallel: false, stopOnError: true },
+      ...costGuardrails
+    })
+  ));
 
-  return { config, workspace, agent };
+  return {
+    config,
+    workspace,
+    agent,
+    store,
+    traceCollector,
+    ...(persistence ? { persistence } : {}),
+    close() {
+      persistence?.close();
+    }
+  };
 };
 
 export const runHarness = async (
@@ -303,6 +449,19 @@ export const runHarness = async (
   let nextInput = input;
 
   for (let approvalRound = 0; approvalRound < 50; approvalRound += 1) {
+    if ("state" in nextInput && nextInput.state.harness && harness.agent.harness) {
+      const expected = harness.agent.harness;
+      const actual = nextInput.state.harness;
+      if (
+        actual.id !== expected.id ||
+        actual.version !== expected.version ||
+        actual.fingerprint !== expected.fingerprint
+      ) {
+        throw new Error(
+          `Run ${nextInput.state.runId} was created by a different harness fingerprint and cannot be resumed.`
+        );
+      }
+    }
     const streamed = harness.agent.stream(nextInput);
     for await (const event of streamed.eventStream) {
       await options.onEvent?.(event);

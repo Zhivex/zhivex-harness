@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 import type { AgentRunInput } from "@zhivex-ai/agents";
 
 import {
@@ -154,13 +153,17 @@ const certificationPath = (provider: HarnessProvider) => `live-certification/${p
 const certificationContent = (provider: HarnessProvider) => `${provider} live smoke\n`;
 const completionToken = (provider: HarnessProvider) => `ZHIVEX_HARNESS_${provider.toUpperCase()}_LIVE_OK`;
 
+const liveProviderOptions = (provider: HarnessProvider) => provider === "openai"
+  ? { providerOptions: { apiMode: "responses" } }
+  : provider === "qwen"
+    ? { providerOptions: { apiMode: "responses" } }
+    : {};
+
 const providerRunInput = (provider: HarnessProvider, prompt: string): AgentRunInput => ({
   prompt,
   maxSteps: 4,
   toolChoice: "auto" as const,
-  ...(provider === "qwen" || provider === "openai"
-    ? { providerOptions: { apiMode: "responses" } }
-    : {})
+  ...liveProviderOptions(provider)
 });
 
 const expectedApprovalArguments = (provider: HarnessProvider) => {
@@ -184,100 +187,105 @@ Do not invent or calculate proposalId, do not skip propose_edits, and do not cal
 After the approved apply_patch result, reply exactly ${completionToken(provider)}.`;
 };
 
-const createLiveHarness = async (args: PhaseArguments, store = createFileAgentRunStore({
-  directory: args.stateDirectory
-})) => createHarness({
+const createLiveHarness = async (args: PhaseArguments) => createHarness({
   provider: args.provider,
   model: args.model,
   workspace: args.workspace,
   stateDirectory: args.stateDirectory,
   maxSteps: 4,
-  env: process.env,
-  store
+  env: process.env
 });
 
 const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> => {
-  const store = createFileAgentRunStore({ directory: args.stateDirectory });
-  const harness = await createLiveHarness(args, store);
-  const expected = expectedApprovalArguments(args.provider);
-  const result = await runHarness(harness, providerRunInput(
-    args.provider,
-    certificationPrompt(args.provider)
-  ));
+  const harness = await createLiveHarness(args);
+  try {
+    const expected = expectedApprovalArguments(args.provider);
+    const result = await runHarness(harness, {
+      ...providerRunInput(args.provider, certificationPrompt(args.provider)),
+      scope: harness.config.scope,
+      idempotencyKey: `live-certification-${args.provider}`
+    });
 
-  assert.equal(
-    result.status,
-    "waiting_approval",
-    `Expected approval wait, got ${result.status}; output=${JSON.stringify(result.outputText)}; ` +
-      `finish=${JSON.stringify(result.finishReason)}; providerFinish=${JSON.stringify(result.providerFinishReason)}; ` +
-      `steps=${result.steps.length}; ` +
-      `tools=${JSON.stringify(result.toolResults.map((toolResult) => ({
-        name: toolResult.toolName,
-        isError: toolResult.isError,
-        error: toolResult.error?.message
-      })))}; error=${JSON.stringify(result.error?.message)}`
-  );
-  const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
-  assert.ok(approval, "The provider did not request the apply_patch approval.");
-  assert.equal(approval.kind, "local-tool");
-  assert.deepEqual(JSON.parse(approval.arguments), expected);
-  assert.equal(result.state.pendingApprovals.length, 1);
-  await assert.rejects(readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"));
+    assert.equal(
+      result.status,
+      "waiting_approval",
+      `Expected approval wait, got ${result.status}; output=${JSON.stringify(result.outputText)}; ` +
+        `finish=${JSON.stringify(result.finishReason)}; providerFinish=${JSON.stringify(result.providerFinishReason)}; ` +
+        `steps=${result.steps.length}; ` +
+        `tools=${JSON.stringify(result.toolResults.map((toolResult) => ({
+          name: toolResult.toolName,
+          isError: toolResult.isError,
+          error: toolResult.error?.message
+        })))}; error=${JSON.stringify(result.error?.message)}`
+    );
+    const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
+    assert.ok(approval, "The provider did not request the apply_patch approval.");
+    assert.equal(approval.kind, "local-tool");
+    assert.deepEqual(JSON.parse(approval.arguments), expected);
+    assert.equal(result.state.pendingApprovals.length, 1);
+    await assert.rejects(readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"));
 
-  const persisted = await store.load(result.state.runId);
-  assert.equal(persisted?.status, "waiting_approval");
-  assert.equal(persisted?.pendingApprovals[0]?.id, approval.id);
-  return {
-    phase: "request",
-    provider: args.provider,
-    model: args.model,
-    runId: result.state.runId,
-    approvalId: approval.id
-  };
+    const persisted = await harness.store.load(result.state.runId, harness.config.scope);
+    assert.equal(persisted?.status, "waiting_approval");
+    assert.equal(persisted?.pendingApprovals[0]?.id, approval.id);
+    return {
+      phase: "request",
+      provider: args.provider,
+      model: args.model,
+      runId: result.state.runId,
+      approvalId: approval.id
+    };
+  } finally {
+    harness.close();
+  }
 };
 
 const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => {
   assert.ok(args.runId);
-  const store = createFileAgentRunStore({ directory: args.stateDirectory });
-  const state = await store.load(args.runId);
-  assert.equal(state?.status, "waiting_approval");
-  const approval = state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
-  assert.ok(approval, "The persisted run has no apply_patch approval.");
-  assert.deepEqual(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
+  const harness = await createLiveHarness(args);
+  try {
+    const state = await harness.store.load(args.runId, harness.config.scope);
+    assert.equal(state?.status, "waiting_approval");
+    const approval = state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
+    assert.ok(approval, "The persisted run has no apply_patch approval.");
+    assert.deepEqual(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
 
-  const harness = await createLiveHarness(args, store);
-  const result = await runHarness(harness, {
-    state,
-    approvals: [{
-      provider: approval.provider,
-      approvalRequestId: approval.id,
-      approve: true,
-      reason: "Opt-in live provider certification."
-    }]
-  });
+    const result = await runHarness(harness, {
+      state,
+      ...liveProviderOptions(args.provider),
+      approvals: [{
+        provider: approval.provider,
+        approvalRequestId: approval.id,
+        approve: true,
+        reason: "Opt-in live provider certification."
+      }]
+    });
 
-  assert.equal(result.status, "completed", result.outputText || result.error?.message);
-  assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
-  const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
-  assert.equal(writeResults.length, 1);
-  assert.equal(writeResults[0]?.isError, false);
-  assert.equal(
-    await readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"),
-    certificationContent(args.provider)
-  );
+    assert.equal(result.status, "completed", result.outputText || result.error?.message);
+    assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
+    const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
+    assert.equal(writeResults.length, 1);
+    assert.equal(writeResults[0]?.isError, false);
+    assert.equal(
+      await readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"),
+      certificationContent(args.provider)
+    );
 
-  const journal = await store.listToolCalls?.(args.runId);
-  const writeEntries = journal?.filter((entry) => entry.toolName === "apply_patch") ?? [];
-  assert.equal(writeEntries.length, 1);
-  assert.equal(writeEntries[0]?.status, "completed");
-  return {
-    phase: "resume",
-    provider: args.provider,
-    model: args.model,
-    runId: args.runId,
-    toolExecutions: writeResults.length,
-    journalEntries: writeEntries.length
-  };
+    const journal = await harness.store.listToolCalls?.(args.runId, harness.config.scope);
+    const writeEntries = journal?.filter((entry) => entry.toolName === "apply_patch") ?? [];
+    assert.equal(writeEntries.length, 1);
+    assert.equal(writeEntries[0]?.status, "completed");
+    return {
+      phase: "resume",
+      provider: args.provider,
+      model: args.model,
+      runId: args.runId,
+      toolExecutions: writeResults.length,
+      journalEntries: writeEntries.length
+    };
+  } finally {
+    harness.close();
+  }
 };
 
 const executePhase = async (args: PhaseArguments): Promise<PhaseOutput> =>

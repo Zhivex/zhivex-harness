@@ -8,7 +8,7 @@ For each selected provider, the smoke:
 
 1. starts a fresh process and asks the real model to create one exact digest-bound proposal and apply that returned proposal;
 2. verifies that interrupt approval persists while the target file is still absent;
-3. exits that process and starts a second process against the same file-backed run store;
+3. exits that process and starts a second process against the same scoped SQLite run store;
 4. approves and resumes the saved run;
 5. verifies the completion token, one successful patch result, one completed tool-journal entry, and the exact file contents.
 
@@ -16,7 +16,7 @@ The temporary workspace and state store are removed after each provider. Credent
 
 Success and failure evidence is emitted as JSON. A success record identifies the provider and model and records the approval, restart, tool-execution, and journal checks; it never contains a credential value. The complete default matrix continues after an individual provider failure, reports every provider result, and exits non-zero when any entry fails.
 
-Meta supports only automatic tool choice, and Qwen 3.8 thinking cannot use named or required tool choice. The complete matrix therefore uses automatic selection and an exact two-tool prompt: `propose_edits` must run first, and its returned `proposalId` must then be passed unchanged to `apply_patch`. Qwen and OpenAI run through Responses; Meta intentionally runs through Chat streaming to cover the fragmented tool-call assembler fixed in `@zhivex-ai/meta@0.2.1`.
+Meta supports only automatic tool choice, and Qwen 3.8 thinking cannot use named or required tool choice. The complete matrix therefore uses automatic selection and an exact two-tool prompt: `propose_edits` must run first, and its returned `proposalId` must then be passed unchanged to `apply_patch`. Qwen and OpenAI run through Responses. Qwen Responses cannot accept `maxTokens`, so the harness enforces Qwen token budgets before and after each provider step without transporting that ceiling upstream; one step can cross the measured limit before the output guard observes it. Meta intentionally runs through Chat streaming to cover the fragmented tool-call assembler fixed in `@zhivex-ai/meta@0.2.1`.
 
 ## Run it
 
@@ -44,7 +44,19 @@ Endpoint, Qwen workspace, and Qwen region overrides use the normal `META_BASE_UR
 
 Certification evidence is date-bound and account-bound. A local deterministic pass, installed-package pass, or one provider's live pass does not certify the other providers.
 
-Because `0.3.0` replaces the legacy write tools with digest-bound proposals and patches, `0.2.0` live evidence does not certify the new mutation schema. The supported providers must pass the updated `apply_patch` approval/restart gate before the private milestone is considered complete.
+Because `0.4.0` adds the production safety policy, harness binding, scoped SQLite persistence, required leases, budgets, and exactly-once journal recovery, `0.3.0` live evidence does not certify the new runtime path. The supported providers must pass the refreshed `apply_patch` approval/restart gate before the private milestone is considered complete.
+
+## 0.4.0 private-milestone evidence
+
+Evidence collected on 2026-08-17 with the default models and locally configured account. The complete matrix passed together at `2026-08-17T00:53:17.752Z` against the final scoped SQLite, fingerprint, and production-policy candidate.
+
+| Provider | Model | Result | Evidence |
+| --- | --- | --- | --- |
+| Meta | `muse-spark-1.2` | Certified | Approval persisted in scoped SQLite, the process restarted, and exactly one patch execution and completed journal entry were observed. |
+| Qwen | `qwen3.8-max` | Certified | Responses completed the proposal-first workflow with durable token enforcement, process restart, and exactly-once patch journaling. |
+| OpenAI | `gpt-5.4` | Certified | Responses completed the proposal-first workflow with an upstream-compatible output ceiling, process restart, and exactly-once patch journaling. |
+
+This evidence certifies provider interaction for the private `0.4.0` candidate only. It does not prove registry publication, provenance, or availability of a public artifact.
 
 ## 0.3.0 private-milestone evidence
 

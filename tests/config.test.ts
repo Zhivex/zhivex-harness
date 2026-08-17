@@ -12,7 +12,11 @@ describe("provider configuration", () => {
   test("resolves stable defaults for every provider", () => {
     expect(resolveHarnessConfig({ provider: "meta", workspace: "." })).toMatchObject({
       schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
-      model: "muse-spark-1.2"
+      model: "muse-spark-1.2",
+      storeBackend: "sqlite",
+      scope: { tenantId: "local" },
+      budget: { maxToolCalls: 32, maxTotalTokens: 120_000 },
+      compaction: { maxMessages: 60, keepRecentMessages: 12 }
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.4");
@@ -28,11 +32,46 @@ describe("provider configuration", () => {
     expect(() => parseProvider("deepseek")).toThrow("Unknown provider");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
-    expect(() => resolveHarnessConfig({ schemaVersion: 2 })).toThrow("Unsupported config schema");
+    expect(() => resolveHarnessConfig({ schemaVersion: 3 })).toThrow("Unsupported config schema");
+    expect(() => resolveHarnessConfig({ storeBackend: "postgres" })).toThrow("storeBackend");
+    expect(() => resolveHarnessConfig({ maxToolErrors: -1 })).toThrow("maxToolErrors");
+    expect(() => resolveHarnessConfig({ maxInputTokens: 10_000, maxTotalTokens: 5_000 })).toThrow("maxTotalTokens");
+    expect(() => resolveHarnessConfig({ maxCostUsd: 1 })).toThrow("requires");
+    expect(() => resolveHarnessConfig({ inputCostPerMillion: 10 })).toThrow("requires maxCostUsd");
     expect(() => resolveHarnessConfig({ allowedChecks: ["test", "../../escape"] })).toThrow("Invalid allowed check");
     expect(() => resolveHarnessConfig({
       allowedChecks: Array.from({ length: 51 }, (_, index) => `check-${index}`)
     })).toThrow("more than 50");
+  });
+
+  test("resolves explicit scope, budgets, compaction, and cost pricing", () => {
+    const config = resolveHarnessConfig({
+      workspace: "/tmp/example",
+      tenantId: "tenant-a",
+      userId: "user-7",
+      namespace: "project-x",
+      maxToolCalls: 8,
+      timeoutMs: 60_000,
+      compactionMaxMessages: 20,
+      compactionKeepRecentMessages: 6,
+      maxCostUsd: 2.5,
+      inputCostPerMillion: 10,
+      outputCostPerMillion: 30
+    });
+    expect(config).toMatchObject({
+      scope: { tenantId: "tenant-a", userId: "user-7", namespace: "project-x" },
+      timeoutMs: 60_000,
+      budget: { maxToolCalls: 8 },
+      compaction: { maxMessages: 20, keepRecentMessages: 6 },
+      costBudget: {
+        maxCostUsd: 2.5,
+        inputCostPer1kTokens: 0.01,
+        outputCostPer1kTokens: 0.03
+      }
+    });
+    const blankScope = resolveHarnessConfig({ workspace: ".", tenantId: " ", namespace: " " });
+    expect(blankScope.scope.tenantId).toBe("local");
+    expect(blankScope.scope.namespace).toMatch(/^workspace-[a-f0-9]{16}$/);
   });
 
   test("supports an explicit, deduplicated check allowlist", () => {

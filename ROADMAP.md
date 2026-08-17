@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-16
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally and the private `0.3.0` trusted-editing milestone is active. Registry publication remains a separate external operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` is a private trusted-editing checkpoint, and `0.4.0` is the validated private durable-operations candidate. Registry publication remains a separate external operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -14,9 +14,9 @@ This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library 
 - Treat local, installed-package, live-provider, and published-artifact evidence as separate gates.
 - Keep the CLI Bun-first. JavaScript and TypeScript project checks continue to run through Bun.
 
-## Current baseline: 0.2.0 release candidate
+## Historical baseline: 0.2.0
 
-The release candidate provides:
+The tagged source baseline provides:
 
 - one-shot and interactive execution;
 - Meta, Qwen, and OpenAI model adapters;
@@ -35,8 +35,8 @@ The release candidate keeps `@zhivex-ai/core@1.5.0`. Although `1.6.0` is publish
 | Version | Theme | Primary outcome | Status | Relative size |
 | --- | --- | --- | --- | --- |
 | `0.2.0` | Releasable foundation | A versioned, installable, diagnosable CLI | Local release baseline | M |
-| `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private milestone in progress | M |
-| `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Planned | L |
+| `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private checkpoint | M |
+| `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Validated private candidate | L |
 | `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Planned | L |
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Planned | XL |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
@@ -70,7 +70,7 @@ Exit criteria:
 
 Goal: let the agent make realistic multi-file changes while every mutation remains bounded, reviewable, conflict-safe, and recoverable.
 
-Status: active private milestone. It is not configured for registry publication. Contract and migration details live in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
+Status: validated private candidate. It is not configured for registry publication. Contract and migration details live in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
 
 Scope:
 
@@ -98,9 +98,18 @@ Required release evidence:
 - migration and safety boundaries are documented without claiming host isolation or permanent deletion;
 - `0.3.0` remains private until an explicit publication decision is made.
 
+Validation snapshot (2026-08-16):
+
+- the trusted-editing implementation is merged into `main`;
+- deterministic, installed-package, and package-inspection CI gates pass on Linux and macOS;
+- the date-bound Meta, Qwen, and OpenAI proposal/approval/restart matrix is recorded in [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md);
+- publication, registry integrity, and provenance have not been attempted or claimed.
+
 ## 0.4.0 — Durable operations and evaluation
 
 Goal: make runs supportable over time instead of only executable from one terminal.
+
+Status: validated private candidate. Operations and migration details live in [docs/DURABLE_OPERATIONS.md](./docs/DURABLE_OPERATIONS.md).
 
 Scope:
 
@@ -119,6 +128,13 @@ Exit criteria:
 - State migration from `0.3.x` is tested and documented.
 - Golden fixtures are deterministic and the regression gate runs in CI.
 - Exported operational artifacts are redacted by default and schema-versioned.
+
+Validation snapshot (2026-08-17):
+
+- deterministic tests, the five-case golden evaluation gate, typecheck, docs, build, and installed-tarball smoke pass;
+- migration, idempotency, concurrent ownership, expired-lease recovery, cancellation, retention, Qwen token enforcement, and export redaction have regression coverage;
+- Meta, Qwen, and OpenAI passed the scoped-SQLite approval/restart/exactly-once live matrix;
+- registry publication, provenance, tag creation, commit, and push have not been attempted or claimed.
 
 ## 0.5.0 — Extensibility and orchestration
 
@@ -207,8 +223,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Complete the `0.3.0` Workspace and tool contracts with digest-bound conflict checks and non-overridable protected paths.
-2. Pass the real-repository fixture matrix, focused workspace/security tests, typecheck, documentation gate, build, and installed-package smoke.
-3. Record the supported-platform evidence and any filesystem-specific atomicity limitation.
-4. Keep `0.3.0` private and separate from the tagged `0.2.0` baseline until its exit criteria are green.
-5. Revisit registry visibility, scope rights, and provenance only as an explicit release operation; do not infer publication from local tests or tags.
+1. Dogfood durable operations on representative repositories and record any contract-breaking finding before release.
+2. Decide explicitly whether `0.4.0` remains an internal checkpoint or becomes the first public `@zhivex-ai/harness` package.
+3. If publication is approved, verify repository visibility, `@zhivex-ai` scope rights, trusted publishing, provenance, and rollback boundaries before changing the private manifest.
+4. Rerun deterministic, installed-package, package-inspection, and live-provider gates against the exact clean release commit before tagging.
+5. After any publication, verify registry version, installed artifact, integrity, provenance, and tag-to-commit agreement before announcing availability.

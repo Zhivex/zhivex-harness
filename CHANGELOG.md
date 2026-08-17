@@ -4,7 +4,37 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## 0.3.0 - Unreleased
+## 0.4.0 - Unreleased
+
+### Added
+
+- Scoped SQLite run and memory persistence as the default local operations store, including leases, compare-and-swap revisions, idempotency claims, and an exactly-once tool journal.
+- `runs list`, `runs inspect`, `runs export`, `runs cancel`, and `runs cleanup` operator commands with schema-versioned JSON output.
+- Step, wall-clock, tool-call, tool-error, input-token, output-token, total-token, and optional user-priced cost budgets.
+- Deterministic bounded context compaction, production trace collection, redacted snapshots, traces, ledgers, and tool-journal inspection.
+- A five-scenario golden evaluation gate covering analysis, edits and checks, denied approval, restart recovery, and provider portability.
+
+### Changed
+
+- Resolved configuration uses schema version `2`, includes an explicit durable scope, and defaults to the `sqlite` backend.
+- Tool permissions, production safety policy, redaction, budget termination, durable memory, and harness/approval fingerprints are bound into every run.
+- The installed-package smoke now proves SQLite restart recovery, exactly-once mutation journaling, redacted inspection, and the packaged golden baseline.
+
+### Migration
+
+- On first default local/workspace-scope open, legacy `0.3.x` file-backed runs are copied into the scoped backend and marked with `metadata.migratedFrom: "0.3-file-store"`; source files are retained for rollback. Custom scopes require intentional library migration.
+- Use `--store file` or `ZHIVEX_HARNESS_STORE=file` only as a temporary compatibility path. New runs default to `<state-dir>/operations.sqlite`.
+- Scope is part of durable identity. Use the same `--tenant`, `--user`, and `--namespace` values when listing, inspecting, exporting, cancelling, cleaning, or resuming a run.
+- Resume rejects a mismatched workspace, provider/model, tool contract, approval policy, or harness fingerprint. Legacy paused runs receive the current binding only through the explicit resume path.
+- Cost enforcement is enabled only when `--max-cost-usd` and input and/or output pricing are supplied; pricing is operator-provided and measured usage may cross the ceiling by one provider step.
+
+### Security
+
+- Operational exports omit raw messages, tool inputs/outputs, approval arguments, metadata, and full output text, and apply secret/email redaction.
+- SQLite files are required to be regular non-symlink files and are created with owner-only permissions inside an owner-only state directory.
+- Cleanup defaults to terminal states and requires an explicit cutoff; cancellation defaults to a cooperative request unless `--final` is supplied.
+
+## 0.3.0 - 2026-08-16 (private checkpoint)
 
 ### Added
 
@@ -22,6 +52,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Repository-editing tools require reviewed content digests and emit before/after evidence.
 - Upgraded `@zhivex-ai/meta` to `0.2.1`; Meta Chat streaming now preserves fragmented tool arguments and passed four consecutive proposal/approval/restart live gates.
 - Live certification now exercises the contractual `propose_edits` then `apply_patch` sequence for every provider.
+- The manual live-certification workflow defaults to the complete certified Meta, Qwen, and OpenAI matrix, with a documentation gate that rejects support-matrix drift.
 
 ### Migration
 

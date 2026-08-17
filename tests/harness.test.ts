@@ -175,4 +175,189 @@ describe("Zhivex harness", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test("rejects a durable resume in a different canonical workspace", async () => {
+    const firstRoot = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-binding-a-"));
+    const secondRoot = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-binding-b-"));
+    try {
+      const changes = [{ path: "bound.txt", expectedDigest: null, content: "bound\n" }];
+      const proposal = createEditProposal({ changes });
+      const store = createInMemoryAgentRunStore();
+      const first = await createHarness({
+        provider: "openai",
+        workspace: firstRoot,
+        store,
+        modelInstance: createMockLanguageModel({
+          provider: "mock-provider",
+          modelId: "mock-model",
+          streamEvents: [[
+            {
+              type: "tool-call",
+              toolCall: {
+                id: "bound-apply",
+                name: "apply_patch",
+                input: { proposalId: proposal.proposalId, changes }
+              }
+            },
+            { type: "finish", finishReason: "tool-calls" }
+          ]]
+        })
+      });
+      const waiting = await runHarness(first, { prompt: "Create a bound file" });
+      expect(waiting.status).toBe("waiting_approval");
+
+      const second = await createHarness({
+        provider: "openai",
+        workspace: secondRoot,
+        store,
+        modelInstance: createMockLanguageModel({ provider: "mock-provider", modelId: "mock-model" })
+      });
+      let resumeError: unknown;
+      try {
+        await runHarness(second, {
+          state: waiting.state,
+          approvals: waiting.state.pendingApprovals.map((approval) => ({
+            provider: approval.provider,
+            approvalRequestId: approval.id,
+            approve: true
+          }))
+        });
+      } catch (error) {
+        resumeError = error;
+      }
+      expect(resumeError).toBeInstanceOf(Error);
+      expect((resumeError as Error).message).toMatch(/harness|fingerprint|binding/i);
+      await expect(readFile(path.join(secondRoot, "bound.txt"), "utf8")).rejects.toThrow();
+    } finally {
+      await rm(firstRoot, { recursive: true, force: true });
+      await rm(secondRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("records deterministic context compaction before the next model request", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-compaction-"));
+    try {
+      const model = createMockLanguageModel({
+        provider: "mock-provider",
+        modelId: "mock-model",
+        streamEvents: [
+          [
+            { type: "tool-call", toolCall: { id: "list-1", name: "list_files", input: { path: ".", limit: 10 } } },
+            { type: "finish", finishReason: "tool-calls" }
+          ],
+          [
+            { type: "tool-call", toolCall: { id: "list-2", name: "list_files", input: { path: ".", limit: 10 } } },
+            { type: "finish", finishReason: "tool-calls" }
+          ],
+          [
+            { type: "text-delta", textDelta: "compacted" },
+            { type: "finish", finishReason: "stop" }
+          ]
+        ]
+      });
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: model,
+        store: createInMemoryAgentRunStore(),
+        compactionMaxMessages: 4,
+        compactionKeepRecentMessages: 2,
+        compactionMaxEstimatedInputTokens: 1_000
+      });
+      const result = await runHarness(harness, { prompt: "Inspect twice" });
+      expect(result.status).toBe("completed");
+      expect(result.state.compactions).toHaveLength(1);
+      expect(result.state.compactions?.[0]).toMatchObject({
+        reasons: expect.arrayContaining(["message-count"]),
+        metadata: { strategy: "deterministic-redacted-transcript" }
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("fails closed before a tool call exceeds its durable budget", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-budget-"));
+    try {
+      const store = createInMemoryAgentRunStore();
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: createMockLanguageModel({
+          streamEvents: [[
+            { type: "tool-call", toolCall: { id: "list-budget", name: "list_files", input: { path: ".", limit: 10 } } },
+            { type: "finish", finishReason: "tool-calls" }
+          ]]
+        }),
+        store,
+        maxToolCalls: 0
+      });
+      await expect(runHarness(harness, { runId: "budget-run", prompt: "Inspect" })).rejects.toThrow("maxToolCalls");
+      expect((await store.load("budget-run"))?.toolResults).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("enforces Qwen token budgets without transporting an incompatible maxTokens option", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-qwen-budget-"));
+    try {
+      const harness = await createHarness({
+        provider: "qwen",
+        workspace: root,
+        modelInstance: createMockLanguageModel({
+          provider: "qwen",
+          modelId: "qwen3.8-max",
+          streamEvents: [[
+            { type: "text-delta", textDelta: "over budget" },
+            {
+              type: "finish",
+              finishReason: "stop",
+              usage: { inputTokens: 1, outputTokens: 3, totalTokens: 4 }
+            }
+          ]]
+        }),
+        store: createInMemoryAgentRunStore(),
+        maxInputTokens: 10,
+        maxOutputTokens: 2,
+        maxTotalTokens: 12
+      });
+      expect(harness.agent.policy?.budget).not.toHaveProperty("maxOutputTokens");
+      expect(harness.agent.policy?.budget).not.toHaveProperty("maxTotalTokens");
+      expect(harness.agent.policy?.budget).toMatchObject({ maxToolCalls: 32, maxToolErrors: 4 });
+      const result = await runHarness(harness, { prompt: "Respect the budget" });
+      expect(result.status).toBe("failed");
+      expect(result.error?.message).toContain("maxOutputTokens");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("applies the optional cost ceiling to usage from the current provider step", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-cost-budget-"));
+    try {
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: createMockLanguageModel({
+          streamEvents: [[
+            { type: "text-delta", textDelta: "costly" },
+            {
+              type: "finish",
+              finishReason: "stop",
+              usage: { inputTokens: 2, outputTokens: 0, totalTokens: 2 }
+            }
+          ]]
+        }),
+        store: createInMemoryAgentRunStore(),
+        maxCostUsd: 0.001,
+        inputCostPerMillion: 1_000
+      });
+      const result = await runHarness(harness, { prompt: "Respect the cost ceiling" });
+      expect(result.status).toBe("failed");
+      expect(result.error?.message).toContain("cost budget exhausted");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

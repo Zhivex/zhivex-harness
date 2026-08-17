@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "analysis-only",
+      "status": "completed",
+      "toolCalls": []
+    },
+    {
+      "name": "edit-and-test",
+      "status": "completed",
+      "toolCalls": ["propose_edits", "apply_patch", "run_check"]
+    },
+    {
+      "name": "denied-approval",
+      "status": "failed",
+      "toolCalls": ["propose_edits", "apply_patch"]
+    },
+    {
+      "name": "failure-recovery",
+      "status": "completed",
+      "toolCalls": ["propose_edits", "apply_patch"]
+    },
+    {
+      "name": "provider-switch",
+      "status": "completed",
+      "toolCalls": []
+    }
+  ]
+}

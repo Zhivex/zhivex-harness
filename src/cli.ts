@@ -5,11 +5,35 @@ import { constants as fsConstants } from "node:fs";
 import { access, lstat, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import type { AgentApprovalRequest, AgentApprovalResponse, AgentRunOutput, AgentStreamEvent } from "@zhivex-ai/agents";
-import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
+import {
+  getAgentBudgetStatus,
+  type AgentApprovalRequest,
+  type AgentApprovalResponse,
+  type AgentRunOutput,
+  type AgentStatus,
+  type AgentStreamEvent
+} from "@zhivex-ai/agents";
 
 import { parseProvider, providerAvailability, resolveHarnessConfig, type HarnessProvider } from "./config.js";
-import { appendUserMessage, createHarness, runHarness, type HarnessRunOptions, type ZhivexHarness } from "./harness.js";
+import {
+  appendUserMessage,
+  createHarness,
+  runHarness,
+  type HarnessRunOptions,
+  type ZhivexHarness
+} from "./harness.js";
+import {
+  estimateAgentRunCost,
+  type TokenPricing
+} from "@zhivex-ai/agents/ops";
+import {
+  cancelHarnessRun,
+  cleanupHarnessRuns,
+  inspectHarnessRun,
+  listHarnessRuns,
+  openHarnessPersistence
+} from "./operations.js";
+import { validateStateDirectory } from "./state-directory.js";
 import { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
 
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
@@ -21,7 +45,8 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-type Command = "run" | "chat" | "providers" | "doctor" | "resume" | "help" | "version";
+type Command = "run" | "chat" | "providers" | "doctor" | "resume" | "runs" | "help" | "version";
+type RunsCommand = "list" | "inspect" | "cancel" | "cleanup" | "export";
 
 export interface CliOptions {
   command: Command;
@@ -29,16 +54,50 @@ export interface CliOptions {
   model?: string;
   workspace?: string;
   stateDirectory?: string;
+  storeBackend?: string;
+  tenantId?: string;
+  userId?: string;
+  namespace?: string;
   maxSteps?: number;
+  timeoutMs?: number;
+  maxToolCalls?: number;
+  maxToolErrors?: number;
+  maxInputTokens?: number;
+  maxOutputTokens?: number;
+  maxTotalTokens?: number;
+  maxCostUsd?: number;
+  inputCostPerMillion?: number;
+  outputCostPerMillion?: number;
   allowedChecks?: string[];
   prompt?: string;
   runId?: string;
+  idempotencyKey?: string;
+  runsCommand?: RunsCommand;
+  statuses?: AgentStatus[];
+  limit?: number;
+  cursor?: string;
+  before?: number;
+  reason?: string;
+  cascade: boolean;
+  final: boolean;
   yes: boolean;
   approve?: boolean;
   json: boolean;
 }
 
-const COMMANDS = new Set<Command>(["run", "chat", "providers", "doctor", "resume", "help", "version"]);
+const COMMANDS = new Set<Command>(["run", "chat", "providers", "doctor", "resume", "runs", "help", "version"]);
+const RUNS_COMMANDS = new Set<RunsCommand>(["list", "inspect", "cancel", "cleanup", "export"]);
+const RUN_STATUSES = new Set<AgentStatus>([
+  "queued",
+  "running",
+  "completed",
+  "suspended",
+  "waiting_approval",
+  "cancel_requested",
+  "failed",
+  "cancelled",
+  "timed_out"
+]);
 
 export class CliUsageError extends Error {
   constructor(message: string) {
@@ -59,7 +118,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   let command: Command = "run";
   let commandWasExplicit = false;
   const positional: string[] = [];
-  const options: CliOptions = { command, yes: false, json: false };
+  const options: CliOptions = { command, cascade: false, final: false, yes: false, json: false };
   let positionalOnly = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -103,12 +162,67 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.stateDirectory = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--store":
+        options.storeBackend = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--tenant":
+        options.tenantId = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--user":
+        options.userId = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--namespace":
+        options.namespace = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--idempotency-key":
+        options.idempotencyKey = optionValue(argv, index, argument);
+        if (options.idempotencyKey.length > 256) {
+          throw new CliUsageError("--idempotency-key cannot exceed 256 characters.");
+        }
+        index += 1;
+        break;
       case "--max-steps": {
         const value = optionValue(argv, index, argument);
         options.maxSteps = Number(value);
         if (!Number.isSafeInteger(options.maxSteps) || options.maxSteps < 1 || options.maxSteps > 50) {
           throw new CliUsageError("--max-steps must be an integer between 1 and 50.");
         }
+        index += 1;
+        break;
+      }
+      case "--timeout-ms":
+      case "--max-tool-calls":
+      case "--max-tool-errors":
+      case "--max-input-tokens":
+      case "--max-output-tokens":
+      case "--max-total-tokens": {
+        const value = Number(optionValue(argv, index, argument));
+        if (!Number.isSafeInteger(value) || value < 0) {
+          throw new CliUsageError(`${argument} must be a non-negative integer.`);
+        }
+        if (argument === "--timeout-ms") options.timeoutMs = value;
+        if (argument === "--max-tool-calls") options.maxToolCalls = value;
+        if (argument === "--max-tool-errors") options.maxToolErrors = value;
+        if (argument === "--max-input-tokens") options.maxInputTokens = value;
+        if (argument === "--max-output-tokens") options.maxOutputTokens = value;
+        if (argument === "--max-total-tokens") options.maxTotalTokens = value;
+        index += 1;
+        break;
+      }
+      case "--max-cost-usd":
+      case "--input-cost-per-million":
+      case "--output-cost-per-million": {
+        const value = Number(optionValue(argv, index, argument));
+        if (!Number.isFinite(value) || value < 0) {
+          throw new CliUsageError(`${argument} must be a non-negative number.`);
+        }
+        if (argument === "--max-cost-usd") options.maxCostUsd = value;
+        if (argument === "--input-cost-per-million") options.inputCostPerMillion = value;
+        if (argument === "--output-cost-per-million") options.outputCostPerMillion = value;
         index += 1;
         break;
       }
@@ -145,6 +259,52 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--json":
         options.json = true;
         break;
+      case "--status": {
+        const value = optionValue(argv, index, argument) as AgentStatus;
+        if (!RUN_STATUSES.has(value)) {
+          throw new CliUsageError(`Unsupported run status: ${value}.`);
+        }
+        options.statuses ??= [];
+        options.statuses.push(value);
+        index += 1;
+        break;
+      }
+      case "--limit": {
+        const value = Number(optionValue(argv, index, argument));
+        if (!Number.isSafeInteger(value) || value < 1 || value > 1_000) {
+          throw new CliUsageError("--limit must be an integer between 1 and 1000.");
+        }
+        options.limit = value;
+        index += 1;
+        break;
+      }
+      case "--cursor":
+        options.cursor = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--before": {
+        const value = optionValue(argv, index, argument);
+        const timestamp = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
+        if (!Number.isFinite(timestamp) || timestamp < 0) {
+          throw new CliUsageError("--before must be an ISO-8601 date or millisecond timestamp.");
+        }
+        options.before = timestamp;
+        index += 1;
+        break;
+      }
+      case "--reason":
+        options.reason = optionValue(argv, index, argument);
+        if (options.reason.length > 500) {
+          throw new CliUsageError("--reason cannot exceed 500 characters.");
+        }
+        index += 1;
+        break;
+      case "--cascade":
+        options.cascade = true;
+        break;
+      case "--final":
+        options.final = true;
+        break;
       case "--help":
       case "-h":
         options.command = "help";
@@ -169,6 +329,25 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError("resume accepts exactly one runId.");
     }
+  } else if (options.command === "runs") {
+    const runsCommand = positional.shift() as RunsCommand | undefined;
+    if (!runsCommand || !RUNS_COMMANDS.has(runsCommand)) {
+      throw new CliUsageError("runs requires one of: list, inspect, cancel, cleanup, export.");
+    }
+    options.runsCommand = runsCommand;
+    if (runsCommand === "inspect" || runsCommand === "cancel" || runsCommand === "export") {
+      const runId = positional.shift();
+      if (!runId) {
+        throw new CliUsageError(`runs ${runsCommand} requires a runId.`);
+      }
+      options.runId = runId;
+    }
+    if (runsCommand === "cleanup" && options.before === undefined) {
+      throw new CliUsageError("runs cleanup requires --before.");
+    }
+    if (positional.length > 0) {
+      throw new CliUsageError(`runs ${runsCommand} received unexpected positional arguments.`);
+    }
   } else if (options.command === "run") {
     const prompt = positional.join(" ").trim();
     if (prompt) {
@@ -189,13 +368,32 @@ Usage:
   zhivex-harness providers [--json]
   zhivex-harness doctor [options] [--json]
   zhivex-harness resume [options] <runId> --approve|--deny
+  zhivex-harness runs list [--status <status>] [--limit <n>] [--json]
+  zhivex-harness runs inspect <runId> [--json]
+  zhivex-harness runs cancel <runId> [--reason <text>] [--cascade] [--final]
+  zhivex-harness runs cleanup --before <date|timestamp> [--status <status>]
+  zhivex-harness runs export <runId> [--json]
 
 Options:
   --provider <meta|qwen|openai>  Provider (default: openai)
   --model <id>                   Override the default model
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
+  --store <sqlite|file>          Durable backend (default: sqlite)
+  --tenant <id>                  Durable tenant scope (default: local)
+  --user <id>                    Optional durable user scope
+  --namespace <id>               Optional scope namespace (default: workspace digest)
+  --idempotency-key <key>        Reuse the same durable run for duplicate requests
   --max-steps <1-50>             Maximum agent steps (default: 12)
+  --max-tool-calls <n>           Maximum tool calls (default: 32)
+  --max-tool-errors <n>          Maximum failed tool calls (default: 4)
+  --max-input-tokens <n>         Maximum measured input tokens (default: 100000)
+  --max-output-tokens <n>        Maximum measured output tokens (default: 30000)
+  --max-total-tokens <n>         Maximum total tokens (default: 120000)
+  --max-cost-usd <amount>        Optional measured cost ceiling
+  --input-cost-per-million <n>   Input-token pricing for the cost ceiling
+  --output-cost-per-million <n>  Output-token pricing for the cost ceiling
+  --timeout-ms <n>               Wall-clock timeout (default: 900000)
   --allow-check <script>         Allow one package.json script; repeatable
   --yes                          Automatically approve writes and checks
   --json                         Emit structured final output
@@ -264,6 +462,14 @@ const terminalApprovalResolver = (
   }
 };
 
+const costPricing = (harness: ZhivexHarness): TokenPricing | undefined => harness.config.costBudget
+  ? {
+      inputCostPer1kTokens: harness.config.costBudget.inputCostPer1kTokens,
+      outputCostPer1kTokens: harness.config.costBudget.outputCostPer1kTokens,
+      currency: "USD"
+    }
+  : undefined;
+
 export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness) => ({
   schemaVersion: CLI_JSON_SCHEMA_VERSION,
   kind: "run-result" as const,
@@ -282,6 +488,21 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
     arguments: approval.arguments
   })),
   usage: result.usage,
+  budget: getAgentBudgetStatus(result.state, harness.config.budget, result),
+  ...(harness.config.costBudget
+    ? {
+        costBudget: {
+          limitUsd: harness.config.costBudget.maxCostUsd,
+          estimate: estimateAgentRunCost(result.state, costPricing(harness))
+        }
+      }
+    : {}),
+  scope: result.state.scope,
+  store: {
+    backend: harness.config.storeBackend,
+    stateDirectory: harness.config.stateDirectory,
+    migration: harness.persistence?.migration
+  },
   stateDirectory: harness.config.stateDirectory
 });
 
@@ -321,18 +542,26 @@ const runOnce = async (options: CliOptions) => {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
   const harness = await createHarness(options);
-  const tracker = { streamedText: false };
-  const result = await runHarness(
-    harness,
-    { prompt: options.prompt },
-    {
-      onEvent: streamSink(options.json, tracker),
-      resolveApprovals: terminalApprovalResolver(options.yes)
+  try {
+    const tracker = { streamedText: false };
+    const result = await runHarness(
+      harness,
+      {
+        prompt: options.prompt,
+        scope: harness.config.scope,
+        ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {})
+      },
+      {
+        onEvent: streamSink(options.json, tracker),
+        resolveApprovals: terminalApprovalResolver(options.yes)
+      }
+    );
+    printTerminalResult(result, harness, options.json, tracker.streamedText);
+    if (result.status === "failed" || result.status === "timed_out") {
+      process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
-  );
-  printTerminalResult(result, harness, options.json, tracker.streamedText);
-  if (result.status === "failed" || result.status === "timed_out") {
-    process.exitCode = CLI_EXIT_CODES.runtimeError;
+  } finally {
+    harness.close();
   }
 };
 
@@ -345,49 +574,55 @@ const resumeRun = async (options: CliOptions) => {
   }
 
   const initialConfig = resolveHarnessConfig(options);
-  const store = createFileAgentRunStore({ directory: initialConfig.stateDirectory });
-  const state = await store.load(options.runId);
-  if (!state) {
-    throw new Error(`Run ${options.runId} was not found in ${initialConfig.stateDirectory}.`);
-  }
-  if (state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
-    throw new Error(`Run ${options.runId} is not waiting for approval (status: ${state.status}).`);
-  }
-
-  for (const approval of state.pendingApprovals) {
-    process.stderr.write(`\nResuming approval:\n${summarizeApproval(approval)}\n`);
-  }
-
-  const harness = await createHarness({
-    ...options,
-    provider: state.provider as HarnessProvider,
-    model: state.modelId,
-    store
-  });
-  const approve = options.approve;
-  const tracker = { streamedText: false };
-  const result = await runHarness(
-    harness,
-    {
-      state,
-      approvals: approvalResponses(
-        state.pendingApprovals,
-        approve,
-        approve ? "Approved by resume --approve." : "Denied by resume --deny."
-      )
-    },
-    {
-      onEvent: streamSink(options.json, tracker),
-      resolveApprovals: async (approvals) => approvalResponses(
-        approvals,
-        approve,
-        approve ? "Approved by resume --approve." : "Denied by resume --deny."
-      )
+  await validateStateDirectory(initialConfig.workspace, initialConfig.stateDirectory);
+  const persistence = await openHarnessPersistence(initialConfig);
+  try {
+    const state = await persistence.store.load(options.runId, initialConfig.scope);
+    if (!state) {
+      throw new Error(`Run ${options.runId} was not found in ${initialConfig.stateDirectory}.`);
     }
-  );
-  printTerminalResult(result, harness, options.json, tracker.streamedText);
-  if (result.status === "failed" || result.status === "timed_out") {
-    process.exitCode = CLI_EXIT_CODES.runtimeError;
+    if (state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
+      throw new Error(`Run ${options.runId} is not waiting for approval (status: ${state.status}).`);
+    }
+
+    for (const approval of state.pendingApprovals) {
+      process.stderr.write(`\nResuming approval:\n${summarizeApproval(approval)}\n`);
+    }
+
+    const harness = await createHarness({
+      ...options,
+      provider: state.provider as HarnessProvider,
+      model: state.modelId,
+      store: persistence.store,
+      memory: persistence.memory
+    });
+    const approve = options.approve;
+    const tracker = { streamedText: false };
+    const result = await runHarness(
+      harness,
+      {
+        state,
+        approvals: approvalResponses(
+          state.pendingApprovals,
+          approve,
+          approve ? "Approved by resume --approve." : "Denied by resume --deny."
+        )
+      },
+      {
+        onEvent: streamSink(options.json, tracker),
+        resolveApprovals: async (approvals) => approvalResponses(
+          approvals,
+          approve,
+          approve ? "Approved by resume --approve." : "Denied by resume --deny."
+        )
+      }
+    );
+    printTerminalResult(result, harness, options.json, tracker.streamedText);
+    if (result.status === "failed" || result.status === "timed_out") {
+      process.exitCode = CLI_EXIT_CODES.runtimeError;
+    }
+  } finally {
+    persistence.close();
   }
 };
 
@@ -422,7 +657,9 @@ const chat = async (options: CliOptions) => {
       const tracker = { streamedText: false };
       const result = await runHarness(
         harness,
-        messages.length === 0 ? { prompt } : { messages: appendUserMessage(messages, prompt) },
+        messages.length === 0
+          ? { prompt, scope: harness.config.scope }
+          : { messages: appendUserMessage(messages, prompt), scope: harness.config.scope },
         {
           onEvent: streamSink(false, tracker),
           resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
@@ -439,6 +676,7 @@ const chat = async (options: CliOptions) => {
     }
   } finally {
     readline.close();
+    harness.close();
   }
 };
 
@@ -481,7 +719,13 @@ export interface DoctorReport {
     model: string;
     workspace: string;
     stateDirectory: string;
+    storeBackend: string;
+    scope: ReturnType<typeof resolveHarnessConfig>["scope"];
     maxSteps: number;
+    timeoutMs: number;
+    budget: ReturnType<typeof resolveHarnessConfig>["budget"];
+    costBudget?: ReturnType<typeof resolveHarnessConfig>["costBudget"];
+    compaction: ReturnType<typeof resolveHarnessConfig>["compaction"];
     allowedChecks: readonly string[];
   };
   checks: DoctorCheck[];
@@ -724,8 +968,71 @@ const inspectStateDirectory = async (workspace: string, stateDirectory: string):
   }
 };
 
+const inspectOperationsStore = async (
+  stateDirectory: string,
+  storeBackend: string
+): Promise<DoctorCheck> => {
+  if (storeBackend === "file") {
+    return diagnostic("operations-store", "warn", "Legacy file run store is selected.", {
+      backend: storeBackend,
+      migrationAvailable: true
+    });
+  }
+  const databasePath = path.join(stateDirectory, "operations.sqlite");
+  try {
+    const entry = await lstat(databasePath);
+    if (entry.isSymbolicLink() || !entry.isFile()) {
+      return diagnostic("operations-store", "fail", "SQLite state path is not a regular file.", {
+        backend: storeBackend,
+        databasePath,
+        safe: false
+      });
+    }
+    return diagnostic("operations-store", "pass", "SQLite durable operations store is available.", {
+      backend: storeBackend,
+      databasePath,
+      safe: true
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return diagnostic("operations-store", "pass", "SQLite durable operations store will be created on first use.", {
+        backend: storeBackend,
+        databasePath,
+        safe: true
+      });
+    }
+    return diagnostic("operations-store", "fail", "SQLite durable operations store could not be inspected.", {
+      backend: storeBackend,
+      databasePath,
+      safe: false,
+      code: (error as NodeJS.ErrnoException).code ?? "UNKNOWN"
+    });
+  }
+};
+
 export const createDoctorReport = async (
-  options: Pick<CliOptions, "provider" | "model" | "workspace" | "stateDirectory" | "maxSteps" | "allowedChecks"> = {},
+  options: Pick<
+    CliOptions,
+    | "provider"
+    | "model"
+    | "workspace"
+    | "stateDirectory"
+    | "storeBackend"
+    | "tenantId"
+    | "userId"
+    | "namespace"
+    | "maxSteps"
+    | "timeoutMs"
+    | "maxToolCalls"
+    | "maxToolErrors"
+    | "maxInputTokens"
+    | "maxOutputTokens"
+    | "maxTotalTokens"
+    | "maxCostUsd"
+    | "inputCostPerMillion"
+    | "outputCostPerMillion"
+    | "allowedChecks"
+  > = {},
   context: DoctorContext = {}
 ): Promise<DoctorReport> => {
   const env = context.env ?? process.env;
@@ -734,6 +1041,46 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_MODEL ? { model: env.ZHIVEX_HARNESS_MODEL } : {}),
     ...(env.ZHIVEX_HARNESS_MAX_STEPS
       ? { maxSteps: Number(env.ZHIVEX_HARNESS_MAX_STEPS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_STORE ? { storeBackend: env.ZHIVEX_HARNESS_STORE } : {}),
+    ...(env.ZHIVEX_HARNESS_TENANT_ID ? { tenantId: env.ZHIVEX_HARNESS_TENANT_ID } : {}),
+    ...(env.ZHIVEX_HARNESS_USER_ID ? { userId: env.ZHIVEX_HARNESS_USER_ID } : {}),
+    ...(env.ZHIVEX_HARNESS_NAMESPACE ? { namespace: env.ZHIVEX_HARNESS_NAMESPACE } : {}),
+    ...(env.ZHIVEX_HARNESS_TIMEOUT_MS
+      ? { timeoutMs: Number(env.ZHIVEX_HARNESS_TIMEOUT_MS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_TOOL_CALLS
+      ? { maxToolCalls: Number(env.ZHIVEX_HARNESS_MAX_TOOL_CALLS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS
+      ? { maxToolErrors: Number(env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_INPUT_TOKENS
+      ? { maxInputTokens: Number(env.ZHIVEX_HARNESS_MAX_INPUT_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_OUTPUT_TOKENS
+      ? { maxOutputTokens: Number(env.ZHIVEX_HARNESS_MAX_OUTPUT_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_TOTAL_TOKENS
+      ? { maxTotalTokens: Number(env.ZHIVEX_HARNESS_MAX_TOTAL_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_MAX_COST_USD
+      ? { maxCostUsd: Number(env.ZHIVEX_HARNESS_MAX_COST_USD) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_INPUT_COST_PER_MILLION
+      ? { inputCostPerMillion: Number(env.ZHIVEX_HARNESS_INPUT_COST_PER_MILLION) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_OUTPUT_COST_PER_MILLION
+      ? { outputCostPerMillion: Number(env.ZHIVEX_HARNESS_OUTPUT_COST_PER_MILLION) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_COMPACTION_MAX_MESSAGES
+      ? { compactionMaxMessages: Number(env.ZHIVEX_HARNESS_COMPACTION_MAX_MESSAGES) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_COMPACTION_MAX_INPUT_TOKENS
+      ? { compactionMaxEstimatedInputTokens: Number(env.ZHIVEX_HARNESS_COMPACTION_MAX_INPUT_TOKENS) }
+      : {}),
+    ...(env.ZHIVEX_HARNESS_COMPACTION_KEEP_RECENT
+      ? { compactionKeepRecentMessages: Number(env.ZHIVEX_HARNESS_COMPACTION_KEEP_RECENT) }
       : {}),
     ...(env.ZHIVEX_HARNESS_ALLOWED_CHECKS !== undefined
       ? { allowedChecks: env.ZHIVEX_HARNESS_ALLOWED_CHECKS.split(",") }
@@ -757,6 +1104,7 @@ export const createDoctorReport = async (
   checks.push(await inspectGit(config.workspace));
   checks.push(await inspectScripts(config.workspace, config.allowedChecks));
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
+  checks.push(await inspectOperationsStore(config.stateDirectory, config.storeBackend));
 
   for (const provider of providers) {
     const invalidRegion = provider.id === "qwen" && provider.configuration.regionValid === false;
@@ -809,7 +1157,13 @@ export const createDoctorReport = async (
       model: config.model,
       workspace: config.workspace,
       stateDirectory: config.stateDirectory,
+      storeBackend: config.storeBackend,
+      scope: config.scope,
       maxSteps: config.maxSteps,
+      timeoutMs: config.timeoutMs,
+      budget: config.budget,
+      ...(config.costBudget ? { costBudget: config.costBudget } : {}),
+      compaction: config.compaction,
       allowedChecks: config.allowedChecks
     },
     checks,
@@ -832,6 +1186,78 @@ const doctor = async (options: CliOptions) => {
   process.stdout.write(options.json ? `${JSON.stringify(report, null, 2)}\n` : formatDoctorReport(report));
   if (!report.ok) {
     process.exitCode = CLI_EXIT_CODES.doctorFailed;
+  }
+};
+
+const printRunsDocument = (document: unknown, json: boolean) => {
+  if (json || !document || typeof document !== "object") {
+    process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+    return;
+  }
+  const record = document as Record<string, unknown>;
+  if (record.kind === "run-list" && Array.isArray(record.runs)) {
+    for (const run of record.runs as Array<Record<string, unknown>>) {
+      process.stdout.write(
+        `${String(run.runId).padEnd(30)} ${String(run.status).padEnd(18)} ${String(run.provider)}/${String(run.model)} ${String(run.steps)} steps\n`
+      );
+    }
+    if (typeof record.nextCursor === "string") {
+      process.stderr.write(`next cursor: ${record.nextCursor}\n`);
+    }
+    return;
+  }
+  if (record.kind === "run-inspection") {
+    const run = record.run as Record<string, unknown>;
+    process.stdout.write(
+      `${String(run.runId)} · ${String(run.status)} · ${String(run.provider)}/${String(run.model)} · ${String(run.steps)} steps · ${String(run.toolCalls)} tools\n`
+    );
+    return;
+  }
+  process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+};
+
+const manageRuns = async (options: CliOptions) => {
+  const config = resolveHarnessConfig(options);
+  await validateStateDirectory(config.workspace, config.stateDirectory);
+  const persistence = await openHarnessPersistence(config);
+  try {
+    let document: unknown;
+    switch (options.runsCommand) {
+      case "list":
+        document = await listHarnessRuns(persistence.store, config, {
+          ...(options.statuses ? { statuses: options.statuses } : {}),
+          ...(options.limit ? { limit: options.limit } : {}),
+          ...(options.cursor ? { cursor: options.cursor } : {})
+        });
+        break;
+      case "inspect":
+        document = await inspectHarnessRun(persistence.store, config, options.runId!);
+        break;
+      case "export": {
+        const inspection = await inspectHarnessRun(persistence.store, config, options.runId!);
+        document = { ...inspection, kind: "run-export" as const };
+        break;
+      }
+      case "cancel":
+        document = await cancelHarnessRun(persistence.store, config, options.runId!, {
+          ...(options.reason ? { reason: options.reason } : {}),
+          cascade: options.cascade,
+          final: options.final
+        });
+        break;
+      case "cleanup":
+        document = await cleanupHarnessRuns(persistence.store, config, {
+          before: options.before!,
+          ...(options.statuses ? { statuses: options.statuses } : {}),
+          ...(options.limit ? { limit: options.limit } : {})
+        });
+        break;
+      default:
+        throw new CliUsageError("runs requires one of: list, inspect, cancel, cleanup, export.");
+    }
+    printRunsDocument(document, options.json);
+  } finally {
+    persistence.close();
   }
 };
 
@@ -858,6 +1284,9 @@ export const main = async (argv = process.argv.slice(2)) => {
       return;
     case "resume":
       await resumeRun(options);
+      return;
+    case "runs":
+      await manageRuns(options);
       return;
     case "run":
       await runOnce(options);

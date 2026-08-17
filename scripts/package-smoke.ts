@@ -69,8 +69,10 @@ try {
     "package/ROADMAP.md",
     "package/CHANGELOG.md",
     "package/docs/CLI.md",
+    "package/docs/DURABLE_OPERATIONS.md",
     "package/docs/REPOSITORY_EDITING.md",
     "package/docs/RELEASE.md",
+    "package/evaluations/golden-expectations.json",
     "package/dist/index.js",
     "package/dist/index.d.ts",
     "package/dist/cli.js"
@@ -128,21 +130,26 @@ try {
 
   const installedSmokeSource = `
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { createEditProposal, createHarness, runHarness } from "@zhivex-ai/harness";
-import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
+import {
+  HARNESS_SQLITE_FILE,
+  createEditProposal,
+  createHarness,
+  inspectHarnessRun,
+  listHarnessRuns,
+  runHarness
+} from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 const workspace = process.cwd();
 const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
-const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "exactly-once\\n" }];
+const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "fixture-sensitive-payload\\n" }];
 const proposal = createEditProposal({ changes });
-const firstStore = createFileAgentRunStore({ directory: stateDirectory });
 const firstHarness = await createHarness({
   provider: "openai",
   workspace,
-  store: firstStore,
+  stateDirectory,
   modelInstance: createMockLanguageModel({
     provider: "installed-mock",
     modelId: "installed-mock-model",
@@ -173,17 +180,19 @@ const firstHarness = await createHarness({
   })
 });
 
-const waiting = await runHarness(firstHarness, { prompt: "Create installed-approved.txt" });
+const waiting = await runHarness(firstHarness, {
+  prompt: "Create installed-approved.txt",
+  idempotencyKey: "installed-request-42",
+  scope: firstHarness.config.scope
+});
 assert.equal(waiting.status, "waiting_approval");
 await assert.rejects(readFile(path.join(workspace, "installed-approved.txt"), "utf8"));
+firstHarness.close();
 
-const restartedStore = createFileAgentRunStore({ directory: stateDirectory });
-const checkpoint = await restartedStore.load(waiting.state.runId);
-assert(checkpoint);
 const restartedHarness = await createHarness({
   provider: "openai",
   workspace,
-  store: restartedStore,
+  stateDirectory,
   modelInstance: createMockLanguageModel({
     provider: "installed-mock",
     modelId: "installed-mock-model",
@@ -193,6 +202,8 @@ const restartedHarness = await createHarness({
     ]]
   })
 });
+const checkpoint = await restartedHarness.store.load(waiting.state.runId, restartedHarness.config.scope);
+assert(checkpoint);
 const completed = await runHarness(restartedHarness, {
   state: checkpoint,
   approvals: checkpoint.pendingApprovals.map((approval) => ({
@@ -204,13 +215,36 @@ const completed = await runHarness(restartedHarness, {
 });
 assert.equal(completed.status, "completed");
 assert.equal(completed.toolResults.filter((result) => result.toolName === "apply_patch").length, 1);
-assert.equal(await readFile(path.join(workspace, "installed-approved.txt"), "utf8"), "exactly-once\\n");
+assert.equal(await readFile(path.join(workspace, "installed-approved.txt"), "utf8"), "fixture-sensitive-payload\\n");
+const journal = await restartedHarness.store.listToolCalls?.(
+  completed.state.runId,
+  restartedHarness.config.scope
+) ?? [];
+assert.equal(
+  journal.filter((entry) => entry.toolName === "apply_patch" && entry.status === "completed").length,
+  1
+);
+assert.equal((await listHarnessRuns(restartedHarness.store, restartedHarness.config)).runs.length, 1);
+const inspection = await inspectHarnessRun(
+  restartedHarness.store,
+  restartedHarness.config,
+  completed.state.runId
+);
+assert.equal(inspection.kind, "run-inspection");
+assert(!JSON.stringify(inspection).includes("fixture-sensitive-payload"));
+assert((await stat(path.join(stateDirectory, HARNESS_SQLITE_FILE))).isFile());
+restartedHarness.close();
 console.log("INSTALLED_HARNESS_SMOKE_OK");
 `;
   const installedSmokePath = path.join(consumer, "installed-smoke.ts");
   await writeFile(installedSmokePath, installedSmokeSource, "utf8");
   const installedSmoke = await run(["bun", "run", installedSmokePath], { cwd: consumer });
   assert(installedSmoke.stdout.includes("INSTALLED_HARNESS_SMOKE_OK"));
+
+  const runList = await run([installedCli, "runs", "list", "--json"], { cwd: consumer });
+  const runListDocument = JSON.parse(runList.stdout) as { kind?: string; runs?: unknown[] };
+  assert.equal(runListDocument.kind, "run-list");
+  assert.equal(runListDocument.runs?.length, 1);
 
   succeeded = true;
   process.stdout.write(`Installed package smoke passed for ${manifest.name}@${manifest.version}.\n`);
