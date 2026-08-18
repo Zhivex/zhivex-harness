@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-17
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, `0.5.0` is published on npm, and `0.6.0` is implemented locally as the enforced-execution candidate. Publishing another immutable registry version remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` plus `0.6.0` are published on npm. `0.6.1` is the local positioning and hostile-repository proof patch; publishing it remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -38,7 +38,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.3.0` | Trusted repository editing | Reviewable and recoverable multi-file changes | Private checkpoint | M |
 | `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Private checkpoint | L |
 | `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Published on npm | L |
-| `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Implemented locally; certification pending | XL |
+| `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Published on npm | XL |
+| `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Implemented locally | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -172,7 +173,7 @@ Validation snapshot (2026-08-17 UTC):
 
 Goal: introduce shell-class capabilities only when the declared filesystem, process, network, and resource controls are real.
 
-Status: 0.6.0 is implemented locally. Deterministic, exact installed-artifact, real-OCI, MCP-interoperability, and all-provider live gates pass. Publication remains distinct and has not been requested or claimed.
+Status: 0.6.0 is published on npm. Deterministic, exact installed-artifact, real-OCI, MCP-interoperability, all-provider live, registry-integrity, and SLSA provenance gates passed.
 
 Scope:
 
@@ -204,7 +205,13 @@ Implementation snapshot (2026-08-17):
 - Meta, Qwen, and OpenAI passed the final model-directed OCI command, patch review, separate import approval, journal, host-content, and binding matrix together at `2026-08-17T16:49:12.975Z`;
 - the base approval/restart matrix and bounded reviewer-delegation/persistence/hierarchy matrix passed again at `2026-08-17T16:22:34.885Z` and `2026-08-17T16:24:14.381Z` respectively;
 - `@zhivex-ai/core@1.6.0` resolves as one runtime through the aligned dependency batch;
-- publication, tag, push, provenance, and registry proof for `0.6.0` remain pending the explicit release operation.
+- annotated tag `v0.6.0`, push, protected OIDC publication, exact registry integrity, the `latest` distribution tag, and SLSA workflow provenance agree with source commit `fd420f7560b2`.
+
+### 0.6.1 positioning patch
+
+`0.6.1` keeps the `0.6.0` runtime, CLI, configuration, state, and library contracts unchanged. It adds a launch-oriented package description, expanded discovery metadata, a deterministic social card, structured issue forms, and a hostile-repository demo that exposes the existing safety chain as one reproducible product proof.
+
+Its deterministic demo test uses an injected OCI adapter. The public `bun run demo:hostile` command uses a real preloaded Docker/Podman image and proves secret exclusion, network denial, two durable approvals across persistence reopen, host immutability before import, exactly-once journal evidence, redacted inspection, and stale-host rejection. Publication, a `v0.6.1` tag, registry integrity, and provenance are not claimed until the normal protected release workflow completes.
 
 ## 1.0.0 — Stable CLI and library contract
 
@@ -251,6 +258,7 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Review the diff and create a clean release commit; the readiness checker currently blocks only on the intentionally dirty worktree.
-2. Continue governed MCP/delegation dogfood on representative repositories beyond the controlled and official-SDK interoperability gates.
-3. Merge/push the reviewed release commit, create the annotated `v0.6.0` tag, then dispatch the protected OIDC workflow and verify registry integrity/provenance against the exact tagged artifact.
+1. Review the `0.6.1` positioning/demo diff and run the full deterministic, real-OCI, and installed-artifact gates.
+2. Record the hostile-repository demo and publish the exact evidence output with the release notes.
+3. Merge/push the reviewed release commit, create the annotated `v0.6.1` tag, then dispatch the protected OIDC workflow and verify registry integrity/provenance against the exact tagged artifact.
+4. Continue governed MCP/delegation dogfood on representative repositories beyond the controlled and official-SDK interoperability gates.

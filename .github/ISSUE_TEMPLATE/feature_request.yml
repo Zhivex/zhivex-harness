@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a bounded addition to the governed coding-agent runtime.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Operator problem
+      description: Describe the concrete workflow or control gap, not only the desired implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Required trust boundary
+      description: What must the model, tool, subprocess, or remote service be unable to do?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence
+      description: What deterministic, installed-artifact, live, or failure-path proof should demonstrate completion?
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Primary operator
+      options:
+        - Individual developer
+        - Platform engineering
+        - DevSecOps or AppSec
+        - Internal AI platform
+        - Regulated software team
+        - SDK or tool embedder
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing harness configuration or external tools that almost solve the problem.

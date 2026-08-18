@@ -1,7 +1,7 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.6.0",
-  "description": "Provider-portable coding agent harness powered by Zhivex AI SDK.",
+  "version": "0.6.1",
+  "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -21,6 +21,14 @@
     "ai",
     "agents",
     "coding-agent",
+    "agent-runtime",
+    "agent-governance",
+    "sandbox",
+    "durable-workflows",
+    "mcp",
+    "docker",
+    "typescript",
+    "bun",
     "harness",
     "zhivex"
   ],
@@ -48,7 +56,7 @@
   "scripts": {
     "dev": "bun run src/cli.ts",
     "start": "bun run dist/cli.js",
-    "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target bun --packages external && tsc --emitDeclarationOnly",
+    "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target bun --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target bun --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "docs:check": "bun run scripts/check-docs.ts",
     "typecheck": "tsc --noEmit",
@@ -62,6 +70,7 @@
     "smoke:live": "bun --env-file=.env run scripts/live-provider-smoke.ts",
     "smoke:live:orchestration": "bun --env-file=.env run scripts/live-orchestration-smoke.ts",
     "smoke:live:execution": "bun --env-file=.env run scripts/live-execution-smoke.ts",
+    "demo:hostile": "bun run dist/hostile-repository-demo.js",
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
     "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
