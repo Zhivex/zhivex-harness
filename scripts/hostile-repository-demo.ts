@@ -72,6 +72,37 @@ const patchIdFrom = (result: ToolExecutionResult) => {
   throw new Error("The hostile-repository demo could not read the inspected patchId.");
 };
 
+const commandBoundaryEvidenceFrom = (result: ToolExecutionResult | undefined) => {
+  const output = result?.output;
+  if (!output || typeof output !== "object" || Array.isArray(output)) {
+    throw new Error("Hostile-repository command evidence is missing its structured result.");
+  }
+  const commandResult = output as Record<string, unknown>;
+  if (commandResult.exitCode !== 0 || typeof commandResult.stdout !== "string") {
+    throw new Error("Hostile-repository command evidence must contain successful JSON stdout.");
+  }
+  let evidence: unknown;
+  try {
+    evidence = JSON.parse(commandResult.stdout.trim());
+  } catch {
+    throw new Error("Hostile-repository command evidence stdout must be valid JSON.");
+  }
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+    throw new Error("Hostile-repository command evidence stdout must be a JSON object.");
+  }
+  const boundary = evidence as Record<string, unknown>;
+  if (boundary.secretExcluded !== true) {
+    throw new Error("Hostile-repository command evidence must report secretExcluded=true.");
+  }
+  if (boundary.networkDenied !== true) {
+    throw new Error("Hostile-repository command evidence must report networkDenied=true.");
+  }
+  return {
+    secretExcluded: boundary.secretExcluded,
+    networkDenied: boundary.networkDenied
+  } as const;
+};
+
 export const createHostileDemoModel = (): LanguageModel => {
   const base = createMockLanguageModel({ provider: "hostile-demo", modelId: "scripted-control-proof" });
   return {
@@ -180,12 +211,6 @@ const createDemoHarness = (
   stateDirectory,
   executionBackend: "oci",
   ociAllowedCommands: ["bun"],
-  ociMaxProcessRuntimeMs: 30_000,
-  ociMaxMemoryMb: 256,
-  ociMaxPids: 32,
-  ociMaxCpus: 1,
-  ociMaxWorkspaceBytes: 8 * 1024 * 1024,
-  ociTmpfsMb: 64,
   maxSteps: 6,
   maxToolCalls: 8,
   subagentProfiles: [],
@@ -239,12 +264,11 @@ export const runHostileRepositoryDemo = async (
     assert.equal(importCheckpoint.status, "waiting_approval");
     approvalNamed(importCheckpoint.state, "apply_environment_patch");
     assert.equal(await readFile(path.join(root, "src", "payment.ts"), "utf8"), ORIGINAL_PAYMENT);
-    const commandEvidence = JSON.stringify(importCheckpoint.toolResults.find(
+    const commandResult = importCheckpoint.toolResults.find(
       (result) => result.toolName === "run_environment_command"
-    )?.output);
-    assert.match(commandEvidence, /secretExcluded/);
-    assert.match(commandEvidence, /networkDenied/);
+    );
     second.close();
+    const commandBoundaryEvidence = commandBoundaryEvidenceFrom(commandResult);
 
     progress("3/6 secret exclusion and network denial proved inside OCI; host still unchanged");
     const third = await createDemoHarness(root, stateDirectory, options.runtime);
@@ -278,13 +302,7 @@ export const runHostileRepositoryDemo = async (
       workspace: root,
       stateDirectory,
       executionBackend: "oci",
-      ociAllowedCommands: ["bun"],
-      ociMaxProcessRuntimeMs: 30_000,
-      ociMaxMemoryMb: 256,
-      ociMaxPids: 32,
-      ociMaxCpus: 1,
-      ociMaxWorkspaceBytes: 8 * 1024 * 1024,
-      ociTmpfsMb: 64
+      ociAllowedCommands: ["bun"]
     });
     if (config.execution.backend !== "oci") throw new Error("Hostile demo OCI policy was not enabled.");
     const environment = await createHarnessOciExecutionEnvironment({
@@ -319,8 +337,8 @@ export const runHostileRepositoryDemo = async (
       imageDigest,
       approvals: ["run_environment_command", "apply_environment_patch"],
       persistenceReopens: 2,
-      secretExcluded: true,
-      networkDenied: true,
+      secretExcluded: commandBoundaryEvidence.secretExcluded,
+      networkDenied: commandBoundaryEvidence.networkDenied,
       hostUnchangedUntilApprovedImport: true,
       exactlyOnceJournal: true,
       staleHostImportBlocked: true,

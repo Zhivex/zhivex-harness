@@ -22,6 +22,11 @@ class DemoRuntime implements HarnessOciRuntimeAdapter {
     imageDigest: `sha256:${"a".repeat(64)}`
   };
 
+  constructor(private readonly boundaryEvidence = {
+    secretExcluded: true,
+    networkDenied: true
+  }) {}
+
   async inspectImage(imageReference: string) {
     return { ...this.image, imageReference };
   }
@@ -37,7 +42,7 @@ class DemoRuntime implements HarnessOciRuntimeAdapter {
       return {
         command: request.command,
         exitCode: 0,
-        stdout: `${JSON.stringify({ secretExcluded: true, networkDenied: true, snapshotMutation: true })}\n`,
+        stdout: `${JSON.stringify({ ...this.boundaryEvidence, snapshotMutation: true })}\n`,
         stderr: "",
         timedOut: false,
         cancelled: false,
@@ -90,5 +95,53 @@ describe("hostile repository demo", () => {
       redactedLedger: true
     });
     expect(runtime.requests).toHaveLength(2);
+  });
+
+  test("rejects injected runtime output that does not prove both boundaries", async () => {
+    const runtime = new DemoRuntime({ secretExcluded: false, networkDenied: false });
+
+    await expect(runHostileRepositoryDemo({ runtime })).rejects.toThrow(
+      "Hostile-repository command evidence must report secretExcluded=true"
+    );
+  });
+
+  test("honors OCI resource limits configured through the environment", async () => {
+    const configured = {
+      ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS: "5000",
+      ZHIVEX_HARNESS_OCI_MAX_PROCESS_OUTPUT_BYTES: "4096",
+      ZHIVEX_HARNESS_OCI_MAX_MEMORY_MB: "128",
+      ZHIVEX_HARNESS_OCI_MAX_PIDS: "16",
+      ZHIVEX_HARNESS_OCI_MAX_CPUS: "2",
+      ZHIVEX_HARNESS_OCI_MAX_WORKSPACE_BYTES: String(2 * 1024 * 1024),
+      ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES: String(64 * 1024),
+      ZHIVEX_HARNESS_OCI_TMPFS_MB: "32"
+    };
+    const previous = Object.fromEntries(
+      Object.keys(configured).map((name) => [name, process.env[name]])
+    );
+    Object.assign(process.env, configured);
+    try {
+      const runtime = new DemoRuntime();
+      await runHostileRepositoryDemo({ runtime });
+
+      expect(runtime.requests).toHaveLength(2);
+      for (const request of runtime.requests) {
+        expect(request.limits).toEqual({
+          maxProcessRuntimeMs: 5_000,
+          maxProcessOutputBytes: 4_096,
+          maxMemoryMb: 128,
+          maxPids: 16,
+          maxCpus: 2,
+          maxWorkspaceBytes: 2 * 1024 * 1024,
+          maxFileWriteBytes: 64 * 1024,
+          tmpfsMb: 32
+        });
+      }
+    } finally {
+      for (const [name, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 });
