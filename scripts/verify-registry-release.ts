@@ -7,6 +7,12 @@ import {
   assertReleaseProvenance,
   type ProvenanceStatement
 } from "./release-provenance.js";
+import {
+  RegistryPropagationDeadlineError,
+  RegistryPropagationError,
+  runWithPropagationDeadline,
+  timeoutWithinDeadline
+} from "./release-verification-deadline.js";
 
 interface PackageManifest {
   name: string;
@@ -70,17 +76,16 @@ const artifactBytes = await readFile(artifact);
 const sha512Hex = createHash("sha512").update(artifactBytes).digest("hex");
 const expectedIntegrity = `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}`;
 const packageUrl = `https://registry.npmjs.org/${encodeURIComponent(manifest.name)}`;
-const maxAttempts = 31;
+const propagationWindowMs = 5 * 60_000;
 const retryDelayMs = 10_000;
+const propagationDeadlineMs = performance.now() + propagationWindowMs;
 
-class RegistryPropagationError extends Error {}
-
-const fetchJson = async <T>(url: string): Promise<T> => {
+const fetchJson = async <T>(url: string, deadlineMs: number): Promise<T> => {
   let response: Response;
   try {
     response = await fetch(url, {
       headers: { accept: "application/json", "cache-control": "no-cache" },
-      signal: AbortSignal.timeout(15_000)
+      signal: AbortSignal.timeout(timeoutWithinDeadline(deadlineMs, 15_000))
     });
   } catch (error) {
     throw new RegistryPropagationError(
@@ -98,8 +103,8 @@ const requirePropagated = (condition: unknown, message: string): asserts conditi
   if (!condition) throw new RegistryPropagationError(message);
 };
 
-const verify = async (): Promise<void> => {
-  const registry = await fetchJson<RegistryDocument>(packageUrl);
+const verify = async (deadlineMs: number): Promise<void> => {
+  const registry = await fetchJson<RegistryDocument>(packageUrl, deadlineMs);
   requirePropagated(
     registry["dist-tags"]?.[channel] === manifest.version,
     `${channel} does not point to ${manifest.version}`
@@ -118,7 +123,7 @@ const verify = async (): Promise<void> => {
   try {
     tarballResponse = await fetch(published.dist.tarball, {
       headers: { "cache-control": "no-cache" },
-      signal: AbortSignal.timeout(30_000)
+      signal: AbortSignal.timeout(timeoutWithinDeadline(deadlineMs, 30_000))
     });
   } catch (error) {
     throw new RegistryPropagationError(
@@ -133,7 +138,10 @@ const verify = async (): Promise<void> => {
   const publishedIntegrity = `sha512-${createHash("sha512").update(publishedBytes).digest("base64")}`;
   assert.equal(publishedIntegrity, expectedIntegrity, "published tarball bytes differ from the exact release artifact");
 
-  const attestations = await fetchJson<AttestationDocument>(published.dist.attestations.url);
+  const attestations = await fetchJson<AttestationDocument>(
+    published.dist.attestations.url,
+    deadlineMs
+  );
   const provenance = attestations.attestations?.find(
     (candidate) => candidate.predicateType === "https://slsa.dev/provenance/v1"
   );
@@ -149,23 +157,19 @@ const verify = async (): Promise<void> => {
   });
 };
 
-let lastError: unknown;
-for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-  try {
-    await verify();
-    process.stdout.write(
-      `Published release verified for ${manifest.name}@${manifest.version}: exact integrity, ${channel} tag, and SLSA workflow provenance match ${releaseTag} at ${releaseCommit.slice(0, 12)}.\n`
-    );
-    process.exit(0);
-  } catch (error) {
-    lastError = error;
-    if (!(error instanceof RegistryPropagationError) || attempt === maxAttempts) {
-      break;
-    }
-    await Bun.sleep(retryDelayMs);
-  }
+try {
+  await runWithPropagationDeadline(verify, {
+    deadlineMs: propagationDeadlineMs,
+    retryDelayMs
+  });
+  process.stdout.write(
+    `Published release verified for ${manifest.name}@${manifest.version}: exact integrity, ${channel} tag, and SLSA workflow provenance match ${releaseTag} at ${releaseCommit.slice(0, 12)}.\n`
+  );
+} catch (error) {
+  const lastError = error instanceof RegistryPropagationDeadlineError
+    ? error.lastError
+    : error;
+  throw new Error(
+    `Published release verification failed${error instanceof RegistryPropagationDeadlineError ? " after five minutes of registry propagation retries" : ""}: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+  );
 }
-
-throw new Error(
-  `Published release verification failed${lastError instanceof RegistryPropagationError ? " after five minutes of registry propagation retries" : ""}: ${lastError instanceof Error ? lastError.message : String(lastError)}`
-);

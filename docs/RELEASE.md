@@ -42,7 +42,7 @@ The release workflow performs this sequence across an unprivileged validation jo
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
 7. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
 8. pass that same file to the npm CLI for the registry transaction; and
-9. retry for up to five minutes through registry and attestation propagation, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
+9. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
 
 For a local artifact rehearsal after the source gate:
 
