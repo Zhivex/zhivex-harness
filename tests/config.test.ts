@@ -38,7 +38,7 @@ describe("provider configuration", () => {
     expect(() => parseProvider("deepseek")).toThrow("Unknown provider");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
-    expect(() => resolveHarnessConfig({ schemaVersion: 4 })).toThrow("Unsupported config schema");
+    expect(() => resolveHarnessConfig({ schemaVersion: 3 })).toThrow("Unsupported config schema");
     expect(() => resolveHarnessConfig({ storeBackend: "postgres" })).toThrow("storeBackend");
     expect(() => resolveHarnessConfig({ maxToolErrors: -1 })).toThrow("maxToolErrors");
     expect(() => resolveHarnessConfig({ maxInputTokens: 10_000, maxTotalTokens: 5_000 })).toThrow("maxTotalTokens");
@@ -51,6 +51,34 @@ describe("provider configuration", () => {
     expect(() => resolveHarnessConfig({ requiredCapabilities: ["telepathy"] })).toThrow("Unknown required capability");
     expect(() => resolveHarnessConfig({ subagentProfiles: ["deployer"] })).toThrow("Unknown subagent profile");
     expect(() => resolveHarnessConfig({ subagentMaxInputTokens: 50, subagentMaxTotalTokens: 10 })).toThrow("subagentMaxTotalTokens");
+  });
+
+  test("resolves a bounded no-network OCI policy and rejects unsafe execution configuration", () => {
+    expect(resolveHarnessConfig({
+      executionBackend: "oci",
+      ociRuntime: "podman",
+      ociImage: "registry.example/zhivex-bun@sha256:fixture",
+      ociAllowedCommands: ["bun", "git", "bun"],
+      ociMaxMemoryMb: 512,
+      ociMaxPids: 64
+    }).execution).toMatchObject({
+      backend: "oci",
+      runtime: "podman",
+      image: "registry.example/zhivex-bun@sha256:fixture",
+      allowedCommands: ["bun", "git"],
+      maxMemoryMb: 512,
+      maxPids: 64
+    });
+    expect(() => resolveHarnessConfig({ executionBackend: "host" })).toThrow("executionBackend");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociRuntime: "shell" })).toThrow("ociRuntime");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociImage: "-unsafe" })).toThrow("ociImage");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["git"] })).toThrow("include bun");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["bun", "../sh"] })).toThrow("Invalid OCI command");
+    expect(() => resolveHarnessConfig({
+      executionBackend: "oci",
+      ociMaxWorkspaceBytes: 1024 * 1024,
+      ociMaxFileWriteBytes: 2 * 1024 * 1024
+    })).toThrow("cannot exceed");
   });
 
   test("resolves explicit scope, budgets, compaction, and cost pricing", () => {

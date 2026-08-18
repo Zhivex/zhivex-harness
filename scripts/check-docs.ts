@@ -8,6 +8,8 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   publishConfig?: unknown;
   files?: string[];
   scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  overrides?: Record<string, string>;
 };
 
 const markdownFiles = [
@@ -241,6 +243,63 @@ if (manifest.version.startsWith("0.5.")) {
     }
   } catch {
     failures.push("examples/mcp-config.json is required and must be valid JSON.");
+  }
+}
+
+if (manifest.version.startsWith("0.6.")) {
+  const executionPath = path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md");
+  let execution = "";
+  try {
+    execution = await readFile(executionPath, "utf8");
+  } catch {
+    failures.push("docs/EXECUTION_ENVIRONMENTS.md is required for the 0.6.x isolation contract.");
+  }
+  for (const required of [
+    "## Trust boundary",
+    "## OCI configuration",
+    "## Snapshot and patch import",
+    "## Resource and network policy",
+    "## Lifecycle and recovery",
+    "## Migration from 0.5.x",
+    "## Certification",
+    "## Known limits"
+  ]) {
+    if (execution && !execution.includes(required)) {
+      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing ${required}.`);
+    }
+  }
+  if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 4")) {
+    failures.push("src/config.ts must identify configuration schema version 4 for 0.6.x.");
+  }
+  if (!changelog.includes("## 0.6.0 -") || !changelog.includes("### Migration")) {
+    failures.push("CHANGELOG.md must include the 0.6.0 entry and migration notes.");
+  }
+  if (!roadmap.includes("0.6.0 is implemented locally")) {
+    failures.push("ROADMAP.md does not identify 0.6.0 as implemented locally.");
+  }
+  if (
+    manifest.scripts?.["smoke:oci"] !== "bun run scripts/oci-execution-smoke.ts" ||
+    !manifest.scripts?.check?.includes("bun run smoke:oci")
+  ) {
+    failures.push("package.json must include the enforced OCI smoke in the complete check gate.");
+  }
+  if (
+    manifest.scripts?.["smoke:mcp:official"] !== "bun run scripts/mcp-official-sdk-smoke.ts" ||
+    !manifest.scripts?.check?.includes("bun run smoke:mcp:official")
+  ) {
+    failures.push("package.json must include the official MCP SDK interoperability gate.");
+  }
+  if (
+    manifest.dependencies?.["@zhivex-ai/core"] !== "1.6.0" ||
+    manifest.overrides?.["@zhivex-ai/core"] !== "1.6.0"
+  ) {
+    failures.push("0.6.x must pin and override one @zhivex-ai/core@1.6.0 runtime.");
+  }
+  if (
+    !liveCertificationWorkflow.includes("bun run smoke:oci") ||
+    !liveCertificationWorkflow.includes("bun run smoke:live:execution")
+  ) {
+    failures.push("Live certification workflow must exercise the enforced OCI boundary and model-directed execution.");
   }
 }
 

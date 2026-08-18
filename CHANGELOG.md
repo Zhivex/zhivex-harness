@@ -4,6 +4,38 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.6.0 - 2026-08-17
+
+### Added
+
+- An SDK-native enforced execution environment backed by Docker or Podman, with an adapter boundary for future remote workers.
+- Secret-free ephemeral workspace snapshots, no container network, a read-only root filesystem, non-root execution, dropped capabilities, `no-new-privileges`, bounded CPU, memory, PIDs, time, output, workspace, file, and tmpfs usage. Commands run on a quota-backed tmpfs volume and publish successful results through a frozen, validated staging copy rather than a writable host bind mount.
+- Approved argv-only `run_environment_command`, isolated `run_check`, read-only environment status and patch inspection, and a distinct approved patch-import tool for host mutations.
+- Image/policy/workspace/run fingerprint binding, labeled container and volume ownership, cancellation cleanup, orphan cleanup, retained audit metadata, and installed-artifact plus real-runtime smoke coverage.
+- An execution-environment guide and OCI diagnostics in `doctor`.
+
+### Changed
+
+- Resolved configuration uses schema version `4` and adds a discriminated `execution` policy. The default remains `none`, where generic shell is unavailable.
+- Repository tools and subagents use the acquired snapshot while OCI execution is active. Host `git_diff` is omitted from the model tool set, and MCP is rejected before discovery rather than executing undeclared operations outside the no-network environment boundary.
+- CLI runs persist their resolved non-secret configuration so a locator-only `resume --approve|--deny` restores the original OCI policy instead of falling back to `execution=none`.
+- Environment patches compare, review, bind, import, and roll back file permission modes, including mode-only changes and newly created executable files.
+- The Zhivex SDK dependency batch now resolves one `@zhivex-ai/core@1.6.0` runtime; OpenAI is updated to `0.9.5`.
+- The release workflow is OIDC-only and runs the enforced OCI gate before packaging or live-provider certification.
+
+### Migration
+
+- Replace schema-version-pinned `schemaVersion: 3` configuration with `4`. Existing scoped SQLite data needs no database rewrite.
+- Existing behavior remains available with `executionBackend: "none"` or `ZHIVEX_HARNESS_EXECUTION=none`; this does not expose shell-class tools.
+- To enable OCI, preload the configured image and set `executionBackend: "oci"` (or `--execution oci`). Paused `0.5.x` runs cannot be silently rebound because the tool and execution fingerprints changed.
+- Do not combine the enforced no-network OCI policy with network MCP in one run. Perform governed MCP discovery separately, or define a future policy/backend that can enforce the intended network boundary.
+
+### Security
+
+- Host credentials and arbitrary environment variables are not inherited by container processes; hard secret exclusions apply before snapshot creation.
+- The harness never pulls images implicitly, never uses a shell to interpret model commands, and cleans only containers or volumes carrying its ownership label.
+- Host changes require a content- and run-bound patch identifier plus a separate interrupt approval; stale host digests fail closed and deletions remain recoverable through quarantine.
+
 ## 0.5.0 - 2026-08-17
 
 ### Added

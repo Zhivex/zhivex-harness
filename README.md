@@ -4,9 +4,9 @@ Zhivex Harness is a Bun-first coding-agent harness portable across Meta, Qwen, a
 
 The model provides capability; the harness provides repository context, narrow tools, limits, approvals, durable state, diagnostics, and verification. Every provider uses the same agent loop and local-tool contract.
 
-Version `0.5.0` is a publication-ready extensibility-and-orchestration candidate. The package manifest and protected release workflow are ready, but the immutable npm publication has not been executed. Public availability begins only after the repository and npm prerequisites in the [release guide](./docs/RELEASE.md) are completed and a maintainer explicitly dispatches the workflow. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+Version `0.6.0` is the enforced-execution release candidate. `0.5.0` is already public on npm; `0.6.0` remains a source candidate until its exact artifact, live-provider, tag, provenance, and registry gates complete. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
 
-## What 0.5 includes
+## What 0.6 includes
 
 - one-shot execution and interactive chat;
 - provider and model selection through the CLI;
@@ -26,27 +26,29 @@ Version `0.5.0` is a publication-ready extensibility-and-orchestration candidate
 - governed MCP over bounded HTTPS/loopback HTTP with explicit server/tool allowlists, permissions, timeouts, approvals, output limits, and environment-backed credentials;
 - named explorer, implementer, tester, and reviewer subagents with independent durable budgets and promoted approvals;
 - deterministic application-owned parallel read-only review groups with child progress, hierarchy, usage, and cost evidence;
+- optional enforced Docker/Podman execution with no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
+- argv-only allowlisted environment commands, isolated package checks, deterministic patch inspection, and a separate durable approval before importing changes into the host workspace;
+- environment/image/policy fingerprint binding, cancellation cleanup, labeled orphan cleanup, retained audit artifacts, and installed-package plus real-runtime smoke gates;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
 - Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
 
-It does not include arbitrary shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, OS isolation, or a managed sandbox. Tools and subagents run inside the workspace with the permissions of the local process.
+It does not include arbitrary host shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, a remote worker, or a managed sandbox service. Without `--execution oci`, shell-class tools remain unavailable. With OCI enabled, repository tools, checks, and enabled subagents share the acquired snapshot; network MCP is rejected because it cannot truthfully satisfy the no-network execution policy.
 
 ## Requirements
 
 - Bun 1.3.7 or newer.
 - Git for repository status and diff inspection.
 - At least one supported provider credential for real model execution.
+- Docker or Podman plus a preloaded image when `--execution oci` is requested.
 
 ## Installation
-
-After `0.5.0` is published to npm:
 
 ```bash
 bun add @zhivex-ai/harness
 bunx zhivex-harness --version
 ```
 
-Until then, run the source checkout:
+To exercise the unpublished `0.6.0` source candidate:
 
 ```bash
 bun install --frozen-lockfile
@@ -161,17 +163,27 @@ The default check allowlist is `test`, `typecheck`, `lint`, and `build`. Replace
 zhivex-harness run --allow-check test:unit --allow-check format "apply the fix and validate it"
 ```
 
+Enable enforced local execution explicitly. The image must already exist locally; the harness never pulls it implicitly:
+
+```bash
+docker pull oven/bun:1.3.7-slim
+zhivex-harness doctor --execution oci
+zhivex-harness run --execution oci --yes "inspect, implement, test, review the environment patch, and import it"
+```
+
+`--yes` approves both command execution and the distinct host patch import. Omit it when a human should review each durable approval. Configuration, threat boundary, cleanup, and certification details are in [docs/EXECUTION_ENVIRONMENTS.md](./docs/EXECUTION_ENVIRONMENTS.md).
+
 ## Providers and defaults
 
 | Provider | Default model | Current support |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.4 runtime and 0.5 delegation certified |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.4 runtime and 0.5 delegation certified |
-| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · 0.4 runtime and 0.5 delegation certified |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
+| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
 
-Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, process restart, and exactly-once patch gate on 2026-08-17. They also completed the separate 0.5 model-directed reviewer-delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage gate at `2026-08-17T02:21:45.553Z`. Controlled Streamable HTTP MCP interoperability over a real loopback server passed at `2026-08-17T13:05:05.542Z`; third-party server compatibility is not implied. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta, Qwen, and OpenAI completed the final `0.6.0` model-directed OCI command/review/import matrix together at `2026-08-17T16:49:12.975Z`, the proposal/approval/restart refresh at `2026-08-17T16:22:34.885Z`, and the delegation/persistence/hierarchy refresh at `2026-08-17T16:24:14.381Z`. Controlled Streamable HTTP MCP interoperability over a real loopback server passed at `2026-08-17T16:48:09.043Z`; independent interoperability with `@modelcontextprotocol/server@2.0.0` passed at `2026-08-17T16:48:09.141Z` in its legacy-stateless compatibility mode. These results do not imply compatibility with every server or protocol feature. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
@@ -189,8 +201,12 @@ Meta, Qwen, and OpenAI completed the 0.4 proposal, scoped-SQLite approval, proce
 - Remote MCP output is bounded, schema-checked, treated as untrusted, and rejected on common prompt-injection directives.
 - Network MCP always pauses for approval; custom read-only annotation trust must be explicit and injected by the host application.
 - Subagent children inherit scope, workspace, cancellation, approval, and store policy while retaining independent budgets and fingerprints.
+- OCI execution binds the durable run to the resolved image identity and enforced policy; resume fails if either changes.
+- Snapshot discovery excludes secrets, Git internals, harness state, dependency trees, and build output. Dependencies may be mounted separately read-only.
+- Untrusted commands receive a quota-backed tmpfs workspace, never a writable host bind; only successful, frozen, validated snapshots replace durable environment state.
+- Container processes receive no provider credentials or arbitrary host environment values, and host changes require a separately approved digest-bound patch import.
 
-These controls reduce risk but do not provide strong isolation. Use a dedicated container or microVM and a disposable workspace for autonomous execution.
+The default `none` backend provides governance but no OS isolation and therefore exposes no shell-class tool. The local OCI backend enforces the documented container boundary, but it is not a VM or a managed hostile-code sandbox; use a dedicated host or microVM when the container runtime itself is outside the threat model.
 
 ## Development
 

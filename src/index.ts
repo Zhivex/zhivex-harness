@@ -1,7 +1,11 @@
 export {
   DEFAULT_ALLOWED_CHECKS,
+  DEFAULT_OCI_EXECUTION,
   DEFAULT_SUBAGENT_BUDGET,
   HARNESS_CONFIG_SCHEMA_VERSION,
+  HARNESS_EXECUTION_BACKENDS,
+  HARNESS_EXECUTION_POLICY_VERSION,
+  HARNESS_OCI_RUNTIMES,
   HARNESS_REQUIRED_CAPABILITIES,
   HARNESS_SUBAGENT_PROFILES,
   PROVIDERS,
@@ -19,6 +23,9 @@ export type {
   HarnessConfig,
   HarnessConfigInput,
   HarnessCostBudget,
+  HarnessExecutionBackend,
+  HarnessExecutionConfig,
+  HarnessOciRuntime,
   HarnessOrchestrationConfig,
   HarnessProvider,
   HarnessRequiredCapability,
@@ -28,6 +35,30 @@ export type {
   ProviderDescriptor,
   ProviderSupport
 } from "./config.js";
+
+export {
+  CliOciRuntimeAdapter,
+  HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION,
+  HARNESS_OCI_LABEL,
+  HARNESS_OCI_LABEL_VALUE,
+  cleanupHarnessExecutionArtifacts,
+  createHarnessOciExecutionEnvironment,
+  describeOciCommand,
+  executionFingerprintInput,
+  harnessExecutionSession
+} from "./execution-environment.js";
+export type {
+  CreateHarnessOciEnvironmentOptions,
+  EnvironmentPatchImportResult,
+  EnvironmentPatchInspection,
+  ExecutionArtifactCleanupResult,
+  HarnessExecutionSession,
+  HarnessOciExecutionEnvironment,
+  HarnessOciRuntimeAdapter,
+  OciImageInspection,
+  OciCommandResult,
+  OciRunRequest
+} from "./execution-environment.js";
 
 export {
   assertHarnessModelCapabilities,
@@ -115,6 +146,7 @@ export type {
 export {
   HARNESS_INSTRUCTIONS,
   appendUserMessage,
+  createExecutionEnvironmentTools,
   createHarness,
   runHarness
 } from "./harness.js";

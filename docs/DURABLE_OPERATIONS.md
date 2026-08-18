@@ -1,6 +1,6 @@
 # Durable operations
 
-Zhivex Harness `0.4.x` makes local runs inspectable and recoverable across process restarts. The default store is Bun SQLite at `<workspace>/.zhivex-harness/runs/operations.sqlite`; `--store file` remains a migration fallback.
+Zhivex Harness durable operations make local runs inspectable and recoverable across process restarts. The default store is Bun SQLite at `<workspace>/.zhivex-harness/runs/operations.sqlite`; `--store file` remains a migration fallback.
 
 ## Scope and identity
 
@@ -10,7 +10,9 @@ Every durable key is isolated by:
 - optional user;
 - namespace: a SHA-256-derived canonical-workspace identifier by default.
 
-Use the same workspace, state directory, backend, tenant, user, and namespace for `run`, `resume`, and every `runs` command. A run fingerprint is bound to the canonical workspace, durable scope, provider/model, tool contract, approval policy, config schema, and harness version. Resume fails closed when a current binding differs.
+Use the same workspace, state directory, backend, tenant, user, and namespace for `run`, `resume`, and every `runs` command. A run fingerprint is bound to the canonical workspace, durable scope, provider/model, tool contract, approval policy, config schema, harness version, and execution-environment policy. Under OCI, the resolved image identity is also bound. Resume fails closed when a current binding differs.
+
+CLI-created runs persist the resolved non-secret harness configuration in versioned run metadata. The terminal prints a scope-complete locator command, and `resume` restores the original OCI policy before fingerprint validation, so approval restart does not silently fall back to `execution=none`. Explicit conflicting overrides are rejected by the existing binding check.
 
 ```bash
 zhivex-harness run \
@@ -107,6 +109,18 @@ ZHIVEX_HARNESS_OUTPUT_COST_PER_MILLION
 ZHIVEX_HARNESS_COMPACTION_MAX_MESSAGES
 ZHIVEX_HARNESS_COMPACTION_MAX_INPUT_TOKENS
 ZHIVEX_HARNESS_COMPACTION_KEEP_RECENT
+ZHIVEX_HARNESS_EXECUTION
+ZHIVEX_HARNESS_OCI_RUNTIME
+ZHIVEX_HARNESS_OCI_IMAGE
+ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS
+ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS
+ZHIVEX_HARNESS_OCI_MAX_PROCESS_OUTPUT_BYTES
+ZHIVEX_HARNESS_OCI_MAX_MEMORY_MB
+ZHIVEX_HARNESS_OCI_MAX_PIDS
+ZHIVEX_HARNESS_OCI_MAX_CPUS
+ZHIVEX_HARNESS_OCI_MAX_WORKSPACE_BYTES
+ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES
+ZHIVEX_HARNESS_OCI_TMPFS_MB
 ```
 
 ## Evaluation gate

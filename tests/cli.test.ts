@@ -8,13 +8,17 @@ import {
   CLI_JSON_SCHEMA_VERSION,
   CliUsageError,
   cliExitCodeForError,
+  createHarnessResumeMetadata,
   createDoctorReport,
   formatDoctorReport,
   parseCliArgs,
   providersDocument,
+  readHarnessResumeConfig,
+  resumeCommand,
   runResultDocument,
   summarizeApproval
 } from "../src/cli.js";
+import { resolveHarnessConfig } from "../src/config.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 const runCli = async (arguments_: string[]) => {
@@ -163,6 +167,38 @@ describe("CLI parsing", () => {
     expect(() => parseCliArgs(["review", "--reviewer", "implementer", "task"])).toThrow("--reviewer");
   });
 
+  test("parses enforced OCI execution limits and command allowlists", () => {
+    expect(parseCliArgs([
+      "run",
+      "--execution",
+      "oci",
+      "--oci-runtime",
+      "podman",
+      "--oci-image",
+      "example/harness@sha256:fixture",
+      "--oci-allow-command",
+      "bun",
+      "--oci-allow-command",
+      "git",
+      "--oci-max-memory-mb",
+      "512",
+      "--oci-max-pids",
+      "64",
+      "isolated",
+      "task"
+    ])).toMatchObject({
+      executionBackend: "oci",
+      ociRuntime: "podman",
+      ociImage: "example/harness@sha256:fixture",
+      ociAllowedCommands: ["bun", "git"],
+      ociMaxMemoryMb: 512,
+      ociMaxPids: 64,
+      prompt: "isolated task"
+    });
+    expect(() => parseCliArgs(["run", "--oci-allow-command", "../sh", "task"]))
+      .toThrow("bare executable");
+  });
+
   test("rejects ambiguous or unknown options", () => {
     expect(() => parseCliArgs(["resume", "run-1", "--approve", "--deny"])).toThrow("combine");
     expect(() => parseCliArgs(["run", "--wat"])).toThrow("Unknown option");
@@ -195,6 +231,52 @@ describe("approval review", () => {
     expect(patchSummary).toContain(argumentsText);
     expect(checkSummary).toContain("…");
     expect(checkSummary).not.toContain(argumentsText);
+  });
+
+  test("persists the complete OCI policy for a locator-only resume command", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-resume-oci-"));
+    try {
+      const config = resolveHarnessConfig({
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
+        storeBackend: "file",
+        tenantId: "tenant-a",
+        userId: "user-a",
+        namespace: "namespace-a",
+        executionBackend: "oci",
+        ociRuntime: "podman",
+        ociImage: "example/harness@sha256:fixture",
+        ociAllowedCommands: ["bun", "git"],
+        ociMaxProcessRuntimeMs: 42_000,
+        ociMaxProcessOutputBytes: 12_345,
+        ociMaxMemoryMb: 512,
+        ociMaxPids: 64,
+        ociMaxCpus: 1,
+        ociMaxWorkspaceBytes: 16 * 1024 * 1024,
+        ociMaxFileWriteBytes: 512 * 1024,
+        ociTmpfsMb: 32
+      });
+      const metadata = createHarnessResumeMetadata(config);
+      const restoredInput = readHarnessResumeConfig({ metadata });
+      expect(restoredInput).toBeDefined();
+      const restored = resolveHarnessConfig(restoredInput!);
+      expect(restored.execution).toEqual(config.execution);
+      expect(restored.workspace).toBe(config.workspace);
+      expect(restored.stateDirectory).toBe(config.stateDirectory);
+      expect(restored.storeBackend).toBe(config.storeBackend);
+      expect(restored.scope).toEqual(config.scope);
+
+      const command = resumeCommand("run-oci", config);
+      expect(command).toContain("resume 'run-oci' --approve");
+      expect(command).toContain(`--workspace '${config.workspace}'`);
+      expect(command).toContain(`--state-dir '${config.stateDirectory}'`);
+      expect(command).toContain("--store file");
+      expect(command).toContain("--tenant 'tenant-a'");
+      expect(command).toContain("--user 'user-a'");
+      expect(command).toContain("--namespace 'namespace-a'");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
   });
 });
 
@@ -370,6 +452,7 @@ describe("doctor", () => {
         "git",
         "scripts",
         "state-directory",
+        "execution-environment",
         "provider:meta",
         "provider:qwen",
         "provider:openai"
@@ -378,6 +461,42 @@ describe("doctor", () => {
       expect(serialized).not.toContain("do-not-print-this-key");
       expect(serialized).not.toContain("secret-host");
       expect(formatDoctorReport(report)).toContain("Doctor completed without blocking problems.");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("checks the immutable OCI image when enforced execution is selected", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-oci-"));
+    try {
+      await writeFile(path.join(workspace, "package.json"), JSON.stringify({ scripts: { test: "bun test" } }));
+      const runtime = {
+        inspectImage: async (imageReference: string) => ({
+          runtime: "docker" as const,
+          runtimeVersion: "fixture-1",
+          imageReference,
+          imageId: `sha256:${"a".repeat(64)}`,
+          imageDigest: `sha256:${"a".repeat(64)}`
+        }),
+        run: async () => { throw new Error("not used"); },
+        removeRunContainers: async () => 0,
+        cleanupOrphans: async () => 0
+      };
+      const report = await createDoctorReport({
+        provider: "openai",
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
+        executionBackend: "oci"
+      }, {
+        bunVersion: "1.3.7",
+        env: { OPENAI_API_KEY: "present" },
+        ociRuntimeAdapter: runtime
+      });
+      expect(report.configuration.execution).toMatchObject({ backend: "oci", runtime: "docker" });
+      expect(report.checks.find((check) => check.id === "execution-environment")).toMatchObject({
+        status: "pass",
+        details: { network: "deny", shellAvailable: true }
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
