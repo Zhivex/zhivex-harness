@@ -159,19 +159,25 @@ try {
   const pidsLimited = await session.runCommand("bun", [
     "-e",
     [
-      "import { readFile, readdir } from 'node:fs/promises';",
+      "import { readFile } from 'node:fs/promises';",
+      "const maxEvents=async()=>Number((await readFile('/sys/fs/cgroup/pids.events','utf8')).match(/^max\\s+(\\d+)$/m)?.[1] ?? 0);",
       "const configured=Number((await readFile('/sys/fs/cgroup/pids.max','utf8')).trim());",
       "if (configured !== 32) throw new Error(`unexpected PID ceiling: ${configured}`);",
+      "const beforeMaxEvents=await maxEvents();",
       "const children=[];",
       "try {",
-      "try { for (let index=0; index<96; index+=1) {",
-      "const child=Bun.spawn(['bun','-e','await Bun.sleep(60000)'],{stdin:'ignore',stdout:'ignore',stderr:'ignore'});",
+      "try { for (let index=0; index<configured*2; index+=1) {",
+      "const child=Bun.spawn(['sleep','60'],{stdin:'ignore',stdout:'ignore',stderr:'ignore'});",
       "children.push(child);",
       "} } catch {}",
       "await Bun.sleep(250);",
-      "const active=(await readdir('/proc')).filter((name)=>/^\\d+$/.test(name)).length;",
+      "const active=Number((await readFile('/sys/fs/cgroup/pids.current','utf8')).trim());",
       "if (active > configured) throw new Error(`PID ceiling exceeded: ${active}`);",
-      "} finally { for (const child of children) child.kill(); }",
+      "if (await maxEvents() <= beforeMaxEvents) throw new Error('PID ceiling was not enforced');",
+      "} finally {",
+      "for (const child of children) child.kill();",
+      "await Promise.allSettled(children.map((child)=>child.exited));",
+      "}",
       "console.log('pids-limit-ok');"
     ].join(" ")
   ]);
