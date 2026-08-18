@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.6.1` is the positioning and hostile-repository proof patch for the `0.6.x` enforced-execution line. `0.6.0` is public on npm; its exact tarball, `latest` tag, and SLSA workflow provenance were verified against source tag `v0.6.0`. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+Version `0.6.1` is the public positioning and hostile-repository proof patch for the `0.6.x` enforced-execution line. Its exact npm tarball, `latest` tag, and SLSA workflow provenance were verified against source tag `v0.6.1`. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
 
 ## Why Zhivex Harness
 
