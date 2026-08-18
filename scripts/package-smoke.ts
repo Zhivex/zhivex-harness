@@ -85,7 +85,8 @@ try {
     "package/examples/mcp-config.json",
     "package/dist/index.js",
     "package/dist/index.d.ts",
-    "package/dist/cli.js"
+    "package/dist/cli.js",
+    "package/dist/hostile-repository-demo.js"
   ]) {
     assert(archive.stdout.split(/\r?\n/).includes(required), `packed artifact is missing ${required}`);
   }
@@ -149,6 +150,7 @@ try {
 import assert from "node:assert/strict";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   HARNESS_SQLITE_FILE,
   Workspace,
@@ -166,6 +168,15 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 const workspace = process.cwd();
 const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+const installedDemo = await import(pathToFileURL(path.join(
+  workspace,
+  "node_modules",
+  "@zhivex-ai",
+  "harness",
+  "dist",
+  "hostile-repository-demo.js"
+)).href);
+assert.equal(typeof installedDemo.runHostileRepositoryDemo, "function");
 const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "fixture-sensitive-payload\\n" }];
 const proposal = createEditProposal({ changes });
 const firstHarness = await createHarness({

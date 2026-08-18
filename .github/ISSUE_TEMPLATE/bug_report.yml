@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a reproducible harness defect or boundary mismatch.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not disclose vulnerabilities here. Use GitHub private vulnerability reporting as described in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Harness version
+      placeholder: 0.6.1
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - CLI
+        - Repository editing
+        - Durable operations
+        - MCP
+        - Subagents or review groups
+        - OCI execution
+        - Provider integration
+        - Packaging or release
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest safe commands, fixture, and configuration that reproduce the problem. Remove secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Include redacted output and exit status.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 15, Bun 1.3.14, Docker 29.7.2, provider/model if relevant
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed credentials, private source, and personal data from this report.
+          required: true
+        - label: This is not a vulnerability disclosure.
+          required: true

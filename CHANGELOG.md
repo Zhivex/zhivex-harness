@@ -4,6 +4,29 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.6.1 - 2026-08-17
+
+### Added
+
+- A reproducible hostile-repository demonstration that exercises two durable approval boundaries, SQLite reopen, secret-free OCI execution, denied outbound network, separate host patch import, exactly-once journal evidence, ledger redaction, and stale-host rejection.
+- A deterministic social-preview asset and a launch-oriented README path centered on governed repository change control.
+- Structured GitHub issue forms for reproducible bugs and bounded feature requests.
+
+### Changed
+
+- Repositioned the package as a governed, provider-portable runtime for coding agents instead of a generic coding-agent harness.
+- Expanded npm discovery metadata and documented the verified public `0.6.0` registry/provenance baseline.
+- Updated support, security, roadmap, release, and certification documentation to reflect that `0.6.0` is published.
+
+### Migration
+
+- No runtime, CLI, configuration, persisted-state, or public-library contract changes are required from `0.6.0`.
+
+### Security
+
+- The demo uses a disposable fixture and a decoy secret; it never reads or prints operator credentials.
+- The scripted proof does not weaken approvals: environment execution and host import remain separate interruptible operations.
+
 ## 0.6.0 - 2026-08-17
 
 ### Added

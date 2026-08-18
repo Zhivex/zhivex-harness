@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title description">
+  <title id="title">Zhivex Harness</title>
+  <desc id="description">Let coding agents work while keeping control of every change.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.55" stop-color="#0b1729"/>
+      <stop offset="1" stop-color="#10142a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#42e8c7"/>
+      <stop offset="1" stop-color="#8b7cff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#42e8c7" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#42e8c7" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#8ca3c7" stroke-opacity="0.08"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000814" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="640" rx="34" fill="url(#background)"/>
+  <rect width="1280" height="640" rx="34" fill="url(#grid)"/>
+  <circle cx="1050" cy="120" r="310" fill="url(#glow)"/>
+  <circle cx="1160" cy="610" r="360" fill="#8b7cff" opacity="0.07"/>
+
+  <g transform="translate(76 72)">
+    <rect width="280" height="42" rx="21" fill="#42e8c7" fill-opacity="0.12" stroke="#42e8c7" stroke-opacity="0.5"/>
+    <circle cx="24" cy="21" r="6" fill="#42e8c7"/>
+    <text x="42" y="27" fill="#bafbf0" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700" letter-spacing="1.5">GOVERNED EXECUTION</text>
+
+    <text x="0" y="130" fill="#f7fbff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="70" font-weight="760" letter-spacing="-2.5">Let agents work.</text>
+    <text x="0" y="210" fill="url(#accent)" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="70" font-weight="760" letter-spacing="-2.5">Control every change.</text>
+    <text x="2" y="266" fill="#aebdd2" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24">Durable approvals · isolated execution · audit-ready evidence</text>
+
+    <g transform="translate(0 330)">
+      <text x="0" y="0" fill="#f7fbff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="760">ZHIVEX HARNESS</text>
+      <text x="0" y="38" fill="#7488a5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">provider-portable · Bun-first · local by design</text>
+    </g>
+  </g>
+
+  <g transform="translate(870 152)" filter="url(#shadow)">
+    <rect width="324" height="354" rx="32" fill="#0d1b30" stroke="#87a0c5" stroke-opacity="0.25"/>
+    <path d="M162 48 257 84v76c0 74-39 122-95 151-56-29-95-77-95-151V84l95-36Z" fill="#42e8c7" fill-opacity="0.08" stroke="url(#accent)" stroke-width="3"/>
+    <path d="m122 171 28 28 57-67" fill="none" stroke="#42e8c7" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="700" text-anchor="middle">
+      <rect x="36" y="292" width="76" height="34" rx="17" fill="#142743" stroke="#47617f"/>
+      <text x="74" y="314" fill="#b8c7dc">RUN</text>
+      <path d="M116 309h18" stroke="#58718f" stroke-width="2"/>
+      <rect x="138" y="292" width="76" height="34" rx="17" fill="#142743" stroke="#47617f"/>
+      <text x="176" y="314" fill="#b8c7dc">REVIEW</text>
+      <path d="M218 309h18" stroke="#58718f" stroke-width="2"/>
+      <rect x="240" y="292" width="52" height="34" rx="17" fill="#42e8c7" fill-opacity="0.16" stroke="#42e8c7"/>
+      <text x="266" y="314" fill="#bafbf0">APPLY</text>
+    </g>
+  </g>
+</svg>

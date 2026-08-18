@@ -86,7 +86,8 @@ for (const required of [
   "package/examples/mcp-config.json",
   "package/dist/index.js",
   "package/dist/index.d.ts",
-  "package/dist/cli.js"
+  "package/dist/cli.js",
+  "package/dist/hostile-repository-demo.js"
 ]) {
   assert(entries.includes(required), `release artifact is missing ${required}`);
 }

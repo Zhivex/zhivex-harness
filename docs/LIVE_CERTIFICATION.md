@@ -127,9 +127,11 @@ The complete Meta/Qwen/OpenAI enforced-execution matrix passed together against 
 | Qwen | `qwen3.8-max` | Certified | One approved OCI command, one patch inspection, one separately approved import, exact host contents, and environment binding. |
 | OpenAI | `gpt-5.4` | Certified | Responses mode persisted across both approval continuations; exact OCI tool order, host import, journal, and binding passed. |
 
-The base proposal/approval/process-restart matrix passed again for all three providers at `2026-08-17T16:22:34.885Z`. The reviewer-delegation/child-persistence/SQLite-reopen/hierarchy/aggregate-budget matrix passed again at `2026-08-17T16:24:14.381Z`. These refreshes cover the `0.6.0` dependency and harness candidate; they do not prove registry publication.
+The base proposal/approval/process-restart matrix passed again for all three providers at `2026-08-17T16:22:34.885Z`. The reviewer-delegation/child-persistence/SQLite-reopen/hierarchy/aggregate-budget matrix passed again at `2026-08-17T16:24:14.381Z`. These refreshes cover the `0.6.0` dependency and harness artifact; registry publication is proved separately.
 
-The full deterministic gate then passed with 99 tests, 468 assertions, seven golden evaluations, both MCP implementations, real OCI, and installed-package smoke. The exact local 31-file tarball also passed SHA-512 inspection and isolated consumer execution. npm still reports `0.5.0` as latest and no `0.6.0` version; registry publication/provenance remain deliberately unclaimed.
+The full deterministic gate then passed with 99 tests, 468 assertions, seven golden evaluations, both MCP implementations, real OCI, and installed-package smoke. The exact 31-file tarball passed SHA-512 inspection and isolated consumer execution. `@zhivex-ai/harness@0.6.0` was subsequently published through the protected OIDC workflow; on 2026-08-17 America/Argentina/Buenos_Aires, the downloaded registry tarball, `latest` tag, integrity, SLSA subject, repository, workflow, branch, and source commit were verified against `fd420f7560b2`.
+
+`0.6.1` does not change provider, tool, approval, execution, or streaming behavior, so it inherits this date-bound provider evidence subject to the normal exact-artifact and registry release gates. Its new hostile-repository demo is deterministic control-plane evidence, not a substitute for the billable provider matrix.
 
 ## 0.3.0 private-milestone evidence
 

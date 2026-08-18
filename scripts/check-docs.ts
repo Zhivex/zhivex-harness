@@ -10,6 +10,7 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   overrides?: Record<string, string>;
+  keywords?: string[];
 };
 
 const markdownFiles = [
@@ -248,11 +249,18 @@ if (manifest.version.startsWith("0.5.")) {
 
 if (manifest.version.startsWith("0.6.")) {
   const executionPath = path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md");
+  const hostileDemoPath = path.join(workspace, "docs", "HOSTILE_REPOSITORY_DEMO.md");
   let execution = "";
+  let hostileDemo = "";
   try {
     execution = await readFile(executionPath, "utf8");
   } catch {
     failures.push("docs/EXECUTION_ENVIRONMENTS.md is required for the 0.6.x isolation contract.");
+  }
+  try {
+    hostileDemo = await readFile(hostileDemoPath, "utf8");
+  } catch {
+    failures.push("docs/HOSTILE_REPOSITORY_DEMO.md is required for the 0.6.x product proof.");
   }
   for (const required of [
     "## Trust boundary",
@@ -274,8 +282,27 @@ if (manifest.version.startsWith("0.6.")) {
   if (!changelog.includes("## 0.6.0 -") || !changelog.includes("### Migration")) {
     failures.push("CHANGELOG.md must include the 0.6.0 entry and migration notes.");
   }
-  if (!roadmap.includes("0.6.0 is implemented locally")) {
-    failures.push("ROADMAP.md does not identify 0.6.0 as implemented locally.");
+  if (!roadmap.includes("0.6.0 is published on npm")) {
+    failures.push("ROADMAP.md does not identify 0.6.0 as published on npm.");
+  }
+  if (
+    manifest.description !==
+      "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution."
+  ) {
+    failures.push("0.6.x package metadata must lead with the governed execution position.");
+  }
+  for (const keyword of ["agent-runtime", "agent-governance", "sandbox", "durable-workflows", "mcp", "bun"]) {
+    if (!manifest.keywords?.includes(keyword)) {
+      failures.push(`0.6.x package metadata is missing the ${keyword} discovery keyword.`);
+    }
+  }
+  if (
+    manifest.scripts?.["demo:hostile"] !== "bun run dist/hostile-repository-demo.js" ||
+    !readme.includes("## Prove the boundary in five minutes") ||
+    !hostileDemo.includes("## What it proves") ||
+    !hostileDemo.includes("## Evidence limits")
+  ) {
+    failures.push("0.6.x must expose and document the hostile-repository product proof.");
   }
   if (
     manifest.scripts?.["smoke:oci"] !== "bun run scripts/oci-execution-smoke.ts" ||

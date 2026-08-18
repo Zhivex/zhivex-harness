@@ -1,10 +1,44 @@
 # Zhivex Harness
 
-Zhivex Harness is a Bun-first coding-agent harness portable across Meta, Qwen, and OpenAI, built on the Stable `@zhivex-ai/agents` runtime.
+**Governed execution for coding agents.**
 
-The model provides capability; the harness provides repository context, narrow tools, limits, approvals, durable state, diagnostics, and verification. Every provider uses the same agent loop and local-tool contract.
+[![npm](https://img.shields.io/npm/v/%40zhivex-ai%2Fharness?logo=npm)](https://www.npmjs.com/package/@zhivex-ai/harness)
+[![CI](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml)
+[![Bun](https://img.shields.io/badge/Bun-%3E%3D1.3.7-fbf0df?logo=bun)](https://bun.sh/)
+[![License](https://img.shields.io/badge/license-MIT-22c55e.svg)](./LICENSE)
 
-Version `0.6.0` is the enforced-execution release candidate. `0.5.0` is already public on npm; `0.6.0` remains a source candidate until its exact artifact, live-provider, tag, provenance, and registry gates complete. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+![Zhivex Harness: Let agents work. Control every change.](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/assets/social-preview.png)
+
+Zhivex Harness runs coding agents against real repositories with conflict-safe edits, durable approvals, isolated execution, and redacted operational evidence. It is a Bun-first local CLI and TypeScript library portable across Meta, Qwen, and OpenAI, built on the Stable `@zhivex-ai/agents` runtime.
+
+The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
+
+Version `0.6.1` is the positioning and hostile-repository proof patch for the `0.6.x` enforced-execution line. `0.6.0` is public on npm; its exact tarball, `latest` tag, and SLSA workflow provenance were verified against source tag `v0.6.0`. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+
+## Why Zhivex Harness
+
+Provider choice, MCP, subagents, and containers are useful building blocks. Zhivex Harness focuses on the change-control path that connects them:
+
+1. copy an eligible, secret-free repository snapshot into an enforced OCI environment;
+2. execute only approved, allowlisted argv commands without host shell interpolation or container network;
+3. inspect a content- and run-bound patch while the host workspace remains unchanged;
+4. require a separate durable approval before importing that exact patch; and
+5. reject the import if either the reviewed patch or the host preconditions changed.
+
+Approvals, leases, idempotency claims, execution bindings, and exactly-once tool journals survive process restarts. Host deletions remain recoverable through quarantine, and operator exports are redacted by default.
+
+## Prove the boundary in five minutes
+
+The hostile-repository demo creates a disposable fixture containing malicious instructions and a decoy `.env`, then exercises the real OCI, approval, restart, patch-import, ledger, and stale-host boundaries:
+
+```bash
+bun install --frozen-lockfile
+docker pull oven/bun:1.3.7-slim
+bun run build
+bun run demo:hostile
+```
+
+The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
 ## What 0.6 includes
 
@@ -48,7 +82,7 @@ bun add @zhivex-ai/harness
 bunx zhivex-harness --version
 ```
 
-To exercise the unpublished `0.6.0` source candidate:
+To exercise the `0.6.1` source checkout:
 
 ```bash
 bun install --frozen-lockfile

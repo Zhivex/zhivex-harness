@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published `0.5.x` version. Pre-release source snapshots and older private checkpoints are not supported release channels.
+Security fixes are provided for the latest published `0.6.x` version. Pre-release source snapshots and older private checkpoints are not supported release channels.
 
 ## Reporting a vulnerability
 
