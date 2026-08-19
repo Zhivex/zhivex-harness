@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.6.0` is public on npm with exact registry integrity and SLSA workflow provenance verified against source tag `v0.6.0`. `0.6.1` is the next source candidate, but publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.6.1` is public on npm with exact registry integrity and SLSA workflow provenance verified against source tag `v0.6.1`. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
 
 ## Deterministic gates
 
@@ -42,7 +42,7 @@ The release workflow performs this sequence across an unprivileged validation jo
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
 7. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
 8. pass that same file to the npm CLI for the registry transaction; and
-9. retry through registry propagation, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/branch/commit evidence.
+9. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
 
 For a local artifact rehearsal after the source gate:
 
@@ -76,13 +76,13 @@ After the release commit is reviewed, merged, and pushed to `main`:
 ```bash
 git tag -a v0.6.1 -m "Release v0.6.1"
 git push origin v0.6.1
-gh workflow run release.yml \
+gh workflow run release.yml --ref main \
   -f tag=v0.6.1 \
   -f channel=latest \
   -f confirm_publication=true
 ```
 
-The boolean confirmation is intentional because npm versions are immutable. The `npm` environment should add a second human approval boundary. Do not use `bun publish`, a local npm session, or a manual registry upload as an alternate path.
+The canonical dispatch uses `--ref main`, and `main` must still resolve to the tagged release commit. A recovery dispatch from the exact annotated version tag is also accepted because the release gates separately prove that it resolves to the expected commit and is reachable from `origin/main`; every other ref is rejected. The boolean confirmation is intentional because npm versions are immutable. The `npm` environment should add a second human approval boundary. Do not use `bun publish`, a local npm session, or a manual registry upload as an alternate path.
 
 If npm accepted the immutable version but the post-publication verifier failed during propagation, rerun only the failed `publish` job. It downloads the already validated artifact, skips `npm publish` only when the registry version has byte-identical integrity, and repeats the registry/provenance verification. Never rebuild, bump, or republish the same version to recover a post-publication false negative.
 
