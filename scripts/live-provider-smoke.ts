@@ -187,6 +187,7 @@ const certificationPrompt = (provider: HarnessProvider) => {
   return `Perform this exact reviewed-edit workflow:
 1. Call propose_edits exactly once with this exact JSON input: ${JSON.stringify({ changes })}.
 2. Read proposalId from that tool result, then call apply_patch exactly once with that proposalId and the same changes.
+Calling apply_patch is how you request operator approval: the runtime will pause before executing it. Do not ask for approval in text and do not finish after propose_edits.
 Do not invent or calculate proposalId, do not skip propose_edits, and do not call any other tool.
 After the approved apply_patch result, reply exactly ${completionToken(provider)}.`;
 };

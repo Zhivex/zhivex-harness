@@ -1,6 +1,6 @@
 # Extensibility and orchestration
 
-Zhivex Harness `0.7.x` combines governed external tools and bounded multi-agent work with a public provider registry and explicit per-role model routing. Configuration schema remains version `4`; registry selection, runtime model capabilities, routed child models, non-secret provider transport settings, MCP, execution policy, budgets, and scope are bound into the durable harness fingerprint.
+Zhivex Harness `0.8.x` combines governed external tools and bounded multi-agent work with a public provider registry and explicit per-role model routing. Configuration schema remains version `4`; registry selection, runtime model capabilities, routed child models, non-secret provider transport settings, MCP, execution policy, budgets, and scope are bound into the durable harness fingerprint.
 
 ## Provider registry
 
@@ -8,7 +8,11 @@ Built-in registrations are Meta, Qwen, OpenAI, and Gemini. Each registration own
 
 Library callers can use `DEFAULT_PROVIDER_REGISTRY`, `BUILTIN_PROVIDER_REGISTRATIONS`, `createProviderRegistry`, or `DEFAULT_PROVIDER_REGISTRY.extend(...)`, then pass the registry to `resolveHarnessConfig`, `createProviderModel`, provider diagnostics, or `createHarness({ providerRegistry })`. Registration IDs, environment-variable names, defaults, diagnostics, and factories are validated before they become selectable.
 
-Gemini uses `@zhivex-ai/gemini@0.10.4`, default model `gemini-3.6-flash`, `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and optional `GEMINI_BASE_URL`. It is provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed harness live matrix; adapter-level evidence alone does not make the harness integration certified.
+The coordinated SDK batch pins `@zhivex-ai/agents@1.2.0`, `@zhivex-ai/core@1.7.0`, `@zhivex-ai/meta@0.2.2`, `@zhivex-ai/qwen@0.10.2`, `@zhivex-ai/openai@0.9.6`, and `@zhivex-ai/gemini@0.10.5`. A Core override keeps one runtime contract identity across every adapter.
+
+OpenAI is based on the GPT-5.6 family: `gpt-5.6-luna` is the default, with `gpt-5.6-terra` and `gpt-5.6-sol` available through `--model`. Availability remains organization-dependent while the upstream family is in limited preview, and the adapter uses the Responses API by default.
+
+Gemini defaults to `gemini-3.6-flash`, uses `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and accepts optional `GEMINI_BASE_URL`. It is provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed harness live matrix; adapter-level evidence alone does not make the harness integration certified.
 
 ## Capability gate
 
@@ -115,7 +119,7 @@ The resolved route plan is persisted without credentials in CLI resume metadata 
 ## Routing limits
 
 - There is no automatic failover inside a run and no provider change while an approval is pending.
-- `--max-cost-usd` with any route is rejected because `0.7.x` has one operator-supplied price pair, not pricing per model/run.
+- `--max-cost-usd` with any route is rejected because `0.8.x` has one operator-supplied price pair, not pricing per model/run.
 - Routing does not infer speed, quality, price, or a “best” provider; presets remain deferred until the model catalog contains reliable evidence.
 - The CLI registry is static. Applications may inject a validated registry through the TypeScript API, but configuration files cannot load arbitrary provider modules.
 - Cross-provider console context uses deterministic redacted compaction and omits tool/provider payloads; it is a portable summary, not a byte-identical transcript handoff.

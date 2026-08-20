@@ -473,7 +473,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     descriptor: {
       id: "openai",
       name: "OpenAI",
-      defaultModel: "gpt-5.4",
+      defaultModel: "gpt-5.6-luna",
       credentialNames: ["OPENAI_API_KEY"],
       capabilities: HARNESS_PROVIDER_CAPABILITIES,
       support: "certified"

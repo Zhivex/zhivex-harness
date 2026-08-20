@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-20
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0`, `0.6.0`, and `0.6.1` are published on npm. `0.7.0` is the source release candidate for the multi-provider agent console; publication and live certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.7.0` are published on npm. `0.8.0` is the source release candidate for the coordinated SDK refresh and GPT-5.6-first OpenAI integration; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -40,7 +40,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Published on npm | L |
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Published on npm | XL |
 | `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Published on npm | S |
-| `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Source release candidate | L |
+| `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Published on npm | L |
+| `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Source release candidate | M |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -215,7 +216,7 @@ Its deterministic demo test uses an injected OCI adapter. The public `bun run de
 
 ## 0.7.0 — Multi-provider agent console
 
-Status: 0.7.0 release candidate implemented in source. Deterministic and installed-artifact gates must pass before a release commit; Gemini and mixed-provider routing remain provisional until the required live validation is recorded.
+Status: published on npm. Gemini and mixed-provider routing remain provisional until their required live validation is recorded in a later release artifact.
 
 Goal: turn the harness from a collection of one-shot commands into an ergonomic local agent console while preserving immutable runs and provider portability.
 
@@ -242,6 +243,25 @@ Deferred after `0.7.0`:
 - Per-provider/per-role cost pricing and evidence-backed routing presets.
 - Additional hosted and local providers, added one by one through the same registry and certification contract.
 - Remote workers or microVM backends; the current console stays local and Bun-first.
+
+## 0.8.0 — SDK refresh and GPT-5.6-first OpenAI
+
+Status: source release candidate. Deterministic, installed-artifact, live-provider, and publication evidence remain separate gates.
+
+Goal: adopt the coordinated SDK release batch without duplicating Core contracts, make the current GPT-5.6 family the primary OpenAI experience, and keep approval pauses reliable across provider behavior changes.
+
+Scope:
+
+- Pin Core `1.7.0`, Agents `1.2.0`, Meta `0.2.2`, Qwen `0.10.2`, OpenAI `0.9.6`, and Gemini `0.10.5`, with one overridden Core runtime.
+- Default OpenAI to `gpt-5.6-luna`, with explicit Terra and Sol selection.
+- Tell models to emit the reviewed approval-gated tool call so the runtime, rather than prose, owns the pause and restart boundary.
+- Document migration from the `0.7.x` OpenAI default and durable version binding.
+
+Exit criteria:
+
+- Frozen install, dependency deduplication, documentation, typecheck, tests, evaluation, build, package inspection, and installed-tarball smoke pass.
+- Luna, Terra, and Sol pass the base proposal/approval/restart/exactly-once live gate with date-bound evidence.
+- The exact release artifact, annotated tag, registry integrity, and provenance are verified independently before claiming publication.
 
 ## 1.0.0 — Stable CLI and library contract
 
@@ -288,7 +308,7 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Finish the `0.7.0` deterministic, real-OCI, and installed-artifact gates from a clean release commit.
-2. Complete the required live provider and mixed-routing certification; keep provisional paths provisional on any failure or missing evidence.
-3. Dogfood durable `zhx` sessions, provider handoff, role routing, and JSONL consumption on representative repositories.
+1. Finish the `0.8.0` deterministic, real-OCI, and installed-artifact gates from a clean release commit.
+2. Complete the remaining GPT-5.6 and provisional-provider live matrices; keep uncertified paths provisional on any failure or missing evidence.
+3. Dogfood the GPT-5.6 default, durable `zhx` sessions, provider handoff, role routing, and JSONL consumption on representative repositories.
 4. Only after those gates, complete the reviewed release workflow and verify registry integrity and provenance against the exact artifact.

@@ -1,6 +1,6 @@
 # CLI contract
 
-Zhivex Harness `0.7.x` is Bun-first and exposes a durable agent console plus versioned JSON documents and JSON Lines events for automation.
+Zhivex Harness `0.8.x` is Bun-first and exposes a durable agent console plus versioned JSON documents and JSON Lines events for automation.
 
 ## Commands
 
@@ -53,7 +53,7 @@ Provider/model changes apply only to the next run. The console blocks them while
 
 `--require-capability <name>`, `--subagent <profile>`, and `--reviewer <explorer|reviewer>` are repeatable. `--mcp-config <path>` loads a schema-versioned file inside the canonical workspace. Child limits use `--subagent-max-steps`, `--subagent-max-tool-calls`, `--subagent-max-tool-errors`, `--subagent-max-input-tokens`, `--subagent-max-output-tokens`, `--subagent-max-total-tokens`, and `--subagent-timeout-ms`. Parallel review is capped by `--max-parallel-reviews`.
 
-`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.7.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
+`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.8.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
 `review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 

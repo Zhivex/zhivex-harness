@@ -47,7 +47,7 @@ zhivex-harness runs cleanup --before 2026-08-01T00:00:00Z
 
 ## Durable CLI sessions
 
-The `0.7.x` console maintains a scoped session index in prefixed tables inside `operations.sqlite`. A session is an ordered chain of immutable run references; it is not a mutable provider run. The index stores session ID/title, parent/fork metadata, run ID, provider, model, role, status, and timestamps. It never stores prompts, messages, tool calls/results, approval arguments, provider data, or environment values.
+The `0.8.x` console maintains a scoped session index in prefixed tables inside `operations.sqlite`. A session is an ordered chain of immutable run references; it is not a mutable provider run. The index stores session ID/title, parent/fork metadata, run ID, provider, model, role, status, and timestamps. It never stores prompts, messages, tool calls/results, approval arguments, provider data, or environment values.
 
 ```bash
 zhx chat
@@ -66,7 +66,7 @@ The store uses SQLite WAL transactions, optimistic revisions, workspace/scope ha
 
 Every console turn preallocates a new run ID and binds it permanently to one provider/model. Provider or model changes take effect only on the next run and are blocked while an approval is pending. Before transferring context to another provider/model, the console creates a bounded deterministic redacted summary: text is truncated and common credentials are removed, while tool inputs, outputs, and provider payloads are replaced by tool/type names.
 
-Per-role routes are stored as non-secret provider/model metadata in the durable resume envelope so an approval restart reconstructs the same subagent models and fingerprint. A route never performs in-run failover. Heterogeneous routes cannot be combined with the single-price `--max-cost-usd` contract in `0.7.x`.
+Per-role routes are stored as non-secret provider/model metadata in the durable resume envelope so an approval restart reconstructs the same subagent models and fingerprint. A route never performs in-run failover. Heterogeneous routes cannot be combined with the single-price `--max-cost-usd` contract in `0.8.x`.
 
 ## Budgets
 
@@ -103,6 +103,12 @@ The default compactor activates at 60 messages or an estimated 40,000 input toke
 ## Redaction and exports
 
 Operational artifacts are schema version `1`. By default they exclude raw messages, tool inputs, tool outputs, approval arguments, run metadata, and full output text. Traces, ledger previews, and journal errors apply the production secret/email redaction policy. This is a defensive export boundary, not a guarantee that arbitrary model-generated prose can never contain sensitive business data; control prompt contents and workspace permissions accordingly.
+
+## Migration from 0.7.x
+
+`0.8.0` keeps configuration schema version `4`, final JSON schema `1`, session storage, CLI commands, and both executable aliases. The OpenAI default changes from `gpt-5.4` to `gpt-5.6-luna`; pass an explicit model when retaining the previous behavior is required.
+
+Paused `0.7.x` approvals are intentionally not resumable by `0.8.x`: the durable binding includes the harness version, so resume fails closed before a tool side effect. Resolve or deny them with the matching `0.7.x` artifact. Completed runs remain inspectable, and new `0.8.x` sessions can start from an explicitly compacted summary.
 
 ## Migration from 0.6.x
 

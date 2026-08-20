@@ -6,7 +6,7 @@ on:
       tag:
         description: Existing annotated release tag that resolves to main
         required: true
-        default: v0.7.0
+        default: v0.8.0
         type: string
       channel:
         description: npm distribution tag

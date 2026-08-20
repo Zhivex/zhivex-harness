@@ -85,6 +85,8 @@ describe("live provider smoke contract", () => {
     const prompt = certificationPrompt("meta");
     expect(prompt).toContain("Call propose_edits exactly once");
     expect(prompt).toContain("then call apply_patch exactly once");
+    expect(prompt).toContain("Calling apply_patch is how you request operator approval");
+    expect(prompt).toContain("Do not ask for approval in text");
     expect(prompt.indexOf("propose_edits")).toBeLessThan(prompt.indexOf("apply_patch"));
 
     const input = providerRunInput("meta", prompt);
