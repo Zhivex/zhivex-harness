@@ -1,6 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { findReleaseChangelogHeading } from "./release-changelog.js";
+
 const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
   version: string;
@@ -389,8 +391,8 @@ if (manifest.version.startsWith("0.8.")) {
   for (const required of ["id: \"gemini\"", "createProviderRegistry", "transportFingerprint"]) {
     if (!providerConfig.includes(required)) failures.push(`0.8.x provider registry is missing ${required}.`);
   }
-  if (!changelog.includes("## 0.8.0 - Unreleased") || !changelog.includes("### Migration from 0.7.x")) {
-    failures.push("CHANGELOG.md must include the 0.8.0 release candidate and migration notes.");
+  if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration from 0.7.x")) {
+    failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
   }
   if (!roadmap.includes("0.8.0` is the source release candidate")) {
     failures.push("ROADMAP.md must identify the 0.8.0 source release candidate.");

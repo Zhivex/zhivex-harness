@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { findReleaseChangelogHeading } from "./release-changelog.js";
+
 interface CommandResult {
   exitCode: number;
   stdout: string;
@@ -128,14 +130,13 @@ if (!manifest.scripts?.["artifact:check"] || !manifest.scripts?.["smoke:artifact
 
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
 if (manifest.version) {
-  const escapedVersion = manifest.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const datedRelease = changelog.match(new RegExp(`^## ${escapedVersion} - (\\d{4}-\\d{2}-\\d{2})$`, "m"));
-  if (!datedRelease) {
+  const releaseHeading = findReleaseChangelogHeading(changelog, manifest.version);
+  if (!releaseHeading || releaseHeading.kind !== "dated") {
     failures.push(`CHANGELOG.md must include an ISO-dated ${manifest.version} release heading`);
-  } else if (Number.isNaN(Date.parse(`${datedRelease[1]}T00:00:00Z`))) {
+  } else if (Number.isNaN(Date.parse(`${releaseHeading.value}T00:00:00Z`))) {
     failures.push(`CHANGELOG.md has an invalid release date for ${manifest.version}`);
   }
-  if (changelog.includes(`## ${manifest.version} - Unreleased`)) {
+  if (releaseHeading?.kind === "unreleased") {
     failures.push(`CHANGELOG.md still marks ${manifest.version} as unreleased`);
   }
 }
