@@ -7,6 +7,7 @@ import type { AgentRunInput } from "@zhivex-ai/agents";
 
 import {
   PROVIDERS,
+  PROVIDER_DESCRIPTORS,
   providerDescriptor,
   type HarnessProvider
 } from "../src/config.js";
@@ -52,7 +53,9 @@ const modelEnvironmentName = (provider: HarnessProvider) =>
 const selectedProviders = (env: NodeJS.ProcessEnv): HarnessProvider[] => {
   const configured = env[PROVIDERS_VARIABLE]?.trim();
   if (!configured) {
-    return [...PROVIDERS];
+    return PROVIDER_DESCRIPTORS
+      .filter((descriptor) => descriptor.support === "certified")
+      .map((descriptor) => descriptor.id);
   }
   const selected = [...new Set(configured.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean))];
   for (const provider of selected) {
@@ -87,6 +90,7 @@ const redacted = (value: string, env: NodeJS.ProcessEnv) => {
   const sensitiveNames = new Set([
     "META_BASE_URL",
     "OPENAI_BASE_URL",
+    "GEMINI_BASE_URL",
     "QWEN_BASE_URL",
     "QWEN_WORKSPACE_ID",
     ...PROVIDERS.flatMap((provider) => providerDescriptor(provider).credentialNames)

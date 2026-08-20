@@ -6,10 +6,53 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { createHarness, runHarness } from "../src/harness.js";
+import { compactHarnessMessages, createHarness, runHarness } from "../src/harness.js";
 import { createEditProposal } from "../src/edit-contracts.js";
 
 describe("Zhivex harness", () => {
+  test("compacts an interactive conversation without retaining sensitive tool payloads", () => {
+    const messages = compactHarnessMessages([
+      { role: "system", parts: [{ type: "text", text: "SYSTEM_TOKEN=system-secret-value" }] },
+      { role: "user", parts: [{ type: "text", text: "OPENAI_API_KEY=sk-secret-value" }] },
+      {
+        role: "assistant",
+        parts: [{
+          type: "tool-call",
+          toolCall: { id: "call-1", name: "read_file", input: { content: "private-input" } }
+        }]
+      },
+      {
+        role: "tool",
+        parts: [{
+          type: "tool-result",
+          toolResult: {
+            toolCallId: "call-1",
+            toolName: "read_file",
+            output: { content: "private-output" },
+            isError: false
+          }
+        }]
+      }
+    ]);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]?.role).toBe("user");
+    const serialized = JSON.stringify(messages);
+    expect(serialized).toContain("tool-call:read_file");
+    expect(serialized).toContain("tool-result:read_file");
+    expect(serialized).not.toContain("private-input");
+    expect(serialized).not.toContain("private-output");
+    expect(serialized).not.toContain("sk-secret-value");
+    expect(serialized).not.toContain("system-secret-value");
+
+    const systemOnly = compactHarnessMessages([
+      { role: "system", parts: [{ type: "text", text: "PASSWORD=all-system-secret" }] }
+    ]);
+    expect(systemOnly).toHaveLength(1);
+    expect(systemOnly[0]?.role).toBe("user");
+    expect(JSON.stringify(systemOnly)).not.toContain("all-system-secret");
+  });
+
   test("runs the shared agent loop with an injected model", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-agent-"));
     try {
@@ -40,6 +83,39 @@ describe("Zhivex harness", () => {
       expect(result.outputText).toBe("Done");
       expect(deltas).toEqual(["Done"]);
       expect(result.state.provider).toBe("mock-provider");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("binds durable resumes to a non-secret provider transport fingerprint", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-transport-"));
+    try {
+      const model = createMockLanguageModel({ provider: "openai", modelId: "gpt-test" });
+      const first = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: model,
+        store: createInMemoryAgentRunStore(),
+        env: { OPENAI_BASE_URL: "https://first.example.invalid/v1" }
+      });
+      const second = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: model,
+        store: createInMemoryAgentRunStore(),
+        env: { OPENAI_BASE_URL: "https://second.example.invalid/v1" }
+      });
+      try {
+        const firstBinding = JSON.stringify(first.agent.harness);
+        const secondBinding = JSON.stringify(second.agent.harness);
+        expect(first.agent.harness?.fingerprint).not.toBe(second.agent.harness?.fingerprint);
+        expect(firstBinding).not.toContain("first.example.invalid");
+        expect(secondBinding).not.toContain("second.example.invalid");
+      } finally {
+        first.close();
+        second.close();
+      }
     } finally {
       await rm(root, { recursive: true, force: true });
     }

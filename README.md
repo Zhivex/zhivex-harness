@@ -9,11 +9,11 @@
 
 ![Zhivex Harness: Let agents work. Control every change.](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/assets/social-preview.png)
 
-Zhivex Harness runs coding agents against real repositories with conflict-safe edits, durable approvals, isolated execution, and redacted operational evidence. It is a Bun-first local CLI and TypeScript library portable across Meta, Qwen, and OpenAI, built on the Stable `@zhivex-ai/agents` runtime.
+Zhivex Harness runs coding agents against real repositories with conflict-safe edits, durable approvals, isolated execution, and redacted operational evidence. It is a Bun-first local CLI and TypeScript library portable across Meta, Qwen, OpenAI, and provisional Gemini support, built on the Stable `@zhivex-ai/agents` runtime.
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.6.1` is the public positioning and hostile-repository proof patch for the `0.6.x` enforced-execution line. Its exact npm tarball, `latest` tag, and SLSA workflow provenance were verified against source tag `v0.6.1`. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [execution-environment guide](./docs/EXECUTION_ENVIRONMENTS.md), the [extensibility guide](./docs/EXTENSIBILITY.md), the [durable-operations guide](./docs/DURABLE_OPERATIONS.md), and the [trusted-editing contract](./docs/REPOSITORY_EDITING.md).
+Version `0.7.0` is the source release candidate for the multi-provider agent console. The currently verified public npm release remains `0.6.1`; local validation does not imply that `0.7.0` has been published or live-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -40,10 +40,12 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.6 includes
+## What 0.7 includes
 
-- one-shot execution and interactive chat;
-- provider and model selection through the CLI;
+- the short `zhx` command, with `zhivex-harness` retained as a compatible alias;
+- one-shot execution plus a durable interactive console with named sessions, fork/archive operations, safe resume, status, diff, review, and explicit context compaction;
+- an extensible provider registry, provider/model selection, provisional native Gemini support, and repeatable per-role routes such as `--route reviewer=gemini`;
+- redacted, sequence-numbered `--jsonl` events for automation, while `--json` keeps the final-document contract;
 - versioned configuration and JSON output contracts;
 - a local `doctor` command that diagnoses Bun, workspace, Git, scripts, state, credentials, endpoints, and provider capabilities without making provider requests or exposing secret values;
 - deterministic, cursor-paginated workspace listing and search with SHA-256 content digests;
@@ -79,10 +81,10 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ```bash
 bun add @zhivex-ai/harness
-bunx zhivex-harness --version
+bunx --package @zhivex-ai/harness zhx --version
 ```
 
-To exercise the `0.6.1` source checkout:
+To exercise the `0.7.0` source checkout:
 
 ```bash
 bun install --frozen-lockfile
@@ -96,28 +98,39 @@ Configure only the providers you plan to use:
 OPENAI_API_KEY=...
 MODEL_API_KEY=...
 DASHSCOPE_API_KEY=...
+GEMINI_API_KEY=...
 ```
 
-`MODEL_API_KEY` is used by the Meta Model API. Qwen also accepts `QWEN_API_KEY`; `DASHSCOPE_API_KEY` takes precedence.
+`MODEL_API_KEY` is used by the Meta Model API. Qwen also accepts `QWEN_API_KEY`; `DASHSCOPE_API_KEY` takes precedence. Gemini also accepts `GOOGLE_GENERATIVE_AI_API_KEY`.
 
 ## Diagnose the environment
 
 `doctor` is local and does not contact provider endpoints:
 
 ```bash
-zhivex-harness doctor
-zhivex-harness doctor --provider qwen --json
+zhx doctor
+zhx doctor --provider qwen --json
 ```
 
 For a source checkout, replace `zhivex-harness` with `bun run dev`.
 
 ## Usage
 
+Start the durable console with the ergonomic command, or use the long alias in existing scripts:
+
+```bash
+zhx
+zhx chat --continue
+zhivex-harness --version
+```
+
+Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/compact`, `/new`, `/rename`, and `/exit`.
+
 Show providers and detected configuration without printing secrets:
 
 ```bash
-zhivex-harness providers
-zhivex-harness providers --json
+zhx providers
+zhx providers --json
 ```
 
 Run a task against the current directory:
@@ -126,6 +139,7 @@ Run a task against the current directory:
 zhivex-harness run --provider openai "review the repository and fix the tests"
 zhivex-harness run --provider meta "document the current architecture"
 zhivex-harness run --provider qwen "implement the pending endpoint"
+zhx run --provider gemini "review the proposed implementation"
 ```
 
 Operate on another workspace:
@@ -137,8 +151,19 @@ zhivex-harness run --provider qwen --workspace ../my-app "fix the typecheck erro
 Interactive mode:
 
 ```bash
-zhivex-harness chat --provider meta
+zhx chat --provider meta
+zhx chat --continue
+zhx sessions list
 ```
+
+Route only selected subagent roles; credentials are required only for providers actually instantiated:
+
+```bash
+zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
+  "implement the change, then review it independently"
+```
+
+Routing with `--max-cost-usd` is rejected in `0.7.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -185,6 +210,7 @@ Structured automation output uses schema version `1`:
 
 ```bash
 zhivex-harness run --provider qwen --json "analyze the issue without modifying files"
+zhx run --provider gemini --jsonl "analyze the issue without modifying files"
 ```
 
 The JSON shapes and exit codes are documented in [docs/CLI.md](./docs/CLI.md).
@@ -214,10 +240,11 @@ zhivex-harness run --execution oci --yes "inspect, implement, test, review the e
 | Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
 | Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
 | OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
+| Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
 
-Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, and `OPENAI_BASE_URL`.
+Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta, Qwen, and OpenAI completed the final `0.6.0` model-directed OCI command/review/import matrix together at `2026-08-17T16:49:12.975Z`, the proposal/approval/restart refresh at `2026-08-17T16:22:34.885Z`, and the delegation/persistence/hierarchy refresh at `2026-08-17T16:24:14.381Z`. Controlled Streamable HTTP MCP interoperability over a real loopback server passed at `2026-08-17T16:48:09.043Z`; independent interoperability with `@modelcontextprotocol/server@2.0.0` passed at `2026-08-17T16:48:09.141Z` in its legacy-stateless compatibility mode. These results do not imply compatibility with every server or protocol feature. Provider capability claims are date-bound by the [live certification gate](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta, Qwen, and OpenAI retain the published `0.6.x` support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
@@ -258,4 +285,5 @@ The live gate is opt-in and billable:
 
 ```bash
 ZHIVEX_HARNESS_LIVE=1 bun run scripts/live-provider-smoke.ts
+ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:routing
 ```

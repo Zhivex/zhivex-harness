@@ -1,9 +1,9 @@
 # Zhivex Harness Roadmap
 
 - Status: active
-- Baseline date: 2026-08-17
+- Baseline date: 2026-08-20
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` plus `0.6.0` are published on npm. `0.6.1` is the local positioning and hostile-repository proof patch; publishing it remains a separate explicit operation. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0`, `0.6.0`, and `0.6.1` are published on npm. `0.7.0` is the source release candidate for the multi-provider agent console; publication and live certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -39,7 +39,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.4.0` | Durable operations | Inspectable, budgeted, cancellable, evaluable runs | Private checkpoint | L |
 | `0.5.0` | Extensibility and orchestration | Governed MCP and bounded multi-agent work | Published on npm | L |
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Published on npm | XL |
-| `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Implemented locally | S |
+| `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Published on npm | S |
+| `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Source release candidate | L |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -99,7 +100,7 @@ Required release evidence:
 - migration and safety boundaries are documented without claiming host isolation or permanent deletion;
 - `0.3.0` remains private until an explicit publication decision is made.
 
-Validation snapshot (2026-08-16):
+Validation summary:
 
 - the trusted-editing implementation is merged into `main`;
 - deterministic, installed-package, and package-inspection CI gates pass on Linux and macOS;
@@ -130,7 +131,7 @@ Exit criteria:
 - Golden fixtures are deterministic and the regression gate runs in CI.
 - Exported operational artifacts are redacted by default and schema-versioned.
 
-Validation snapshot (2026-08-17):
+Validation summary:
 
 - deterministic tests, the five-case golden evaluation gate, typecheck, docs, build, and installed-tarball smoke pass;
 - migration, idempotency, concurrent ownership, expired-lease recovery, cancellation, retention, Qwen token enforcement, and export redaction have regression coverage;
@@ -160,13 +161,12 @@ Exit criteria:
 - MCP prompt injection and oversized/malformed result tests fail safely.
 - Provider-specific limitations are recorded in a live support matrix.
 
-Validation snapshot (2026-08-17 UTC):
+Validation summary:
 
 - deterministic tests, the seven-case golden evaluation gate, typecheck, docs, build, dependency audit, dry-run package inspection, and installed-tarball smoke pass;
 - malformed MCP, HTTP handshake/session, injection/output bounds, approval/restart, child mutation exactly-once, cancellation, scoped hierarchy, aggregate budget, and parallel review have regression coverage;
-- controlled Streamable HTTP MCP interoperability passed over a real loopback server with session negotiation, JSON and SSE responses, tool discovery, bounded execution, and forced network approval at `2026-08-17T16:48:09.043Z`;
-- independent interoperability with `@modelcontextprotocol/server@2.0.0` passed over loopback in its documented `2025-06-18` legacy-stateless compatibility mode at `2026-08-17T16:48:09.141Z`;
-- Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.4` passed the separate model-directed reviewer delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage matrix at `2026-08-17T02:21:45.553Z`;
+- controlled and official-SDK Streamable HTTP MCP interoperability passed over real loopback transports with session negotiation, bounded execution, and forced network approval;
+- the certified provider cohort passed the separate model-directed reviewer delegation, child persistence, SQLite reopen, hierarchy, and aggregate-usage matrix;
 - the exact `0.5.0` artifact was published and its post-publication registry/provenance verification completed; that evidence does not pre-certify `0.6.0`.
 
 ## 0.6.0 — Enforced execution environments
@@ -192,26 +192,56 @@ Exit criteria:
 - Installed-artifact and live-provider tests exercise the enforced backend.
 - The product is described as a local enforced runner, not a managed sandbox service.
 
-Implementation snapshot (2026-08-17):
+Implementation summary:
 
 - the SDK execution-environment contract is implemented with a Docker/Podman adapter, immutable image identity, per-tool-call isolation, manifest authorization, and run fingerprint binding;
 - the enforced policy denies network and undeclared tools, uses a non-root identity, read-only root, dropped capabilities, no-new-privileges, and bounded memory, CPU, PIDs, time, output, snapshot, imported-file, and tmpfs resources;
 - repository tools and subagents share an ephemeral secret-free snapshot; package checks and argv-only commands run inside OCI, while network MCP fails closed under the no-network policy;
 - content- and run-bound patch inspection plus a separate durable import approval are the only environment-to-host mutation path; deletes remain recoverable through quarantine;
 - lifecycle metadata, cancellation removal, run-labeled container and quota-volume cleanup, terminal artifact retention cleanup, deterministic regression tests, installed-package smoke, and required Linux OCI workflow gates are implemented;
-- the real Docker smoke passed again at `2026-08-17T16:48Z` against Docker `29.7.2` and the pinned Bun image digest, covering network/root/secret boundaries, total-workspace and per-file capacity, read-only dependency reuse, memory/PID/output limits, cancellation, transactional snapshot synchronization, patch import, and zero labeled orphans;
+- the real Docker smoke passed against the pinned image identity, covering network/root/secret boundaries, capacity and resource limits, cancellation, transactional snapshot synchronization, patch import, and zero labeled orphans;
 - the installed-package smoke passed with the public execution-environment API and snapshot/import flow;
 - the exact local `0.6.0` tarball passed the 31-file allowlist, SHA-512 generation, isolated consumer install, binary, public API, durability, and execution-environment smoke;
-- Meta, Qwen, and OpenAI passed the final model-directed OCI command, patch review, separate import approval, journal, host-content, and binding matrix together at `2026-08-17T16:49:12.975Z`;
-- the base approval/restart matrix and bounded reviewer-delegation/persistence/hierarchy matrix passed again at `2026-08-17T16:22:34.885Z` and `2026-08-17T16:24:14.381Z` respectively;
+- the certified provider cohort passed the model-directed OCI command, patch review, separate import approval, journal, host-content, and binding matrix;
+- the base approval/restart and bounded reviewer-delegation/persistence/hierarchy matrices passed against the release artifact;
 - `@zhivex-ai/core@1.6.0` resolves as one runtime through the aligned dependency batch;
-- annotated tag `v0.6.0`, push, protected OIDC publication, exact registry integrity, the `latest` distribution tag, and SLSA workflow provenance agree with source commit `fd420f7560b2`.
+- the annotated tag, protected publication, registry integrity, distribution tag, and SLSA workflow provenance agree with the release source.
 
 ### 0.6.1 positioning patch
 
 `0.6.1` keeps the `0.6.0` runtime, CLI, configuration, state, and library contracts unchanged. It adds a launch-oriented package description, expanded discovery metadata, a deterministic social card, structured issue forms, and a hostile-repository demo that exposes the existing safety chain as one reproducible product proof.
 
-Its deterministic demo test uses an injected OCI adapter. The public `bun run demo:hostile` command uses a real preloaded Docker/Podman image and proves secret exclusion, network denial, two durable approvals across persistence reopen, host immutability before import, exactly-once journal evidence, redacted inspection, and stale-host rejection. Publication, a `v0.6.1` tag, registry integrity, and provenance are not claimed until the normal protected release workflow completes.
+Its deterministic demo test uses an injected OCI adapter. The public `bun run demo:hostile` command uses a real preloaded Docker/Podman image and proves secret exclusion, network denial, two durable approvals across persistence reopen, host immutability before import, exactly-once journal evidence, redacted inspection, and stale-host rejection. The annotated `v0.6.1` tag, npm artifact, registry integrity, and provenance were subsequently verified through the protected workflow.
+
+## 0.7.0 — Multi-provider agent console
+
+Status: 0.7.0 release candidate implemented in source. Deterministic and installed-artifact gates must pass before a release commit; Gemini and mixed-provider routing remain provisional until the required live validation is recorded.
+
+Goal: turn the harness from a collection of one-shot commands into an ergonomic local agent console while preserving immutable runs and provider portability.
+
+Scope:
+
+- Publish the short `zhx` command while retaining `zhivex-harness` for scripts.
+- Add a durable SQLite session index that links immutable runs without duplicating prompts, messages, tool payloads, or provider data.
+- Add a public validated provider registry and native Gemini integration without aliasing an OpenAI-compatible transport.
+- Route explorer, implementer, tester, and reviewer roles to explicit provider/model pairs.
+- Add safe console commands for provider/model/routes, status, diff, review, session resume/new/rename, and deterministic redacted compaction.
+- Add sequence-numbered redacted JSONL events for automation.
+- Bind non-secret provider transport configuration into durable resume fingerprints.
+
+Exit criteria:
+
+- Registry, Gemini factory/diagnostics, sessions/reopen/fork/archive, routing, approval restart, JSONL redaction, and both CLI aliases pass deterministic and installed-package tests.
+- Cross-provider handoff always starts a new run, is blocked by pending approvals, and carries no raw tool/provider payload.
+- Existing `run`, `review`, `resume`, `runs`, final JSON, configuration schema, and `zhivex-harness` commands remain compatible.
+- Gemini passes the base edit/restart, delegation, and OCI matrices before moving from provisional to certified.
+- The exact tarball, release tag, registry integrity, and provenance are verified separately; source readiness is not publication.
+
+Deferred after `0.7.0`:
+
+- Per-provider/per-role cost pricing and evidence-backed routing presets.
+- Additional hosted and local providers, added one by one through the same registry and certification contract.
+- Remote workers or microVM backends; the current console stays local and Bun-first.
 
 ## 1.0.0 — Stable CLI and library contract
 
@@ -258,7 +288,7 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Review the `0.6.1` positioning/demo diff and run the full deterministic, real-OCI, and installed-artifact gates.
-2. Record the hostile-repository demo and publish the exact evidence output with the release notes.
-3. Merge/push the reviewed release commit, create the annotated `v0.6.1` tag, then dispatch the protected OIDC workflow and verify registry integrity/provenance against the exact tagged artifact.
-4. Continue governed MCP/delegation dogfood on representative repositories beyond the controlled and official-SDK interoperability gates.
+1. Finish the `0.7.0` deterministic, real-OCI, and installed-artifact gates from a clean release commit.
+2. Complete the required live provider and mixed-routing certification; keep provisional paths provisional on any failure or missing evidence.
+3. Dogfood durable `zhx` sessions, provider handoff, role routing, and JSONL consumption on representative repositories.
+4. Only after those gates, complete the reviewed release workflow and verify registry integrity and provenance against the exact artifact.

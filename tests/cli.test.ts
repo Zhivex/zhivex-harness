@@ -14,21 +14,23 @@ import {
   parseCliArgs,
   providersDocument,
   readHarnessResumeConfig,
+  readHarnessResumeRoutes,
   resumeCommand,
   runResultDocument,
-  summarizeApproval
+  summarizeApproval,
+  withTemporaryHarnessProfiles
 } from "../src/cli.js";
-import { resolveHarnessConfig } from "../src/config.js";
+import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
-const runCli = async (arguments_: string[]) => {
+const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
   const child = Bun.spawn([
     process.execPath,
     path.resolve(import.meta.dir, "../src/cli.ts"),
     ...arguments_
   ], {
     cwd: path.resolve(import.meta.dir, ".."),
-    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1" },
+    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1", ...env },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"
@@ -71,12 +73,42 @@ describe("CLI parsing", () => {
   });
 
   test("supports implicit run and resume decisions", () => {
-    expect(parseCliArgs(["explain", "the repo"]).prompt).toBe("explain the repo");
+    expect(parseCliArgs(["explain", "the repo"])).toMatchObject({
+      prompt: "explain the repo",
+      implicitCommand: true
+    });
     expect(parseCliArgs(["resume", "run-1", "--approve"])).toMatchObject({
       command: "resume",
       runId: "run-1",
       approve: true
     });
+  });
+
+  test("parses Gemini, model routes, JSONL, and durable session commands", () => {
+    expect(parseCliArgs([
+      "run",
+      "--provider",
+      "gemini",
+      "--route",
+      "reviewer=openai:gpt-5.4",
+      "--jsonl",
+      "review",
+      "this"
+    ])).toMatchObject({
+      provider: "gemini",
+      routes: ["reviewer=openai:gpt-5.4"],
+      jsonl: true,
+      prompt: "review this"
+    });
+    expect(parseCliArgs(["chat", "--continue"])).toMatchObject({ command: "chat", continueSession: true });
+    expect(parseCliArgs(["sessions", "rename", "ses_1", "new", "name"])).toMatchObject({
+      command: "sessions",
+      sessionsCommand: "rename",
+      sessionId: "ses_1",
+      sessionTitle: "new name"
+    });
+    expect(() => parseCliArgs(["run", "--json", "--jsonl", "task"])).toThrow("combine");
+    expect(() => parseCliArgs(["chat", "--jsonl"])).toThrow("run and resume");
   });
 
   test("parses doctor diagnostics options", () => {
@@ -214,6 +246,30 @@ describe("CLI parsing", () => {
   });
 });
 
+describe("temporary chat profiles", () => {
+  test("restores the configured profile set after success and failure", async () => {
+    const transitions: string[][] = [];
+    const configure = async (profiles: readonly HarnessSubagentProfile[]) => {
+      transitions.push([...profiles]);
+    };
+
+    await expect(withTemporaryHarnessProfiles(
+      ["explorer", "reviewer"],
+      configure,
+      async () => "reviewed"
+    )).resolves.toBe("reviewed");
+    expect(transitions).toEqual([["explorer", "reviewer"], []]);
+
+    transitions.length = 0;
+    await expect(withTemporaryHarnessProfiles(
+      ["explorer", "reviewer"],
+      configure,
+      async () => { throw new Error("review failed"); }
+    )).rejects.toThrow("review failed");
+    expect(transitions).toEqual([["explorer", "reviewer"], []]);
+  });
+});
+
 describe("approval review", () => {
   test("shows complete patch proposals while bounding unrelated approval arguments", () => {
     const argumentsText = JSON.stringify({ content: "x".repeat(2000) });
@@ -274,6 +330,27 @@ describe("approval review", () => {
       expect(command).toContain("--tenant 'tenant-a'");
       expect(command).toContain("--user 'user-a'");
       expect(command).toContain("--namespace 'namespace-a'");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("persists safe multi-provider routes for approval resume", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-resume-routes-"));
+    try {
+      const config = resolveHarnessConfig({ workspace });
+      const metadata = createHarnessResumeMetadata(config, new Map([["reviewer", {
+        profile: "reviewer",
+        provider: "gemini",
+        model: "gemini-3.6-flash"
+      }]]));
+      const routes = readHarnessResumeRoutes({ metadata });
+      expect(routes.get("reviewer")).toEqual({
+        profile: "reviewer",
+        provider: "gemini",
+        model: "gemini-3.6-flash"
+      });
+      expect(JSON.stringify(metadata)).not.toContain("API_KEY");
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -386,6 +463,21 @@ describe("CLI process contract", () => {
     });
   });
 
+  test("rejects routed models when the cost budget comes from the environment", async () => {
+    const result = await runCli([
+      "run",
+      "--route",
+      "reviewer=gemini",
+      "review the change"
+    ], {
+      ZHIVEX_HARNESS_MAX_COST_USD: "1",
+      ZHIVEX_HARNESS_INPUT_COST_PER_MILLION: "2"
+    });
+
+    expect(result.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(result.stderr).toContain("Cost budgets cannot be combined with model routes");
+  });
+
   test("lists durable runs without provider credentials", async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-runs-cli-"));
     try {
@@ -455,7 +547,8 @@ describe("doctor", () => {
         "execution-environment",
         "provider:meta",
         "provider:qwen",
-        "provider:openai"
+        "provider:openai",
+        "provider:gemini"
       ]));
       const serialized = JSON.stringify(report);
       expect(serialized).not.toContain("do-not-print-this-key");

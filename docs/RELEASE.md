@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.6.1` is public on npm with exact registry integrity and SLSA workflow provenance verified against source tag `v0.6.1`. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.6.1` is public on npm with exact registry integrity and SLSA workflow provenance verified against source tag `v0.6.1`. `0.7.0` is a source release candidate, not a published artifact. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
 
 ## Deterministic gates
 
@@ -28,7 +28,7 @@ ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
 ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci
 ```
 
-The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The `0.6.x` workflow must additionally pass the real OCI boundary before live model execution; model-directed environment use is recorded separately from deterministic container enforcement. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The workflow must additionally pass the real OCI boundary before live model execution; model-directed environment use is recorded separately from deterministic container enforcement. Gemini remains provisional until its three provider gates and a mixed-provider route pass. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
 
 ## Exact artifact gate
 
@@ -48,41 +48,26 @@ For a local artifact rehearsal after the source gate:
 
 ```bash
 mkdir -p release-artifacts
-bun pm pack --filename release-artifacts/zhivex-ai-harness-0.6.1.tgz --ignore-scripts
-bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.6.1.tgz
-bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.6.1.tgz
+bun pm pack --filename release-artifacts/zhivex-ai-harness-0.7.0.tgz --ignore-scripts
+bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.7.0.tgz
+bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.7.0.tgz
 ```
 
 `release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
 
 ## External prerequisites
 
-Before a `0.6.1` dispatch, reverify rather than assuming the previous release state:
+Before a release dispatch, reverify repository/package visibility compatibility, protected-environment reviewers, package ownership with 2FA, and that the Trusted Publisher identity matches the repository workflow. Do not rely on a previous release's state.
 
-- confirm `Zhivex/zhivex-harness` remains public; npm cannot generate public provenance from a private repository;
-- enable GitHub private vulnerability reporting;
-- protect the GitHub `npm` environment with required reviewers and restrict it to `main`/release tags;
-- verify an npm account with 2FA still administers the public `@zhivex-ai/harness` package; and
-- confirm the npm Trusted Publisher is organization `Zhivex`, repository `zhivex-harness`, workflow `release.yml`, environment `npm`, allowed action `npm publish`.
-
-The one-time `0.5.0` bootstrap and the protected `0.6.0` publication are complete: the package exists, Trusted Publishing is configured, and the temporary token was removed/revoked. The release workflow intentionally supplies no `NODE_AUTH_TOKEN` or npm token. Do not reintroduce one as a fallback; a failed OIDC assertion is a stop condition to diagnose.
+The release workflow intentionally supplies no long-lived registry token. Do not introduce one as a fallback; a failed OIDC assertion is a stop condition to diagnose.
 
 Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.0` or newer. The workflow follows npm's current Node 24 guidance and uses npm only for the OIDC/provenance-aware registry transaction; dependency management, build, tests, packing, and artifact installation remain Bun-first.
 
 ## Tag and dispatch
 
-After the release commit is reviewed, merged, and pushed to `main`:
+After review and merge, maintainers create an annotated version tag from the exact release commit and dispatch the protected workflow with an explicit publication confirmation. The canonical dispatch is bound to `main`; recovery is limited to the exact annotated version tag after proving it resolves to the expected commit and remains reachable from `origin/main`.
 
-```bash
-git tag -a v0.6.1 -m "Release v0.6.1"
-git push origin v0.6.1
-gh workflow run release.yml --ref main \
-  -f tag=v0.6.1 \
-  -f channel=latest \
-  -f confirm_publication=true
-```
-
-The canonical dispatch uses `--ref main`, and `main` must still resolve to the tagged release commit. A recovery dispatch from the exact annotated version tag is also accepted because the release gates separately prove that it resolves to the expected commit and is reachable from `origin/main`; every other ref is rejected. The boolean confirmation is intentional because npm versions are immutable. The `npm` environment should add a second human approval boundary. Do not use `bun publish`, a local npm session, or a manual registry upload as an alternate path.
+The confirmation is intentional because registry versions are immutable, and the protected environment adds a second human approval boundary. Do not use a local registry session or manual upload as an alternate path.
 
 If npm accepted the immutable version but the post-publication verifier failed during propagation, rerun only the failed `publish` job. It downloads the already validated artifact, skips `npm publish` only when the registry version has byte-identical integrity, and repeats the registry/provenance verification. Never rebuild, bump, or republish the same version to recover a post-publication false negative.
 

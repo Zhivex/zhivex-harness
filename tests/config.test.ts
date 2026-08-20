@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 import {
+  DEFAULT_PROVIDER_REGISTRY,
   HARNESS_CONFIG_SCHEMA_VERSION,
   createProviderModel,
+  createProviderRegistry,
   parseProvider,
   providerAvailability,
   resolveHarnessConfig
@@ -26,6 +29,7 @@ describe("provider configuration", () => {
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.4");
+    expect(resolveHarnessConfig({ provider: "gemini", workspace: "." }).model).toBe("gemini-3.6-flash");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).allowedChecks).toEqual([
       "test",
       "typecheck",
@@ -134,6 +138,104 @@ describe("provider configuration", () => {
       { provider: "openai", model: "gpt-5.4" },
       { OPENAI_API_KEY: "openai-test" }
     )).toMatchObject({ provider: "openai", modelId: "gpt-5.4" });
+
+    expect(createProviderModel(
+      { provider: "gemini", model: "gemini-3.6-flash" },
+      { GOOGLE_GENERATIVE_AI_API_KEY: "gemini-test" }
+    )).toMatchObject({ provider: "gemini", modelId: "gemini-3.6-flash" });
+  });
+
+  test("accepts an injected registry across config, factories, and availability", () => {
+    let selectedCredential: string | undefined;
+    const registry = DEFAULT_PROVIDER_REGISTRY.extend([{
+      descriptor: {
+        id: "local-fixture",
+        name: "Local fixture",
+        defaultModel: "fixture-v1",
+        credentialNames: ["FIXTURE_TOKEN"],
+        capabilities: ["streaming", "tool-calling"],
+        support: "provisional"
+      },
+      diagnostics: {
+        endpointEnvironmentVariable: "FIXTURE_BASE_URL",
+        presence: [{ key: "project", environmentVariable: "FIXTURE_PROJECT" }],
+        enums: [{
+          key: "region",
+          environmentVariable: "FIXTURE_REGION",
+          allowedValues: ["local", "remote"]
+        }]
+      },
+      factory: ({ model, credentials }) => {
+        selectedCredential = credentials.require();
+        return createMockLanguageModel({ provider: "local-fixture", modelId: model });
+      }
+    }]);
+
+    const config = resolveHarnessConfig({ provider: "LOCAL-FIXTURE", workspace: "." }, registry);
+    expect(config).toMatchObject({ provider: "local-fixture", model: "fixture-v1" });
+    expect(parseProvider("local-fixture", registry)).toBe("local-fixture");
+    expect(createProviderModel(config, { FIXTURE_TOKEN: "token" }, registry)).toMatchObject({
+      provider: "local-fixture",
+      modelId: "fixture-v1"
+    });
+    expect(selectedCredential).toBe("token");
+
+    const availability = providerAvailability({
+      FIXTURE_TOKEN: "do-not-return",
+      FIXTURE_BASE_URL: "https://user:secret@example.invalid/v1",
+      FIXTURE_PROJECT: "sensitive-project",
+      FIXTURE_REGION: "unknown-region"
+    }, registry);
+    const fixture = availability.find((provider) => provider.id === "local-fixture");
+    expect(fixture).toMatchObject({
+      configured: true,
+      credentials: [{ name: "FIXTURE_TOKEN", present: true }],
+      configuration: {
+        customEndpoint: true,
+        endpointValid: false,
+        endpointSecure: true,
+        projectConfigured: true,
+        regionConfigured: true,
+        regionValid: false
+      }
+    });
+    expect(JSON.stringify(fixture)).not.toContain("do-not-return");
+    expect(JSON.stringify(fixture)).not.toContain("user:secret");
+    expect(JSON.stringify(fixture)).not.toContain("sensitive-project");
+    expect(JSON.stringify(fixture)).not.toContain("unknown-region");
+  });
+
+  test("validates provider registrations before they become selectable", () => {
+    const registration = {
+      descriptor: {
+        id: "fixture",
+        name: "Fixture",
+        defaultModel: "fixture-v1",
+        credentialNames: [] as const,
+        capabilities: ["streaming"] as const,
+        support: "provisional" as const
+      },
+      factory: () => createMockLanguageModel({ provider: "fixture", modelId: "fixture-v1" })
+    };
+    const standalone = createProviderRegistry([registration]);
+    expect(standalone.parse()).toBe("fixture");
+    expect(resolveHarnessConfig({}, standalone)).toMatchObject({
+      provider: "fixture",
+      model: "fixture-v1"
+    });
+    expect(() => createProviderRegistry([])).toThrow("at least one provider");
+    expect(() => createProviderRegistry([registration, registration])).toThrow("Duplicate provider");
+    expect(() => createProviderRegistry([{
+      ...registration,
+      descriptor: { ...registration.descriptor, id: "../plugin" }
+    }])).toThrow("Invalid provider id");
+    expect(() => createProviderRegistry([{
+      ...registration,
+      diagnostics: {
+        endpointEnvironmentVariable: "FIXTURE_URL",
+        presence: [{ key: "bad-key", environmentVariable: "FIXTURE_VALUE" }]
+      }
+    }])).toThrow("Invalid provider diagnostic key");
   });
 
   test("reports credential presence without returning values", () => {
@@ -157,6 +259,29 @@ describe("provider configuration", () => {
     const providers = providerAvailability({ MODEL_API_KEY: "present" });
     expect(providers.find((provider) => provider.id === "meta")?.support).toBe("certified");
     expect(providers.find((provider) => provider.id === "qwen")?.support).toBe("certified");
+    expect(providers.find((provider) => provider.id === "gemini")?.support).toBe("provisional");
+  });
+
+  test("reports Gemini credentials and endpoints without disclosing their values", () => {
+    const providers = providerAvailability({
+      GEMINI_API_KEY: "gemini-super-secret",
+      GEMINI_BASE_URL: "https://generativelanguage.googleapis.com/v1beta"
+    });
+    const gemini = providers.find((provider) => provider.id === "gemini");
+    expect(gemini).toMatchObject({
+      configured: true,
+      credentials: [
+        { name: "GEMINI_API_KEY", present: true },
+        { name: "GOOGLE_GENERATIVE_AI_API_KEY", present: false }
+      ],
+      configuration: {
+        customEndpoint: true,
+        endpointValid: true,
+        endpointSecure: true
+      }
+    });
+    expect(JSON.stringify(gemini)).not.toContain("gemini-super-secret");
+    expect(JSON.stringify(gemini)).not.toContain("generativelanguage.googleapis.com");
   });
 
   test("diagnoses Qwen option presence and validity without returning values", () => {

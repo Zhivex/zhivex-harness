@@ -28,9 +28,12 @@ for (const name of [
   "MODEL_API_KEY",
   "DASHSCOPE_API_KEY",
   "QWEN_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
   "META_BASE_URL",
   "QWEN_BASE_URL",
-  "OPENAI_BASE_URL"
+  "OPENAI_BASE_URL",
+  "GEMINI_BASE_URL"
 ]) {
   delete commandEnvironment[name];
 }
@@ -86,6 +89,7 @@ try {
     "package/dist/index.js",
     "package/dist/index.d.ts",
     "package/dist/cli.js",
+    "package/dist/zhx.js",
     "package/dist/hostile-repository-demo.js"
   ]) {
     assert(archive.stdout.split(/\r?\n/).includes(required), `packed artifact is missing ${required}`);
@@ -119,20 +123,33 @@ try {
     version: string;
     private?: boolean;
     publishConfig?: { access?: string; provenance?: boolean; registry?: string };
+    bin?: Record<string, string>;
   };
   assert.equal(installedManifest.name, manifest.name);
   assert.equal(installedManifest.version, manifest.version);
   assert.notEqual(installedManifest.private, true, "installed package is still private");
   assert.deepEqual(installedManifest.publishConfig, manifest.publishConfig);
+  assert.deepEqual(installedManifest.bin, {
+    "zhivex-harness": "./dist/cli.js",
+    zhx: "./dist/zhx.js"
+  });
 
   const installedCli = path.join(consumer, "node_modules", ".bin", "zhivex-harness");
-  const version = await run([installedCli, "--version"], { cwd: consumer });
-  assert(version.stdout.includes(manifest.version), "installed CLI version does not match package.json");
-  const help = await run([installedCli, "--help"], { cwd: consumer });
-  assert(help.stdout.includes("Zhivex Harness"), "installed CLI help is unavailable");
+  const installedShortCli = path.join(consumer, "node_modules", ".bin", "zhx");
+  for (const cli of [installedCli, installedShortCli]) {
+    const version = await run([cli, "--version"], { cwd: consumer });
+    assert(version.stdout.includes(manifest.version), `installed ${path.basename(cli)} version does not match package.json`);
+    const help = await run([cli, "--help"], { cwd: consumer });
+    assert(help.stdout.includes("Zhivex Harness"), `installed ${path.basename(cli)} help is unavailable`);
+  }
 
   const providers = await run([installedCli, "providers", "--json"], { cwd: consumer });
-  JSON.parse(providers.stdout);
+  const providersDocument = JSON.parse(providers.stdout) as {
+    providers?: Array<{ id?: string; support?: string }>;
+  };
+  assert(providersDocument.providers?.some((provider) =>
+    provider.id === "gemini" && provider.support === "provisional"
+  ));
   assert(!providers.stdout.includes("package-smoke-secret"), "provider output exposed a credential");
 
   const doctor = await run([installedCli, "doctor", "--json"], {
@@ -153,6 +170,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   HARNESS_SQLITE_FILE,
+  DEFAULT_PROVIDER_REGISTRY,
   Workspace,
   createEditProposal,
   createHarness,
@@ -161,8 +179,11 @@ import {
   inspectHarnessRun,
   listHarnessRuns,
   normalizeHarnessMcpConfiguration,
+  openCliSessionStore,
+  parseHarnessModelRoute,
   resolveHarnessConfig,
-  runHarness
+  runHarness,
+  streamEventDocument
 } from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
@@ -219,6 +240,9 @@ const waiting = await runHarness(firstHarness, {
   scope: firstHarness.config.scope
 });
 assert.equal(firstHarness.config.schemaVersion, 4);
+assert.equal(DEFAULT_PROVIDER_REGISTRY.has("gemini"), true);
+assert.equal(parseHarnessModelRoute("reviewer=gemini").provider, "gemini");
+assert.equal(streamEventDocument({ type: "text-delta", textDelta: "ok" }, 1).sequence, 1);
 assert.deepEqual([...firstHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
 assert.equal(inspectHarnessModelCapabilities(firstHarness.agent.model).capabilities.tools, true);
 assert.throws(() => normalizeHarnessMcpConfiguration({
@@ -281,6 +305,15 @@ assert(!JSON.stringify(inspection).includes("fixture-sensitive-payload"));
 assert((await stat(path.join(stateDirectory, HARNESS_SQLITE_FILE))).isFile());
 restartedHarness.close();
 
+const cliSessions = await openCliSessionStore({
+  workspace,
+  stateDirectory,
+  scope: firstHarness.config.scope
+});
+const installedCliSession = await cliSessions.create({ title: "installed smoke" });
+assert.equal((await cliSessions.get(installedCliSession.sessionId))?.title, "installed smoke");
+cliSessions.close();
+
 const executionConfig = resolveHarnessConfig({ workspace, stateDirectory, executionBackend: "oci" });
 assert.equal(executionConfig.execution.backend, "oci");
 if (executionConfig.execution.backend !== "oci") throw new Error("Expected installed OCI config.");
@@ -328,6 +361,11 @@ console.log("INSTALLED_HARNESS_SMOKE_OK");
   await writeFile(installedSmokePath, installedSmokeSource, "utf8");
   const installedSmoke = await run(["bun", "run", installedSmokePath], { cwd: consumer });
   assert(installedSmoke.stdout.includes("INSTALLED_HARNESS_SMOKE_OK"));
+
+  const sessionList = await run([installedShortCli, "sessions", "list", "--json"], { cwd: consumer });
+  const sessionListDocument = JSON.parse(sessionList.stdout) as { kind?: string; sessions?: unknown[] };
+  assert.equal(sessionListDocument.kind, "session-list");
+  assert.equal(sessionListDocument.sessions?.length, 1);
 
   const runList = await run([installedCli, "runs", "list", "--json"], { cwd: consumer });
   const runListDocument = JSON.parse(runList.stdout) as { kind?: string; runs?: unknown[] };

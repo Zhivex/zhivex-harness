@@ -8,9 +8,12 @@ export {
   HARNESS_OCI_RUNTIMES,
   HARNESS_REQUIRED_CAPABILITIES,
   HARNESS_SUBAGENT_PROFILES,
+  BUILTIN_PROVIDER_REGISTRATIONS,
+  DEFAULT_PROVIDER_REGISTRY,
   PROVIDERS,
   PROVIDER_DESCRIPTORS,
   createProviderModel,
+  createProviderRegistry,
   defaultHarnessNamespace,
   parseProvider,
   providerAvailability,
@@ -18,6 +21,7 @@ export {
   resolveHarnessConfig
 } from "./config.js";
 export type {
+  BuiltInHarnessProvider,
   HarnessBudget,
   HarnessCompactionConfig,
   HarnessConfig,
@@ -28,13 +32,64 @@ export type {
   HarnessOciRuntime,
   HarnessOrchestrationConfig,
   HarnessProvider,
+  HarnessProviderRegistry,
   HarnessRequiredCapability,
   HarnessStoreBackend,
   HarnessSubagentProfile,
   ProviderCapability,
+  ProviderAvailability,
+  ProviderCredentials,
   ProviderDescriptor,
+  ProviderDiagnosticsDescriptor,
+  ProviderEnumDiagnostic,
+  ProviderModelFactory,
+  ProviderModelFactoryContext,
+  ProviderPresenceDiagnostic,
+  ProviderRegistration,
   ProviderSupport
 } from "./config.js";
+
+export {
+  createHarnessRouteModels,
+  parseHarnessModelRoute,
+  resolveHarnessModelRoutes,
+  serializeHarnessModelRoutes
+} from "./routing.js";
+export type { HarnessModelRoute } from "./routing.js";
+
+export {
+  CLI_EVENT_SCHEMA_VERSION,
+  CLI_JSON_SCHEMA_VERSION,
+  serializeStreamEvent,
+  serializeStreamResult,
+  streamEventDocument,
+  streamResultDocument
+} from "./cli-stream.js";
+export type { StreamRunResultSource } from "./cli-stream.js";
+
+export {
+  HARNESS_SESSION_INDEX_FILE,
+  HARNESS_SESSION_SCHEMA_VERSION,
+  SESSION_RUN_STATUSES,
+  TERMINAL_SESSION_RUN_STATUSES,
+  openCliSessionStore,
+  openSessionStore
+} from "./sessions.js";
+export type {
+  AppendSessionRunInput,
+  CliSession,
+  CliSessionStore,
+  CliSessionSummary,
+  CreateSessionInput,
+  ForkSessionInput,
+  ListSessionsQuery,
+  OpenSessionStoreOptions,
+  SessionRetentionResult,
+  SessionRunReference,
+  SessionRunStatus,
+  UpdateSessionInput,
+  UpdateSessionRunInput
+} from "./sessions.js";
 
 export {
   CliOciRuntimeAdapter,
@@ -146,8 +201,10 @@ export type {
 export {
   HARNESS_INSTRUCTIONS,
   appendUserMessage,
+  compactHarnessMessages,
   createExecutionEnvironmentTools,
   createHarness,
+  estimateMessageTokens,
   runHarness
 } from "./harness.js";
 

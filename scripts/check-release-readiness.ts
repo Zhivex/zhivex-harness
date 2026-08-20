@@ -61,8 +61,8 @@ const manifest = JSON.parse(
 if (manifest.name !== "@zhivex-ai/harness") {
   failures.push("package name must be @zhivex-ai/harness");
 }
-if (!manifest.version || !/^0\.6\.\d+$/.test(manifest.version)) {
-  failures.push("package version must be a stable 0.6.x version");
+if (!manifest.version || !/^0\.7\.\d+$/.test(manifest.version)) {
+  failures.push("package version must be a stable 0.7.x version");
 }
 if (manifest.private === true) {
   failures.push("package.json is still private");
@@ -94,6 +94,9 @@ if (
 }
 if (manifest.bin?.["zhivex-harness"] !== "./dist/cli.js") {
   failures.push("the packaged CLI binary is missing or points at the wrong file");
+}
+if (manifest.bin?.zhx !== "./dist/zhx.js") {
+  failures.push("the packaged zhx alias is missing or points at the wrong file");
 }
 if (!manifest.exports?.["."]) {
   failures.push("the public root library export is missing");
