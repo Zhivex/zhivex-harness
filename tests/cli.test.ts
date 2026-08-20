@@ -17,19 +17,20 @@ import {
   readHarnessResumeRoutes,
   resumeCommand,
   runResultDocument,
-  summarizeApproval
+  summarizeApproval,
+  withTemporaryHarnessProfiles
 } from "../src/cli.js";
-import { resolveHarnessConfig } from "../src/config.js";
+import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
-const runCli = async (arguments_: string[]) => {
+const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
   const child = Bun.spawn([
     process.execPath,
     path.resolve(import.meta.dir, "../src/cli.ts"),
     ...arguments_
   ], {
     cwd: path.resolve(import.meta.dir, ".."),
-    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1" },
+    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1", ...env },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"
@@ -245,6 +246,30 @@ describe("CLI parsing", () => {
   });
 });
 
+describe("temporary chat profiles", () => {
+  test("restores the configured profile set after success and failure", async () => {
+    const transitions: string[][] = [];
+    const configure = async (profiles: readonly HarnessSubagentProfile[]) => {
+      transitions.push([...profiles]);
+    };
+
+    await expect(withTemporaryHarnessProfiles(
+      ["explorer", "reviewer"],
+      configure,
+      async () => "reviewed"
+    )).resolves.toBe("reviewed");
+    expect(transitions).toEqual([["explorer", "reviewer"], []]);
+
+    transitions.length = 0;
+    await expect(withTemporaryHarnessProfiles(
+      ["explorer", "reviewer"],
+      configure,
+      async () => { throw new Error("review failed"); }
+    )).rejects.toThrow("review failed");
+    expect(transitions).toEqual([["explorer", "reviewer"], []]);
+  });
+});
+
 describe("approval review", () => {
   test("shows complete patch proposals while bounding unrelated approval arguments", () => {
     const argumentsText = JSON.stringify({ content: "x".repeat(2000) });
@@ -436,6 +461,21 @@ describe("CLI process contract", () => {
       kind: "doctor",
       ok: false
     });
+  });
+
+  test("rejects routed models when the cost budget comes from the environment", async () => {
+    const result = await runCli([
+      "run",
+      "--route",
+      "reviewer=gemini",
+      "review the change"
+    ], {
+      ZHIVEX_HARNESS_MAX_COST_USD: "1",
+      ZHIVEX_HARNESS_INPUT_COST_PER_MILLION: "2"
+    });
+
+    expect(result.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(result.stderr).toContain("Cost budgets cannot be combined with model routes");
   });
 
   test("lists durable runs without provider credentials", async () => {

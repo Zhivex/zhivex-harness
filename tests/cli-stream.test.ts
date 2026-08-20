@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { CLI_EVENT_SCHEMA_VERSION, serializeStreamEvent, streamEventDocument } from "../src/cli-stream.js";
+import {
+  CLI_EVENT_SCHEMA_VERSION,
+  serializeStreamEvent,
+  serializeStreamResult,
+  streamEventDocument,
+  streamResultDocument
+} from "../src/cli-stream.js";
 
 describe("CLI JSONL stream contract", () => {
   test("emits text deltas as one versioned event", () => {
@@ -82,5 +88,66 @@ describe("CLI JSONL stream contract", () => {
     expect(`${approval}\n${finish}`).not.toContain("raw-secret");
     expect(`${approval}\n${finish}`).not.toContain("message-secret");
     expect(`${approval}\n${finish}`).not.toContain("output-secret");
+  });
+
+  test("projects the final result without approval arguments or rich JSON fields", () => {
+    const source = {
+      runId: "run-1",
+      status: "waiting_approval",
+      provider: "openai",
+      model: "gpt-test",
+      output: "output-secret",
+      steps: 2,
+      toolCalls: 1,
+      mutations: [{ path: "repository-secret", after: "content-secret" }],
+      pendingApprovals: [{
+        id: "approval-1",
+        kind: "local-tool",
+        name: "apply_patch",
+        arguments: "patch-secret",
+        rawData: "raw-secret"
+      }],
+      children: [{
+        runId: "child-1",
+        status: "completed",
+        output: "child-secret"
+      }],
+      scope: { userId: "user-secret" },
+      execution: { image: "image-secret" },
+      store: { stateDirectory: "path-secret" }
+    };
+
+    expect(streamResultDocument(source, 8)).toEqual({
+      schemaVersion: CLI_EVENT_SCHEMA_VERSION,
+      kind: "run-result",
+      sequence: 8,
+      runId: "run-1",
+      status: "waiting_approval",
+      provider: "openai",
+      model: "gpt-test",
+      steps: 2,
+      toolCalls: 1,
+      pendingApprovals: [{
+        id: "approval-1",
+        kind: "local-tool",
+        name: "apply_patch"
+      }],
+      children: [{ runId: "child-1", status: "completed" }]
+    });
+
+    const serialized = serializeStreamResult(source, 8);
+    for (const secret of [
+      "output-secret",
+      "repository-secret",
+      "content-secret",
+      "patch-secret",
+      "raw-secret",
+      "child-secret",
+      "user-secret",
+      "image-secret",
+      "path-secret"
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
   });
 });

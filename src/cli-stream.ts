@@ -3,6 +3,29 @@ import type { AgentStreamEvent } from "@zhivex-ai/agents";
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
 export const CLI_EVENT_SCHEMA_VERSION = 1 as const;
 
+export interface StreamRunResultSource {
+  runId: string;
+  status: string;
+  provider: string;
+  model: string;
+  steps: number;
+  toolCalls: number;
+  pendingApprovals?: readonly ({
+    id: string;
+    kind: string;
+    name: string;
+    childRunId?: string;
+    childAgentId?: string;
+    [key: string]: unknown;
+  })[];
+  children?: readonly ({
+    runId: string;
+    status: string;
+    [key: string]: unknown;
+  })[];
+  [key: string]: unknown;
+}
+
 /**
  * Convert runtime events into a stable, line-oriented CLI contract.
  *
@@ -96,3 +119,42 @@ export const streamEventDocument = (event: AgentStreamEvent, sequence = 0) => {
 
 export const serializeStreamEvent = (event: AgentStreamEvent, sequence = 0) =>
   JSON.stringify(streamEventDocument(event, sequence));
+
+/**
+ * Project the rich final JSON document onto the redacted JSONL contract.
+ *
+ * This is deliberately a whitelist. Output text, mutations, approval
+ * arguments, scope, paths, provider payloads, and configuration bindings can
+ * contain repository or operator data and must remain exclusive to the
+ * separate final-document contract.
+ */
+export const streamResultDocument = (result: StreamRunResultSource, sequence = 0) => {
+  if (!Number.isSafeInteger(sequence) || sequence < 0) {
+    throw new Error("JSONL result sequence must be a non-negative integer.");
+  }
+  return {
+    schemaVersion: CLI_EVENT_SCHEMA_VERSION,
+    kind: "run-result" as const,
+    sequence,
+    runId: result.runId,
+    status: result.status,
+    provider: result.provider,
+    model: result.model,
+    steps: result.steps,
+    toolCalls: result.toolCalls,
+    pendingApprovals: (result.pendingApprovals ?? []).map((approval) => ({
+      id: approval.id,
+      kind: approval.kind,
+      name: approval.name,
+      ...(approval.childRunId ? { childRunId: approval.childRunId } : {}),
+      ...(approval.childAgentId ? { childAgentId: approval.childAgentId } : {})
+    })),
+    children: (result.children ?? []).map((child) => ({
+      runId: child.runId,
+      status: child.status
+    }))
+  };
+};
+
+export const serializeStreamResult = (result: StreamRunResultSource, sequence = 0) =>
+  JSON.stringify(streamResultDocument(result, sequence));

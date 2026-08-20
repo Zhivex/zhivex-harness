@@ -440,16 +440,12 @@ const summarizeHarnessMessages = (messages: readonly ModelMessage[]) => {
 
 export const compactHarnessMessages = (messages: readonly ModelMessage[]): ModelMessage[] => {
   if (messages.length === 0) return [];
-  const systemMessages = messages.filter((message) => message.role === "system");
-  const conversation = messages.filter((message) => message.role !== "system");
-  if (conversation.length === 0) return [...systemMessages];
   return [
-    ...systemMessages,
     {
       role: "user",
       parts: [{
         type: "text",
-        text: `[Compacted conversation context]\n${summarizeHarnessMessages(conversation)}`
+        text: `[Compacted conversation context]\n${summarizeHarnessMessages(messages)}`
       }]
     }
   ];

@@ -12,6 +12,7 @@ import { createEditProposal } from "../src/edit-contracts.js";
 describe("Zhivex harness", () => {
   test("compacts an interactive conversation without retaining sensitive tool payloads", () => {
     const messages = compactHarnessMessages([
+      { role: "system", parts: [{ type: "text", text: "SYSTEM_TOKEN=system-secret-value" }] },
       { role: "user", parts: [{ type: "text", text: "OPENAI_API_KEY=sk-secret-value" }] },
       {
         role: "assistant",
@@ -42,6 +43,14 @@ describe("Zhivex harness", () => {
     expect(serialized).not.toContain("private-input");
     expect(serialized).not.toContain("private-output");
     expect(serialized).not.toContain("sk-secret-value");
+    expect(serialized).not.toContain("system-secret-value");
+
+    const systemOnly = compactHarnessMessages([
+      { role: "system", parts: [{ type: "text", text: "PASSWORD=all-system-secret" }] }
+    ]);
+    expect(systemOnly).toHaveLength(1);
+    expect(systemOnly[0]?.role).toBe("user");
+    expect(JSON.stringify(systemOnly)).not.toContain("all-system-secret");
   });
 
   test("runs the shared agent loop with an injected model", async () => {

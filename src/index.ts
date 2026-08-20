@@ -61,8 +61,11 @@ export {
   CLI_EVENT_SCHEMA_VERSION,
   CLI_JSON_SCHEMA_VERSION,
   serializeStreamEvent,
-  streamEventDocument
+  serializeStreamResult,
+  streamEventDocument,
+  streamResultDocument
 } from "./cli-stream.js";
+export type { StreamRunResultSource } from "./cli-stream.js";
 
 export {
   HARNESS_SESSION_INDEX_FILE,

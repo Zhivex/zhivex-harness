@@ -110,7 +110,7 @@ Provider diagnostics include credential variable names and boolean presence only
 
 ## JSON Lines
 
-`--jsonl` is available for `run` and approval `resume`, and is mutually exclusive with `--json`. Every compact line has `schemaVersion: 1`, `kind: "run-event"`, a monotonic `sequence`, and an event `type`. A compact `run-result` document is emitted as the final line.
+`--jsonl` is available for `run` and approval `resume`, and is mutually exclusive with `--json`. Every event line has `schemaVersion: 1`, `kind: "run-event"`, a monotonic `sequence`, and an event `type`. A separately projected compact `run-result` is emitted as the final sequenced line; it contains only run identity/status, step/tool counts, redacted approval identity, and child run identity/status. It omits output text, mutations, approval arguments, paths, scope, provider payloads, and configuration bindings.
 
 The event projector allowlists safe fields. Text deltas and token usage are retained; tool IDs/names, approval IDs, status, step counts, compaction counts, and provider/model identity are allowed. Tool inputs/outputs, approval arguments, provider payloads, image content, full durable states/messages, raw errors, stacks, and telemetry metadata are omitted. Consumers must still treat model text as untrusted application data.
 

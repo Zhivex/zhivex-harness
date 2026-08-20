@@ -68,7 +68,8 @@ import {
 } from "./routing.js";
 import {
   CLI_JSON_SCHEMA_VERSION,
-  serializeStreamEvent
+  serializeStreamEvent,
+  serializeStreamResult
 } from "./cli-stream.js";
 import {
   openCliSessionStore,
@@ -937,20 +938,22 @@ const printTerminalResult = (
   result: AgentRunOutput,
   harness: ZhivexHarness,
   output: Pick<CliOptions, "json" | "jsonl">,
-  streamedText: boolean
+  tracker: { streamedText: boolean; sequence?: number }
 ) => {
-  if (output.json || output.jsonl) {
-    process.stdout.write(`${JSON.stringify(
-      runResultDocument(result, harness),
-      null,
-      output.jsonl ? undefined : 2
-    )}\n`);
+  const document = runResultDocument(result, harness);
+  if (output.jsonl) {
+    tracker.sequence = (tracker.sequence ?? 0) + 1;
+    process.stdout.write(`${serializeStreamResult(document, tracker.sequence)}\n`);
     return;
   }
-  if (!streamedText && result.outputText) {
+  if (output.json) {
+    process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+    return;
+  }
+  if (!tracker.streamedText && result.outputText) {
     process.stdout.write(result.outputText);
   }
-  if (result.outputText || streamedText) {
+  if (result.outputText || tracker.streamedText) {
     process.stdout.write("\n");
   }
   process.stderr.write(
@@ -993,13 +996,31 @@ const orchestrationObserver = (json: boolean): AgentTelemetryObserver => async (
 };
 
 const resolvedRouting = (options: CliOptions) => {
-  const routes = resolveHarnessModelRoutes(options.routes);
-  if (routes.size > 0 && options.maxCostUsd !== undefined) {
+  return resolveHarnessModelRoutes(options.routes);
+};
+
+const assertRoutePricingIsSafe = (
+  routes: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
+  costBudget: HarnessConfig["costBudget"]
+) => {
+  if (routes.size > 0 && costBudget !== undefined) {
     throw new CliUsageError(
-      "--max-cost-usd cannot be combined with multi-provider routes until pricing is configured per role."
+      "Cost budgets cannot be combined with model routes until pricing is configured per role."
     );
   }
-  return routes;
+};
+
+export const withTemporaryHarnessProfiles = async <T>(
+  profiles: readonly HarnessSubagentProfile[],
+  configure: (profiles: readonly HarnessSubagentProfile[]) => Promise<void>,
+  operation: () => Promise<T>
+): Promise<T> => {
+  await configure(profiles);
+  try {
+    return await operation();
+  } finally {
+    await configure([]);
+  }
 };
 
 const createConfiguredHarness = async (
@@ -1008,6 +1029,8 @@ const createConfiguredHarness = async (
   persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>
 ) => {
   const routes = persistedRoutes ?? resolvedRouting(options);
+  const resolvedConfig = resolveHarnessConfig(options);
+  assertRoutePricingIsSafe(routes, resolvedConfig.costBudget);
   const profiles = [...new Set([
     ...(options.subagentProfiles ?? []),
     ...extraProfiles,
@@ -1043,7 +1066,7 @@ const runOnce = async (options: CliOptions) => {
         resolveApprovals: terminalApprovalResolver(options.yes)
       }
     );
-    printTerminalResult(result, harness, options, tracker.streamedText);
+    printTerminalResult(result, harness, options, tracker);
     if (result.status === "failed" || result.status === "timed_out") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
@@ -1134,6 +1157,7 @@ const resumeRun = async (options: CliOptions) => {
     const persistedResumeInput = readHarnessResumeConfig(state);
     const persistedRoutes = readHarnessResumeRoutes(state);
     let persistedResumeOptions: HarnessConfigInput = {};
+    let resumeCostBudget = initialConfig.costBudget;
     if (persistedResumeInput) {
       const persistedConfig = resolveHarnessConfig(persistedResumeInput);
       if (
@@ -1147,7 +1171,9 @@ const resumeRun = async (options: CliOptions) => {
         );
       }
       persistedResumeOptions = harnessConfigInput(persistedConfig);
+      resumeCostBudget = persistedConfig.costBudget;
     }
+    assertRoutePricingIsSafe(persistedRoutes, resumeCostBudget);
 
     const harness = await createHarness({
       ...persistedResumeOptions,
@@ -1185,7 +1211,7 @@ const resumeRun = async (options: CliOptions) => {
       }
     );
     await updateIndexedSessionRun(harness.config, result.state.runId, result.status);
-    printTerminalResult(result, harness, options, tracker.streamedText);
+    printTerminalResult(result, harness, options, tracker);
     if (result.status === "failed" || result.status === "timed_out") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
@@ -1268,6 +1294,19 @@ const chat = async (options: CliOptions) => {
     harness = created.harness;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
+  };
+
+  const withTemporaryProfiles = async <T>(
+    profiles: readonly HarnessSubagentProfile[],
+    operation: () => Promise<T>
+  ) => {
+    const normalOptions = runtimeOptions;
+    const normalRoutes = new Map(routes);
+    return withTemporaryHarnessProfiles(
+      profiles,
+      (temporaryProfiles) => replaceHarness(normalOptions, normalRoutes, temporaryProfiles),
+      operation
+    );
   };
 
   const restoreSession = async (selected: CliSession) => {
@@ -1453,11 +1492,13 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Cannot start a review while run ${active.runId} is ${active.status}.\n`);
           continue;
         }
-        await replaceHarness(runtimeOptions, routes, ["explorer", "reviewer"]);
-        const review = await runHarnessReviewGroup(
-          harness,
-          { prompt: reviewPrompt, scope: harness.config.scope },
-          ["explorer", "reviewer"]
+        const review = await withTemporaryProfiles(
+          ["explorer", "reviewer"],
+          () => runHarnessReviewGroup(
+            harness,
+            { prompt: reviewPrompt, scope: harness.config.scope },
+            ["explorer", "reviewer"]
+          )
         );
         for (const output of review.outputs) {
           process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
