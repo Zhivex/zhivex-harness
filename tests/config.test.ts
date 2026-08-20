@@ -28,7 +28,7 @@ describe("provider configuration", () => {
       }
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
-    expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.4");
+    expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.6-luna");
     expect(resolveHarnessConfig({ provider: "gemini", workspace: "." }).model).toBe("gemini-3.6-flash");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).allowedChecks).toEqual([
       "test",
@@ -135,9 +135,9 @@ describe("provider configuration", () => {
     )).toMatchObject({ provider: "qwen", modelId: "qwen3.8-max" });
 
     expect(createProviderModel(
-      { provider: "openai", model: "gpt-5.4" },
+      { provider: "openai", model: "gpt-5.6-luna" },
       { OPENAI_API_KEY: "openai-test" }
-    )).toMatchObject({ provider: "openai", modelId: "gpt-5.4" });
+    )).toMatchObject({ provider: "openai", modelId: "gpt-5.6-luna" });
 
     expect(createProviderModel(
       { provider: "gemini", model: "gemini-3.6-flash" },

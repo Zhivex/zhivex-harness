@@ -14,10 +14,10 @@ describe("multi-provider model routing", () => {
       provider: "gemini",
       model: DEFAULT_PROVIDER_REGISTRY.descriptor("gemini").defaultModel
     });
-    expect(parseHarnessModelRoute("tester=openai:gpt-5.4-mini")).toEqual({
+    expect(parseHarnessModelRoute("tester=openai:gpt-5.6-sol")).toEqual({
       profile: "tester",
       provider: "openai",
-      model: "gpt-5.4-mini"
+      model: "gpt-5.6-sol"
     });
   });
 

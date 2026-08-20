@@ -128,6 +128,7 @@ Rules:
 - Make the smallest coherent change that fully addresses the task.
 - For every file edit, first read its digest and call propose_edits. Apply exactly that reviewed proposal with apply_patch.
 - apply_patch, move_file, quarantine_file, restore_file, and run_check require explicit approval from the operator.
+- Calling an approval-gated tool is how you request that approval: call the tool with its complete reviewed arguments, then let the runtime pause before execution. Never replace the tool call with a textual approval request.
 - With enforced OCI execution enabled, workspace tools operate on an ephemeral snapshot. Use inspect_environment_patch and obtain a separate approval through apply_environment_patch before changing the host workspace.
 - run_environment_command executes one allowlisted argv command without a host shell. Network, privileges, resources, environment variables, and output are bounded by the OCI policy.
 - Never overwrite stale content. If an expected digest no longer matches, inspect the file again and create a new proposal.
@@ -274,7 +275,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   apply_patch: tool({
     name: "apply_patch",
-    description: "Atomically apply one reviewed multi-file proposal. Every existing file requires its exact expected digest; expectedDigest=null is create-only.",
+    description: "Request approval to atomically apply one reviewed multi-file proposal; the runtime pauses before execution. Every existing file requires its exact expected digest; expectedDigest=null is create-only. Call this tool instead of asking for approval in text.",
     schema: applyEditProposalInputSchema,
     ...mutationApproval,
     execute: async (input, context) => {

@@ -4,6 +4,19 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.8.0 - Unreleased
+
+### Changed
+
+- The coordinated SDK dependency batch now resolves one `@zhivex-ai/core@1.7.0` runtime with Agents `1.2.0`, Meta `0.2.2`, Qwen `0.10.2`, OpenAI `0.9.6`, and Gemini `0.10.5`.
+- Approval instructions now tell models to call the gated tool with reviewed arguments so the runtime can pause, instead of asking the operator for approval in prose before emitting the tool call.
+- OpenAI is now GPT-5.6-first, defaults to `gpt-5.6-luna`, and exposes `gpt-5.6-terra` and `gpt-5.6-sol` as explicit model choices. All three passed the local base certification gate, while unpublished worktree evidence remains separate from release certification.
+
+### Migration from 0.7.x
+
+- OpenAI runs without an explicit `--model` now resolve to `gpt-5.6-luna` instead of `gpt-5.4`. Pin the prior model explicitly before upgrading if a workflow depends on it; GPT-5.6 availability remains organization-dependent during limited preview.
+- Resolve or deny paused `0.7.x` approvals with the matching `0.7.x` artifact before upgrading. Harness-version binding intentionally rejects those resumes under `0.8.x`.
+
 ## 0.7.0 - 2026-08-20
 
 ### Added

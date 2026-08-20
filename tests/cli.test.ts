@@ -90,13 +90,13 @@ describe("CLI parsing", () => {
       "--provider",
       "gemini",
       "--route",
-      "reviewer=openai:gpt-5.4",
+      "reviewer=openai:gpt-5.6-terra",
       "--jsonl",
       "review",
       "this"
     ])).toMatchObject({
       provider: "gemini",
-      routes: ["reviewer=openai:gpt-5.4"],
+      routes: ["reviewer=openai:gpt-5.6-terra"],
       jsonl: true,
       prompt: "review this"
     });

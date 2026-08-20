@@ -6,7 +6,7 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { compactHarnessMessages, createHarness, runHarness } from "../src/harness.js";
+import { HARNESS_INSTRUCTIONS, compactHarnessMessages, createHarness, runHarness } from "../src/harness.js";
 import { createEditProposal } from "../src/edit-contracts.js";
 
 describe("Zhivex harness", () => {
@@ -130,13 +130,19 @@ describe("Zhivex harness", () => {
         modelInstance: createMockLanguageModel(),
         store: createInMemoryAgentRunStore()
       });
-      const tools = harness.agent.tools as Record<string, { requiresApproval?: boolean; approvalMode?: string }>;
+      const tools = harness.agent.tools as Record<string, {
+        description?: string;
+        requiresApproval?: boolean;
+        approvalMode?: string;
+      }>;
       for (const name of ["apply_patch", "move_file", "quarantine_file", "restore_file", "run_check"]) {
         expect(tools[name]).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
       }
       for (const name of ["list_files", "read_file", "search_files", "propose_edits", "mutation_audit", "git_diff"]) {
         expect(tools[name]?.requiresApproval).not.toBe(true);
       }
+      expect(HARNESS_INSTRUCTIONS).toContain("Calling an approval-gated tool is how you request that approval");
+      expect(tools.apply_patch?.description).toContain("Call this tool instead of asking for approval in text");
       expect(tools.write_file).toBeUndefined();
       expect(tools.replace_in_file).toBeUndefined();
     } finally {

@@ -54,6 +54,22 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-Meta, Qwen, and OpenAI retain the previously published `0.6.x` support conclusion for the unchanged runtime paths. `0.7.0` adds Gemini and mixed-provider routing as provisional surfaces; they require fresh release-candidate evidence before certification.
+Meta, Qwen, and OpenAI retain the previously published support conclusion for unchanged runtime paths. The published `0.7.0` release added Gemini and mixed-provider routing as provisional surfaces; they require fresh release-candidate evidence before certification.
 
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
+
+## Current local pre-release evidence
+
+On 2026-08-20, the uncommitted `0.8.0` source worktree with `@zhivex-ai/core@1.7.0` and `@zhivex-ai/openai@0.9.6` passed the base proposal/approval/restart/exactly-once gate for the GPT-5.6 family used by the Harness:
+
+| Provider | Model | Result |
+| --- | --- | --- |
+| OpenAI | `gpt-5.6-luna` | Passed |
+| OpenAI | `gpt-5.6-terra` | Passed |
+| OpenAI | `gpt-5.6-sol` | Passed |
+
+Every run persisted the `apply_patch` approval, restarted against the same scoped durable store, executed the approved mutation exactly once, and recorded exactly one completed journal entry.
+
+The `0.8.0`-bound runs completed at `2026-08-20T20:13:24.151Z` for Luna, `2026-08-20T20:13:25.211Z` for Terra, and `2026-08-20T20:13:27.441Z` for Sol. The Luna run omitted the model override and resolved to `gpt-5.6-luna` through the provider registry default.
+
+This is local pre-release evidence, not public release certification: the worktree is not committed, the exact `0.8.0` artifact is not published, and the source-commit/provenance requirement is therefore unsatisfied. It certifies only the shared Harness edit-and-resume path. It does not certify GPT-5.6 Programmatic Tool Calling, Multi-agent, hosted tools, long-context pricing, model-directed OCI execution, or mixed-provider routing.

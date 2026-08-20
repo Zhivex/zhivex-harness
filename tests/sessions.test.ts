@@ -52,7 +52,7 @@ describe("durable CLI sessions", () => {
       initialRun: {
         runId: "run-openai-1",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.6-luna",
         role: "implementer",
         status: "running"
       }
@@ -75,7 +75,7 @@ describe("durable CLI sessions", () => {
       provider: "qwen",
       model: "qwen3.8-max",
       status: "completed"
-    })).rejects.toThrow("immutably bound to openai/gpt-5.4");
+    })).rejects.toThrow("immutably bound to openai/gpt-5.6-luna");
 
     const switched = await store.appendRun(created.sessionId, {
       runId: "run-qwen-1",
@@ -85,7 +85,7 @@ describe("durable CLI sessions", () => {
       status: "completed"
     }, { expectedRevision: 1 });
     expect(switched.runs.map(({ runId, provider, model }) => ({ runId, provider, model }))).toEqual([
-      { runId: "run-openai-1", provider: "openai", model: "gpt-5.4" },
+      { runId: "run-openai-1", provider: "openai", model: "gpt-5.6-luna" },
       { runId: "run-qwen-1", provider: "qwen", model: "qwen3.8-max" }
     ]);
 
@@ -100,7 +100,7 @@ describe("durable CLI sessions", () => {
     expect(await reopened.get(created.sessionId)).toMatchObject({
       title: "provider routing",
       runs: [
-        { runId: "run-openai-1", provider: "openai", model: "gpt-5.4", status: "completed" },
+        { runId: "run-openai-1", provider: "openai", model: "gpt-5.6-luna", status: "completed" },
         { runId: "run-qwen-1", provider: "qwen", model: "qwen3.8-max", status: "completed" }
       ]
     });
@@ -114,7 +114,7 @@ describe("durable CLI sessions", () => {
       initialRun: {
         runId: "safe-run-id",
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.6-luna",
         status: "completed"
       }
     });
@@ -143,7 +143,7 @@ describe("durable CLI sessions", () => {
         title: "deploy [REDACTED] for [REDACTED]",
         run_id: "safe-run-id",
         provider: "openai",
-        model: "gpt-5.4"
+        model: "gpt-5.6-luna"
       }]);
     } finally {
       database.close(false);
@@ -208,13 +208,13 @@ describe("durable CLI sessions", () => {
     const withRun = await store.appendRun(created.sessionId, {
       runId: "only-run",
       provider: "openai",
-      model: "gpt-5.4",
+      model: "gpt-5.6-luna",
       status: "completed"
     });
     const repeated = await store.appendRun(created.sessionId, {
       runId: "only-run",
       provider: "openai",
-      model: "gpt-5.4",
+      model: "gpt-5.6-luna",
       status: "completed"
     });
     expect(repeated.revision).toBe(withRun.revision);
@@ -263,7 +263,7 @@ describe("durable CLI sessions", () => {
     const { store } = await fixture({ retentionMs: 100 });
     const source = await store.create({
       title: "main",
-      initialRun: { runId: "run-1", provider: "openai", model: "gpt-5.4", status: "completed" }
+      initialRun: { runId: "run-1", provider: "openai", model: "gpt-5.6-luna", status: "completed" }
     });
     const sourceWithTwoRuns = await store.appendRun(source.sessionId, {
       runId: "run-2",
@@ -300,14 +300,14 @@ describe("durable CLI sessions", () => {
   test("rejects forks, archive and logical deletion while the branch point is active", async () => {
     const { store } = await fixture();
     const active = await store.create({
-      initialRun: { runId: "active-run", provider: "openai", model: "gpt-5.4", status: "waiting_approval" }
+      initialRun: { runId: "active-run", provider: "openai", model: "gpt-5.6-luna", status: "waiting_approval" }
     });
     await expect(store.fork(active.sessionId)).rejects.toThrow("Cannot fork from non-terminal run");
     await expect(store.archive(active.sessionId)).rejects.toThrow("while run active-run is waiting_approval");
     await expect(store.delete(active.sessionId)).rejects.toThrow("while run active-run is waiting_approval");
     expect((await store.get(active.sessionId))?.runs[0]).toMatchObject({
       provider: "openai",
-      model: "gpt-5.4",
+      model: "gpt-5.6-luna",
       status: "waiting_approval"
     });
   });

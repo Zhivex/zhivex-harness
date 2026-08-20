@@ -50,6 +50,7 @@ for (const markdownFile of markdownFiles) {
 const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
+const liveCertification = await readFile(path.join(workspace, "docs", "LIVE_CERTIFICATION.md"), "utf8");
 const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"), "utf8")}\n${
   await readFile(path.join(workspace, "src", "providers.ts"), "utf8")
 }`;
@@ -333,13 +334,13 @@ if (manifest.version.startsWith("0.6.")) {
   }
 }
 
-if (manifest.version.startsWith("0.7.")) {
+if (manifest.version.startsWith("0.8.")) {
   const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
   const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
   const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
   for (const [file, contents, headings] of [
     ["docs/CLI.md", cli, ["## Interactive console", "## JSON Lines", "## Command compatibility"]],
-    ["docs/DURABLE_OPERATIONS.md", durableOperations, ["## Durable CLI sessions", "## Provider handoff safety", "## Migration from 0.6.x"]],
+    ["docs/DURABLE_OPERATIONS.md", durableOperations, ["## Durable CLI sessions", "## Provider handoff safety", "## Migration from 0.7.x"]],
     ["docs/EXTENSIBILITY.md", extensibility, ["## Provider registry", "## Per-role model routing", "## Routing limits"]]
   ] as const) {
     for (const heading of headings) {
@@ -347,25 +348,52 @@ if (manifest.version.startsWith("0.7.")) {
     }
   }
   if (manifest.bin?.zhx !== "./dist/zhx.js" || manifest.bin?.["zhivex-harness"] !== "./dist/cli.js") {
-    failures.push("0.7.x must publish both zhx and zhivex-harness aliases.");
+    failures.push("0.8.x must publish both zhx and zhivex-harness aliases.");
   }
-  if (manifest.dependencies?.["@zhivex-ai/gemini"] !== "0.10.4") {
-    failures.push("0.7.x must pin @zhivex-ai/gemini@0.10.4.");
+  const expectedSdkDependencies = {
+    "@zhivex-ai/agents": "1.2.0",
+    "@zhivex-ai/core": "1.7.0",
+    "@zhivex-ai/gemini": "0.10.5",
+    "@zhivex-ai/meta": "0.2.2",
+    "@zhivex-ai/openai": "0.9.6",
+    "@zhivex-ai/qwen": "0.10.2"
+  } as const;
+  for (const [packageName, expectedVersion] of Object.entries(expectedSdkDependencies)) {
+    if (manifest.dependencies?.[packageName] !== expectedVersion) {
+      failures.push(`0.8.x must pin ${packageName}@${expectedVersion}.`);
+    }
+    if (!extensibility.includes(`\`${packageName}@${expectedVersion}\``)) {
+      failures.push(`docs/EXTENSIBILITY.md must document ${packageName}@${expectedVersion}.`);
+    }
+  }
+  if (manifest.overrides?.["@zhivex-ai/core"] !== expectedSdkDependencies["@zhivex-ai/core"]) {
+    failures.push("0.8.x must override one @zhivex-ai/core@1.7.0 runtime.");
+  }
+  if (!providerConfig.includes('defaultModel: "gpt-5.6-luna"')) {
+    failures.push("0.8.x must use gpt-5.6-luna as the OpenAI default model.");
+  }
+  for (const modelId of ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
+    if (!liveCertification.includes(`\`${modelId}\``)) {
+      failures.push(`docs/LIVE_CERTIFICATION.md must record the local OpenAI base-gate result for ${modelId}.`);
+    }
+    if (!extensibility.includes(`\`${modelId}\``)) {
+      failures.push(`docs/EXTENSIBILITY.md must document the GPT-5.6 OpenAI model ${modelId}.`);
+    }
   }
   if (
     manifest.scripts?.["smoke:live:routing"] !== "bun --env-file=.env run scripts/live-routing-smoke.ts" ||
     !liveCertificationWorkflow.includes("bun run smoke:live:routing")
   ) {
-    failures.push("0.7.x must expose the mixed-provider live routing gate.");
+    failures.push("0.8.x must expose the mixed-provider live routing gate.");
   }
   for (const required of ["id: \"gemini\"", "createProviderRegistry", "transportFingerprint"]) {
-    if (!providerConfig.includes(required)) failures.push(`0.7.x provider registry is missing ${required}.`);
+    if (!providerConfig.includes(required)) failures.push(`0.8.x provider registry is missing ${required}.`);
   }
-  if (!changelog.includes("## 0.7.0 -") || !changelog.includes("### Migration from 0.6.x")) {
-    failures.push("CHANGELOG.md must include the 0.7.0 release and migration notes.");
+  if (!changelog.includes("## 0.8.0 - Unreleased") || !changelog.includes("### Migration from 0.7.x")) {
+    failures.push("CHANGELOG.md must include the 0.8.0 release candidate and migration notes.");
   }
-  if (!roadmap.includes("0.7.0 release candidate")) {
-    failures.push("ROADMAP.md must identify the 0.7.0 release candidate.");
+  if (!roadmap.includes("0.8.0` is the source release candidate")) {
+    failures.push("ROADMAP.md must identify the 0.8.0 source release candidate.");
   }
   if (
     !liveCertificationWorkflow.includes("GEMINI_API_KEY") ||

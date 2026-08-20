@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.7.0` is the source release candidate for the multi-provider agent console. The currently verified public npm release remains `0.6.1`; local validation does not imply that `0.7.0` has been published or live-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.8.0` is the source release candidate for the coordinated SDK refresh and GPT-5.6-first OpenAI integration. The latest public npm release is `0.7.0`; local validation does not imply that `0.8.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -40,7 +40,13 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.7 includes
+## What 0.8 changes
+
+- updates the coordinated Zhivex SDK batch while retaining a single Core runtime identity;
+- makes `gpt-5.6-luna` the OpenAI default, with Terra and Sol available through explicit model selection; and
+- clarifies that calling an approval-gated tool is the model's approval request, so the runtime can persist and resume it.
+
+## What 0.7 introduced
 
 - the short `zhx` command, with `zhivex-harness` retained as a compatible alias;
 - one-shot execution plus a durable interactive console with named sessions, fork/archive operations, safe resume, status, diff, review, and explicit context compaction;
@@ -84,7 +90,7 @@ bun add @zhivex-ai/harness
 bunx --package @zhivex-ai/harness zhx --version
 ```
 
-To exercise the `0.7.0` source checkout:
+To exercise the `0.8.0` source checkout:
 
 ```bash
 bun install --frozen-lockfile
@@ -163,7 +169,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` is rejected in `0.7.0`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` is rejected in `0.8.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -239,12 +245,12 @@ zhivex-harness run --execution oci --yes "inspect, implement, test, review the e
 | --- | --- | --- |
 | Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
 | Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
-| OpenAI | `gpt-5.4` | `OPENAI_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
+| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · GPT-5.6 Luna, Terra, and Sol base workflow passed locally; release recertification pending |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta, Qwen, and OpenAI retain the published `0.6.x` support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta and Qwen retain the published support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. OpenAI is GPT-5.6-first in `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. All three passed the local base approval/restart gate, but delegation, OCI execution, and release-artifact certification still require the release-candidate matrix. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 

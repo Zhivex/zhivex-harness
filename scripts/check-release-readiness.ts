@@ -61,8 +61,8 @@ const manifest = JSON.parse(
 if (manifest.name !== "@zhivex-ai/harness") {
   failures.push("package name must be @zhivex-ai/harness");
 }
-if (!manifest.version || !/^0\.7\.\d+$/.test(manifest.version)) {
-  failures.push("package version must be a stable 0.7.x version");
+if (!manifest.version || !/^0\.8\.\d+$/.test(manifest.version)) {
+  failures.push("package version must be a stable 0.8.x version");
 }
 if (manifest.private === true) {
   failures.push("package.json is still private");
