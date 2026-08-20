@@ -4,6 +4,36 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.7.0 - 2026-08-20
+
+### Added
+
+- The short `zhx` executable while retaining `zhivex-harness` for command compatibility.
+- A durable interactive console backed by a scoped SQLite session index, including session list/inspect/rename/fork/archive and `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/compact`, `/new`, and `/rename` commands.
+- A public, validated, injectable provider registry with built-in Meta, Qwen, OpenAI, and provisional Gemini registrations. Gemini uses `@zhivex-ai/gemini@0.10.4` and `gemini-3.6-flash` by default.
+- Repeatable per-role model routes for explorer, implementer, tester, and reviewer subagents.
+- A redacted, sequence-numbered JSON Lines stream contract through `--jsonl`.
+
+### Changed
+
+- Provider/model changes in the console create a new immutable run and compact/redact portable context rather than rebinding an old provider state.
+- Durable harness fingerprints now include a non-secret hash of provider endpoint/region/workspace transport configuration.
+- Provider diagnostics are registry-driven and continue to expose only declared variable names and booleans.
+- The final JSON schema and resolved configuration schema remain at version `1` and `4` respectively.
+
+### Migration from 0.6.x
+
+- Prefer `zhx` for interactive use; existing `zhivex-harness` commands continue to work.
+- Resolve or deny paused `0.6.x` approvals with the matching `0.6.x` artifact before upgrading. Harness-version binding intentionally rejects those resumes under `0.7.x`.
+- Gemini is integrated but provisional until all credentialed harness live gates pass. Local tests, adapter evidence, and credential detection do not certify it.
+- `--max-cost-usd` cannot be combined with per-role routes in `0.7.x`; pricing remains one operator-supplied pair and would misprice heterogeneous usage.
+
+### Security
+
+- Session metadata excludes prompts/messages/tool payloads and is isolated by canonical workspace and durable scope with bounded storage and optimistic SQLite transactions.
+- JSONL projection omits tool inputs/outputs, approval arguments, provider payloads, images, raw errors, and full durable states.
+- Provider/model handoff is blocked while an approval is pending and strips provider-specific tool payloads from future context.
+
 ## 0.6.1 - 2026-08-17
 
 ### Added

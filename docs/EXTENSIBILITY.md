@@ -1,6 +1,14 @@
 # Extensibility and orchestration
 
-Zhivex Harness `0.5.x` adds governed external tools and bounded multi-agent work without adding a generic shell or weakening the workspace contract. Configuration schema version `3` binds capability requirements, MCP policy, subagent profiles, child budgets, and scope into the durable harness fingerprint.
+Zhivex Harness `0.7.x` combines governed external tools and bounded multi-agent work with a public provider registry and explicit per-role model routing. Configuration schema remains version `4`; registry selection, runtime model capabilities, routed child models, non-secret provider transport settings, MCP, execution policy, budgets, and scope are bound into the durable harness fingerprint.
+
+## Provider registry
+
+Built-in registrations are Meta, Qwen, OpenAI, and Gemini. Each registration owns its descriptor, default model, credential names, capability/support labels, factory, and declarative diagnostics. The registry never dynamically imports provider code or returns credential/endpoint values from diagnostics.
+
+Library callers can use `DEFAULT_PROVIDER_REGISTRY`, `BUILTIN_PROVIDER_REGISTRATIONS`, `createProviderRegistry`, or `DEFAULT_PROVIDER_REGISTRY.extend(...)`, then pass the registry to `resolveHarnessConfig`, `createProviderModel`, provider diagnostics, or `createHarness({ providerRegistry })`. Registration IDs, environment-variable names, defaults, diagnostics, and factories are validated before they become selectable.
+
+Gemini uses `@zhivex-ai/gemini@0.10.4`, default model `gemini-3.6-flash`, `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and optional `GEMINI_BASE_URL`. It is provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed harness live matrix; adapter-level evidence alone does not make the harness integration certified.
 
 ## Capability gate
 
@@ -87,6 +95,30 @@ zhivex-harness run \
 The parent receives `delegate_explorer`, `delegate_implementer`, `delegate_tester`, and `delegate_reviewer` tools for the enabled profiles. Delegation is model-directed only when the parent invokes one of these tools. A child inherits the canonical workspace, durable scope, store, memory, cancellation boundary, approval policy, and telemetry observer. Each child has its own harness fingerprint, lease, state limit, timeout, step/tool/error/token budget, and run ID.
 
 Child mutations and checks do not inherit an approval automatically. A paused child approval is promoted to the parent as `kind: "subagent"`; approving the parent resumes the same durable child checkpoint. Completed child tools are protected by the shared exactly-once journal.
+
+## Per-role model routing
+
+Route selected profiles without changing the parent model:
+
+```bash
+zhx run \
+  --provider openai \
+  --route explorer=qwen \
+  --route reviewer=gemini:gemini-3.6-flash \
+  "implement the change and review it"
+```
+
+The grammar is `<profile>=<provider>[:<model>]`; supported profiles are `explorer`, `implementer`, `tester`, and `reviewer`. Omitting a model uses the provider registration's default. Duplicate roles, unknown providers, invalid model text, missing credentials, and capability mismatches fail before the parent run starts. Providers are instantiated only for selected routes.
+
+The resolved route plan is persisted without credentials in CLI resume metadata and instantiated child capabilities participate in the harness fingerprint. Changing a route never mutates or resumes a run under another model; the interactive console starts a new session turn.
+
+## Routing limits
+
+- There is no automatic failover inside a run and no provider change while an approval is pending.
+- `--max-cost-usd` with any route is rejected because `0.7.x` has one operator-supplied price pair, not pricing per model/run.
+- Routing does not infer speed, quality, price, or a “best” provider; presets remain deferred until the model catalog contains reliable evidence.
+- The CLI registry is static. Applications may inject a validated registry through the TypeScript API, but configuration files cannot load arbitrary provider modules.
+- Cross-provider console context uses deterministic redacted compaction and omits tool/provider payloads; it is a portable summary, not a byte-identical transcript handoff.
 
 ## Budgets and cancellation
 

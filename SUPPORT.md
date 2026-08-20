@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `0.6.x` is a pre-1.0 CLI and TypeScript library for Bun. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md).
+Zhivex Harness `0.7.x` is a pre-1.0 CLI and TypeScript library for Bun. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
 
 ## Supported baseline
 
@@ -10,7 +10,7 @@ Zhivex Harness `0.6.x` is a pre-1.0 CLI and TypeScript library for Bun. Observab
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published `0.6.x` patch receives routine fixes. Live provider evidence is account-, model-, endpoint-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Only the most recent published patch receives routine fixes. Meta, Qwen, and OpenAI retain their date-bound `0.6.x` certification; Gemini in `0.7.0` is provisional until the complete harness live matrix passes. Live provider evidence is account-, model-, endpoint-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Support channels
 

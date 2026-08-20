@@ -24,6 +24,7 @@ describe("live provider smoke contract", () => {
 
   test("defaults to the complete provider matrix and validates subsets", () => {
     expect(selectedProviders({})).toEqual(["meta", "qwen", "openai"]);
+    expect(selectedProviders({ ZHIVEX_HARNESS_LIVE_PROVIDERS: "gemini" })).toEqual(["gemini"]);
     expect(selectedProviders({ ZHIVEX_HARNESS_LIVE_PROVIDERS: "openai, qwen,openai" })).toEqual([
       "openai",
       "qwen"
@@ -34,14 +35,15 @@ describe("live provider smoke contract", () => {
   });
 
   test("requires credentials by name without exposing credential values", () => {
-    expect(() => requireCredentials(["meta", "qwen", "openai"], {
+    expect(() => requireCredentials(["meta", "qwen", "openai", "gemini"], {
       MODEL_API_KEY: "meta-secret",
       DASHSCOPE_API_KEY: "qwen-secret"
     })).toThrow("openai");
-    expect(() => requireCredentials(["meta", "qwen", "openai"], {
+    expect(() => requireCredentials(["meta", "qwen", "openai", "gemini"], {
       MODEL_API_KEY: "meta-secret",
       DASHSCOPE_API_KEY: "qwen-secret",
-      OPENAI_API_KEY: "openai-secret"
+      OPENAI_API_KEY: "openai-secret",
+      GEMINI_API_KEY: "gemini-secret"
     })).not.toThrow();
   });
 
@@ -90,6 +92,7 @@ describe("live provider smoke contract", () => {
     expect(input.providerOptions).toBeUndefined();
     expect(providerRunInput("qwen", prompt).providerOptions).toEqual({ apiMode: "responses" });
     expect(providerRunInput("openai", prompt).providerOptions).toEqual({ apiMode: "responses" });
+    expect(providerRunInput("gemini", prompt).providerOptions).toBeUndefined();
   });
 
   test("requires one exact bounded reviewer delegation for orchestration certification", () => {

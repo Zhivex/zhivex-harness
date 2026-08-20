@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Harness version
-      placeholder: 0.6.1
+      placeholder: 0.7.0
     validations:
       required: true
   - type: dropdown
@@ -26,6 +26,7 @@ body:
         - Subagents or review groups
         - OCI execution
         - Provider integration
+        - Interactive sessions or routing
         - Packaging or release
         - Documentation
     validations:

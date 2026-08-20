@@ -14,6 +14,7 @@ interface PackageManifest {
   version?: string;
   private?: boolean;
   publishConfig?: { access?: string; provenance?: boolean; registry?: string };
+  bin?: Record<string, string>;
 }
 
 const workspace = path.resolve(import.meta.dir, "..");
@@ -87,6 +88,7 @@ for (const required of [
   "package/dist/index.js",
   "package/dist/index.d.ts",
   "package/dist/cli.js",
+  "package/dist/zhx.js",
   "package/dist/hostile-repository-demo.js"
 ]) {
   assert(entries.includes(required), `release artifact is missing ${required}`);
@@ -108,6 +110,11 @@ assert.deepEqual(
     registry: "https://registry.npmjs.org/"
   },
   "packed publication policy is incorrect"
+);
+assert.deepEqual(
+  packedManifest.bin,
+  { "zhivex-harness": "./dist/cli.js", zhx: "./dist/zhx.js" },
+  "packed CLI aliases are incorrect"
 );
 
 const bytes = await readFile(artifact);

@@ -32,10 +32,12 @@ import { z } from "zod";
 
 import {
   createProviderModel,
+  DEFAULT_PROVIDER_REGISTRY,
   resolveHarnessConfig,
   HARNESS_CONFIG_SCHEMA_VERSION,
   type HarnessConfig,
-  type HarnessConfigInput
+  type HarnessConfigInput,
+  type HarnessProviderRegistry
 } from "./config.js";
 import {
   assertHarnessModelCapabilities,
@@ -87,6 +89,7 @@ const createHarnessBinding = (
   mcpConfiguration: HarnessMcpConfiguration,
   model: LanguageModel,
   subagentModels: CreateHarnessOptions["subagentModels"],
+  providerTransportFingerprint: string,
   executionEnvironment?: HarnessOciExecutionEnvironment
 ) => ({
   schemaVersion: 1 as const,
@@ -101,6 +104,7 @@ const createHarnessBinding = (
       provider: config.provider,
       model: config.model,
       runtimeModel: inspectHarnessModelCapabilities(model),
+      providerTransportFingerprint,
       subagentModels: Object.fromEntries(config.orchestration.profiles.map((profile) => [
         profile,
         inspectHarnessModelCapabilities(subagentModels?.[profile] ?? model)
@@ -136,6 +140,7 @@ Rules:
 
 export interface CreateHarnessOptions extends HarnessConfigInput {
   env?: NodeJS.ProcessEnv;
+  providerRegistry?: HarnessProviderRegistry;
   modelInstance?: LanguageModel;
   store?: AgentRunStore;
   memory?: AgentMemoryStore;
@@ -397,34 +402,63 @@ export const createExecutionEnvironmentTools = (workspace: Workspace) => ({
   })
 });
 
-const estimateMessageTokens = (messages: readonly ModelMessage[]) =>
+export const estimateMessageTokens = (messages: readonly ModelMessage[]) =>
   Math.max(1, Math.ceil(JSON.stringify(messages).length / 4));
 
-const createHarnessCompactor = () => {
+const summarizeHarnessMessages = (messages: readonly ModelMessage[]) => {
   const redaction = createRedactionPolicy({ includeEmails: true });
-  return async ({ messages }: { messages: ModelMessage[] }) => {
-    const summaries = messages.map((message, index) => {
-      const record = message as unknown as { role?: string; parts?: Array<Record<string, unknown>> };
-      const parts = (record.parts ?? []).map((part) => {
-        if (part.type === "text" && typeof part.text === "string") {
-          const text = redaction.redactText(part.text).replace(/\s+/g, " ").trim();
-          return text.length > 160 ? `${text.slice(0, 160)}…` : text;
-        }
-        if (part.type === "tool-call") {
-          const call = part.toolCall as { name?: unknown } | undefined;
-          return `tool-call:${typeof call?.name === "string" ? call.name : "unknown"}`;
-        }
-        if (part.type === "tool-result") {
-          const result = part.toolResult as { toolName?: unknown } | undefined;
-          return `tool-result:${typeof result?.toolName === "string" ? result.toolName : "unknown"}`;
-        }
-        return typeof part.type === "string" ? part.type : "part";
-      });
-      return `${index + 1}. ${record.role ?? "message"}: ${parts.join(" | ")}`;
+  const summaries = messages.map((message, index) => {
+    const record = message as unknown as { role?: string; parts?: Array<Record<string, unknown>> };
+    const parts = (record.parts ?? []).map((part) => {
+      if (part.type === "text" && typeof part.text === "string") {
+        const text = redaction.redactText(part.text)
+          .replace(/\bBearer\s+\S+/gi, "Bearer [REDACTED]")
+          .replace(
+            /\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD)|api[_-]?key|access[_-]?token|password)\s*([=:])\s*(?:"[^"]*"|'[^']*'|\S+)/gi,
+            "$1$2[REDACTED]"
+          )
+          .replace(/\b(?:sk|ghp|gho|github_pat)-[A-Za-z0-9_-]{8,}\b/g, "[REDACTED]")
+          .replace(/\s+/g, " ")
+          .trim();
+        return text.length > 160 ? `${text.slice(0, 160)}…` : text;
+      }
+      if (part.type === "tool-call") {
+        const call = part.toolCall as { name?: unknown } | undefined;
+        return `tool-call:${typeof call?.name === "string" ? call.name : "unknown"}`;
+      }
+      if (part.type === "tool-result") {
+        const result = part.toolResult as { toolName?: unknown } | undefined;
+        return `tool-result:${typeof result?.toolName === "string" ? result.toolName : "unknown"}`;
+      }
+      return typeof part.type === "string" ? part.type : "part";
     });
-    const summary = summaries.join("\n");
+    return `${index + 1}. ${record.role ?? "message"}: ${parts.join(" | ")}`;
+  });
+  const summary = summaries.join("\n");
+  return summary.length > 4_000 ? `${summary.slice(0, 4_000)}…` : summary;
+};
+
+export const compactHarnessMessages = (messages: readonly ModelMessage[]): ModelMessage[] => {
+  if (messages.length === 0) return [];
+  const systemMessages = messages.filter((message) => message.role === "system");
+  const conversation = messages.filter((message) => message.role !== "system");
+  if (conversation.length === 0) return [...systemMessages];
+  return [
+    ...systemMessages,
+    {
+      role: "user",
+      parts: [{
+        type: "text",
+        text: `[Compacted conversation context]\n${summarizeHarnessMessages(conversation)}`
+      }]
+    }
+  ];
+};
+
+const createHarnessCompactor = () => {
+  return async ({ messages }: { messages: ModelMessage[] }) => {
     return {
-      summary: summary.length > 4_000 ? `${summary.slice(0, 4_000)}…` : summary,
+      summary: summarizeHarnessMessages(messages),
       metadata: {
         strategy: "deterministic-redacted-transcript",
         sourceMessages: messages.length
@@ -496,7 +530,7 @@ const createProviderCompatibleBudget = (config: HarnessConfig) => {
 };
 
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
-  const config = resolveHarnessConfig(options);
+  const config = resolveHarnessConfig(options, options.providerRegistry);
   const workspace = await Workspace.open(config.workspace);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const executionEnvironment = config.execution.backend === "oci"
@@ -507,7 +541,11 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
         ...(options.ociRuntimeAdapter ? { runtime: options.ociRuntimeAdapter } : {})
       })
     : undefined;
-  const model = options.modelInstance ?? createProviderModel(config, options.env ?? process.env);
+  const model = options.modelInstance ?? createProviderModel(
+    config,
+    options.env ?? process.env,
+    options.providerRegistry
+  );
   const capabilityRequirements = [...new Set([
     ...config.requiredCapabilities,
     ...(config.orchestration.profiles.length > 0 || config.mcpConfigPath || options.mcpConfiguration
@@ -562,6 +600,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     mcpConfiguration,
     model,
     options.subagentModels,
+    (options.providerRegistry ?? DEFAULT_PROVIDER_REGISTRY).transportFingerprint(options.env ?? process.env),
     executionEnvironment
   );
   const subagentRuntime = createHarnessSubagents({

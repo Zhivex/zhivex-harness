@@ -11,6 +11,7 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   dependencies?: Record<string, string>;
   overrides?: Record<string, string>;
   keywords?: string[];
+  bin?: Record<string, string>;
 };
 
 const markdownFiles = [
@@ -49,7 +50,9 @@ for (const markdownFile of markdownFiles) {
 const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
-const providerConfig = await readFile(path.join(workspace, "src", "config.ts"), "utf8");
+const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"), "utf8")}\n${
+  await readFile(path.join(workspace, "src", "providers.ts"), "utf8")
+}`;
 const liveCertificationWorkflow = await readFile(
   path.join(workspace, ".github", "workflows", "live-certification.yml"),
   "utf8"
@@ -327,6 +330,48 @@ if (manifest.version.startsWith("0.6.")) {
     !liveCertificationWorkflow.includes("bun run smoke:live:execution")
   ) {
     failures.push("Live certification workflow must exercise the enforced OCI boundary and model-directed execution.");
+  }
+}
+
+if (manifest.version.startsWith("0.7.")) {
+  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
+  const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
+  for (const [file, contents, headings] of [
+    ["docs/CLI.md", cli, ["## Interactive console", "## JSON Lines", "## Command compatibility"]],
+    ["docs/DURABLE_OPERATIONS.md", durableOperations, ["## Durable CLI sessions", "## Provider handoff safety", "## Migration from 0.6.x"]],
+    ["docs/EXTENSIBILITY.md", extensibility, ["## Provider registry", "## Per-role model routing", "## Routing limits"]]
+  ] as const) {
+    for (const heading of headings) {
+      if (!contents.includes(heading)) failures.push(`${file} is missing ${heading}.`);
+    }
+  }
+  if (manifest.bin?.zhx !== "./dist/zhx.js" || manifest.bin?.["zhivex-harness"] !== "./dist/cli.js") {
+    failures.push("0.7.x must publish both zhx and zhivex-harness aliases.");
+  }
+  if (manifest.dependencies?.["@zhivex-ai/gemini"] !== "0.10.4") {
+    failures.push("0.7.x must pin @zhivex-ai/gemini@0.10.4.");
+  }
+  if (
+    manifest.scripts?.["smoke:live:routing"] !== "bun --env-file=.env run scripts/live-routing-smoke.ts" ||
+    !liveCertificationWorkflow.includes("bun run smoke:live:routing")
+  ) {
+    failures.push("0.7.x must expose the mixed-provider live routing gate.");
+  }
+  for (const required of ["id: \"gemini\"", "createProviderRegistry", "transportFingerprint"]) {
+    if (!providerConfig.includes(required)) failures.push(`0.7.x provider registry is missing ${required}.`);
+  }
+  if (!changelog.includes("## 0.7.0 -") || !changelog.includes("### Migration from 0.6.x")) {
+    failures.push("CHANGELOG.md must include the 0.7.0 release and migration notes.");
+  }
+  if (!roadmap.includes("0.7.0 release candidate")) {
+    failures.push("ROADMAP.md must identify the 0.7.0 release candidate.");
+  }
+  if (
+    !liveCertificationWorkflow.includes("GEMINI_API_KEY") ||
+    !liveCertificationWorkflow.includes("GOOGLE_GENERATIVE_AI_API_KEY")
+  ) {
+    failures.push("Live certification must accept both Gemini credential names.");
   }
 }
 

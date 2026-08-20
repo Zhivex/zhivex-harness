@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { createInterface } from "node:readline/promises";
+import { randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { access, lstat, readFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -17,8 +18,10 @@ import {
 } from "@zhivex-ai/agents";
 
 import {
+  DEFAULT_PROVIDER_REGISTRY,
   HARNESS_REQUIRED_CAPABILITIES,
   HARNESS_SUBAGENT_PROFILES,
+  PROVIDERS,
   parseProvider,
   providerAvailability,
   resolveHarnessConfig,
@@ -29,6 +32,7 @@ import {
 } from "./config.js";
 import {
   appendUserMessage,
+  compactHarnessMessages,
   createHarness,
   runHarness,
   type HarnessRunOptions,
@@ -55,8 +59,24 @@ import {
   cleanupHarnessExecutionArtifacts,
   type HarnessOciRuntimeAdapter
 } from "./execution-environment.js";
+import {
+  createHarnessRouteModels,
+  parseHarnessModelRoute,
+  resolveHarnessModelRoutes,
+  serializeHarnessModelRoutes,
+  type HarnessModelRoute
+} from "./routing.js";
+import {
+  CLI_JSON_SCHEMA_VERSION,
+  serializeStreamEvent
+} from "./cli-stream.js";
+import {
+  openCliSessionStore,
+  type CliSession,
+  type SessionRunStatus
+} from "./sessions.js";
 
-export const CLI_JSON_SCHEMA_VERSION = 1 as const;
+export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
 export const HARNESS_RESUME_METADATA_SCHEMA_VERSION = 1 as const;
 
@@ -67,8 +87,9 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "help" | "version";
+type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "sessions" | "help" | "version";
 type RunsCommand = "list" | "inspect" | "cancel" | "cleanup" | "export";
+type SessionsCommand = "list" | "inspect" | "rename" | "fork" | "archive";
 
 export interface CliOptions {
   command: Command;
@@ -92,8 +113,9 @@ export interface CliOptions {
   outputCostPerMillion?: number;
   allowedChecks?: string[];
   requiredCapabilities?: string[];
-  subagentProfiles?: string[];
+  subagentProfiles?: HarnessSubagentProfile[];
   reviewers?: HarnessSubagentProfile[];
+  routes?: string[];
   subagentMaxSteps?: number;
   subagentMaxToolCalls?: number;
   subagentMaxToolErrors?: number;
@@ -119,6 +141,11 @@ export interface CliOptions {
   runId?: string;
   idempotencyKey?: string;
   runsCommand?: RunsCommand;
+  sessionsCommand?: SessionsCommand;
+  sessionId?: string;
+  sessionTitle?: string;
+  continueSession: boolean;
+  implicitCommand: boolean;
   statuses?: AgentStatus[];
   limit?: number;
   cursor?: string;
@@ -129,10 +156,12 @@ export interface CliOptions {
   yes: boolean;
   approve?: boolean;
   json: boolean;
+  jsonl: boolean;
 }
 
-const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "help", "version"]);
+const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "help", "version"]);
 const RUNS_COMMANDS = new Set<RunsCommand>(["list", "inspect", "cancel", "cleanup", "export"]);
+const SESSIONS_COMMANDS = new Set<SessionsCommand>(["list", "inspect", "rename", "fork", "archive"]);
 const RUN_STATUSES = new Set<AgentStatus>([
   "queued",
   "running",
@@ -210,23 +239,23 @@ const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput => ({
 });
 
 export const createHarnessResumeMetadata = (
-  config: HarnessConfig
+  config: HarnessConfig,
+  routes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>
 ): NonNullable<AgentRunInput["metadata"]> => ({
   [HARNESS_RESUME_METADATA_KEY]: JSON.parse(JSON.stringify({
     schemaVersion: HARNESS_RESUME_METADATA_SCHEMA_VERSION,
-    config
+    config,
+    ...(routes && routes.size > 0 ? { routes: serializeHarnessModelRoutes(routes) } : {})
   }))
 });
 
-export const readHarnessResumeConfig = (
-  state: Pick<AgentRunState, "metadata">
-): HarnessConfigInput | undefined => {
+const readHarnessResumeDocument = (state: Pick<AgentRunState, "metadata">) => {
   const value = state.metadata?.[HARNESS_RESUME_METADATA_KEY];
   if (value === undefined) return undefined;
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Persisted harness resume metadata is invalid.");
   }
-  const document = value as { schemaVersion?: unknown; config?: unknown };
+  const document = value as { schemaVersion?: unknown; config?: unknown; routes?: unknown };
   if (
     document.schemaVersion !== HARNESS_RESUME_METADATA_SCHEMA_VERSION ||
     !document.config ||
@@ -235,10 +264,39 @@ export const readHarnessResumeConfig = (
   ) {
     throw new Error("Persisted harness resume metadata is invalid.");
   }
+  return document;
+};
+
+export const readHarnessResumeConfig = (
+  state: Pick<AgentRunState, "metadata">
+): HarnessConfigInput | undefined => {
+  const document = readHarnessResumeDocument(state);
+  if (!document) return undefined;
   try {
     return harnessConfigInput(document.config as HarnessConfig);
   } catch {
     throw new Error("Persisted harness resume metadata is invalid.");
+  }
+};
+
+export const readHarnessResumeRoutes = (
+  state: Pick<AgentRunState, "metadata">
+) => {
+  const document = readHarnessResumeDocument(state);
+  if (!document?.routes) return resolveHarnessModelRoutes();
+  if (typeof document.routes !== "object" || Array.isArray(document.routes)) {
+    throw new Error("Persisted harness routing metadata is invalid.");
+  }
+  try {
+    const values = Object.entries(document.routes as Record<string, unknown>).map(([profile, target]) => {
+      if (!target || typeof target !== "object" || Array.isArray(target)) throw new Error("invalid");
+      const route = target as { provider?: unknown; model?: unknown };
+      if (typeof route.provider !== "string" || typeof route.model !== "string") throw new Error("invalid");
+      return `${profile}=${route.provider}:${route.model}`;
+    });
+    return resolveHarnessModelRoutes(values);
+  } catch {
+    throw new Error("Persisted harness routing metadata is invalid.");
   }
 };
 
@@ -273,7 +331,16 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   let command: Command = "run";
   let commandWasExplicit = false;
   const positional: string[] = [];
-  const options: CliOptions = { command, cascade: false, final: false, yes: false, json: false };
+  const options: CliOptions = {
+    command,
+    cascade: false,
+    final: false,
+    yes: false,
+    json: false,
+    jsonl: false,
+    continueSession: false,
+    implicitCommand: true
+  };
   let positionalOnly = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -309,6 +376,21 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.model = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--route": {
+        const value = optionValue(argv, index, argument);
+        try {
+          parseHarnessModelRoute(value);
+        } catch (error) {
+          throw new CliUsageError(error instanceof Error ? error.message : String(error));
+        }
+        options.routes ??= [];
+        options.routes.push(value);
+        if (options.routes.length > HARNESS_SUBAGENT_PROFILES.length) {
+          throw new CliUsageError(`--route cannot be repeated more than ${HARNESS_SUBAGENT_PROFILES.length} times.`);
+        }
+        index += 1;
+        break;
+      }
       case "--workspace":
         options.workspace = optionValue(argv, index, argument);
         index += 1;
@@ -479,7 +561,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
           throw new CliUsageError(`--subagent must be one of: ${HARNESS_SUBAGENT_PROFILES.join(", ")}.`);
         }
         options.subagentProfiles ??= [];
-        options.subagentProfiles.push(value);
+        options.subagentProfiles.push(value as HarnessSubagentProfile);
         index += 1;
         break;
       }
@@ -510,6 +592,16 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         break;
       case "--json":
         options.json = true;
+        break;
+      case "--jsonl":
+        options.jsonl = true;
+        break;
+      case "--session":
+        options.sessionId = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--continue":
+        options.continueSession = true;
         break;
       case "--status": {
         const value = optionValue(argv, index, argument) as AgentStatus;
@@ -573,6 +665,17 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
   }
 
+  options.implicitCommand = !commandWasExplicit;
+  if (options.json && options.jsonl) {
+    throw new CliUsageError("You cannot combine --json and --jsonl.");
+  }
+  if (options.sessionId && options.continueSession) {
+    throw new CliUsageError("You cannot combine --session and --continue.");
+  }
+  if (options.jsonl && options.command !== "run" && options.command !== "resume") {
+    throw new CliUsageError("--jsonl is supported by run and resume.");
+  }
+
   if (options.command === "resume") {
     const runId = positional.shift();
     if (runId) {
@@ -600,6 +703,26 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`runs ${runsCommand} received unexpected positional arguments.`);
     }
+  } else if (options.command === "sessions") {
+    const sessionsCommand = positional.shift() as SessionsCommand | undefined;
+    if (!sessionsCommand || !SESSIONS_COMMANDS.has(sessionsCommand)) {
+      throw new CliUsageError("sessions requires one of: list, inspect, rename, fork, archive.");
+    }
+    options.sessionsCommand = sessionsCommand;
+    if (sessionsCommand !== "list") {
+      const sessionId = positional.shift();
+      if (!sessionId) throw new CliUsageError(`sessions ${sessionsCommand} requires a sessionId.`);
+      options.sessionId = sessionId;
+    }
+    if (sessionsCommand === "rename") {
+      const title = positional.join(" ").trim();
+      if (!title) throw new CliUsageError("sessions rename requires a title.");
+      options.sessionTitle = title;
+      positional.length = 0;
+    }
+    if (positional.length > 0) {
+      throw new CliUsageError(`sessions ${sessionsCommand} received unexpected positional arguments.`);
+    }
   } else if (options.command === "run" || options.command === "review") {
     const prompt = positional.join(" ").trim();
     if (prompt) {
@@ -615,21 +738,24 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
 const help = `Zhivex Harness v${HARNESS_VERSION}
 
 Usage:
-  zhivex-harness run [options] "task"
-  zhivex-harness review [options] "review task"
-  zhivex-harness chat [options]
-  zhivex-harness providers [--json]
-  zhivex-harness doctor [options] [--json]
-  zhivex-harness resume [options] <runId> --approve|--deny
-  zhivex-harness runs list [--status <status>] [--limit <n>] [--json]
-  zhivex-harness runs inspect <runId> [--json]
-  zhivex-harness runs cancel <runId> [--reason <text>] [--cascade] [--final]
-  zhivex-harness runs cleanup --before <date|timestamp> [--status <status>]
-  zhivex-harness runs export <runId> [--json]
+  zhx                              Start the interactive console
+  zhx run [options] "task"
+  zhx review [options] "review task"
+  zhx chat [options] [--continue|--session <id>]
+  zhx providers [--json]
+  zhx doctor [options] [--json]
+  zhx resume [options] <runId> --approve|--deny
+  zhx runs list [--status <status>] [--limit <n>] [--json]
+  zhx sessions list|inspect|rename|fork|archive
+
+The long command zhivex-harness remains supported for compatibility.
 
 Options:
-  --provider <meta|qwen|openai>  Provider (default: openai)
+  --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
+  --route <role=provider[:model]> Route a subagent role; repeatable
+  --session <id>                 Open a durable interactive session
+  --continue                     Open the latest durable interactive session
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
@@ -671,6 +797,7 @@ Options:
   --max-parallel-reviews <1-4>   Review group concurrency ceiling (default: 2)
   --yes                          Automatically approve writes and checks
   --json                         Emit structured final output
+  --jsonl                        Stream redacted JSON Lines, then the final result
   -h, --help                     Show this help
   -v, --version                  Show the version
 
@@ -683,7 +810,8 @@ Exit codes:
 Credentials:
   OpenAI: OPENAI_API_KEY
   Meta:   MODEL_API_KEY
-  Qwen:   DASHSCOPE_API_KEY or QWEN_API_KEY`;
+  Qwen:   DASHSCOPE_API_KEY or QWEN_API_KEY
+  Gemini: GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY`;
 
 export const summarizeApproval = (approval: AgentApprovalRequest) => {
   const mustShowCompleteProposal = approval.name === "apply_patch";
@@ -805,9 +933,18 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
   stateDirectory: harness.config.stateDirectory
 });
 
-const printTerminalResult = (result: AgentRunOutput, harness: ZhivexHarness, json: boolean, streamedText: boolean) => {
-  if (json) {
-    process.stdout.write(`${JSON.stringify(runResultDocument(result, harness), null, 2)}\n`);
+const printTerminalResult = (
+  result: AgentRunOutput,
+  harness: ZhivexHarness,
+  output: Pick<CliOptions, "json" | "jsonl">,
+  streamedText: boolean
+) => {
+  if (output.json || output.jsonl) {
+    process.stdout.write(`${JSON.stringify(
+      runResultDocument(result, harness),
+      null,
+      output.jsonl ? undefined : 2
+    )}\n`);
     return;
   }
   if (!streamedText && result.outputText) {
@@ -829,8 +966,16 @@ const printTerminalResult = (result: AgentRunOutput, harness: ZhivexHarness, jso
   }
 };
 
-const streamSink = (json: boolean, tracker: { streamedText: boolean }) => async (event: AgentStreamEvent) => {
-  if (!json && event.type === "text-delta") {
+const streamSink = (
+  output: Pick<CliOptions, "json" | "jsonl">,
+  tracker: { streamedText: boolean; sequence?: number }
+) => async (event: AgentStreamEvent) => {
+  if (output.jsonl) {
+    tracker.sequence = (tracker.sequence ?? 0) + 1;
+    process.stdout.write(`${serializeStreamEvent(event, tracker.sequence)}\n`);
+    return;
+  }
+  if (!output.json && event.type === "text-delta") {
     tracker.streamedText = true;
     process.stdout.write(event.textDelta);
   }
@@ -847,11 +992,42 @@ const orchestrationObserver = (json: boolean): AgentTelemetryObserver => async (
   }
 };
 
+const resolvedRouting = (options: CliOptions) => {
+  const routes = resolveHarnessModelRoutes(options.routes);
+  if (routes.size > 0 && options.maxCostUsd !== undefined) {
+    throw new CliUsageError(
+      "--max-cost-usd cannot be combined with multi-provider routes until pricing is configured per role."
+    );
+  }
+  return routes;
+};
+
+const createConfiguredHarness = async (
+  options: CliOptions,
+  extraProfiles: readonly HarnessSubagentProfile[] = [],
+  persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>
+) => {
+  const routes = persistedRoutes ?? resolvedRouting(options);
+  const profiles = [...new Set([
+    ...(options.subagentProfiles ?? []),
+    ...extraProfiles,
+    ...routes.keys()
+  ])];
+  const quietTelemetry = options.json || options.jsonl;
+  const harness = await createHarness({
+    ...options,
+    subagentProfiles: profiles,
+    subagentModels: createHarnessRouteModels(routes),
+    onTelemetryEvent: orchestrationObserver(quietTelemetry)
+  });
+  return { harness, routes };
+};
+
 const runOnce = async (options: CliOptions) => {
   if (!options.prompt) {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
-  const harness = await createHarness({ ...options, onTelemetryEvent: orchestrationObserver(options.json) });
+  const { harness, routes } = await createConfiguredHarness(options);
   try {
     const tracker = { streamedText: false };
     const result = await runHarness(
@@ -859,15 +1035,15 @@ const runOnce = async (options: CliOptions) => {
       {
         prompt: options.prompt,
         scope: harness.config.scope,
-        metadata: createHarnessResumeMetadata(harness.config),
+        metadata: createHarnessResumeMetadata(harness.config, routes),
         ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {})
       },
       {
-        onEvent: streamSink(options.json, tracker),
+        onEvent: streamSink(options, tracker),
         resolveApprovals: terminalApprovalResolver(options.yes)
       }
     );
-    printTerminalResult(result, harness, options.json, tracker.streamedText);
+    printTerminalResult(result, harness, options, tracker.streamedText);
     if (result.status === "failed" || result.status === "timed_out") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
@@ -880,16 +1056,12 @@ const reviewOnce = async (options: CliOptions) => {
   if (!options.prompt) {
     throw new CliUsageError("Missing review task. Example: zhivex-harness review \"review the state boundary\".");
   }
-  const requestedReviewers = options.reviewers ?? ["explorer", "reviewer"];
-  const enabledProfiles = [...new Set([
+  const requestedReviewers: HarnessSubagentProfile[] = options.reviewers ?? ["explorer", "reviewer"];
+  const enabledProfiles: HarnessSubagentProfile[] = [...new Set([
     ...(options.subagentProfiles ?? []),
     ...requestedReviewers
   ])];
-  const harness = await createHarness({
-    ...options,
-    subagentProfiles: enabledProfiles,
-    onTelemetryEvent: orchestrationObserver(options.json)
-  });
+  const { harness } = await createConfiguredHarness(options, enabledProfiles);
   try {
     const result = await runHarnessReviewGroup(
       harness,
@@ -960,6 +1132,7 @@ const resumeRun = async (options: CliOptions) => {
     }
 
     const persistedResumeInput = readHarnessResumeConfig(state);
+    const persistedRoutes = readHarnessResumeRoutes(state);
     let persistedResumeOptions: HarnessConfigInput = {};
     if (persistedResumeInput) {
       const persistedConfig = resolveHarnessConfig(persistedResumeInput);
@@ -981,9 +1154,14 @@ const resumeRun = async (options: CliOptions) => {
       ...options,
       provider: state.provider as HarnessProvider,
       model: state.modelId,
+      subagentProfiles: [...new Set([
+        ...((persistedResumeOptions.subagentProfiles ?? []) as HarnessSubagentProfile[]),
+        ...persistedRoutes.keys()
+      ])],
+      subagentModels: createHarnessRouteModels(persistedRoutes),
       store: persistence.store,
       memory: persistence.memory,
-      onTelemetryEvent: orchestrationObserver(options.json)
+      onTelemetryEvent: orchestrationObserver(options.json || options.jsonl)
     });
     const approve = options.approve;
     const tracker = { streamedText: false };
@@ -998,7 +1176,7 @@ const resumeRun = async (options: CliOptions) => {
         )
       },
       {
-        onEvent: streamSink(options.json, tracker),
+        onEvent: streamSink(options, tracker),
         resolveApprovals: async (approvals) => approvalResponses(
           approvals,
           approve,
@@ -1006,7 +1184,8 @@ const resumeRun = async (options: CliOptions) => {
         )
       }
     );
-    printTerminalResult(result, harness, options.json, tracker.streamedText);
+    await updateIndexedSessionRun(harness.config, result.state.runId, result.status);
+    printTerminalResult(result, harness, options, tracker.streamedText);
     if (result.status === "failed" || result.status === "timed_out") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
@@ -1019,13 +1198,104 @@ const chat = async (options: CliOptions) => {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("Chat mode requires an interactive terminal. Use run for automation.");
   }
-  const harness = await createHarness({ ...options, onTelemetryEvent: orchestrationObserver(false) });
+  const baseConfig = resolveHarnessConfig(options);
+  const sessionStore = await openSessionStoreForConfig(baseConfig);
   const readline = createInterface({ input: process.stdin, output: process.stdout });
+  let runtimeOptions: CliOptions = { ...options };
+  let routes = resolvedRouting(options);
+  const selectedSession = options.sessionId
+    ? await sessionStore.get(options.sessionId)
+    : options.continueSession
+      ? await sessionStore.latest()
+      : undefined;
+  if (options.sessionId && !selectedSession) {
+    sessionStore.close();
+    readline.close();
+    throw new Error(`Session ${options.sessionId} was not found.`);
+  }
+  let session: CliSession = selectedSession ?? await sessionStore.create();
   let messages: AgentRunOutput["messages"] = [];
+
+  const latestState = async (selected: CliSession) => {
+    const latest = selected.runs.at(-1);
+    if (!latest) return undefined;
+    const persistence = await openHarnessPersistence(baseConfig);
+    try {
+      const state = await persistence.store.load(latest.runId, baseConfig.scope);
+      if (!state) throw new Error(`Run ${latest.runId} referenced by session ${selected.sessionId} was not found.`);
+      return state;
+    } finally {
+      persistence.close();
+    }
+  };
+
+  let harness: ZhivexHarness;
+  try {
+    const restored = await latestState(session);
+    if (restored) {
+      runtimeOptions = { ...runtimeOptions, provider: restored.provider, model: restored.modelId };
+      routes = readHarnessResumeRoutes(restored);
+      messages = restored.messages;
+    }
+    harness = (await createConfiguredHarness(runtimeOptions, [], routes)).harness;
+  } catch (error) {
+    readline.close();
+    sessionStore.close();
+    throw error;
+  }
+
+  const refreshSession = async () => {
+    const refreshed = await sessionStore.get(session.sessionId);
+    if (!refreshed) throw new Error(`Session ${session.sessionId} was not found.`);
+    session = refreshed;
+    return session;
+  };
+
+  const hasActiveTurn = async () => {
+    const latest = (await refreshSession()).runs.at(-1);
+    return latest && !["completed", "failed", "cancelled", "timed_out"].includes(latest.status)
+      ? latest
+      : undefined;
+  };
+
+  const replaceHarness = async (
+    nextOptions: CliOptions,
+    nextRoutes: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
+    extraProfiles: readonly HarnessSubagentProfile[] = []
+  ) => {
+    const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes);
+    harness.close();
+    harness = created.harness;
+    runtimeOptions = nextOptions;
+    routes = new Map(nextRoutes);
+  };
+
+  const restoreSession = async (selected: CliSession) => {
+    const state = await latestState(selected);
+    const nextOptions = state
+      ? { ...runtimeOptions, provider: state.provider, model: state.modelId }
+      : runtimeOptions;
+    const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
+    await replaceHarness(nextOptions, nextRoutes);
+    session = selected;
+    messages = state?.messages ?? [];
+  };
+
+  const statusLine = async () => {
+    const current = await refreshSession();
+    const latest = current.runs.at(-1);
+    const routeText = routes.size === 0
+      ? "default"
+      : [...routes.values()].map((route) => `${route.profile}=${route.provider}:${route.model}`).join(", ");
+    return `session ${current.sessionId} · ${harness.config.provider}/${harness.config.model}` +
+      ` · ${messages.length} messages · routes ${routeText}` +
+      `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}`;
+  };
 
   process.stderr.write(
     `Zhivex Harness ${HARNESS_VERSION} · ${harness.config.provider}/${harness.config.model}\n` +
-    "Type /exit to quit or /clear to clear the context.\n"
+    `session ${session.sessionId}\n` +
+    "Type /help for console commands.\n"
   );
 
   try {
@@ -1037,43 +1307,250 @@ const chat = async (options: CliOptions) => {
       if (prompt === "/exit" || prompt === "/quit") {
         break;
       }
+      if (prompt === "/help") {
+        process.stderr.write(
+          "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
+          "/diff · /review <task> · /resume <last|sessionId> · /compact\n" +
+          "/new [title] · /rename <title> · /clear · /exit\n"
+        );
+        continue;
+      }
       if (prompt === "/clear") {
         messages = [];
         process.stderr.write("Context cleared.\n");
         continue;
       }
+      if (prompt === "/status") {
+        process.stderr.write(`${await statusLine()}\n`);
+        continue;
+      }
+      if (prompt === "/diff") {
+        const diff = await harness.workspace.gitDiff();
+        const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
+        process.stdout.write(output || "No workspace changes.\n");
+        continue;
+      }
+      if (prompt === "/compact") {
+        messages = compactHarnessMessages(messages);
+        process.stderr.write(`Context compacted to ${messages.length} redacted message(s).\n`);
+        continue;
+      }
+      if (prompt === "/provider" || prompt.startsWith("/provider ")) {
+        const value = prompt.slice("/provider".length).trim();
+        if (!value) {
+          process.stderr.write(`${providerAvailability().map((provider) =>
+            `${provider.id}${provider.id === harness.config.provider ? "*" : ""}`
+          ).join(" ")}\n`);
+          continue;
+        }
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(`Cannot switch provider while run ${active.runId} is ${active.status}.\n`);
+          continue;
+        }
+        const provider = parseProvider(value);
+        const model = DEFAULT_PROVIDER_REGISTRY.descriptor(provider).defaultModel;
+        const portableMessages = compactHarnessMessages(messages);
+        await replaceHarness({ ...runtimeOptions, provider, model }, routes);
+        messages = portableMessages;
+        process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
+        continue;
+      }
+      if (prompt === "/model" || prompt.startsWith("/model ")) {
+        const value = prompt.slice("/model".length).trim();
+        if (!value) {
+          process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
+          continue;
+        }
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(`Cannot switch model while run ${active.runId} is ${active.status}.\n`);
+          continue;
+        }
+        const portableMessages = compactHarnessMessages(messages);
+        await replaceHarness({ ...runtimeOptions, model: value }, routes);
+        messages = portableMessages;
+        process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
+        continue;
+      }
+      if (prompt === "/route" || prompt.startsWith("/route ")) {
+        const value = prompt.slice("/route".length).trim();
+        if (!value) {
+          process.stderr.write(`${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
+          continue;
+        }
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(`Cannot change routes while run ${active.runId} is ${active.status}.\n`);
+          continue;
+        }
+        const nextRoutes = new Map(routes);
+        if (value === "clear") {
+          nextRoutes.clear();
+        } else if (value.startsWith("clear ")) {
+          const profile = value.slice("clear ".length).trim() as HarnessSubagentProfile;
+          if (!(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(profile)) {
+            process.stderr.write(`Unknown subagent profile: ${profile}.\n`);
+            continue;
+          }
+          nextRoutes.delete(profile);
+        } else {
+          const route = parseHarnessModelRoute(value);
+          nextRoutes.set(route.profile, route);
+        }
+        await replaceHarness(runtimeOptions, nextRoutes);
+        process.stderr.write(`Routes: ${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
+        continue;
+      }
+      if (prompt === "/new" || prompt.startsWith("/new ")) {
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(`Cannot leave session while run ${active.runId} is ${active.status}.\n`);
+          continue;
+        }
+        const title = prompt.slice("/new".length).trim();
+        const created = await sessionStore.create(title ? { title } : undefined);
+        await restoreSession(created);
+        process.stderr.write(`Created session ${session.sessionId}.\n`);
+        continue;
+      }
+      if (prompt === "/rename" || prompt.startsWith("/rename ")) {
+        const title = prompt.slice("/rename".length).trim();
+        if (!title) {
+          process.stderr.write("Usage: /rename <title>\n");
+          continue;
+        }
+        session = await sessionStore.rename(session.sessionId, title);
+        process.stderr.write(`Renamed session to ${session.title}.\n`);
+        continue;
+      }
+      if (prompt === "/resume" || prompt.startsWith("/resume ")) {
+        const selector = prompt.slice("/resume".length).trim() || "last";
+        const selected = selector === "last"
+          ? await sessionStore.latest({ includeArchived: true })
+          : await sessionStore.get(selector);
+        if (!selected) {
+          process.stderr.write(`Session ${selector} was not found.\n`);
+          continue;
+        }
+        await restoreSession(selected);
+        const active = await hasActiveTurn();
+        process.stderr.write(
+          active
+            ? `Session ${session.sessionId} has run ${active.runId} waiting in ${active.status}; use zhx resume ${active.runId} --approve|--deny.\n`
+            : `Resumed session ${session.sessionId}.\n`
+        );
+        continue;
+      }
+      if (prompt === "/review" || prompt.startsWith("/review ")) {
+        const reviewPrompt = prompt.slice("/review".length).trim();
+        if (!reviewPrompt) {
+          process.stderr.write("Usage: /review <task>\n");
+          continue;
+        }
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(`Cannot start a review while run ${active.runId} is ${active.status}.\n`);
+          continue;
+        }
+        await replaceHarness(runtimeOptions, routes, ["explorer", "reviewer"]);
+        const review = await runHarnessReviewGroup(
+          harness,
+          { prompt: reviewPrompt, scope: harness.config.scope },
+          ["explorer", "reviewer"]
+        );
+        for (const output of review.outputs) {
+          process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
+          if (output.output?.outputText) process.stdout.write(`${output.output.outputText}\n`);
+        }
+        continue;
+      }
+
+      const active = await hasActiveTurn();
+      if (active) {
+        process.stderr.write(
+          `Run ${active.runId} is ${active.status}; resolve it with zhx resume ${active.runId} --approve|--deny before a new turn.\n`
+        );
+        continue;
+      }
+
+      const runId = `run_${randomUUID()}`;
+      session = await sessionStore.appendRun(session.sessionId, {
+        runId,
+        provider: harness.config.provider,
+        model: harness.config.model,
+        status: "created"
+      });
+      const turn = session.runs.at(-1)!;
 
       const tracker = { streamedText: false };
-      const result = await runHarness(
-        harness,
-        messages.length === 0
-          ? {
-              prompt,
-              scope: harness.config.scope,
-              metadata: createHarnessResumeMetadata(harness.config)
-            }
-          : {
-              messages: appendUserMessage(messages, prompt),
-              scope: harness.config.scope,
-              metadata: createHarnessResumeMetadata(harness.config)
+      let markedRunning = false;
+      let result: AgentRunOutput;
+      try {
+        result = await runHarness(
+          harness,
+          messages.length === 0
+            ? {
+                runId,
+                prompt,
+                scope: harness.config.scope,
+                metadata: {
+                  ...createHarnessResumeMetadata(harness.config, routes),
+                  zhivexCliSession: {
+                    schemaVersion: 1,
+                    sessionId: session.sessionId,
+                    turnId: turn.turnId,
+                    sequence: turn.sequence
+                  }
+                }
+              }
+            : {
+                runId,
+                messages: appendUserMessage(messages, prompt),
+                scope: harness.config.scope,
+                metadata: {
+                  ...createHarnessResumeMetadata(harness.config, routes),
+                  zhivexCliSession: {
+                    schemaVersion: 1,
+                    sessionId: session.sessionId,
+                    turnId: turn.turnId,
+                    sequence: turn.sequence
+                  }
+                }
+              },
+          {
+            onEvent: async (event) => {
+              if (!markedRunning && event.type === "agent-run-start") {
+                session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
+                markedRunning = true;
+              }
+              await streamSink({ json: false, jsonl: false }, tracker)(event);
             },
-        {
-          onEvent: streamSink(false, tracker),
-          resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
-        }
-      );
+            resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+          }
+        );
+      } catch (error) {
+        session = await sessionStore.updateRun(session.sessionId, runId, { status: "failed" });
+        throw error;
+      }
       if (!tracker.streamedText && result.outputText) {
         process.stdout.write(result.outputText);
       }
       process.stdout.write("\n");
       messages = result.messages;
+      session = await sessionStore.updateRun(session.sessionId, runId, {
+        status: sessionStatus(result.status)
+      });
       if (result.status === "waiting_approval") {
-        process.stderr.write(`Run paused: ${result.state.runId}\n`);
+        process.stderr.write(
+          `Run paused: ${result.state.runId}. Resume with zhx resume ${result.state.runId} --approve|--deny.\n`
+        );
       }
     }
   } finally {
     readline.close();
     harness.close();
+    sessionStore.close();
   }
 };
 
@@ -1817,6 +2294,104 @@ const manageRuns = async (options: CliOptions) => {
   }
 };
 
+const openSessionStoreForConfig = (config: HarnessConfig) => openCliSessionStore({
+  workspace: config.workspace,
+  stateDirectory: config.stateDirectory,
+  scope: config.scope
+});
+
+const printSessionDocument = (document: unknown, json: boolean) => {
+  if (json) {
+    process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+    return;
+  }
+  const record = document as { kind?: string; sessions?: CliSession[]; session?: CliSession };
+  if (record.kind === "session-list") {
+    for (const session of record.sessions ?? []) {
+      const latest = session.runs.at(-1);
+      process.stdout.write(
+        `${session.sessionId} ${session.title ?? "(untitled)"} · ${session.runs.length} runs` +
+        `${latest ? ` · ${latest.provider}/${latest.model} · ${latest.status}` : ""}\n`
+      );
+    }
+    return;
+  }
+  const session = record.session;
+  if (session) {
+    process.stdout.write(
+      `${session.sessionId} · ${session.title ?? "(untitled)"} · ${session.runs.length} runs` +
+      `${session.archivedAt ? " · archived" : ""}\n`
+    );
+    return;
+  }
+  process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+};
+
+const manageSessions = async (options: CliOptions) => {
+  const config = resolveHarnessConfig(options);
+  const store = await openSessionStoreForConfig(config);
+  try {
+    let session: CliSession | undefined;
+    let document: unknown;
+    switch (options.sessionsCommand) {
+      case "list": {
+        const summaries = await store.list(options.limit ? { limit: options.limit } : undefined);
+        const sessions = (await Promise.all(summaries.map((summary) => store.get(summary.sessionId))))
+          .filter((value): value is CliSession => Boolean(value));
+        document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session-list" as const, sessions };
+        break;
+      }
+      case "inspect":
+        session = await store.get(options.sessionId!);
+        if (!session) throw new Error(`Session ${options.sessionId} was not found.`);
+        document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
+        break;
+      case "rename":
+        session = await store.rename(options.sessionId!, options.sessionTitle!);
+        document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
+        break;
+      case "fork":
+        session = await store.fork(options.sessionId!);
+        document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
+        break;
+      case "archive":
+        session = await store.archive(options.sessionId!);
+        document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
+        break;
+      default:
+        throw new CliUsageError("sessions requires one of: list, inspect, rename, fork, archive.");
+    }
+    printSessionDocument(document, options.json);
+  } finally {
+    store.close();
+  }
+};
+
+const sessionStatus = (status: AgentStatus): SessionRunStatus => {
+  if (status === "queued") return "created";
+  if (status === "suspended") return "waiting_approval";
+  return status;
+};
+
+const updateIndexedSessionRun = async (
+  config: HarnessConfig,
+  runId: string,
+  status: AgentStatus
+) => {
+  const store = await openSessionStoreForConfig(config);
+  try {
+    for (const summary of await store.list({ limit: 200, includeArchived: true })) {
+      const session = await store.get(summary.sessionId);
+      if (session?.runs.some((run) => run.runId === runId)) {
+        await store.updateRun(session.sessionId, runId, { status: sessionStatus(status) });
+        return;
+      }
+    }
+  } finally {
+    store.close();
+  }
+};
+
 export const cliExitCodeForError = (error: unknown) =>
   error instanceof CliUsageError ? CLI_EXIT_CODES.usageError : CLI_EXIT_CODES.runtimeError;
 
@@ -1844,7 +2419,14 @@ export const main = async (argv = process.argv.slice(2)) => {
     case "runs":
       await manageRuns(options);
       return;
+    case "sessions":
+      await manageSessions(options);
+      return;
     case "run":
+      if (options.implicitCommand && !options.prompt && process.stdin.isTTY && process.stdout.isTTY) {
+        await chat(options);
+        return;
+      }
       await runOnce(options);
       return;
     case "review":
