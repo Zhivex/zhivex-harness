@@ -120,8 +120,8 @@ for (const requiredFile of [
 }
 if (
   manifest.engines?.node !== ">=22.13.0" ||
-  manifest.engines?.bun !== ">=1.3.7" ||
-  manifest.packageManager !== "bun@1.3.7"
+  manifest.engines?.bun !== ">=1.4.0" ||
+  manifest.packageManager !== "bun@1.4.0"
 ) {
   failures.push("Node-first runtime compatibility and Bun development-tooling metadata must remain pinned");
 }

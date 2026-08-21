@@ -5,7 +5,7 @@ Zhivex Harness `0.10.x` is a pre-1.0 Node-first CLI and TypeScript library. Obse
 ## Supported baseline
 
 - Node.js `22.13.0` or newer; Node 24 LTS is the release and default OCI baseline;
-- Bun `1.3.7` or newer when contributing to this repository or operating a Bun-managed target repository;
+- Bun `1.4.0` or newer when contributing to this repository or operating a Bun-managed target repository;
 - macOS and Linux, as exercised by CI;
 - Git workspaces;
 - the provider/model combinations marked certified in the package documentation; and

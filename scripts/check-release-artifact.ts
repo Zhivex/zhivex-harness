@@ -122,7 +122,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   packedManifest.engines,
-  { node: ">=22.13.0", bun: ">=1.3.7" },
+  { node: ">=22.13.0", bun: ">=1.4.0" },
   "packed runtime compatibility is incorrect"
 );
 

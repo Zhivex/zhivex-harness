@@ -20,7 +20,7 @@ The model in this demo is deterministic and scripted. That keeps the proof focus
 ## Prerequisites
 
 - Node.js 22.13.0 or newer;
-- Bun 1.3.7 or newer for the source-checkout build command;
+- Bun 1.4.0 or newer for the source-checkout build command;
 - Docker or Podman running locally; and
 - the configured image already present locally.
 
