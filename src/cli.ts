@@ -2503,25 +2503,36 @@ const MAX_CHANGE_ARTIFACT_BYTES = 64 * 1024 * 1024;
 
 const readStableCliArtifact = async (filePath: string, maxBytes: number) => {
   const absolute = path.resolve(process.cwd(), filePath);
-  const before = await lstat(absolute);
-  if (before.isSymbolicLink() || !before.isFile()) {
-    throw new CliUsageError(`Change artifact must be a regular non-symlink file: ${filePath}`);
+  try {
+    const before = await lstat(absolute);
+    if (before.isSymbolicLink() || !before.isFile()) {
+      throw new CliUsageError(`Change artifact must be a regular non-symlink file: ${filePath}`);
+    }
+    if (before.size > maxBytes) {
+      throw new CliUsageError(`Change artifact exceeds the ${maxBytes}-byte limit: ${filePath}`);
+    }
+    const contents = await readFile(absolute);
+    const after = await lstat(absolute);
+    if (
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      before.ctimeMs !== after.ctimeMs
+    ) {
+      throw new CliUsageError(`Change artifact changed while it was being read: ${filePath}`);
+    }
+    return contents;
+  } catch (error) {
+    if (error instanceof CliUsageError) throw error;
+    const code = error && typeof error === "object" && "code" in error
+      ? (error as NodeJS.ErrnoException).code
+      : undefined;
+    if (typeof code === "string") {
+      throw new CliUsageError(`Change artifact cannot be read (${code}): ${filePath}`);
+    }
+    throw error;
   }
-  if (before.size > maxBytes) {
-    throw new CliUsageError(`Change artifact exceeds the ${maxBytes}-byte limit: ${filePath}`);
-  }
-  const contents = await readFile(absolute);
-  const after = await lstat(absolute);
-  if (
-    before.dev !== after.dev ||
-    before.ino !== after.ino ||
-    before.size !== after.size ||
-    before.mtimeMs !== after.mtimeMs ||
-    before.ctimeMs !== after.ctimeMs
-  ) {
-    throw new CliUsageError(`Change artifact changed while it was being read: ${filePath}`);
-  }
-  return contents;
 };
 
 const readCliJsonArtifact = async (filePath: string): Promise<unknown> => {

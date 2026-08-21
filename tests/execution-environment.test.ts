@@ -11,6 +11,7 @@ import { resolveHarnessConfig } from "../src/config.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment,
+  OCI_SESSION_CONTROLLER_SCRIPT,
   type HarnessOciRuntimeAdapter,
   type OciCommandResult,
   type OciImageInspection,
@@ -100,6 +101,27 @@ const workspaceFixture = async () => {
 };
 
 describe("enforced OCI execution environment", () => {
+  test("keeps the per-run controller alive without a cumulative deadline", async () => {
+    expect(OCI_SESSION_CONTROLLER_SCRIPT).toContain("setInterval");
+    expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("sleep");
+    expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("setTimeout");
+    const controller = Bun.spawn([process.execPath, "-e", OCI_SESSION_CONTROLLER_SCRIPT], {
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "ignore"
+    });
+    try {
+      const state = await Promise.race([
+        controller.exited.then(() => "exited" as const),
+        Bun.sleep(50).then(() => "running" as const)
+      ]);
+      expect(state).toBe("running");
+    } finally {
+      controller.kill();
+      await controller.exited;
+    }
+  });
+
   test("runs only against a secret-free snapshot and imports a reviewed content-bound patch", async () => {
     const { root, workspace } = await workspaceFixture();
     const runtime = new FakeOciRuntime(undefined, async (request) => {

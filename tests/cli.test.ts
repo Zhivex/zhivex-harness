@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -356,6 +356,37 @@ describe("change-envelope CLI", () => {
       const linked = await runCli(["changes", "create", inputPath, "--patch", linkedPatchPath]);
       expect(linked.exitCode).toBe(CLI_EXIT_CODES.usageError);
       expect(linked.stderr).toContain("regular non-symlink file");
+
+      for (const [label, arguments_] of [
+        ["input", ["changes", "create", path.join(root, "missing-input.json"), "--patch", patchPath]],
+        ["patch", ["changes", "create", inputPath, "--patch", path.join(root, "missing.patch")]],
+        ["preconditions", [
+          "changes",
+          "verify",
+          envelopePath,
+          "--patch",
+          patchPath,
+          "--preconditions",
+          path.join(root, "missing-preconditions.json")
+        ]]
+      ] as const) {
+        const missing = await runCli([...arguments_]);
+        expect(missing.exitCode, label).toBe(CLI_EXIT_CODES.usageError);
+        expect(missing.stderr).toContain("Change artifact cannot be read (ENOENT)");
+      }
+
+      if (process.getuid?.() !== 0) {
+        const unreadablePath = path.join(root, "unreadable.patch");
+        await writeFile(unreadablePath, "unreadable\n", "utf8");
+        await chmod(unreadablePath, 0o000);
+        try {
+          const unreadable = await runCli(["changes", "create", inputPath, "--patch", unreadablePath]);
+          expect(unreadable.exitCode).toBe(CLI_EXIT_CODES.usageError);
+          expect(unreadable.stderr).toContain("Change artifact cannot be read (EACCES)");
+        } finally {
+          await chmod(unreadablePath, 0o600);
+        }
+      }
     } finally {
       await rm(root, { recursive: true, force: true });
     }

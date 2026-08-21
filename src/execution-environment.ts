@@ -469,6 +469,10 @@ const OCI_WORKSPACE_SEAL_SCRIPT = [
   "console.log(`sha256:${seal.digest('hex')}`);"
 ].join("");
 
+// The controller owns the container lifetime; only session release or a failure path
+// may stop it. A finite sleep would eventually expire across cumulative unpaused time.
+export const OCI_SESSION_CONTROLLER_SCRIPT = "setInterval(()=>{},2147483647);";
+
 export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   readonly runtime: "docker" | "podman";
   private readonly hostEnvironment: Record<string, string>;
@@ -640,7 +644,7 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       "bun",
       request.imageId,
       "-e",
-      `await Bun.sleep(${Math.max(request.limits.maxProcessRuntimeMs + 60_000, 30 * 60_000)})`
+      OCI_SESSION_CONTROLLER_SCRIPT
     ];
     let volumeCreated = false;
     try {
