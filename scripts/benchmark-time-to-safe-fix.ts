@@ -380,6 +380,7 @@ const externalDriver = async (
   let stdout = "";
   let stderr = "";
   let exceeded = false;
+  let timedOut = false;
   const append = (current: string, chunk: Buffer) => {
     const next = current + chunk.toString("utf8");
     if (Buffer.byteLength(next) > MAX_DRIVER_OUTPUT_BYTES) {
@@ -391,14 +392,19 @@ const externalDriver = async (
   };
   child.stdout.on("data", (chunk: Buffer) => { stdout = append(stdout, chunk); });
   child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
-  const timer = setTimeout(() => child.kill("SIGKILL"), options.driverTimeoutMs);
+  const timeoutError = () => new Error(`Driver timed out after ${options.driverTimeoutMs}ms.`);
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill("SIGKILL");
+  }, options.driverTimeoutMs);
   child.on("error", (error) => {
     clearTimeout(timer);
-    reject(error);
+    reject(timedOut ? timeoutError() : error);
   });
   child.on("close", (code, signal) => {
     clearTimeout(timer);
     if (exceeded) return reject(new Error(`Driver output exceeded ${MAX_DRIVER_OUTPUT_BYTES} bytes.`));
+    if (timedOut) return reject(timeoutError());
     if (signal) return reject(new Error(`Driver terminated by ${signal}.`));
     if (code !== 0) return reject(new Error(`Driver exited ${code}: ${stderr.trim().slice(0, 2_000)}`));
     try {

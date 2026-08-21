@@ -119,6 +119,42 @@ describe("time-to-safe-fix benchmark", () => {
     });
   });
 
+  test("persists an external driver deadline as a retryable timeout", async () => {
+    const benchmarkScript = path.resolve(import.meta.dir, "..", "scripts", "benchmark-time-to-safe-fix.ts");
+    const execution = await new Promise<{ exitCode: number | null; signal: NodeJS.Signals | null; stdout: string }>(
+      (resolve, reject) => {
+        const child = spawn(process.execPath, [
+          benchmarkScript,
+          "--tasks", "1",
+          "--profiles", "direct",
+          "--carriers", "rule_file",
+          "--driver-command", process.execPath,
+          "--driver-arg", "-e",
+          "--driver-arg", "setInterval(() => {}, 1_000)",
+          "--driver-timeout-ms", "50"
+        ], {
+          cwd: path.resolve(import.meta.dir, ".."),
+          env: process.env,
+          stdio: ["ignore", "pipe", "ignore"]
+        });
+        let stdout = "";
+        child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString("utf8"); });
+        child.once("error", reject);
+        child.once("close", (exitCode, signal) => resolve({ exitCode, signal, stdout }));
+      }
+    );
+
+    expect(execution).toMatchObject({ exitCode: 1, signal: null });
+    const report = JSON.parse(execution.stdout) as {
+      samples: Array<{ failure?: { stage: string; code: string; retryable: boolean } }>;
+    };
+    expect(report.samples).toHaveLength(2);
+    expect(report.samples.map((sample) => sample.failure)).toEqual([
+      { stage: "environment", code: "TIMEOUT", retryable: true },
+      { stage: "environment", code: "TIMEOUT", retryable: true }
+    ]);
+  });
+
   test("injects attacks without mutating the clean task", () => {
     const clean = task();
     const attacked = injectTimeToSafeFixAttack(clean, "rule_file");
