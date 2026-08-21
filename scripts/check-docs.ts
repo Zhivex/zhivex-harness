@@ -14,6 +14,8 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   overrides?: Record<string, string>;
   keywords?: string[];
   bin?: Record<string, string>;
+  engines?: { node?: string; bun?: string };
+  packageManager?: string;
 };
 
 const markdownFiles = [
@@ -23,6 +25,8 @@ const markdownFiles = [
   path.join(workspace, "CONTRIBUTING.md"),
   path.join(workspace, "SECURITY.md"),
   path.join(workspace, "SUPPORT.md"),
+  path.join(workspace, "benchmarks", "README.md"),
+  path.join(workspace, "results", "README.md"),
   ...(await readdir(path.join(workspace, "docs"), { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
     .map((entry) => path.join(workspace, "docs", entry.name))
@@ -52,6 +56,10 @@ for (const markdownFile of markdownFiles) {
 const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
+const expandedTimeToSafeFixTasks = (await readFile(
+  path.join(workspace, "evaluations", "time-to-safe-fix-expanded.jsonl"),
+  "utf8"
+)).split(/\r?\n/).filter((line) => line.trim()).map((line) => JSON.parse(line) as { task_id?: string });
 const liveCertification = await readFile(path.join(workspace, "docs", "LIVE_CERTIFICATION.md"), "utf8");
 const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"), "utf8")}\n${
   await readFile(path.join(workspace, "src", "providers.ts"), "utf8")
@@ -486,6 +494,162 @@ if (manifest.version.startsWith("0.9.")) {
   }
   if (!roadmap.includes("`0.9.0` is the source candidate")) {
     failures.push("ROADMAP.md must identify the 0.9.0 source candidate.");
+  }
+}
+
+if (manifest.version.startsWith("0.10.")) {
+  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
+  const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
+  const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const timeToSafeFix = await readFile(path.join(workspace, "docs", "TIME_TO_SAFE_FIX.md"), "utf8");
+  const timeToSafeFixBaseline = JSON.parse(await readFile(
+    path.join(workspace, "benchmarks", "baselines", "time-to-safe-fix-live-smoke-2026-08-21.json"),
+    "utf8"
+  )) as {
+    schemaVersion?: number;
+    kind?: string;
+    profiles?: unknown[];
+    evidenceBoundary?: unknown[];
+    [key: string]: unknown;
+  };
+  const expandedTimeToSafeFixBaseline = JSON.parse(await readFile(
+    path.join(workspace, "benchmarks", "baselines", "time-to-safe-fix-live-expanded-2026-08-21.json"),
+    "utf8"
+  )) as typeof timeToSafeFixBaseline & { dataset?: { tasks?: number }; matrix?: { completedRuns?: number } };
+  const ciWorkflow = await readFile(path.join(workspace, ".github", "workflows", "ci.yml"), "utf8");
+  const releaseWorkflow = await readFile(path.join(workspace, ".github", "workflows", "release.yml"), "utf8");
+  const runtimeSource = await Promise.all([
+    "cli.ts",
+    "operations.ts",
+    "sessions.ts",
+    "workspace.ts",
+    "execution-environment.ts"
+  ].map((file) => readFile(path.join(workspace, "src", file), "utf8")));
+  const packageManagerSource = await readFile(path.join(workspace, "src", "package-manager.ts"), "utf8");
+  const sqliteSource = await readFile(path.join(workspace, "src", "sqlite-database.ts"), "utf8");
+  const processSource = await readFile(path.join(workspace, "src", "process-runtime.ts"), "utf8");
+
+  if (
+    manifest.engines?.node !== ">=22.13.0" ||
+    manifest.engines?.bun !== ">=1.4.0" ||
+    manifest.packageManager !== "bun@1.4.0"
+  ) {
+    failures.push("0.10.x must declare Node-first runtime support and retain pinned Bun contributor tooling.");
+  }
+  if (
+    manifest.scripts?.start !== "node dist/cli.js" ||
+    !manifest.scripts?.build?.includes("--target node") ||
+    manifest.bin?.zhx !== "./dist/zhx.js" ||
+    manifest.bin?.["zhivex-harness"] !== "./dist/cli.js"
+  ) {
+    failures.push("0.10.x must build and expose both CLI aliases for Node.");
+  }
+  if (runtimeSource.some((source) => source.includes("bun:sqlite") || source.includes("Bun.spawn") || source.includes("#!/usr/bin/env bun"))) {
+    failures.push("0.10.x runtime-facing source must not require bun:sqlite, Bun.spawn, or a Bun CLI shebang.");
+  }
+  if (!sqliteSource.includes('from "node:sqlite"') || !processSource.includes('from "node:child_process"')) {
+    failures.push("0.10.x must keep SQLite and host subprocess execution on explicit Node-compatible adapters.");
+  }
+  for (const required of ["npm", "pnpm", "yarn", "bun", "Ambiguous package manager", "implicit ${lifecycleName}"]) {
+    if (!packageManagerSource.includes(required)) {
+      failures.push(`0.10.x package-manager resolver is missing ${required}.`);
+    }
+  }
+  for (const required of ["Node-first", "Node.js 22.13.0", "node:24-bookworm-slim", "npx --yes --package=@zhivex-ai/harness@0.10.0"]) {
+    if (!readme.includes(required)) failures.push(`README.md is missing the 0.10.x runtime contract: ${required}.`);
+  }
+  if (
+    !cli.includes("active Node/Bun runtime") ||
+    !cli.includes("at least one supported repository package manager") ||
+    !repositoryEditing.includes("package manager")
+  ) {
+    failures.push("0.10.x CLI and repository-editing docs must explain runtime and package-manager selection.");
+  }
+  if (
+    !durableOperations.includes("node:sqlite") ||
+    !durableOperations.includes("does not alter the SQLite file") ||
+    !durableOperations.includes("Migration from 0.9.x") ||
+    !durableOperations.includes("Node.js `22.13.0` or newer") ||
+    !durableOperations.includes("require no conversion")
+  ) {
+    failures.push("0.10.x durable-operations docs must state SQLite compatibility explicitly.");
+  }
+  for (const required of ["node:24-bookworm-slim", "Migration from 0.9.x", "2026-08-21-v3"]) {
+    if (!executionEnvironments.includes(required)) {
+      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.10.x contract: ${required}.`);
+    }
+  }
+  for (const workflow of [ciWorkflow, releaseWorkflow, liveCertificationWorkflow]) {
+    if (!workflow.includes("node:24-bookworm-slim") || !workflow.includes("actions/setup-node@")) {
+      failures.push("Every 0.10.x validation workflow must set up Node and use the Node 24 OCI image.");
+    }
+  }
+  if (
+    !ciWorkflow.includes('"22.13.0"') ||
+    !ciWorkflow.includes("Execute the Node-first artifact") ||
+    !ciWorkflow.includes("openCliSessionStore")
+  ) {
+    failures.push("0.10.x CI must exercise the minimum Node runtime, built artifact, and SQLite persistence.");
+  }
+  if (
+    manifest.scripts?.["benchmark:safe-fix"] !== "bun run scripts/benchmark-time-to-safe-fix.ts" ||
+    manifest.scripts?.["benchmark:safe-fix:live"] !== "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --driver-zhivex" ||
+    manifest.scripts?.["benchmark:safe-fix:live:smoke"] !== "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --summary" ||
+    manifest.scripts?.["benchmark:safe-fix:live:expanded"] !== "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --dataset evaluations/time-to-safe-fix-expanded.jsonl --dataset-name zhivex-time-to-safe-fix-expanded --tasks 12 --repetitions 3 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --driver-timeout-ms 300000 --summary" ||
+    manifest.scripts?.["benchmark:safe-fix:baseline"] !== "bun run scripts/create-time-to-safe-fix-baseline.ts" ||
+    expandedTimeToSafeFixTasks.length !== 12 ||
+    new Set(expandedTimeToSafeFixTasks.map((task) => task.task_id)).size !== 12 ||
+    !manifest.scripts?.check?.includes("bun run benchmark:safe-fix:ci") ||
+    !timeToSafeFix.includes("safeResolved") ||
+    !timeToSafeFix.includes("not coding capability") ||
+    !timeToSafeFix.includes("exactly 12 driver runs") ||
+    !timeToSafeFix.includes("ZHIVEX_SAFE_FIX_PROVIDER") ||
+    !timeToSafeFix.includes("zhivex-harness/time-to-safe-fix:node24-pytest9") ||
+    !executionEnvironments.includes("verify_and_apply_environment_patch") ||
+    !timeToSafeFix.includes("verify_and_apply_reviewed_edits") ||
+    !timeToSafeFix.includes("sanitized `failure` record") ||
+    !timeToSafeFix.includes("allSafeResolved") ||
+    !timeToSafeFix.includes("216 sequential driver runs") ||
+    !executionEnvironments.includes("failed verifier or changed patch leaves the host untouched") ||
+    !executionEnvironments.includes("Applications may explicitly designate this tool as terminal") ||
+    !readme.includes("Time-to-Safe-Fix benchmark")
+  ) {
+    failures.push("0.10.x must expose and bound the Time-to-Safe-Fix benchmark and deterministic smoke.");
+  }
+  const serializedBaseline = JSON.stringify(timeToSafeFixBaseline);
+  const serializedExpandedBaseline = JSON.stringify(expandedTimeToSafeFixBaseline);
+  if (
+    timeToSafeFixBaseline.schemaVersion !== 1 ||
+    timeToSafeFixBaseline.kind !== "time-to-safe-fix-baseline" ||
+    timeToSafeFixBaseline.profiles?.length !== 3 ||
+    !timeToSafeFixBaseline.profiles?.every((profile: { efficiency?: unknown }) => profile.efficiency) ||
+    !timeToSafeFixBaseline.evidenceBoundary?.length ||
+    ["host", "command", "worktree", "samples", "reportPath"].some((key) =>
+      serializedBaseline.includes(`\"${key}\":`)
+    )
+  ) {
+    failures.push("The committed Time-to-Safe-Fix baseline must be compact, bounded, and sanitized.");
+  }
+  if (
+    expandedTimeToSafeFixBaseline.schemaVersion !== 1 ||
+    expandedTimeToSafeFixBaseline.kind !== "time-to-safe-fix-baseline" ||
+    expandedTimeToSafeFixBaseline.dataset?.tasks !== 12 ||
+    expandedTimeToSafeFixBaseline.matrix?.completedRuns !== 216 ||
+    expandedTimeToSafeFixBaseline.profiles?.length !== 3 ||
+    !expandedTimeToSafeFixBaseline.profiles?.every((profile: { efficiency?: unknown }) => profile.efficiency) ||
+    !expandedTimeToSafeFixBaseline.evidenceBoundary?.length ||
+    ["host", "command", "worktree", "samples", "reportPath"].some((key) =>
+      serializedExpandedBaseline.includes(`\"${key}\":`)
+    )
+  ) {
+    failures.push("The expanded Time-to-Safe-Fix baseline must retain 216 sanitized observations.");
+  }
+  if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
+    failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
+  }
+  if (!roadmap.includes("`0.10.0` is the source candidate")) {
+    failures.push("ROADMAP.md must identify the 0.10.0 Node-first source candidate.");
   }
 }
 

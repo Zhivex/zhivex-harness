@@ -108,7 +108,8 @@ describe("live provider smoke contract", () => {
   test("requires the command, review, and separate import sequence for execution certification", () => {
     const prompt = liveExecutionSmokeInternals.executionPrompt("qwen");
     const command = liveExecutionSmokeInternals.executionCommandInput("qwen");
-    expect(command.command).toBe("bun");
+    expect(command.command).toBe("node");
+    expect(command.args).toContain("--input-type=module");
     expect(command.args.join(" ")).toContain("live-execution/qwen.txt");
     expect(prompt).toContain(JSON.stringify(command));
     expect(prompt.indexOf("run_environment_command")).toBeLessThan(

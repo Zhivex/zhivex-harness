@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -8,16 +9,19 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 import { resolveHarnessConfig } from "../src/config.js";
+import { createEditProposal } from "../src/edit-contracts.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment,
   OCI_SESSION_CONTROLLER_SCRIPT,
   type HarnessOciRuntimeAdapter,
+  type OciCommandBatchResult,
   type OciCommandResult,
   type OciImageInspection,
+  type OciRunBatchRequest,
   type OciRunRequest
 } from "../src/execution-environment.js";
-import { createHarness, runHarness } from "../src/harness.js";
+import { createExecutionEnvironmentTools, createHarness, runHarness } from "../src/harness.js";
 import { Workspace } from "../src/workspace.js";
 
 const temporaryDirectories: string[] = [];
@@ -49,7 +53,7 @@ class FakeOciRuntime implements HarnessOciRuntimeAdapter {
     this.image = {
       runtime: "docker",
       runtimeVersion: "fixture-1.0.0",
-      imageReference: "fixture/bun:1.3.7",
+      imageReference: "fixture/node:24",
       imageId: imageDigest,
       imageDigest
     };
@@ -86,13 +90,34 @@ class FakeOciRuntime implements HarnessOciRuntimeAdapter {
   }
 }
 
+class FakeBatchOciRuntime extends FakeOciRuntime {
+  readonly batchRequests: OciRunBatchRequest[] = [];
+
+  async runBatch(request: OciRunBatchRequest): Promise<OciCommandBatchResult> {
+    this.batchRequests.push(request);
+    return {
+      command: ["<oci-batch>", String(request.commands.length)],
+      commands: request.commands,
+      exitCode: 0,
+      stdout: "first\nsecond\n",
+      stderr: "",
+      timedOut: false,
+      cancelled: false,
+      outputLimitExceeded: false,
+      sessionReused: false,
+      workspacePublished: true,
+      workspaceExported: false
+    };
+  }
+}
+
 const workspaceFixture = async () => {
   const root = await temporaryDirectory("zhivex-harness-oci-");
   await mkdir(path.join(root, "src"), { recursive: true });
   await writeFile(path.join(root, "package.json"), JSON.stringify({
     name: "oci-fixture",
     private: true,
-    scripts: { test: "bun test" }
+    scripts: { test: "node --test" }
   }, null, 2));
   await writeFile(path.join(root, "src", "update.ts"), "export const value = 1;\n");
   await writeFile(path.join(root, "src", "delete.ts"), "delete me\n");
@@ -105,21 +130,174 @@ describe("enforced OCI execution environment", () => {
     expect(OCI_SESSION_CONTROLLER_SCRIPT).toContain("setInterval");
     expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("sleep");
     expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("setTimeout");
-    const controller = Bun.spawn([process.execPath, "-e", OCI_SESSION_CONTROLLER_SCRIPT], {
-      stdin: "ignore",
-      stdout: "ignore",
-      stderr: "ignore"
+    const controller = spawn(process.execPath, ["--input-type=module", "-e", OCI_SESSION_CONTROLLER_SCRIPT], {
+      stdio: "ignore"
     });
+    const exited = new Promise<"exited">((resolve) => controller.once("exit", () => resolve("exited")));
     try {
       const state = await Promise.race([
-        controller.exited.then(() => "exited" as const),
-        Bun.sleep(50).then(() => "running" as const)
+        exited,
+        new Promise<"running">((resolve) => setTimeout(() => resolve("running"), 50))
       ]);
       expect(state).toBe("running");
     } finally {
-      controller.kill();
-      await controller.exited;
+      controller.kill("SIGKILL");
+      await exited;
     }
+  });
+
+  test("uses one optimized runtime publication cycle for a validated argv batch", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeBatchOciRuntime();
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "optimized-batch-run" });
+    const result = await session.runCommandBatch([
+      { command: "node", args: ["--version"] },
+      { command: "npm", args: ["--version"] }
+    ]);
+
+    expect(result).toMatchObject({ exitCode: 0, stdout: "first\nsecond\n" });
+    expect(runtime.requests).toHaveLength(0);
+    expect(runtime.batchRequests).toHaveLength(1);
+    expect(runtime.batchRequests[0]?.commands).toEqual([
+      ["node", "--version"],
+      ["npm", "--version"]
+    ]);
+    expect((await session.status()).io).toMatchObject({
+      containerStarts: 1,
+      containerReuses: 0,
+      workspacePublishes: 1,
+      workspaceExports: 0
+    });
+    await expect(session.runCommandBatch([
+      { command: "sh", args: ["-c", "echo unsafe"] }
+    ])).rejects.toThrow("not in the explicit allowlist");
+    expect(runtime.batchRequests).toHaveLength(1);
+    await session.release?.({ status: "completed" });
+  });
+
+  test("keeps the host unchanged when verified patch import fails its bound verifier", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime(
+      `sha256:${"a".repeat(64)}`,
+      undefined,
+      { exitCode: 1, stderr: "verification failed\n" }
+    );
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "verified-import-failure" });
+    const inspected = await session.workspace.inspectFile("src/update.ts");
+    const content = "export const value = 2;\n";
+    const changes = [{ path: "src/update.ts", expectedDigest: inspected.digest, content }];
+    const proposal = createEditProposal({ changes });
+    await session.workspace.applyPatch({ proposalId: proposal.proposalId, changes });
+    const patch = await session.inspectPatch();
+    const verifyAndApply = createExecutionEnvironmentTools(workspace).verify_and_apply_environment_patch;
+
+    expect(verifyAndApply).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
+    await expect(verifyAndApply.execute({
+      patchId: patch.patchId,
+      command: "node",
+      args: ["verify.mjs"]
+    }, { executionEnvironment: session } as never)).rejects.toThrow("verifier failed");
+    expect(await readFile(path.join(root, "src", "update.ts"), "utf8")).toContain("value = 1");
+    expect((await session.inspectPatch()).patchId).toBe(patch.patchId);
+    await session.release?.({ status: "failed" });
+  });
+
+  test("applies, verifies and imports reviewed edits as one clean-snapshot transaction", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "verified-reviewed-edit-success" });
+    const inspected = await session.workspace.inspectFile("src/update.ts");
+    const tools = createExecutionEnvironmentTools(workspace);
+
+    const receipt = await tools.verify_and_apply_reviewed_edits.execute({
+      changes: [{
+        path: "src/update.ts",
+        expectedDigest: inspected.digest,
+        content: "export const value = 2;\n"
+      }],
+      command: "node",
+      args: ["verify.mjs"]
+    }, { executionEnvironment: session } as never);
+
+    expect(receipt).toMatchObject({
+      schemaVersion: 1,
+      kind: "verified-reviewed-edit-import",
+      verification: { exitCode: 0 }
+    });
+    expect(await readFile(path.join(root, "src", "update.ts"), "utf8")).toBe("export const value = 2;\n");
+    await session.release?.({ status: "completed" });
+  });
+
+  test("does not touch the host when the reviewed-edit transaction verifier fails", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime(
+      `sha256:${"a".repeat(64)}`,
+      undefined,
+      { exitCode: 1, stderr: "sensitive verifier detail\n" }
+    );
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "verified-reviewed-edit-failure" });
+    const inspected = await session.workspace.inspectFile("src/update.ts");
+    const tools = createExecutionEnvironmentTools(workspace);
+
+    await expect(tools.verify_and_apply_reviewed_edits.execute({
+      changes: [{
+        path: "src/update.ts",
+        expectedDigest: inspected.digest,
+        content: "export const value = 2;\n"
+      }],
+      command: "node",
+      args: ["verify.mjs"]
+    }, { executionEnvironment: session } as never)).rejects.toThrow("verifier failed");
+    expect(await readFile(path.join(root, "src", "update.ts"), "utf8")).toBe("export const value = 1;\n");
+    await session.release?.({ status: "failed" });
   });
 
   test("runs only against a secret-free snapshot and imports a reviewed content-bound patch", async () => {
@@ -140,7 +318,7 @@ describe("enforced OCI execution environment", () => {
     const session = await environment.acquire({ runId: "snapshot-import-run" });
 
     expect((await session.workspace.listFiles()).files.map((file) => file.path)).not.toContain(".env");
-    await session.runCommand("bun", ["test"]);
+    await session.runCommand("npm", ["test"]);
     const inspection = await session.inspectPatch();
 
     expect(inspection.entries).toEqual([
@@ -160,7 +338,7 @@ describe("enforced OCI execution environment", () => {
 
     expect(runtime.requests[0]).toMatchObject({
       imageId: `sha256:${"a".repeat(64)}`,
-      command: ["bun", "test"],
+      command: ["npm", "test"],
       limits: {
         maxProcessRuntimeMs: 120_000,
         maxProcessOutputBytes: 20_000,
@@ -185,6 +363,26 @@ describe("enforced OCI execution environment", () => {
     expect(runtime.removedRuns).toContain("snapshot-import-run");
   });
 
+  test("runs declared package checks through npm inside the Node OCI boundary", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "node-check-run" });
+
+    await session.runCheck("test", "node --test", ["test"]);
+
+    expect(runtime.requests).toHaveLength(1);
+    expect(runtime.requests[0]?.command).toEqual(["npm", "--ignore-scripts", "run", "test"]);
+    await session.release?.({ status: "completed" });
+  });
+
   test("requires one approval for execution and keeps approved command changes off the host", async () => {
     const { root } = await workspaceFixture();
     const runtime = new FakeOciRuntime(undefined, async (request) => {
@@ -201,7 +399,7 @@ describe("enforced OCI execution environment", () => {
             toolCall: {
               id: "oci-command-1",
               name: "run_environment_command",
-              input: { command: "bun", args: ["test"] }
+              input: { command: "npm", args: ["test"] }
             }
           },
           { type: "finish", finishReason: "tool-calls" }
@@ -222,6 +420,7 @@ describe("enforced OCI execution environment", () => {
     });
     const tools = harness.agent.tools as Record<string, { requiresApproval?: boolean; approvalMode?: string }>;
     expect(tools.run_environment_command).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
+    expect(tools.run_environment_batch).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
     expect(tools.apply_environment_patch).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
     expect(tools.git_diff).toBeUndefined();
 
@@ -250,6 +449,68 @@ describe("enforced OCI execution environment", () => {
     await session.release?.({ status: "completed" });
   });
 
+  test("binds one durable approval to the complete environment command batch", async () => {
+    const { root } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const model = createMockLanguageModel({
+      provider: "mock-provider",
+      modelId: "mock-model",
+      streamEvents: [
+        [
+          {
+            type: "tool-call",
+            toolCall: {
+              id: "oci-batch-1",
+              name: "run_environment_batch",
+              input: {
+                commands: [
+                  { command: "npm", args: ["--version"] },
+                  { command: "node", args: ["--version"] }
+                ]
+              }
+            }
+          },
+          { type: "finish", finishReason: "tool-calls" }
+        ],
+        [
+          { type: "text-delta", textDelta: "snapshot batch complete" },
+          { type: "finish", finishReason: "stop" }
+        ]
+      ]
+    });
+    const harness = await createHarness({
+      provider: "openai",
+      workspace: root,
+      executionBackend: "oci",
+      modelInstance: model,
+      store: createInMemoryAgentRunStore(),
+      ociRuntimeAdapter: runtime
+    });
+
+    const waiting = await runHarness(harness, { runId: "oci-batch-approval-run", prompt: "Run the isolated batch" });
+    expect(waiting.status).toBe("waiting_approval");
+    expect(waiting.state.pendingApprovals).toHaveLength(1);
+    expect(waiting.state.pendingApprovals[0]?.name).toBe("run_environment_batch");
+    expect(runtime.requests).toHaveLength(0);
+
+    const completed = await runHarness(harness, {
+      state: waiting.state,
+      approvals: waiting.state.pendingApprovals.map((approval) => ({
+        provider: approval.provider,
+        approvalRequestId: approval.id,
+        approve: true,
+        reason: "Reviewed argv batch."
+      }))
+    });
+    expect(completed.status).toBe("completed");
+    // Custom runtimes without runBatch retain a safe sequential fallback.
+    expect(runtime.requests.map((request) => request.command)).toEqual([
+      ["npm", "--version"],
+      ["node", "--version"]
+    ]);
+    harness.close();
+  });
+
   test("binds and imports executable modes, including mode-only changes", async () => {
     const { root, workspace } = await workspaceFixture();
     await mkdir(path.join(root, "scripts"), { recursive: true });
@@ -269,7 +530,7 @@ describe("enforced OCI execution environment", () => {
       runtime
     });
     const session = await environment.acquire({ runId: "mode-import-run" });
-    await session.runCommand("bun", ["test"]);
+    await session.runCommand("npm", ["test"]);
 
     const inspection = await session.inspectPatch();
     expect(inspection.entries).toEqual([
@@ -312,7 +573,7 @@ describe("enforced OCI execution environment", () => {
         toolCall: {
           id: "bound-command",
           name: "run_environment_command",
-          input: { command: "bun", args: ["test"] }
+          input: { command: "npm", args: ["test"] }
         }
       },
       { type: "finish" as const, finishReason: "tool-calls" as const }
@@ -425,7 +686,7 @@ describe("enforced OCI execution environment", () => {
         runtime
       });
       const session = await environment.acquire({ runId: `forced-exit-${index}` });
-      const result = await session.runCommand("bun", ["test"]);
+      const result = await session.runCommand("npm", ["test"]);
       expect(result.exitCode).toBe(fixture.exitCode);
       expect(result.stderr).toContain(fixture.message);
       await session.release?.({ status: "failed" });
@@ -471,7 +732,7 @@ describe("enforced OCI execution environment", () => {
               toolCall: {
                 id: "child-oci-command",
                 name: "run_environment_command",
-                input: { command: "bun", args: ["test"] }
+                input: { command: "npm", args: ["test"] }
               }
             }]
           }],

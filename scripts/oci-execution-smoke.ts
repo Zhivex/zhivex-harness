@@ -12,6 +12,7 @@ import { Workspace } from "../src/workspace.js";
 
 const required = process.env.ZHIVEX_HARNESS_OCI_REQUIRED === "1";
 const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-oci-smoke-"));
+const nodeEval = (source: string) => ["--input-type=module", "-e", source] as const;
 
 try {
   await mkdir(path.join(root, "src"), { recursive: true });
@@ -19,7 +20,7 @@ try {
     name: "zhivex-harness-oci-smoke",
     private: true,
     scripts: {
-      test: "bun -e \"console.log('oci-check-ok')\""
+      test: "node --input-type=module -e \"console.log('oci-check-ok')\""
     }
   }, null, 2));
   await writeFile(path.join(root, "src", "original.ts"), "export const original = true;\n");
@@ -39,7 +40,7 @@ try {
     workspace: root,
     executionBackend: "oci",
     ociImage: process.env.ZHIVEX_HARNESS_OCI_IMAGE,
-    ociAllowedCommands: ["bun"],
+    ociAllowedCommands: ["node", "npm"],
     ociMaxProcessRuntimeMs: 30_000,
     ociMaxMemoryMb: 256,
     ociMaxPids: 32,
@@ -65,8 +66,7 @@ try {
   }
 
   const session = await environment.acquire({ runId: "oci-smoke-run" });
-  const command = await session.runCommand("bun", [
-    "-e",
+  const command = await session.runCommand("node", nodeEval(
     [
       "import { access, chmod, writeFile } from 'node:fs/promises';",
       "let secretMounted = true;",
@@ -82,24 +82,31 @@ try {
       "await chmod('/workspace/src/generated.ts', 0o750);",
       "console.log('oci-boundaries-ok');"
     ].join(" ")
-  ]);
+  ));
   assert.equal(command.exitCode, 0, command.stderr || command.stdout);
   assert.match(command.stdout, /oci-boundaries-ok/);
 
-  const dependency = await session.runCommand("bun", [
-    "-e",
+  const dependency = await session.runCommand("node", nodeEval(
     "import { value } from 'oci-smoke-dependency'; console.log(value)"
-  ]);
+  ));
   assert.equal(dependency.exitCode, 0, dependency.stderr || dependency.stdout);
   assert.match(dependency.stdout, /read-only-dependency-ok/);
 
   const check = await session.runCheck(
     "test",
-    "bun -e \"console.log('oci-check-ok')\"",
+    "node --input-type=module -e \"console.log('oci-check-ok')\"",
     ["test"]
   );
   assert.equal(check.exitCode, 0, check.stderr || check.stdout);
   assert.match(check.stdout, /oci-check-ok/);
+
+  const batch = await session.runCommandBatch([
+    { command: "node", args: nodeEval("console.log('oci-batch-first')") },
+    { command: "node", args: nodeEval("console.log('oci-batch-second')") }
+  ]);
+  assert.equal(batch.exitCode, 0, batch.stderr || batch.stdout);
+  assert.match(batch.stdout, /oci-batch-first/);
+  assert.match(batch.stdout, /oci-batch-second/);
 
   const warmStatus = await session.status();
   assert.deepEqual(
@@ -111,34 +118,46 @@ try {
     },
     {
       containerStarts: 1,
-      containerReuses: 2,
-      workspacePublishes: 3,
+      containerReuses: 3,
+      workspacePublishes: 4,
       workspaceExports: 1
     }
   );
 
+  const failedBatch = await session.runCommandBatch([
+    {
+      command: "node",
+      args: nodeEval("import { writeFile } from 'node:fs/promises'; await writeFile('/workspace/src/discarded-batch.ts', 'discard me\\n')")
+    },
+    { command: "node", args: nodeEval("process.exit(2)") }
+  ]);
+  assert.equal(failedBatch.exitCode, 2);
+  await assert.rejects(session.workspace.readFile("src/discarded-batch.ts"));
+  const recoveredBatch = await session.runCommand("node", nodeEval(
+    "import { access } from 'node:fs/promises'; try { await access('/workspace/src/discarded-batch.ts'); process.exit(1); } catch { console.log('batch-discard-ok'); }"
+  ));
+  assert.equal(recoveredBatch.exitCode, 0, recoveredBatch.stderr || recoveredBatch.stdout);
+  assert.match(recoveredBatch.stdout, /batch-discard-ok/);
+
   await assert.rejects(
-    session.runCommand("bun", [
-      "-e",
+    session.runCommand("node", nodeEval(
       [
         "import { mkdir, rm, writeFile } from 'node:fs/promises';",
         "await rm('/workspace/node_modules', { recursive: true, force: true });",
         "await mkdir('/workspace/node_modules');",
         "await writeFile('/workspace/node_modules/injected.js', 'export default true');"
       ].join(" ")
-    ]),
+    )),
     /dependency mount was replaced/i
   );
-  const recoveredDependency = await session.runCommand("bun", [
-    "-e",
+  const recoveredDependency = await session.runCommand("node", nodeEval(
     "import { value } from 'oci-smoke-dependency'; console.log(value)"
-  ]);
+  ));
   assert.equal(recoveredDependency.exitCode, 0, recoveredDependency.stderr || recoveredDependency.stdout);
   assert.match(recoveredDependency.stdout, /read-only-dependency-ok/);
 
   await writeFile(path.join(session.workspace.root, "src", "host-tool-sync.ts"), "export const sync = true;\n");
-  const synchronized = await session.runCommand("bun", [
-    "-e",
+  const synchronized = await session.runCommand("node", nodeEval(
     [
       "import { readFile, unlink } from 'node:fs/promises';",
       "const value = await readFile('/workspace/src/host-tool-sync.ts', 'utf8');",
@@ -146,10 +165,10 @@ try {
       "await unlink('/workspace/src/host-tool-sync.ts');",
       "console.log('host-tool-sync-ok');"
     ].join(" ")
-  ]);
+  ));
   assert.equal(synchronized.exitCode, 0, synchronized.stderr || synchronized.stdout);
   assert.match(synchronized.stdout, /host-tool-sync-ok/);
-  assert.equal((await session.status()).io.containerStarts, 3);
+  assert.equal((await session.status()).io.containerStarts, 4);
 
   const inspection = await session.inspectPatch();
   assert.deepEqual(
@@ -167,15 +186,16 @@ try {
   assert.equal((await stat(path.join(root, "src", "generated.ts"))).mode & 0o777, 0o750);
   assert.equal(await readFile(path.join(root, ".env"), "utf8"), "SMOKE_SECRET=must-not-be-mounted\n");
 
-  const background = await session.runCommand("bun", [
-    "-e",
-    "const child = Bun.spawn(['sleep', '60'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' }); child.unref()"
-  ]);
+  const background = await session.runCommand("node", nodeEval(
+    "import { spawn } from 'node:child_process'; const child = spawn('sleep', ['60'], { stdio: 'ignore' }); child.unref()"
+  ));
   assert.equal(background.exitCode, 126);
   assert.match(background.stderr, /background processes/i);
 
   const controller = new AbortController();
-  const cancelled = session.runCommand("bun", ["-e", "await Bun.sleep(60_000)"] , {
+  const cancelled = session.runCommand("node", nodeEval(
+    "await new Promise((resolve) => setTimeout(resolve, 60_000))"
+  ), {
     abortSignal: controller.signal
   } as never);
   setTimeout(() => controller.abort(), 250);
@@ -183,61 +203,60 @@ try {
   assert.equal(cancelledResult.exitCode, 130);
   assert.match(cancelledResult.stderr, /cancelled/i);
 
-  const outputLimited = await session.runCommand("bun", [
-    "-e",
-    "process.stdout.write('a'.repeat(15000)); process.stderr.write('b'.repeat(15000)); await Bun.sleep(60000)"
-  ]);
+  const outputLimited = await session.runCommand("node", nodeEval(
+    "process.stdout.write('a'.repeat(15000)); process.stderr.write('b'.repeat(15000)); await new Promise((resolve) => setTimeout(resolve, 60_000))"
+  ));
   assert.equal(outputLimited.exitCode, 125);
   assert.match(outputLimited.stderr, /output limit/i);
 
-  const workspaceLimited = await session.runCommand("bun", [
-    "-e",
+  const workspaceLimited = await session.runCommand("node", nodeEval(
     "import { writeFile } from 'node:fs/promises'; await writeFile('/workspace/fill.bin', new Uint8Array(16 * 1024 * 1024).fill(1))"
-  ]);
+  ));
   assert.notEqual(workspaceLimited.exitCode, 0);
   assert.match(`${workspaceLimited.stderr}\n${workspaceLimited.stdout}`, /space|ENOSPC/i);
   await assert.rejects(session.workspace.readFile("fill.bin"));
 
   await assert.rejects(
-    session.runCommand("bun", [
-      "-e",
+    session.runCommand("node", nodeEval(
       "import { writeFile } from 'node:fs/promises'; await writeFile('/workspace/oversized.bin', new Uint8Array(2 * 1024 * 1024).fill(1))"
-    ]),
+    )),
     /file above the .*byte limit/i
   );
   await assert.rejects(session.workspace.readFile("oversized.bin"));
 
-  const memoryLimited = await session.runCommand("bun", [
-    "-e",
+  const memoryLimited = await session.runCommand("node", nodeEval(
     "const held=[]; for (;;) held.push(new Uint8Array(16 * 1024 * 1024).fill(1))"
-  ]);
+  ));
   assert.notEqual(memoryLimited.exitCode, 0);
 
-  const pidsLimited = await session.runCommand("bun", [
-    "-e",
+  const pidsLimited = await session.runCommand("node", nodeEval(
     [
+      "import { spawn } from 'node:child_process';",
       "import { readFile } from 'node:fs/promises';",
       "const maxEvents=async()=>Number((await readFile('/sys/fs/cgroup/pids.events','utf8')).match(/^max\\s+(\\d+)$/m)?.[1] ?? 0);",
       "const configured=Number((await readFile('/sys/fs/cgroup/pids.max','utf8')).trim());",
       "if (configured !== 32) throw new Error(`unexpected PID ceiling: ${configured}`);",
       "const beforeMaxEvents=await maxEvents();",
       "const children=[];",
+      "const closed=[];",
       "try {",
       "try { for (let index=0; index<configured*2; index+=1) {",
-      "const child=Bun.spawn(['sleep','60'],{stdin:'ignore',stdout:'ignore',stderr:'ignore'});",
+      "const child=spawn('sleep',['60'],{stdio:'ignore'});",
+      "child.on('error',()=>{});",
       "children.push(child);",
+      "closed.push(new Promise((resolve)=>child.once('close',resolve)));",
       "} } catch {}",
-      "await Bun.sleep(250);",
+      "await new Promise((resolve)=>setTimeout(resolve,250));",
       "const active=Number((await readFile('/sys/fs/cgroup/pids.current','utf8')).trim());",
       "if (active > configured) throw new Error(`PID ceiling exceeded: ${active}`);",
       "if (await maxEvents() <= beforeMaxEvents) throw new Error('PID ceiling was not enforced');",
       "} finally {",
       "for (const child of children) child.kill();",
-      "await Promise.allSettled(children.map((child)=>child.exited));",
+      "await Promise.allSettled(closed);",
       "}",
       "console.log('pids-limit-ok');"
     ].join(" ")
-  ]);
+  ));
   assert.equal(pidsLimited.exitCode, 0, pidsLimited.stderr || pidsLimited.stdout);
   assert.match(pidsLimited.stdout, /pids-limit-ok/);
 

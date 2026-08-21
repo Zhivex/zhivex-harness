@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.8.0` is the latest public npm release. `0.9.0` is a source candidate, not a published artifact. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.9.0` is the latest public npm release. `0.10.0` is a Node-first source candidate, not a published artifact. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
 
 ## Deterministic gates
 
@@ -36,7 +36,7 @@ The release workflow performs this sequence across an unprivileged validation jo
 
 1. check out an existing annotated `v<package-version>` tag with complete history;
 2. prove that the tag resolves to `main`, the worktree is clean, and the version is absent from npm;
-3. run the complete Bun release gate;
+3. run the complete release gate with Bun-managed contributor tooling and the supported Node runtime;
 4. create one tarball with `bun pm pack --ignore-scripts`;
 5. allow only the documented package roots, verify the packed manifest, and write `SHA512SUMS`;
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
@@ -48,9 +48,9 @@ For a local artifact rehearsal after the source gate:
 
 ```bash
 mkdir -p release-artifacts
-bun pm pack --filename release-artifacts/zhivex-ai-harness-0.9.0.tgz --ignore-scripts
-bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.9.0.tgz
-bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.9.0.tgz
+bun pm pack --filename release-artifacts/zhivex-ai-harness-0.10.0.tgz --ignore-scripts
+bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.10.0.tgz
+bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.10.0.tgz
 ```
 
 `release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
@@ -61,7 +61,7 @@ Before a release dispatch, reverify repository/package visibility compatibility,
 
 The release workflow intentionally supplies no long-lived registry token. Do not introduce one as a fallback; a failed OIDC assertion is a stop condition to diagnose.
 
-Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.0` or newer. The workflow follows npm's current Node 24 guidance and uses npm only for the OIDC/provenance-aware registry transaction; dependency management, build, tests, packing, and artifact installation remain Bun-first.
+Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.0` or newer. The workflow follows npm's current Node 24 guidance and uses npm only for the OIDC/provenance-aware registry transaction. Dependency management, tests, and packing use Bun as contributor tooling; the built CLI, public library, SQLite reopen, and installed artifact execute under Node.
 
 ## Tag and dispatch
 

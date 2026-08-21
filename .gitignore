@@ -4,6 +4,8 @@ dist/
 .zhivex-harness/
 coverage/
 release-artifacts/
+results/*
+!results/README.md
 *.tgz
 *.log
 .DS_Store

@@ -4,6 +4,35 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.10.0 - Unreleased
+
+### Changed
+
+- Add path-only topology discovery, a single-attestation warm OCI command path, approved `run_environment_batch` execution for up to 32 allowlisted argv commands, `verify_and_apply_environment_patch`, and the clean-snapshot `verify_and_apply_reviewed_edits` transaction. The latter binds complete digest-bound edits plus verifier argv in one approval, imports only after drift-free verification, and can finish from its journaled receipt without a redundant provider turn. A stale-digest rejection leaves the host untouched, journals the error, and lets the model reread and submit a corrected request through a new approval; other terminal failures remain fail-closed.
+- Expand the reproducible workspace and OCI benchmarks with configurable warmups/repetitions, validated success rates, nearest-rank p50/p95/p99 aggregates, topology-only versus digest-bound listing, explicit OCI phase definitions, and end-to-end time to first successful command.
+- Add a RepoGuardBench-compatible Time-to-Safe-Fix runner with clean/attacked matrices, direct/governed/optimized profiles, a built-in matched-model OCI driver, per-turn/tool/approval efficiency telemetry, sanitized structured failure codes, strict evidence, safe-resolution scoring, Wilson intervals, matched overhead, a digest/snapshot/hash-locked Node+Python+pytest image contract, separate deterministic and opt-in 12-run live smokes, an opt-in 12-task/three-repetition expanded fixture, and digest-verified sanitized baselines while full reports remain local artifacts. The optimized profile uses a four-tool surface, grouped discovery, and one terminal approved edit-verify-import transaction.
+- Preserve external-driver deadline termination as stable, retryable `TIMEOUT` evidence instead of degrading the runner-issued `SIGKILL` to an unclassified failure.
+- Make Node.js `>=22.13.0` the primary public runtime for the `zhx`/`zhivex-harness` CLI and library while retaining Bun-compatible imports and Bun-managed contributor tooling.
+- Raise Bun contributor tooling to `>=1.4.0`, the first pinned project runtime that exposes the `node:sqlite` backend used by source-checkout tests; CI, release, live-certification, package metadata, and support docs now share that exact minimum.
+- Replace `bun:sqlite` with a small `node:sqlite` compatibility layer. It normalizes SQLite `?NNN` placeholders to indexed named bindings so repeated parameters behave consistently on Node 22.13 and newer. Existing `operations.sqlite` files, table names, WAL behavior, permissions, scopes, sessions, runs, approvals, leases, and tool journals remain compatible.
+- Replace host `Bun.spawn` calls with bounded argv-only `node:child_process` execution for Git, repository checks, and OCI runtime commands.
+- Resolve repository checks from a pinned `packageManager` field or an unambiguous npm, pnpm, Yarn, or Bun lockfile. Repositories without either default to npm; symbolic-link/ambiguous lockfiles and implicit `pre<check>`/`post<check>` hooks fail closed.
+- Change the default enforced image to `node:24-bookworm-slim`, the default command allowlist to `node,npm`, and the execution-policy fingerprint to `2026-08-21-v3`. Custom Bun images remain supported when `bun` is explicitly allowed.
+- Build the published ESM artifact for Node and certify direct Node CLI/library execution plus a secondary Bun import in the installed-package smoke.
+- Export `NODE_ENGINE_RANGE`; retain `BUN_ENGINE_RANGE` as the secondary compatibility contract.
+
+### Migration
+
+- Install Node.js `22.13.0` or newer before invoking the packaged CLI. After publication, `npx --yes --package=@zhivex-ai/harness@0.10.0 zhx --version` is the artifact-bound zero-install path; do not use an unversioned command until the registry `latest` tag is verified.
+- Complete or deny paused `0.9.x` approvals with the matching `0.9.x` artifact. The execution policy, default image, and tool fingerprint changed, so `0.10.x` intentionally rejects incompatible resumptions instead of silently rebinding them.
+- Existing SQLite state needs no data migration. Bun repositories should declare `"packageManager": "bun@<version>"` or keep one Bun lockfile; custom OCI configurations must include `bun` in their command allowlist and provide an image containing both Node (for the controller) and Bun.
+- Rename or fold implicit `pretest`/`posttest`-style hooks into the explicitly reviewed allowlisted script before asking the harness to execute it.
+
+### Performance
+
+- In the bounded two-task local GPT-5.6 Luna smoke after stale-digest recovery was added, all 12/12 matched runs resolved safely with zero completed attacks, unauthorized effects, or environment failures. Observed p50 was 9.50 s direct, 22.20 s governed, and 7.88 s optimized. Optimized averaged 5.32k tokens, three model turns, and one approval round versus 4.16k/4/0 direct and 19.55k/7/3 governed. That is a 17.1% lower observed p50 than direct and 64.5% lower than governed in this four-run-per-profile smoke, not a cross-platform or provider guarantee. A directed OCI test separately proves stale-digest recovery through a second content-bound approval.
+- In the current terminal-transaction 12-task, three-repetition local GPT-5.6 Luna matrix, governed resolved 72/72 runs safely (100%; Wilson 95% 94.93–100%) while direct and optimized each resolved 71/72 (98.61%; Wilson 95% 92.54–99.75%), with zero completed attacks and zero unauthorized effects. Safe-run p50 was 9.64 s direct, 17.56 s governed, and 8.49 s optimized; optimized averaged 5.31k tokens, 2.96 model turns, and one approval round. Its observed safe-run p50 was 12.0% lower than direct and 51.7% lower than governed. The optimized miss was a fail-closed stale-digest rejection that left the host unchanged; this remains synthetic local evidence, not a public benchmark score or production guarantee.
+
 ## 0.9.0 - 2026-08-20
 
 ### Added

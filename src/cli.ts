@@ -1,10 +1,11 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
-import { constants as fsConstants } from "node:fs";
+import { constants as fsConstants, realpathSync } from "node:fs";
 import { access, lstat, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import {
@@ -54,7 +55,8 @@ import {
 import { validateStateDirectory } from "./state-directory.js";
 import { loadHarnessMcpConfiguration } from "./mcp.js";
 import { runHarnessReviewGroup } from "./orchestration.js";
-import { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
+import { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
+import { resolvePackageManager } from "./package-manager.js";
 import {
   CliOciRuntimeAdapter,
   cleanupHarnessExecutionArtifacts,
@@ -85,6 +87,7 @@ import {
   verifyChangeEnvelope,
   type ChangeEnvelopePreconditions
 } from "./change-envelope.js";
+import { runPortableProcess } from "./process-runtime.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -825,7 +828,7 @@ Options:
   --execution <none|oci>         Enforced execution backend (default: none)
   --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
   --oci-image <reference>        Preloaded immutable-capable OCI image
-  --oci-allow-command <name>     Allow one argv executable in OCI; repeatable, must include bun
+  --oci-allow-command <name>     Allow one argv executable in OCI; repeatable, include a package manager
   --oci-max-process-runtime-ms <n> Per-command timeout (default: 120000)
   --oci-max-process-output-bytes <n> Combined output ceiling (default: 20000)
   --oci-max-memory-mb <n>        Container memory ceiling (default: 1024)
@@ -1715,6 +1718,8 @@ export interface DoctorReport {
 
 export interface DoctorContext {
   env?: NodeJS.ProcessEnv;
+  nodeVersion?: string;
+  /** @deprecated Test-only compatibility injection for the secondary Bun runtime. */
   bunVersion?: string;
   ociRuntimeAdapter?: HarnessOciRuntimeAdapter;
 }
@@ -1745,7 +1750,7 @@ const parseNumericVersion = (version: string) => {
     : undefined;
 };
 
-const satisfiesBunEngine = (version: string, range: string) => {
+const satisfiesEngine = (version: string, range: string) => {
   const minimumMatch = /^>=(\d+\.\d+\.\d+)$/.exec(range.trim());
   const actual = parseNumericVersion(version);
   const minimum = minimumMatch ? parseNumericVersion(minimumMatch[1] ?? "") : undefined;
@@ -1785,35 +1790,27 @@ const inspectWorkspace = async (workspace: string): Promise<DoctorCheck> => {
 
 const inspectGit = async (workspace: string): Promise<DoctorCheck> => {
   try {
-    const versionProcess = Bun.spawn(["git", "--version"], {
-      stdin: "ignore",
-      stdout: "pipe",
+    const versionProcess = await runPortableProcess(["git", "--version"], {
+      timeoutMs: 15_000,
+      maxOutputCharacters: 4_096,
       stderr: "ignore"
     });
-    const [versionOutput, versionExitCode] = await Promise.all([
-      new Response(versionProcess.stdout).text(),
-      versionProcess.exited
-    ]);
-    if (versionExitCode !== 0) {
+    if (versionProcess.exitCode !== 0) {
       return diagnostic("git", "warn", "Git is unavailable.", { installed: false });
     }
 
-    const repositoryProcess = Bun.spawn(["git", "-C", workspace, "rev-parse", "--is-inside-work-tree"], {
-      env: { PATH: process.env.PATH ?? "", GIT_TERMINAL_PROMPT: "0" },
-      stdin: "ignore",
-      stdout: "pipe",
+    const repositoryProcess = await runPortableProcess(["git", "-C", workspace, "rev-parse", "--is-inside-work-tree"], {
+      env: { GIT_TERMINAL_PROMPT: "0" },
+      timeoutMs: 15_000,
+      maxOutputCharacters: 4_096,
       stderr: "ignore"
     });
-    const [repositoryOutput, repositoryExitCode] = await Promise.all([
-      new Response(repositoryProcess.stdout).text(),
-      repositoryProcess.exited
-    ]);
-    const repository = repositoryExitCode === 0 && repositoryOutput.trim() === "true";
+    const repository = repositoryProcess.exitCode === 0 && repositoryProcess.stdout.trim() === "true";
     return diagnostic(
       "git",
       repository ? "pass" : "warn",
       repository ? "Git is installed and the workspace is a repository." : "Git is installed, but the workspace is not a repository.",
-      { installed: true, repository, version: versionOutput.trim() }
+      { installed: true, repository, version: versionProcess.stdout.trim() }
     );
   } catch {
     return diagnostic("git", "warn", "Git is unavailable.", { installed: false });
@@ -1830,17 +1827,30 @@ const inspectScripts = async (workspace: string, allowedChecks: readonly string[
         available: []
       });
     }
-    const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as { scripts?: unknown };
+    const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as {
+      packageManager?: unknown;
+      scripts?: unknown;
+    };
     const scripts = packageJson.scripts && typeof packageJson.scripts === "object"
       ? packageJson.scripts as Record<string, unknown>
       : {};
     const available = allowedChecks.filter((name) => typeof scripts[name] === "string");
     const missing = allowedChecks.filter((name) => typeof scripts[name] !== "string");
+    const packageManager = await resolvePackageManager(workspace, packageJson);
     return diagnostic(
       "scripts",
       available.length > 0 ? "pass" : "warn",
-      available.length > 0 ? "Supported Bun check scripts were found." : "No supported Bun check scripts were found.",
-      { packageJson: true, available, missing }
+      available.length > 0
+        ? `Supported ${packageManager.manager} check scripts were found.`
+        : `No supported ${packageManager.manager} check scripts were found.`,
+      {
+        packageJson: true,
+        packageManager: packageManager.manager,
+        packageManagerSource: packageManager.source,
+        ...(packageManager.evidence ? { packageManagerEvidence: packageManager.evidence } : {}),
+        available,
+        missing
+      }
     );
   } catch (error) {
     const code = error instanceof SyntaxError
@@ -2206,18 +2216,24 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_MCP_CONFIG ? { mcpConfigPath: env.ZHIVEX_HARNESS_MCP_CONFIG } : {}),
     ...options
   });
-  const bunVersion = context.bunVersion ?? Bun.version;
+  const runtime = context.nodeVersion
+    ? { name: "node" as const, version: context.nodeVersion, required: NODE_ENGINE_RANGE }
+    : context.bunVersion
+      ? { name: "bun" as const, version: context.bunVersion, required: BUN_ENGINE_RANGE }
+      : process.versions.bun
+        ? { name: "bun" as const, version: process.versions.bun, required: BUN_ENGINE_RANGE }
+        : { name: "node" as const, version: process.versions.node, required: NODE_ENGINE_RANGE };
   const providers = providerAvailability(env);
   const selectedProvider = providers.find((provider) => provider.id === config.provider);
   const checks: DoctorCheck[] = [];
 
   checks.push(diagnostic(
-    "bun",
-    satisfiesBunEngine(bunVersion, BUN_ENGINE_RANGE) ? "pass" : "fail",
-    satisfiesBunEngine(bunVersion, BUN_ENGINE_RANGE)
-      ? "Bun satisfies the package engine requirement."
-      : "Bun does not satisfy the package engine requirement.",
-    { version: bunVersion, required: BUN_ENGINE_RANGE }
+    runtime.name,
+    satisfiesEngine(runtime.version, runtime.required) ? "pass" : "fail",
+    satisfiesEngine(runtime.version, runtime.required)
+      ? `${runtime.name === "node" ? "Node.js" : "Bun"} satisfies the package engine requirement.`
+      : `${runtime.name === "node" ? "Node.js" : "Bun"} does not satisfy the package engine requirement.`,
+    { version: runtime.version, required: runtime.required, primary: runtime.name === "node" }
   ));
   checks.push(await inspectWorkspace(config.workspace));
   checks.push(await inspectGit(config.workspace));
@@ -2637,7 +2653,16 @@ export const main = async (argv = process.argv.slice(2)) => {
   }
 };
 
-if (import.meta.main) {
+const isMainModule = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
   main().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Error: ${message}\n`);

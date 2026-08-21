@@ -17,7 +17,7 @@ The OCI policy is enforced for one acquired run session, with each command commi
 - a size-bounded writable `tmpfs` at `/workspace` plus a separate bounded `tmpfs` at `/tmp`;
 - an optional host `node_modules` directory mounted read-only at `/dependencies` and linked into the container workspace;
 - exact argv execution through the configured entrypoint, with no shell interpolation;
-- a fixed container environment containing only `HOME`, `TMPDIR`, `BUN_INSTALL_CACHE_DIR`, and `CI`;
+- a fixed container environment containing only `HOME`, `TMPDIR`, `NPM_CONFIG_CACHE`, and `CI`;
 - time, output, memory, CPU, PID, workspace-size, and per-file patch limits.
 
 The snapshot is populated through the normal bounded workspace discovery contract. Git internals, harness state, dependency/build output, `.env`, `.npmrc`, private keys, secret-like paths, external symlinks, and special files are not copied. Provider credentials and arbitrary host environment variables are never passed to the container.
@@ -29,7 +29,7 @@ When the backend is disabled, these OCI claims do not apply. The harness respond
 Preload the image intentionally; the harness never pulls or updates images:
 
 ```bash
-docker pull oven/bun:1.3.7-slim
+docker pull node:24-bookworm-slim
 bun run dev doctor --execution oci
 bun run dev run --execution oci --yes "implement the change, test it, inspect the environment patch, and import it"
 ```
@@ -40,8 +40,8 @@ Podman is also supported through `--oci-runtime podman`. Defaults are:
 | --- | ---: |
 | Backend | `none` |
 | Runtime | `docker` |
-| Image | `oven/bun:1.3.7-slim` |
-| Allowed commands | `bun` |
+| Image | `node:24-bookworm-slim` |
+| Allowed commands | `node,npm` |
 | Process time | 120,000 ms |
 | Retained process output | 20,000 bytes |
 | Memory | 1,024 MB |
@@ -68,7 +68,7 @@ ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES
 ZHIVEX_HARNESS_OCI_TMPFS_MB
 ```
 
-`ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS` is comma-separated. `bun` is mandatory because `run_check` invokes declared scripts as `bun --no-env-file run <script>`. Adding an executable permits that bare entrypoint but does not add a shell or wildcard. Each environment command still requires normal high-risk interrupt approval unless the operator deliberately supplied `--yes`.
+`ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS` is comma-separated and must include at least one supported package manager (`npm`, `pnpm`, `yarn`, or `bun`). `run_check` selects the manager from `packageManager` or one unambiguous lockfile and defaults to npm. Adding an executable permits that bare entrypoint but does not add a shell or wildcard. The configured image must always provide Node for the internal controller; Bun-managed repositories additionally need a Node-and-Bun image and `bun` in the allowlist. Each environment command still requires normal high-risk interrupt approval unless the operator deliberately supplied `--yes`.
 
 The image is inspected before model construction. Its immutable image ID/digest, runtime/server version, complete policy, canonical workspace identity, and environment manifest contribute to the run binding. A missing daemon/image fails before model execution. A changed image or policy makes a paused resume fail closed.
 
@@ -83,13 +83,17 @@ In `0.9.x`, acquisition keeps only a bounded metadata inventory in memory, write
 
 `environment_status` includes cumulative `io` counters for inventory passes/pages, verified content reads/bytes, snapshot files/bytes, clone fallbacks, container starts/reuses, successful workspace publications, and changed-workspace exports. They are diagnostics for profiling and regression tests, not admission evidence or a stable performance guarantee.
 
-The first command seeds a size-bounded `/workspace` tmpfs from the durable snapshot and subsequent successful commands reuse that run container while the host snapshot fingerprint remains unchanged. The container stays paused while idle. After every command the harness rejects surviving background processes, clears `/tmp`, and computes a canonical workspace seal. An unchanged seal takes a no-export fast path. A changed seal freezes the container, copies `/workspace` out through the runtime into a new owner-only staging directory, rejects symlinks, hard links, special files, oversized workspaces, excessive entries, and oversized changed files, then atomically replaces the durable snapshot. The host snapshot is never mounted writable into an untrusted container.
+The first command seeds a size-bounded `/workspace` tmpfs from the durable snapshot and subsequent successful commands reuse that run container while the host snapshot fingerprint remains unchanged. The controller-only container remains warm with the same CPU, memory, PID, capability, filesystem, and network restrictions. A command cycle executes argv, rejects surviving background processes before and after sealing, clears `/tmp`, and computes a canonical workspace seal inside one framed attestation. `run_environment_batch` applies the same checks to a reviewed sequence, stops on the first failure, and pays one final seal/publication cycle. An unchanged seal takes a no-export fast path. A changed seal copies `/workspace` out through the runtime into a new owner-only staging directory, rejects symlinks, hard links, special files, oversized workspaces, excessive entries, and oversized changed files, then atomically replaces the durable snapshot. The host snapshot is never mounted writable into an untrusted container.
 
 Failed, cancelled, timed-out, output-limited, invalid, or background-spawning commands do not publish partial workspace mutations: their container and tmpfs volume are destroyed. A later command reseeds from the last durable snapshot. Repository-tool changes made outside the container alter the host-side snapshot fingerprint, which likewise discards the warm container and reseeds before execution. This preserves one durable source of truth instead of silently carrying stale container state.
 
 `inspect_environment_patch` compares them deterministically and returns a run-bound patch identifier plus create/update/delete entries, content digests, and before/after permission modes. Content-identical mode changes remain visible, and modes are part of the reviewed `patchId`. It rejects binary changes, more than 50 files, a patch above 4 MiB, or a file above the configured import ceiling.
 
 `apply_environment_patch` is a different high-risk tool and approval. Immediately before import it recomputes the patch identifier and verifies every host precondition against the digest and mode captured at acquisition. Creates must still be absent; updates and deletes must still match. Writes publish content and mode atomically, including newly created executable files and mode-only updates; rollback restores both. Deletions use recoverable quarantine, and a deletion failure triggers best-effort rollback. The host remains unchanged until this import succeeds.
+
+`verify_and_apply_environment_patch` provides a stricter combined path when the caller already knows the exact verifier argv. One interrupt approval binds the inspected `patchId`, executable, and arguments. The harness rechecks the patch, runs the allowlisted verifier inside OCI, requires exit code zero, recomputes the patch ID to reject verifier-created drift, and only then imports it with the same host precondition and rollback rules. A failed verifier or changed patch leaves the host untouched.
+
+`verify_and_apply_reviewed_edits` collapses the preceding edit and publication sequence when the OCI snapshot is still clean. One interrupt approval binds every path, expected host digest, complete replacement content, executable, and argument. The harness applies exactly those edits to the snapshot, rejects additional patch paths, verifies inside OCI, rejects patch drift, and imports only the successful content-bound patch. Applications may explicitly designate this tool as terminal in `runHarness`; the runtime then validates the approval binding and optional signature, executes through OCI authorization and the durable tool journal, persists the completed receipt, and returns without another provider call. If that terminal tool rejects a stale edit digest, the runtime journals the approved failure, destroys the unpublished OCI session, and resumes the model with the error result. A corrected digest or edit is a new tool call with a new content-bound approval; the runtime never rewrites or silently reapproves the failed request. Other terminal failures still stop the run because their side-effect status may be uncertain.
 
 Because repository tools are snapshot-scoped while OCI is active, `apply_patch`, moves, quarantine, and restore alter only the snapshot. The model-facing `git_diff` tool is omitted in this mode because it would read the canonical host outside the environment boundary; the caller still receives the canonical final host Git status/diff after any approved import.
 
@@ -105,7 +109,7 @@ PID limits are the primary fork-bomb control. Memory and CPU limits constrain re
 
 Environment artifacts are keyed by a hash of the durable run ID and include an owner-only metadata file bound to that exact run, workspace, environment fingerprint, and image. Reacquisition reuses the same snapshot only when every binding matches.
 
-Each runtime container and temporary workspace volume carries `com.zhivex.harness.execution=v1` and a hashed run label. The container remains paused between successful commands and session release force-removes all resources for that run before recording status and release time. `runs cleanup --before <cutoff>` removes only released terminal artifact directories older than the cutoff; with OCI configured it also removes labeled containers in `created`, `exited`, `dead`, or `paused` state and unused labeled volumes. Unknown directories, symlinks, active resources, and unlabeled OCI resources are skipped.
+Each runtime container and temporary workspace volume carries `com.zhivex.harness.execution=v1` and a hashed run label; warm containers also carry the local controller PID. Between successful commands the container runs only its inert controller under the enforced limits. Session release force-removes all resources for that run before recording status and release time. `runs cleanup --before <cutoff>` removes only released terminal artifact directories older than the cutoff; with OCI configured it removes labeled stopped containers, running containers whose recorded local controller process no longer exists, and unused labeled volumes. Running containers owned by a live controller, unknown directories, symlinks, active volumes, and unlabeled OCI resources are skipped.
 
 Crash recovery relies on the same labels and durable artifacts. An operator can rerun cleanup after a process crash. The harness does not issue broad container/volume prune commands and never deletes an unlabeled OCI resource.
 
@@ -117,18 +121,26 @@ The default backend remains `none`, so upgrades do not unexpectedly start a cont
 
 Applications constructing the harness can inject a `HarnessOciRuntimeAdapter` for a controlled runtime implementation. They should use the exported SDK environment rather than bypassing authorization or importing snapshot files directly.
 
+## Migration from 0.9.x
+
+The `0.10.x` execution policy advances to `2026-08-21-v3`, changes the default image from Bun to Node 24, and makes repository checks package-manager-aware. Complete paused `0.9.x` environment approvals with their original artifact; the changed image, allowlist, controller, and policy fingerprint intentionally prevent a silent resume under `0.10.x`. Durable SQLite state remains readable without conversion.
+
 ## Certification
 
-The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate approvals, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
+The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate and combined approvals, failed-verifier non-import, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
 
-`bun run smoke:oci` exercises a real Docker/Podman daemon and preloaded image. It verifies secret exclusion, denied outbound network, denied root-filesystem writes, warm-container reuse, host-tool reseeding, background-process rejection, snapshot mutation, enforced workspace capacity, package checks, host non-mutation before import, approved import, cancellation, release, orphan cleanup, and artifact retention cleanup. `bun run benchmark:oci` reports first-command, warm no-op, mutation, snapshot, and runtime-I/O measurements on a configurable synthetic repository. The smoke skips locally when no daemon is available unless `ZHIVEX_HARNESS_OCI_REQUIRED=1`; Linux CI, release validation, and live certification set that variable so absence is a failure.
+`bun run smoke:oci` exercises a real Docker/Podman daemon and preloaded image. It verifies secret exclusion, denied outbound network, denied root-filesystem writes, warm-container reuse, host-tool reseeding, background-process rejection, snapshot mutation, enforced workspace capacity, package checks, host non-mutation before import, approved import, cancellation, release, orphan cleanup, and artifact retention cleanup. The smoke skips locally when no daemon is available unless `ZHIVEX_HARNESS_OCI_REQUIRED=1`; Linux CI, release validation, and live certification set that variable so absence is a failure.
+
+`bun run benchmark:oci -- --files 1000 --commands 20 --batch-commands 5 --repetitions 10 --warmups 1` runs isolated sessions sequentially and reports nearest-rank p50/p95/p99, success rates, host/runtime metadata, runtime-I/O counters, and runtime-reported command-phase attribution. Its end-to-end TTI is measured from the start of OCI environment inspection through the successful response from the first command. The reported phases are environment/image inspection, workspace snapshot and session acquisition, first command/container start, reused no-op commands, one multi-command batch sharing a final attestation, and mutation validation/publication; command attribution further separates host synchronization, session creation, command plus attestation, attestation copy, and workspace export when those phases apply. Fixture creation, `Workspace.open`, final release, and cleanup are excluded. Host filesystem caches are not flushed. Use at least 100 successful samples before treating p99 as representative.
+
+`bun run benchmark:workspace -- --files 50000 --page-size 200 --repetitions 10 --warmups 2` separately reports path-only topology listing and digest-bound listing, then compares three independent missing-token searches with `searchMany`. Every repetition opens fresh topology and digest-bound `Workspace` instances: the first-page measurement builds each application index, later phases reuse it, and the paired search order alternates. Warmups prime only the runtime and host filesystem cache. Fixture creation and `Workspace.open` are excluded. Results intended for comparison must include the commit, exact command, host, runtime versions, and OCI image digest where applicable.
 
 Provider certification is separate and billable. The live workflow runs the required OCI gate before the model-directed Meta, Qwen, and OpenAI matrices. A deterministic OCI pass does not by itself certify a provider, and live provider success does not replace exact installed-artifact or published-registry proof.
 
 ## Known limits
 
 - Docker and Podman use different host security implementations; current gates certify behavior, not identical internals.
-- The default Bun image and read-only host `node_modules` mount optimize JavaScript/TypeScript checks. Other ecosystems need an explicit image and executable allowlist, and dependencies should be prepared without exposing secrets.
+- The default Node image and read-only host `node_modules` mount optimize npm-managed JavaScript/TypeScript checks. pnpm, Yarn, Bun, and other ecosystems need an explicit Node-capable image and executable allowlist, and dependencies should be prepared without exposing secrets.
 - The local container daemon, kernel, image, and mounted dependency tree remain trusted. This backend is not a microVM boundary.
 - Network is deny-only in this policy version. Domain allowlists, package installation, browser automation, and network MCP require a future policy/backend rather than an implicit exception.
 - Patch import accepts bounded UTF-8 text changes only. Binary artifacts and large generated trees must use a future reviewed artifact-transfer contract.

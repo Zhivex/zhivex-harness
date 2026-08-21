@@ -19,7 +19,7 @@ These controls prevent silent workspace drift; they do not isolate the host. Run
 
 ## Discovery and digests
 
-`list_files` and `search_files` return deterministic pages. Each response includes `truncated` and, when another page exists, an opaque `nextCursor`. Supply that cursor unchanged to request the next page. A cursor is bound to the original operation and parameters; it must not be edited or reused for a different path, query, case-sensitivity setting, or page size.
+`list_files` and `search_files` return deterministic pages. `list_files` keeps digest-bound entries as the default; set `includeDigests=false` for path-only topology discovery without reading every file. Before proposing a mutation, use `read_file` or `read_files` to obtain the exact current digest. Each response includes `truncated` and, when another page exists, an opaque `nextCursor`. Supply that cursor unchanged to request the next page. A cursor is bound to the original operation and parameters, including the topology/digest mode; it must not be edited or reused for a different path, query, case-sensitivity setting, or page size.
 
 In `0.9.x`, pagination reuses a topology-only index. Before each reuse, the harness validates visible directory metadata and the metadata plus content digests of applicable ignore files. A structural or ignore-policy change invalidates the index and makes an older cursor fail as stale. File bytes and content digests are never served from that index: every listed page, read, and search uses the stable anti-race file reader, so an external content-only change is observed even when the topology remains valid.
 
@@ -78,7 +78,7 @@ Quarantine is a recovery boundary, not a backup system. Retention and permanent 
 
 ## Checks
 
-Checks remain explicit package scripts executed through Bun. `test`, `typecheck`, `lint`, and `build` are the default allowlist. `--allow-check` and `ZHIVEX_HARNESS_ALLOWED_CHECKS` replace that default with an explicit set of declared package-script names; they do not accept command text. The requested script text must still exactly match the current `package.json`; a changed script fails closed.
+Checks remain explicit package scripts executed through the repository package manager. `packageManager` is authoritative when pinned; otherwise one unambiguous npm, pnpm, Yarn, or Bun lockfile is detected, and repositories without either default to npm. `test`, `typecheck`, `lint`, and `build` are the default allowlist. `--allow-check` and `ZHIVEX_HARNESS_ALLOWED_CHECKS` replace that default with an explicit set of declared package-script names; they do not accept command text. The requested script text must still exactly match the current `package.json`; a changed script, symbolic-link/ambiguous lockfile, or implicit `pre<check>`/`post<check>` hook fails closed.
 
 Checks do not load the workspace `.env` automatically. A non-zero exit, timeout, or truncated output is recorded as returned evidence and must not be summarized as a successful validation.
 

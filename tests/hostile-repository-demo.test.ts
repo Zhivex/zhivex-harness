@@ -17,7 +17,7 @@ class DemoRuntime implements HarnessOciRuntimeAdapter {
   readonly image = {
     runtime: "docker" as const,
     runtimeVersion: "demo-fixture-1.0.0",
-    imageReference: "fixture/bun:1.3.7",
+    imageReference: "fixture/node:24",
     imageId: `sha256:${"a".repeat(64)}`,
     imageDigest: `sha256:${"a".repeat(64)}`
   };

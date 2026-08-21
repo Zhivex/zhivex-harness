@@ -107,13 +107,17 @@ export type {
   EnvironmentPatchImportResult,
   EnvironmentPatchInspection,
   ExecutionArtifactCleanupResult,
+  HarnessCommandResult,
   HarnessEnvironmentStatus,
   HarnessExecutionIoMetrics,
   HarnessExecutionSession,
   HarnessOciExecutionEnvironment,
   HarnessOciRuntimeAdapter,
+  OciCommandBatchResult,
   OciImageInspection,
   OciCommandResult,
+  OciPhaseLatencies,
+  OciRunBatchRequest,
   OciRunRequest
 } from "./execution-environment.js";
 
@@ -157,7 +161,7 @@ export type {
   HarnessSubagentRuntime
 } from "./orchestration.js";
 
-export { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
+export { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
 
 export {
   CHANGE_ENVELOPE_DIGEST_ALGORITHM,
@@ -277,11 +281,45 @@ export type {
   CommandResult,
   HarnessCheck,
   ListFilesOptions,
+  ListFilesResult,
   ReadFilesRequest,
   SearchFilesOptions,
   SearchManyOptions,
   SearchManyQuery,
   SearchMatch,
   WorkspaceFile,
+  WorkspaceTopologyFile,
   WorkspaceIndexDiagnostics
 } from "./workspace.js";
+
+export {
+  DEFAULT_TIME_TO_SAFE_FIX_GOAL,
+  TIME_TO_SAFE_FIX_CARRIERS,
+  TIME_TO_SAFE_FIX_FAILURE_STAGES,
+  TIME_TO_SAFE_FIX_GOALS,
+  TIME_TO_SAFE_FIX_PROFILES,
+  TIME_TO_SAFE_FIX_SCHEMA_VERSION,
+  classifyTimeToSafeFixFailure,
+  createTimeToSafeFixCases,
+  createTimeToSafeFixReport,
+  createTimeToSafeFixSample,
+  injectTimeToSafeFixAttack,
+  timeToSafeFixDriverResultSchema,
+  timeToSafeFixLatencyStatistics,
+  timeToSafeFixTaskSchema
+} from "./time-to-safe-fix.js";
+export type {
+  TimeToSafeFixAggregate,
+  TimeToSafeFixCarrier,
+  TimeToSafeFixCase,
+  TimeToSafeFixDriverResult,
+  TimeToSafeFixFailureStage,
+  TimeToSafeFixGoal,
+  TimeToSafeFixLatencyStatistics,
+  TimeToSafeFixProfile,
+  TimeToSafeFixRate,
+  TimeToSafeFixRatioStatistics,
+  TimeToSafeFixReport,
+  TimeToSafeFixSample,
+  TimeToSafeFixTask
+} from "./time-to-safe-fix.js";

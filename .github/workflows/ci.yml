@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Bun / ${{ matrix.os }}
+    name: Node 24 / ${{ matrix.os }} (Bun tooling)
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
@@ -32,10 +32,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: 1.3.7
+          bun-version: 1.4.0
 
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
@@ -45,7 +51,7 @@ jobs:
 
       - name: Preload OCI execution image
         if: runner.os == 'Linux'
-        run: docker pull oven/bun:1.3.7-slim
+        run: docker pull node:24-bookworm-slim
 
       - name: Validate source and installed package
         run: bun run check
@@ -57,3 +63,43 @@ jobs:
 
       - name: Verify build produced no tracked changes
         run: git diff --exit-code
+
+  node-compatibility:
+    name: Node ${{ matrix.node }} package runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - "22.13.0"
+          - "24"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+
+      - name: Setup Bun contributor tooling
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Build with immutable dependencies
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+
+      - name: Execute the Node-first artifact
+        run: |
+          node dist/cli.js --version
+          node -e 'import("./dist/index.js").then((module) => { if (module.HARNESS_VERSION !== "0.10.0") process.exit(1); })'
+          node --input-type=module -e 'import { mkdtemp, rm } from "node:fs/promises"; import os from "node:os"; import path from "node:path"; import { openCliSessionStore, resolveHarnessConfig } from "./dist/index.js"; const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-node-compat-")); try { const config = resolveHarnessConfig({ workspace }); const store = await openCliSessionStore({ workspace, stateDirectory: config.stateDirectory, scope: config.scope }); const session = await store.create({ title: "node-compat" }); if ((await store.get(session.sessionId))?.title !== "node-compat") process.exitCode = 1; store.close(); } finally { await rm(workspace, { recursive: true, force: true }); }'

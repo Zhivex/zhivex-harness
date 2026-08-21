@@ -7,7 +7,7 @@ The hostile-repository demo is a reproducible product proof for the governed cha
 One run exercises the real harness contracts in this order:
 
 1. create a secret-bearing hostile fixture under the operating-system temporary directory;
-2. request one allowlisted Bun command and stop at a durable `run_environment_command` approval;
+2. request one allowlisted Node command and stop at a durable `run_environment_command` approval;
 3. close and reopen the SQLite-backed harness before approving the command;
 4. verify from inside OCI that `.env` is absent and outbound network is denied;
 5. modify only the ephemeral snapshot and inspect the content- and run-bound patch;
@@ -19,15 +19,16 @@ The model in this demo is deterministic and scripted. That keeps the proof focus
 
 ## Prerequisites
 
-- Bun 1.3.7 or newer;
+- Node.js 22.13.0 or newer;
+- Bun 1.4.0 or newer for the source-checkout build command;
 - Docker or Podman running locally; and
 - the configured image already present locally.
 
-The default command uses Docker and `oven/bun:1.3.7-slim`:
+The default command uses Docker and `node:24-bookworm-slim`:
 
 ```bash
 bun install --frozen-lockfile
-docker pull oven/bun:1.3.7-slim
+docker pull node:24-bookworm-slim
 bun run build
 bun run demo:hostile
 ```

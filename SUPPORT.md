@@ -1,10 +1,11 @@
 # Support
 
-Zhivex Harness `0.9.x` is a pre-1.0 CLI and TypeScript library for Bun. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
+Zhivex Harness `0.10.x` is a pre-1.0 Node-first CLI and TypeScript library. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
 
 ## Supported baseline
 
-- Bun `1.3.7` or newer;
+- Node.js `22.13.0` or newer; Node 24 LTS is the release and default OCI baseline;
+- Bun `1.4.0` or newer when contributing to this repository or operating a Bun-managed target repository;
 - macOS and Linux, as exercised by CI;
 - Git workspaces;
 - the provider/model combinations marked certified in the package documentation; and

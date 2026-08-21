@@ -23,7 +23,7 @@ interface PackageManifest {
   exports?: Record<string, unknown>;
   files?: string[];
   scripts?: Record<string, string>;
-  engines?: { bun?: string };
+  engines?: { node?: string; bun?: string };
   packageManager?: string;
 }
 
@@ -63,8 +63,8 @@ const manifest = JSON.parse(
 if (manifest.name !== "@zhivex-ai/harness") {
   failures.push("package name must be @zhivex-ai/harness");
 }
-if (!manifest.version || !/^0\.9\.\d+$/.test(manifest.version)) {
-  failures.push("package version must be a stable 0.9.x version");
+if (!manifest.version || !/^0\.10\.\d+$/.test(manifest.version)) {
+  failures.push("package version must be a stable 0.10.x version");
 }
 if (manifest.private === true) {
   failures.push("package.json is still private");
@@ -118,8 +118,12 @@ for (const requiredFile of [
     failures.push(`package files are missing ${requiredFile}`);
   }
 }
-if (manifest.engines?.bun !== ">=1.3.7" || manifest.packageManager !== "bun@1.3.7") {
-  failures.push("Bun engine and package-manager metadata must remain pinned to the release baseline");
+if (
+  manifest.engines?.node !== ">=22.13.0" ||
+  manifest.engines?.bun !== ">=1.4.0" ||
+  manifest.packageManager !== "bun@1.4.0"
+) {
+  failures.push("Node-first runtime compatibility and Bun development-tooling metadata must remain pinned");
 }
 if (!manifest.scripts?.["release:check"]?.includes("check-release-readiness.ts")) {
   failures.push("package scripts do not expose the release readiness gate");
@@ -152,7 +156,7 @@ for (const required of [
   "package-manager-cache: false",
   "bun install --frozen-lockfile --ignore-scripts",
   "bun run release:check",
-  "docker pull oven/bun:1.3.7-slim",
+  "docker pull node:24-bookworm-slim",
   "ZHIVEX_HARNESS_OCI_REQUIRED",
   "bun pm pack",
   "bun run artifact:check",

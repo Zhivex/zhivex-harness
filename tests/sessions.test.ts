@@ -2,8 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { lstat, mkdtemp, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
-import { Database } from "bun:sqlite";
+import { DatabaseSync } from "node:sqlite";
 
 import {
   HARNESS_SESSION_INDEX_FILE,
@@ -132,12 +131,12 @@ describe("durable CLI sessions", () => {
     store.close();
     openStores.splice(openStores.indexOf(store), 1);
 
-    const database = new Database(path.join(stateDirectory, HARNESS_SESSION_INDEX_FILE), { readonly: true });
+    const database = new DatabaseSync(path.join(stateDirectory, HARNESS_SESSION_INDEX_FILE), { readOnly: true });
     try {
-      const rows = database.query<{ title: string; run_id: string; provider: string; model: string }, []>(`
+      const rows = database.prepare(`
         SELECT s.title, r.run_id, r.provider, r.model
         FROM zhivex_cli_sessions s JOIN zhivex_cli_session_runs r ON r.session_id = s.session_id
-      `).all();
+      `).all() as Array<{ title: string; run_id: string; provider: string; model: string }>;
       expect(JSON.stringify(rows)).not.toContain(secret);
       expect(rows).toEqual([{
         title: "deploy [REDACTED] for [REDACTED]",
@@ -146,7 +145,7 @@ describe("durable CLI sessions", () => {
         model: "gpt-5.6-luna"
       }]);
     } finally {
-      database.close(false);
+      database.close();
     }
   });
 

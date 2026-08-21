@@ -34,12 +34,12 @@ export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
 
 export const HARNESS_EXECUTION_BACKENDS = ["none", "oci"] as const;
 export const HARNESS_OCI_RUNTIMES = ["docker", "podman"] as const;
-export const HARNESS_EXECUTION_POLICY_VERSION = "2026-08-20-v2" as const;
+export const HARNESS_EXECUTION_POLICY_VERSION = "2026-08-21-v3" as const;
 
 export const DEFAULT_OCI_EXECUTION = {
   runtime: "docker",
-  image: "oven/bun:1.3.7-slim",
-  allowedCommands: ["bun"],
+  image: "node:24-bookworm-slim",
+  allowedCommands: ["node", "npm"],
   maxProcessRuntimeMs: 120_000,
   maxProcessOutputBytes: 20_000,
   maxMemoryMb: 1_024,
@@ -353,8 +353,10 @@ const resolveOciAllowedCommands = (configured: readonly string[] | undefined) =>
   if (invalid) {
     throw new Error(`Invalid OCI command name: ${invalid}. Use a bare executable name without a path.`);
   }
-  if (!commands.includes("bun")) {
-    throw new Error("ociAllowedCommands must include bun so declared package checks remain available.");
+  if (!commands.some((command) => ["npm", "pnpm", "yarn", "bun"].includes(command))) {
+    throw new Error(
+      "ociAllowedCommands must include npm, pnpm, yarn, or bun so declared package checks remain available."
+    );
   }
   return commands;
 };

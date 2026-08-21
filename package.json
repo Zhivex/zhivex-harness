@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -31,6 +31,7 @@
     "mcp",
     "docker",
     "typescript",
+    "node",
     "bun",
     "harness",
     "zhivex"
@@ -59,16 +60,24 @@
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "start": "bun run dist/cli.js",
-    "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target bun --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target bun --packages external && tsc --emitDeclarationOnly",
+    "start": "node dist/cli.js",
+    "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "docs:check": "bun run scripts/check-docs.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
-    "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100",
+    "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100 --repetitions 3 --warmups 0",
     "benchmark:oci": "bun run scripts/benchmark-oci.ts",
+    "benchmark:safe-fix": "bun run scripts/benchmark-time-to-safe-fix.ts",
+    "benchmark:safe-fix:ci": "bun run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --summary",
+    "benchmark:safe-fix:live": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --driver-zhivex",
+    "benchmark:safe-fix:live:smoke": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --summary",
+    "benchmark:safe-fix:live:expanded": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --dataset evaluations/time-to-safe-fix-expanded.jsonl --dataset-name zhivex-time-to-safe-fix-expanded --tasks 12 --repetitions 3 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --driver-timeout-ms 300000 --summary",
+    "benchmark:safe-fix:baseline": "bun run scripts/create-time-to-safe-fix-baseline.ts",
+    "benchmark:safe-fix:image:check": "bun run scripts/build-time-to-safe-fix-image.ts --validate-only",
+    "benchmark:safe-fix:image:build": "bun run scripts/build-time-to-safe-fix-image.ts",
     "smoke:package": "bun run build && bun run scripts/package-smoke.ts",
     "smoke:artifact": "bun run scripts/package-smoke.ts",
     "smoke:mcp": "bun run scripts/mcp-interoperability-smoke.ts",
@@ -81,7 +90,7 @@
     "demo:hostile": "bun run dist/hostile-repository-demo.js",
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run benchmark:workspace:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
+    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
     "release:check": "bun run check && bun audit && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
     "release:status": "bun run scripts/check-registry-release-status.ts",
     "release:verify": "bun run scripts/verify-registry-release.ts"
@@ -101,10 +110,12 @@
   "devDependencies": {
     "@modelcontextprotocol/server": "2.0.0",
     "@types/bun": "1.3.14",
+    "@types/node": "24",
     "typescript": "6.0.3"
   },
   "engines": {
-    "bun": ">=1.3.7"
+    "node": ">=22.13.0",
+    "bun": ">=1.4.0"
   },
-  "packageManager": "bun@1.3.7"
+  "packageManager": "bun@1.4.0"
 }

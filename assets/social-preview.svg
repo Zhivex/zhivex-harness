@@ -38,7 +38,7 @@
 
     <g transform="translate(0 330)">
       <text x="0" y="0" fill="#f7fbff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="760">ZHIVEX HARNESS</text>
-      <text x="0" y="38" fill="#7488a5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">provider-portable · Bun-first · local by design</text>
+      <text x="0" y="38" fill="#7488a5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18">provider-portable · Node-first · local by design</text>
     </g>
   </g>
 

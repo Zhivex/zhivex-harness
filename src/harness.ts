@@ -16,6 +16,7 @@ import {
   type AgentRunOutput,
   type AgentStreamEvent,
   type LanguageModel,
+  type ToolDefinition,
   type ToolExecutionContext,
   type ToolSet
 } from "@zhivex-ai/agents";
@@ -82,7 +83,7 @@ import {
 } from "./execution-environment.js";
 
 const APPROVAL_VERSION = "2026-08-17-v5";
-const TOOL_CONTRACT_VERSION = "workspace-batch-v2";
+const TOOL_CONTRACT_VERSION = "workspace-verified-transaction-v3";
 
 const createHarnessBinding = (
   config: HarnessConfig,
@@ -123,14 +124,17 @@ export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable
 
 Rules:
 - Match the user's language.
-- Inspect the repository before proposing changes. Prefer search_many and read_files for independent lookups, then use search_files or read_file when pagination or one focused read is clearer.
+- Inspect the repository before proposing changes. Use list_files with includeDigests=false for fast topology discovery, then prefer search_many and read_files for independent lookups. Omit cursor on the first paginated call and only reuse an exact nextCursor returned by the immediately preceding matching request. Read the exact digest before proposing any edit.
 - Use only workspace-relative paths. Never request or expose secrets.
 - Make the smallest coherent change that fully addresses the task.
 - For every file edit, first read its digest and call propose_edits. Apply exactly that reviewed proposal with apply_patch.
 - apply_patch, move_file, quarantine_file, restore_file, and run_check require explicit approval from the operator.
+- apply_reviewed_edits is the one-step equivalent of propose_edits plus apply_patch: its complete digest-bound changes are the approval payload and are applied atomically only after approval.
+- verify_and_apply_reviewed_edits requests one approval for complete digest-bound edits plus exact verifier argv, applies them to a clean OCI snapshot, rejects verifier-created drift, and imports only after exit code 0.
 - Calling an approval-gated tool is how you request that approval: call the tool with its complete reviewed arguments, then let the runtime pause before execution. Never replace the tool call with a textual approval request.
 - With enforced OCI execution enabled, workspace tools operate on an ephemeral snapshot. Use inspect_environment_patch and obtain a separate approval through apply_environment_patch before changing the host workspace.
-- run_environment_command executes one allowlisted argv command without a host shell. Network, privileges, resources, environment variables, and output are bounded by the OCI policy.
+- run_environment_command executes one allowlisted argv command without a host shell. Prefer run_environment_batch for a reviewed sequence that can share one final workspace attestation. Network, privileges, resources, environment variables, and output are bounded by the OCI policy.
+- verify_and_apply_environment_patch binds one reviewed patch and verifier argv, runs that verifier inside OCI, rejects any verifier-created patch drift, and imports only after exit code 0.
 - Never overwrite stale content. If an expected digest no longer matches, inspect the file again and create a new proposal.
 - Deletions are recoverable: use quarantine_file, never permanent deletion. Use restore_file to recover quarantined content.
 - Never claim a check passed unless run_check returned exitCode 0.
@@ -173,6 +177,16 @@ export interface HarnessRunOptions {
     approvals: readonly AgentApprovalRequest[],
     state: AgentRunOutput["state"]
   ) => Promise<readonly AgentApprovalResponse[] | undefined>;
+  /**
+   * Application-owned local tools that may complete the run from their approved
+   * receipt without another model turn. Only one approved local-tool request is
+   * eligible, and it still passes schema validation, signature verification,
+   * execution-environment authorization, and durable state persistence. A stale
+   * digest rejection from the verified-edit transaction is journaled and
+   * returned to the model so a corrected call must cross a new approval
+   * boundary; other failures remain terminal.
+   */
+  terminalReceiptTools?: readonly string[];
 }
 
 const verifyEditPreconditions = async (workspace: Workspace, changes: readonly EditChange[]) => {
@@ -215,22 +229,35 @@ const mutationApproval = {
   metadata: toolMetadata(["filesystem", "write"], "high")
 };
 
+const verifierCommandSchema = z.strictObject({
+  command: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9._+-]*$/),
+  args: z.array(z.string().max(8_192)).max(256).default([])
+});
+
+const verifiedReviewedEditsInputSchema = editProposalInputSchema.extend({
+  command: verifierCommandSchema.shape.command,
+  args: verifierCommandSchema.shape.args
+});
+
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   list_files: tool({
     name: "list_files",
-    description: "List regular files with content digests using a stable cursor. Build artifacts, dependencies, Git internals, and harness state are ignored.",
+    description: "List regular files using a stable cursor. Omit cursor on the first call; on later pages pass only the exact nextCursor returned by the preceding matching request. Set includeDigests=false for fast path-only topology discovery; keep it true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
     schema: z.object({
       path: z.string().min(1).default("."),
       limit: z.number().int().min(1).max(500).default(200),
-      cursor: z.string().min(1).max(2000).optional()
+      includeDigests: z.boolean().default(true),
+      cursor: z.string().min(1).max(2000).optional().describe(
+        "Omit on the first page. For a later page, pass only the exact nextCursor returned by the preceding matching list_files result."
+      )
     }),
     metadata: readOnlyMetadata,
-    execute: async ({ path, limit, cursor }, context) => serializeJsonValue(await (
-      harnessExecutionSession(context)?.workspace ?? workspace
-    ).listFiles(path, {
-      limit,
-      ...(cursor ? { cursor } : {})
-    }))
+    execute: async ({ path, limit, includeDigests, cursor }, context) => {
+      const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
+      return serializeJsonValue(await (includeDigests
+        ? selectedWorkspace.listFiles(path, { limit, includeDigests: true, ...(cursor ? { cursor } : {}) })
+        : selectedWorkspace.listFiles(path, { limit, includeDigests: false, ...(cursor ? { cursor } : {}) })));
+    }
   }),
   read_file: tool({
     name: "read_file",
@@ -329,6 +356,22 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       ));
     }
   }),
+  apply_reviewed_edits: tool({
+    name: "apply_reviewed_edits",
+    description: "Request approval for complete digest-bound changes and atomically apply them without copying a separate proposalId between model turns. The exact paths, expected digests, and contents are the approval payload.",
+    schema: editProposalInputSchema,
+    ...mutationApproval,
+    execute: async ({ changes }, context) => {
+      const proposal = createEditProposal({ changes });
+      return serializeJsonValue(editContractDocument(
+        "patch-result",
+        await (harnessExecutionSession(context)?.workspace ?? workspace).applyPatch({
+          proposalId: proposal.proposalId,
+          changes
+        })
+      ));
+    }
+  }),
   move_file: tool({
     name: "move_file",
     description: "Move one regular file without overwriting the destination. The source must still match expectedDigest.",
@@ -361,7 +404,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   run_check: tool({
     name: "run_check",
-    description: `Run one explicitly allowed package.json script through Bun (${allowedChecks.join(", ")}). Read package.json first and pass its exact script text as expectedScript so the operator can review the command. No arbitrary shell or .env loading is exposed.`,
+    description: `Run one explicitly allowed package.json script through the repository package manager (${allowedChecks.join(", ")}). Read package.json first and pass its exact script text as expectedScript so the operator can review the command. No arbitrary shell or implicit lifecycle hook is exposed.`,
     schema: z.object({
       check: z.string().min(1).max(100).regex(/^[A-Za-z0-9:_-]+$/),
       expectedScript: z.string().min(1).max(2000)
@@ -421,6 +464,31 @@ export const createExecutionEnvironmentTools = (workspace: Workspace) => ({
       await requireExecutionSession(context).runCommand(command, args, context)
     )
   }),
+  run_environment_batch: tool({
+    name: "run_environment_batch",
+    description: "Run 1 to 32 reviewed allowlisted argv commands sequentially inside one enforced OCI cycle. Execution stops on the first failure and the workspace is attested and published only after the batch succeeds; no host shell or network is exposed.",
+    schema: z.strictObject({
+      commands: z.array(z.strictObject({
+        command: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9._+-]*$/),
+        args: z.array(z.string().max(8_192)).max(256).default([])
+      })).min(1).max(32)
+    }).superRefine((input, context) => {
+      if (input.commands.reduce((total, command) => total + command.args.length, 0) > 256) {
+        context.addIssue({
+          code: "custom",
+          path: ["commands"],
+          message: "run_environment_batch allows at most 256 aggregate arguments."
+        });
+      }
+    }),
+    requiresApproval: true,
+    approvalMode: "interrupt",
+    approvalVersion: APPROVAL_VERSION,
+    metadata: toolMetadata(["code-execution", "filesystem"], "high"),
+    execute: async ({ commands }, context) => serializeJsonValue(
+      await requireExecutionSession(context).runCommandBatch(commands, context)
+    )
+  }),
   environment_status: tool({
     name: "environment_status",
     description: "Inspect the immutable image binding and enforced policy for the active run without exposing host paths or environment variables.",
@@ -443,6 +511,85 @@ export const createExecutionEnvironmentTools = (workspace: Workspace) => ({
     execute: async ({ patchId }, context) => serializeJsonValue(
       await requireExecutionSession(context).importPatch(workspace, patchId)
     )
+  }),
+  verify_and_apply_environment_patch: tool({
+    name: "verify_and_apply_environment_patch",
+    description: "Request one approval to verify an already inspected content-bound OCI patch with exact allowlisted argv and import it only when verification succeeds without changing the reviewed patch.",
+    schema: z.strictObject({
+      patchId: fileDigestSchema,
+      command: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9._+-]*$/),
+      args: z.array(z.string().max(8_192)).max(256).default([])
+    }),
+    requiresApproval: true,
+    approvalMode: "interrupt",
+    approvalVersion: "2026-08-21-verify-and-apply-v1",
+    metadata: toolMetadata(["code-execution", "filesystem"], "high"),
+    execute: async ({ patchId, command, args }, context) => {
+      const session = requireExecutionSession(context);
+      const beforeVerification = await session.inspectPatch();
+      if (beforeVerification.patchId !== patchId) {
+        throw new Error("The OCI patch changed after review; inspect it again before verification and import.");
+      }
+      const verification = await session.runCommand(command, args, context);
+      if (verification.exitCode !== 0) {
+        throw new Error(`The approved verifier failed with exit code ${verification.exitCode}; the host workspace was not changed.`);
+      }
+      const afterVerification = await session.inspectPatch();
+      if (afterVerification.patchId !== patchId) {
+        throw new Error("The verifier changed the reviewed OCI patch; the host workspace was not changed.");
+      }
+      const imported = await session.importPatch(workspace, patchId);
+      return serializeJsonValue({
+        schemaVersion: 1,
+        kind: "verified-environment-patch-import",
+        patchId,
+        verification,
+        imported
+      });
+    }
+  }),
+  verify_and_apply_reviewed_edits: tool({
+    name: "verify_and_apply_reviewed_edits",
+    description: "Request one approval for complete digest-bound edits and exact verifier argv. The transaction requires a clean OCI snapshot, applies the edits atomically, rejects verifier-created drift, and imports the reviewed patch only after exit code 0.",
+    schema: verifiedReviewedEditsInputSchema,
+    requiresApproval: true,
+    approvalMode: "interrupt",
+    approvalVersion: "2026-08-21-verify-reviewed-edits-v1",
+    metadata: toolMetadata(["code-execution", "filesystem", "write"], "high"),
+    execute: async ({ changes, command, args }, context) => {
+      const session = requireExecutionSession(context);
+      const initialPatch = await session.inspectPatch();
+      if (initialPatch.entries.length !== 0) {
+        throw new Error("The verified edit transaction requires a clean OCI snapshot; the host workspace was not changed.");
+      }
+
+      const proposal = createEditProposal({ changes });
+      await session.workspace.applyPatch({ proposalId: proposal.proposalId, changes });
+      const reviewedPatch = await session.inspectPatch();
+      const approvedPaths = [...new Set(changes.map((change) => change.path))].sort();
+      const reviewedPaths = reviewedPatch.entries.map((entry) => entry.path).sort();
+      if (JSON.stringify(reviewedPaths) !== JSON.stringify(approvedPaths)) {
+        throw new Error("The OCI patch does not match the approved edit paths; the host workspace was not changed.");
+      }
+
+      const verification = await session.runCommand(command, args, context);
+      if (verification.exitCode !== 0) {
+        throw new Error(`The approved verifier failed with exit code ${verification.exitCode}; the host workspace was not changed.`);
+      }
+      const afterVerification = await session.inspectPatch();
+      if (afterVerification.patchId !== reviewedPatch.patchId) {
+        throw new Error("The verifier changed the reviewed OCI patch; the host workspace was not changed.");
+      }
+      const imported = await session.importPatch(workspace, reviewedPatch.patchId);
+      return serializeJsonValue({
+        schemaVersion: 1,
+        kind: "verified-reviewed-edit-import",
+        proposalId: proposal.proposalId,
+        patchId: reviewedPatch.patchId,
+        verification,
+        imported
+      });
+    }
   })
 });
 
@@ -722,6 +869,332 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
   };
 };
 
+const canonicalJson = (value: unknown): string => {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
+    .join(",")}}`;
+};
+
+const localApprovalResolutionPayload = (
+  inputDigest: string,
+  approve: boolean,
+  reason: string | undefined
+) => JSON.stringify({ inputDigest, approve, reason: reason ?? null });
+
+const terminalToolCallId = (
+  runId: string,
+  step: number,
+  providerToolCallId: string,
+  toolName: string,
+  input: unknown
+) => `tool_${createHash("sha256")
+  .update(`${runId}\0${step}\0${providerToolCallId}\0${toolName}\0${canonicalJson(input)}`)
+  .digest("hex")}`;
+
+const recoverableTerminalStaleDigest = (toolName: string, message: string) =>
+  toolName === "verify_and_apply_reviewed_edits" && /^Stale patch rejected for .+\.$/.test(message);
+
+const executeTerminalReceiptTool = async (
+  harness: ZhivexHarness,
+  waiting: AgentRunOutput,
+  approval: AgentApprovalRequest,
+  response: AgentApprovalResponse
+): Promise<AgentRunOutput> => {
+  if (
+    approval.kind !== "local-tool" ||
+    response.provider !== approval.provider ||
+    response.approvalRequestId !== approval.id ||
+    !response.approve ||
+    !approval.toolCallId ||
+    approval.step === undefined
+  ) {
+    throw new Error("Terminal receipt finalization requires one matching approved local-tool request.");
+  }
+  const candidate = (harness.agent.tools as ToolSet | undefined)?.[approval.name];
+  if (!candidate || !("execute" in candidate)) {
+    throw new Error(`Approved terminal tool ${approval.name} is not locally callable.`);
+  }
+  const definition = candidate as ToolDefinition;
+  const parsedInput = definition.schema.parse(JSON.parse(approval.arguments));
+  const serializedInput = serializeJsonValue(parsedInput);
+  const session = await harness.executionEnvironment?.acquire({
+    runId: waiting.state.runId,
+    ...(waiting.state.agentId ? { agentId: waiting.state.agentId } : {}),
+    ...(waiting.state.scope ? { scope: waiting.state.scope } : {}),
+    ...(waiting.state.metadata ? { metadata: waiting.state.metadata } : {})
+  });
+  if (!session) throw new Error("Terminal receipt finalization requires an active execution environment.");
+
+  const toolVersion = [
+    definition.approvalVersion,
+    `environment:${session.binding.fingerprint}`
+  ].filter(Boolean).join("|") || "1";
+  const inputDigest = createHash("sha256").update(canonicalJson({
+    runId: waiting.state.runId,
+    step: approval.step,
+    toolCallId: approval.toolCallId,
+    toolName: approval.name,
+    input: serializedInput,
+    toolVersion
+  })).digest("hex");
+  if (
+    approval.id !== `approval_${inputDigest}` ||
+    approval.inputDigest !== inputDigest ||
+    approval.toolVersion !== toolVersion ||
+    approval.arguments !== canonicalJson(serializedInput)
+  ) {
+    await session.release?.({ status: "failed", error: { message: "Approval binding mismatch." } });
+    throw new Error("The terminal tool approval is stale or does not match the current runtime binding.");
+  }
+  if (harness.agent.toolApprovalSigner) {
+    if (!approval.signature) {
+      await session.release?.({ status: "failed", error: { message: "Missing approval signature." } });
+      throw new Error("The terminal tool approval is missing its required signature.");
+    }
+    const valid = harness.agent.toolApprovalSigner.verify
+      ? await harness.agent.toolApprovalSigner.verify(inputDigest, approval.signature)
+      : await harness.agent.toolApprovalSigner.sign(inputDigest) === approval.signature;
+    if (!valid) {
+      await session.release?.({ status: "failed", error: { message: "Invalid approval signature." } });
+      throw new Error("The terminal tool approval signature is invalid.");
+    }
+  }
+
+  const toolCall = { id: approval.toolCallId, name: approval.name, input: serializedInput };
+  const context: ToolExecutionContext = {
+    runId: waiting.state.runId,
+    ...(waiting.state.agentId ? { agentId: waiting.state.agentId } : {}),
+    ...(harness.agent.name ? { agentName: harness.agent.name } : {}),
+    ...(waiting.state.scope ? { scope: waiting.state.scope } : {}),
+    ...(waiting.state.metadata ? { metadata: waiting.state.metadata } : {}),
+    executionEnvironment: session,
+    toolCall,
+    step: approval.step,
+    model: harness.agent.model,
+    idempotencyKey: `${waiting.state.runId}:${approval.toolCallId}`
+  };
+  const authorization = {
+    manifest: session.manifest,
+    binding: session.binding,
+    tool: definition,
+    toolCall,
+    input: parsedInput,
+    context,
+    phase: "execute" as const
+  };
+  const decision = await session.authorize(authorization);
+  if (decision.decision === "deny") {
+    await session.release?.({ status: "failed", error: { message: decision.reason } });
+    throw new Error(`Terminal tool execution was denied by the execution environment: ${decision.reason}`);
+  }
+
+  const resolutionSignature = harness.agent.toolApprovalSigner
+    ? await harness.agent.toolApprovalSigner.sign(localApprovalResolutionPayload(
+      inputDigest,
+      response.approve,
+      response.reason
+    ))
+    : undefined;
+
+  const durableId = terminalToolCallId(
+    waiting.state.runId,
+    approval.step,
+    approval.toolCallId,
+    approval.name,
+    serializedInput
+  );
+  const idempotencyKey = `${waiting.state.runId}:${durableId}`;
+  const journalCandidate = {
+    runId: waiting.state.runId,
+    ...(waiting.state.scope ? { scope: waiting.state.scope } : {}),
+    toolCallId: durableId,
+    toolName: approval.name,
+    status: "pending" as const,
+    idempotencyKey,
+    revision: 0,
+    input: serializedInput,
+    updatedAt: Date.now()
+  };
+  const journal = harness.store.claimToolExecution
+    ? await harness.store.claimToolExecution(journalCandidate)
+    : undefined;
+  let output;
+  try {
+    if (journal && !journal.claimed) {
+      if (journal.entry.status === "completed") {
+        output = journal.entry.output ?? null;
+      } else if (journal.entry.status === "failed") {
+        throw new Error(journal.entry.error?.message ?? `Tool "${approval.name}" previously failed.`);
+      } else {
+        throw new Error(`Tool "${approval.name}" has an indeterminate durable execution.`);
+      }
+    } else {
+      output = serializeJsonValue(await session.execute(authorization, () =>
+        definition.execute(parsedInput, { ...context, idempotencyKey })
+      ));
+      if (journal?.claimed && harness.store.completeToolExecution) {
+        await harness.store.completeToolExecution({
+          ...journal.entry,
+          status: "completed",
+          output,
+          completedAt: Date.now(),
+          updatedAt: Date.now()
+        }, { expectedRevision: journal.entry.revision });
+      }
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (journal?.claimed && harness.store.completeToolExecution) {
+      await Promise.resolve(harness.store.completeToolExecution({
+        ...journal.entry,
+        status: "failed",
+        error: { message },
+        completedAt: Date.now(),
+        updatedAt: Date.now()
+      }, { expectedRevision: journal.entry.revision })).catch(() => undefined);
+    }
+    await session.release?.({
+      status: "failed",
+      error: { message }
+    });
+    if (!recoverableTerminalStaleDigest(approval.name, message)) throw error;
+
+    const now = Date.now();
+    const toolResult = {
+      toolCallId: approval.toolCallId,
+      toolName: approval.name,
+      error: { message },
+      isError: true
+    };
+    const messages: ModelMessage[] = [
+      ...waiting.messages,
+      { role: "tool", parts: [{ type: "tool-result", toolResult }] }
+    ];
+    const steps = waiting.steps.map((step) => step.index === approval.step
+      ? {
+          ...step,
+          status: "completed" as const,
+          finishedAt: now,
+          toolResults: [...step.toolResults, toolResult]
+        }
+      : step);
+    const previousRevision = waiting.state.revision ?? 0;
+    const {
+      finalOutput: _finalOutput,
+      finishReason: _finishReason,
+      providerFinishReason: _providerFinishReason,
+      error: _stateError,
+      ...resumableState
+    } = waiting.state;
+    const state = {
+      ...resumableState,
+      revision: previousRevision + 1,
+      status: "running" as const,
+      messages,
+      steps,
+      toolResults: [...waiting.toolResults, toolResult],
+      pendingApprovals: [],
+      approvalHistory: [
+        ...(waiting.state.approvalHistory ?? []),
+        {
+          requestId: approval.id,
+          kind: "local-tool" as const,
+          provider: approval.provider,
+          approve: true,
+          ...(response.reason ? { reason: response.reason } : {}),
+          toolCallId: approval.toolCallId,
+          step: approval.step,
+          inputDigest,
+          toolVersion,
+          ...(resolutionSignature ? { signature: resolutionSignature } : {}),
+          resolvedAt: now
+        }
+      ],
+      updatedAt: now
+    };
+    await harness.store.save(state, { expectedRevision: previousRevision });
+    return {
+      status: "running",
+      outputText: state.outputText,
+      ...(waiting.usage ? { usage: waiting.usage } : {}),
+      messages,
+      steps,
+      toolResults: state.toolResults,
+      state
+    };
+  }
+
+  const now = Date.now();
+  const toolResult = {
+    toolCallId: approval.toolCallId,
+    toolName: approval.name,
+    output,
+    isError: false
+  };
+  const messages: ModelMessage[] = [
+    ...waiting.messages,
+    { role: "tool", parts: [{ type: "tool-result", toolResult }] }
+  ];
+  const steps = waiting.steps.map((step) => step.index === approval.step
+    ? {
+        ...step,
+        status: "completed" as const,
+        finishedAt: now,
+        toolResults: [...step.toolResults, toolResult]
+      }
+    : step);
+  const outputText = canonicalJson(output);
+  const previousRevision = waiting.state.revision ?? 0;
+  const state = {
+    ...waiting.state,
+    revision: previousRevision + 1,
+    status: "completed" as const,
+    messages,
+    steps,
+    toolResults: [...waiting.toolResults, toolResult],
+    outputText,
+    finalOutput: output,
+    finishReason: "stop" as const,
+    providerFinishReason: "terminal-tool-receipt",
+    pendingApprovals: [],
+    approvalHistory: [
+      ...(waiting.state.approvalHistory ?? []),
+      {
+        requestId: approval.id,
+        kind: "local-tool" as const,
+        provider: approval.provider,
+        approve: true,
+        ...(response.reason ? { reason: response.reason } : {}),
+        toolCallId: approval.toolCallId,
+        step: approval.step,
+        inputDigest,
+        toolVersion,
+        ...(resolutionSignature ? { signature: resolutionSignature } : {}),
+        resolvedAt: now
+      }
+    ],
+    updatedAt: now
+  };
+  await harness.store.save(state, { expectedRevision: previousRevision });
+  await session.release?.({ status: "completed" });
+  return {
+    status: "completed",
+    outputText,
+    finalOutput: output,
+    finishReason: "stop",
+    providerFinishReason: "terminal-tool-receipt",
+    ...(waiting.usage ? { usage: waiting.usage } : {}),
+    messages,
+    steps,
+    toolResults: state.toolResults,
+    state
+  };
+};
+
 export const runHarness = async (
   harness: ZhivexHarness,
   input: AgentRunInput<LanguageModel>,
@@ -774,6 +1247,27 @@ export const runHarness = async (
     const approvals = await options.resolveApprovals?.(result.state.pendingApprovals, result.state);
     if (!approvals) {
       return result;
+    }
+
+    const terminalTools = new Set(options.terminalReceiptTools ?? []);
+    if (
+      result.state.pendingApprovals.length === 1 &&
+      approvals.length === 1 &&
+      approvals[0]?.approve === true &&
+      terminalTools.has(result.state.pendingApprovals[0]!.name)
+    ) {
+      const terminalResult = await executeTerminalReceiptTool(
+        harness,
+        result,
+        result.state.pendingApprovals[0]!,
+        approvals[0]!
+      );
+      if (terminalResult.status === "completed") return terminalResult;
+      nextInput = {
+        ...continuationOptions,
+        state: terminalResult.state
+      };
+      continue;
     }
 
     nextInput = {
