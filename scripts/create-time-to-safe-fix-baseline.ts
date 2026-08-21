@@ -20,6 +20,7 @@ interface ProfileAggregate {
   environmentFailure: RateAggregate;
   unauthorizedEffectFree: RateAggregate;
   duration: { p50Ms: number; p95Ms: number; p99Ms: number };
+  timeToSafeFix: { p50Ms: number; p95Ms: number; p99Ms: number };
   promptTokens: number;
   completionTokens: number;
   toolCalls: number;
@@ -44,6 +45,15 @@ interface BenchmarkReport {
     profile: string;
     pairs: number;
     durationRatio: { p50: number; p95: number; p99: number; unit: string };
+  }>;
+  samples?: Array<{
+    profile: string;
+    efficiency?: {
+      activeToolDefinitions: number;
+      modelTurns: number;
+      compactions: number;
+      approvalRounds: unknown[];
+    };
   }>;
 }
 
@@ -114,31 +124,57 @@ if (metadata.report.sha256 !== actualReportSha256) {
 
 const profiles = report.aggregates
   .filter((aggregate) => aggregate.variant === "all")
-  .map((aggregate) => ({
-    profile: aggregate.profile,
-    observedRuns: aggregate.runs,
-    attackedRuns: aggregate.attackCompleted.samples,
-    safeResolvedSuccesses: aggregate.safeResolved.successes,
-    safeResolvedRate: aggregate.safeResolved.rate,
-    safeResolvedWilson95: aggregate.safeResolved.wilson95,
-    utilityPassSuccesses: aggregate.utilityPass.successes,
-    attackAttempted: aggregate.attackAttempted.successes,
-    attackCompleted: aggregate.attackCompleted.successes,
-    unauthorizedEffects: aggregate.runs - aggregate.unauthorizedEffectFree.successes,
-    environmentFailures: aggregate.environmentFailure.successes,
-    durationMs: {
-      p50: aggregate.duration.p50Ms,
-      p95: aggregate.duration.p95Ms,
-      p99: aggregate.duration.p99Ms
-    },
-    averagePerRun: {
-      promptTokens: average(aggregate.promptTokens, aggregate.runs),
-      completionTokens: average(aggregate.completionTokens, aggregate.runs),
-      totalTokens: average(aggregate.promptTokens + aggregate.completionTokens, aggregate.runs),
-      toolCalls: average(aggregate.toolCalls, aggregate.runs),
-      approvals: average(aggregate.approvals, aggregate.runs)
-    }
-  }));
+  .map((aggregate) => {
+    const efficiencyRecords = (report.samples ?? [])
+      .filter((sample) => sample.profile === aggregate.profile)
+      .flatMap((sample) => sample.efficiency ? [sample.efficiency] : []);
+    return {
+      profile: aggregate.profile,
+      observedRuns: aggregate.runs,
+      attackedRuns: aggregate.attackCompleted.samples,
+      safeResolvedSuccesses: aggregate.safeResolved.successes,
+      safeResolvedRate: aggregate.safeResolved.rate,
+      safeResolvedWilson95: aggregate.safeResolved.wilson95,
+      utilityPassSuccesses: aggregate.utilityPass.successes,
+      attackAttempted: aggregate.attackAttempted.successes,
+      attackCompleted: aggregate.attackCompleted.successes,
+      unauthorizedEffects: aggregate.runs - aggregate.unauthorizedEffectFree.successes,
+      environmentFailures: aggregate.environmentFailure.successes,
+      durationMs: {
+        p50: aggregate.timeToSafeFix.p50Ms,
+        p95: aggregate.timeToSafeFix.p95Ms,
+        p99: aggregate.timeToSafeFix.p99Ms
+      },
+      averagePerRun: {
+        promptTokens: average(aggregate.promptTokens, aggregate.runs),
+        completionTokens: average(aggregate.completionTokens, aggregate.runs),
+        totalTokens: average(aggregate.promptTokens + aggregate.completionTokens, aggregate.runs),
+        toolCalls: average(aggregate.toolCalls, aggregate.runs),
+        approvals: average(aggregate.approvals, aggregate.runs)
+      },
+      ...(efficiencyRecords.length > 0 ? {
+        efficiency: {
+          observedRuns: efficiencyRecords.length,
+          activeToolDefinitions: average(
+            efficiencyRecords.reduce((total, record) => total + record.activeToolDefinitions, 0),
+            efficiencyRecords.length
+          ),
+          modelTurns: average(
+            efficiencyRecords.reduce((total, record) => total + record.modelTurns, 0),
+            efficiencyRecords.length
+          ),
+          approvalRounds: average(
+            efficiencyRecords.reduce((total, record) => total + record.approvalRounds.length, 0),
+            efficiencyRecords.length
+          ),
+          compactions: average(
+            efficiencyRecords.reduce((total, record) => total + record.compactions, 0),
+            efficiencyRecords.length
+          )
+        }
+      } : {})
+    };
+  });
 
 if (profiles.length !== report.matrix.profiles.length) {
   throw new Error("The report does not contain one all-variant aggregate for every profile.");
@@ -177,8 +213,8 @@ const baseline = {
     }
   })),
   evidenceBoundary: [
-    "Local smoke observation from two synthetic tasks; not a RepoGuardBench score.",
-    "Small sample confidence intervals are retained and tail latency is not representative.",
+    `Local observation from ${report.dataset.tasks} synthetic task${report.dataset.tasks === 1 ? "" : "s"}; not a RepoGuardBench score.`,
+    "Confidence intervals are retained; tail latency remains specific to this local run.",
     "Raw samples, host details, worktree paths, and the invocation command are intentionally omitted."
   ]
 };

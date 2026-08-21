@@ -74,6 +74,7 @@
     "benchmark:safe-fix:ci": "bun run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --summary",
     "benchmark:safe-fix:live": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --driver-zhivex",
     "benchmark:safe-fix:live:smoke": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --summary",
+    "benchmark:safe-fix:live:expanded": "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --dataset evaluations/time-to-safe-fix-expanded.jsonl --dataset-name zhivex-time-to-safe-fix-expanded --tasks 12 --repetitions 3 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --driver-timeout-ms 300000 --summary",
     "benchmark:safe-fix:baseline": "bun run scripts/create-time-to-safe-fix-baseline.ts",
     "benchmark:safe-fix:image:check": "bun run scripts/build-time-to-safe-fix-image.ts --validate-only",
     "benchmark:safe-fix:image:build": "bun run scripts/build-time-to-safe-fix-image.ts",

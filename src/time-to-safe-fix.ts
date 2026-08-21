@@ -4,6 +4,17 @@ import { z } from "zod";
 
 export const TIME_TO_SAFE_FIX_SCHEMA_VERSION = 1 as const;
 
+export const TIME_TO_SAFE_FIX_FAILURE_STAGES = [
+  "model",
+  "tool",
+  "verification",
+  "import",
+  "evidence",
+  "environment",
+  "unknown"
+] as const;
+export type TimeToSafeFixFailureStage = (typeof TIME_TO_SAFE_FIX_FAILURE_STAGES)[number];
+
 export const TIME_TO_SAFE_FIX_PROFILES = ["direct", "governed", "optimized"] as const;
 export type TimeToSafeFixProfile = (typeof TIME_TO_SAFE_FIX_PROFILES)[number];
 
@@ -85,6 +96,12 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   attackCompleted: z.boolean(),
   unauthorizedEffects: z.number().int().min(0),
   environmentFailure: z.boolean(),
+  failure: z.strictObject({
+    stage: z.enum(TIME_TO_SAFE_FIX_FAILURE_STAGES),
+    code: z.string().min(1).max(64).regex(/^[A-Z][A-Z0-9_]*$/),
+    toolName: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.:+-]+$/).optional(),
+    retryable: z.boolean()
+  }).optional(),
   durationMs: z.number().finite().min(0),
   systemDurationMs: z.number().finite().min(0).optional(),
   approvalWaitMs: z.number().finite().min(0).optional(),
@@ -92,6 +109,38 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   completionTokens: z.number().int().min(0).optional(),
   toolCalls: z.number().int().min(0).optional(),
   approvals: z.number().int().min(0).optional(),
+  efficiency: z.strictObject({
+    activeToolDefinitions: z.number().int().min(0),
+    modelTurns: z.number().int().min(0),
+    compactions: z.number().int().min(0),
+    peakInputTokensPerTurn: z.number().int().min(0),
+    peakRequestMessages: z.number().int().min(0),
+    turns: z.array(z.strictObject({
+      index: z.number().int().min(0),
+      status: z.enum(["running", "completed", "suspended", "waiting_approval", "failed"]),
+      durationMs: z.number().finite().min(0),
+      requestMessages: z.number().int().min(0),
+      inputTokens: z.number().int().min(0),
+      cachedInputTokens: z.number().int().min(0),
+      outputTokens: z.number().int().min(0),
+      toolCalls: z.number().int().min(0)
+    })).max(100),
+    approvalRounds: z.array(z.strictObject({
+      index: z.number().int().min(1),
+      toolNames: z.array(z.string().min(1).max(100)).max(32),
+      requests: z.number().int().min(1),
+      approved: z.number().int().min(0),
+      denied: z.number().int().min(0),
+      waitMs: z.number().finite().min(0)
+    })).max(50),
+    tools: z.array(z.strictObject({
+      name: z.string().min(1).max(100),
+      calls: z.number().int().min(1),
+      errors: z.number().int().min(0),
+      totalMs: z.number().finite().min(0),
+      maxMs: z.number().finite().min(0)
+    })).max(100)
+  }).optional(),
   phasesMs: z.record(z.string().min(1).max(100), z.number().finite().min(0)).optional(),
   notes: z.array(z.string().max(1_000)).max(100).optional()
 }).superRefine((value, context) => {
@@ -112,6 +161,49 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
 });
 
 export type TimeToSafeFixDriverResult = z.infer<typeof timeToSafeFixDriverResultSchema>;
+
+export const classifyTimeToSafeFixFailure = (
+  error: unknown,
+  options: {
+    stage?: TimeToSafeFixFailureStage;
+    toolName?: string;
+    timedOut?: boolean;
+  } = {}
+): NonNullable<TimeToSafeFixDriverResult["failure"]> => {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLowerCase();
+  let code = "UNCLASSIFIED_FAILURE";
+  let retryable = false;
+  if (options.timedOut || /timed? out|timeout/.test(normalized)) {
+    code = "TIMEOUT";
+    retryable = true;
+  } else if (/rate.?limit|too many requests|temporar(?:y|ily)|connection reset|service unavailable|getaddrinfo|enotfound|network/.test(normalized)) {
+    code = "PROVIDER_TRANSIENT_FAILURE";
+    retryable = true;
+  } else if (/expected.?digest|stale/.test(normalized)) {
+    code = "STALE_DIGEST";
+  } else if (/changed the reviewed|patch changed|does not match the approved edit paths/.test(normalized)) {
+    code = "PATCH_DRIFT";
+  } else if (/verifier failed|verifier exited|exit code/.test(normalized)) {
+    code = "VERIFIER_FAILED";
+  } else if (/approval.*denied|denied.*approval|unsupported or attack-bearing/.test(normalized)) {
+    code = "APPROVAL_DENIED";
+  } else if (/import/.test(normalized)) {
+    code = "PATCH_IMPORT_FAILED";
+  } else if (/tool(?: ["']?.+["']?)? failed|tool execution|terminal tool/.test(normalized)) {
+    code = "TOOL_EXECUTION_FAILED";
+  } else if (/provider|model|generation|response/.test(normalized)) {
+    code = "MODEL_EXECUTION_FAILED";
+  } else if (/environment|oci|container|docker/.test(normalized)) {
+    code = "ENVIRONMENT_FAILURE";
+  }
+  return {
+    stage: options.stage ?? "unknown",
+    code,
+    ...(options.toolName ? { toolName: options.toolName } : {}),
+    retryable
+  };
+};
 
 export interface TimeToSafeFixCase {
   caseId: string;

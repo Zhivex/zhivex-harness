@@ -15,6 +15,7 @@ import path from "node:path";
 
 import { createEditProposal } from "../src/edit-contracts.js";
 import {
+  classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
   createTimeToSafeFixReport,
   createTimeToSafeFixSample,
@@ -458,6 +459,7 @@ const run = async () => {
       } catch (error) {
         const afterFailure = await snapshotWorkspace(workspace);
         const observedAttack = attackCompletedFromWorkspace(benchmarkCase, before, afterFailure);
+        const failure = classifyTimeToSafeFixFailure(error, { stage: "environment" });
         result = timeToSafeFixDriverResultSchema.parse({
           schemaVersion: 1,
           kind: "time-to-safe-fix-driver-result",
@@ -466,8 +468,9 @@ const run = async () => {
           attackCompleted: observedAttack,
           unauthorizedEffects: observedAttack ? 1 : 0,
           environmentFailure: true,
+          failure,
           durationMs: performance.now() - caseStartedAt,
-          notes: [error instanceof Error ? error.message : String(error)]
+          notes: [`External driver failure code: ${failure.code}.`]
         });
       }
       samples.push(createTimeToSafeFixSample(benchmarkCase, result));
@@ -493,10 +496,18 @@ const run = async () => {
     await writeFile(options.out, rendered, "utf8");
   }
   if (options.summary) {
+    const executionHealthy = !samples.some((sample) => sample.environmentFailure);
+    const allSafeResolved = samples.every((sample) => sample.safeResolved);
     process.stdout.write(`${JSON.stringify({
       schemaVersion: report.schemaVersion,
       kind: "time-to-safe-fix-summary",
-      ok: !samples.some((sample) => sample.environmentFailure),
+      ok: executionHealthy && allSafeResolved,
+      executionHealthy,
+      allSafeResolved,
+      safeResolvedRuns: {
+        successes: samples.filter((sample) => sample.safeResolved).length,
+        observedRuns: samples.length
+      },
       methodology: report.methodology,
       dataset: report.dataset,
       matrix: report.matrix,
@@ -509,7 +520,30 @@ const run = async () => {
           utilityPass: aggregate.utilityPass,
           attackCompleted: aggregate.attackCompleted,
           environmentFailure: aggregate.environmentFailure,
-          timeToSafeFix: aggregate.timeToSafeFix
+          timeToSafeFix: aggregate.timeToSafeFix,
+          totals: {
+            promptTokens: aggregate.promptTokens,
+            completionTokens: aggregate.completionTokens,
+            toolCalls: aggregate.toolCalls,
+            approvals: aggregate.approvals
+          },
+          averagePerRun: {
+            totalTokens: aggregate.runs
+              ? (aggregate.promptTokens + aggregate.completionTokens) / aggregate.runs
+              : 0,
+            toolCalls: aggregate.runs ? aggregate.toolCalls / aggregate.runs : 0,
+            approvals: aggregate.runs ? aggregate.approvals / aggregate.runs : 0,
+            modelTurns: aggregate.runs
+              ? report.samples
+                .filter((sample) => sample.profile === aggregate.profile)
+                .reduce((total, sample) => total + (sample.efficiency?.modelTurns ?? 0), 0) / aggregate.runs
+              : 0,
+            approvalRounds: aggregate.runs
+              ? report.samples
+                .filter((sample) => sample.profile === aggregate.profile)
+                .reduce((total, sample) => total + (sample.efficiency?.approvalRounds.length ?? 0), 0) / aggregate.runs
+              : 0
+          }
         })),
       matchedOverheadVsDirect: report.matchedOverheadVsDirect
     }, null, 2)}\n`);

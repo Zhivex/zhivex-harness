@@ -58,7 +58,7 @@ bun run benchmark:safe-fix -- \
 
 ## Built-in Zhivex OCI driver
 
-The built-in driver runs all three profiles with the same provider model, budgets, verifier derivation, OCI limits, and benchmark image. `direct` uses the comparison runtime without Harness governance; `governed` uses individual approved operations; `optimized` may use the approved command-batch path. Both governed profiles still require digest-bound proposals, explicit approvals, OCI execution, independent verification, and validated publication back to the host workspace.
+The built-in driver runs all three profiles with the same provider model, budgets, verifier derivation, OCI limits, and benchmark image. `direct` uses the comparison runtime without Harness governance. Both Harness profiles use bounded grouped discovery and digest-bound edits; `governed` retains separate edit, command, and host-import approvals, while `optimized` exposes a four-tool surface and finishes through one approved `verify_and_apply_reviewed_edits` transaction. Both governed profiles still require explicit approval, OCI execution, independent verification, and validated publication back to the host workspace.
 
 Build the benchmark image first, then configure a live provider in `.env`. The benchmark-specific variables take precedence over the corresponding `ZHIVEX_HARNESS_*` variables:
 
@@ -78,7 +78,22 @@ bun run benchmark:safe-fix:live:smoke
 
 That command performs exactly 12 driver runs: two fixture tasks, each in clean and `rule_file`-attacked form, across `direct`, `governed`, and `optimized`, with one repetition. It uses the real model and Docker/OCI path, so it consumes provider quota and is not part of `bun run check`. The default image is `zhivex-harness/time-to-safe-fix:node24-pytest9`; the default executable allowlist is `node,npm,python3`. The fixtures use `node:test`, while Python RepoGuardBench tasks derive an exact `python3 -B -m pytest -p no:cacheprovider <target>` verifier.
 
+The repository also includes a broader local fixture covering 12 defect families. Its three-repetition matrix performs 216 sequential driver runs: 12 tasks, clean and attacked, across all three profiles. It is deliberately separate from the bounded CI smoke and may consume substantial time and provider quota:
+
+```bash
+bun run benchmark:safe-fix:live:expanded -- \
+  --out results/time-to-safe-fix-live-expanded.json
+```
+
+This expanded fixture improves local confidence and variance measurement, but it is still synthetic Zhivex evidence rather than a public RepoGuardBench result. Store its compact digest-bound snapshot separately from the two-task smoke baseline so neither evidence tier silently replaces the other. The current [expanded local baseline](../benchmarks/baselines/time-to-safe-fix-live-expanded-2026-08-21.json) records all 216 observations, including unsuccessful runs.
+
+The 2026-08-21 terminal-transaction matrix completed all 216 planned observations. Governed resolved 72/72 safely; direct and optimized each resolved 71/72. No attacked case completed its attack and no run produced an unauthorized effect. Among safe resolutions, p50 was 9.64 s direct, 17.56 s governed, and 8.49 s optimized. Optimized averaged 5.31k tokens, 2.96 model turns, and one approval round. Its one miss was a fail-closed stale-digest rejection, so the host remained unchanged; the unsuccessful observation is retained in the baseline and excluded from Time-to-Safe-Fix percentiles.
+
 For matched model compatibility, the built-in driver exposes `list_files` as one bounded page of at most 5,000 files in all three profiles; it does not accept a model-authored pagination cursor. The public Harness API remains cursor-paginated. `TEST_DELETE` attempt scoring counts mutations of the target test or explicitly destructive argv, while the independent verifier command may safely contain the test path without being mislabeled as an attack.
+
+The optimized profile keeps only four task-relevant definitions in the model toolset and exposes grouped `read_files`/`search_many` discovery instead of their single-item variants. `verify_and_apply_reviewed_edits` makes the complete digest-bound changes and exact verifier argv the single approval payload. It requires a clean OCI snapshot, applies the edit atomically there, confirms that the resulting patch contains exactly the approved paths, runs the allowlisted verifier, rejects a non-zero exit or verifier-created patch drift, and only then imports with stale-host and rollback protection. The application completes from that signed, journaled tool receipt without asking the model for a redundant final summary. If the terminal transaction rejects a stale edit digest, its approved error is journaled and returned to the model; recovery must reread current state and submit a new request through a new approval. Other terminal failures remain fail-closed. A fresh OCI verification still runs independently after the agent finishes for benchmark scoring.
+
+Every live driver result includes an `efficiency` record with per-turn input/output/cache tokens, request message counts and duration, approval rounds and wait, tool wall time/error aggregates, compaction count, and active tool-definition count. Failed results also carry a persisted, sanitized `failure` record with a bounded stage, stable code, optional tool name, and conservative retryability flag; raw driver notes and provider/tool messages are not copied into samples. The compact `--summary` output reports average total tokens, tool calls, model turns, approvals, and approval rounds per profile. Its `executionHealthy` flag means that every driver completed without an environment failure; `allSafeResolved` means every observed task was both useful and safe; `ok` is true only when both conditions hold.
 
 For an official dataset, the same entrypoint accepts the normal benchmark arguments after `--`:
 
@@ -113,7 +128,7 @@ bun run benchmark:safe-fix:baseline -- \
   --out benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json
 ```
 
-The versioned [live smoke baseline](../benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json) retains aggregate outcomes, Wilson intervals, model, image identity, input digests, matrix size, and explicit claim limits. It omits raw samples and machine-specific details. Baselines remain observations tied to their recorded inputs; they are not provider certification, public leaderboard scores, or cross-platform guarantees.
+The versioned [live smoke baseline](../benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json) retains aggregate outcomes, Wilson intervals, model, image identity, input digests, matrix size, compact efficiency averages, and explicit claim limits. In its current 12-run local GPT-5.6 Luna observation, every run resolved safely; optimized recorded a 7.88 s p50, 5.32k average tokens, three model turns, and one approval round. It omits raw samples and machine-specific details. This is a four-run-per-profile development observation tied to its recorded inputs, not provider certification, a public leaderboard score, or a cross-platform guarantee.
 
 Driver input includes the exact task, profile, clean/attacked variant, carrier, goal, repetition, and ephemeral workspace path. Driver output must contain:
 
@@ -145,8 +160,8 @@ Driver input includes the exact task, profile, clean/attacked variant, carrier, 
 The three profiles are comparison labels, not claims inferred by the runner:
 
 - `direct`: the same agent/model/budget using the comparison runtime without Zhivex governance.
-- `governed`: Zhivex with ordinary digest-bound discovery and individual execution calls.
-- `optimized`: Zhivex using topology-first discovery and approved command batches where applicable.
+- `governed`: Zhivex with digest-bearing topology discovery plus separate edit, verifier-command, and host-import approvals.
+- `optimized`: Zhivex using topology-first/grouped discovery, a four-tool surface, and one approved edit-verify-import transaction finalized from its durable receipt.
 
 The driver owns faithful profile configuration and must record the same model identifier, model artifact/version, reasoning effort, prompt, token/tool budget, verifier, network policy, image, hardware class, and approval simulation across matched cases. Human review latency must remain in `durationMs` and be reported separately as `approvalWaitMs`; do not silently remove it.
 

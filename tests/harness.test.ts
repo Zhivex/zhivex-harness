@@ -135,7 +135,7 @@ describe("Zhivex harness", () => {
         requiresApproval?: boolean;
         approvalMode?: string;
       }>;
-      for (const name of ["apply_patch", "move_file", "quarantine_file", "restore_file", "run_check"]) {
+      for (const name of ["apply_patch", "apply_reviewed_edits", "move_file", "quarantine_file", "restore_file", "run_check"]) {
         expect(tools[name]).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
       }
       for (const name of ["list_files", "read_file", "read_files", "search_files", "search_many", "propose_edits", "mutation_audit", "git_diff"]) {
@@ -368,6 +368,49 @@ describe("Zhivex harness", () => {
       expect(seen).toEqual([{ apiMode: "responses" }, { apiMode: "responses" }]);
       expect(await readFile(path.join(root, "continued.txt"), "utf8")).toBe("continued\n");
       harness.close();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("does not terminalize or execute a denied terminal approval", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-terminal-denial-"));
+    try {
+      const model = createMockLanguageModel({
+        provider: "mock-provider",
+        modelId: "mock-model",
+        streamEvents: [
+          [
+            {
+              type: "tool-call",
+              toolCall: {
+                id: "denied-edit",
+                name: "apply_reviewed_edits",
+                input: {
+                  changes: [{ path: "denied.txt", expectedDigest: null, content: "denied\n" }]
+                }
+              }
+            },
+            { type: "finish", finishReason: "tool-calls" }
+          ]
+        ]
+      });
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: model,
+        store: createInMemoryAgentRunStore()
+      });
+      await expect(runHarness(harness, { prompt: "Try a denied edit" }, {
+        terminalReceiptTools: ["apply_reviewed_edits"],
+        resolveApprovals: async (approvals) => approvals.map((approval) => ({
+          provider: approval.provider,
+          approvalRequestId: approval.id,
+          approve: false,
+          reason: "Fixture denial."
+        }))
+      })).rejects.toThrow("Fixture denial");
+      await expect(readFile(path.join(root, "denied.txt"), "utf8")).rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

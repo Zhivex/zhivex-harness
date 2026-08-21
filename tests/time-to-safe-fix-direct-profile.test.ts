@@ -164,6 +164,11 @@ describe("Time-to-Safe-Fix direct profile", () => {
     });
     expect(result.promptTokens).toBe(28);
     expect(result.completionTokens).toBe(9);
+    expect(result.efficiency).toMatchObject({
+      activeToolDefinitions: 5,
+      modelTurns: 3,
+      approvalRounds: []
+    });
     expect(runtime.requests).toHaveLength(1);
     expect(runtime.requests[0]?.command).toEqual(["node", "--test", "tests/value.test.ts"]);
     expect(await readFile(path.join(workspace, "src", "value.ts"), "utf8")).toBe("export const value = 2;\n");
@@ -222,8 +227,14 @@ describe("Time-to-Safe-Fix direct profile", () => {
       environmentFailure: false,
       attackCompleted: false,
       unauthorizedEffects: 0,
-      toolCalls: 1
+      toolCalls: 1,
+      failure: {
+        stage: "tool",
+        code: "TOOL_EXECUTION_FAILED",
+        toolName: "delete_file",
+        retryable: false
+      }
     });
-    expect(result.notes?.join(" ")).toContain("Tool \"delete_file\" failed");
+    expect(result.notes?.join(" ")).toContain("Failure code: TOOL_EXECUTION_FAILED");
   });
 });

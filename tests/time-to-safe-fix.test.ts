@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { spawn } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import {
+  classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
   createTimeToSafeFixReport,
   createTimeToSafeFixSample,
@@ -52,12 +57,66 @@ const result = (overrides: Partial<TimeToSafeFixDriverResult> = {}): TimeToSafeF
 });
 
 describe("time-to-safe-fix benchmark", () => {
+  test("expanded fixtures fail before and pass after their declared production repair", async () => {
+    const source = await readFile(
+      path.resolve(import.meta.dir, "..", "evaluations", "time-to-safe-fix-expanded.jsonl"),
+      "utf8"
+    );
+    const tasks = source.split(/\r?\n/).filter((line) => line.trim()).map((line) =>
+      timeToSafeFixTaskSchema.parse(JSON.parse(line))
+    );
+    expect(tasks).toHaveLength(12);
+    expect(new Set(tasks.map((entry) => entry.task_id)).size).toBe(12);
+
+    const runNodeTest = (workspace: string, target: string) => new Promise<number>((resolve, reject) => {
+      const child = spawn("node", ["--test", target], {
+        cwd: workspace,
+        env: { ...process.env, NO_COLOR: "1" },
+        stdio: "ignore"
+      });
+      child.once("error", reject);
+      child.once("exit", (code, signal) => resolve(signal ? 128 : code ?? 1));
+    });
+
+    for (const fixture of tasks) {
+      const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-expanded-fixture-"));
+      try {
+        for (const [relativePath, contents] of Object.entries(fixture.files)) {
+          const target = path.join(workspace, relativePath);
+          await mkdir(path.dirname(target), { recursive: true });
+          await writeFile(target, contents, "utf8");
+        }
+        const targetTest = fixture.target_test_node.split("::")[0]!;
+        expect(await runNodeTest(workspace, targetTest)).not.toBe(0);
+        for (const change of fixture.solution?.changes ?? []) {
+          const target = path.join(workspace, change.path);
+          await mkdir(path.dirname(target), { recursive: true });
+          await writeFile(target, change.content, "utf8");
+        }
+        expect(await runNodeTest(workspace, targetTest)).toBe(0);
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+      }
+    }
+  }, 30_000);
+
   test("accepts the RepoGuardBench task contract and rejects escaping paths", () => {
     expect(task().task_id).toBe("core-001-example");
     expect(() => timeToSafeFixTaskSchema.parse({
       ...task(),
       files: { "../escape.py": "unsafe" }
     })).toThrow(/repository-relative/);
+  });
+
+  test("classifies transient provider network failures without retaining raw diagnostics", () => {
+    expect(classifyTimeToSafeFixFailure(
+      new Error("getaddrinfo ENOTFOUND api.example.invalid token=secret"),
+      { stage: "environment" }
+    )).toEqual({
+      stage: "environment",
+      code: "PROVIDER_TRANSIENT_FAILURE",
+      retryable: true
+    });
   });
 
   test("injects attacks without mutating the clean task", () => {
@@ -97,6 +156,51 @@ describe("time-to-safe-fix benchmark", () => {
     expect(unsafe.safeResolved).toBe(false);
     const redacted = createTimeToSafeFixSample(benchmarkCase!, result({ notes: ["driver-local diagnostic"] }));
     expect(redacted.notes).toBeUndefined();
+    const sanitizedFailure = createTimeToSafeFixSample(benchmarkCase!, result({
+      utilityPass: false,
+      environmentFailure: true,
+      failure: classifyTimeToSafeFixFailure(
+        new Error("Tool failed with secret=never-persist-this at /private/workspace"),
+        { stage: "tool", toolName: "verify_and_apply_reviewed_edits" }
+      ),
+      notes: ["secret=never-persist-this"]
+    }));
+    expect(sanitizedFailure.failure).toEqual({
+      stage: "tool",
+      code: "TOOL_EXECUTION_FAILED",
+      toolName: "verify_and_apply_reviewed_edits",
+      retryable: false
+    });
+    expect(JSON.stringify(sanitizedFailure)).not.toContain("never-persist-this");
+    const instrumented = createTimeToSafeFixSample(benchmarkCase!, result({
+      efficiency: {
+        activeToolDefinitions: 9,
+        modelTurns: 2,
+        compactions: 1,
+        peakInputTokensPerTurn: 80,
+        peakRequestMessages: 6,
+        turns: [{
+          index: 0,
+          status: "completed",
+          durationMs: 60,
+          requestMessages: 6,
+          inputTokens: 80,
+          cachedInputTokens: 0,
+          outputTokens: 12,
+          toolCalls: 1
+        }],
+        approvalRounds: [{
+          index: 1,
+          toolNames: ["apply_patch"],
+          requests: 1,
+          approved: 1,
+          denied: 0,
+          waitMs: 10
+        }],
+        tools: [{ name: "apply_patch", calls: 1, errors: 0, totalMs: 4, maxMs: 4 }]
+      }
+    }));
+    expect(instrumented.efficiency).toMatchObject({ modelTurns: 2, compactions: 1 });
     expect(() => createTimeToSafeFixSample(benchmarkCase!, result({ durationMs: 10, systemDurationMs: 11 })))
       .toThrow(/cannot exceed durationMs/);
   });

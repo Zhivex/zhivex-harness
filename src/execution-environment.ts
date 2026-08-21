@@ -63,6 +63,7 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "search_many",
   "propose_edits",
   "apply_patch",
+  "apply_reviewed_edits",
   "move_file",
   "quarantine_file",
   "restore_file",
@@ -73,6 +74,8 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "run_environment_batch",
   "inspect_environment_patch",
   "apply_environment_patch",
+  "verify_and_apply_environment_patch",
+  "verify_and_apply_reviewed_edits",
   "environment_status"
 ]);
 
@@ -1777,6 +1780,25 @@ export const createHarnessOciExecutionEnvironment = async (
             const input = authorization.input as { command?: unknown; args?: unknown };
             if (typeof input.command !== "string" || !options.config.allowedCommands.includes(input.command)) {
               return { decision: "deny", reason: "The requested OCI executable is not allowlisted." };
+            }
+          }
+          if (name === "verify_and_apply_environment_patch" || name === "verify_and_apply_reviewed_edits") {
+            const input = authorization.input as {
+              command?: unknown;
+              args?: unknown;
+              patchId?: unknown;
+              changes?: unknown;
+            };
+            const validBoundInput = name === "verify_and_apply_environment_patch"
+              ? typeof input.patchId === "string"
+              : Array.isArray(input.changes) && input.changes.length > 0;
+            if (
+              !validBoundInput ||
+              typeof input.command !== "string" ||
+              !options.config.allowedCommands.includes(input.command) ||
+              !Array.isArray(input.args)
+            ) {
+              return { decision: "deny", reason: "The verified OCI transaction is invalid or contains a non-allowlisted executable." };
             }
           }
           if (name === "run_environment_batch") {
