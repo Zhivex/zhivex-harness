@@ -57,6 +57,10 @@ export interface WorkspaceFile {
   digest: FileDigest;
 }
 
+export interface WorkspaceTopologyFile {
+  path: string;
+}
+
 export interface SearchMatch {
   path: string;
   line: number;
@@ -67,6 +71,17 @@ export interface SearchMatch {
 export interface ListFilesOptions {
   limit?: number;
   cursor?: string;
+  /**
+   * Set to false to enumerate paths without reading file contents. Digest-bound
+   * listings remain the default; edits still require a separately observed digest.
+   */
+  includeDigests?: boolean;
+}
+
+export interface ListFilesResult<TFile extends WorkspaceFile | WorkspaceTopologyFile = WorkspaceFile> {
+  files: TFile[];
+  truncated: boolean;
+  nextCursor?: string;
 }
 
 export interface SearchFilesOptions {
@@ -127,6 +142,7 @@ interface ListCursor {
   kind: "list";
   path: string;
   limit: number;
+  includeDigests: boolean;
   after: string;
   indexVersion: string;
 }
@@ -534,19 +550,36 @@ export class Workspace {
     };
   }
 
-  async listFiles(relativePath = ".", options: number | ListFilesOptions = {}) {
+  async listFiles(
+    relativePath: string,
+    options: ListFilesOptions & { includeDigests: false }
+  ): Promise<ListFilesResult<WorkspaceTopologyFile>>;
+  async listFiles(
+    relativePath?: string,
+    options?: number | (ListFilesOptions & { includeDigests?: true })
+  ): Promise<ListFilesResult<WorkspaceFile>>;
+  async listFiles(
+    relativePath: string,
+    options: ListFilesOptions
+  ): Promise<ListFilesResult<WorkspaceFile | WorkspaceTopologyFile>>;
+  async listFiles(
+    relativePath = ".",
+    options: number | ListFilesOptions = {}
+  ): Promise<ListFilesResult<WorkspaceFile | WorkspaceTopologyFile>> {
     const start = await this.safePath(relativePath);
     if (!(await lstat(start.path)).isDirectory()) throw new Error("list_files requires a directory.");
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const input = typeof options === "number" ? { limit: options } : options;
     const limit = input.limit ?? 200;
+    const includeDigests = input.includeDigests ?? true;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw new Error("limit must be between 1 and 5000.");
     let after = "";
     let cursorIndexVersion: string | undefined;
     if (input.cursor) {
       const parsed = cursorDecode(input.cursor) as Partial<ListCursor>;
       if (parsed.v !== 2 || parsed.kind !== "list" || parsed.path !== requestPath || parsed.limit !== limit ||
-        typeof parsed.indexVersion !== "string" || typeof parsed.after !== "string") {
+        parsed.includeDigests !== includeDigests || typeof parsed.indexVersion !== "string" ||
+        typeof parsed.after !== "string") {
         throw new Error("The pagination cursor does not match this list request.");
       }
       after = parsed.after;
@@ -571,17 +604,29 @@ export class Workspace {
     }
     const truncated = selected.length > limit;
     if (truncated) selected.pop();
-    const files: WorkspaceFile[] = [];
-    for (const candidate of selected) {
-      const file = await this.readStableFile(candidate.path);
-      files.push({ path: file.path, size: file.contents.byteLength, digest: file.digest });
+    const files: Array<WorkspaceFile | WorkspaceTopologyFile> = [];
+    if (includeDigests) {
+      for (const candidate of selected) {
+        const file = await this.readStableFile(candidate.path);
+        files.push({ path: file.path, size: file.contents.byteLength, digest: file.digest });
+      }
+    } else {
+      files.push(...selected.map(({ path: candidatePath }) => ({ path: candidatePath })));
     }
     const last = selected.at(-1);
     return {
       files,
       truncated,
       ...(truncated && last ? {
-        nextCursor: cursorEncode({ v: 2, kind: "list", path: requestPath, limit, after: last.path, indexVersion: index.version })
+        nextCursor: cursorEncode({
+          v: 2,
+          kind: "list",
+          path: requestPath,
+          limit,
+          includeDigests,
+          after: last.path,
+          indexVersion: index.version
+        })
       } : {})
     };
   }

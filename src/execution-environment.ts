@@ -47,6 +47,7 @@ import { Workspace, type CommandResult } from "./workspace.js";
 export const HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION = 1 as const;
 export const HARNESS_OCI_LABEL = "com.zhivex.harness.execution";
 export const HARNESS_OCI_LABEL_VALUE = "v1";
+export const HARNESS_OCI_OWNER_PID_LABEL = "com.zhivex.harness.owner-pid";
 
 const TERMINAL_STATUSES = new Set<AgentStatus>([
   "completed",
@@ -69,6 +70,7 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "mutation_audit",
   "git_diff",
   "run_environment_command",
+  "run_environment_batch",
   "inspect_environment_patch",
   "apply_environment_patch",
   "environment_status"
@@ -107,6 +109,17 @@ const commandDisplay = (command: readonly string[]) => command.map((value) =>
   /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : JSON.stringify(value)
 ).join(" ");
 
+const elapsedMilliseconds = (startedAt: bigint) =>
+  Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+
+export interface OciPhaseLatencies {
+  hostSynchronizationMs?: number;
+  sessionCreationMs?: number;
+  commandAndAttestationMs: number;
+  workspaceExportMs?: number;
+  totalMs: number;
+}
+
 export interface OciCommandResult extends CommandResult {
   cancelled: boolean;
   outputLimitExceeded: boolean;
@@ -116,6 +129,8 @@ export interface OciCommandResult extends CommandResult {
   workspacePublished?: boolean;
   /** True when publication required copying a changed workspace back to the host snapshot. */
   workspaceExported?: boolean;
+  /** Lower-level OCI phase timings for diagnostics and benchmark attribution. */
+  phaseLatencies?: OciPhaseLatencies;
 }
 
 const spawnBounded = async (
@@ -127,13 +142,18 @@ const spawnBounded = async (
     maxOutputBytes: number;
     abortSignal?: AbortSignal;
     onStop?: (reason: "timeout" | "cancelled" | "output-limit") => void;
+    input?: string;
   }
 ): Promise<OciCommandResult> => {
   const child = spawn(command[0] as string, command.slice(1), {
     ...(options.cwd ? { cwd: options.cwd } : {}),
     env: options.env ?? {},
-    stdio: ["ignore", "pipe", "pipe"]
+    stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"]
   });
+  if (options.input !== undefined) {
+    child.stdin?.on("error", () => undefined);
+    child.stdin?.end(options.input);
+  }
   let timedOut = false;
   let cancelled = false;
   let outputLimitExceeded = false;
@@ -240,9 +260,19 @@ export interface OciRunRequest {
   abortSignal?: AbortSignal;
 }
 
+export interface OciRunBatchRequest extends Omit<OciRunRequest, "command"> {
+  commands: string[][];
+}
+
+export interface OciCommandBatchResult extends OciCommandResult {
+  commands: string[][];
+}
+
 export interface HarnessOciRuntimeAdapter {
   inspectImage(image: string): Promise<OciImageInspection>;
   run(request: OciRunRequest): Promise<OciCommandResult>;
+  /** Optional optimized path that performs one process/seal/publication cycle for the batch. */
+  runBatch?(request: OciRunBatchRequest): Promise<OciCommandBatchResult>;
   removeRunContainers(runId: string): Promise<number>;
   cleanupOrphans(): Promise<number>;
 }
@@ -262,6 +292,16 @@ const validVolumeNames = (stdout: string) => stdout
   .split(/\r?\n/)
   .map((value) => value.trim())
   .filter((value) => /^zhivex-harness-[A-Za-z0-9_.-]+$/.test(value));
+
+const hostProcessIsAlive = (pid: number) => {
+  if (!Number.isSafeInteger(pid) || pid < 1) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
 
 const MAX_SYNC_ENTRIES = 10_000;
 
@@ -439,17 +479,40 @@ interface PersistentOciSession {
   volumeName: string;
   snapshotSeal: FileDigest;
   hostFingerprint: FileDigest;
-  paused: boolean;
 }
 
-const OCI_WORKSPACE_SEAL_SCRIPT = [
+const OCI_BACKGROUND_PROCESS_MARKER = "ZHIVEX_HARNESS_BACKGROUND_PROCESS";
+const OCI_COMMAND_TIMEOUT_MARKER = "ZHIVEX_HARNESS_COMMAND_TIMEOUT";
+const OCI_ATTESTATION_TIMEOUT_MS = 60_000;
+const OCI_ATTESTATION_PROTOCOL_BYTES = 160;
+const OCI_ATTESTATION_PATTERN = /\nZHIVEX_HARNESS_ATTESTATION:(sha256:[a-f0-9]{64})\n$/;
+
+const OCI_COMMAND_RUNNER_SCRIPT = [
   "import { createHash } from 'node:crypto';",
+  "import { spawn } from 'node:child_process';",
+  "import { readFileSync } from 'node:fs';",
   "import { lstat, readFile, readdir, readlink, rm } from 'node:fs/promises';",
   "import path from 'node:path';",
+  "const request=JSON.parse(readFileSync(0,'utf8'));",
+  "if(!Array.isArray(request.commands)||request.commands.length===0||!request.commands.every((command)=>Array.isArray(command)&&command.length>0&&command.every((value)=>typeof value==='string')))throw new Error('invalid OCI command batch');",
+  "if(!Number.isSafeInteger(request.maxProcessRuntimeMs)||request.maxProcessRuntimeMs<1)throw new Error('invalid OCI command timeout');",
+  "const deadline=Date.now()+request.maxProcessRuntimeMs;",
+  "const run=async(command,timeoutMs)=>await new Promise((resolve,reject)=>{",
+  "const child=spawn(command[0],command.slice(1),{stdio:['ignore','inherit','inherit'],detached:true});",
+  "let settled=false;let timedOut=false;",
+  "const finish=(value,error)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve(value);};",
+  "const timer=setTimeout(()=>{timedOut=true;try{process.kill(-child.pid,'SIGKILL');}catch{}},timeoutMs);",
+  "child.once('error',(error)=>finish(undefined,error));",
+  "child.once('exit',(code)=>finish({exitCode:timedOut?124:(code??137),timedOut}));",
+  "});",
+  "for(const command of request.commands){const remaining=deadline-Date.now();if(remaining<=0){console.error('ZHIVEX_HARNESS_COMMAND_TIMEOUT');process.exit(124);}const result=await run(command,remaining);if(result.timedOut){console.error('ZHIVEX_HARNESS_COMMAND_TIMEOUT');process.exit(124);}if(result.exitCode!==0)process.exit(result.exitCode);}",
+  "const unexpectedProcesses=async()=>(await readdir('/proc')).filter((name)=>/^\\d+$/.test(name)).map(Number).filter((pid)=>pid!==1&&pid!==process.pid);",
+  "if((await unexpectedProcesses()).length>0){console.error('ZHIVEX_HARNESS_BACKGROUND_PROCESS');process.exit(126);}",
   "const root='/workspace';",
   "const seal=createHash('sha256');",
   "const modules=path.join(root,'node_modules');",
-  "if(process.env.ZHIVEX_HARNESS_HAS_DEPENDENCIES==='1'){const entry=await lstat(modules);if(!entry.isSymbolicLink()||(await readlink(modules))!=='/dependencies')throw new Error('read-only dependency mount was replaced');}else{await rm(modules,{recursive:true,force:true});}",
+  "try{",
+  "if(request.hasDependencies===true){const entry=await lstat(modules);if(!entry.isSymbolicLink()||(await readlink(modules))!=='/dependencies')throw new Error('read-only dependency mount was replaced');}else{await rm(modules,{recursive:true,force:true});}",
   "const digest=(value)=>`sha256:${createHash('sha256').update(value).digest('hex')}`;",
   "const same=(before,after)=>before.dev===after.dev&&before.ino===after.ino&&before.size===after.size&&before.mtimeMs===after.mtimeMs&&before.ctimeMs===after.ctimeMs&&(before.mode&0o777)===(after.mode&0o777);",
   "const visit=async(directory,base='')=>{",
@@ -468,8 +531,10 @@ const OCI_WORKSPACE_SEAL_SCRIPT = [
   "}",
   "};",
   "await visit(root);",
+  "if((await unexpectedProcesses()).length>0){console.error('ZHIVEX_HARNESS_BACKGROUND_PROCESS');process.exit(126);}",
   "for(const name of await readdir('/tmp'))await rm(path.join('/tmp',name),{recursive:true,force:true});",
-  "console.log(`sha256:${seal.digest('hex')}`);"
+  "process.stdout.write(`\\nZHIVEX_HARNESS_ATTESTATION:sha256:${seal.digest('hex')}\\n`);",
+  "}catch(error){console.error(`ZHIVEX_HARNESS_ATTESTATION_FAILURE:${error instanceof Error?error.message:String(error)}`);process.exit(127);}"
 ].join("");
 
 // The controller owns the container lifetime; only session release or a failure path
@@ -541,7 +606,7 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  private requestFingerprint(request: OciRunRequest) {
+  private requestFingerprint(request: OciRunRequest | OciRunBatchRequest) {
     return digest(JSON.stringify({
       runId: request.runId,
       snapshotRoot: request.snapshotRoot,
@@ -576,7 +641,7 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   }
 
   private async createSession(
-    request: OciRunRequest,
+    request: OciRunRequest | OciRunBatchRequest,
     requestFingerprint: FileDigest,
     snapshotSeal: FileDigest,
     hostFingerprint: FileDigest
@@ -601,6 +666,8 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       `${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`,
       "--label",
       `com.zhivex.harness.run=${runHash(request.runId)}`,
+      "--label",
+      `${HARNESS_OCI_OWNER_PID_LABEL}=${process.pid}`,
       volumeName
     ];
     const args = [
@@ -676,15 +743,13 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
           "import { symlink } from 'node:fs/promises'; await symlink('/dependencies', '/workspace/node_modules', 'dir')"
         ]);
       }
-      await this.cli(["pause", name]);
       const session: PersistentOciSession = {
         key: runHash(request.runId),
         requestFingerprint,
         name,
         volumeName,
         snapshotSeal,
-        hostFingerprint,
-        paused: true
+        hostFingerprint
       };
       this.sessions.set(session.key, session);
       return session;
@@ -695,132 +760,119 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  private async onlyControllerProcessRemains(session: PersistentOciSession) {
-    const result = await this.cli(this.runtime === "podman"
-      ? ["top", session.name, "pid"]
-      : ["top", session.name, "-eo", "pid"]);
-    const processIds = result.stdout.split(/\r?\n/).filter((line) => /^\s*\d+\s*$/.test(line));
-    return processIds.length === 1;
-  }
-
-  private async containerWorkspaceSeal(
-    session: PersistentOciSession,
-    uid: number,
-    gid: number,
-    hasDependencies: boolean
-  ) {
-    if (session.paused) {
-      await this.cli(["unpause", session.name]);
-      session.paused = false;
-    }
-    try {
-      const result = await this.cli([
-        "exec",
-        "--workdir",
-        "/workspace",
-        "--user",
-        `${uid}:${gid}`,
-        "--env",
-        `ZHIVEX_HARNESS_HAS_DEPENDENCIES=${hasDependencies ? "1" : "0"}`,
-        session.name,
-        "node",
-        "--input-type=module",
-        "-e",
-        OCI_WORKSPACE_SEAL_SCRIPT
-      ], 60_000, 20_000);
-      const seal = result.stdout.trim();
-      if (!/^sha256:[a-f0-9]{64}$/.test(seal)) {
-        throw new Error("OCI workspace seal helper returned an invalid digest.");
-      }
-      return seal as FileDigest;
-    } finally {
-      if (!session.paused) {
-        await this.cli(["pause", session.name]);
-        session.paused = true;
-      }
-    }
-  }
-
   private async runInSession(
-    request: OciRunRequest,
+    request: OciRunBatchRequest,
     session: PersistentOciSession,
     sessionReused: boolean
-  ): Promise<OciCommandResult> {
+  ): Promise<OciCommandBatchResult> {
+    const totalStartedAt = process.hrtime.bigint();
     const uid = process.getuid?.() ?? 65532;
     const gid = process.getgid?.() ?? 65532;
-    if (session.paused) {
-      await this.cli(["unpause", session.name]);
-      session.paused = false;
-    }
     let forcedRemoval: Promise<void> | undefined;
     const forceRemove = () => {
       forcedRemoval ??= this.forceRemove(session.name);
     };
+    const commandStartedAt = process.hrtime.bigint();
     const result = await spawnBounded([
       this.runtime,
       "exec",
+      "-i",
       "--workdir",
       "/workspace",
       "--user",
       `${uid}:${gid}`,
       session.name,
-      ...request.command
+      "node",
+      "--input-type=module",
+      "-e",
+      OCI_COMMAND_RUNNER_SCRIPT
     ], {
       env: this.hostEnvironment,
-      timeoutMs: request.limits.maxProcessRuntimeMs,
-      maxOutputBytes: request.limits.maxProcessOutputBytes,
+      timeoutMs: request.limits.maxProcessRuntimeMs + OCI_ATTESTATION_TIMEOUT_MS,
+      maxOutputBytes: request.limits.maxProcessOutputBytes + OCI_ATTESTATION_PROTOCOL_BYTES,
+      input: JSON.stringify({
+        commands: request.commands,
+        maxProcessRuntimeMs: request.limits.maxProcessRuntimeMs,
+        hasDependencies: Boolean(request.dependencyRoot)
+      }),
       ...(request.abortSignal ? { abortSignal: request.abortSignal } : {}),
       onStop: forceRemove
     });
+    const commandAndAttestationMs = elapsedMilliseconds(commandStartedAt);
+    const attestationMatch = result.exitCode === 0
+      ? result.stdout.match(OCI_ATTESTATION_PATTERN)
+      : null;
+    const commandResult = attestationMatch
+      ? { ...result, stdout: result.stdout.slice(0, -attestationMatch[0].length) }
+      : result;
     if (
-      result.exitCode !== 0 ||
-      result.timedOut ||
-      result.cancelled ||
-      result.outputLimitExceeded
+      Buffer.byteLength(commandResult.stdout) + Buffer.byteLength(commandResult.stderr) >
+      request.limits.maxProcessOutputBytes
+    ) {
+      commandResult.outputLimitExceeded = true;
+    }
+    const command = request.commands.length === 1
+      ? request.commands[0] as string[]
+      : ["<oci-batch>", String(request.commands.length)];
+    const backgroundProcess = commandResult.exitCode === 126 && commandResult.stderr.includes(OCI_BACKGROUND_PROCESS_MARKER);
+    const commandTimedOut = commandResult.exitCode === 124 && commandResult.stderr.includes(OCI_COMMAND_TIMEOUT_MARKER);
+    const attestationFailure = commandResult.exitCode === 127
+      ? commandResult.stderr.match(/ZHIVEX_HARNESS_ATTESTATION_FAILURE:([^\r\n]*)/)
+      : null;
+    if (
+      commandResult.exitCode !== 0 ||
+      commandResult.timedOut ||
+      commandResult.cancelled ||
+      commandResult.outputLimitExceeded
     ) {
       forceRemove();
       await forcedRemoval;
       await this.destroySession(session);
+      if (attestationFailure) {
+        throw new Error(`OCI workspace attestation failed: ${attestationFailure[1] ?? "unknown failure"}.`);
+      }
       return {
-        ...result,
-        command: request.command,
+        ...commandResult,
+        command,
+        commands: request.commands,
+        ...(commandTimedOut ? { timedOut: true, exitCode: 124 } : {}),
+        ...(backgroundProcess ? {
+          exitCode: 126,
+          stderr: [
+            commandResult.stderr.replace(OCI_BACKGROUND_PROCESS_MARKER, "").trim(),
+            "OCI command left background processes running; its workspace changes were discarded."
+          ].filter(Boolean).join("\n")
+        } : {}),
         sessionReused,
         workspacePublished: false,
-        workspaceExported: false
+        workspaceExported: false,
+        phaseLatencies: {
+          commandAndAttestationMs,
+          totalMs: elapsedMilliseconds(totalStartedAt)
+        }
       };
     }
 
     try {
-      if (!(await this.onlyControllerProcessRemains(session))) {
-        await this.destroySession(session);
-        return {
-          ...result,
-          command: request.command,
-          exitCode: 126,
-          stderr: [
-            result.stderr,
-            "OCI command left background processes running; its workspace changes were discarded."
-          ].filter(Boolean).join("\n"),
-          sessionReused,
-          workspacePublished: false,
-          workspaceExported: false
-        };
+      if (!attestationMatch) {
+        throw new Error("OCI command attestation returned an invalid workspace seal.");
       }
-      const workspaceSeal = await this.containerWorkspaceSeal(
-        session,
-        uid,
-        gid,
-        Boolean(request.dependencyRoot)
-      );
+      const workspaceSeal = attestationMatch[1] as FileDigest;
       if (workspaceSeal === session.snapshotSeal) {
         return {
-          ...result,
-          command: request.command,
+          ...commandResult,
+          command,
+          commands: request.commands,
           sessionReused,
           workspacePublished: true,
-          workspaceExported: false
+          workspaceExported: false,
+          phaseLatencies: {
+            commandAndAttestationMs,
+            totalMs: elapsedMilliseconds(totalStartedAt)
+          }
         };
       }
+      const workspaceExportStartedAt = process.hrtime.bigint();
       const stagedRoot = path.join(path.dirname(request.snapshotRoot), `.workspace-sync-${randomUUID()}`);
       try {
         await privateDirectory(stagedRoot);
@@ -838,11 +890,17 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
         await rm(stagedRoot, { recursive: true, force: true });
       }
       return {
-        ...result,
-        command: request.command,
+        ...commandResult,
+        command,
+        commands: request.commands,
         sessionReused,
         workspacePublished: true,
-        workspaceExported: true
+        workspaceExported: true,
+        phaseLatencies: {
+          commandAndAttestationMs,
+          workspaceExportMs: elapsedMilliseconds(workspaceExportStartedAt),
+          totalMs: elapsedMilliseconds(totalStartedAt)
+        }
       };
     } catch (error) {
       await this.destroySession(session);
@@ -850,13 +908,23 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  private async runLocked(request: OciRunRequest): Promise<OciCommandResult> {
+  private async runBatchLocked(request: OciRunBatchRequest): Promise<OciCommandBatchResult> {
+    if (
+      request.commands.length === 0 ||
+      request.commands.some((command) => command.length === 0)
+    ) {
+      throw new Error("OCI command batch must contain at least one non-empty argv command.");
+    }
+    const totalStartedAt = process.hrtime.bigint();
     const key = runHash(request.runId);
     const requestFingerprint = this.requestFingerprint(request);
     let session = this.sessions.get(key);
     let sessionReused = Boolean(session);
     let validated: ValidatedSnapshot | undefined;
+    let hostSynchronizationMs: number | undefined;
+    let sessionCreationMs: number | undefined;
     if (session) {
+      const synchronizationStartedAt = process.hrtime.bigint();
       const hostFingerprint = await snapshotMetadataFingerprint(
         request.snapshotRoot,
         request.limits.maxWorkspaceBytes
@@ -869,8 +937,10 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
         session = undefined;
         sessionReused = false;
       }
+      hostSynchronizationMs = elapsedMilliseconds(synchronizationStartedAt);
     }
     if (!session) {
+      const creationStartedAt = process.hrtime.bigint();
       validated = await validateSynchronizedSnapshot(
         request.snapshotRoot,
         request.snapshotRoot,
@@ -883,9 +953,19 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
         validated.seal,
         validated.metadataFingerprint
       );
+      sessionCreationMs = elapsedMilliseconds(creationStartedAt);
     }
     try {
-      return await this.runInSession(request, session, sessionReused);
+      const result = await this.runInSession(request, session, sessionReused);
+      return {
+        ...result,
+        phaseLatencies: {
+          ...result.phaseLatencies!,
+          ...(hostSynchronizationMs !== undefined ? { hostSynchronizationMs } : {}),
+          ...(sessionCreationMs !== undefined ? { sessionCreationMs } : {}),
+          totalMs: elapsedMilliseconds(totalStartedAt)
+        }
+      };
     } catch (error) {
       if (this.sessions.get(key) === session) await this.destroySession(session).catch(() => undefined);
       throw error;
@@ -893,7 +973,13 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   }
 
   async run(request: OciRunRequest): Promise<OciCommandResult> {
-    return this.withRunLock(request.runId, () => this.runLocked(request));
+    const { command, ...shared } = request;
+    const result = await this.runBatch({ ...shared, commands: [command] });
+    return { ...result, command };
+  }
+
+  async runBatch(request: OciRunBatchRequest): Promise<OciCommandBatchResult> {
+    return this.withRunLock(request.runId, () => this.runBatchLocked(request));
   }
 
   private async removeByFilters(filters: string[]) {
@@ -941,6 +1027,38 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     return removed;
   }
 
+  private async removeRunningOrphans() {
+    const listed = await spawnBounded([
+      this.runtime,
+      "ps",
+      "-q",
+      "--filter",
+      `label=${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`,
+      "--filter",
+      "status=running"
+    ], {
+      env: this.hostEnvironment,
+      timeoutMs: 30_000,
+      maxOutputBytes: 1024 * 1024
+    });
+    if (listed.exitCode !== 0) return 0;
+    let removed = 0;
+    for (const id of validContainerIds(listed.stdout)) {
+      const inspected = await this.cli([
+        "inspect",
+        id,
+        "--format",
+        "{{json .Config.Labels}}"
+      ], 30_000, 20_000);
+      const labels = JSON.parse(inspected.stdout) as Record<string, unknown>;
+      const ownerPid = Number(labels[HARNESS_OCI_OWNER_PID_LABEL]);
+      if (hostProcessIsAlive(ownerPid)) continue;
+      await this.forceRemove(id);
+      removed += 1;
+    }
+    return removed;
+  }
+
   async removeRunContainers(runId: string) {
     const key = runHash(runId);
     const session = this.sessions.get(key);
@@ -959,14 +1077,19 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   }
 
   async cleanupOrphans() {
-    this.sessions.clear();
     let removed = 0;
+    for (const session of [...this.sessions.values()]) {
+      await this.destroySession(session);
+      removed += 2;
+    }
+    this.sessions.clear();
     for (const status of ["created", "exited", "dead", "paused"]) {
       removed += await this.removeByFilters([
         `label=${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`,
         `status=${status}`
       ]);
     }
+    removed += await this.removeRunningOrphans();
     removed += await this.removeVolumesByFilters([
       `label=${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`
     ]);
@@ -1366,13 +1489,24 @@ export interface HarnessEnvironmentStatus {
   io: HarnessExecutionIoMetrics;
 }
 
+export interface HarnessCommandResult extends CommandResult {
+  phaseLatencies?: OciPhaseLatencies;
+  sessionReused?: boolean;
+  workspacePublished?: boolean;
+  workspaceExported?: boolean;
+}
+
 export interface HarnessExecutionSession extends AgentExecutionEnvironmentSession {
   readonly kind: "zhivex-oci";
   readonly runId: string;
   readonly workspace: Workspace;
   status(): Promise<HarnessEnvironmentStatus>;
-  runCommand(command: string, args: readonly string[], context?: ToolExecutionContext): Promise<CommandResult>;
-  runCheck(check: string, expectedScript: string, allowedChecks: readonly string[], context?: ToolExecutionContext): Promise<CommandResult>;
+  runCommand(command: string, args: readonly string[], context?: ToolExecutionContext): Promise<HarnessCommandResult>;
+  runCommandBatch(
+    commands: readonly { command: string; args: readonly string[] }[],
+    context?: ToolExecutionContext
+  ): Promise<HarnessCommandResult>;
+  runCheck(check: string, expectedScript: string, allowedChecks: readonly string[], context?: ToolExecutionContext): Promise<HarnessCommandResult>;
   inspectPatch(): Promise<EnvironmentPatchInspection>;
   importPatch(host: Workspace, patchId: FileDigest): Promise<EnvironmentPatchImportResult>;
 }
@@ -1532,22 +1666,19 @@ export const createHarnessOciExecutionEnvironment = async (
           throw error;
         }
       }
-      const runCommand = async (
-        command: string,
-        args: readonly string[],
-        context?: ToolExecutionContext
-      ) => {
+      const validateCommand = (command: string, args: readonly string[]) => {
         if (!options.config.allowedCommands.includes(command)) {
           throw new Error(`The OCI command "${command}" is not in the explicit allowlist.`);
         }
         if (args.length > 256 || args.some((value) => value.length > 8_192 || value.includes("\0"))) {
           throw new Error("OCI command arguments exceed the bounded argument contract.");
         }
-        const result = await runtime.run({
+        return [command, ...args] as string[];
+      };
+      const sharedRunRequest = (context?: ToolExecutionContext) => ({
           runId: request.runId,
           snapshotRoot,
           ...(dependencyRoot ? { dependencyRoot } : {}),
-          command: [command, ...args],
           imageId: image.imageId,
           limits: {
             maxProcessRuntimeMs: options.config.maxProcessRuntimeMs,
@@ -1562,7 +1693,8 @@ export const createHarnessOciExecutionEnvironment = async (
           ...(context?.abortSignal ?? request.abortSignal
             ? { abortSignal: context?.abortSignal ?? request.abortSignal }
             : {})
-        });
+      });
+      const normalizeResult = (result: OciCommandResult): HarnessCommandResult => {
         if (result.sessionReused === false) ioMetrics.containerStarts += 1;
         if (result.sessionReused === true) ioMetrics.containerReuses += 1;
         if (result.workspacePublished === true) ioMetrics.workspacePublishes += 1;
@@ -1584,7 +1716,50 @@ export const createHarnessOciExecutionEnvironment = async (
             ...(result.timedOut ? ["OCI command timed out."] : []),
             ...(result.outputLimitExceeded ? ["OCI command exceeded the output limit."] : [])
           ].filter(Boolean).join("\n"),
-          timedOut: result.timedOut
+          timedOut: result.timedOut,
+          ...(result.phaseLatencies ? { phaseLatencies: result.phaseLatencies } : {}),
+          ...(result.sessionReused !== undefined ? { sessionReused: result.sessionReused } : {}),
+          ...(result.workspacePublished !== undefined ? { workspacePublished: result.workspacePublished } : {}),
+          ...(result.workspaceExported !== undefined ? { workspaceExported: result.workspaceExported } : {})
+        };
+      };
+      const runCommand = async (
+        command: string,
+        args: readonly string[],
+        context?: ToolExecutionContext
+      ) => normalizeResult(await runtime.run({
+        ...sharedRunRequest(context),
+        command: validateCommand(command, args)
+      }));
+      const runCommandBatch = async (
+        commands: readonly { command: string; args: readonly string[] }[],
+        context?: ToolExecutionContext
+      ): Promise<HarnessCommandResult> => {
+        if (commands.length === 0 || commands.length > 32) {
+          throw new Error("OCI command batch must contain between 1 and 32 commands.");
+        }
+        if (commands.reduce((total, item) => total + item.args.length, 0) > 256) {
+          throw new Error("OCI command batch exceeds the bounded argument-count contract.");
+        }
+        const argvCommands = commands.map(({ command, args }) => validateCommand(command, args));
+        if (runtime.runBatch) {
+          return normalizeResult(await runtime.runBatch({
+            ...sharedRunRequest(context),
+            commands: argvCommands
+          }));
+        }
+        const results: HarnessCommandResult[] = [];
+        for (const argv of argvCommands) {
+          const result = await runCommand(argv[0] as string, argv.slice(1), context);
+          results.push(result);
+          if (result.exitCode !== 0) break;
+        }
+        return {
+          command: ["<oci-batch>", String(commands.length)],
+          exitCode: results.at(-1)?.exitCode ?? 1,
+          stdout: results.map((result) => result.stdout).filter(Boolean).join(""),
+          stderr: results.map((result) => result.stderr).filter(Boolean).join("\n"),
+          timedOut: results.some((result) => result.timedOut)
         };
       };
       const session: HarnessExecutionSession = {
@@ -1602,6 +1777,18 @@ export const createHarnessOciExecutionEnvironment = async (
             const input = authorization.input as { command?: unknown; args?: unknown };
             if (typeof input.command !== "string" || !options.config.allowedCommands.includes(input.command)) {
               return { decision: "deny", reason: "The requested OCI executable is not allowlisted." };
+            }
+          }
+          if (name === "run_environment_batch") {
+            const input = authorization.input as { commands?: unknown };
+            if (!Array.isArray(input.commands) || input.commands.length < 1 || input.commands.length > 32 ||
+              input.commands.some((item) => {
+                const candidate = item as { command?: unknown; args?: unknown };
+                return typeof candidate.command !== "string" ||
+                  !options.config.allowedCommands.includes(candidate.command) ||
+                  !Array.isArray(candidate.args);
+              })) {
+              return { decision: "deny", reason: "The requested OCI command batch is invalid or contains a non-allowlisted executable." };
             }
           }
           return {
@@ -1643,6 +1830,7 @@ export const createHarnessOciExecutionEnvironment = async (
           };
         },
         runCommand,
+        runCommandBatch,
         async runCheck(check, expectedScript, allowedChecks, context) {
           let manifestDocument: { packageManager?: unknown; scripts?: unknown };
           try {

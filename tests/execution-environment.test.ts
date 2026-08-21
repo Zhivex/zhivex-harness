@@ -14,8 +14,10 @@ import {
   createHarnessOciExecutionEnvironment,
   OCI_SESSION_CONTROLLER_SCRIPT,
   type HarnessOciRuntimeAdapter,
+  type OciCommandBatchResult,
   type OciCommandResult,
   type OciImageInspection,
+  type OciRunBatchRequest,
   type OciRunRequest
 } from "../src/execution-environment.js";
 import { createHarness, runHarness } from "../src/harness.js";
@@ -87,6 +89,27 @@ class FakeOciRuntime implements HarnessOciRuntimeAdapter {
   }
 }
 
+class FakeBatchOciRuntime extends FakeOciRuntime {
+  readonly batchRequests: OciRunBatchRequest[] = [];
+
+  async runBatch(request: OciRunBatchRequest): Promise<OciCommandBatchResult> {
+    this.batchRequests.push(request);
+    return {
+      command: ["<oci-batch>", String(request.commands.length)],
+      commands: request.commands,
+      exitCode: 0,
+      stdout: "first\nsecond\n",
+      stderr: "",
+      timedOut: false,
+      cancelled: false,
+      outputLimitExceeded: false,
+      sessionReused: false,
+      workspacePublished: true,
+      workspaceExported: false
+    };
+  }
+}
+
 const workspaceFixture = async () => {
   const root = await temporaryDirectory("zhivex-harness-oci-");
   await mkdir(path.join(root, "src"), { recursive: true });
@@ -120,6 +143,47 @@ describe("enforced OCI execution environment", () => {
       controller.kill("SIGKILL");
       await exited;
     }
+  });
+
+  test("uses one optimized runtime publication cycle for a validated argv batch", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeBatchOciRuntime();
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "optimized-batch-run" });
+    const result = await session.runCommandBatch([
+      { command: "node", args: ["--version"] },
+      { command: "npm", args: ["--version"] }
+    ]);
+
+    expect(result).toMatchObject({ exitCode: 0, stdout: "first\nsecond\n" });
+    expect(runtime.requests).toHaveLength(0);
+    expect(runtime.batchRequests).toHaveLength(1);
+    expect(runtime.batchRequests[0]?.commands).toEqual([
+      ["node", "--version"],
+      ["npm", "--version"]
+    ]);
+    expect((await session.status()).io).toMatchObject({
+      containerStarts: 1,
+      containerReuses: 0,
+      workspacePublishes: 1,
+      workspaceExports: 0
+    });
+    await expect(session.runCommandBatch([
+      { command: "sh", args: ["-c", "echo unsafe"] }
+    ])).rejects.toThrow("not in the explicit allowlist");
+    expect(runtime.batchRequests).toHaveLength(1);
+    await session.release?.({ status: "completed" });
   });
 
   test("runs only against a secret-free snapshot and imports a reviewed content-bound patch", async () => {
@@ -242,6 +306,7 @@ describe("enforced OCI execution environment", () => {
     });
     const tools = harness.agent.tools as Record<string, { requiresApproval?: boolean; approvalMode?: string }>;
     expect(tools.run_environment_command).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
+    expect(tools.run_environment_batch).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
     expect(tools.apply_environment_patch).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
     expect(tools.git_diff).toBeUndefined();
 
@@ -268,6 +333,68 @@ describe("enforced OCI execution environment", () => {
       expect.objectContaining({ path: "generated.txt", operation: "create" })
     );
     await session.release?.({ status: "completed" });
+  });
+
+  test("binds one durable approval to the complete environment command batch", async () => {
+    const { root } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const model = createMockLanguageModel({
+      provider: "mock-provider",
+      modelId: "mock-model",
+      streamEvents: [
+        [
+          {
+            type: "tool-call",
+            toolCall: {
+              id: "oci-batch-1",
+              name: "run_environment_batch",
+              input: {
+                commands: [
+                  { command: "npm", args: ["--version"] },
+                  { command: "node", args: ["--version"] }
+                ]
+              }
+            }
+          },
+          { type: "finish", finishReason: "tool-calls" }
+        ],
+        [
+          { type: "text-delta", textDelta: "snapshot batch complete" },
+          { type: "finish", finishReason: "stop" }
+        ]
+      ]
+    });
+    const harness = await createHarness({
+      provider: "openai",
+      workspace: root,
+      executionBackend: "oci",
+      modelInstance: model,
+      store: createInMemoryAgentRunStore(),
+      ociRuntimeAdapter: runtime
+    });
+
+    const waiting = await runHarness(harness, { runId: "oci-batch-approval-run", prompt: "Run the isolated batch" });
+    expect(waiting.status).toBe("waiting_approval");
+    expect(waiting.state.pendingApprovals).toHaveLength(1);
+    expect(waiting.state.pendingApprovals[0]?.name).toBe("run_environment_batch");
+    expect(runtime.requests).toHaveLength(0);
+
+    const completed = await runHarness(harness, {
+      state: waiting.state,
+      approvals: waiting.state.pendingApprovals.map((approval) => ({
+        provider: approval.provider,
+        approvalRequestId: approval.id,
+        approve: true,
+        reason: "Reviewed argv batch."
+      }))
+    });
+    expect(completed.status).toBe("completed");
+    // Custom runtimes without runBatch retain a safe sequential fallback.
+    expect(runtime.requests.map((request) => request.command)).toEqual([
+      ["npm", "--version"],
+      ["node", "--version"]
+    ]);
+    harness.close();
   });
 
   test("binds and imports executable modes, including mode-only changes", async () => {

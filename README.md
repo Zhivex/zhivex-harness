@@ -52,7 +52,7 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 
 - reuses a freshness-checked topology index across file-list and search pages while reading current file bytes for every digest;
 - adds bounded `read_files` and `search_many` tools that reduce model/tool round trips without parallelizing writes;
-- reuses a paused OCI container within an acquired run, skips exports for unchanged workspace seals, and reseeds after failures or host-snapshot changes without weakening the reviewed host-import boundary;
+- reuses an inert controller-only OCI container within an acquired run, attests command execution and the canonical workspace seal in one cycle, skips exports for unchanged seals, and reseeds after failures or host-snapshot changes without weakening the reviewed host-import boundary;
 - adds a reproducible workspace benchmark and observable index/OCI I/O counters; and
 - introduces deterministic, offline-verifiable `ChangeEnvelope v1` documents bound to exact patch bytes, base identity, runtime policy, redacted checks, expiry, and optional approval/attestation references.
 
@@ -84,7 +84,7 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 - governed MCP over bounded HTTPS/loopback HTTP with explicit server/tool allowlists, permissions, timeouts, approvals, output limits, and environment-backed credentials;
 - named explorer, implementer, tester, and reviewer subagents with independent durable budgets and promoted approvals;
 - deterministic application-owned parallel read-only review groups with child progress, hierarchy, usage, and cost evidence;
-- optional enforced Docker/Podman execution with a paused per-run container, no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
+- optional enforced Docker/Podman execution with a warm controller-only per-run container, no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
 - argv-only allowlisted environment commands, isolated package checks, deterministic patch inspection, and a separate durable approval before importing changes into the host workspace;
 - environment/image/policy fingerprint binding, cancellation cleanup, labeled orphan cleanup, retained audit artifacts, and installed-package plus real-runtime smoke gates;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
@@ -317,10 +317,14 @@ bun test
 bun run build
 bun run evaluate
 bun run benchmark:workspace
+bun run benchmark:workspace -- --files 50000 --repetitions 10 --warmups 2
+bun run benchmark:oci -- --files 1000 --commands 20 --repetitions 10 --warmups 1
 bun run smoke:package
 bun run pack:inspect
 bun run check
 ```
+
+The workspace benchmark reports topology-only and digest-bound listing separately, plus independent versus batched search with alternating pair order. The OCI benchmark reports environment setup, snapshot/session acquisition, first command, reused commands, mutation, and end-to-end time to first successful command. Both fixtures exclude setup, validate results, use sequential repetitions, and emit host/runtime metadata, nearest-rank p50/p95/p99, and success rates. `--repetitions` and `--warmups` are configurable; host filesystem caches are not flushed, so publish the commit and exact command with any result. Use at least 100 successful samples before treating p99 as representative.
 
 The live gate is opt-in and billable:
 

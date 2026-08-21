@@ -68,7 +68,7 @@
     "test": "bun test",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
-    "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100",
+    "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100 --repetitions 3 --warmups 0",
     "benchmark:oci": "bun run scripts/benchmark-oci.ts",
     "smoke:package": "bun run build && bun run scripts/package-smoke.ts",
     "smoke:artifact": "bun run scripts/package-smoke.ts",

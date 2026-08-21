@@ -19,7 +19,7 @@ These controls prevent silent workspace drift; they do not isolate the host. Run
 
 ## Discovery and digests
 
-`list_files` and `search_files` return deterministic pages. Each response includes `truncated` and, when another page exists, an opaque `nextCursor`. Supply that cursor unchanged to request the next page. A cursor is bound to the original operation and parameters; it must not be edited or reused for a different path, query, case-sensitivity setting, or page size.
+`list_files` and `search_files` return deterministic pages. `list_files` keeps digest-bound entries as the default; set `includeDigests=false` for path-only topology discovery without reading every file. Before proposing a mutation, use `read_file` or `read_files` to obtain the exact current digest. Each response includes `truncated` and, when another page exists, an opaque `nextCursor`. Supply that cursor unchanged to request the next page. A cursor is bound to the original operation and parameters, including the topology/digest mode; it must not be edited or reused for a different path, query, case-sensitivity setting, or page size.
 
 In `0.9.x`, pagination reuses a topology-only index. Before each reuse, the harness validates visible directory metadata and the metadata plus content digests of applicable ignore files. A structural or ignore-policy change invalidates the index and makes an older cursor fail as stale. File bytes and content digests are never served from that index: every listed page, read, and search uses the stable anti-race file reader, so an external content-only change is observed even when the topology remains valid.
 

@@ -165,6 +165,15 @@ describe("Zhivex harness", () => {
         execute: (input: unknown) => Promise<unknown>;
       }>;
 
+      await expect(tools.list_files?.execute({
+        path: ".",
+        limit: 10,
+        includeDigests: false
+      })).resolves.toEqual({
+        files: [{ path: "alpha.ts" }, { path: "beta.ts" }],
+        truncated: false
+      });
+
       await expect(tools.read_files?.execute({
         files: [
           { path: "beta.ts", startLine: 1 },

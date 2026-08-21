@@ -107,13 +107,17 @@ export type {
   EnvironmentPatchImportResult,
   EnvironmentPatchInspection,
   ExecutionArtifactCleanupResult,
+  HarnessCommandResult,
   HarnessEnvironmentStatus,
   HarnessExecutionIoMetrics,
   HarnessExecutionSession,
   HarnessOciExecutionEnvironment,
   HarnessOciRuntimeAdapter,
+  OciCommandBatchResult,
   OciImageInspection,
   OciCommandResult,
+  OciPhaseLatencies,
+  OciRunBatchRequest,
   OciRunRequest
 } from "./execution-environment.js";
 
@@ -277,11 +281,13 @@ export type {
   CommandResult,
   HarnessCheck,
   ListFilesOptions,
+  ListFilesResult,
   ReadFilesRequest,
   SearchFilesOptions,
   SearchManyOptions,
   SearchManyQuery,
   SearchMatch,
   WorkspaceFile,
+  WorkspaceTopologyFile,
   WorkspaceIndexDiagnostics
 } from "./workspace.js";

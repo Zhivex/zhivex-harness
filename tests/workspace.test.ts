@@ -176,6 +176,49 @@ describe("Workspace", () => {
     await expect(workspace.searchFiles("different", "src", { limit: 2, cursor: firstSearch.nextCursor })).rejects.toThrow("cursor");
   });
 
+  test("lists topology without stable content reads while keeping digest-bound listing as the default", async () => {
+    const { root, workspace } = await fixture();
+    await writeFile(path.join(root, "src", "a.ts"), "a\n", "utf8");
+    const before = workspace.workspaceIndexDiagnostics().stableFileReads;
+
+    const topology = await workspace.listFiles("src", { includeDigests: false });
+
+    expect(topology.files).toEqual([{ path: "src/a.ts" }, { path: "src/index.ts" }]);
+    expect(workspace.workspaceIndexDiagnostics().stableFileReads).toBe(before);
+
+    const digestBound = await workspace.listFiles("src");
+    expect(digestBound.files).toHaveLength(2);
+    expect(digestBound.files[0]?.size).toBeGreaterThan(0);
+    expect(digestBound.files[0]?.digest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(workspace.workspaceIndexDiagnostics().stableFileReads - before).toBe(2);
+  });
+
+  test("binds topology cursors to their mode and invalidates them after structural changes", async () => {
+    const { root, workspace } = await fixture();
+    await writeFile(path.join(root, "src", "a.ts"), "a\n", "utf8");
+    await writeFile(path.join(root, "src", "b.ts"), "b\n", "utf8");
+    const before = workspace.workspaceIndexDiagnostics().stableFileReads;
+
+    const first = await workspace.listFiles("src", { limit: 1, includeDigests: false });
+    expect(first.files).toEqual([{ path: "src/a.ts" }]);
+    expect(first.nextCursor).toBeString();
+    const second = await workspace.listFiles("src", {
+      limit: 1,
+      includeDigests: false,
+      cursor: first.nextCursor
+    });
+    expect(second.files).toEqual([{ path: "src/b.ts" }]);
+    expect(workspace.workspaceIndexDiagnostics().stableFileReads).toBe(before);
+    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor })).rejects.toThrow("cursor");
+
+    await writeFile(path.join(root, "src", "c.ts"), "c\n", "utf8");
+    await expect(workspace.listFiles("src", {
+      limit: 1,
+      includeDigests: false,
+      cursor: first.nextCursor
+    })).rejects.toThrow(/cursor|stale/);
+  });
+
   test("reuses one versioned index across pages and rebuilds it after structural changes", async () => {
     const { root, workspace } = await fixture();
     await mkdir(path.join(root, "bulk"));

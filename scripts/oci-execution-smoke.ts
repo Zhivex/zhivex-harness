@@ -100,6 +100,14 @@ try {
   assert.equal(check.exitCode, 0, check.stderr || check.stdout);
   assert.match(check.stdout, /oci-check-ok/);
 
+  const batch = await session.runCommandBatch([
+    { command: "node", args: nodeEval("console.log('oci-batch-first')") },
+    { command: "node", args: nodeEval("console.log('oci-batch-second')") }
+  ]);
+  assert.equal(batch.exitCode, 0, batch.stderr || batch.stdout);
+  assert.match(batch.stdout, /oci-batch-first/);
+  assert.match(batch.stdout, /oci-batch-second/);
+
   const warmStatus = await session.status();
   assert.deepEqual(
     {
@@ -110,11 +118,26 @@ try {
     },
     {
       containerStarts: 1,
-      containerReuses: 2,
-      workspacePublishes: 3,
+      containerReuses: 3,
+      workspacePublishes: 4,
       workspaceExports: 1
     }
   );
+
+  const failedBatch = await session.runCommandBatch([
+    {
+      command: "node",
+      args: nodeEval("import { writeFile } from 'node:fs/promises'; await writeFile('/workspace/src/discarded-batch.ts', 'discard me\\n')")
+    },
+    { command: "node", args: nodeEval("process.exit(2)") }
+  ]);
+  assert.equal(failedBatch.exitCode, 2);
+  await assert.rejects(session.workspace.readFile("src/discarded-batch.ts"));
+  const recoveredBatch = await session.runCommand("node", nodeEval(
+    "import { access } from 'node:fs/promises'; try { await access('/workspace/src/discarded-batch.ts'); process.exit(1); } catch { console.log('batch-discard-ok'); }"
+  ));
+  assert.equal(recoveredBatch.exitCode, 0, recoveredBatch.stderr || recoveredBatch.stdout);
+  assert.match(recoveredBatch.stdout, /batch-discard-ok/);
 
   await assert.rejects(
     session.runCommand("node", nodeEval(
@@ -145,7 +168,7 @@ try {
   ));
   assert.equal(synchronized.exitCode, 0, synchronized.stderr || synchronized.stdout);
   assert.match(synchronized.stdout, /host-tool-sync-ok/);
-  assert.equal((await session.status()).io.containerStarts, 3);
+  assert.equal((await session.status()).io.containerStarts, 4);
 
   const inspection = await session.inspectPatch();
   assert.deepEqual(

@@ -8,6 +8,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ### Changed
 
+- Add path-only topology discovery, a single-attestation warm OCI command path, and approved `run_environment_batch` execution for up to 32 allowlisted argv commands with one final seal/publication cycle. Failures still discard the unpublished session state and reseed from the durable snapshot.
+- Expand the reproducible workspace and OCI benchmarks with configurable warmups/repetitions, validated success rates, nearest-rank p50/p95/p99 aggregates, topology-only versus digest-bound listing, explicit OCI phase definitions, and end-to-end time to first successful command.
 - Make Node.js `>=22.13.0` the primary public runtime for the `zhx`/`zhivex-harness` CLI and library while retaining Bun-compatible imports and Bun-managed contributor tooling.
 - Replace `bun:sqlite` with a small `node:sqlite` compatibility layer. Existing `operations.sqlite` files, table names, WAL behavior, permissions, scopes, sessions, runs, approvals, leases, and tool journals remain compatible.
 - Replace host `Bun.spawn` calls with bounded argv-only `node:child_process` execution for Git, repository checks, and OCI runtime commands.

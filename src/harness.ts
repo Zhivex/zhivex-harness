@@ -123,14 +123,14 @@ export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable
 
 Rules:
 - Match the user's language.
-- Inspect the repository before proposing changes. Prefer search_many and read_files for independent lookups, then use search_files or read_file when pagination or one focused read is clearer.
+- Inspect the repository before proposing changes. Use list_files with includeDigests=false for fast topology discovery, then prefer search_many and read_files for independent lookups. Read the exact digest before proposing any edit.
 - Use only workspace-relative paths. Never request or expose secrets.
 - Make the smallest coherent change that fully addresses the task.
 - For every file edit, first read its digest and call propose_edits. Apply exactly that reviewed proposal with apply_patch.
 - apply_patch, move_file, quarantine_file, restore_file, and run_check require explicit approval from the operator.
 - Calling an approval-gated tool is how you request that approval: call the tool with its complete reviewed arguments, then let the runtime pause before execution. Never replace the tool call with a textual approval request.
 - With enforced OCI execution enabled, workspace tools operate on an ephemeral snapshot. Use inspect_environment_patch and obtain a separate approval through apply_environment_patch before changing the host workspace.
-- run_environment_command executes one allowlisted argv command without a host shell. Network, privileges, resources, environment variables, and output are bounded by the OCI policy.
+- run_environment_command executes one allowlisted argv command without a host shell. Prefer run_environment_batch for a reviewed sequence that can share one final workspace attestation. Network, privileges, resources, environment variables, and output are bounded by the OCI policy.
 - Never overwrite stale content. If an expected digest no longer matches, inspect the file again and create a new proposal.
 - Deletions are recoverable: use quarantine_file, never permanent deletion. Use restore_file to recover quarantined content.
 - Never claim a check passed unless run_check returned exitCode 0.
@@ -218,19 +218,20 @@ const mutationApproval = {
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   list_files: tool({
     name: "list_files",
-    description: "List regular files with content digests using a stable cursor. Build artifacts, dependencies, Git internals, and harness state are ignored.",
+    description: "List regular files using a stable cursor. Set includeDigests=false for fast path-only topology discovery; keep it true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
     schema: z.object({
       path: z.string().min(1).default("."),
       limit: z.number().int().min(1).max(500).default(200),
+      includeDigests: z.boolean().default(true),
       cursor: z.string().min(1).max(2000).optional()
     }),
     metadata: readOnlyMetadata,
-    execute: async ({ path, limit, cursor }, context) => serializeJsonValue(await (
-      harnessExecutionSession(context)?.workspace ?? workspace
-    ).listFiles(path, {
-      limit,
-      ...(cursor ? { cursor } : {})
-    }))
+    execute: async ({ path, limit, includeDigests, cursor }, context) => {
+      const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
+      return serializeJsonValue(await (includeDigests
+        ? selectedWorkspace.listFiles(path, { limit, includeDigests: true, ...(cursor ? { cursor } : {}) })
+        : selectedWorkspace.listFiles(path, { limit, includeDigests: false, ...(cursor ? { cursor } : {}) })));
+    }
   }),
   read_file: tool({
     name: "read_file",
@@ -419,6 +420,31 @@ export const createExecutionEnvironmentTools = (workspace: Workspace) => ({
     metadata: toolMetadata(["code-execution", "filesystem"], "high"),
     execute: async ({ command, args }, context) => serializeJsonValue(
       await requireExecutionSession(context).runCommand(command, args, context)
+    )
+  }),
+  run_environment_batch: tool({
+    name: "run_environment_batch",
+    description: "Run 1 to 32 reviewed allowlisted argv commands sequentially inside one enforced OCI cycle. Execution stops on the first failure and the workspace is attested and published only after the batch succeeds; no host shell or network is exposed.",
+    schema: z.strictObject({
+      commands: z.array(z.strictObject({
+        command: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9._+-]*$/),
+        args: z.array(z.string().max(8_192)).max(256).default([])
+      })).min(1).max(32)
+    }).superRefine((input, context) => {
+      if (input.commands.reduce((total, command) => total + command.args.length, 0) > 256) {
+        context.addIssue({
+          code: "custom",
+          path: ["commands"],
+          message: "run_environment_batch allows at most 256 aggregate arguments."
+        });
+      }
+    }),
+    requiresApproval: true,
+    approvalMode: "interrupt",
+    approvalVersion: APPROVAL_VERSION,
+    metadata: toolMetadata(["code-execution", "filesystem"], "high"),
+    execute: async ({ commands }, context) => serializeJsonValue(
+      await requireExecutionSession(context).runCommandBatch(commands, context)
     )
   }),
   environment_status: tool({
