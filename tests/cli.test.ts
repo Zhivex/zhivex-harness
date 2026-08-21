@@ -209,7 +209,9 @@ describe("CLI parsing", () => {
       "--oci-image",
       "example/harness@sha256:fixture",
       "--oci-allow-command",
-      "bun",
+      "node",
+      "--oci-allow-command",
+      "npm",
       "--oci-allow-command",
       "git",
       "--oci-max-memory-mb",
@@ -222,7 +224,7 @@ describe("CLI parsing", () => {
       executionBackend: "oci",
       ociRuntime: "podman",
       ociImage: "example/harness@sha256:fixture",
-      ociAllowedCommands: ["bun", "git"],
+      ociAllowedCommands: ["node", "npm", "git"],
       ociMaxMemoryMb: 512,
       ociMaxPids: 64,
       prompt: "isolated task"
@@ -449,7 +451,7 @@ describe("approval review", () => {
         executionBackend: "oci",
         ociRuntime: "podman",
         ociImage: "example/harness@sha256:fixture",
-        ociAllowedCommands: ["bun", "git"],
+        ociAllowedCommands: ["npm", "git"],
         ociMaxProcessRuntimeMs: 42_000,
         ociMaxProcessOutputBytes: 12_345,
         ociMaxMemoryMb: 512,
@@ -655,14 +657,15 @@ describe("doctor", () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-"));
     try {
       await writeFile(path.join(workspace, "package.json"), JSON.stringify({
-        scripts: { test: "bun test", typecheck: "tsc --noEmit" }
+        packageManager: "npm@11.5.1",
+        scripts: { test: "node --test", typecheck: "tsc --noEmit" }
       }));
       const report = await createDoctorReport({
         provider: "openai",
         workspace,
         stateDirectory: path.join(workspace, ".zhivex-harness", "runs")
       }, {
-        bunVersion: "1.3.7",
+        nodeVersion: "22.13.0",
         env: {
           OPENAI_API_KEY: "do-not-print-this-key",
           OPENAI_BASE_URL: "https://secret-host.invalid/v1",
@@ -686,7 +689,7 @@ describe("doctor", () => {
         }
       });
       expect(report.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
-        "bun",
+        "node",
         "workspace",
         "git",
         "scripts",
@@ -709,7 +712,10 @@ describe("doctor", () => {
   test("checks the immutable OCI image when enforced execution is selected", async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-oci-"));
     try {
-      await writeFile(path.join(workspace, "package.json"), JSON.stringify({ scripts: { test: "bun test" } }));
+      await writeFile(path.join(workspace, "package.json"), JSON.stringify({
+        packageManager: "npm@11.5.1",
+        scripts: { test: "node --test" }
+      }));
       const runtime = {
         inspectImage: async (imageReference: string) => ({
           runtime: "docker" as const,
@@ -728,7 +734,7 @@ describe("doctor", () => {
         stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
         executionBackend: "oci"
       }, {
-        bunVersion: "1.3.7",
+        nodeVersion: "22.13.0",
         env: { OPENAI_API_KEY: "present" },
         ociRuntimeAdapter: runtime
       });
@@ -742,17 +748,17 @@ describe("doctor", () => {
     }
   });
 
-  test("fails old Bun, missing selected credentials, and unsafe state paths", async () => {
+  test("fails old Node, missing selected credentials, and unsafe state paths", async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-"));
     try {
       const report = await createDoctorReport({
         provider: "openai",
         workspace,
         stateDirectory: path.join(workspace, "src", "runs")
-      }, { bunVersion: "1.2.0", env: {} });
+      }, { nodeVersion: "22.12.0", env: {} });
 
       expect(report.ok).toBe(false);
-      expect(report.checks.find((check) => check.id === "bun")?.status).toBe("fail");
+      expect(report.checks.find((check) => check.id === "node")?.status).toBe("fail");
       expect(report.checks.find((check) => check.id === "provider:openai")?.status).toBe("fail");
       expect(report.checks.find((check) => check.id === "state-directory")).toMatchObject({
         status: "fail",
@@ -771,7 +777,7 @@ describe("doctor", () => {
         provider: "openai",
         workspace,
         stateDirectory: workspace
-      }, { bunVersion: "1.3.7", env: { OPENAI_API_KEY: "present" } });
+      }, { nodeVersion: "22.13.0", env: { OPENAI_API_KEY: "present" } });
       expect(rootReport.checks.find((check) => check.id === "state-directory")?.status).toBe("fail");
 
       const stateLink = path.join(workspace, "state-link");
@@ -781,7 +787,7 @@ describe("doctor", () => {
         provider: "openai",
         workspace,
         stateDirectory: path.join(stateLink, "runs")
-      }, { bunVersion: "1.3.7", env: { OPENAI_API_KEY: "present" } });
+      }, { nodeVersion: "22.13.0", env: { OPENAI_API_KEY: "present" } });
       expect(linkReport.checks.find((check) => check.id === "state-directory")).toMatchObject({
         status: "fail",
         message: expect.stringContaining("symbolic link")

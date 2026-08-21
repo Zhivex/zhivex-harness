@@ -4,6 +4,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import {
   DEFAULT_PROVIDER_REGISTRY,
   HARNESS_CONFIG_SCHEMA_VERSION,
+  HARNESS_EXECUTION_POLICY_VERSION,
   createProviderModel,
   createProviderRegistry,
   parseProvider,
@@ -58,26 +59,34 @@ describe("provider configuration", () => {
   });
 
   test("resolves a bounded no-network OCI policy and rejects unsafe execution configuration", () => {
+    expect(resolveHarnessConfig({ executionBackend: "oci" }).execution).toMatchObject({
+      backend: "oci",
+      policyVersion: HARNESS_EXECUTION_POLICY_VERSION,
+      image: "node:24-bookworm-slim",
+      allowedCommands: ["node", "npm"]
+    });
     expect(resolveHarnessConfig({
       executionBackend: "oci",
       ociRuntime: "podman",
-      ociImage: "registry.example/zhivex-bun@sha256:fixture",
-      ociAllowedCommands: ["bun", "git", "bun"],
+      ociImage: "registry.example/zhivex-node@sha256:fixture",
+      ociAllowedCommands: ["npm", "git", "npm"],
       ociMaxMemoryMb: 512,
       ociMaxPids: 64
     }).execution).toMatchObject({
       backend: "oci",
       runtime: "podman",
-      image: "registry.example/zhivex-bun@sha256:fixture",
-      allowedCommands: ["bun", "git"],
+      image: "registry.example/zhivex-node@sha256:fixture",
+      allowedCommands: ["npm", "git"],
       maxMemoryMb: 512,
       maxPids: 64
     });
     expect(() => resolveHarnessConfig({ executionBackend: "host" })).toThrow("executionBackend");
     expect(() => resolveHarnessConfig({ executionBackend: "oci", ociRuntime: "shell" })).toThrow("ociRuntime");
     expect(() => resolveHarnessConfig({ executionBackend: "oci", ociImage: "-unsafe" })).toThrow("ociImage");
-    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["git"] })).toThrow("include bun");
-    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["bun", "../sh"] })).toThrow("Invalid OCI command");
+    expect(resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["bun"] }).execution)
+      .toMatchObject({ allowedCommands: ["bun"] });
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["git"] })).toThrow("include npm, pnpm, yarn, or bun");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["npm", "../sh"] })).toThrow("Invalid OCI command");
     expect(() => resolveHarnessConfig({
       executionBackend: "oci",
       ociMaxWorkspaceBytes: 1024 * 1024,

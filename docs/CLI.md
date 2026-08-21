@@ -1,6 +1,6 @@
 # CLI contract
 
-Zhivex Harness `0.9.x` is Bun-first and exposes a durable agent console, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation.
+Zhivex Harness `0.10.x` is Node-first and exposes a durable agent console, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands
 
@@ -49,13 +49,13 @@ Provider/model changes apply only to the next run. The console blocks them while
 
 `/resume` selects a conversation session; it does not approve a run. A pending approval still requires the explicit operator command `zhx resume <runId> --approve` or `--deny`.
 
-`doctor` is local and makes no provider or MCP request. It checks the Bun version, workspace, Git, supported package scripts, state-directory safety, provider credential presence, endpoint shape, provider configuration, the local MCP configuration file, and—when requested—the OCI runtime and preloaded image without returning secret or endpoint values.
+`doctor` is local and makes no provider or MCP request. It checks the active Node/Bun runtime, detected repository package manager, workspace, Git, supported package scripts, state-directory safety, provider credential presence, endpoint shape, provider configuration, the local MCP configuration file, and—when requested—the OCI runtime and preloaded image without returning secret or endpoint values.
 
 `--allow-check <script>` is repeatable and replaces the default check allowlist for that invocation. Values are declared `package.json` script names, never command text.
 
 `--require-capability <name>`, `--subagent <profile>`, and `--reviewer <explorer|reviewer>` are repeatable. `--mcp-config <path>` loads a schema-versioned file inside the canonical workspace. Child limits use `--subagent-max-steps`, `--subagent-max-tool-calls`, `--subagent-max-tool-errors`, `--subagent-max-input-tokens`, `--subagent-max-output-tokens`, `--subagent-max-total-tokens`, and `--subagent-timeout-ms`. Parallel review is capped by `--max-parallel-reviews`.
 
-`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.9.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
+`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.10.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
 `review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 
@@ -76,7 +76,7 @@ Enforced execution is opt-in:
 --oci-tmpfs-mb <n>
 ```
 
-`--oci-allow-command` is repeatable, replaces the default executable allowlist, and must include `bun` so declared package checks can run. Commands are exact argv arrays, never shell strings. See [EXECUTION_ENVIRONMENTS.md](./EXECUTION_ENVIRONMENTS.md).
+`--oci-allow-command` is repeatable, replaces the default executable allowlist, and must include at least one supported repository package manager: `npm`, `pnpm`, `yarn`, or `bun`. The default is `node,npm`; custom images must still provide Node for the internal controller. Commands are exact argv arrays, never shell strings. See [EXECUTION_ENVIRONMENTS.md](./EXECUTION_ENVIRONMENTS.md).
 
 ## Change admission
 

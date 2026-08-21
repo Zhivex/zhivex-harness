@@ -1,6 +1,6 @@
 # Durable operations
 
-Zhivex Harness durable operations make local runs inspectable and recoverable across process restarts. The default store is Bun SQLite at `<workspace>/.zhivex-harness/runs/operations.sqlite`; `--store file` remains a migration fallback.
+Zhivex Harness durable operations make local runs inspectable and recoverable across process restarts. The default store is runtime-portable SQLite at `<workspace>/.zhivex-harness/runs/operations.sqlite`, backed by `node:sqlite`; `--store file` remains a migration fallback. The `0.10.x` runtime change does not alter the SQLite file or table format.
 
 ## Scope and identity
 
@@ -47,7 +47,7 @@ zhivex-harness runs cleanup --before 2026-08-01T00:00:00Z
 
 ## Durable CLI sessions
 
-The `0.9.x` console maintains a scoped session index in prefixed tables inside `operations.sqlite`. A session is an ordered chain of immutable run references; it is not a mutable provider run. The index stores session ID/title, parent/fork metadata, run ID, provider, model, role, status, and timestamps. It never stores prompts, messages, tool calls/results, approval arguments, provider data, or environment values.
+The console maintains a scoped session index in prefixed tables inside `operations.sqlite`. A session is an ordered chain of immutable run references; it is not a mutable provider run. The index stores session ID/title, parent/fork metadata, run ID, provider, model, role, status, and timestamps. It never stores prompts, messages, tool calls/results, approval arguments, provider data, or environment values.
 
 ```bash
 zhx chat
@@ -66,7 +66,7 @@ The store uses SQLite WAL transactions, optimistic revisions, workspace/scope ha
 
 Every console turn preallocates a new run ID and binds it permanently to one provider/model. Provider or model changes take effect only on the next run and are blocked while an approval is pending. Before transferring context to another provider/model, the console creates a bounded deterministic redacted summary: text is truncated and common credentials are removed, while tool inputs, outputs, and provider payloads are replaced by tool/type names.
 
-Per-role routes are stored as non-secret provider/model metadata in the durable resume envelope so an approval restart reconstructs the same subagent models and fingerprint. A route never performs in-run failover. Heterogeneous routes cannot be combined with the single-price `--max-cost-usd` contract in `0.9.x`.
+Per-role routes are stored as non-secret provider/model metadata in the durable resume envelope so an approval restart reconstructs the same subagent models and fingerprint. A route never performs in-run failover. Heterogeneous routes cannot be combined with the single-price `--max-cost-usd` contract in `0.10.x`.
 
 ## Budgets
 
@@ -103,6 +103,14 @@ The default compactor activates at 60 messages or an estimated 40,000 input toke
 ## Redaction and exports
 
 Operational artifacts are schema version `1`. By default they exclude raw messages, tool inputs, tool outputs, approval arguments, run metadata, and full output text. Traces, ledger previews, and journal errors apply the production secret/email redaction policy. This is a defensive export boundary, not a guarantee that arbitrary model-generated prose can never contain sensitive business data; control prompt contents and workspace permissions accordingly.
+
+## Migration from 0.9.x
+
+Before invoking `0.10.x`, install Node.js `22.13.0` or newer; Bun is no longer required to run the packaged CLI. Back up the state directory, then complete or deny paused approvals with the exact `0.9.x` artifact that created them before installing the exact `0.10.x` artifact. After upgrading, run `zhx doctor`, `zhx runs list`, and `zhx sessions list` against the same workspace and scope.
+
+`0.10.0` keeps configuration schema `4`, final JSON schema `1`, all durable table names, and the SQLite file format. The runtime now opens the same database through `node:sqlite`, so existing `operations.sqlite` files require no conversion or export/import step.
+
+Paused `0.9.x` approvals remain bound to their original harness version, tool contract, and execution policy; `0.10.x` intentionally rejects an incompatible resume. Completed `0.9.x` runs and sessions remain available for redacted inspection, while new runs select npm, pnpm, Yarn, or Bun from the repository's pinned `packageManager` or unambiguous lockfile. Bun-managed repositories should keep an explicit `packageManager` field or one Bun lockfile; OCI runs also need a Node-capable image and the selected package manager in the executable allowlist.
 
 ## Migration from 0.8.x
 

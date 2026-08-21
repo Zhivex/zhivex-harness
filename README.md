@@ -4,16 +4,16 @@
 
 [![npm](https://img.shields.io/npm/v/%40zhivex-ai%2Fharness?logo=npm)](https://www.npmjs.com/package/@zhivex-ai/harness)
 [![CI](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml)
-[![Bun](https://img.shields.io/badge/Bun-%3E%3D1.3.7-fbf0df?logo=bun)](https://bun.sh/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22.13-339933?logo=nodedotjs)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-22c55e.svg)](./LICENSE)
 
 ![Zhivex Harness: Let agents work. Control every change.](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/assets/social-preview.png)
 
-Zhivex Harness runs coding agents against real repositories with conflict-safe edits, durable approvals, isolated execution, and redacted operational evidence. It is a Bun-first local CLI and TypeScript library portable across Meta, Qwen, OpenAI, and provisional Gemini support, built on the Stable `@zhivex-ai/agents` runtime.
+Zhivex Harness runs coding agents against real repositories with conflict-safe edits, durable approvals, isolated execution, and redacted operational evidence. It is a Node-first local CLI and TypeScript library portable across Meta, Qwen, OpenAI, and provisional Gemini support, built on the Stable `@zhivex-ai/agents` runtime. Bun remains supported as development tooling and as an explicitly selected repository package manager.
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.9.0` is the source candidate for faster governed repository inspection and the agent-agnostic `ChangeEnvelope v1` admission contract. The latest public npm release is `0.8.0`; local validation does not imply that `0.9.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.10.0` is the source candidate for the Node-first runtime and package-manager-neutral repository checks. The latest public npm release is `0.9.0`; local validation does not imply that `0.10.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -33,14 +33,22 @@ The hostile-repository demo creates a disposable fixture containing malicious in
 
 ```bash
 bun install --frozen-lockfile
-docker pull oven/bun:1.3.7-slim
+docker pull node:24-bookworm-slim
 bun run build
 bun run demo:hostile
 ```
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.9 changes
+## What 0.10 changes
+
+- makes Node.js `>=22.13.0` the primary public CLI and library runtime while retaining Bun-compatible imports and Bun-managed contributor workflows;
+- replaces `bun:sqlite` and `Bun.spawn` with `node:sqlite` and argv-only `node:child_process` boundaries without changing the durable SQLite file format;
+- detects npm, pnpm, Yarn, or Bun from a pinned `packageManager` field or an unambiguous lockfile, defaults to npm, and rejects implicit pre/post lifecycle hooks that were not reviewed;
+- moves the default enforced environment to `node:24-bookworm-slim`, executes its controller as Node ESM, and keeps custom Bun images available through explicit configuration; and
+- adds Node-built CLI/library and installed-artifact smokes while retaining Bun compatibility coverage.
+
+## What 0.9 changed
 
 - reuses a freshness-checked topology index across file-list and search pages while reading current file bytes for every digest;
 - adds bounded `read_files` and `search_many` tools that reduce model/tool round trips without parallelizing writes;
@@ -61,11 +69,11 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 - an extensible provider registry, provider/model selection, provisional native Gemini support, and repeatable per-role routes such as `--route reviewer=gemini`;
 - redacted, sequence-numbered `--jsonl` events for automation, while `--json` keeps the final-document contract;
 - versioned configuration and JSON output contracts;
-- a local `doctor` command that diagnoses Bun, workspace, Git, scripts, state, credentials, endpoints, and provider capabilities without making provider requests or exposing secret values;
+- a local `doctor` command that diagnoses the runtime, repository package manager, workspace, Git, scripts, state, credentials, endpoints, and provider capabilities without making provider requests or exposing secret values;
 - deterministic, cursor-paginated workspace listing and search with SHA-256 content digests;
 - reviewed multi-file proposals and approved atomic application with stale-content rejection;
 - approved moves plus recoverable quarantine and restore operations;
-- an explicit, configurable allowlist of declared `package.json` checks executed through Bun;
+- an explicit, configurable allowlist of declared `package.json` checks executed through the repository's pinned or detected package manager;
 - read-only inspection of staged, unstaged, renamed, deleted, and untracked Git state;
 - per-process mutation audit evidence and a final diff summary;
 - scoped SQLite run/memory state, idempotency, approval resumption, leases, and exactly-once tool journals;
@@ -86,19 +94,26 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Requirements
 
-- Bun 1.3.7 or newer.
+- Node.js 22.13.0 or newer. Node 24 LTS is used by the default OCI image and release workflow.
 - Git for repository status and diff inspection.
 - At least one supported provider credential for real model execution.
 - Docker or Podman plus a preloaded image when `--execution oci` is requested.
 
 ## Installation
 
+The currently published `0.9.0` package still uses the Bun-first runtime:
+
 ```bash
-bun add @zhivex-ai/harness
-bunx --package @zhivex-ai/harness zhx --version
+bunx --package @zhivex-ai/harness@0.9.0 zhx --version
 ```
 
-To exercise the `0.9.0` source checkout:
+After the exact `0.10.0` artifact is published and registry-verified, the Node-first installation is:
+
+```bash
+npx --yes --package=@zhivex-ai/harness@0.10.0 zhx --version
+```
+
+Do not omit the version while npm `latest` still resolves to `0.9.0`. To exercise the `0.10.0` source checkout now, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
 
 ```bash
 bun install --frozen-lockfile
@@ -177,7 +192,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` remains rejected in `0.9.0`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` remains rejected in `0.10.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -246,10 +261,12 @@ The default check allowlist is `test`, `typecheck`, `lint`, and `build`. Replace
 zhivex-harness run --allow-check test:unit --allow-check format "apply the fix and validate it"
 ```
 
+The harness uses a pinned `packageManager` field when present; otherwise it accepts one unambiguous npm, pnpm, Yarn, or Bun lockfile and defaults to npm when neither signal exists. It executes only the selected script and rejects symbolic-link or ambiguous lockfiles plus implicit `pre<script>`/`post<script>` lifecycle hooks.
+
 Enable enforced local execution explicitly. The image must already exist locally; the harness never pulls it implicitly:
 
 ```bash
-docker pull oven/bun:1.3.7-slim
+docker pull node:24-bookworm-slim
 zhivex-harness doctor --execution oci
 zhivex-harness run --execution oci --yes "inspect, implement, test, review the environment patch, and import it"
 ```
@@ -267,7 +284,7 @@ zhivex-harness run --execution oci --yes "inspect, implement, test, review the e
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta and Qwen retain the published support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. All three passed the local base approval/restart gate, but delegation, OCI execution, and `0.9.0` release-artifact certification still require the release-candidate matrix. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta and Qwen retain the published support conclusion for the unchanged approval/restart and delegation paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. The Node-first `0.10.0` source candidate passes the local npm-installed artifact and real OCI boundary smokes; the Node 22/24 CI matrix and live-provider release certification remain pending. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 

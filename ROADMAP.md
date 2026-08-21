@@ -1,9 +1,9 @@
 # Zhivex Harness Roadmap
 
 - Status: active
-- Baseline date: 2026-08-20
+- Baseline date: 2026-08-21
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.8.0` are published on npm. `0.9.0` is the source candidate for faster governed repository inspection and portable change-admission evidence; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.9.0` are published on npm. `0.10.0` is the source candidate for a Node-first public runtime and package-manager-neutral repository checks; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -12,7 +12,7 @@ This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library 
 - Reuse Stable `@zhivex-ai/agents` runtime contracts for safety, durability, tracing, evaluation, subagents, and execution environments.
 - Keep generic shell execution behind an enforced container or remote-worker boundary.
 - Treat local, installed-package, live-provider, and published-artifact evidence as separate gates.
-- Keep the CLI Bun-first. JavaScript and TypeScript project checks continue to run through Bun.
+- Keep the public CLI Node-first while retaining Bun for contributor tooling and explicitly Bun-managed repositories. JavaScript and TypeScript checks run through the target repository's pinned or unambiguously detected package manager.
 
 ## Historical baseline: 0.2.0
 
@@ -42,7 +42,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Published on npm | S |
 | `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Published on npm | L |
 | `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Published on npm | M |
-| `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Source candidate | L |
+| `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Published on npm | L |
+| `0.10.0` | Node-first portability | Node CLI/library, portable SQLite/processes, manager-aware checks, and Node OCI | Source candidate | L |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -243,7 +244,7 @@ Deferred after `0.7.0`:
 
 - Per-provider/per-role cost pricing and evidence-backed routing presets.
 - Additional hosted and local providers, added one by one through the same registry and certification contract.
-- Remote workers or microVM backends; the current console stays local and Bun-first.
+- Remote workers or microVM backends; the current console stays local and moves to a Node-first runtime in `0.10.0`.
 
 ## 0.8.0 — SDK refresh and GPT-5.6-first OpenAI
 
@@ -266,7 +267,7 @@ Exit criteria:
 
 ## 0.9.0 — fast governed change admission
 
-Status: source candidate. Deterministic tests and the local performance fixture pass; real-OCI, installed-artifact, live-provider, tag, registry, and provenance gates remain separate.
+Status: published on npm with its release tag, registry integrity, and provenance verified separately from source validation.
 
 Goal: reduce the cost of inspecting large repositories and materialize the harness's change-control evidence as a portable, agent-agnostic admission contract.
 
@@ -287,6 +288,28 @@ Exit criteria:
 - Change-envelope tests cover canonical determinism, exact patch tampering, base/policy/evidence changes, expiry, strict redaction schemas, and explicit authenticity limits.
 - Documentation, typecheck, full tests, evaluation, build, package inspection, and installed-tarball smoke pass from a clean release commit before any tag or publication.
 
+## 0.10.0 — Node-first runtime portability
+
+Status: source candidate. The full deterministic suite, evaluation, documentation, npm-installed exact-tarball smoke, direct Node/Bun imports, Bun-created approval resume under Node, and required real-Docker OCI boundary gate pass locally. The Node 22/24 CI matrix, live providers, clean release gate, tag, registry, and provenance remain separate.
+
+Goal: remove Bun as an installation prerequisite without weakening governed execution or forcing target repositories to adopt one package manager.
+
+Scope:
+
+- Publish `zhx`, `zhivex-harness`, and the library as Node-targeted ESM for Node.js `>=22.13.0`; retain Bun contributor workflows and compatibility imports.
+- Use `node:sqlite` and `node:child_process` behind bounded adapters while preserving the existing SQLite file, scopes, approvals, sessions, leases, and exactly-once journals.
+- Detect npm, pnpm, Yarn, or Bun from `packageManager` or one unambiguous lockfile; default to npm and reject symbolic-link/ambiguous lockfiles plus unreviewed lifecycle hooks.
+- Run the enforced controller in Node 24 with `node,npm` defaults, a new execution-policy fingerprint, and explicit custom-image/allowlist requirements for other managers.
+- Certify direct Node 22/24 execution, installed artifact behavior, SQLite reopen, both CLI aliases, public imports, and secondary Bun compatibility.
+
+Exit criteria:
+
+- The built and installed package imports and executes under supported Node versions without a `bun:` module or `Bun` global.
+- Bun-created SQLite state reopens under Node and preserves durable approval/exactly-once behavior; Bun can still import the Node-targeted artifact.
+- Host and OCI checks cover npm by default plus explicit Bun, ambiguous lockfiles, stale script text, hidden lifecycle hooks, timeouts, cancellation, and bounded output.
+- Linux real-OCI validation passes on the preloaded Node 24 image with unchanged network/rootfs/resource/patch-import guarantees.
+- Documentation, typecheck, full tests, evaluation, build, package inspection, installed-artifact smoke, release checks, live matrix, tag, registry integrity, and provenance are closed independently.
+
 ## 1.0.0 — Stable CLI and library contract
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
@@ -294,7 +317,7 @@ Goal: freeze a supportable public contract after the pre-1.0 safety and operatio
 Scope:
 
 - Stabilize CLI commands, config schema, JSON/event schemas, library exports, state migrations, and error taxonomy.
-- Publish a support matrix for Bun, operating systems, Git, container backend, providers, models, MCP modes, and store backends.
+- Publish a support matrix for Node, secondary Bun compatibility, operating systems, Git, container backend, providers, models, MCP modes, and store backends.
 - Guarantee tested migration from the final two `0.x` state/config formats or provide an explicit export/import tool.
 - Complete threat model, security review, dependency audit, provenance, integrity, and rollback documentation.
 - Run a representative repository evaluation matrix across every supported provider and publish date-bound evidence.
@@ -332,8 +355,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Review and commit the `0.9.0` workspace-index, batch-tool, OCI I/O, and ChangeEnvelope contracts from a clean branch.
-2. Run the required real-OCI and installed-artifact gates; keep the current local benchmark as comparative evidence rather than a cross-machine latency promise.
-3. Dogfood exact-patch envelope creation/verification and batch repository inspection on representative repositories, including external workspace mutations between pages.
-4. Complete the remaining GPT-5.6 and provisional-provider live matrices; keep uncertified paths provisional on any failure or missing evidence.
-5. Only after those gates, create the annotated tag, dispatch the reviewed release workflow, and verify registry integrity and provenance against the exact artifact.
+1. Complete the `0.10.0` Node-first source gate and inspect every runtime-facing diff, compatibility export, documentation contract, and lockfile change.
+2. Run required real-OCI validation against `node:24-bookworm-slim` plus installed-artifact smokes under Node 22/24 and secondary Bun import coverage.
+3. Dogfood npm, pnpm, Yarn, and Bun repositories, including ambiguous lockfiles, lifecycle hooks, custom OCI images, and durable state created by `0.9.x`.
+4. Complete the provider live matrices affected by the new OCI controller; keep uncertified paths provisional on any failure or missing evidence.
+5. Only after those gates, date the changelog, create the annotated tag, dispatch the reviewed release workflow, and verify registry integrity and provenance against the exact artifact.

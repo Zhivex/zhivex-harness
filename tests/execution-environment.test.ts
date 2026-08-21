@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -49,7 +50,7 @@ class FakeOciRuntime implements HarnessOciRuntimeAdapter {
     this.image = {
       runtime: "docker",
       runtimeVersion: "fixture-1.0.0",
-      imageReference: "fixture/bun:1.3.7",
+      imageReference: "fixture/node:24",
       imageId: imageDigest,
       imageDigest
     };
@@ -92,7 +93,7 @@ const workspaceFixture = async () => {
   await writeFile(path.join(root, "package.json"), JSON.stringify({
     name: "oci-fixture",
     private: true,
-    scripts: { test: "bun test" }
+    scripts: { test: "node --test" }
   }, null, 2));
   await writeFile(path.join(root, "src", "update.ts"), "export const value = 1;\n");
   await writeFile(path.join(root, "src", "delete.ts"), "delete me\n");
@@ -105,20 +106,19 @@ describe("enforced OCI execution environment", () => {
     expect(OCI_SESSION_CONTROLLER_SCRIPT).toContain("setInterval");
     expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("sleep");
     expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("setTimeout");
-    const controller = Bun.spawn([process.execPath, "-e", OCI_SESSION_CONTROLLER_SCRIPT], {
-      stdin: "ignore",
-      stdout: "ignore",
-      stderr: "ignore"
+    const controller = spawn(process.execPath, ["--input-type=module", "-e", OCI_SESSION_CONTROLLER_SCRIPT], {
+      stdio: "ignore"
     });
+    const exited = new Promise<"exited">((resolve) => controller.once("exit", () => resolve("exited")));
     try {
       const state = await Promise.race([
-        controller.exited.then(() => "exited" as const),
-        Bun.sleep(50).then(() => "running" as const)
+        exited,
+        new Promise<"running">((resolve) => setTimeout(() => resolve("running"), 50))
       ]);
       expect(state).toBe("running");
     } finally {
-      controller.kill();
-      await controller.exited;
+      controller.kill("SIGKILL");
+      await exited;
     }
   });
 
@@ -140,7 +140,7 @@ describe("enforced OCI execution environment", () => {
     const session = await environment.acquire({ runId: "snapshot-import-run" });
 
     expect((await session.workspace.listFiles()).files.map((file) => file.path)).not.toContain(".env");
-    await session.runCommand("bun", ["test"]);
+    await session.runCommand("npm", ["test"]);
     const inspection = await session.inspectPatch();
 
     expect(inspection.entries).toEqual([
@@ -160,7 +160,7 @@ describe("enforced OCI execution environment", () => {
 
     expect(runtime.requests[0]).toMatchObject({
       imageId: `sha256:${"a".repeat(64)}`,
-      command: ["bun", "test"],
+      command: ["npm", "test"],
       limits: {
         maxProcessRuntimeMs: 120_000,
         maxProcessOutputBytes: 20_000,
@@ -185,6 +185,26 @@ describe("enforced OCI execution environment", () => {
     expect(runtime.removedRuns).toContain("snapshot-import-run");
   });
 
+  test("runs declared package checks through npm inside the Node OCI boundary", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "node-check-run" });
+
+    await session.runCheck("test", "node --test", ["test"]);
+
+    expect(runtime.requests).toHaveLength(1);
+    expect(runtime.requests[0]?.command).toEqual(["npm", "--ignore-scripts", "run", "test"]);
+    await session.release?.({ status: "completed" });
+  });
+
   test("requires one approval for execution and keeps approved command changes off the host", async () => {
     const { root } = await workspaceFixture();
     const runtime = new FakeOciRuntime(undefined, async (request) => {
@@ -201,7 +221,7 @@ describe("enforced OCI execution environment", () => {
             toolCall: {
               id: "oci-command-1",
               name: "run_environment_command",
-              input: { command: "bun", args: ["test"] }
+              input: { command: "npm", args: ["test"] }
             }
           },
           { type: "finish", finishReason: "tool-calls" }
@@ -269,7 +289,7 @@ describe("enforced OCI execution environment", () => {
       runtime
     });
     const session = await environment.acquire({ runId: "mode-import-run" });
-    await session.runCommand("bun", ["test"]);
+    await session.runCommand("npm", ["test"]);
 
     const inspection = await session.inspectPatch();
     expect(inspection.entries).toEqual([
@@ -312,7 +332,7 @@ describe("enforced OCI execution environment", () => {
         toolCall: {
           id: "bound-command",
           name: "run_environment_command",
-          input: { command: "bun", args: ["test"] }
+          input: { command: "npm", args: ["test"] }
         }
       },
       { type: "finish" as const, finishReason: "tool-calls" as const }
@@ -425,7 +445,7 @@ describe("enforced OCI execution environment", () => {
         runtime
       });
       const session = await environment.acquire({ runId: `forced-exit-${index}` });
-      const result = await session.runCommand("bun", ["test"]);
+      const result = await session.runCommand("npm", ["test"]);
       expect(result.exitCode).toBe(fixture.exitCode);
       expect(result.stderr).toContain(fixture.message);
       await session.release?.({ status: "failed" });
@@ -471,7 +491,7 @@ describe("enforced OCI execution environment", () => {
               toolCall: {
                 id: "child-oci-command",
                 name: "run_environment_command",
-                input: { command: "bun", args: ["test"] }
+                input: { command: "npm", args: ["test"] }
               }
             }]
           }],

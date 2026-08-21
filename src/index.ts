@@ -157,7 +157,7 @@ export type {
   HarnessSubagentRuntime
 } from "./orchestration.js";
 
-export { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
+export { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
 
 export {
   CHANGE_ENVELOPE_DIGEST_ALGORITHM,

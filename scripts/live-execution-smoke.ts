@@ -31,8 +31,9 @@ const completionToken = (provider: HarnessProvider) =>
   `ZHIVEX_HARNESS_${provider.toUpperCase()}_OCI_LIVE_OK`;
 
 export const executionCommandInput = (provider: HarnessProvider) => ({
-  command: "bun",
+  command: "node",
   args: [
+    "--input-type=module",
     "-e",
     `import { mkdir, writeFile } from 'node:fs/promises'; await mkdir('live-execution',{recursive:true}); await writeFile(${JSON.stringify(executionPath(provider))},${JSON.stringify(executionContent(provider))})`
   ]
@@ -61,7 +62,7 @@ const certifyProvider = async (
     ...(process.env.ZHIVEX_HARNESS_OCI_IMAGE
       ? { ociImage: process.env.ZHIVEX_HARNESS_OCI_IMAGE }
       : {}),
-    ociAllowedCommands: ["bun"],
+    ociAllowedCommands: ["node", "npm"],
     ociMaxProcessRuntimeMs: 30_000,
     ociMaxMemoryMb: 256,
     ociMaxPids: 32,

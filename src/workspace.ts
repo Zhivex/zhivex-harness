@@ -20,6 +20,8 @@ import {
   type RestoreFileInput,
   type RestoreFileResult
 } from "./edit-contracts.js";
+import { resolvePackageCheckCommand } from "./package-manager.js";
+import { runPortableProcess } from "./process-runtime.js";
 
 const HARD_IGNORES = new Set([".git", ".next", ".turbo", ".zhivex-harness", "coverage", "dist", "node_modules"]);
 const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
@@ -288,24 +290,7 @@ const isIgnoredByRules = (relativePath: string, isDirectory: boolean, rules: rea
 };
 
 const spawnBounded = async (command: string[], cwd: string, timeoutMs = 120_000): Promise<CommandResult> => {
-  const allowed = ["CI", "FORCE_COLOR", "LANG", "LC_ALL", "NO_COLOR", "PATH", "TEMP", "TERM", "TMP", "TMPDIR"];
-  const env = Object.fromEntries(allowed.flatMap((key) => process.env[key] ? [[key, process.env[key] as string]] : []));
-  const child = Bun.spawn(command, { cwd, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
-  let timedOut = false;
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    child.kill();
-  }, timeoutMs);
-  try {
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-      child.exited
-    ]);
-    return { command, exitCode, stdout: truncate(stdout), stderr: truncate(stderr), timedOut };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return await runPortableProcess(command, { cwd, timeoutMs });
 };
 
 export class Workspace {
@@ -1209,21 +1194,24 @@ export class Workspace {
   }
 
   async runCheck(check: HarnessCheck, expectedScript: string, allowedChecks: readonly string[] = DEFAULT_CHECKS): Promise<CommandResult> {
-    if (!/^[A-Za-z0-9:_-]+$/.test(check) || !allowedChecks.includes(check)) {
-      throw new Error(`The check "${check}" is not in the explicit allowlist.`);
-    }
-    let scripts: Record<string, string> = {};
+    let manifest: { packageManager?: unknown; scripts?: unknown };
     try {
-      const packageJson = JSON.parse((await this.readStableFile("package.json", false)).contents.toString("utf8")) as { scripts?: Record<string, string> };
-      scripts = packageJson.scripts ?? {};
+      manifest = JSON.parse(
+        (await this.readStableFile("package.json", false)).contents.toString("utf8")
+      ) as { packageManager?: unknown; scripts?: unknown };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error("The workspace does not contain a package.json file.");
       throw error;
     }
-    if (!scripts[check]) throw new Error(`package.json does not define the "${check}" script.`);
-    if (scripts[check] !== expectedScript) throw new Error(`The "${check}" script changed or does not match expectedScript.`);
+    const resolved = await resolvePackageCheckCommand(
+      this.root,
+      manifest,
+      check,
+      expectedScript,
+      allowedChecks
+    );
     try {
-      return await spawnBounded(["bun", "--no-env-file", "run", check], this.root);
+      return await spawnBounded(resolved.command, this.root);
     } finally {
       this.invalidateWorkspaceIndex();
     }

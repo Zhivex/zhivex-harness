@@ -78,7 +78,7 @@ Quarantine is a recovery boundary, not a backup system. Retention and permanent 
 
 ## Checks
 
-Checks remain explicit package scripts executed through Bun. `test`, `typecheck`, `lint`, and `build` are the default allowlist. `--allow-check` and `ZHIVEX_HARNESS_ALLOWED_CHECKS` replace that default with an explicit set of declared package-script names; they do not accept command text. The requested script text must still exactly match the current `package.json`; a changed script fails closed.
+Checks remain explicit package scripts executed through the repository package manager. `packageManager` is authoritative when pinned; otherwise one unambiguous npm, pnpm, Yarn, or Bun lockfile is detected, and repositories without either default to npm. `test`, `typecheck`, `lint`, and `build` are the default allowlist. `--allow-check` and `ZHIVEX_HARNESS_ALLOWED_CHECKS` replace that default with an explicit set of declared package-script names; they do not accept command text. The requested script text must still exactly match the current `package.json`; a changed script, symbolic-link/ambiguous lockfile, or implicit `pre<check>`/`post<check>` hook fails closed.
 
 Checks do not load the workspace `.env` automatically. A non-zero exit, timeout, or truncated output is recorded as returned evidence and must not be summarized as a successful validation.
 

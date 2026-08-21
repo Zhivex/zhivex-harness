@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { AgentStoreScope } from "@zhivex-ai/agents/ops";
-import { Database } from "bun:sqlite";
 
+import { SqliteDatabase } from "./sqlite-database.js";
 import { validateStateDirectory } from "./state-directory.js";
 
 export const HARNESS_SESSION_INDEX_FILE = "operations.sqlite";
@@ -355,7 +355,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
   const maxIndexBytes = boundedInteger("maxIndexBytes", options.maxIndexBytes, DEFAULT_MAX_INDEX_BYTES, 1_024);
   const now = options.now ?? Date.now;
   const { databasePath, databaseEntry } = await ensurePrivateDatabase(workspace, options.stateDirectory);
-  const database = new Database(databasePath, { create: false, strict: true });
+  const database = new SqliteDatabase(databasePath, { create: false, strict: true });
   let closed = false;
 
   const assertOpen = () => {

@@ -15,6 +15,7 @@ interface PackageManifest {
   private?: boolean;
   publishConfig?: { access?: string; provenance?: boolean; registry?: string };
   bin?: Record<string, string>;
+  engines?: { node?: string; bun?: string };
 }
 
 const workspace = path.resolve(import.meta.dir, "..");
@@ -119,6 +120,26 @@ assert.deepEqual(
   { "zhivex-harness": "./dist/cli.js", zhx: "./dist/zhx.js" },
   "packed CLI aliases are incorrect"
 );
+assert.deepEqual(
+  packedManifest.engines,
+  { node: ">=22.13.0", bun: ">=1.3.7" },
+  "packed runtime compatibility is incorrect"
+);
+
+const packedCli = (await run(["tar", "-xOzf", artifact, "package/dist/cli.js"])).stdout;
+assert(packedCli.startsWith("#!/usr/bin/env node\n"), "packed CLI does not use the Node shebang");
+const packedRuntimeEntries = entries.filter((entry) =>
+  entry.startsWith("package/dist/") && entry.endsWith(".js")
+);
+for (const entry of packedRuntimeEntries) {
+  const source = (await run(["tar", "-xOzf", artifact, entry])).stdout;
+  assert(
+    !/(?:from\s*|require\(|import\()["']bun:/.test(source),
+    `packed runtime ${entry} still imports a bun: module`
+  );
+  assert(!/\bBun\./.test(source), `packed runtime ${entry} still requires a Bun global`);
+  assert(!source.startsWith("#!/usr/bin/env bun\n"), `packed runtime ${entry} uses a Bun shebang`);
+}
 
 const bytes = await readFile(artifact);
 const sha512Hex = createHash("sha512").update(bytes).digest("hex");

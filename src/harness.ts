@@ -361,7 +361,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   run_check: tool({
     name: "run_check",
-    description: `Run one explicitly allowed package.json script through Bun (${allowedChecks.join(", ")}). Read package.json first and pass its exact script text as expectedScript so the operator can review the command. No arbitrary shell or .env loading is exposed.`,
+    description: `Run one explicitly allowed package.json script through the repository package manager (${allowedChecks.join(", ")}). Read package.json first and pass its exact script text as expectedScript so the operator can review the command. No arbitrary shell or implicit lifecycle hook is exposed.`,
     schema: z.object({
       check: z.string().min(1).max(100).regex(/^[A-Za-z0-9:_-]+$/),
       expectedScript: z.string().min(1).max(2000)

@@ -14,6 +14,8 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   overrides?: Record<string, string>;
   keywords?: string[];
   bin?: Record<string, string>;
+  engines?: { node?: string; bun?: string };
+  packageManager?: string;
 };
 
 const markdownFiles = [
@@ -486,6 +488,94 @@ if (manifest.version.startsWith("0.9.")) {
   }
   if (!roadmap.includes("`0.9.0` is the source candidate")) {
     failures.push("ROADMAP.md must identify the 0.9.0 source candidate.");
+  }
+}
+
+if (manifest.version.startsWith("0.10.")) {
+  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
+  const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
+  const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const ciWorkflow = await readFile(path.join(workspace, ".github", "workflows", "ci.yml"), "utf8");
+  const releaseWorkflow = await readFile(path.join(workspace, ".github", "workflows", "release.yml"), "utf8");
+  const runtimeSource = await Promise.all([
+    "cli.ts",
+    "operations.ts",
+    "sessions.ts",
+    "workspace.ts",
+    "execution-environment.ts"
+  ].map((file) => readFile(path.join(workspace, "src", file), "utf8")));
+  const packageManagerSource = await readFile(path.join(workspace, "src", "package-manager.ts"), "utf8");
+  const sqliteSource = await readFile(path.join(workspace, "src", "sqlite-database.ts"), "utf8");
+  const processSource = await readFile(path.join(workspace, "src", "process-runtime.ts"), "utf8");
+
+  if (
+    manifest.engines?.node !== ">=22.13.0" ||
+    manifest.engines?.bun !== ">=1.3.7" ||
+    manifest.packageManager !== "bun@1.3.7"
+  ) {
+    failures.push("0.10.x must declare Node-first runtime support and retain pinned Bun contributor tooling.");
+  }
+  if (
+    manifest.scripts?.start !== "node dist/cli.js" ||
+    !manifest.scripts?.build?.includes("--target node") ||
+    manifest.bin?.zhx !== "./dist/zhx.js" ||
+    manifest.bin?.["zhivex-harness"] !== "./dist/cli.js"
+  ) {
+    failures.push("0.10.x must build and expose both CLI aliases for Node.");
+  }
+  if (runtimeSource.some((source) => source.includes("bun:sqlite") || source.includes("Bun.spawn") || source.includes("#!/usr/bin/env bun"))) {
+    failures.push("0.10.x runtime-facing source must not require bun:sqlite, Bun.spawn, or a Bun CLI shebang.");
+  }
+  if (!sqliteSource.includes('from "node:sqlite"') || !processSource.includes('from "node:child_process"')) {
+    failures.push("0.10.x must keep SQLite and host subprocess execution on explicit Node-compatible adapters.");
+  }
+  for (const required of ["npm", "pnpm", "yarn", "bun", "Ambiguous package manager", "implicit ${lifecycleName}"]) {
+    if (!packageManagerSource.includes(required)) {
+      failures.push(`0.10.x package-manager resolver is missing ${required}.`);
+    }
+  }
+  for (const required of ["Node-first", "Node.js 22.13.0", "node:24-bookworm-slim", "npx --yes --package=@zhivex-ai/harness@0.10.0"]) {
+    if (!readme.includes(required)) failures.push(`README.md is missing the 0.10.x runtime contract: ${required}.`);
+  }
+  if (
+    !cli.includes("active Node/Bun runtime") ||
+    !cli.includes("at least one supported repository package manager") ||
+    !repositoryEditing.includes("package manager")
+  ) {
+    failures.push("0.10.x CLI and repository-editing docs must explain runtime and package-manager selection.");
+  }
+  if (
+    !durableOperations.includes("node:sqlite") ||
+    !durableOperations.includes("does not alter the SQLite file") ||
+    !durableOperations.includes("Migration from 0.9.x") ||
+    !durableOperations.includes("Node.js `22.13.0` or newer") ||
+    !durableOperations.includes("require no conversion")
+  ) {
+    failures.push("0.10.x durable-operations docs must state SQLite compatibility explicitly.");
+  }
+  for (const required of ["node:24-bookworm-slim", "Migration from 0.9.x", "2026-08-21-v3"]) {
+    if (!executionEnvironments.includes(required)) {
+      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.10.x contract: ${required}.`);
+    }
+  }
+  for (const workflow of [ciWorkflow, releaseWorkflow, liveCertificationWorkflow]) {
+    if (!workflow.includes("node:24-bookworm-slim") || !workflow.includes("actions/setup-node@")) {
+      failures.push("Every 0.10.x validation workflow must set up Node and use the Node 24 OCI image.");
+    }
+  }
+  if (
+    !ciWorkflow.includes('"22.13.0"') ||
+    !ciWorkflow.includes("Execute the Node-first artifact") ||
+    !ciWorkflow.includes("openCliSessionStore")
+  ) {
+    failures.push("0.10.x CI must exercise the minimum Node runtime, built artifact, and SQLite persistence.");
+  }
+  if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
+    failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
+  }
+  if (!roadmap.includes("`0.10.0` is the source candidate")) {
+    failures.push("ROADMAP.md must identify the 0.10.0 Node-first source candidate.");
   }
 }
 

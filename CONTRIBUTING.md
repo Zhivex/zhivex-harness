@@ -1,6 +1,6 @@
 # Contributing
 
-Zhivex Harness is a Bun-first TypeScript project. Install dependencies and run the complete local gate with:
+Zhivex Harness publishes a Node-first runtime and uses Bun for deterministic contributor tooling. Install dependencies and run the complete local gate with:
 
 ```bash
 bun install --frozen-lockfile --ignore-scripts

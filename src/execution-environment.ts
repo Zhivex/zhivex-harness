@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import { constants as fsConstants, type Stats } from "node:fs";
 import {
   chmod,
@@ -40,6 +41,7 @@ import {
   type FileDigest,
   type MutationAuditEntry
 } from "./edit-contracts.js";
+import { resolvePackageCheckCommand } from "./package-manager.js";
 import { Workspace, type CommandResult } from "./workspace.js";
 
 export const HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION = 1 as const;
@@ -127,12 +129,10 @@ const spawnBounded = async (
     onStop?: (reason: "timeout" | "cancelled" | "output-limit") => void;
   }
 ): Promise<OciCommandResult> => {
-  const child = Bun.spawn(command, {
+  const child = spawn(command[0] as string, command.slice(1), {
     ...(options.cwd ? { cwd: options.cwd } : {}),
     env: options.env ?? {},
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe"
+    stdio: ["ignore", "pipe", "pipe"]
   });
   let timedOut = false;
   let cancelled = false;
@@ -161,22 +161,20 @@ const spawnBounded = async (
     options.abortSignal?.addEventListener("abort", onAbort, { once: true });
   }
 
-  const consume = async (stream: ReadableStream<Uint8Array>) => {
-    const reader = stream.getReader();
+  const consume = async (stream: NodeJS.ReadableStream) => {
     const chunks: Uint8Array[] = [];
     let omittedBytes = 0;
-    for (;;) {
-      const next = await reader.read();
-      if (next.done) break;
-      totalOutputBytes += next.value.byteLength;
+    for await (const value of stream) {
+      const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
+      totalOutputBytes += chunk.byteLength;
       if (retainedOutputBytes < options.maxOutputBytes) {
         const remaining = options.maxOutputBytes - retainedOutputBytes;
-        const kept = next.value.byteLength <= remaining ? next.value : next.value.slice(0, remaining);
+        const kept = chunk.byteLength <= remaining ? chunk : chunk.subarray(0, remaining);
         chunks.push(kept);
         retainedOutputBytes += kept.byteLength;
-        omittedBytes += next.value.byteLength - kept.byteLength;
+        omittedBytes += chunk.byteLength - kept.byteLength;
       } else {
-        omittedBytes += next.value.byteLength;
+        omittedBytes += chunk.byteLength;
       }
       if (totalOutputBytes > options.maxOutputBytes) {
         outputLimitExceeded = true;
@@ -189,11 +187,16 @@ const spawnBounded = async (
       : text;
   };
 
+  const exited = new Promise<number>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (exitCode) => resolve(exitCode ?? 137));
+  });
+
   try {
     const [stdout, stderr, exitCode] = await Promise.all([
-      consume(child.stdout),
-      consume(child.stderr),
-      child.exited
+      consume(child.stdout as NodeJS.ReadableStream),
+      consume(child.stderr as NodeJS.ReadableStream),
+      exited
     ]);
     return {
       command,
@@ -632,7 +635,7 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       "--env",
       "TMPDIR=/tmp",
       "--env",
-      "BUN_INSTALL_CACHE_DIR=/tmp/bun-cache",
+      "NPM_CONFIG_CACHE=/tmp/npm-cache",
       "--env",
       "CI=1",
       ...(request.dependencyRoot
@@ -641,8 +644,9 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       "--workdir",
       "/workspace",
       "--entrypoint",
-      "bun",
+      "node",
       request.imageId,
+      "--input-type=module",
       "-e",
       OCI_SESSION_CONTROLLER_SCRIPT
     ];
@@ -666,7 +670,8 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
           "--user",
           `${uid}:${gid}`,
           name,
-          "bun",
+          "node",
+          "--input-type=module",
           "-e",
           "import { symlink } from 'node:fs/promises'; await symlink('/dependencies', '/workspace/node_modules', 'dir')"
         ]);
@@ -718,7 +723,8 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
         "--env",
         `ZHIVEX_HARNESS_HAS_DEPENDENCIES=${hasDependencies ? "1" : "0"}`,
         session.name,
-        "bun",
+        "node",
+        "--input-type=module",
         "-e",
         OCI_WORKSPACE_SEAL_SCRIPT
       ], 60_000, 20_000);
@@ -1638,10 +1644,7 @@ export const createHarnessOciExecutionEnvironment = async (
         },
         runCommand,
         async runCheck(check, expectedScript, allowedChecks, context) {
-          if (!/^[A-Za-z0-9:_-]+$/.test(check) || !allowedChecks.includes(check)) {
-            throw new Error(`The check "${check}" is not in the explicit allowlist.`);
-          }
-          let manifestDocument: { scripts?: Record<string, string> };
+          let manifestDocument: { packageManager?: unknown; scripts?: unknown };
           try {
             manifestDocument = JSON.parse(await readFile(path.join(snapshotRoot, "package.json"), "utf8"));
           } catch (error) {
@@ -1650,10 +1653,14 @@ export const createHarnessOciExecutionEnvironment = async (
             }
             throw error;
           }
-          const actual = manifestDocument.scripts?.[check];
-          if (!actual) throw new Error(`package.json does not define the "${check}" script.`);
-          if (actual !== expectedScript) throw new Error(`The "${check}" script changed or does not match expectedScript.`);
-          return runCommand("bun", ["--no-env-file", "run", check], context);
+          const resolved = await resolvePackageCheckCommand(
+            snapshotRoot,
+            manifestDocument,
+            check,
+            expectedScript,
+            allowedChecks
+          );
+          return runCommand(resolved.command[0], resolved.command.slice(1), context);
         },
         async inspectPatch() {
           const patch = await createEnvironmentPatch(

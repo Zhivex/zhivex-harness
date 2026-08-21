@@ -49,8 +49,8 @@ export const HARNESS_SUBAGENT_PROFILE_DESCRIPTORS: readonly HarnessSubagentProfi
   {
     id: "tester",
     toolName: "delegate_tester",
-    description: "Delegate focused verification to a tester with read-only inspection and approved Bun checks.",
-    instructions: "Verify the delegated behavior with repository evidence and declared Bun checks. Do not edit files. Report exact failures and limits.",
+    description: "Delegate focused verification to a tester with read-only inspection and approved package-manager checks.",
+    instructions: "Verify the delegated behavior with repository evidence and declared package-manager checks. Do not edit files. Report exact failures and limits.",
     toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "run_check", "git_diff"]
   },
   {

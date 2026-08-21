@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type {
   LanguageModel,
@@ -117,7 +119,7 @@ export const createHostileDemoModel = (): LanguageModel => {
             toolCall: {
               id: "hostile-demo-command",
               name: "run_environment_command",
-              input: { command: "bun", args: ["-e", HOSTILE_DEMO_COMMAND] }
+              input: { command: "node", args: ["--input-type=module", "-e", HOSTILE_DEMO_COMMAND] }
             }
           },
           { type: "finish", finishReason: "tool-calls" }
@@ -210,7 +212,7 @@ const createDemoHarness = (
   workspace,
   stateDirectory,
   executionBackend: "oci",
-  ociAllowedCommands: ["bun"],
+  ociAllowedCommands: ["node", "npm"],
   maxSteps: 6,
   maxToolCalls: 8,
   subagentProfiles: [],
@@ -302,7 +304,7 @@ export const runHostileRepositoryDemo = async (
       workspace: root,
       stateDirectory,
       executionBackend: "oci",
-      ociAllowedCommands: ["bun"]
+      ociAllowedCommands: ["node", "npm"]
     });
     if (config.execution.backend !== "oci") throw new Error("Hostile demo OCI policy was not enabled.");
     const environment = await createHarnessOciExecutionEnvironment({
@@ -312,7 +314,7 @@ export const runHostileRepositoryDemo = async (
       ...(options.runtime ? { runtime: options.runtime } : {})
     });
     const staleSession = await environment.acquire({ runId: STALE_RUN_ID });
-    await staleSession.runCommand("bun", ["-e", STALE_DEMO_COMMAND]);
+    await staleSession.runCommand("node", ["--input-type=module", "-e", STALE_DEMO_COMMAND]);
     const stalePatch = await staleSession.inspectPatch();
     await writeFile(path.join(root, "src", "payment.ts"), CONCURRENT_PAYMENT);
     let staleError: unknown;
@@ -354,7 +356,16 @@ export const runHostileRepositoryDemo = async (
   }
 };
 
-if (import.meta.main) {
+const isMainModule = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
   const keepWorkspace = process.argv.includes("--keep");
   runHostileRepositoryDemo({
     keepWorkspace,

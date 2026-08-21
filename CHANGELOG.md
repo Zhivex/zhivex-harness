@@ -4,6 +4,25 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.10.0 - Unreleased
+
+### Changed
+
+- Make Node.js `>=22.13.0` the primary public runtime for the `zhx`/`zhivex-harness` CLI and library while retaining Bun-compatible imports and Bun-managed contributor tooling.
+- Replace `bun:sqlite` with a small `node:sqlite` compatibility layer. Existing `operations.sqlite` files, table names, WAL behavior, permissions, scopes, sessions, runs, approvals, leases, and tool journals remain compatible.
+- Replace host `Bun.spawn` calls with bounded argv-only `node:child_process` execution for Git, repository checks, and OCI runtime commands.
+- Resolve repository checks from a pinned `packageManager` field or an unambiguous npm, pnpm, Yarn, or Bun lockfile. Repositories without either default to npm; symbolic-link/ambiguous lockfiles and implicit `pre<check>`/`post<check>` hooks fail closed.
+- Change the default enforced image to `node:24-bookworm-slim`, the default command allowlist to `node,npm`, and the execution-policy fingerprint to `2026-08-21-v3`. Custom Bun images remain supported when `bun` is explicitly allowed.
+- Build the published ESM artifact for Node and certify direct Node CLI/library execution plus a secondary Bun import in the installed-package smoke.
+- Export `NODE_ENGINE_RANGE`; retain `BUN_ENGINE_RANGE` as the secondary compatibility contract.
+
+### Migration
+
+- Install Node.js `22.13.0` or newer before invoking the packaged CLI. After publication, `npx --yes --package=@zhivex-ai/harness@0.10.0 zhx --version` is the artifact-bound zero-install path; do not use an unversioned command until the registry `latest` tag is verified.
+- Complete or deny paused `0.9.x` approvals with the matching `0.9.x` artifact. The execution policy, default image, and tool fingerprint changed, so `0.10.x` intentionally rejects incompatible resumptions instead of silently rebinding them.
+- Existing SQLite state needs no data migration. Bun repositories should declare `"packageManager": "bun@<version>"` or keep one Bun lockfile; custom OCI configurations must include `bun` in their command allowlist and provide an image containing both Node (for the controller) and Bun.
+- Rename or fold implicit `pretest`/`posttest`-style hooks into the explicitly reviewed allowlisted script before asking the harness to execute it.
+
 ## 0.9.0 - 2026-08-20
 
 ### Added

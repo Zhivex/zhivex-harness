@@ -13,6 +13,7 @@ const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
   name: string;
   version: string;
+  engines?: { node?: string; bun?: string };
   publishConfig?: { access?: string; provenance?: boolean; registry?: string };
 };
 const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-package-smoke-"));
@@ -23,6 +24,7 @@ const tarball = providedTarball
 const consumer = path.join(temporaryDirectory, "consumer");
 
 const commandEnvironment = { ...process.env };
+commandEnvironment.NPM_CONFIG_CACHE = path.join(temporaryDirectory, "npm-cache");
 for (const name of [
   "OPENAI_API_KEY",
   "MODEL_API_KEY",
@@ -107,17 +109,25 @@ try {
       name: "zhivex-harness-installed-smoke",
       private: true,
       type: "module",
+      packageManager: "npm@11.5.1",
       scripts: {
-        test: "bun -e \"console.log('test-ok')\"",
-        typecheck: "bun -e \"console.log('typecheck-ok')\"",
-        lint: "bun -e \"console.log('lint-ok')\"",
-        build: "bun -e \"console.log('build-ok')\""
+        test: "node -e \"console.log('test-ok')\"",
+        typecheck: "node -e \"console.log('typecheck-ok')\"",
+        lint: "node -e \"console.log('lint-ok')\"",
+        build: "node -e \"console.log('build-ok')\""
       }
     }, null, 2)}\n`,
     "utf8"
   );
   await run(["git", "init", "--quiet"], { cwd: consumer });
-  await run(["bun", "add", "--ignore-scripts", tarball], { cwd: consumer });
+  await run([
+    "npm",
+    "install",
+    "--ignore-scripts",
+    "--no-audit",
+    "--no-fund",
+    tarball
+  ], { cwd: consumer });
 
   const installedPackageRoot = path.join(consumer, "node_modules", "@zhivex-ai", "harness");
   const installedManifest = JSON.parse(
@@ -128,11 +138,14 @@ try {
     private?: boolean;
     publishConfig?: { access?: string; provenance?: boolean; registry?: string };
     bin?: Record<string, string>;
+    engines?: { node?: string; bun?: string };
   };
   assert.equal(installedManifest.name, manifest.name);
   assert.equal(installedManifest.version, manifest.version);
   assert.notEqual(installedManifest.private, true, "installed package is still private");
   assert.deepEqual(installedManifest.publishConfig, manifest.publishConfig);
+  assert.deepEqual(installedManifest.engines, manifest.engines);
+  assert.equal(installedManifest.engines?.node, ">=22.13.0");
   assert.deepEqual(installedManifest.bin, {
     "zhivex-harness": "./dist/cli.js",
     zhx: "./dist/zhx.js"
@@ -143,9 +156,20 @@ try {
   for (const cli of [installedCli, installedShortCli]) {
     const version = await run([cli, "--version"], { cwd: consumer });
     assert(version.stdout.includes(manifest.version), `installed ${path.basename(cli)} version does not match package.json`);
+    assert.equal(version.stderr, "", `installed ${path.basename(cli)} version emitted an unexpected warning`);
     const help = await run([cli, "--help"], { cwd: consumer });
     assert(help.stdout.includes("Zhivex Harness"), `installed ${path.basename(cli)} help is unavailable`);
+    assert.equal(help.stderr, "", `installed ${path.basename(cli)} help emitted an unexpected warning`);
   }
+
+  const nodeImport = await run([
+    "node",
+    "--input-type=module",
+    "-e",
+    'import("@zhivex-ai/harness").then((module) => console.log(module.HARNESS_VERSION))'
+  ], { cwd: consumer });
+  assert(nodeImport.stdout.includes(manifest.version), "installed package is not importable through Node");
+  assert.equal(nodeImport.stderr, "", "plain Node library import emitted an unexpected warning");
 
   const providers = await run([installedCli, "providers", "--json"], { cwd: consumer });
   const providersDocument = JSON.parse(providers.stdout) as {
@@ -206,50 +230,19 @@ try {
     }
   );
 
-  const installedSmokeSource = `
+  const bunCreatedRunPath = path.join(consumer, "bun-created-run.json");
+  const bunCreationSource = `
 import assert from "node:assert/strict";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
-import {
-  HARNESS_SQLITE_FILE,
-  DEFAULT_PROVIDER_REGISTRY,
-  Workspace,
-  createChangeEnvelope,
-  createEditProposal,
-  createHarness,
-  createHarnessOciExecutionEnvironment,
-  digestChangeEnvelopeArtifact,
-  inspectHarnessModelCapabilities,
-  inspectHarnessRun,
-  listHarnessRuns,
-  normalizeHarnessMcpConfiguration,
-  openCliSessionStore,
-  parseHarnessModelRoute,
-  resolveHarnessConfig,
-  runHarness,
-  streamEventDocument,
-  verifyChangeEnvelope
-} from "@zhivex-ai/harness";
+import { createEditProposal, createHarness, runHarness } from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 const workspace = process.cwd();
 const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
-const installedDemo = await import(pathToFileURL(path.join(
-  workspace,
-  "node_modules",
-  "@zhivex-ai",
-  "harness",
-  "dist",
-  "hostile-repository-demo.js"
-)).href);
-assert.equal(typeof installedDemo.runHostileRepositoryDemo, "function");
-assert.equal(typeof createChangeEnvelope, "function");
-assert.equal(typeof digestChangeEnvelopeArtifact, "function");
-assert.equal(typeof verifyChangeEnvelope, "function");
 const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "fixture-sensitive-payload\\n" }];
 const proposal = createEditProposal({ changes });
-const firstHarness = await createHarness({
+const harness = await createHarness({
   provider: "openai",
   workspace,
   stateDirectory,
@@ -282,18 +275,67 @@ const firstHarness = await createHarness({
     ]
   })
 });
-
-const waiting = await runHarness(firstHarness, {
+const waiting = await runHarness(harness, {
   prompt: "Create installed-approved.txt",
   idempotencyKey: "installed-request-42",
-  scope: firstHarness.config.scope
+  scope: harness.config.scope
 });
-assert.equal(firstHarness.config.schemaVersion, 4);
+assert.equal(waiting.status, "waiting_approval");
+await assert.rejects(readFile(path.join(workspace, "installed-approved.txt"), "utf8"));
+await writeFile("bun-created-run.json", JSON.stringify({ runId: waiting.state.runId }), "utf8");
+harness.close();
+console.log("BUN_CREATED_DURABLE_RUN_OK");
+`;
+  const bunCreationPath = path.join(consumer, "bun-create-durable-run.mjs");
+  await writeFile(bunCreationPath, bunCreationSource, "utf8");
+  const bunCreation = await run(["bun", bunCreationPath], { cwd: consumer });
+  assert(bunCreation.stdout.includes("BUN_CREATED_DURABLE_RUN_OK"));
+  assert((await stat(bunCreatedRunPath)).isFile());
+
+  const installedSmokeSource = `
+import assert from "node:assert/strict";
+import { readFile, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import {
+  HARNESS_SQLITE_FILE,
+  DEFAULT_PROVIDER_REGISTRY,
+  Workspace,
+  createChangeEnvelope,
+  createHarness,
+  createHarnessOciExecutionEnvironment,
+  digestChangeEnvelopeArtifact,
+  inspectHarnessModelCapabilities,
+  inspectHarnessRun,
+  listHarnessRuns,
+  normalizeHarnessMcpConfiguration,
+  openCliSessionStore,
+  parseHarnessModelRoute,
+  resolveHarnessConfig,
+  runHarness,
+  streamEventDocument,
+  verifyChangeEnvelope
+} from "@zhivex-ai/harness";
+import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+
+const workspace = process.cwd();
+const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+const installedDemo = await import(pathToFileURL(path.join(
+  workspace,
+  "node_modules",
+  "@zhivex-ai",
+  "harness",
+  "dist",
+  "hostile-repository-demo.js"
+)).href);
+assert.equal(typeof installedDemo.runHostileRepositoryDemo, "function");
+assert.equal(typeof createChangeEnvelope, "function");
+assert.equal(typeof digestChangeEnvelopeArtifact, "function");
+assert.equal(typeof verifyChangeEnvelope, "function");
+const bunCreatedRun = JSON.parse(await readFile(path.join(workspace, "bun-created-run.json"), "utf8"));
 assert.equal(DEFAULT_PROVIDER_REGISTRY.has("gemini"), true);
 assert.equal(parseHarnessModelRoute("reviewer=gemini").provider, "gemini");
 assert.equal(streamEventDocument({ type: "text-delta", textDelta: "ok" }, 1).sequence, 1);
-assert.deepEqual([...firstHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
-assert.equal(inspectHarnessModelCapabilities(firstHarness.agent.model).capabilities.tools, true);
 assert.throws(() => normalizeHarnessMcpConfiguration({
   schemaVersion: 1,
   servers: [{
@@ -304,9 +346,7 @@ assert.throws(() => normalizeHarnessMcpConfiguration({
     permissions: ["network"]
   }]
 }));
-assert.equal(waiting.status, "waiting_approval");
 await assert.rejects(readFile(path.join(workspace, "installed-approved.txt"), "utf8"));
-firstHarness.close();
 
 const restartedHarness = await createHarness({
   provider: "openai",
@@ -321,7 +361,10 @@ const restartedHarness = await createHarness({
     ]]
   })
 });
-const checkpoint = await restartedHarness.store.load(waiting.state.runId, restartedHarness.config.scope);
+assert.equal(restartedHarness.config.schemaVersion, 4);
+assert.deepEqual([...restartedHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
+assert.equal(inspectHarnessModelCapabilities(restartedHarness.agent.model).capabilities.tools, true);
+const checkpoint = await restartedHarness.store.load(bunCreatedRun.runId, restartedHarness.config.scope);
 assert(checkpoint);
 const completed = await runHarness(restartedHarness, {
   state: checkpoint,
@@ -357,7 +400,7 @@ restartedHarness.close();
 const cliSessions = await openCliSessionStore({
   workspace,
   stateDirectory,
-  scope: firstHarness.config.scope
+  scope: restartedHarness.config.scope
 });
 const installedCliSession = await cliSessions.create({ title: "installed smoke" });
 assert.equal((await cliSessions.get(installedCliSession.sessionId))?.title, "installed smoke");
@@ -402,7 +445,7 @@ const installedEnvironment = await createHarnessOciExecutionEnvironment({
   runtime: fakeRuntime
 });
 const installedSession = await installedEnvironment.acquire({ runId: "installed-oci-run" });
-await installedSession.runCommand("bun", ["test"]);
+await installedSession.runCommand("npm", ["test"]);
 await assert.rejects(readFile(path.join(workspace, "isolated-installed.txt"), "utf8"));
 const installedPatch = await installedSession.inspectPatch();
 assert.equal(installedPatch.entries.some((entry) => entry.path === "isolated-installed.txt"), true);
@@ -411,10 +454,17 @@ assert.equal(await readFile(path.join(workspace, "isolated-installed.txt"), "utf
 await installedSession.release?.({ status: "completed" });
 console.log("INSTALLED_HARNESS_SMOKE_OK");
 `;
-  const installedSmokePath = path.join(consumer, "installed-smoke.ts");
+  const installedSmokePath = path.join(consumer, "installed-smoke.mjs");
   await writeFile(installedSmokePath, installedSmokeSource, "utf8");
-  const installedSmoke = await run(["bun", "run", installedSmokePath], { cwd: consumer });
+  const installedSmoke = await run(["node", installedSmokePath], { cwd: consumer });
   assert(installedSmoke.stdout.includes("INSTALLED_HARNESS_SMOKE_OK"));
+
+  const bunImport = await run([
+    "bun",
+    "-e",
+    'import("@zhivex-ai/harness").then((module) => console.log(module.HARNESS_VERSION))'
+  ], { cwd: consumer });
+  assert(bunImport.stdout.includes(manifest.version), "installed package is not importable through Bun");
 
   const sessionList = await run([installedShortCli, "sessions", "list", "--json"], { cwd: consumer });
   const sessionListDocument = JSON.parse(sessionList.stdout) as { kind?: string; sessions?: unknown[] };

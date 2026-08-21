@@ -25,9 +25,9 @@ import {
   createSqliteAgentRunStore
 } from "@zhivex-ai/agents/ops";
 import { createAgentRunLedger } from "@zhivex-ai/agents/control-plane";
-import { Database } from "bun:sqlite";
 
 import { defaultHarnessNamespace, type HarnessConfig, type HarnessStoreBackend } from "./config.js";
+import { SqliteDatabase } from "./sqlite-database.js";
 import { validateStateDirectory } from "./state-directory.js";
 
 type SqliteDatabaseLike = SqliteAgentRunStoreOptions["db"];
@@ -248,7 +248,7 @@ const shouldMigrateLegacyRuns = (
   config.scope.namespace === defaultHarnessNamespace(config.workspace)
 );
 
-const sqliteAdapter = (database: Database): SqliteDatabaseLike => ({
+const sqliteAdapter = (database: SqliteDatabase): SqliteDatabaseLike => ({
   exec(sql) {
     return database.exec(sql);
   },
@@ -378,7 +378,7 @@ export const openHarnessPersistence = async (
     throw new Error(`The SQLite state path must be a real file: ${databasePath}.`);
   }
 
-  const database = new Database(databasePath, { create: false, strict: true });
+  const database = new SqliteDatabase(databasePath, { create: false, strict: true });
   let closed = false;
   const closeDatabase = () => {
     if (!closed) {

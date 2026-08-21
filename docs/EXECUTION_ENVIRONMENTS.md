@@ -17,7 +17,7 @@ The OCI policy is enforced for one acquired run session, with each command commi
 - a size-bounded writable `tmpfs` at `/workspace` plus a separate bounded `tmpfs` at `/tmp`;
 - an optional host `node_modules` directory mounted read-only at `/dependencies` and linked into the container workspace;
 - exact argv execution through the configured entrypoint, with no shell interpolation;
-- a fixed container environment containing only `HOME`, `TMPDIR`, `BUN_INSTALL_CACHE_DIR`, and `CI`;
+- a fixed container environment containing only `HOME`, `TMPDIR`, `NPM_CONFIG_CACHE`, and `CI`;
 - time, output, memory, CPU, PID, workspace-size, and per-file patch limits.
 
 The snapshot is populated through the normal bounded workspace discovery contract. Git internals, harness state, dependency/build output, `.env`, `.npmrc`, private keys, secret-like paths, external symlinks, and special files are not copied. Provider credentials and arbitrary host environment variables are never passed to the container.
@@ -29,7 +29,7 @@ When the backend is disabled, these OCI claims do not apply. The harness respond
 Preload the image intentionally; the harness never pulls or updates images:
 
 ```bash
-docker pull oven/bun:1.3.7-slim
+docker pull node:24-bookworm-slim
 bun run dev doctor --execution oci
 bun run dev run --execution oci --yes "implement the change, test it, inspect the environment patch, and import it"
 ```
@@ -40,8 +40,8 @@ Podman is also supported through `--oci-runtime podman`. Defaults are:
 | --- | ---: |
 | Backend | `none` |
 | Runtime | `docker` |
-| Image | `oven/bun:1.3.7-slim` |
-| Allowed commands | `bun` |
+| Image | `node:24-bookworm-slim` |
+| Allowed commands | `node,npm` |
 | Process time | 120,000 ms |
 | Retained process output | 20,000 bytes |
 | Memory | 1,024 MB |
@@ -68,7 +68,7 @@ ZHIVEX_HARNESS_OCI_MAX_FILE_WRITE_BYTES
 ZHIVEX_HARNESS_OCI_TMPFS_MB
 ```
 
-`ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS` is comma-separated. `bun` is mandatory because `run_check` invokes declared scripts as `bun --no-env-file run <script>`. Adding an executable permits that bare entrypoint but does not add a shell or wildcard. Each environment command still requires normal high-risk interrupt approval unless the operator deliberately supplied `--yes`.
+`ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS` is comma-separated and must include at least one supported package manager (`npm`, `pnpm`, `yarn`, or `bun`). `run_check` selects the manager from `packageManager` or one unambiguous lockfile and defaults to npm. Adding an executable permits that bare entrypoint but does not add a shell or wildcard. The configured image must always provide Node for the internal controller; Bun-managed repositories additionally need a Node-and-Bun image and `bun` in the allowlist. Each environment command still requires normal high-risk interrupt approval unless the operator deliberately supplied `--yes`.
 
 The image is inspected before model construction. Its immutable image ID/digest, runtime/server version, complete policy, canonical workspace identity, and environment manifest contribute to the run binding. A missing daemon/image fails before model execution. A changed image or policy makes a paused resume fail closed.
 
@@ -117,6 +117,10 @@ The default backend remains `none`, so upgrades do not unexpectedly start a cont
 
 Applications constructing the harness can inject a `HarnessOciRuntimeAdapter` for a controlled runtime implementation. They should use the exported SDK environment rather than bypassing authorization or importing snapshot files directly.
 
+## Migration from 0.9.x
+
+The `0.10.x` execution policy advances to `2026-08-21-v3`, changes the default image from Bun to Node 24, and makes repository checks package-manager-aware. Complete paused `0.9.x` environment approvals with their original artifact; the changed image, allowlist, controller, and policy fingerprint intentionally prevent a silent resume under `0.10.x`. Durable SQLite state remains readable without conversion.
+
 ## Certification
 
 The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate approvals, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
@@ -128,7 +132,7 @@ Provider certification is separate and billable. The live workflow runs the requ
 ## Known limits
 
 - Docker and Podman use different host security implementations; current gates certify behavior, not identical internals.
-- The default Bun image and read-only host `node_modules` mount optimize JavaScript/TypeScript checks. Other ecosystems need an explicit image and executable allowlist, and dependencies should be prepared without exposing secrets.
+- The default Node image and read-only host `node_modules` mount optimize npm-managed JavaScript/TypeScript checks. pnpm, Yarn, Bun, and other ecosystems need an explicit Node-capable image and executable allowlist, and dependencies should be prepared without exposing secrets.
 - The local container daemon, kernel, image, and mounted dependency tree remain trusted. This backend is not a microVM boundary.
 - Network is deny-only in this policy version. Domain allowlists, package installation, browser automation, and network MCP require a future policy/backend rather than an implicit exception.
 - Patch import accepts bounded UTF-8 text changes only. Binary artifacts and large generated trees must use a future reviewed artifact-transfer contract.

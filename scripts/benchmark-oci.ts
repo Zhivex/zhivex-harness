@@ -71,7 +71,7 @@ try {
   const config = resolveHarnessConfig({
     workspace: temporaryRoot,
     executionBackend: "oci",
-    ociAllowedCommands: ["bun"],
+    ociAllowedCommands: ["node", "npm"],
     ociMaxProcessRuntimeMs: 30_000,
     ociMaxMemoryMb: 256,
     ociMaxPids: 32,
@@ -93,16 +93,18 @@ try {
 
   const commandSamples: number[] = [];
   for (let index = 0; index < commandCount; index += 1) {
-    const command = await measure(() => session!.runCommand("bun", [
+    const command = await measure(() => session!.runCommand("node", [
+      "--input-type=module",
       "-e",
       "process.stdout.write('ok')"
     ]));
     if (command.value.exitCode !== 0) throw new Error(command.value.stderr || command.value.stdout);
     commandSamples.push(command.durationMs);
   }
-  const mutation = await measure(() => session!.runCommand("bun", [
+  const mutation = await measure(() => session!.runCommand("node", [
+    "--input-type=module",
     "-e",
-    "await Bun.write('/workspace/src/generated.ts', 'export const generated = true;\\n')"
+    "import { writeFile } from 'node:fs/promises'; await writeFile('/workspace/src/generated.ts', 'export const generated = true;\\n')"
   ]));
   if (mutation.value.exitCode !== 0) throw new Error(mutation.value.stderr || mutation.value.stdout);
   const status = await session.status();

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { createEditProposal } from "../src/edit-contracts.js";
+import { runPortableProcess } from "../src/process-runtime.js";
 import { Workspace } from "../src/workspace.js";
 
 const temporaryDirectories: string[] = [];
@@ -20,6 +21,46 @@ const fixture = async () => {
 
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
+});
+
+describe("portable host processes", () => {
+  test("preserves argv boundaries and bounds captured output", async () => {
+    const argument = "literal; echo must-not-run";
+    const result = await runPortableProcess([
+      process.execPath,
+      "-e",
+      "console.log(process.argv.at(-1)); process.stdout.write('x'.repeat(100))",
+      argument
+    ], { maxOutputCharacters: 40 });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.command.at(-1)).toBe(argument);
+    expect(result.stdout.startsWith(`${argument}\n`)).toBe(true);
+    expect(result.stdout).toContain("output truncated");
+  });
+
+  test("terminates timed-out commands", async () => {
+    const result = await runPortableProcess([
+      process.execPath,
+      "-e",
+      "setInterval(() => {}, 1_000)"
+    ], { timeoutMs: 25 });
+
+    expect(result.timedOut).toBe(true);
+    expect(result.exitCode).not.toBe(0);
+  });
+
+  test("supports external cancellation", async () => {
+    const controller = new AbortController();
+    const pending = runPortableProcess([
+      process.execPath,
+      "-e",
+      "setInterval(() => {}, 1_000)"
+    ], { signal: controller.signal });
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
 });
 
 describe("Workspace", () => {
@@ -67,21 +108,24 @@ describe("Workspace", () => {
     expect((await workspace.listFiles()).files.map((file) => file.path)).not.toContain(".env");
   });
 
-  test("runs only declared Bun checks", async () => {
+  test("runs only declared package-manager checks", async () => {
     const { root, workspace } = await fixture();
     await writeFile(
       path.join(root, "package.json"),
-      JSON.stringify({ scripts: { typecheck: "bun -e \"console.log('CHECK_OK')\"" } }),
+      JSON.stringify({
+        packageManager: "npm@11.5.1",
+        scripts: { typecheck: "node -e \"console.log('CHECK_OK')\"" }
+      }),
       "utf8"
     );
 
-    const script = "bun -e \"console.log('CHECK_OK')\"";
+    const script = "node -e \"console.log('CHECK_OK')\"";
     const result = await workspace.runCheck("typecheck", script);
-    expect(result.command).toEqual(["bun", "--no-env-file", "run", "typecheck"]);
+    expect(result.command).toEqual(["npm", "--ignore-scripts", "run", "typecheck"]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("CHECK_OK");
     await expect(workspace.runCheck("typecheck", "different")).rejects.toThrow("expectedScript");
-    await expect(workspace.runCheck("build", "bun build")).rejects.toThrow('does not define the "build" script');
+    await expect(workspace.runCheck("build", "node build.js")).rejects.toThrow('does not define the "build" script');
   });
 
   test("respects Git and harness ignore rules while hard secret rules remain non-negotiable", async () => {
