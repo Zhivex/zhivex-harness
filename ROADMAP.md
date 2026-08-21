@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-20
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.7.0` are published on npm. `0.8.0` is the source release candidate for the coordinated SDK refresh and GPT-5.6-first OpenAI integration; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.8.0` are published on npm. `0.9.0` is the source candidate for faster governed repository inspection and portable change-admission evidence; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -41,7 +41,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.6.0` | Enforced execution | Shell and checks inside a real isolation boundary | Published on npm | XL |
 | `0.6.1` | Positioning and proof | Reproducible hostile-repository control evidence | Published on npm | S |
 | `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Published on npm | L |
-| `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Source release candidate | M |
+| `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Published on npm | M |
+| `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Source candidate | L |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -195,7 +196,7 @@ Exit criteria:
 
 Implementation summary:
 
-- the SDK execution-environment contract is implemented with a Docker/Podman adapter, immutable image identity, per-tool-call isolation, manifest authorization, and run fingerprint binding;
+- the SDK execution-environment contract is implemented with a Docker/Podman adapter, immutable image identity, paused per-run isolation, transactional command publication, manifest authorization, and run fingerprint binding;
 - the enforced policy denies network and undeclared tools, uses a non-root identity, read-only root, dropped capabilities, no-new-privileges, and bounded memory, CPU, PIDs, time, output, snapshot, imported-file, and tmpfs resources;
 - repository tools and subagents share an ephemeral secret-free snapshot; package checks and argv-only commands run inside OCI, while network MCP fails closed under the no-network policy;
 - content- and run-bound patch inspection plus a separate durable import approval are the only environment-to-host mutation path; deletes remain recoverable through quarantine;
@@ -246,7 +247,7 @@ Deferred after `0.7.0`:
 
 ## 0.8.0 — SDK refresh and GPT-5.6-first OpenAI
 
-Status: source release candidate. Deterministic, installed-artifact, live-provider, and publication evidence remain separate gates.
+Status: published on npm with registry provenance. Provider evidence remains date- and model-bound.
 
 Goal: adopt the coordinated SDK release batch without duplicating Core contracts, make the current GPT-5.6 family the primary OpenAI experience, and keep approval pauses reliable across provider behavior changes.
 
@@ -263,6 +264,29 @@ Exit criteria:
 - Luna, Terra, and Sol pass the base proposal/approval/restart/exactly-once live gate with date-bound evidence.
 - The exact release artifact, annotated tag, registry integrity, and provenance are verified independently before claiming publication.
 
+## 0.9.0 — fast governed change admission
+
+Status: source candidate. Deterministic tests and the local performance fixture pass; real-OCI, installed-artifact, live-provider, tag, registry, and provenance gates remain separate.
+
+Goal: reduce the cost of inspecting large repositories and materialize the harness's change-control evidence as a portable, agent-agnostic admission contract.
+
+Scope:
+
+- Reuse a freshness-checked, topology-only workspace index across pages while keeping file contents and digests on the stable anti-race read path.
+- Add bounded batch reads and multi-query search without enabling unsafe global tool parallelism.
+- Reduce OCI snapshot memory and duplicate patch-comparison reads without introducing a long-lived container or weakening transactional publication.
+- Expose reproducible workspace benchmarks plus workspace-index and OCI I/O diagnostics.
+- Add deterministic `ChangeEnvelope v1` creation and offline verification bound to exact patch bytes, base identity, policy/environment fingerprints, redacted check evidence, expiry, approval references, and external-attestation references.
+- Keep authenticity explicit: built-in verification checks integrity, expiration, and preconditions; external signatures and attestations require their native verifier.
+
+Exit criteria:
+
+- Workspace index invalidation, external-change freshness, cursor staleness, batch bounds, duplicate reads, and multi-query single-pass behavior have deterministic regression coverage.
+- The 5,000-file benchmark reports one index build and materially improves complete pagination against the pre-`0.9` baseline without setting a flaky CI wall-time threshold.
+- OCI deterministic tests prove independent base/workspace copies, bounded inventory pages, changed-file-only patch reads, and unchanged import/stale-host guarantees; a real daemon gate remains mandatory for release.
+- Change-envelope tests cover canonical determinism, exact patch tampering, base/policy/evidence changes, expiry, strict redaction schemas, and explicit authenticity limits.
+- Documentation, typecheck, full tests, evaluation, build, package inspection, and installed-tarball smoke pass from a clean release commit before any tag or publication.
+
 ## 1.0.0 — Stable CLI and library contract
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
@@ -275,7 +299,7 @@ Scope:
 - Complete threat model, security review, dependency audit, provenance, integrity, and rollback documentation.
 - Run a representative repository evaluation matrix across every supported provider and publish date-bound evidence.
 - Add full installation, operations, policy, MCP, isolation, troubleshooting, migration, and release documentation.
-- Require release candidates before `latest`; no direct `0.6.x` to untested GA promotion.
+- Require release candidates before `latest`; no direct pre-1.0 source checkpoint to untested GA promotion.
 
 Exit criteria:
 
@@ -308,7 +332,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Finish the `0.8.0` deterministic, real-OCI, and installed-artifact gates from a clean release commit.
-2. Complete the remaining GPT-5.6 and provisional-provider live matrices; keep uncertified paths provisional on any failure or missing evidence.
-3. Dogfood the GPT-5.6 default, durable `zhx` sessions, provider handoff, role routing, and JSONL consumption on representative repositories.
-4. Only after those gates, complete the reviewed release workflow and verify registry integrity and provenance against the exact artifact.
+1. Review and commit the `0.9.0` workspace-index, batch-tool, OCI I/O, and ChangeEnvelope contracts from a clean branch.
+2. Run the required real-OCI and installed-artifact gates; keep the current local benchmark as comparative evidence rather than a cross-machine latency promise.
+3. Dogfood exact-patch envelope creation/verification and batch repository inspection on representative repositories, including external workspace mutations between pages.
+4. Complete the remaining GPT-5.6 and provisional-provider live matrices; keep uncertified paths provisional on any failure or missing evidence.
+5. Only after those gates, create the annotated tag, dispatch the reviewed release workflow, and verify registry integrity and provenance against the exact artifact.

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { Stats } from "node:fs";
 import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
@@ -25,6 +26,10 @@ const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
 const DEFAULT_CHECKS = ["test", "typecheck", "lint", "build"] as const;
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_TOOL_OUTPUT = 20_000;
+const MAX_READ_BATCH_FILES = 20;
+const MAX_READ_BATCH_BYTES = 2 * MAX_FILE_BYTES;
+const MAX_SEARCH_MANY_QUERIES = 10;
+const MAX_SEARCH_MANY_MATCHES = 500;
 
 const isSensitiveName = (name: string) => {
   const normalized = name.toLocaleLowerCase();
@@ -87,7 +92,24 @@ interface IgnoreRule {
 
 interface CollectedFile {
   path: string;
+}
+
+interface EntryFingerprint {
+  path: string;
+  kind: "directory" | "ignore-file";
+  dev: number;
+  ino: number;
   size: number;
+  mtimeMs: number;
+  ctimeMs: number;
+  digest?: FileDigest;
+}
+
+interface WorkspaceIndex {
+  version: string;
+  files: readonly CollectedFile[];
+  directories: readonly EntryFingerprint[];
+  ignoreFiles: readonly EntryFingerprint[];
 }
 
 interface StableFile {
@@ -99,15 +121,16 @@ interface StableFile {
 }
 
 interface ListCursor {
-  v: 1;
+  v: 2;
   kind: "list";
   path: string;
   limit: number;
   after: string;
+  indexVersion: string;
 }
 
 interface SearchCursor {
-  v: 1;
+  v: 2;
   kind: "search";
   path: string;
   query: string;
@@ -115,6 +138,31 @@ interface SearchCursor {
   limit: number;
   afterPath: string;
   afterLine: number;
+  indexVersion: string;
+}
+
+export interface ReadFilesRequest {
+  path: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface SearchManyQuery {
+  query: string;
+  caseSensitive?: boolean;
+}
+
+export interface SearchManyOptions {
+  limitPerQuery?: number;
+}
+
+export interface WorkspaceIndexDiagnostics {
+  builds: number;
+  reuses: number;
+  stableFileReads: number;
+  version?: string;
+  files: number;
+  directories: number;
 }
 
 interface QuarantineManifest {
@@ -148,6 +196,28 @@ const cursorDecode = (value: string): unknown => {
   } catch {
     throw new Error("The pagination cursor is invalid.");
   }
+};
+
+const firstPathAtLeast = (files: readonly CollectedFile[], target: string) => {
+  let low = 0;
+  let high = files.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if ((files[middle]?.path ?? "") < target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+};
+
+const firstPathAfter = (files: readonly CollectedFile[], target: string) => {
+  let low = 0;
+  let high = files.length;
+  while (low < high) {
+    const middle = low + Math.floor((high - low) / 2);
+    if ((files[middle]?.path ?? "") <= target) low = middle + 1;
+    else high = middle;
+  }
+  return low;
 };
 
 const escapeRegex = (value: string) => value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
@@ -241,6 +311,11 @@ const spawnBounded = async (command: string[], cwd: string, timeoutMs = 120_000)
 export class Workspace {
   readonly root: string;
   private readonly auditEntries: MutationAuditEntry[] = [];
+  private readonly indexIdentity = randomUUID();
+  private indexRevision = 0;
+  private workspaceIndex: WorkspaceIndex | undefined;
+  private indexBuild: { revision: number; promise: Promise<WorkspaceIndex> } | undefined;
+  private readonly indexMetrics = { builds: 0, reuses: 0, stableFileReads: 0 };
 
   private constructor(root: string) {
     this.root = root;
@@ -291,6 +366,7 @@ export class Workspace {
   }
 
   private async readStableFile(relativePath: string, allowBinary = true): Promise<StableFile> {
+    this.indexMetrics.stableFileReads += 1;
     const safe = await this.safePath(relativePath, { requireFile: true });
     const before = await lstat(safe.path);
     if (before.size > MAX_FILE_BYTES) throw new Error(`The file exceeds the ${MAX_FILE_BYTES}-byte limit.`);
@@ -309,14 +385,52 @@ export class Workspace {
     };
   }
 
-  private async rulesForDirectory(directory: string, base: string, inherited: readonly IgnoreRule[]) {
+  private fingerprint(
+    relativePath: string,
+    kind: EntryFingerprint["kind"],
+    entry: Stats,
+    digest?: FileDigest
+  ): EntryFingerprint {
+    return {
+      path: relativePath || ".",
+      kind,
+      dev: entry.dev,
+      ino: entry.ino,
+      size: entry.size,
+      mtimeMs: entry.mtimeMs,
+      ctimeMs: entry.ctimeMs,
+      ...(digest ? { digest } : {})
+    };
+  }
+
+  private sameFingerprint(entry: Stats, fingerprint: EntryFingerprint) {
+    return entry.dev === fingerprint.dev && entry.ino === fingerprint.ino && entry.size === fingerprint.size &&
+      entry.mtimeMs === fingerprint.mtimeMs && entry.ctimeMs === fingerprint.ctimeMs;
+  }
+
+  private async rulesForDirectory(
+    directory: string,
+    base: string,
+    inherited: readonly IgnoreRule[],
+    ignoreFiles: EntryFingerprint[]
+  ) {
     const rules = [...inherited];
     for (const filename of IGNORE_FILES) {
       try {
         const ignorePath = path.join(directory, filename);
-        const entry = await lstat(ignorePath);
-        if (entry.isFile() && entry.size <= MAX_FILE_BYTES) {
-          rules.push(...parseIgnoreRules(await readFile(ignorePath, "utf8"), base));
+        const before = await lstat(ignorePath);
+        if (before.isSymbolicLink() || !before.isFile()) continue;
+        if (before.size <= MAX_FILE_BYTES) {
+          const contents = await readFile(ignorePath);
+          const after = await lstat(ignorePath);
+          if (after.isSymbolicLink() || !after.isFile() || !this.sameFingerprint(after, this.fingerprint("", "ignore-file", before))) {
+            throw new Error(`The ignore file changed while the workspace was being indexed: ${wirePath(path.relative(this.root, ignorePath))}`);
+          }
+          const digest = digestBytes(contents);
+          ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", after, digest));
+          rules.push(...parseIgnoreRules(contents.toString("utf8"), base));
+        } else {
+          ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", before));
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -325,21 +439,114 @@ export class Workspace {
     return rules;
   }
 
-  private async collectFiles(): Promise<CollectedFile[]> {
+  private async collectFiles(version: string): Promise<WorkspaceIndex> {
     const files: CollectedFile[] = [];
+    const directories: EntryFingerprint[] = [];
+    const ignoreFiles: EntryFingerprint[] = [];
     const walk = async (directory: string, base: string, inherited: readonly IgnoreRule[]) => {
-      const rules = await this.rulesForDirectory(directory, base, inherited);
+      const directoryEntry = await lstat(directory);
+      if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
+        throw new Error(`A workspace directory changed while it was being indexed: ${base || "."}`);
+      }
+      directories.push(this.fingerprint(base, "directory", directoryEntry));
+      const rules = await this.rulesForDirectory(directory, base, inherited, ignoreFiles);
       const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
       for (const entry of entries) {
         const relative = base ? `${base}/${entry.name}` : entry.name;
         if (isHardIgnored(relative) || entry.isSymbolicLink() || isIgnoredByRules(relative, entry.isDirectory(), rules)) continue;
         const absolute = path.join(directory, entry.name);
         if (entry.isDirectory()) await walk(absolute, relative, rules);
-        else if (entry.isFile()) files.push({ path: relative, size: (await lstat(absolute)).size });
+        else if (entry.isFile()) files.push({ path: relative });
       }
     };
     await walk(this.root, "", []);
-    return files;
+    files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+    return { version, files, directories, ignoreFiles };
+  }
+
+  private async isWorkspaceIndexFresh(index: WorkspaceIndex) {
+    try {
+      for (const fingerprint of index.directories) {
+        const absolute = fingerprint.path === "." ? this.root : path.join(this.root, fingerprint.path);
+        const entry = await lstat(absolute);
+        if (entry.isSymbolicLink() || !entry.isDirectory() || !this.sameFingerprint(entry, fingerprint)) return false;
+      }
+      for (const fingerprint of index.ignoreFiles) {
+        const absolute = path.join(this.root, fingerprint.path);
+        const before = await lstat(absolute);
+        if (before.isSymbolicLink() || !before.isFile() || !this.sameFingerprint(before, fingerprint)) return false;
+        if (fingerprint.digest) {
+          const contents = await readFile(absolute);
+          const after = await lstat(absolute);
+          if (after.isSymbolicLink() || !after.isFile() || !this.sameFingerprint(after, fingerprint) ||
+            digestBytes(contents) !== fingerprint.digest) return false;
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private invalidateWorkspaceIndex() {
+    this.indexRevision += 1;
+    this.workspaceIndex = undefined;
+  }
+
+  private async buildWorkspaceIndex(revision: number) {
+    const version = `${this.indexIdentity}:${revision}`;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const index = await this.collectFiles(version);
+        if (await this.isWorkspaceIndexFresh(index)) return index;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        const changedDuringIndexing = error instanceof Error && error.message.includes("while the workspace was being indexed");
+        if (attempt === 2 || (code !== "ENOENT" && !changedDuringIndexing)) throw error;
+      }
+    }
+    throw new Error("The workspace kept changing while its file index was being built.");
+  }
+
+  private async getWorkspaceIndex(): Promise<WorkspaceIndex> {
+    const cached = this.workspaceIndex;
+    if (cached) {
+      if (await this.isWorkspaceIndexFresh(cached)) {
+        this.indexMetrics.reuses += 1;
+        return cached;
+      }
+      this.invalidateWorkspaceIndex();
+    }
+    const revision = this.indexRevision;
+    if (!this.indexBuild || this.indexBuild.revision !== revision) {
+      const promise = this.buildWorkspaceIndex(revision);
+      this.indexBuild = { revision, promise };
+    }
+    const build = this.indexBuild;
+    let index: WorkspaceIndex;
+    try {
+      index = await build.promise;
+    } catch (error) {
+      if (this.indexBuild === build) this.indexBuild = undefined;
+      throw error;
+    }
+    if (revision !== this.indexRevision) return this.getWorkspaceIndex();
+    if (this.indexBuild === build) this.indexBuild = undefined;
+    if (this.workspaceIndex?.version !== index.version) {
+      this.workspaceIndex = index;
+      this.indexMetrics.builds += 1;
+    }
+    return this.workspaceIndex;
+  }
+
+  workspaceIndexDiagnostics(): WorkspaceIndexDiagnostics {
+    const index = this.workspaceIndex;
+    return {
+      ...this.indexMetrics,
+      ...(index ? { version: index.version } : {}),
+      files: index?.files.length ?? 0,
+      directories: index?.directories.length ?? 0
+    };
   }
 
   async listFiles(relativePath = ".", options: number | ListFilesOptions = {}) {
@@ -350,36 +557,55 @@ export class Workspace {
     const limit = input.limit ?? 200;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw new Error("limit must be between 1 and 5000.");
     let after = "";
+    let cursorIndexVersion: string | undefined;
     if (input.cursor) {
       const parsed = cursorDecode(input.cursor) as Partial<ListCursor>;
-      if (parsed.v !== 1 || parsed.kind !== "list" || parsed.path !== requestPath || parsed.limit !== limit || typeof parsed.after !== "string") {
+      if (parsed.v !== 2 || parsed.kind !== "list" || parsed.path !== requestPath || parsed.limit !== limit ||
+        typeof parsed.indexVersion !== "string" || typeof parsed.after !== "string") {
         throw new Error("The pagination cursor does not match this list request.");
       }
       after = parsed.after;
+      cursorIndexVersion = parsed.indexVersion;
+    }
+    const index = await this.getWorkspaceIndex();
+    if (cursorIndexVersion && cursorIndexVersion !== index.version) {
+      throw new Error("The pagination cursor is stale because the workspace changed.");
     }
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
-    const candidates = (await this.collectFiles()).filter((file) => (requestPath === "." || file.path.startsWith(prefix)) && file.path > after);
-    const selected = candidates.slice(0, limit);
+    let candidateIndex = after
+      ? firstPathAfter(index.files, after)
+      : requestPath === "."
+        ? 0
+        : firstPathAtLeast(index.files, prefix);
+    const selected: CollectedFile[] = [];
+    while (candidateIndex < index.files.length && selected.length <= limit) {
+      const candidate = index.files[candidateIndex];
+      if (!candidate || (requestPath !== "." && !candidate.path.startsWith(prefix))) break;
+      selected.push(candidate);
+      candidateIndex += 1;
+    }
+    const truncated = selected.length > limit;
+    if (truncated) selected.pop();
     const files: WorkspaceFile[] = [];
     for (const candidate of selected) {
       const file = await this.readStableFile(candidate.path);
       files.push({ path: file.path, size: file.contents.byteLength, digest: file.digest });
     }
-    const truncated = candidates.length > selected.length;
     const last = selected.at(-1);
     return {
       files,
       truncated,
-      ...(truncated && last ? { nextCursor: cursorEncode({ v: 1, kind: "list", path: requestPath, limit, after: last.path }) } : {})
+      ...(truncated && last ? {
+        nextCursor: cursorEncode({ v: 2, kind: "list", path: requestPath, limit, after: last.path, indexVersion: index.version })
+      } : {})
     };
   }
 
-  async readFile(relativePath: string, startLine = 1, endLine?: number) {
+  private renderReadFile(file: StableFile, startLine = 1, endLine?: number) {
     if (!Number.isSafeInteger(startLine) || startLine < 1) throw new Error("startLine must be a positive integer.");
     if (endLine !== undefined && (!Number.isSafeInteger(endLine) || endLine < startLine)) {
       throw new Error("endLine must be greater than or equal to startLine.");
     }
-    const file = await this.readStableFile(relativePath, false);
     const lines = file.contents.toString("utf8").split(/\r?\n/);
     const boundedEnd = Math.min(endLine ?? startLine + 399, startLine + 1999, lines.length);
     return {
@@ -390,6 +616,45 @@ export class Workspace {
       totalLines: lines.length,
       content: lines.slice(startLine - 1, boundedEnd).map((line, index) => `${startLine + index}: ${line}`).join("\n"),
       truncated: boundedEnd < lines.length
+    };
+  }
+
+  async readFile(relativePath: string, startLine = 1, endLine?: number) {
+    return this.renderReadFile(await this.readStableFile(relativePath, false), startLine, endLine);
+  }
+
+  async readFiles(requests: readonly ReadFilesRequest[]) {
+    if (!Array.isArray(requests) || requests.length < 1 || requests.length > MAX_READ_BATCH_FILES) {
+      throw new Error(`readFiles requires between 1 and ${MAX_READ_BATCH_FILES} file requests.`);
+    }
+    const ordered = requests.map((request) => ({
+      ...request,
+      path: wirePath(path.relative(this.root, this.lexicalPath(request.path)))
+    })).sort((a, b) =>
+      (a.path < b.path ? -1 : a.path > b.path ? 1 : 0) ||
+      (a.startLine ?? 1) - (b.startLine ?? 1) || (a.endLine ?? 0) - (b.endLine ?? 0));
+    const stableFiles = new Map<string, StableFile>();
+    let totalBytes = 0;
+    for (const request of ordered) {
+      if (!Number.isSafeInteger(request.startLine ?? 1) || (request.startLine ?? 1) < 1 ||
+        (request.endLine !== undefined && (!Number.isSafeInteger(request.endLine) || request.endLine < (request.startLine ?? 1)))) {
+        throw new Error(`Invalid line range for ${request.path}.`);
+      }
+      if (stableFiles.has(request.path)) continue;
+      const file = await this.readStableFile(request.path, false);
+      totalBytes += file.contents.byteLength;
+      if (totalBytes > MAX_READ_BATCH_BYTES) {
+        throw new Error(`readFiles exceeds the aggregate ${MAX_READ_BATCH_BYTES}-byte source limit.`);
+      }
+      stableFiles.set(request.path, file);
+    }
+    return {
+      files: ordered.map((request) => this.renderReadFile(
+        stableFiles.get(request.path) as StableFile,
+        request.startLine ?? 1,
+        request.endLine
+      )),
+      sourceBytes: totalBytes
     };
   }
 
@@ -413,21 +678,34 @@ export class Workspace {
     const caseSensitive = options.caseSensitive ?? false;
     let afterPath = "";
     let afterLine = 0;
+    let cursorIndexVersion: string | undefined;
     if (options.cursor) {
       const parsed = cursorDecode(options.cursor) as Partial<SearchCursor>;
-      if (parsed.v !== 1 || parsed.kind !== "search" || parsed.path !== requestPath || parsed.query !== query ||
-        parsed.caseSensitive !== caseSensitive || parsed.limit !== limit || typeof parsed.afterPath !== "string" || !Number.isSafeInteger(parsed.afterLine)) {
+      if (parsed.v !== 2 || parsed.kind !== "search" || parsed.path !== requestPath || parsed.query !== query ||
+        parsed.caseSensitive !== caseSensitive || parsed.limit !== limit || typeof parsed.afterPath !== "string" ||
+        !Number.isSafeInteger(parsed.afterLine) || typeof parsed.indexVersion !== "string") {
         throw new Error("The pagination cursor does not match this search request.");
       }
       afterPath = parsed.afterPath;
       afterLine = parsed.afterLine as number;
+      cursorIndexVersion = parsed.indexVersion;
+    }
+    const index = await this.getWorkspaceIndex();
+    if (cursorIndexVersion && cursorIndexVersion !== index.version) {
+      throw new Error("The pagination cursor is stale because the workspace changed.");
     }
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
     const needle = caseSensitive ? query : query.toLocaleLowerCase();
     const matches: SearchMatch[] = [];
     let hasMore = false;
-    for (const candidate of await this.collectFiles()) {
-      if ((requestPath !== "." && !candidate.path.startsWith(prefix)) || candidate.size > MAX_FILE_BYTES || candidate.path < afterPath) continue;
+    let candidateIndex = afterPath
+      ? firstPathAtLeast(index.files, afterPath)
+      : requestPath === "."
+        ? 0
+        : firstPathAtLeast(index.files, prefix);
+    for (; candidateIndex < index.files.length; candidateIndex += 1) {
+      const candidate = index.files[candidateIndex];
+      if (!candidate || (requestPath !== "." && !candidate.path.startsWith(prefix))) break;
       let file: StableFile;
       try {
         file = await this.readStableFile(candidate.path, false);
@@ -453,8 +731,82 @@ export class Workspace {
       matches,
       truncated: hasMore,
       ...(hasMore && last ? {
-        nextCursor: cursorEncode({ v: 1, kind: "search", path: requestPath, query, caseSensitive, limit, afterPath: last.path, afterLine: last.line })
+        nextCursor: cursorEncode({
+          v: 2,
+          kind: "search",
+          path: requestPath,
+          query,
+          caseSensitive,
+          limit,
+          afterPath: last.path,
+          afterLine: last.line,
+          indexVersion: index.version
+        })
       } : {})
+    };
+  }
+
+  async searchMany(queries: readonly SearchManyQuery[], relativePath = ".", options: SearchManyOptions = {}) {
+    if (!Array.isArray(queries) || queries.length < 1 || queries.length > MAX_SEARCH_MANY_QUERIES) {
+      throw new Error(`searchMany requires between 1 and ${MAX_SEARCH_MANY_QUERIES} queries.`);
+    }
+    const limitPerQuery = options.limitPerQuery ?? 50;
+    if (!Number.isSafeInteger(limitPerQuery) || limitPerQuery < 1 || limitPerQuery > MAX_SEARCH_MANY_MATCHES ||
+      limitPerQuery * queries.length > MAX_SEARCH_MANY_MATCHES) {
+      throw new Error(`searchMany allows at most ${MAX_SEARCH_MANY_MATCHES} aggregate matches.`);
+    }
+    const seen = new Set<string>();
+    const states = queries.map((input) => {
+      if (!input.query || input.query.length > 200) throw new Error("Each search query must be between 1 and 200 characters.");
+      const caseSensitive = input.caseSensitive ?? false;
+      const key = `${caseSensitive ? "1" : "0"}\0${input.query}`;
+      if (seen.has(key)) throw new Error("searchMany queries must be unique.");
+      seen.add(key);
+      return {
+        query: input.query,
+        caseSensitive,
+        needle: caseSensitive ? input.query : input.query.toLocaleLowerCase(),
+        matches: [] as SearchMatch[],
+        truncated: false
+      };
+    });
+    const start = await this.safePath(relativePath);
+    if (!(await lstat(start.path)).isDirectory()) throw new Error("searchMany requires a directory.");
+    const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
+    const prefix = requestPath === "." ? "" : `${requestPath}/`;
+    const index = await this.getWorkspaceIndex();
+    let candidateIndex = requestPath === "." ? 0 : firstPathAtLeast(index.files, prefix);
+    for (; candidateIndex < index.files.length; candidateIndex += 1) {
+      const candidate = index.files[candidateIndex];
+      if (!candidate || (requestPath !== "." && !candidate.path.startsWith(prefix))) break;
+      let file: StableFile;
+      try {
+        file = await this.readStableFile(candidate.path, false);
+      } catch {
+        continue;
+      }
+      const lines = file.contents.toString("utf8").split(/\r?\n/);
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const line = lines[lineIndex] ?? "";
+        const foldedLine = line.toLocaleLowerCase();
+        for (const state of states) {
+          if (state.truncated || !(state.caseSensitive ? line : foldedLine).includes(state.needle)) continue;
+          if (state.matches.length >= limitPerQuery) {
+            state.truncated = true;
+            continue;
+          }
+          state.matches.push({
+            path: candidate.path,
+            line: lineIndex + 1,
+            text: truncate(line, 500),
+            digest: file.digest
+          });
+        }
+      }
+      if (states.every((state) => state.truncated)) break;
+    }
+    return {
+      results: states.map(({ needle: _needle, ...state }) => state)
     };
   }
 
@@ -630,6 +982,7 @@ export class Workspace {
       if (rollbackErrors.length) throw new AggregateError([error, ...rollbackErrors], "Patch failed and rollback was incomplete.");
       throw error;
     }
+    this.invalidateWorkspaceIndex();
     const changes = prepared.map((item) => this.audit({
       operation: item.before ? "update" : "create",
       path: item.change.path,
@@ -687,6 +1040,7 @@ export class Workspace {
       if (linked) await unlink(destination.path).catch(() => {});
       throw error;
     }
+    this.invalidateWorkspaceIndex();
     const audit = this.audit({ operation: "move", path: parsed.source, destination: parsed.destination, beforeDigest: source.digest, afterDigest: source.digest });
     return { source: parsed.source, destination: parsed.destination, digest: source.digest, audit };
   }
@@ -772,6 +1126,7 @@ export class Workspace {
       await unlink(path.join(directory, `${quarantineId}.json`)).catch(() => {});
       throw error;
     }
+    this.invalidateWorkspaceIndex();
     const audit = this.audit({ operation: "quarantine", path: parsed.path, beforeDigest: source.digest, quarantineId });
     return { quarantineId, path: parsed.path, digest: source.digest, audit };
   }
@@ -848,6 +1203,7 @@ export class Workspace {
         ? new AggregateError([error, ...rollbackErrors], "Restore failed and rollback was incomplete.")
         : error;
     }
+    this.invalidateWorkspaceIndex();
     const audit = this.audit({ operation: "restore", path: destinationPath, afterDigest: digest, quarantineId: parsed.quarantineId });
     return { quarantineId: parsed.quarantineId, path: destinationPath, digest, audit };
   }
@@ -866,7 +1222,11 @@ export class Workspace {
     }
     if (!scripts[check]) throw new Error(`package.json does not define the "${check}" script.`);
     if (scripts[check] !== expectedScript) throw new Error(`The "${check}" script changed or does not match expectedScript.`);
-    return spawnBounded(["bun", "--no-env-file", "run", check], this.root);
+    try {
+      return await spawnBounded(["bun", "--no-env-file", "run", check], this.root);
+    } finally {
+      this.invalidateWorkspaceIndex();
+    }
   }
 
   async gitDiff(): Promise<{ status: CommandResult; diff: CommandResult; staged: CommandResult }> {

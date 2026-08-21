@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { access, lstat, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { z } from "zod";
 
 import {
   getAgentBudgetStatus,
@@ -76,6 +77,14 @@ import {
   type CliSession,
   type SessionRunStatus
 } from "./sessions.js";
+import {
+  canonicalizeChangeEnvelope,
+  changeEnvelopePreconditionsSchema,
+  createChangeEnvelope,
+  digestChangeEnvelopeArtifact,
+  verifyChangeEnvelope,
+  type ChangeEnvelopePreconditions
+} from "./change-envelope.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -88,9 +97,10 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "sessions" | "help" | "version";
+type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "sessions" | "changes" | "help" | "version";
 type RunsCommand = "list" | "inspect" | "cancel" | "cleanup" | "export";
 type SessionsCommand = "list" | "inspect" | "rename" | "fork" | "archive";
+type ChangesCommand = "create" | "verify";
 
 export interface CliOptions {
   command: Command;
@@ -143,6 +153,11 @@ export interface CliOptions {
   idempotencyKey?: string;
   runsCommand?: RunsCommand;
   sessionsCommand?: SessionsCommand;
+  changesCommand?: ChangesCommand;
+  artifactPath?: string;
+  patchPath?: string;
+  preconditionsPath?: string;
+  verificationTime?: string;
   sessionId?: string;
   sessionTitle?: string;
   continueSession: boolean;
@@ -160,9 +175,11 @@ export interface CliOptions {
   jsonl: boolean;
 }
 
-const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "help", "version"]);
+const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "help", "version"]);
 const RUNS_COMMANDS = new Set<RunsCommand>(["list", "inspect", "cancel", "cleanup", "export"]);
 const SESSIONS_COMMANDS = new Set<SessionsCommand>(["list", "inspect", "rename", "fork", "archive"]);
+const CHANGES_COMMANDS = new Set<ChangesCommand>(["create", "verify"]);
+const CLI_TIMESTAMP_SCHEMA = z.iso.datetime({ precision: 3 });
 const RUN_STATUSES = new Set<AgentStatus>([
   "queued",
   "running",
@@ -404,6 +421,23 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.mcpConfigPath = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--patch":
+        options.patchPath = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--preconditions":
+        options.preconditionsPath = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--now": {
+        const value = optionValue(argv, index, argument);
+        if (!CLI_TIMESTAMP_SCHEMA.safeParse(value).success) {
+          throw new CliUsageError("--now must be a millisecond-precision ISO-8601 UTC timestamp.");
+        }
+        options.verificationTime = value;
+        index += 1;
+        break;
+      }
       case "--execution":
         options.executionBackend = optionValue(argv, index, argument);
         index += 1;
@@ -676,6 +710,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   if (options.jsonl && options.command !== "run" && options.command !== "resume") {
     throw new CliUsageError("--jsonl is supported by run and resume.");
   }
+  if (options.command !== "changes" && (options.patchPath || options.preconditionsPath || options.verificationTime)) {
+    throw new CliUsageError("--patch, --preconditions, and --now are supported only by changes.");
+  }
 
   if (options.command === "resume") {
     const runId = positional.shift();
@@ -724,6 +761,26 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`sessions ${sessionsCommand} received unexpected positional arguments.`);
     }
+  } else if (options.command === "changes") {
+    const changesCommand = positional.shift() as ChangesCommand | undefined;
+    if (!changesCommand || !CHANGES_COMMANDS.has(changesCommand)) {
+      throw new CliUsageError("changes requires one of: create, verify.");
+    }
+    options.changesCommand = changesCommand;
+    const artifactPath = positional.shift();
+    if (!artifactPath) {
+      throw new CliUsageError(`changes ${changesCommand} requires an input JSON file.`);
+    }
+    options.artifactPath = artifactPath;
+    if (!options.patchPath) {
+      throw new CliUsageError(`changes ${changesCommand} requires --patch <file>.`);
+    }
+    if (changesCommand === "create" && (options.preconditionsPath || options.verificationTime)) {
+      throw new CliUsageError("--preconditions and --now are only supported by changes verify.");
+    }
+    if (positional.length > 0) {
+      throw new CliUsageError(`changes ${changesCommand} received unexpected positional arguments.`);
+    }
   } else if (options.command === "run" || options.command === "review") {
     const prompt = positional.join(" ").trim();
     if (prompt) {
@@ -748,6 +805,8 @@ Usage:
   zhx resume [options] <runId> --approve|--deny
   zhx runs list [--status <status>] [--limit <n>] [--json]
   zhx sessions list|inspect|rename|fork|archive
+  zhx changes create <input.json> --patch <artifact>
+  zhx changes verify <envelope.json> --patch <artifact> [--preconditions <file>]
 
 The long command zhivex-harness remains supported for compatibility.
 
@@ -760,6 +819,9 @@ Options:
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
+  --patch <path>                 Exact patch/artifact bytes bound to a change envelope
+  --preconditions <path>         Verification preconditions JSON for changes verify
+  --now <ISO-8601 UTC>           Explicit millisecond verification time (default: current time)
   --execution <none|oci>         Enforced execution backend (default: none)
   --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
   --oci-image <reference>        Preloaded immutable-capable OCI image
@@ -2436,6 +2498,103 @@ const updateIndexedSessionRun = async (
 export const cliExitCodeForError = (error: unknown) =>
   error instanceof CliUsageError ? CLI_EXIT_CODES.usageError : CLI_EXIT_CODES.runtimeError;
 
+const MAX_CHANGE_ENVELOPE_JSON_BYTES = 4 * 1024 * 1024;
+const MAX_CHANGE_ARTIFACT_BYTES = 64 * 1024 * 1024;
+
+const readStableCliArtifact = async (filePath: string, maxBytes: number) => {
+  const absolute = path.resolve(process.cwd(), filePath);
+  try {
+    const before = await lstat(absolute);
+    if (before.isSymbolicLink() || !before.isFile()) {
+      throw new CliUsageError(`Change artifact must be a regular non-symlink file: ${filePath}`);
+    }
+    if (before.size > maxBytes) {
+      throw new CliUsageError(`Change artifact exceeds the ${maxBytes}-byte limit: ${filePath}`);
+    }
+    const contents = await readFile(absolute);
+    const after = await lstat(absolute);
+    if (
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      before.ctimeMs !== after.ctimeMs
+    ) {
+      throw new CliUsageError(`Change artifact changed while it was being read: ${filePath}`);
+    }
+    return contents;
+  } catch (error) {
+    if (error instanceof CliUsageError) throw error;
+    const code = error && typeof error === "object" && "code" in error
+      ? (error as NodeJS.ErrnoException).code
+      : undefined;
+    if (typeof code === "string") {
+      throw new CliUsageError(`Change artifact cannot be read (${code}): ${filePath}`);
+    }
+    throw error;
+  }
+};
+
+const readCliJsonArtifact = async (filePath: string): Promise<unknown> => {
+  const contents = await readStableCliArtifact(filePath, MAX_CHANGE_ENVELOPE_JSON_BYTES);
+  try {
+    return JSON.parse(contents.toString("utf8")) as unknown;
+  } catch {
+    throw new CliUsageError(`Change artifact is not valid JSON: ${filePath}`);
+  }
+};
+
+const objectValue = (value: unknown, label: string): Record<string, unknown> => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new CliUsageError(`${label} must be a JSON object.`);
+  }
+  return value as Record<string, unknown>;
+};
+
+const manageChanges = async (options: CliOptions) => {
+  if (!options.changesCommand || !options.artifactPath || !options.patchPath) {
+    throw new CliUsageError("Incomplete changes command.");
+  }
+  const patchBytes = await readStableCliArtifact(options.patchPath, MAX_CHANGE_ARTIFACT_BYTES);
+  const patchDigest = digestChangeEnvelopeArtifact(patchBytes);
+
+  if (options.changesCommand === "create") {
+    const input = objectValue(await readCliJsonArtifact(options.artifactPath), "Change envelope input");
+    const patchInput = objectValue(input.patch, "Change envelope patch");
+    if (patchInput.patchDigest !== undefined && patchInput.patchDigest !== patchDigest) {
+      throw new CliUsageError("The declared patch.patchDigest does not match the exact --patch bytes.");
+    }
+    const envelope = createChangeEnvelope({
+      ...input,
+      patch: { ...patchInput, patchDigest }
+    });
+    process.stdout.write(`${canonicalizeChangeEnvelope(envelope)}\n`);
+    return;
+  }
+
+  const envelope = await readCliJsonArtifact(options.artifactPath);
+  const suppliedPreconditions = options.preconditionsPath
+    ? objectValue(await readCliJsonArtifact(options.preconditionsPath), "Change envelope preconditions")
+    : {};
+  if (suppliedPreconditions.patchDigest !== undefined && suppliedPreconditions.patchDigest !== patchDigest) {
+    throw new CliUsageError("The precondition patchDigest does not match the exact --patch bytes.");
+  }
+  const preconditions: ChangeEnvelopePreconditions = changeEnvelopePreconditionsSchema.parse({
+    ...suppliedPreconditions,
+    patchDigest
+  });
+  const result = verifyChangeEnvelope(envelope, {
+    ...(options.verificationTime ? { now: options.verificationTime } : {}),
+    preconditions
+  });
+  process.stdout.write(`${JSON.stringify({
+    schemaVersion: 1,
+    kind: "change-envelope-verification",
+    ...result
+  })}\n`);
+  if (!result.valid) process.exitCode = CLI_EXIT_CODES.runtimeError;
+};
+
 export const main = async (argv = process.argv.slice(2)) => {
   const options = parseCliArgs(argv);
   switch (options.command) {
@@ -2462,6 +2621,9 @@ export const main = async (argv = process.argv.slice(2)) => {
       return;
     case "sessions":
       await manageSessions(options);
+      return;
+    case "changes":
+      await manageChanges(options);
       return;
     case "run":
       if (options.implicitCommand && !options.prompt && process.stdin.isTTY && process.stdout.isTTY) {

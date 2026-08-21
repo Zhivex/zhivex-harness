@@ -101,6 +101,56 @@ try {
   assert.equal(check.exitCode, 0, check.stderr || check.stdout);
   assert.match(check.stdout, /oci-check-ok/);
 
+  const warmStatus = await session.status();
+  assert.deepEqual(
+    {
+      containerStarts: warmStatus.io.containerStarts,
+      containerReuses: warmStatus.io.containerReuses,
+      workspacePublishes: warmStatus.io.workspacePublishes,
+      workspaceExports: warmStatus.io.workspaceExports
+    },
+    {
+      containerStarts: 1,
+      containerReuses: 2,
+      workspacePublishes: 3,
+      workspaceExports: 1
+    }
+  );
+
+  await assert.rejects(
+    session.runCommand("bun", [
+      "-e",
+      [
+        "import { mkdir, rm, writeFile } from 'node:fs/promises';",
+        "await rm('/workspace/node_modules', { recursive: true, force: true });",
+        "await mkdir('/workspace/node_modules');",
+        "await writeFile('/workspace/node_modules/injected.js', 'export default true');"
+      ].join(" ")
+    ]),
+    /dependency mount was replaced/i
+  );
+  const recoveredDependency = await session.runCommand("bun", [
+    "-e",
+    "import { value } from 'oci-smoke-dependency'; console.log(value)"
+  ]);
+  assert.equal(recoveredDependency.exitCode, 0, recoveredDependency.stderr || recoveredDependency.stdout);
+  assert.match(recoveredDependency.stdout, /read-only-dependency-ok/);
+
+  await writeFile(path.join(session.workspace.root, "src", "host-tool-sync.ts"), "export const sync = true;\n");
+  const synchronized = await session.runCommand("bun", [
+    "-e",
+    [
+      "import { readFile, unlink } from 'node:fs/promises';",
+      "const value = await readFile('/workspace/src/host-tool-sync.ts', 'utf8');",
+      "if (!value.includes('sync = true')) throw new Error('host snapshot was not reseeded');",
+      "await unlink('/workspace/src/host-tool-sync.ts');",
+      "console.log('host-tool-sync-ok');"
+    ].join(" ")
+  ]);
+  assert.equal(synchronized.exitCode, 0, synchronized.stderr || synchronized.stdout);
+  assert.match(synchronized.stdout, /host-tool-sync-ok/);
+  assert.equal((await session.status()).io.containerStarts, 3);
+
   const inspection = await session.inspectPatch();
   assert.deepEqual(
     inspection.entries.map((entry) => [entry.path, entry.operation]),
@@ -116,6 +166,13 @@ try {
   );
   assert.equal((await stat(path.join(root, "src", "generated.ts"))).mode & 0o777, 0o750);
   assert.equal(await readFile(path.join(root, ".env"), "utf8"), "SMOKE_SECRET=must-not-be-mounted\n");
+
+  const background = await session.runCommand("bun", [
+    "-e",
+    "const child = Bun.spawn(['sleep', '60'], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' }); child.unref()"
+  ]);
+  assert.equal(background.exitCode, 126);
+  assert.match(background.stderr, /background processes/i);
 
   const controller = new AbortController();
   const cancelled = session.runCommand("bun", ["-e", "await Bun.sleep(60_000)"] , {

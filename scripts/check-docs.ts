@@ -405,6 +405,90 @@ if (manifest.version.startsWith("0.8.")) {
   }
 }
 
+if (manifest.version.startsWith("0.9.")) {
+  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const changeEnvelopes = await readFile(path.join(workspace, "docs", "CHANGE_ENVELOPES.md"), "utf8");
+  const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
+  const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const source = `${await readFile(path.join(workspace, "src", "harness.ts"), "utf8")}\n${
+    await readFile(path.join(workspace, "src", "change-envelope.ts"), "utf8")
+  }\n${await readFile(path.join(workspace, "src", "cli.ts"), "utf8")}`;
+  for (const heading of [
+    "## What it proves",
+    "## Create and verify",
+    "## Verification preconditions",
+    "## Authenticity boundary",
+    "## Library API",
+    "## Known limits"
+  ]) {
+    if (!changeEnvelopes.includes(heading)) {
+      failures.push(`docs/CHANGE_ENVELOPES.md is missing ${heading}.`);
+    }
+  }
+  for (const required of [
+    "changes create",
+    "changes verify",
+    "change-envelope-verification",
+    "authenticity: \"not-verified\""
+  ]) {
+    if (!cli.includes(required)) failures.push(`docs/CLI.md is missing the 0.9.x contract text: ${required}.`);
+  }
+  for (const required of ["topology-only index", "`read_files`", "`search_many`"]) {
+    if (!repositoryEditing.includes(required)) {
+      failures.push(`docs/REPOSITORY_EDITING.md is missing the 0.9.x contract text: ${required}.`);
+    }
+  }
+  for (const required of ["copy-on-write", "changed files", "`environment_status`"]) {
+    if (!executionEnvironments.includes(required)) {
+      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.9.x optimization text: ${required}.`);
+    }
+  }
+  for (const required of [
+    "createChangeEnvelope",
+    "verifyChangeEnvelope",
+    "integrity-expiration-and-preconditions-only",
+    "read_files",
+    "search_many"
+  ]) {
+    if (!source.includes(required)) failures.push(`0.9.x source contract is missing ${required}.`);
+  }
+  if (manifest.scripts?.["benchmark:workspace"] !== "bun run scripts/benchmark-workspace.ts") {
+    failures.push("0.9.x must expose the reproducible workspace benchmark.");
+  }
+  if (
+    manifest.scripts?.["benchmark:workspace:ci"] !==
+      "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100" ||
+    !manifest.scripts?.check?.includes("bun run benchmark:workspace:ci")
+  ) {
+    failures.push("0.9.x must execute the bounded workspace benchmark smoke in the complete check gate.");
+  }
+  if (manifest.bin?.zhx !== "./dist/zhx.js" || manifest.bin?.["zhivex-harness"] !== "./dist/cli.js") {
+    failures.push("0.9.x must retain both zhx and zhivex-harness aliases.");
+  }
+  const expectedSdkDependencies = {
+    "@zhivex-ai/agents": "1.2.0",
+    "@zhivex-ai/core": "1.7.0",
+    "@zhivex-ai/gemini": "0.10.5",
+    "@zhivex-ai/meta": "0.2.2",
+    "@zhivex-ai/openai": "0.9.6",
+    "@zhivex-ai/qwen": "0.10.2"
+  } as const;
+  for (const [packageName, expectedVersion] of Object.entries(expectedSdkDependencies)) {
+    if (manifest.dependencies?.[packageName] !== expectedVersion) {
+      failures.push(`0.9.x must retain ${packageName}@${expectedVersion}.`);
+    }
+  }
+  if (manifest.overrides?.["@zhivex-ai/core"] !== expectedSdkDependencies["@zhivex-ai/core"]) {
+    failures.push("0.9.x must retain one @zhivex-ai/core@1.7.0 runtime.");
+  }
+  if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration from 0.8.x")) {
+    failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
+  }
+  if (!roadmap.includes("`0.9.0` is the source candidate")) {
+    failures.push("ROADMAP.md must identify the 0.9.0 source candidate.");
+  }
+}
+
 const providerDescriptorMatches = [...providerConfig.matchAll(
   /\{\s*id:\s*"([^"]+)",[\s\S]*?support:\s*"(certified|provisional)"\s*\}/g
 )];

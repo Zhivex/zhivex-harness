@@ -138,13 +138,58 @@ describe("Zhivex harness", () => {
       for (const name of ["apply_patch", "move_file", "quarantine_file", "restore_file", "run_check"]) {
         expect(tools[name]).toMatchObject({ requiresApproval: true, approvalMode: "interrupt" });
       }
-      for (const name of ["list_files", "read_file", "search_files", "propose_edits", "mutation_audit", "git_diff"]) {
+      for (const name of ["list_files", "read_file", "read_files", "search_files", "search_many", "propose_edits", "mutation_audit", "git_diff"]) {
         expect(tools[name]?.requiresApproval).not.toBe(true);
       }
       expect(HARNESS_INSTRUCTIONS).toContain("Calling an approval-gated tool is how you request that approval");
       expect(tools.apply_patch?.description).toContain("Call this tool instead of asking for approval in text");
       expect(tools.write_file).toBeUndefined();
       expect(tools.replace_in_file).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("batches independent reads and literal searches without adding approval boundaries", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-batch-tools-"));
+    try {
+      await writeFile(path.join(root, "alpha.ts"), "export const alpha = 1;\n// TODO governed\n", "utf8");
+      await writeFile(path.join(root, "beta.ts"), "export const beta = 2;\n// TODO verified\n", "utf8");
+      const harness = await createHarness({
+        provider: "openai",
+        workspace: root,
+        modelInstance: createMockLanguageModel(),
+        store: createInMemoryAgentRunStore()
+      });
+      const tools = harness.agent.tools as Record<string, {
+        execute: (input: unknown) => Promise<unknown>;
+      }>;
+
+      await expect(tools.read_files?.execute({
+        files: [
+          { path: "beta.ts", startLine: 1 },
+          { path: "alpha.ts", startLine: 1 }
+        ]
+      })).resolves.toMatchObject({
+        files: [
+          { path: "alpha.ts", content: expect.stringContaining("export const alpha") },
+          { path: "beta.ts", content: expect.stringContaining("export const beta") }
+        ]
+      });
+      await expect(tools.search_many?.execute({
+        queries: [
+          { query: "TODO", caseSensitive: true },
+          { query: "export const", caseSensitive: true }
+        ],
+        path: ".",
+        limitPerQuery: 10
+      })).resolves.toMatchObject({
+        results: [
+          { query: "TODO", matches: [{ path: "alpha.ts" }, { path: "beta.ts" }] },
+          { query: "export const", matches: [{ path: "alpha.ts" }, { path: "beta.ts" }] }
+        ]
+      });
+      harness.close();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

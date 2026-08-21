@@ -8,7 +8,7 @@ This is a local enforced runner. It is not a hosted sandbox, a virtual machine, 
 
 The harness trusts the operator, host OS, Docker or Podman daemon, configured image, Zhivex packages, and its own state directory. The model and code executed in the container are outside that trust boundary.
 
-The OCI policy is enforced per tool call with:
+The OCI policy is enforced for one acquired run session, with each command committed as a separate validated transaction:
 
 - `--network none`;
 - a read-only container root filesystem;
@@ -79,7 +79,13 @@ The acquired environment contains two owner-only copies under `<state-dir>/envir
 - `base`: the immutable comparison snapshot;
 - `workspace`: the mutable snapshot used by repository tools and containers.
 
-For each successful command, the harness seeds a fresh, size-bounded `/workspace` tmpfs from the durable snapshot, pauses the container, copies the result into a new owner-only staging directory, rejects symlinks, hard links, special files, oversized workspaces, excessive entries, and oversized changed files, then atomically replaces the durable snapshot. The host snapshot is never mounted writable into an untrusted container. Failed, cancelled, timed-out, or output-limited commands do not publish partial filesystem mutations.
+In `0.9.x`, acquisition keeps only a bounded metadata inventory in memory, writes each verified source file to `base` once, and creates `workspace` with filesystem copy-on-write cloning when available. Unsupported filesystems fall back to an independent normal copy. Patch comparison inventories both trees but rereads file content only for paths whose digest or mode changed. This changes host I/O and memory use, not the two-copy trust model: mutations in `workspace` remain observable as a patch against `base` and never mutate `base`.
+
+`environment_status` includes cumulative `io` counters for inventory passes/pages, verified content reads/bytes, snapshot files/bytes, clone fallbacks, container starts/reuses, successful workspace publications, and changed-workspace exports. They are diagnostics for profiling and regression tests, not admission evidence or a stable performance guarantee.
+
+The first command seeds a size-bounded `/workspace` tmpfs from the durable snapshot and subsequent successful commands reuse that run container while the host snapshot fingerprint remains unchanged. The container stays paused while idle. After every command the harness rejects surviving background processes, clears `/tmp`, and computes a canonical workspace seal. An unchanged seal takes a no-export fast path. A changed seal freezes the container, copies `/workspace` out through the runtime into a new owner-only staging directory, rejects symlinks, hard links, special files, oversized workspaces, excessive entries, and oversized changed files, then atomically replaces the durable snapshot. The host snapshot is never mounted writable into an untrusted container.
+
+Failed, cancelled, timed-out, output-limited, invalid, or background-spawning commands do not publish partial workspace mutations: their container and tmpfs volume are destroyed. A later command reseeds from the last durable snapshot. Repository-tool changes made outside the container alter the host-side snapshot fingerprint, which likewise discards the warm container and reseeds before execution. This preserves one durable source of truth instead of silently carrying stale container state.
 
 `inspect_environment_patch` compares them deterministically and returns a run-bound patch identifier plus create/update/delete entries, content digests, and before/after permission modes. Content-identical mode changes remain visible, and modes are part of the reviewed `patchId`. It rejects binary changes, more than 50 files, a patch above 4 MiB, or a file above the configured import ceiling.
 
@@ -99,7 +105,7 @@ PID limits are the primary fork-bomb control. Memory and CPU limits constrain re
 
 Environment artifacts are keyed by a hash of the durable run ID and include an owner-only metadata file bound to that exact run, workspace, environment fingerprint, and image. Reacquisition reuses the same snapshot only when every binding matches.
 
-Each runtime container and temporary workspace volume carries `com.zhivex.harness.execution=v1` and a hashed run label. Session release force-removes resources for that run and records the terminal status and release timestamp. `runs cleanup --before <cutoff>` removes only released terminal artifact directories older than the cutoff; with OCI configured it also removes labeled containers in `created`, `exited`, `dead`, or `paused` state and unused labeled volumes. Unknown directories, symlinks, active resources, and unlabeled OCI resources are skipped.
+Each runtime container and temporary workspace volume carries `com.zhivex.harness.execution=v1` and a hashed run label. The container remains paused between successful commands and session release force-removes all resources for that run before recording status and release time. `runs cleanup --before <cutoff>` removes only released terminal artifact directories older than the cutoff; with OCI configured it also removes labeled containers in `created`, `exited`, `dead`, or `paused` state and unused labeled volumes. Unknown directories, symlinks, active resources, and unlabeled OCI resources are skipped.
 
 Crash recovery relies on the same labels and durable artifacts. An operator can rerun cleanup after a process crash. The harness does not issue broad container/volume prune commands and never deletes an unlabeled OCI resource.
 
@@ -115,7 +121,7 @@ Applications constructing the harness can inject a `HarnessOciRuntimeAdapter` fo
 
 The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate approvals, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
 
-`bun run smoke:oci` exercises a real Docker/Podman daemon and preloaded image. It verifies secret exclusion, denied outbound network, denied root-filesystem writes, snapshot mutation, enforced workspace capacity, package checks, host non-mutation before import, approved import, cancellation, release, orphan cleanup, and artifact retention cleanup. It skips locally when no daemon is available unless `ZHIVEX_HARNESS_OCI_REQUIRED=1`; Linux CI, release validation, and live certification set that variable so absence is a failure.
+`bun run smoke:oci` exercises a real Docker/Podman daemon and preloaded image. It verifies secret exclusion, denied outbound network, denied root-filesystem writes, warm-container reuse, host-tool reseeding, background-process rejection, snapshot mutation, enforced workspace capacity, package checks, host non-mutation before import, approved import, cancellation, release, orphan cleanup, and artifact retention cleanup. `bun run benchmark:oci` reports first-command, warm no-op, mutation, snapshot, and runtime-I/O measurements on a configurable synthetic repository. The smoke skips locally when no daemon is available unless `ZHIVEX_HARNESS_OCI_REQUIRED=1`; Linux CI, release validation, and live certification set that variable so absence is a failure.
 
 Provider certification is separate and billable. The live workflow runs the required OCI gate before the model-directed Meta, Qwen, and OpenAI matrices. A deterministic OCI pass does not by itself certify a provider, and live provider success does not replace exact installed-artifact or published-registry proof.
 

@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
+import { constants as fsConstants, type Stats } from "node:fs";
 import {
   chmod,
+  copyFile,
   lstat,
   mkdir,
   readFile,
@@ -28,7 +30,8 @@ import { createAgentExecutionEnvironmentBinding } from "@zhivex-ai/agents/beta";
 import {
   HARNESS_EXECUTION_POLICY_VERSION,
   type HarnessConfig,
-  type HarnessExecutionConfig
+  type HarnessExecutionConfig,
+  type HarnessOciRuntime
 } from "./config.js";
 import {
   MAX_EDIT_CHANGES,
@@ -52,7 +55,9 @@ const TERMINAL_STATUSES = new Set<AgentStatus>([
 const BUILT_IN_TOOL_NAMES = new Set([
   "list_files",
   "read_file",
+  "read_files",
   "search_files",
+  "search_many",
   "propose_edits",
   "apply_patch",
   "move_file",
@@ -103,6 +108,12 @@ const commandDisplay = (command: readonly string[]) => command.map((value) =>
 export interface OciCommandResult extends CommandResult {
   cancelled: boolean;
   outputLimitExceeded: boolean;
+  /** True when the command reused an already-seeded run container. */
+  sessionReused?: boolean;
+  /** True only after the command workspace was validated and durably published. */
+  workspacePublished?: boolean;
+  /** True when publication required copying a changed workspace back to the host snapshot. */
+  workspaceExported?: boolean;
 }
 
 const spawnBounded = async (
@@ -251,16 +262,44 @@ const validVolumeNames = (stdout: string) => stdout
 
 const MAX_SYNC_ENTRIES = 10_000;
 
+interface ValidatedSnapshot {
+  entries: number;
+  totalBytes: number;
+  seal: FileDigest;
+  metadataFingerprint: FileDigest;
+}
+
+const updateSnapshotMetadata = (
+  target: ReturnType<typeof createHash>,
+  kind: "directory" | "file",
+  relative: string,
+  entry: Stats
+) => {
+  target.update([
+    kind,
+    relative,
+    entry.dev,
+    entry.ino,
+    entry.size,
+    entry.mtimeMs,
+    entry.ctimeMs,
+    entry.mode & 0o777
+  ].join("\0"));
+  target.update("\0");
+};
+
 const validateSynchronizedSnapshot = async (
   stagedRoot: string,
   previousRoot: string,
   maxWorkspaceBytes: number,
   maxFileWriteBytes: number
-) => {
+): Promise<ValidatedSnapshot> => {
   let entries = 0;
   let totalBytes = 0;
+  const seal = createHash("sha256");
+  const metadata = createHash("sha256");
   const visit = async (directory: string, relativeDirectory = "") => {
-    for (const name of await readdir(directory)) {
+    for (const name of (await readdir(directory)).sort()) {
       const relative = relativeDirectory ? `${relativeDirectory}/${name}` : name;
       const absolute = path.join(directory, name);
       if (!isInside(stagedRoot, absolute) || relative.length > 1_024) {
@@ -279,16 +318,36 @@ const validateSynchronizedSnapshot = async (
         throw new Error(`OCI workspace export contains a symbolic link: ${relative}.`);
       }
       if (entry.isDirectory()) {
+        updateSnapshotMetadata(metadata, "directory", relative, entry);
+        seal.update(`directory\0${relative}\0${entry.mode & 0o777}\0`);
         await visit(absolute, relative);
         continue;
       }
       if (!entry.isFile() || entry.nlink !== 1) {
         throw new Error(`OCI workspace export contains a special or linked file: ${relative}.`);
       }
+      const contents = await readFile(absolute);
+      const after = await lstat(absolute);
+      if (
+        after.isSymbolicLink() ||
+        !after.isFile() ||
+        after.nlink !== 1 ||
+        entry.dev !== after.dev ||
+        entry.ino !== after.ino ||
+        entry.size !== after.size ||
+        entry.mtimeMs !== after.mtimeMs ||
+        entry.ctimeMs !== after.ctimeMs ||
+        (entry.mode & 0o777) !== (after.mode & 0o777)
+      ) {
+        throw new Error(`OCI workspace export changed while it was being validated: ${relative}.`);
+      }
       totalBytes += entry.size;
       if (totalBytes > maxWorkspaceBytes) {
         throw new Error(`OCI workspace export exceeds the ${maxWorkspaceBytes}-byte workspace limit.`);
       }
+      const contentDigest = digest(contents);
+      updateSnapshotMetadata(metadata, "file", relative, after);
+      seal.update(`file\0${relative}\0${entry.mode & 0o777}\0${entry.size}\0${contentDigest}\0`);
       if (entry.size > maxFileWriteBytes) {
         const previous = path.join(previousRoot, ...relative.split("/"));
         let unchanged = false;
@@ -297,7 +356,7 @@ const validateSynchronizedSnapshot = async (
           unchanged = previousEntry.isFile() &&
             !previousEntry.isSymbolicLink() &&
             previousEntry.size === entry.size &&
-            digest(await readFile(previous)) === digest(await readFile(absolute));
+            digest(await readFile(previous)) === contentDigest;
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
@@ -308,6 +367,54 @@ const validateSynchronizedSnapshot = async (
     }
   };
   await visit(stagedRoot);
+  return {
+    entries,
+    totalBytes,
+    seal: `sha256:${seal.digest("hex")}`,
+    metadataFingerprint: `sha256:${metadata.digest("hex")}`
+  };
+};
+
+const snapshotMetadataFingerprint = async (
+  root: string,
+  maxWorkspaceBytes: number
+): Promise<FileDigest> => {
+  let entries = 0;
+  let totalBytes = 0;
+  const metadata = createHash("sha256");
+  const visit = async (directory: string, relativeDirectory = "") => {
+    for (const name of (await readdir(directory)).sort()) {
+      const relative = relativeDirectory ? `${relativeDirectory}/${name}` : name;
+      if (relative === "node_modules") continue;
+      const absolute = path.join(directory, name);
+      if (!isInside(root, absolute) || relative.length > 1_024) {
+        throw new Error(`OCI workspace snapshot contains an invalid path: ${relative}.`);
+      }
+      entries += 1;
+      if (entries > MAX_SYNC_ENTRIES) {
+        throw new Error(`OCI workspace snapshot exceeds the ${MAX_SYNC_ENTRIES}-entry limit.`);
+      }
+      const entry = await lstat(absolute);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`OCI workspace snapshot contains a symbolic link: ${relative}.`);
+      }
+      if (entry.isDirectory()) {
+        updateSnapshotMetadata(metadata, "directory", relative, entry);
+        await visit(absolute, relative);
+        continue;
+      }
+      if (!entry.isFile() || entry.nlink !== 1) {
+        throw new Error(`OCI workspace snapshot contains a special or linked file: ${relative}.`);
+      }
+      totalBytes += entry.size;
+      if (totalBytes > maxWorkspaceBytes) {
+        throw new Error(`OCI workspace snapshot exceeds the ${maxWorkspaceBytes}-byte workspace limit.`);
+      }
+      updateSnapshotMetadata(metadata, "file", relative, entry);
+    }
+  };
+  await visit(root);
+  return `sha256:${metadata.digest("hex")}`;
 };
 
 const replaceSnapshot = async (snapshotRoot: string, stagedRoot: string) => {
@@ -322,9 +429,55 @@ const replaceSnapshot = async (snapshotRoot: string, stagedRoot: string) => {
   await rm(backupRoot, { recursive: true, force: true });
 };
 
+interface PersistentOciSession {
+  key: string;
+  requestFingerprint: FileDigest;
+  name: string;
+  volumeName: string;
+  snapshotSeal: FileDigest;
+  hostFingerprint: FileDigest;
+  paused: boolean;
+}
+
+const OCI_WORKSPACE_SEAL_SCRIPT = [
+  "import { createHash } from 'node:crypto';",
+  "import { lstat, readFile, readdir, readlink, rm } from 'node:fs/promises';",
+  "import path from 'node:path';",
+  "const root='/workspace';",
+  "const seal=createHash('sha256');",
+  "const modules=path.join(root,'node_modules');",
+  "if(process.env.ZHIVEX_HARNESS_HAS_DEPENDENCIES==='1'){const entry=await lstat(modules);if(!entry.isSymbolicLink()||(await readlink(modules))!=='/dependencies')throw new Error('read-only dependency mount was replaced');}else{await rm(modules,{recursive:true,force:true});}",
+  "const digest=(value)=>`sha256:${createHash('sha256').update(value).digest('hex')}`;",
+  "const same=(before,after)=>before.dev===after.dev&&before.ino===after.ino&&before.size===after.size&&before.mtimeMs===after.mtimeMs&&before.ctimeMs===after.ctimeMs&&(before.mode&0o777)===(after.mode&0o777);",
+  "const visit=async(directory,base='')=>{",
+  "for(const name of (await readdir(directory)).sort()){",
+  "const relative=base?`${base}/${name}`:name;",
+  "if(relative==='node_modules')continue;",
+  "const absolute=path.join(directory,name);",
+  "const entry=await lstat(absolute);",
+  "if(entry.isSymbolicLink())throw new Error(`symbolic link: ${relative}`);",
+  "if(entry.isDirectory()){seal.update(`directory\\0${relative}\\0${entry.mode&0o777}\\0`);await visit(absolute,relative);continue;}",
+  "if(!entry.isFile()||entry.nlink!==1)throw new Error(`special or linked file: ${relative}`);",
+  "const contents=await readFile(absolute);",
+  "const after=await lstat(absolute);",
+  "if(!same(entry,after))throw new Error(`changed while sealing: ${relative}`);",
+  "seal.update(`file\\0${relative}\\0${entry.mode&0o777}\\0${entry.size}\\0${digest(contents)}\\0`);",
+  "}",
+  "};",
+  "await visit(root);",
+  "for(const name of await readdir('/tmp'))await rm(path.join('/tmp',name),{recursive:true,force:true});",
+  "console.log(`sha256:${seal.digest('hex')}`);"
+].join("");
+
+// The controller owns the container lifetime; only session release or a failure path
+// may stop it. A finite sleep would eventually expire across cumulative unpaused time.
+export const OCI_SESSION_CONTROLLER_SCRIPT = "setInterval(()=>{},2147483647);";
+
 export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   readonly runtime: "docker" | "podman";
   private readonly hostEnvironment: Record<string, string>;
+  private readonly sessions = new Map<string, PersistentOciSession>();
+  private readonly runQueues = new Map<string, Promise<void>>();
 
   constructor(runtime: "docker" | "podman") {
     this.runtime = runtime;
@@ -385,10 +538,48 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  async run(request: OciRunRequest): Promise<OciCommandResult> {
+  private requestFingerprint(request: OciRunRequest) {
+    return digest(JSON.stringify({
+      runId: request.runId,
+      snapshotRoot: request.snapshotRoot,
+      dependencyRoot: request.dependencyRoot ?? null,
+      imageId: request.imageId,
+      limits: request.limits
+    }));
+  }
+
+  private async withRunLock<T>(runId: string, operation: () => Promise<T>): Promise<T> {
+    const key = runHash(runId);
+    const previous = this.runQueues.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const tail = previous.then(() => gate, () => gate);
+    this.runQueues.set(key, tail);
+    await previous.catch(() => undefined);
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.runQueues.get(key) === tail) this.runQueues.delete(key);
+    }
+  }
+
+  private async destroySession(session: PersistentOciSession) {
+    if (this.sessions.get(session.key) === session) this.sessions.delete(session.key);
+    await this.forceRemove(session.name);
+    await this.removeVolume(session.volumeName);
+  }
+
+  private async createSession(
+    request: OciRunRequest,
+    requestFingerprint: FileDigest,
+    snapshotSeal: FileDigest,
+    hostFingerprint: FileDigest
+  ): Promise<PersistentOciSession> {
     const resourceName = `zhivex-harness-${runHash(request.runId)}-${randomUUID().slice(0, 8)}`;
     const name = `${resourceName}-job`;
-    const exportName = `${resourceName}-export`;
     const volumeName = `${resourceName}-workspace`;
     const uid = process.getuid?.() ?? 65532;
     const gid = process.getgid?.() ?? 65532;
@@ -444,8 +635,6 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       "BUN_INSTALL_CACHE_DIR=/tmp/bun-cache",
       "--env",
       "CI=1",
-      "--volume",
-      `${request.snapshotRoot}:/seed:ro`,
       ...(request.dependencyRoot
         ? ["--volume", `${request.dependencyRoot}:/dependencies:ro`]
         : []),
@@ -455,26 +644,19 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       "bun",
       request.imageId,
       "-e",
-      `await Bun.sleep(${request.limits.maxProcessRuntimeMs + 60_000})`
+      OCI_SESSION_CONTROLLER_SCRIPT
     ];
-    let forcedRemoval: Promise<void> | undefined;
-    const forceRemove = () => {
-      forcedRemoval ??= this.forceRemove(name);
-    };
+    let volumeCreated = false;
     try {
       await this.cli(volumeArgs);
+      volumeCreated = true;
       await this.cli(args);
       await this.cli(["start", name]);
       await this.cli([
-        "exec",
-        "--workdir",
-        "/workspace",
-        "--user",
-        `${uid}:${gid}`,
-        name,
-        "bun",
-        "-e",
-        "import { cp } from 'node:fs/promises'; await cp('/seed', '/workspace', { recursive: true, force: false, errorOnExist: true })"
+        "cp",
+        "-a",
+        `${request.snapshotRoot}${path.sep}.`,
+        `${name}:/workspace`
       ], 60_000);
       if (request.dependencyRoot) {
         await this.cli([
@@ -489,92 +671,223 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
           "import { symlink } from 'node:fs/promises'; await symlink('/dependencies', '/workspace/node_modules', 'dir')"
         ]);
       }
-      const result = await spawnBounded([
-        this.runtime,
+      await this.cli(["pause", name]);
+      const session: PersistentOciSession = {
+        key: runHash(request.runId),
+        requestFingerprint,
+        name,
+        volumeName,
+        snapshotSeal,
+        hostFingerprint,
+        paused: true
+      };
+      this.sessions.set(session.key, session);
+      return session;
+    } catch (error) {
+      await this.forceRemove(name);
+      if (volumeCreated) await this.removeVolume(volumeName).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async onlyControllerProcessRemains(session: PersistentOciSession) {
+    const result = await this.cli(this.runtime === "podman"
+      ? ["top", session.name, "pid"]
+      : ["top", session.name, "-eo", "pid"]);
+    const processIds = result.stdout.split(/\r?\n/).filter((line) => /^\s*\d+\s*$/.test(line));
+    return processIds.length === 1;
+  }
+
+  private async containerWorkspaceSeal(
+    session: PersistentOciSession,
+    uid: number,
+    gid: number,
+    hasDependencies: boolean
+  ) {
+    if (session.paused) {
+      await this.cli(["unpause", session.name]);
+      session.paused = false;
+    }
+    try {
+      const result = await this.cli([
         "exec",
         "--workdir",
         "/workspace",
         "--user",
         `${uid}:${gid}`,
-        name,
-        ...request.command
-      ], {
-        env: this.hostEnvironment,
-        timeoutMs: request.limits.maxProcessRuntimeMs,
-        maxOutputBytes: request.limits.maxProcessOutputBytes,
-        ...(request.abortSignal ? { abortSignal: request.abortSignal } : {}),
-        onStop: forceRemove
-      });
-      if (result.timedOut || result.cancelled || result.outputLimitExceeded) {
-        forceRemove();
-        await forcedRemoval;
-      } else if (result.exitCode === 0) {
-        await this.cli(["pause", name]);
-        const stagedRoot = path.join(path.dirname(request.snapshotRoot), `.workspace-sync-${randomUUID()}`);
-        try {
-          await privateDirectory(stagedRoot);
-          try {
-            await this.cli([
-              "run",
-              "--rm",
-              "--name",
-              exportName,
-              "--label",
-              `${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`,
-              "--label",
-              `com.zhivex.harness.run=${runHash(request.runId)}`,
-              "--network",
-              "none",
-              "--read-only",
-              "--cap-drop",
-              "ALL",
-              "--security-opt",
-              "no-new-privileges",
-              "--pids-limit",
-              "32",
-              "--memory",
-              "256m",
-              "--cpus",
-              "1",
-              "--tmpfs",
-              "/tmp:rw,noexec,nosuid,nodev,size=16m",
-              "--user",
-              `${uid}:${gid}`,
-              "--volume",
-              `${volumeName}:/workspace:ro`,
-              "--volume",
-              `${stagedRoot}:/export:rw`,
-              "--workdir",
-              "/workspace",
-              "--entrypoint",
-              "bun",
-              request.imageId,
-              "-e",
-              "import { cp } from 'node:fs/promises'; await cp('/workspace', '/export', { recursive: true, force: false, errorOnExist: true })"
-            ], 60_000);
-          } finally {
-            await this.forceRemove(exportName);
-          }
-          await validateSynchronizedSnapshot(
-            stagedRoot,
-            request.snapshotRoot,
-            request.limits.maxWorkspaceBytes,
-            request.limits.maxFileWriteBytes
-          );
-          await replaceSnapshot(request.snapshotRoot, stagedRoot);
-        } finally {
-          await rm(stagedRoot, { recursive: true, force: true });
-        }
+        "--env",
+        `ZHIVEX_HARNESS_HAS_DEPENDENCIES=${hasDependencies ? "1" : "0"}`,
+        session.name,
+        "bun",
+        "-e",
+        OCI_WORKSPACE_SEAL_SCRIPT
+      ], 60_000, 20_000);
+      const seal = result.stdout.trim();
+      if (!/^sha256:[a-f0-9]{64}$/.test(seal)) {
+        throw new Error("OCI workspace seal helper returned an invalid digest.");
+      }
+      return seal as FileDigest;
+    } finally {
+      if (!session.paused) {
+        await this.cli(["pause", session.name]);
+        session.paused = true;
+      }
+    }
+  }
+
+  private async runInSession(
+    request: OciRunRequest,
+    session: PersistentOciSession,
+    sessionReused: boolean
+  ): Promise<OciCommandResult> {
+    const uid = process.getuid?.() ?? 65532;
+    const gid = process.getgid?.() ?? 65532;
+    if (session.paused) {
+      await this.cli(["unpause", session.name]);
+      session.paused = false;
+    }
+    let forcedRemoval: Promise<void> | undefined;
+    const forceRemove = () => {
+      forcedRemoval ??= this.forceRemove(session.name);
+    };
+    const result = await spawnBounded([
+      this.runtime,
+      "exec",
+      "--workdir",
+      "/workspace",
+      "--user",
+      `${uid}:${gid}`,
+      session.name,
+      ...request.command
+    ], {
+      env: this.hostEnvironment,
+      timeoutMs: request.limits.maxProcessRuntimeMs,
+      maxOutputBytes: request.limits.maxProcessOutputBytes,
+      ...(request.abortSignal ? { abortSignal: request.abortSignal } : {}),
+      onStop: forceRemove
+    });
+    if (
+      result.exitCode !== 0 ||
+      result.timedOut ||
+      result.cancelled ||
+      result.outputLimitExceeded
+    ) {
+      forceRemove();
+      await forcedRemoval;
+      await this.destroySession(session);
+      return {
+        ...result,
+        command: request.command,
+        sessionReused,
+        workspacePublished: false,
+        workspaceExported: false
+      };
+    }
+
+    try {
+      if (!(await this.onlyControllerProcessRemains(session))) {
+        await this.destroySession(session);
+        return {
+          ...result,
+          command: request.command,
+          exitCode: 126,
+          stderr: [
+            result.stderr,
+            "OCI command left background processes running; its workspace changes were discarded."
+          ].filter(Boolean).join("\n"),
+          sessionReused,
+          workspacePublished: false,
+          workspaceExported: false
+        };
+      }
+      const workspaceSeal = await this.containerWorkspaceSeal(
+        session,
+        uid,
+        gid,
+        Boolean(request.dependencyRoot)
+      );
+      if (workspaceSeal === session.snapshotSeal) {
+        return {
+          ...result,
+          command: request.command,
+          sessionReused,
+          workspacePublished: true,
+          workspaceExported: false
+        };
+      }
+      const stagedRoot = path.join(path.dirname(request.snapshotRoot), `.workspace-sync-${randomUUID()}`);
+      try {
+        await privateDirectory(stagedRoot);
+        await this.cli(["cp", `${session.name}:/workspace/.`, stagedRoot], 60_000);
+        const validated = await validateSynchronizedSnapshot(
+          stagedRoot,
+          request.snapshotRoot,
+          request.limits.maxWorkspaceBytes,
+          request.limits.maxFileWriteBytes
+        );
+        await replaceSnapshot(request.snapshotRoot, stagedRoot);
+        session.snapshotSeal = validated.seal;
+        session.hostFingerprint = validated.metadataFingerprint;
+      } finally {
+        await rm(stagedRoot, { recursive: true, force: true });
       }
       return {
         ...result,
-        command: request.command
+        command: request.command,
+        sessionReused,
+        workspacePublished: true,
+        workspaceExported: true
       };
-    } finally {
-      forceRemove();
-      await forcedRemoval;
-      await this.removeVolume(volumeName);
+    } catch (error) {
+      await this.destroySession(session);
+      throw error;
     }
+  }
+
+  private async runLocked(request: OciRunRequest): Promise<OciCommandResult> {
+    const key = runHash(request.runId);
+    const requestFingerprint = this.requestFingerprint(request);
+    let session = this.sessions.get(key);
+    let sessionReused = Boolean(session);
+    let validated: ValidatedSnapshot | undefined;
+    if (session) {
+      const hostFingerprint = await snapshotMetadataFingerprint(
+        request.snapshotRoot,
+        request.limits.maxWorkspaceBytes
+      );
+      if (
+        session.requestFingerprint !== requestFingerprint ||
+        session.hostFingerprint !== hostFingerprint
+      ) {
+        await this.destroySession(session);
+        session = undefined;
+        sessionReused = false;
+      }
+    }
+    if (!session) {
+      validated = await validateSynchronizedSnapshot(
+        request.snapshotRoot,
+        request.snapshotRoot,
+        request.limits.maxWorkspaceBytes,
+        request.limits.maxFileWriteBytes
+      );
+      session = await this.createSession(
+        request,
+        requestFingerprint,
+        validated.seal,
+        validated.metadataFingerprint
+      );
+    }
+    try {
+      return await this.runInSession(request, session, sessionReused);
+    } catch (error) {
+      if (this.sessions.get(key) === session) await this.destroySession(session).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async run(request: OciRunRequest): Promise<OciCommandResult> {
+    return this.withRunLock(request.runId, () => this.runLocked(request));
   }
 
   private async removeByFilters(filters: string[]) {
@@ -623,16 +936,24 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   }
 
   async removeRunContainers(runId: string) {
+    const key = runHash(runId);
+    const session = this.sessions.get(key);
+    let cachedResources = 0;
+    if (session) {
+      await this.destroySession(session);
+      cachedResources = 2;
+    }
     const filters = [
       `label=${HARNESS_OCI_LABEL}=${HARNESS_OCI_LABEL_VALUE}`,
-      `label=com.zhivex.harness.run=${runHash(runId)}`
+      `label=com.zhivex.harness.run=${key}`
     ];
     const containers = await this.removeByFilters(filters);
     const volumes = await this.removeVolumesByFilters(filters);
-    return containers + volumes;
+    return cachedResources + containers + volumes;
   }
 
   async cleanupOrphans() {
+    this.sessions.clear();
     let removed = 0;
     for (const status of ["created", "exited", "dead", "paused"]) {
       removed += await this.removeByFilters([
@@ -652,39 +973,129 @@ interface SnapshotFile {
   digest: FileDigest;
   contents: Buffer;
   mode: number;
+  bytes: number;
 }
 
-const collectSnapshotFiles = async (workspace: Workspace): Promise<Map<string, SnapshotFile>> => {
-  const files = new Map<string, SnapshotFile>();
+type SnapshotFileMetadata = Omit<SnapshotFile, "contents">;
+
+export interface HarnessExecutionIoMetrics {
+  // Cumulative for one acquired session and surfaced by environment_status.
+  inventoryPasses: number;
+  inventoryPages: number;
+  verifiedContentReads: number;
+  verifiedContentBytes: number;
+  snapshotFiles: number;
+  snapshotBytes: number;
+  snapshotCloneFallbacks: number;
+  containerStarts: number;
+  containerReuses: number;
+  workspacePublishes: number;
+  workspaceExports: number;
+}
+
+const SNAPSHOT_INVENTORY_PAGE_SIZE = 5_000;
+const COPY_ON_WRITE_UNSUPPORTED_CODES = new Set(["EINVAL", "ENOSYS", "ENOTSUP", "EOPNOTSUPP"]);
+
+const collectSnapshotInventory = async (
+  workspace: Workspace,
+  metrics?: HarnessExecutionIoMetrics
+): Promise<Map<string, SnapshotFileMetadata>> => {
+  const files = new Map<string, SnapshotFileMetadata>();
+  if (metrics) metrics.inventoryPasses += 1;
   let cursor: string | undefined;
   do {
-    const page = await workspace.listFiles(".", { limit: 500, ...(cursor ? { cursor } : {}) });
+    const page = await workspace.listFiles(".", {
+      limit: SNAPSHOT_INVENTORY_PAGE_SIZE,
+      ...(cursor ? { cursor } : {})
+    });
+    if (metrics) metrics.inventoryPages += 1;
     for (const file of page.files) {
       const absolute = path.join(workspace.root, ...file.path.split("/"));
       if (!isInside(workspace.root, absolute)) throw new Error(`Snapshot file escaped its workspace: ${file.path}.`);
-      const before = await lstat(absolute);
-      if (before.isSymbolicLink() || !before.isFile()) throw new Error(`Snapshot source is not a regular file: ${file.path}.`);
-      const contents = await readFile(absolute);
-      const after = await lstat(absolute);
-      if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) {
-        throw new Error(`Snapshot source changed while reading: ${file.path}.`);
+      const entry = await lstat(absolute);
+      if (entry.isSymbolicLink() || !entry.isFile()) {
+        throw new Error(`Snapshot source is not a regular file: ${file.path}.`);
       }
-      if (digest(contents) !== file.digest) throw new Error(`Snapshot digest changed while reading: ${file.path}.`);
-      files.set(file.path, { path: file.path, digest: file.digest, contents, mode: before.mode & 0o777 });
+      if (entry.size !== file.size) {
+        throw new Error(`Snapshot source changed while inventorying: ${file.path}.`);
+      }
+      files.set(file.path, {
+        path: file.path,
+        digest: file.digest,
+        mode: entry.mode & 0o777,
+        bytes: file.size
+      });
     }
     cursor = page.nextCursor;
   } while (cursor);
   return files;
 };
 
+const readSnapshotFile = async (
+  workspace: Workspace,
+  expected: SnapshotFileMetadata,
+  metrics?: HarnessExecutionIoMetrics
+): Promise<SnapshotFile> => {
+  // A fresh verified read binds copied/imported bytes to the inventory without
+  // retaining every repository file in memory.
+  const absolute = path.join(workspace.root, ...expected.path.split("/"));
+  if (!isInside(workspace.root, absolute)) {
+    throw new Error(`Snapshot file escaped its workspace: ${expected.path}.`);
+  }
+  const before = await lstat(absolute);
+  if (before.isSymbolicLink() || !before.isFile()) {
+    throw new Error(`Snapshot source is not a regular file: ${expected.path}.`);
+  }
+  const contents = await readFile(absolute);
+  const after = await lstat(absolute);
+  if (
+    before.dev !== after.dev ||
+    before.ino !== after.ino ||
+    before.size !== after.size ||
+    before.mtimeMs !== after.mtimeMs ||
+    (before.mode & 0o777) !== (after.mode & 0o777)
+  ) {
+    throw new Error(`Snapshot source changed while reading: ${expected.path}.`);
+  }
+  const actualDigest = digest(contents);
+  if (
+    actualDigest !== expected.digest ||
+    contents.byteLength !== expected.bytes ||
+    (before.mode & 0o777) !== expected.mode
+  ) {
+    throw new Error(`Snapshot source changed after inventory: ${expected.path}.`);
+  }
+  if (metrics) {
+    metrics.verifiedContentReads += 1;
+    metrics.verifiedContentBytes += contents.byteLength;
+  }
+  return { ...expected, contents };
+};
+
+const copySnapshotFile = async (
+  source: string,
+  target: string,
+  metrics?: HarnessExecutionIoMetrics
+) => {
+  try {
+    await copyFile(source, target, fsConstants.COPYFILE_FICLONE_FORCE);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (!code || !COPY_ON_WRITE_UNSUPPORTED_CODES.has(code)) throw error;
+    if (metrics) metrics.snapshotCloneFallbacks += 1;
+    await copyFile(source, target);
+  }
+};
+
 const copyWorkspaceSnapshot = async (
   source: Workspace,
   baseRoot: string,
   snapshotRoot: string,
-  maxWorkspaceBytes: number
+  maxWorkspaceBytes: number,
+  metrics?: HarnessExecutionIoMetrics
 ) => {
-  const files = await collectSnapshotFiles(source);
-  const totalBytes = [...files.values()].reduce((total, file) => total + file.contents.byteLength, 0);
+  const files = await collectSnapshotInventory(source, metrics);
+  const totalBytes = [...files.values()].reduce((total, file) => total + file.bytes, 0);
   if (totalBytes > maxWorkspaceBytes) {
     throw new Error(`Workspace snapshot exceeds the ${maxWorkspaceBytes}-byte OCI limit.`);
   }
@@ -692,13 +1103,24 @@ const copyWorkspaceSnapshot = async (
     await rm(root, { recursive: true, force: true });
     await privateDirectory(root);
   }
-  for (const file of files.values()) {
-    for (const root of [baseRoot, snapshotRoot]) {
-      const target = path.join(root, ...file.path.split("/"));
-      await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
-      await writeFile(target, file.contents, { mode: file.mode });
-      await chmod(target, file.mode);
-    }
+  for (const expected of files.values()) {
+    const file = await readSnapshotFile(source, expected, metrics);
+    const baseTarget = path.join(baseRoot, ...file.path.split("/"));
+    const snapshotTarget = path.join(snapshotRoot, ...file.path.split("/"));
+    await Promise.all([
+      mkdir(path.dirname(baseTarget), { recursive: true, mode: 0o700 }),
+      mkdir(path.dirname(snapshotTarget), { recursive: true, mode: 0o700 })
+    ]);
+    await writeFile(baseTarget, file.contents, { mode: file.mode });
+    await chmod(baseTarget, file.mode);
+    // copyFile preserves independent-file semantics; COPYFILE_FICLONE_FORCE only
+    // makes the mutable workspace's starting copy COW when the filesystem allows it.
+    await copySnapshotFile(baseTarget, snapshotTarget, metrics);
+    await chmod(snapshotTarget, file.mode);
+  }
+  if (metrics) {
+    metrics.snapshotFiles += files.size;
+    metrics.snapshotBytes += totalBytes;
   }
   return { files: files.size, bytes: totalBytes };
 };
@@ -766,10 +1188,13 @@ const createEnvironmentPatch = async (
   runId: string,
   base: Workspace,
   current: Workspace,
-  maxFileWriteBytes: number
+  maxFileWriteBytes: number,
+  metrics?: HarnessExecutionIoMetrics
 ) => {
-  const before = await collectSnapshotFiles(base);
-  const after = await collectSnapshotFiles(current);
+  const [before, after] = await Promise.all([
+    collectSnapshotInventory(base, metrics),
+    collectSnapshotInventory(current, metrics)
+  ]);
   const paths = [...new Set([...before.keys(), ...after.keys()])].sort();
   const entries: EnvironmentPatchEntry[] = [];
   let totalBytes = 0;
@@ -778,9 +1203,13 @@ const createEnvironmentPatch = async (
     const newFile = after.get(filePath);
     if (oldFile?.digest === newFile?.digest && oldFile?.mode === newFile?.mode) continue;
     const operation = !oldFile ? "create" : !newFile ? "delete" : "update";
-    const beforeContent = oldFile ? textContent(oldFile, maxFileWriteBytes) : undefined;
-    const afterContent = newFile ? textContent(newFile, maxFileWriteBytes) : undefined;
-    const bytes = newFile?.contents.byteLength ?? 0;
+    const beforeContent = oldFile
+      ? textContent(await readSnapshotFile(base, oldFile, metrics), maxFileWriteBytes)
+      : undefined;
+    const afterContent = newFile
+      ? textContent(await readSnapshotFile(current, newFile, metrics), maxFileWriteBytes)
+      : undefined;
+    const bytes = newFile?.bytes ?? 0;
     totalBytes += bytes;
     entries.push({
       path: filePath,
@@ -831,9 +1260,10 @@ const importPatch = async (
   host: Workspace,
   base: Workspace,
   current: Workspace,
-  maxFileWriteBytes: number
+  maxFileWriteBytes: number,
+  metrics?: HarnessExecutionIoMetrics
 ): Promise<EnvironmentPatchImportResult> => {
-  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes);
+  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, metrics);
   if (patch.patchId !== expectedPatchId) {
     throw new Error("Environment patch changed after review; inspect it again before import.");
   }
@@ -913,11 +1343,28 @@ const importPatch = async (
   };
 };
 
+export interface HarnessEnvironmentStatus {
+  schemaVersion: typeof HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION;
+  kind: "environment-status";
+  runId: string;
+  binding: AgentExecutionEnvironmentBinding;
+  runtime: HarnessOciRuntime;
+  runtimeVersion: string;
+  imageReference: string;
+  imageDigest: string;
+  network: "deny";
+  rootFilesystem: "read-only";
+  workspace: "ephemeral-snapshot";
+  patchId: FileDigest;
+  changedFiles: number;
+  io: HarnessExecutionIoMetrics;
+}
+
 export interface HarnessExecutionSession extends AgentExecutionEnvironmentSession {
   readonly kind: "zhivex-oci";
   readonly runId: string;
   readonly workspace: Workspace;
-  status(): Promise<Record<string, unknown>>;
+  status(): Promise<HarnessEnvironmentStatus>;
   runCommand(command: string, args: readonly string[], context?: ToolExecutionContext): Promise<CommandResult>;
   runCheck(check: string, expectedScript: string, allowedChecks: readonly string[], context?: ToolExecutionContext): Promise<CommandResult>;
   inspectPatch(): Promise<EnvironmentPatchInspection>;
@@ -955,7 +1402,7 @@ export const createHarnessOciExecutionEnvironment = async (
     version: `${HARNESS_EXECUTION_POLICY_VERSION}:${image.imageDigest}`,
     backend: "container",
     assurance: "enforced",
-    isolation: "per-tool-call",
+    isolation: "per-run",
     workspace: {
       id: workspaceIdentity,
       root: "/workspace",
@@ -992,6 +1439,8 @@ export const createHarnessOciExecutionEnvironment = async (
       maxPids: options.config.maxPids,
       maxCpus: options.config.maxCpus,
       tmpfsMb: options.config.tmpfsMb,
+      containerLifecycle: "warm-per-acquired-run",
+      failedCommandRecovery: "discard-and-reseed",
       patchImportApproval: true,
       hostMutationMode: "reviewed-environment-patch"
     }
@@ -1004,6 +1453,19 @@ export const createHarnessOciExecutionEnvironment = async (
     image,
     runtime,
     async acquire(request: AgentExecutionEnvironmentAcquireRequest) {
+      const ioMetrics: HarnessExecutionIoMetrics = {
+        inventoryPasses: 0,
+        inventoryPages: 0,
+        verifiedContentReads: 0,
+        verifiedContentBytes: 0,
+        snapshotFiles: 0,
+        snapshotBytes: 0,
+        snapshotCloneFallbacks: 0,
+        containerStarts: 0,
+        containerReuses: 0,
+        workspacePublishes: 0,
+        workspaceExports: 0
+      };
       await privateDirectory(environmentRoot);
       const directory = path.join(environmentRoot, runHash(request.runId));
       await privateDirectory(directory);
@@ -1030,7 +1492,8 @@ export const createHarnessOciExecutionEnvironment = async (
           options.workspace,
           baseRoot,
           snapshotRoot,
-          options.config.maxWorkspaceBytes
+          options.config.maxWorkspaceBytes,
+          ioMetrics
         );
         const now = new Date().toISOString();
         metadata = {
@@ -1094,6 +1557,10 @@ export const createHarnessOciExecutionEnvironment = async (
             ? { abortSignal: context?.abortSignal ?? request.abortSignal }
             : {})
         });
+        if (result.sessionReused === false) ioMetrics.containerStarts += 1;
+        if (result.sessionReused === true) ioMetrics.containerReuses += 1;
+        if (result.workspacePublished === true) ioMetrics.workspacePublishes += 1;
+        if (result.workspaceExported === true) ioMetrics.workspaceExports += 1;
         const forcedExitCode = result.cancelled
           ? 130
           : result.timedOut
@@ -1145,7 +1612,13 @@ export const createHarnessOciExecutionEnvironment = async (
           return await operation();
         },
         async status() {
-          const patch = await createEnvironmentPatch(request.runId, base, workspace, options.config.maxFileWriteBytes);
+          const patch = await createEnvironmentPatch(
+            request.runId,
+            base,
+            workspace,
+            options.config.maxFileWriteBytes,
+            ioMetrics
+          );
           return {
             schemaVersion: HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION,
             kind: "environment-status",
@@ -1159,7 +1632,8 @@ export const createHarnessOciExecutionEnvironment = async (
             rootFilesystem: "read-only",
             workspace: "ephemeral-snapshot",
             patchId: patch.patchId,
-            changedFiles: patch.entries.length
+            changedFiles: patch.entries.length,
+            io: { ...ioMetrics }
           };
         },
         runCommand,
@@ -1182,7 +1656,13 @@ export const createHarnessOciExecutionEnvironment = async (
           return runCommand("bun", ["--no-env-file", "run", check], context);
         },
         async inspectPatch() {
-          const patch = await createEnvironmentPatch(request.runId, base, workspace, options.config.maxFileWriteBytes);
+          const patch = await createEnvironmentPatch(
+            request.runId,
+            base,
+            workspace,
+            options.config.maxFileWriteBytes,
+            ioMetrics
+          );
           const payload = patchPayload(request.runId, patch.entries);
           return {
             ...payload,
@@ -1191,7 +1671,15 @@ export const createHarnessOciExecutionEnvironment = async (
           };
         },
         importPatch(host, patchId) {
-          return importPatch(request.runId, patchId, host, base, workspace, options.config.maxFileWriteBytes);
+          return importPatch(
+            request.runId,
+            patchId,
+            host,
+            base,
+            workspace,
+            options.config.maxFileWriteBytes,
+            ioMetrics
+          );
         },
         async release(result) {
           await runtime.removeRunContainers(request.runId);

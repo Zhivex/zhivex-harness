@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.8.0` is the source release candidate for the coordinated SDK refresh and GPT-5.6-first OpenAI integration. The latest public npm release is `0.7.0`; local validation does not imply that `0.8.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.9.0` is the source candidate for faster governed repository inspection and the agent-agnostic `ChangeEnvelope v1` admission contract. The latest public npm release is `0.8.0`; local validation does not imply that `0.9.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -40,7 +40,15 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.8 changes
+## What 0.9 changes
+
+- reuses a freshness-checked topology index across file-list and search pages while reading current file bytes for every digest;
+- adds bounded `read_files` and `search_many` tools that reduce model/tool round trips without parallelizing writes;
+- reuses a paused OCI container within an acquired run, skips exports for unchanged workspace seals, and reseeds after failures or host-snapshot changes without weakening the reviewed host-import boundary;
+- adds a reproducible workspace benchmark and observable index/OCI I/O counters; and
+- introduces deterministic, offline-verifiable `ChangeEnvelope v1` documents bound to exact patch bytes, base identity, runtime policy, redacted checks, expiry, and optional approval/attestation references.
+
+## What 0.8 changed
 
 - updates the coordinated Zhivex SDK batch while retaining a single Core runtime identity;
 - makes `gpt-5.6-luna` the OpenAI default, with Terra and Sol available through explicit model selection; and
@@ -68,7 +76,7 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 - governed MCP over bounded HTTPS/loopback HTTP with explicit server/tool allowlists, permissions, timeouts, approvals, output limits, and environment-backed credentials;
 - named explorer, implementer, tester, and reviewer subagents with independent durable budgets and promoted approvals;
 - deterministic application-owned parallel read-only review groups with child progress, hierarchy, usage, and cost evidence;
-- optional enforced Docker/Podman execution with no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
+- optional enforced Docker/Podman execution with a paused per-run container, no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
 - argv-only allowlisted environment commands, isolated package checks, deterministic patch inspection, and a separate durable approval before importing changes into the host workspace;
 - environment/image/policy fingerprint binding, cancellation cleanup, labeled orphan cleanup, retained audit artifacts, and installed-package plus real-runtime smoke gates;
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
@@ -90,7 +98,7 @@ bun add @zhivex-ai/harness
 bunx --package @zhivex-ai/harness zhx --version
 ```
 
-To exercise the `0.8.0` source checkout:
+To exercise the `0.9.0` source checkout:
 
 ```bash
 bun install --frozen-lockfile
@@ -169,7 +177,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` is rejected in `0.8.0`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` remains rejected in `0.9.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -221,6 +229,15 @@ zhx run --provider gemini --jsonl "analyze the issue without modifying files"
 
 The JSON shapes and exit codes are documented in [docs/CLI.md](./docs/CLI.md).
 
+Create a portable change-admission envelope from structured, redacted evidence and the exact patch bytes, then verify it without provider credentials or network access:
+
+```bash
+zhx changes create examples/change-envelope-input.json --patch examples/change.patch > change-envelope.json
+zhx changes verify change-envelope.json --patch examples/change.patch
+```
+
+The verifier proves integrity, expiry, and explicit preconditions; it deliberately reports approval and external-attestation authenticity as `not-verified`. See [docs/CHANGE_ENVELOPES.md](./docs/CHANGE_ENVELOPES.md).
+
 Repository edits use digest-bound proposals. Discovery returns `nextCursor` when another deterministic page is available; mutating tools reject stale content instead of merging or overwriting it. Deletions move files into harness-owned quarantine and return a recovery identifier. The complete contract and migration from `0.2.x` are documented in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
 
 The default check allowlist is `test`, `typecheck`, `lint`, and `build`. Replace it with repeatable CLI flags when a repository uses different declared scripts:
@@ -250,7 +267,7 @@ zhivex-harness run --execution oci --yes "inspect, implement, test, review the e
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta and Qwen retain the published support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. OpenAI is GPT-5.6-first in `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. All three passed the local base approval/restart gate, but delegation, OCI execution, and release-artifact certification still require the release-candidate matrix. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta and Qwen retain the published support conclusion for the unchanged approval/restart, delegation/persistence, and enforced-execution paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. All three passed the local base approval/restart gate, but delegation, OCI execution, and `0.9.0` release-artifact certification still require the release-candidate matrix. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
@@ -282,6 +299,7 @@ bun run typecheck
 bun test
 bun run build
 bun run evaluate
+bun run benchmark:workspace
 bun run smoke:package
 bun run pack:inspect
 bun run check

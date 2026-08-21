@@ -4,6 +4,38 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.9.0 - Unreleased
+
+### Added
+
+- `ChangeEnvelope v1`, a deterministic, agent-agnostic and offline-verifiable change-admission document that binds base/tree identity, exact patch bytes, harness/policy/environment fingerprints, redacted check evidence, expiry, approval references, and optional external attestation references.
+- `zhx changes create` and `zhx changes verify` for binding an exact patch artifact and validating integrity, expiry, and caller-supplied preconditions without loading a provider or contacting a network service.
+- Bounded `read_files` and `search_many` tools so independent repository lookups share one model/tool round trip and multi-query search reads each candidate file once.
+- A reproducible `bun run benchmark:workspace` fixture plus workspace-index and OCI I/O diagnostics.
+- A reproducible `bun run benchmark:oci` fixture for first-command, warm no-op, mutation, and snapshot latency.
+
+### Changed
+
+- Workspace pagination now reuses a topology-only, freshness-checked index with binary path lookup. File contents and digests are still read through the race-sensitive stable-read path; structural changes invalidate active cursors.
+- OCI snapshots retain metadata rather than the full repository contents in memory, write the immutable base once, and use copy-on-write cloning with a portable copy fallback for the mutable workspace. Patch inspection rereads content only for changed files.
+- OCI commands now reuse one paused container per acquired run. Unchanged canonical workspace seals skip export, changed workspaces still publish through a validated atomic staging directory, and failures, background processes, or host-snapshot divergence destroy and reseed the warm session.
+
+### Performance
+
+- On the local 5,000-file benchmark, listing all 25 pages of 200 files decreased from about 3.02 seconds to 0.38 seconds, and the first page decreased from about 118 ms to 42 ms. These figures are development-machine observations, not cross-platform release guarantees.
+- On the local 1,001-file Docker benchmark, warm no-op OCI commands decreased from about 838 ms to roughly 0.31–0.37 seconds median. Commands that change the workspace retain the full validation/export path. These figures are development-machine observations, not cross-platform release guarantees.
+
+### Migration from 0.8.x
+
+- Complete or deny paused `0.8.x` approvals with the matching `0.8.x` artifact. The workspace tool contract fingerprint changed to include the new batch tools, so `0.9.x` intentionally refuses to resume those approvals under a different tool surface.
+- Configuration schema `4`, the durable store, existing single-file tools, and both CLI executable aliases remain compatible. The OCI policy fingerprint advances because isolation changes from per-tool-call containers to a paused per-run container; complete or deny paused OCI approvals with the matching older artifact. Callers can adopt `read_files`, `search_many`, and change envelopes incrementally.
+
+### Security
+
+- Change-envelope verification proves canonical integrity, rejects future creation/check evidence, enforces expiration, exact patch binding, and explicit preconditions only. Approval and external-attestation authenticity is reported as `not-verified` and requires an external trust verifier.
+- The workspace index never caches file contents or content digests. It validates directory and ignore-rule fingerprints before reuse, rejects stale topology-bound cursors, and invalidates after every harness mutation and declared check.
+- Warm OCI reuse never mounts the durable host snapshot writable. Commands are serialized; background processes fail closed; `/tmp` is cleared after success; and any failed or divergent session is destroyed before a later command reseeds from the last published snapshot.
+
 ## 0.8.0 - 2026-08-20
 
 ### Changed

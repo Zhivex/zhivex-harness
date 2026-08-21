@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `0.8.x` is a pre-1.0 CLI and TypeScript library for Bun. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
+Zhivex Harness `0.9.x` is a pre-1.0 CLI and TypeScript library for Bun. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
 
 ## Supported baseline
 

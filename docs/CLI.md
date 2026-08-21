@@ -1,6 +1,6 @@
 # CLI contract
 
-Zhivex Harness `0.8.x` is Bun-first and exposes a durable agent console plus versioned JSON documents and JSON Lines events for automation.
+Zhivex Harness `0.9.x` is Bun-first and exposes a durable agent console, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation.
 
 ## Commands
 
@@ -21,6 +21,8 @@ zhivex-harness runs inspect <runId>
 zhivex-harness runs export <runId>
 zhivex-harness runs cancel <runId> [--reason <text>] [--cascade] [--final]
 zhivex-harness runs cleanup --before <date|timestamp> [--status <status>] [--limit <n>]
+zhivex-harness changes create <input.json> --patch <artifact>
+zhivex-harness changes verify <envelope.json> --patch <artifact> [--preconditions <file>] [--now <ISO-8601 UTC>]
 zhivex-harness --version
 zhivex-harness --help
 ```
@@ -53,7 +55,7 @@ Provider/model changes apply only to the next run. The console blocks them while
 
 `--require-capability <name>`, `--subagent <profile>`, and `--reviewer <explorer|reviewer>` are repeatable. `--mcp-config <path>` loads a schema-versioned file inside the canonical workspace. Child limits use `--subagent-max-steps`, `--subagent-max-tool-calls`, `--subagent-max-tool-errors`, `--subagent-max-input-tokens`, `--subagent-max-output-tokens`, `--subagent-max-total-tokens`, and `--subagent-timeout-ms`. Parallel review is capped by `--max-parallel-reviews`.
 
-`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.8.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
+`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.9.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
 `review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 
@@ -76,12 +78,20 @@ Enforced execution is opt-in:
 
 `--oci-allow-command` is repeatable, replaces the default executable allowlist, and must include `bun` so declared package checks can run. Commands are exact argv arrays, never shell strings. See [EXECUTION_ENVIRONMENTS.md](./EXECUTION_ENVIRONMENTS.md).
 
+## Change admission
+
+`changes create` and `changes verify` are local operator commands. They do not load a provider, inspect a repository, run checks, apply a patch, or contact a network service. Both require `--patch <artifact>` so the envelope is checked against exact bytes rather than a filename or mutable logical ID.
+
+`create` accepts a strict JSON input, fills `patch.patchDigest`, and emits one canonical `change-envelope` JSON document. `verify` emits a `change-envelope-verification` document and can require expected bindings through `--preconditions <file>`. It returns exit `1` for an integrity, expiration, exact-patch, or precondition failure. `--now` exists for deterministic replay; omit it for normal admission.
+
+The verifier never claims signer identity. Approval and attestation references remain `authenticity: "not-verified"` until an external trust verifier validates the referenced artifact. See [CHANGE_ENVELOPES.md](./CHANGE_ENVELOPES.md).
+
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Command completed successfully. |
-| `1` | Runtime, provider, or agent failure. |
+| `1` | Runtime, provider, agent, or change-admission verification failure. |
 | `2` | Invalid CLI usage. |
 | `3` | `doctor` found a blocking configuration problem. |
 
@@ -98,7 +108,7 @@ All structured documents include:
 ```json
 {
   "schemaVersion": 1,
-  "kind": "providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session"
+  "kind": "providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session | change-envelope | change-envelope-verification"
 }
 ```
 

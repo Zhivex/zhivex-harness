@@ -82,7 +82,7 @@ import {
 } from "./execution-environment.js";
 
 const APPROVAL_VERSION = "2026-08-17-v5";
-const TOOL_CONTRACT_VERSION = "enforced-execution-v1";
+const TOOL_CONTRACT_VERSION = "workspace-batch-v2";
 
 const createHarnessBinding = (
   config: HarnessConfig,
@@ -123,7 +123,7 @@ export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable
 
 Rules:
 - Match the user's language.
-- Inspect the repository before proposing changes. Prefer search_files and read_file over assumptions.
+- Inspect the repository before proposing changes. Prefer search_many and read_files for independent lookups, then use search_files or read_file when pagination or one focused read is clearer.
 - Use only workspace-relative paths. Never request or expose secrets.
 - Make the smallest coherent change that fully addresses the task.
 - For every file edit, first read its digest and call propose_edits. Apply exactly that reviewed proposal with apply_patch.
@@ -245,6 +245,25 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       harnessExecutionSession(context)?.workspace ?? workspace
     ).readFile(path, startLine, endLine))
   }),
+  read_files: tool({
+    name: "read_files",
+    description: "Read up to 20 independent UTF-8 file slices in one bounded call. Duplicate paths are read once and results use deterministic path/range order.",
+    schema: z.object({
+      files: z.array(z.object({
+        path: z.string().min(1),
+        startLine: z.number().int().min(1).default(1),
+        endLine: z.number().int().min(1).optional()
+      })).min(1).max(20)
+    }),
+    metadata: readOnlyMetadata,
+    execute: async ({ files }, context) => serializeJsonValue(await (
+      harnessExecutionSession(context)?.workspace ?? workspace
+    ).readFiles(files.map(({ path, startLine, endLine }) => ({
+      path,
+      startLine,
+      ...(endLine !== undefined ? { endLine } : {})
+    }))))
+  }),
   search_files: tool({
     name: "search_files",
     description: "Search for a literal string in text files using a stable cursor.",
@@ -262,6 +281,30 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
         limit,
         ...(cursor ? { cursor } : {})
       }))
+  }),
+  search_many: tool({
+    name: "search_many",
+    description: "Search up to 10 independent literal queries in one workspace pass, with at most 500 aggregate matches.",
+    schema: z.object({
+      queries: z.array(z.object({
+        query: z.string().min(1).max(200),
+        caseSensitive: z.boolean().default(false)
+      })).min(1).max(10),
+      path: z.string().min(1).default("."),
+      limitPerQuery: z.number().int().min(1).max(500).default(50)
+    }).superRefine((input, context) => {
+      if (input.queries.length * input.limitPerQuery > 500) {
+        context.addIssue({
+          code: "custom",
+          path: ["limitPerQuery"],
+          message: "search_many allows at most 500 aggregate matches."
+        });
+      }
+    }),
+    metadata: readOnlyMetadata,
+    execute: async ({ queries, path, limitPerQuery }, context) => serializeJsonValue(await (
+      harnessExecutionSession(context)?.workspace ?? workspace
+    ).searchMany(queries, path, { limitPerQuery }))
   }),
   propose_edits: tool({
     name: "propose_edits",

@@ -21,6 +21,10 @@ These controls prevent silent workspace drift; they do not isolate the host. Run
 
 `list_files` and `search_files` return deterministic pages. Each response includes `truncated` and, when another page exists, an opaque `nextCursor`. Supply that cursor unchanged to request the next page. A cursor is bound to the original operation and parameters; it must not be edited or reused for a different path, query, case-sensitivity setting, or page size.
 
+In `0.9.x`, pagination reuses a topology-only index. Before each reuse, the harness validates visible directory metadata and the metadata plus content digests of applicable ignore files. A structural or ignore-policy change invalidates the index and makes an older cursor fail as stale. File bytes and content digests are never served from that index: every listed page, read, and search uses the stable anti-race file reader, so an external content-only change is observed even when the topology remains valid.
+
+Use `read_files` for up to 20 independent file/range requests with a 2 MiB aggregate source limit; duplicate paths share one stable read. Use `search_many` for up to 10 literal queries and 500 aggregate matches; it reads each candidate file once for the whole query set. The single-file tools remain available for focused reads and cursor-paginated search. Batch tools are read-only and do not enable global tool parallelism, so write ordering and approval behavior are unchanged.
+
 Listed files and every search match include a content digest. `read_file` also returns the digest of the complete file, even when only a line range was requested. Digests are the concurrency contract for later edits: reading content and then editing it without carrying the observed digest does not provide stale-workspace protection.
 
 Ignore rules affect discovery, not direct authorization. A direct request for a hard-protected path still fails. An ignored ordinary source file can only be addressed when the workspace policy explicitly permits the direct operation.
