@@ -82,10 +82,13 @@ try {
     "package/docs/CLI.md",
     "package/docs/DURABLE_OPERATIONS.md",
     "package/docs/EXTENSIBILITY.md",
+    "package/docs/CHANGE_ENVELOPES.md",
     "package/docs/REPOSITORY_EDITING.md",
     "package/docs/RELEASE.md",
     "package/evaluations/golden-expectations.json",
     "package/examples/mcp-config.json",
+    "package/examples/change-envelope-input.json",
+    "package/examples/change.patch",
     "package/dist/index.js",
     "package/dist/index.d.ts",
     "package/dist/cli.js",
@@ -116,8 +119,9 @@ try {
   await run(["git", "init", "--quiet"], { cwd: consumer });
   await run(["bun", "add", "--ignore-scripts", tarball], { cwd: consumer });
 
+  const installedPackageRoot = path.join(consumer, "node_modules", "@zhivex-ai", "harness");
   const installedManifest = JSON.parse(
-    await readFile(path.join(consumer, "node_modules", "@zhivex-ai", "harness", "package.json"), "utf8")
+    await readFile(path.join(installedPackageRoot, "package.json"), "utf8")
   ) as {
     name: string;
     version: string;
@@ -163,6 +167,45 @@ try {
   );
   assert(!doctor.stdout.includes("package-smoke-secret"), "doctor output exposed a credential");
 
+  const installedEnvelopePath = path.join(consumer, "installed-change-envelope.json");
+  const installedEnvelope = await run([
+    installedCli,
+    "changes",
+    "create",
+    path.join(installedPackageRoot, "examples", "change-envelope-input.json"),
+    "--patch",
+    path.join(installedPackageRoot, "examples", "change.patch")
+  ], { cwd: consumer });
+  const installedEnvelopeDocument = JSON.parse(installedEnvelope.stdout) as {
+    kind?: string;
+    envelopeId?: string;
+  };
+  assert.equal(installedEnvelopeDocument.kind, "change-envelope");
+  assert.match(installedEnvelopeDocument.envelopeId ?? "", /^sha256:[a-f0-9]{64}$/);
+  await writeFile(installedEnvelopePath, installedEnvelope.stdout, "utf8");
+  const installedEnvelopeVerification = await run([
+    installedShortCli,
+    "changes",
+    "verify",
+    installedEnvelopePath,
+    "--patch",
+    path.join(installedPackageRoot, "examples", "change.patch")
+  ], { cwd: consumer });
+  assert.deepEqual(
+    (({ kind, valid, verificationScope }) => ({ kind, valid, verificationScope }))(
+      JSON.parse(installedEnvelopeVerification.stdout) as {
+        kind?: string;
+        valid?: boolean;
+        verificationScope?: string;
+      }
+    ),
+    {
+      kind: "change-envelope-verification",
+      valid: true,
+      verificationScope: "integrity-expiration-and-preconditions-only"
+    }
+  );
+
   const installedSmokeSource = `
 import assert from "node:assert/strict";
 import { readFile, stat, writeFile } from "node:fs/promises";
@@ -172,9 +215,11 @@ import {
   HARNESS_SQLITE_FILE,
   DEFAULT_PROVIDER_REGISTRY,
   Workspace,
+  createChangeEnvelope,
   createEditProposal,
   createHarness,
   createHarnessOciExecutionEnvironment,
+  digestChangeEnvelopeArtifact,
   inspectHarnessModelCapabilities,
   inspectHarnessRun,
   listHarnessRuns,
@@ -183,7 +228,8 @@ import {
   parseHarnessModelRoute,
   resolveHarnessConfig,
   runHarness,
-  streamEventDocument
+  streamEventDocument,
+  verifyChangeEnvelope
 } from "@zhivex-ai/harness";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
@@ -198,6 +244,9 @@ const installedDemo = await import(pathToFileURL(path.join(
   "hostile-repository-demo.js"
 )).href);
 assert.equal(typeof installedDemo.runHostileRepositoryDemo, "function");
+assert.equal(typeof createChangeEnvelope, "function");
+assert.equal(typeof digestChangeEnvelopeArtifact, "function");
+assert.equal(typeof verifyChangeEnvelope, "function");
 const changes = [{ path: "installed-approved.txt", expectedDigest: null, content: "fixture-sensitive-payload\\n" }];
 const proposal = createEditProposal({ changes });
 const firstHarness = await createHarness({
@@ -341,6 +390,11 @@ const fakeRuntime = {
   cleanupOrphans: async () => 0
 };
 const installedWorkspace = await Workspace.open(workspace);
+assert.equal((await installedWorkspace.readFiles([{ path: "package.json" }])).files.length, 1);
+assert.equal((await installedWorkspace.searchMany([
+  { query: "zhivex-harness-installed-smoke" },
+  { query: "operations.sqlite" }
+])).results.length, 2);
 const installedEnvironment = await createHarnessOciExecutionEnvironment({
   config: executionConfig.execution,
   workspace: installedWorkspace,

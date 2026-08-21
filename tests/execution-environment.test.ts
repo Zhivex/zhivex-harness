@@ -341,6 +341,50 @@ describe("enforced OCI execution environment", () => {
     expect(first).not.toBe(second);
   });
 
+  test("uses one bounded inventory page per snapshot tree and rereads only changed patch content", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const generatedRoot = path.join(root, "generated");
+    await mkdir(generatedRoot, { recursive: true });
+    await Promise.all(Array.from({ length: 501 }, (_, index) =>
+      writeFile(path.join(generatedRoot, `file-${String(index).padStart(3, "0")}.txt`), `${index}\n`)
+    ));
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime: new FakeOciRuntime()
+    });
+    const session = await environment.acquire({ runId: "single-inventory-run" });
+    for (const name of ["read_files", "search_many"]) {
+      await expect(session.authorize({
+        tool: { name },
+        phase: "execute"
+      } as never)).resolves.toMatchObject({ decision: "allow" });
+    }
+    await writeFile(path.join(session.workspace.root, "generated", "file-000.txt"), "changed\n");
+
+    const status = await session.status() as {
+      changedFiles: number;
+      io: {
+        inventoryPasses: number;
+        inventoryPages: number;
+        verifiedContentReads: number;
+        snapshotFiles: number;
+      };
+    };
+    expect(status.changedFiles).toBe(1);
+    expect(status.io).toEqual(expect.objectContaining({
+      inventoryPasses: 3,
+      inventoryPages: 3,
+      snapshotFiles: 504,
+      verifiedContentReads: 506
+    }));
+
+    await session.release?.({ status: "completed" });
+  });
+
   test("normalizes forced termination outcomes even when the runtime client exits zero", async () => {
     const cases = [
       { outcome: { cancelled: true }, exitCode: 130, message: "cancelled" },

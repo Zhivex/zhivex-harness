@@ -244,6 +244,122 @@ describe("CLI parsing", () => {
     expect(cliExitCodeForError(new CliUsageError("bad input"))).toBe(CLI_EXIT_CODES.usageError);
     expect(cliExitCodeForError(new Error("boom"))).toBe(CLI_EXIT_CODES.runtimeError);
   });
+
+  test("parses offline change-envelope creation and verification", () => {
+    expect(parseCliArgs([
+      "changes",
+      "create",
+      "input.json",
+      "--patch",
+      "change.patch"
+    ])).toMatchObject({
+      command: "changes",
+      changesCommand: "create",
+      artifactPath: "input.json",
+      patchPath: "change.patch"
+    });
+    expect(parseCliArgs([
+      "changes",
+      "verify",
+      "envelope.json",
+      "--patch",
+      "change.patch",
+      "--preconditions",
+      "expected.json",
+      "--now",
+      "2026-08-20T12:00:00.000Z"
+    ])).toMatchObject({
+      command: "changes",
+      changesCommand: "verify",
+      preconditionsPath: "expected.json",
+      verificationTime: "2026-08-20T12:00:00.000Z"
+    });
+    expect(() => parseCliArgs(["changes", "verify", "envelope.json"]))
+      .toThrow("requires --patch");
+  });
+});
+
+describe("change-envelope CLI", () => {
+  test("binds exact patch bytes and fails verification for a different artifact", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-change-envelope-cli-"));
+    const digest = (character: string) => `sha256:${character.repeat(64)}`;
+    try {
+      const inputPath = path.join(root, "input.json");
+      const patchPath = path.join(root, "change.patch");
+      const changedPatchPath = path.join(root, "changed.patch");
+      const envelopePath = path.join(root, "envelope.json");
+      await writeFile(patchPath, "diff --git a/a.txt b/a.txt\n+governed\n", "utf8");
+      await writeFile(changedPatchPath, "diff --git a/a.txt b/a.txt\n+tampered\n", "utf8");
+      await writeFile(inputPath, `${JSON.stringify({
+        createdAt: "2026-08-20T12:00:00.000Z",
+        expiresAt: "2026-08-21T12:00:00.000Z",
+        base: { workspaceDigest: digest("1"), treeDigest: digest("2") },
+        patch: { patchId: "candidate-42" },
+        fingerprints: {
+          harness: digest("3"),
+          policy: digest("4"),
+          environment: digest("5")
+        },
+        checks: [{
+          checkId: "tests",
+          status: "passed",
+          redacted: true,
+          startedAt: "2026-08-20T11:59:00.000Z",
+          completedAt: "2026-08-20T11:59:01.000Z",
+          durationMs: 1_000,
+          exitCode: 0
+        }]
+      }, null, 2)}\n`, "utf8");
+
+      const created = await runCli(["changes", "create", inputPath, "--patch", patchPath]);
+      expect(created.exitCode).toBe(CLI_EXIT_CODES.success);
+      const envelope = JSON.parse(created.stdout) as { envelopeId: string; patch: { patchDigest: string } };
+      expect(envelope.envelopeId).toMatch(/^sha256:[a-f0-9]{64}$/);
+      expect(envelope.patch.patchDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+      await writeFile(envelopePath, created.stdout, "utf8");
+
+      const verified = await runCli([
+        "changes",
+        "verify",
+        envelopePath,
+        "--patch",
+        patchPath,
+        "--now",
+        "2026-08-20T12:30:00.000Z"
+      ]);
+      expect(verified.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(JSON.parse(verified.stdout)).toMatchObject({
+        schemaVersion: 1,
+        kind: "change-envelope-verification",
+        valid: true,
+        verificationScope: "integrity-expiration-and-preconditions-only",
+        approvals: { authenticity: "not-verified" }
+      });
+
+      const rejected = await runCli([
+        "changes",
+        "verify",
+        envelopePath,
+        "--patch",
+        changedPatchPath,
+        "--now",
+        "2026-08-20T12:30:00.000Z"
+      ]);
+      expect(rejected.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
+      expect(JSON.parse(rejected.stdout).issues).toContainEqual(expect.objectContaining({
+        code: "precondition-mismatch",
+        path: ["patch", "patchDigest"]
+      }));
+
+      const linkedPatchPath = path.join(root, "linked.patch");
+      await symlink(patchPath, linkedPatchPath);
+      const linked = await runCli(["changes", "create", inputPath, "--patch", linkedPatchPath]);
+      expect(linked.exitCode).toBe(CLI_EXIT_CODES.usageError);
+      expect(linked.stderr).toContain("regular non-symlink file");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("temporary chat profiles", () => {

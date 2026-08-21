@@ -107,6 +107,8 @@ export type {
   EnvironmentPatchImportResult,
   EnvironmentPatchInspection,
   ExecutionArtifactCleanupResult,
+  HarnessEnvironmentStatus,
+  HarnessExecutionIoMetrics,
   HarnessExecutionSession,
   HarnessOciExecutionEnvironment,
   HarnessOciRuntimeAdapter,
@@ -156,6 +158,44 @@ export type {
 } from "./orchestration.js";
 
 export { BUN_ENGINE_RANGE, HARNESS_VERSION } from "./version.js";
+
+export {
+  CHANGE_ENVELOPE_DIGEST_ALGORITHM,
+  CHANGE_ENVELOPE_SCHEMA_VERSION,
+  MAX_CHANGE_ENVELOPE_APPROVALS,
+  MAX_CHANGE_ENVELOPE_APPROVAL_SCOPES,
+  MAX_CHANGE_ENVELOPE_ATTESTATIONS,
+  MAX_CHANGE_ENVELOPE_CHECKS,
+  canonicalizeChangeEnvelope,
+  changeEnvelopeApprovalSchema,
+  changeEnvelopeBaseSchema,
+  changeEnvelopeCheckSchema,
+  changeEnvelopeEvidenceSchema,
+  changeEnvelopeFingerprintsSchema,
+  changeEnvelopeInputSchema,
+  changeEnvelopePatchSchema,
+  changeEnvelopePreconditionsSchema,
+  changeEnvelopeSchema,
+  computeChangeEnvelopeDigest,
+  computeChangeEnvelopeEvidenceDigest,
+  createChangeEnvelope,
+  digestChangeEnvelopeArtifact,
+  externalAttestationReferenceSchema,
+  verifyChangeEnvelope
+} from "./change-envelope.js";
+export type {
+  ChangeEnvelope,
+  ChangeEnvelopeApproval,
+  ChangeEnvelopeCheck,
+  ChangeEnvelopeEvidence,
+  ChangeEnvelopePreconditions,
+  ChangeEnvelopeVerificationIssue,
+  ChangeEnvelopeVerificationIssueCode,
+  ChangeEnvelopeVerificationOptions,
+  ChangeEnvelopeVerificationResult,
+  CreateChangeEnvelopeInput,
+  ExternalAttestationReference
+} from "./change-envelope.js";
 
 export {
   EDIT_CONTRACT_SCHEMA_VERSION,
@@ -237,7 +277,11 @@ export type {
   CommandResult,
   HarnessCheck,
   ListFilesOptions,
+  ReadFilesRequest,
   SearchFilesOptions,
+  SearchManyOptions,
+  SearchManyQuery,
   SearchMatch,
-  WorkspaceFile
+  WorkspaceFile,
+  WorkspaceIndexDiagnostics
 } from "./workspace.js";

@@ -1,6 +1,6 @@
 # Extensibility and orchestration
 
-Zhivex Harness `0.8.x` combines governed external tools and bounded multi-agent work with a public provider registry and explicit per-role model routing. Configuration schema remains version `4`; registry selection, runtime model capabilities, routed child models, non-secret provider transport settings, MCP, execution policy, budgets, and scope are bound into the durable harness fingerprint.
+Zhivex Harness `0.9.x` combines governed external tools and bounded multi-agent work with a public provider registry and explicit per-role model routing. Configuration schema remains version `4`; registry selection, runtime model capabilities, routed child models, non-secret provider transport settings, MCP, execution policy, budgets, and scope are bound into the durable harness fingerprint.
 
 ## Provider registry
 
@@ -119,7 +119,7 @@ The resolved route plan is persisted without credentials in CLI resume metadata 
 ## Routing limits
 
 - There is no automatic failover inside a run and no provider change while an approval is pending.
-- `--max-cost-usd` with any route is rejected because `0.8.x` has one operator-supplied price pair, not pricing per model/run.
+- `--max-cost-usd` with any route is rejected because `0.9.x` has one operator-supplied price pair, not pricing per model/run.
 - Routing does not infer speed, quality, price, or a “best” provider; presets remain deferred until the model catalog contains reliable evidence.
 - The CLI registry is static. Applications may inject a validated registry through the TypeScript API, but configuration files cannot load arbitrary provider modules.
 - Cross-provider console context uses deterministic redacted compaction and omits tool/provider payloads; it is a portable summary, not a byte-identical transcript handoff.

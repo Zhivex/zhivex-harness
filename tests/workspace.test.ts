@@ -132,6 +132,125 @@ describe("Workspace", () => {
     await expect(workspace.searchFiles("different", "src", { limit: 2, cursor: firstSearch.nextCursor })).rejects.toThrow("cursor");
   });
 
+  test("reuses one versioned index across pages and rebuilds it after structural changes", async () => {
+    const { root, workspace } = await fixture();
+    await mkdir(path.join(root, "bulk"));
+    await Promise.all(Array.from({ length: 120 }, (_, index) =>
+      writeFile(path.join(root, "bulk", `${index.toString().padStart(3, "0")}.txt`), `file ${index}\n`, "utf8")));
+    await mkdir(path.join(root, "a"));
+    await writeFile(path.join(root, "a.ts"), "flat\n", "utf8");
+    await writeFile(path.join(root, "a", "nested.ts"), "nested\n", "utf8");
+
+    const collected: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await workspace.listFiles(".", { limit: 11, ...(cursor ? { cursor } : {}) });
+      collected.push(...page.files.map((file) => file.path));
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    expect(collected).toEqual([...collected].sort());
+    expect(collected).toContain("a.ts");
+    expect(collected).toContain("a/nested.ts");
+    const indexed = workspace.workspaceIndexDiagnostics();
+    expect(indexed.builds).toBe(1);
+    expect(indexed.reuses).toBeGreaterThan(1);
+    expect(indexed.files).toBe(collected.length);
+
+    const stalePage = await workspace.listFiles("bulk", { limit: 5 });
+    await writeFile(path.join(root, "bulk", "999.txt"), "added later\n", "utf8");
+    await expect(workspace.listFiles("bulk", { limit: 5, cursor: stalePage.nextCursor })).rejects.toThrow(/cursor|stale/);
+    expect(workspace.workspaceIndexDiagnostics().builds).toBe(2);
+    expect((await workspace.listFiles("bulk", { limit: 500 })).files.at(-1)?.path).toBe("bulk/999.txt");
+  });
+
+  test("refreshes ignore rules and never follows a symlink introduced after indexing", async () => {
+    const { root, workspace } = await fixture();
+    await writeFile(path.join(root, ".gitignore"), "src/hidden-a.ts\n", "utf8");
+    await writeFile(path.join(root, "src", "hidden-a.ts"), "hidden a\n", "utf8");
+    await writeFile(path.join(root, "src", "hidden-b.ts"), "hidden b\n", "utf8");
+    const first = await workspace.listFiles();
+    expect(first.files.map((file) => file.path)).not.toContain("src/hidden-a.ts");
+
+    await writeFile(path.join(root, ".gitignore"), "src/hidden-b.ts\n", "utf8");
+    const refreshed = await workspace.listFiles();
+    expect(refreshed.files.map((file) => file.path)).toContain("src/hidden-a.ts");
+    expect(refreshed.files.map((file) => file.path)).not.toContain("src/hidden-b.ts");
+
+    const outside = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-index-outside-"));
+    temporaryDirectories.push(outside);
+    await writeFile(path.join(outside, "secret.txt"), "do not read\n", "utf8");
+    await rm(path.join(root, "src", "hidden-a.ts"));
+    await symlink(path.join(outside, "secret.txt"), path.join(root, "src", "hidden-a.ts"));
+    expect((await workspace.listFiles()).files.map((file) => file.path)).not.toContain("src/hidden-a.ts");
+  });
+
+  test("invalidates active cursors after mutations committed through Workspace", async () => {
+    const { workspace } = await fixture();
+    await workspace.writeFile("src/a.ts", "a\n");
+    await workspace.writeFile("src/b.ts", "b\n");
+    const first = await workspace.listFiles("src", { limit: 1 });
+    expect(first.nextCursor).toBeString();
+    expect(workspace.workspaceIndexDiagnostics().version).toBeString();
+
+    await workspace.writeFile("src/c.ts", "c\n");
+    expect(workspace.workspaceIndexDiagnostics().version).toBeUndefined();
+    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor })).rejects.toThrow(/cursor|stale/);
+    expect((await workspace.listFiles("src", { limit: 20 })).files.map((file) => file.path)).toContain("src/c.ts");
+  });
+
+  test("batches reads deterministically and reads duplicate ranges from one stable snapshot", async () => {
+    const { root, workspace } = await fixture();
+    await writeFile(path.join(root, "src", "a.ts"), "first\nsecond\nthird\n", "utf8");
+    const before = workspace.workspaceIndexDiagnostics().stableFileReads;
+
+    const batch = await workspace.readFiles([
+      { path: "src/index.ts" },
+      { path: "src/a.ts", startLine: 2, endLine: 2 },
+      { path: "src/a.ts", startLine: 1, endLine: 1 }
+    ]);
+
+    expect(batch.files.map((file) => `${file.path}:${file.startLine}`)).toEqual([
+      "src/a.ts:1",
+      "src/a.ts:2",
+      "src/index.ts:1"
+    ]);
+    expect(batch.files[0]?.content).toContain("1: first");
+    expect(workspace.workspaceIndexDiagnostics().stableFileReads - before).toBe(2);
+    await expect(workspace.readFiles(Array.from({ length: 21 }, () => ({ path: "src/index.ts" })))).rejects.toThrow("between 1 and 20");
+
+    const large = "x".repeat(700 * 1024);
+    await Promise.all(["large-a.txt", "large-b.txt", "large-c.txt"].map((name) =>
+      writeFile(path.join(root, "src", name), large, "utf8")));
+    await expect(workspace.readFiles([
+      { path: "src/large-a.txt" },
+      { path: "src/large-b.txt" },
+      { path: "src/large-c.txt" }
+    ])).rejects.toThrow("aggregate");
+  });
+
+  test("searches multiple needles in one deterministic content pass with aggregate limits", async () => {
+    const { root, workspace } = await fixture();
+    await writeFile(path.join(root, "src", "a.ts"), "alpha beta\nalpha\n", "utf8");
+    await writeFile(path.join(root, "src", "b.ts"), "BETA\n", "utf8");
+    await workspace.listFiles();
+    const before = workspace.workspaceIndexDiagnostics();
+
+    const batch = await workspace.searchMany([
+      { query: "alpha", caseSensitive: true },
+      { query: "beta" }
+    ], "src", { limitPerQuery: 2 });
+
+    expect(batch.results[0]?.matches.map((match) => `${match.path}:${match.line}`)).toEqual(["src/a.ts:1", "src/a.ts:2"]);
+    expect(batch.results[1]?.matches.map((match) => `${match.path}:${match.line}`)).toEqual(["src/a.ts:1", "src/b.ts:1"]);
+    expect(workspace.workspaceIndexDiagnostics().stableFileReads - before.stableFileReads).toBe(3);
+    await expect(workspace.searchMany(
+      Array.from({ length: 10 }, (_, index) => ({ query: `q${index}` })),
+      ".",
+      { limitPerQuery: 51 }
+    )).rejects.toThrow("aggregate");
+  });
+
   test("applies digest-bound multi-file patches atomically and preserves modes", async () => {
     const { root, workspace } = await fixture();
     await chmod(path.join(root, "src", "index.ts"), 0o751);

@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.7.0` is the latest public npm release. `0.8.0` is a source release candidate, not a published artifact. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.8.0` is the latest public npm release. `0.9.0` is a source candidate, not a published artifact. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
 
 ## Deterministic gates
 
@@ -48,9 +48,9 @@ For a local artifact rehearsal after the source gate:
 
 ```bash
 mkdir -p release-artifacts
-bun pm pack --filename release-artifacts/zhivex-ai-harness-0.8.0.tgz --ignore-scripts
-bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.8.0.tgz
-bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.8.0.tgz
+bun pm pack --filename release-artifacts/zhivex-ai-harness-0.9.0.tgz --ignore-scripts
+bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.9.0.tgz
+bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.9.0.tgz
 ```
 
 `release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
