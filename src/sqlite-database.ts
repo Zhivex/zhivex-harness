@@ -26,6 +26,30 @@ export interface SqliteStatement<
   all(...parameters: TParameters): TResult[];
 }
 
+const normalizeNumberedParameters = (sql: string) => {
+  const indexes = new Set<number>();
+  const normalizedSql = sql.replace(/\?([1-9]\d*)/g, (_match, rawIndex: string) => {
+    const index = Number(rawIndex);
+    indexes.add(index);
+    return `$__zhivex_${index}`;
+  });
+  return {
+    sql: normalizedSql,
+    indexes: [...indexes].sort((left, right) => left - right)
+  };
+};
+
+const numberedBindings = (indexes: readonly number[], parameters: readonly unknown[]) => {
+  if (indexes.length === 0) return undefined;
+  const maximumIndex = indexes.at(-1)!;
+  if (parameters.length !== maximumIndex) {
+    throw new Error(
+      `SQLite numbered parameters require exactly ${maximumIndex} binding${maximumIndex === 1 ? "" : "s"}; received ${parameters.length}.`
+    );
+  }
+  return Object.fromEntries(indexes.map((index) => [`$__zhivex_${index}`, parameters[index - 1]]));
+};
+
 /**
  * Small compatibility surface over Node's built-in SQLite implementation.
  *
@@ -56,11 +80,22 @@ export class SqliteDatabase {
     TResult extends object = Record<string, unknown>,
     TParameters extends readonly unknown[] = readonly unknown[]
   >(sql: string): SqliteStatement<TResult, TParameters> {
-    const statement = this.#database.prepare(sql);
+    // Node 22.13 exposes SQLite's numbered `?NNN` syntax but its JavaScript
+    // positional binder rejects it with SQLITE_RANGE. Normalizing only those
+    // placeholders to prefixed named bindings preserves repeated indices and
+    // keeps anonymous `?` plus caller-supplied named parameters unchanged.
+    const normalized = normalizeNumberedParameters(sql);
+    const statement = this.#database.prepare(normalized.sql);
+    const invoke = <T>(method: (...parameters: never[]) => T, parameters: readonly unknown[]) => {
+      const bindings = numberedBindings(normalized.indexes, parameters);
+      return bindings
+        ? method(bindings as never)
+        : method(...parameters as unknown as never[]);
+    };
     return {
-      run: (...parameters) => statement.run(...parameters as unknown as never[]),
-      get: (...parameters) => statement.get(...parameters as unknown as never[]) as TResult | undefined,
-      all: (...parameters) => statement.all(...parameters as unknown as never[]) as TResult[]
+      run: (...parameters) => invoke(statement.run.bind(statement), parameters),
+      get: (...parameters) => invoke(statement.get.bind(statement), parameters) as TResult | undefined,
+      all: (...parameters) => invoke(statement.all.bind(statement), parameters) as TResult[]
     };
   }
 
