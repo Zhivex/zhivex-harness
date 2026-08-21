@@ -25,6 +25,8 @@ const markdownFiles = [
   path.join(workspace, "CONTRIBUTING.md"),
   path.join(workspace, "SECURITY.md"),
   path.join(workspace, "SUPPORT.md"),
+  path.join(workspace, "benchmarks", "README.md"),
+  path.join(workspace, "results", "README.md"),
   ...(await readdir(path.join(workspace, "docs"), { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
     .map((entry) => path.join(workspace, "docs", entry.name))
@@ -496,6 +498,17 @@ if (manifest.version.startsWith("0.10.")) {
   const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
   const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
   const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const timeToSafeFix = await readFile(path.join(workspace, "docs", "TIME_TO_SAFE_FIX.md"), "utf8");
+  const timeToSafeFixBaseline = JSON.parse(await readFile(
+    path.join(workspace, "benchmarks", "baselines", "time-to-safe-fix-live-smoke-2026-08-21.json"),
+    "utf8"
+  )) as {
+    schemaVersion?: number;
+    kind?: string;
+    profiles?: unknown[];
+    evidenceBoundary?: unknown[];
+    [key: string]: unknown;
+  };
   const ciWorkflow = await readFile(path.join(workspace, ".github", "workflows", "ci.yml"), "utf8");
   const releaseWorkflow = await readFile(path.join(workspace, ".github", "workflows", "release.yml"), "utf8");
   const runtimeSource = await Promise.all([
@@ -570,6 +583,33 @@ if (manifest.version.startsWith("0.10.")) {
     !ciWorkflow.includes("openCliSessionStore")
   ) {
     failures.push("0.10.x CI must exercise the minimum Node runtime, built artifact, and SQLite persistence.");
+  }
+  if (
+    manifest.scripts?.["benchmark:safe-fix"] !== "bun run scripts/benchmark-time-to-safe-fix.ts" ||
+    manifest.scripts?.["benchmark:safe-fix:live"] !== "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --driver-zhivex" ||
+    manifest.scripts?.["benchmark:safe-fix:live:smoke"] !== "bun --env-file=.env run scripts/benchmark-time-to-safe-fix.ts --tasks 2 --repetitions 1 --profiles direct,governed,optimized --carriers rule_file --driver-zhivex --summary" ||
+    manifest.scripts?.["benchmark:safe-fix:baseline"] !== "bun run scripts/create-time-to-safe-fix-baseline.ts" ||
+    !manifest.scripts?.check?.includes("bun run benchmark:safe-fix:ci") ||
+    !timeToSafeFix.includes("safeResolved") ||
+    !timeToSafeFix.includes("not coding capability") ||
+    !timeToSafeFix.includes("exactly 12 driver runs") ||
+    !timeToSafeFix.includes("ZHIVEX_SAFE_FIX_PROVIDER") ||
+    !timeToSafeFix.includes("zhivex-harness/time-to-safe-fix:node24-pytest9") ||
+    !readme.includes("Time-to-Safe-Fix benchmark")
+  ) {
+    failures.push("0.10.x must expose and bound the Time-to-Safe-Fix benchmark and deterministic smoke.");
+  }
+  const serializedBaseline = JSON.stringify(timeToSafeFixBaseline);
+  if (
+    timeToSafeFixBaseline.schemaVersion !== 1 ||
+    timeToSafeFixBaseline.kind !== "time-to-safe-fix-baseline" ||
+    timeToSafeFixBaseline.profiles?.length !== 3 ||
+    !timeToSafeFixBaseline.evidenceBoundary?.length ||
+    ["host", "command", "worktree", "samples", "reportPath"].some((key) =>
+      serializedBaseline.includes(`\"${key}\":`)
+    )
+  ) {
+    failures.push("The committed Time-to-Safe-Fix baseline must be compact, bounded, and sanitized.");
   }
   if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
     failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);

@@ -319,12 +319,17 @@ bun run evaluate
 bun run benchmark:workspace
 bun run benchmark:workspace -- --files 50000 --repetitions 10 --warmups 2
 bun run benchmark:oci -- --files 1000 --commands 20 --repetitions 10 --warmups 1
+bun run benchmark:safe-fix:ci
 bun run smoke:package
 bun run pack:inspect
 bun run check
 ```
 
 The workspace benchmark reports topology-only and digest-bound listing separately, plus independent versus batched search with alternating pair order. The OCI benchmark reports environment setup, snapshot/session acquisition, first command, reused commands, mutation, and end-to-end time to first successful command. Both fixtures exclude setup, validate results, use sequential repetitions, and emit host/runtime metadata, nearest-rank p50/p95/p99, and success rates. `--repetitions` and `--warmups` are configurable; host filesystem caches are not flushed, so publish the commit and exact command with any result. Use at least 100 successful samples before treating p99 as representative.
+
+The [Time-to-Safe-Fix benchmark](./docs/TIME_TO_SAFE_FIX.md) adds task-level clean/attacked matrices, `safeResolved` scoring, approval/system latency separation, Wilson rate intervals, and matched overhead against a direct profile. Its bundled deterministic smoke validates only the benchmark pipeline. Public capability or safety claims require a real external driver, exact dataset revision, matched model/runtime controls, and disclosed failures.
+
+Full generated reports remain local and Git-ignored under [`results`](./results/). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](./benchmarks/baselines/).
 
 The live gate is opt-in and billable:
 

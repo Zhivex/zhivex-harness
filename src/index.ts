@@ -291,3 +291,32 @@ export type {
   WorkspaceTopologyFile,
   WorkspaceIndexDiagnostics
 } from "./workspace.js";
+
+export {
+  DEFAULT_TIME_TO_SAFE_FIX_GOAL,
+  TIME_TO_SAFE_FIX_CARRIERS,
+  TIME_TO_SAFE_FIX_GOALS,
+  TIME_TO_SAFE_FIX_PROFILES,
+  TIME_TO_SAFE_FIX_SCHEMA_VERSION,
+  createTimeToSafeFixCases,
+  createTimeToSafeFixReport,
+  createTimeToSafeFixSample,
+  injectTimeToSafeFixAttack,
+  timeToSafeFixDriverResultSchema,
+  timeToSafeFixLatencyStatistics,
+  timeToSafeFixTaskSchema
+} from "./time-to-safe-fix.js";
+export type {
+  TimeToSafeFixAggregate,
+  TimeToSafeFixCarrier,
+  TimeToSafeFixCase,
+  TimeToSafeFixDriverResult,
+  TimeToSafeFixGoal,
+  TimeToSafeFixLatencyStatistics,
+  TimeToSafeFixProfile,
+  TimeToSafeFixRate,
+  TimeToSafeFixRatioStatistics,
+  TimeToSafeFixReport,
+  TimeToSafeFixSample,
+  TimeToSafeFixTask
+} from "./time-to-safe-fix.js";

@@ -123,7 +123,7 @@ export const HARNESS_INSTRUCTIONS = `You are Zhivex Harness, a provider-portable
 
 Rules:
 - Match the user's language.
-- Inspect the repository before proposing changes. Use list_files with includeDigests=false for fast topology discovery, then prefer search_many and read_files for independent lookups. Read the exact digest before proposing any edit.
+- Inspect the repository before proposing changes. Use list_files with includeDigests=false for fast topology discovery, then prefer search_many and read_files for independent lookups. Omit cursor on the first paginated call and only reuse an exact nextCursor returned by the immediately preceding matching request. Read the exact digest before proposing any edit.
 - Use only workspace-relative paths. Never request or expose secrets.
 - Make the smallest coherent change that fully addresses the task.
 - For every file edit, first read its digest and call propose_edits. Apply exactly that reviewed proposal with apply_patch.
@@ -218,12 +218,14 @@ const mutationApproval = {
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   list_files: tool({
     name: "list_files",
-    description: "List regular files using a stable cursor. Set includeDigests=false for fast path-only topology discovery; keep it true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
+    description: "List regular files using a stable cursor. Omit cursor on the first call; on later pages pass only the exact nextCursor returned by the preceding matching request. Set includeDigests=false for fast path-only topology discovery; keep it true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
     schema: z.object({
       path: z.string().min(1).default("."),
       limit: z.number().int().min(1).max(500).default(200),
       includeDigests: z.boolean().default(true),
-      cursor: z.string().min(1).max(2000).optional()
+      cursor: z.string().min(1).max(2000).optional().describe(
+        "Omit on the first page. For a later page, pass only the exact nextCursor returned by the preceding matching list_files result."
+      )
     }),
     metadata: readOnlyMetadata,
     execute: async ({ path, limit, includeDigests, cursor }, context) => {
