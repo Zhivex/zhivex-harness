@@ -104,9 +104,11 @@ export const runPortableProcess = async (
   const argv = [...command];
   const stdout = new BoundedTextCapture(maxOutputCharacters);
   const stderr = new BoundedTextCapture(maxOutputCharacters);
+  const useProcessGroup = process.platform !== "win32";
   const child = spawn(argv[0]!, argv.slice(1), {
     ...(options.cwd ? { cwd: options.cwd } : {}),
     env: processEnvironment(options.env),
+    detached: useProcessGroup,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true
@@ -118,11 +120,26 @@ export const runPortableProcess = async (
   child.stdout.on("data", (chunk: Buffer) => stdout.write(chunk));
   child.stderr?.on("data", (chunk: Buffer) => stderr.write(chunk));
 
+  const signalProcessTree = (signal: NodeJS.Signals) => {
+    if (useProcessGroup && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, signal);
+        return;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") {
+          child.kill(signal);
+          return;
+        }
+      }
+    }
+    if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+  };
+
   const terminate = () => {
-    if (child.exitCode !== null || child.signalCode !== null) return;
-    child.kill("SIGTERM");
+    if (terminationTimer) return;
+    signalProcessTree("SIGTERM");
     terminationTimer = setTimeout(() => {
-      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      signalProcessTree("SIGKILL");
     }, DEFAULT_TERMINATION_GRACE_MS);
     terminationTimer.unref?.();
   };

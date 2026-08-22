@@ -57,8 +57,7 @@ const exactAllowed = new Set([
   "package/ROADMAP.md",
   "package/CHANGELOG.md",
   "package/SECURITY.md",
-  "package/SUPPORT.md",
-  "package/release-status.json"
+  "package/SUPPORT.md"
 ]);
 const allowedPrefixes = [
   "package/dist/",
@@ -83,7 +82,6 @@ for (const required of [
   "package/CHANGELOG.md",
   "package/SECURITY.md",
   "package/SUPPORT.md",
-  "package/release-status.json",
   "package/docs/RELEASE.md",
   "package/docs/EXTENSIBILITY.md",
   "package/docs/CONTEXT_ENGINEERING.md",

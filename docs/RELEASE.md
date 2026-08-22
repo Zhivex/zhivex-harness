@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.11.0` is the latest public npm release and `v0.11.0` is its matching annotated repository tag. Registry integrity and SLSA provenance agree with source commit `652a299e2d6997ca4001dd9931ef2a82645f7204`; the current machine-readable record is [release-status.json](../release-status.json). Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, certifies, transfers, and publishes one exact tag-bound tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything, and publication does not retroactively substitute for a missing live-provider gate.
+`@zhivex-ai/harness@0.11.0` is the latest public npm release and `v0.11.0` is its matching annotated repository tag. Registry integrity and SLSA provenance agree with source commit `652a299e2d6997ca4001dd9931ef2a82645f7204`; the mutable machine-readable record is the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), which is intentionally excluded from immutable npm artifacts. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, certifies, transfers, and publishes one exact tag-bound tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything, and publication does not retroactively substitute for a missing live-provider gate.
 
 ## Deterministic gates
 

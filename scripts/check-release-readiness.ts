@@ -111,7 +111,6 @@ for (const requiredFile of [
   "LICENSE",
   "SECURITY.md",
   "SUPPORT.md",
-  "release-status.json",
   "docs",
   "evaluations",
   "examples"

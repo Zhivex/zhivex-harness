@@ -120,8 +120,8 @@ if (releaseStatus) {
       }
     }
   }
-  if (!readme.includes("[release status](./release-status.json)")) {
-    failures.push("README.md must link the machine-readable release status.");
+  if (!readme.includes("[repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)")) {
+    failures.push("README.md must link the mutable repository release status outside the package.");
   }
 }
 for (const required of [

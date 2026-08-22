@@ -89,7 +89,6 @@ try {
     "package/CHANGELOG.md",
     "package/SECURITY.md",
     "package/SUPPORT.md",
-    "package/release-status.json",
     "package/docs/CLI.md",
     "package/docs/CONTEXT_ENGINEERING.md",
     "package/docs/DURABLE_OPERATIONS.md",
@@ -111,7 +110,12 @@ try {
   ]) {
     assert(archive.stdout.split(/\r?\n/).includes(required), `packed artifact is missing ${required}`);
   }
-  for (const forbidden of ["package/.env", "package/src/", "package/tests/"]) {
+  for (const forbidden of [
+    "package/.env",
+    "package/release-status.json",
+    "package/src/",
+    "package/tests/"
+  ]) {
     assert(!archive.stdout.includes(forbidden), `packed artifact contains ${forbidden}`);
   }
 
