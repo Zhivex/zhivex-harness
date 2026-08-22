@@ -89,6 +89,11 @@ import {
 } from "./change-envelope.js";
 import { runPortableProcess } from "./process-runtime.js";
 import {
+  DEFAULT_HARNESS_CONTEXT_MANIFEST,
+  loadHarnessProjectContext
+} from "./context-engineering.js";
+import { Workspace } from "./workspace.js";
+import {
   formatApproval,
   formatTerminalEvent,
   formatTerminalHeader,
@@ -2183,6 +2188,39 @@ const inspectExecutionEnvironment = async (
   }
 };
 
+const inspectProjectContext = async (
+  config: ReturnType<typeof resolveHarnessConfig>
+): Promise<DoctorCheck> => {
+  if (!config.context.enabled) {
+    return diagnostic("project-context", "pass", "Project context loading is disabled.", {
+      enabled: false,
+      sources: 0,
+      skills: 0
+    });
+  }
+  try {
+    const workspace = await Workspace.open(config.workspace);
+    const manifestPath = path.relative(config.workspace, config.context.configPath)
+      .split(path.sep)
+      .join("/");
+    const bundle = await loadHarnessProjectContext(workspace, {
+      manifestPath,
+      requireManifest: manifestPath !== DEFAULT_HARNESS_CONTEXT_MANIFEST
+    });
+    return diagnostic("project-context", "pass", "Project context is valid and readable.", {
+      enabled: true,
+      manifestConfigured: bundle.manifest !== undefined,
+      sources: bundle.sources.length,
+      skills: bundle.skills.length
+    });
+  } catch (error) {
+    return diagnostic("project-context", "fail", "Project context cannot be loaded.", {
+      enabled: true,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
 export const createDoctorReport = async (
   options: Pick<
     CliOptions,
@@ -2368,6 +2406,7 @@ export const createDoctorReport = async (
   checks.push(await inspectScripts(config.workspace, config.allowedChecks));
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
   checks.push(await inspectOperationsStore(config.stateDirectory, config.storeBackend));
+  checks.push(await inspectProjectContext(config));
   checks.push(await inspectMcpConfiguration(config.workspace, config.mcpConfigPath));
   checks.push(await inspectExecutionEnvironment(config.execution, context.ociRuntimeAdapter));
 

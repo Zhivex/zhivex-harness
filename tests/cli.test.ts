@@ -711,6 +711,7 @@ describe("doctor", () => {
         "git",
         "scripts",
         "state-directory",
+        "project-context",
         "execution-environment",
         "provider:meta",
         "provider:qwen",
@@ -721,6 +722,39 @@ describe("doctor", () => {
       expect(serialized).not.toContain("do-not-print-this-key");
       expect(serialized).not.toContain("secret-host");
       expect(formatDoctorReport(report)).toContain("Doctor completed without blocking problems.");
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("fails when configured project context cannot be loaded", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-doctor-context-"));
+    try {
+      await mkdir(path.join(workspace, ".zhivex"), { recursive: true });
+      await writeFile(path.join(workspace, ".zhivex", "harness.json"), "{not-json\n");
+      const invalid = await createDoctorReport({
+        provider: "openai",
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs")
+      }, { nodeVersion: "22.13.0", env: { OPENAI_API_KEY: "present" } });
+      expect(invalid.ok).toBe(false);
+      expect(invalid.checks.find((check) => check.id === "project-context")).toMatchObject({
+        status: "fail",
+        message: "Project context cannot be loaded.",
+        details: { error: expect.stringContaining("not valid JSON") }
+      });
+
+      const missing = await createDoctorReport({
+        provider: "openai",
+        workspace,
+        stateDirectory: path.join(workspace, ".zhivex-harness", "runs"),
+        contextConfigPath: ".zhivex/missing.json"
+      }, { nodeVersion: "22.13.0", env: { OPENAI_API_KEY: "present" } });
+      expect(missing.ok).toBe(false);
+      expect(missing.checks.find((check) => check.id === "project-context")).toMatchObject({
+        status: "fail",
+        details: { error: expect.stringContaining("Required harness context manifest was not found") }
+      });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

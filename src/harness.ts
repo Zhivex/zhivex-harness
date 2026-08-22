@@ -1404,7 +1404,6 @@ export const runHarness = async (
 
       const approvals = await options.resolveApprovals?.(result.state.pendingApprovals, result.state);
       if (!approvals) {
-        await dispatchFinished(result.status);
         return result;
       }
       await dispatchResolvedApprovals(approvals, result.state.pendingApprovals);

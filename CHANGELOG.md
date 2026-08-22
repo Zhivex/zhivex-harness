@@ -19,6 +19,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Bound the live reviewer-delegation fixture to one read-only child tool call against a temporary repository with a known diff, avoiding provider-specific false failures caused by asking a reviewer to inspect an empty non-Git workspace.
 - Align the default mixed-provider live route with the certified cohort (OpenAI parent, Qwen reviewer); Gemini routing remains an explicit provisional certification target.
 - Await asynchronous harness shutdown throughout release, evaluation, smoke, and test callers so lifecycle hooks and OCI cleanup complete before process exit.
+- Emit `run-finished` only for terminal run states, and have `zhx doctor` load and validate configured project context before reporting readiness.
 
 ### Migration from 0.10.x
 

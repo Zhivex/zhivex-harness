@@ -362,7 +362,7 @@ export const loadHarnessProjectContext = async (
     workspace,
     manifestPath,
     MAX_HARNESS_CONTEXT_FILE_BYTES,
-    options.requireManifest !== true
+    true
   );
   if (!manifest && options.requireManifest) {
     throw new Error(`Required harness context manifest was not found: ${manifestPath}`);

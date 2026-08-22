@@ -171,6 +171,58 @@ describe("harness context engineering", () => {
     ])).toThrow("Duplicate");
   });
 
+  test("emits run-finished only after a durable approval run becomes terminal", async () => {
+    const { root } = await fixture();
+    const lifecycle: string[] = [];
+    const changes = [{ path: "approved.txt", expectedDigest: null, content: "approved\n" }];
+    const harness = await createHarness({
+      provider: "openai",
+      workspace: root,
+      modelInstance: createMockLanguageModel({ streamEvents: [
+        [
+          { type: "tool-call", toolCall: { id: "approval-edit", name: "apply_reviewed_edits", input: { changes } } },
+          { type: "finish", finishReason: "tool-calls" }
+        ],
+        [
+          { type: "text-delta", textDelta: "done" },
+          { type: "finish", finishReason: "stop" }
+        ]
+      ] }),
+      store: createInMemoryAgentRunStore(),
+      lifecycleHooks: [{
+        id: "terminal-audit",
+        version: "1",
+        handle: (event) => { lifecycle.push(event.type); }
+      }]
+    });
+    try {
+      const waiting = await runHarness(harness, { runId: "terminal-lifecycle-run", prompt: "Apply" });
+      expect(waiting.status).toBe("waiting_approval");
+      expect(lifecycle).toEqual(["harness-created", "run-started", "approval-requested"]);
+
+      const completed = await runHarness(harness, {
+        state: waiting.state,
+        approvals: waiting.state.pendingApprovals.map((approval) => ({
+          provider: approval.provider,
+          approvalRequestId: approval.id,
+          approve: true
+        }))
+      });
+      expect(completed.status).toBe("completed");
+      expect(lifecycle).toEqual([
+        "harness-created",
+        "run-started",
+        "approval-requested",
+        "run-started",
+        "approval-resolved",
+        "run-finished"
+      ]);
+    } finally {
+      await harness.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("integrates project context, progressive skills, durable fingerprints, and lifecycle hooks", async () => {
     const { root } = await fixture();
     const lifecycle: string[] = [];
