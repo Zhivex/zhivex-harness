@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-21
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.10.0` are published on npm. Version `0.11.0` is the local source release candidate for interactive operation, context engineering, and opt-in OCI shell workflows; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.11.0` are published on npm. Version `0.11.0` adds interactive operation, context engineering, and opt-in OCI shell workflows; registry publication, supply-chain provenance, and provider certification remain separate evidence boundaries. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -313,7 +313,7 @@ Exit criteria:
 
 ## 0.11.0 — daily-driver foundations
 
-Status: local source release candidate. It is not yet tagged or published as a new artifact.
+Status: published on npm as `latest` with annotated tag `v0.11.0`, exact registry integrity, and SLSA provenance. Release-bound remote provider certification remains pending and is not implied by publication.
 
 Goal: make the governed runtime practical for daily interactive work without giving repository content or shell syntax authority over host policy.
 
@@ -375,8 +375,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Review and commit the exact `0.11.0` source candidate on `main`, then require clean Linux/macOS CI and Node 22.13/24 artifact compatibility.
-2. Run the required real-OCI gate against `node:24-bookworm-slim` plus installed-artifact smoke coverage for terminal, context, lifecycle-hook, and OCI shell exports.
-3. Complete the provider live matrices affected by the changed context/tool fingerprint; keep any missing or failed path outside the certified release evidence.
-4. Create annotated tag `v0.11.0` from the reviewed release commit and dispatch the protected workflow only after confirming npm still lacks that immutable version.
-5. Verify the exact published tarball, `latest` tag, integrity, and SLSA provenance before calling `0.11.0` released.
+1. Configure maintainer-approved provider secrets in the protected `live-certification` environment and run the complete release-bound matrix against the exact annotated tag.
+2. Keep publication fail-closed on base, orchestration, routing, model-directed OCI execution, exact-artifact, integrity, and provenance evidence.
+3. Stabilize the CLI, config, JSON/event, library export, state migration, and error contracts required for the first `1.0.0` release candidate.
+4. Publish the support matrix, threat model, migration/export path, and representative cross-provider repository evaluation evidence.
+5. Complete two release candidates without a contract-breaking defect before promoting `1.0.0` to `latest`.

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published `0.8.x` version. The `0.9.x` source candidate and older private checkpoints are not supported release channels until their exact artifacts are published and verified.
+Security fixes are provided for the latest published `0.11.x` patch. Older minors and private checkpoints are not supported release channels. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Reporting a vulnerability
 
@@ -14,7 +14,9 @@ Do not open a public issue for a suspected vulnerability. Use [GitHub private vu
 - the practical impact; and
 - any suggested mitigation.
 
-Private vulnerability reporting must be enabled before the repository is made public. If that channel is unavailable, do not disclose exploit details in a public issue.
+Private vulnerability reporting is enabled for this public repository. If GitHub reports that the channel is unavailable, do not disclose exploit details in a public issue; wait for the maintainers to restore the private channel.
+
+The enabled no-cost public controls and the explicitly cost-gated features left disabled are recorded in [docs/PUBLIC_SECURITY.md](./docs/PUBLIC_SECURITY.md).
 
 ## Scope
 

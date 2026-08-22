@@ -56,11 +56,19 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-Meta, Qwen, and OpenAI retain the previously published support conclusion for unchanged runtime paths. The published `0.7.0` release added Gemini and mixed-provider routing as provisional surfaces; they require fresh release-candidate evidence before certification.
+`@zhivex-ai/harness@0.11.0` is published as `latest` with an annotated tag, verified registry integrity, and SLSA provenance. Those supply-chain facts do not certify provider behavior. The protected remote live workflow attempted the `0.11.0` candidate but stopped before provider calls because its GitHub environment contained no provider credentials; publication therefore has no successful release-bound remote provider matrix.
+
+The release workflow now fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment must receive maintainer-approved provider secrets before the next release. Local `.env` credentials are never uploaded automatically.
 
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
 
-## Current local pre-release evidence
+## Current local tag-source evidence
+
+On 2026-08-22, a clean checkout of annotated tag `v0.11.0` at `652a299e2d6997ca4001dd9931ef2a82645f7204` passed the base proposal/approval/restart/exactly-once matrix for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna`. The same checkout passed bounded reviewer delegation and persistence for all three providers plus the OpenAI-parent/Qwen-reviewer mixed route.
+
+This evidence is source/tag-bound and date-bound, not a successful protected GitHub run or an installed-artifact provider certification. Model-directed OCI execution was not rerun locally because no Docker daemon was available; deterministic OCI enforcement passed on the exact published commit in CI. Gemini remains provisional.
+
+## Historical local pre-release evidence
 
 On 2026-08-20, the uncommitted `0.8.0` source worktree with `@zhivex-ai/core@1.7.0` and `@zhivex-ai/openai@0.9.6` passed the base proposal/approval/restart/exactly-once gate for the GPT-5.6 family used by the Harness:
 

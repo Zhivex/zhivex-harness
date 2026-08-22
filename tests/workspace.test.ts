@@ -50,6 +50,22 @@ describe("portable host processes", () => {
     expect(result.exitCode).not.toBe(0);
   });
 
+  test("terminates descendants that keep inherited output pipes open", async () => {
+    const parentScript = [
+      'const { spawn } = require("node:child_process");',
+      'spawn(process.execPath, ["-e", "setTimeout(() => {}, 2_000)"], { stdio: "inherit" });'
+    ].join(" ");
+    const startedAt = performance.now();
+    const result = await runPortableProcess([
+      process.execPath,
+      "-e",
+      parentScript
+    ], { timeoutMs: 50 });
+
+    expect(result.timedOut).toBe(true);
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+  });
+
   test("supports external cancellation", async () => {
     const controller = new AbortController();
     const pending = runPortableProcess([

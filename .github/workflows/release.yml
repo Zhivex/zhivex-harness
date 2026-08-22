@@ -4,9 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing annotated release tag that resolves to main
+        description: Annotated vX.Y.Z tag; must match package.json and resolve to main
         required: true
-        default: v0.11.0
         type: string
       channel:
         description: npm distribution tag
@@ -97,8 +96,10 @@ jobs:
 
   publish:
     name: Publish validated tarball
-    needs: validate
-    if: ${{ needs.validate.result == 'success' }}
+    needs:
+      - validate
+      - certify-live
+    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm
@@ -159,3 +160,68 @@ jobs:
 
       - name: Verify registry integrity and provenance
         run: bun run release:verify -- "$ARTIFACT" "$RELEASE_CHANNEL"
+
+  certify-live:
+    name: Certify exact release tag with live providers
+    needs: validate
+    if: ${{ needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: live-certification
+    permissions:
+      contents: read
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      ZHIVEX_HARNESS_LIVE: "1"
+      ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai
+
+    steps:
+      - name: Checkout annotated release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Setup Node runtime
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install immutable dependencies with Bun
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Verify exact annotated release target
+        run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG"
+
+      - name: Preload enforced execution image
+        run: docker pull node:24-bookworm-slim
+
+      - name: Certify deterministic OCI boundary
+        run: bun run smoke:oci
+        env:
+          ZHIVEX_HARNESS_OCI_REQUIRED: "1"
+
+      - name: Certify base, orchestration, routing, and model-directed execution
+        run: |
+          bun run smoke:live
+          bun run smoke:live:orchestration
+          bun run smoke:live:routing
+          bun run smoke:live:execution
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}

@@ -54,6 +54,7 @@ const optionValue = (name: string): string | undefined => {
 };
 
 const registryCheckRequested = process.argv.includes("--registry");
+const tagCheckRequested = process.argv.includes("--tag");
 const requestedTag = optionValue("--tag");
 const failures: string[] = [];
 const manifest = JSON.parse(
@@ -151,7 +152,9 @@ const releaseWorkflow = await readFile(
 );
 for (const required of [
   "workflow_dispatch:",
-  `default: v${manifest.version}`,
+  "description: Annotated vX.Y.Z tag; must match package.json and resolve to main",
+  "required: true",
+  "type: string",
   "id-token: write",
   "environment: npm",
   "package-manager-cache: false",
@@ -167,11 +170,22 @@ for (const required of [
   "(cd release-artifacts && shasum -a 512 -c SHA512SUMS)",
   'npm publish "./$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"',
   'bun run release:status -- "$ARTIFACT"',
-  'bun run release:verify -- "$ARTIFACT" "$RELEASE_CHANNEL"'
+  'bun run release:verify -- "$ARTIFACT" "$RELEASE_CHANNEL"',
+  "certify-live:",
+  "environment: live-certification",
+  "needs.certify-live.result == 'success'",
+  "ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai",
+  "bun run smoke:live",
+  "bun run smoke:live:orchestration",
+  "bun run smoke:live:routing",
+  "bun run smoke:live:execution"
 ]) {
   if (!releaseWorkflow.includes(required)) {
     failures.push(`release workflow is missing: ${required}`);
   }
+}
+if (/default:\s+v\d+\.\d+\.\d+/.test(releaseWorkflow)) {
+  failures.push("release workflow must not duplicate the package version as a tag input default");
 }
 
 const status = await run(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
@@ -185,7 +199,9 @@ if (process.env.GITHUB_ACTIONS !== "true" && branch.stdout !== "main") {
   failures.push(`release checks must run from main, not ${branch.stdout || "detached HEAD"}`);
 }
 
-if (requestedTag) {
+if (tagCheckRequested && !requestedTag?.trim()) {
+  failures.push("--tag requires the exact annotated v<package-version> value");
+} else if (requestedTag) {
   if (requestedTag !== `v${manifest.version}`) {
     failures.push(`release tag ${requestedTag} does not match package version ${manifest.version}`);
   } else {

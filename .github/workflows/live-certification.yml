@@ -3,6 +3,10 @@ name: Live provider certification
 on:
   workflow_dispatch:
     inputs:
+      tag:
+        description: Annotated vX.Y.Z tag; must match package.json and resolve to main
+        required: true
+        type: string
       providers:
         description: Comma-separated certified providers; keep the default for full release evidence
         required: true
@@ -13,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: live-provider-certification-${{ github.ref }}
+  group: live-provider-certification-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -23,25 +27,16 @@ jobs:
     environment: live-certification
 
     env:
+      RELEASE_TAG: ${{ inputs.tag }}
       ZHIVEX_HARNESS_LIVE: "1"
       ZHIVEX_HARNESS_LIVE_PROVIDERS: ${{ inputs.providers }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-      MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
-      DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
-      QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
-      META_BASE_URL: ${{ secrets.META_BASE_URL }}
-      QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
-      QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
-      QWEN_REGION: ${{ secrets.QWEN_REGION }}
-      OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
-      GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Bun
@@ -58,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Verify exact annotated release target
+        run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG"
+
       - name: Preload OCI execution image
         run: docker pull node:24-bookworm-slim
 
@@ -72,3 +70,16 @@ jobs:
           bun run smoke:live:orchestration
           bun run smoke:live:routing
           bun run smoke:live:execution
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}

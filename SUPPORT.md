@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `0.10.x` is a pre-1.0 Node-first CLI and TypeScript library. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The source checkout may be a release candidate newer than the latest public npm artifact.
+Zhivex Harness `0.11.x` is the latest supported pre-1.0 Node-first CLI and TypeScript library. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The mutable machine-readable public release state is recorded in the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), outside immutable npm artifacts.
 
 ## Supported baseline
 
@@ -11,7 +11,7 @@ Zhivex Harness `0.10.x` is a pre-1.0 Node-first CLI and TypeScript library. Obse
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published patch receives routine fixes. Meta and Qwen retain their date-bound certification, OpenAI GPT-5.6 has local `0.8.0` base-gate evidence, and Gemini remains provisional until the complete harness live matrix passes. Live provider evidence is account-, model-, endpoint-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Only the most recent published `0.11.x` patch receives routine fixes. The exact `v0.11.0` tag source has date-bound local base and orchestration evidence for Meta, Qwen, and OpenAI plus OpenAI-to-Qwen routing evidence. Release-bound remote execution evidence remains pending, and Gemini remains provisional until its complete harness live matrix passes. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Support channels
 
