@@ -176,6 +176,9 @@ describe("CLI parsing", () => {
       "review",
       "--mcp-config",
       "harness.mcp.json",
+      "--context-config",
+      ".zhivex/custom.json",
+      "--no-project-context",
       "--require-capability",
       "tools",
       "--subagent",
@@ -189,6 +192,8 @@ describe("CLI parsing", () => {
     ])).toMatchObject({
       command: "review",
       mcpConfigPath: "harness.mcp.json",
+      contextConfigPath: ".zhivex/custom.json",
+      projectContext: false,
       requiredCapabilities: ["tools"],
       subagentProfiles: ["explorer"],
       reviewers: ["reviewer"],
@@ -214,6 +219,8 @@ describe("CLI parsing", () => {
       "npm",
       "--oci-allow-command",
       "git",
+      "--oci-shell",
+      "ask",
       "--oci-max-memory-mb",
       "512",
       "--oci-max-pids",
@@ -225,12 +232,15 @@ describe("CLI parsing", () => {
       ociRuntime: "podman",
       ociImage: "example/harness@sha256:fixture",
       ociAllowedCommands: ["node", "npm", "git"],
+      ociShellMode: "ask",
       ociMaxMemoryMb: 512,
       ociMaxPids: 64,
       prompt: "isolated task"
     });
     expect(() => parseCliArgs(["run", "--oci-allow-command", "../sh", "task"]))
       .toThrow("bare executable");
+    expect(() => parseCliArgs(["run", "--oci-shell", "allow", "task"]))
+      .toThrow("deny or ask");
   });
 
   test("rejects ambiguous or unknown options", () => {
@@ -420,7 +430,7 @@ describe("temporary chat profiles", () => {
 });
 
 describe("approval review", () => {
-  test("shows complete patch proposals while bounding unrelated approval arguments", () => {
+  test("shows complete governed payloads while bounding unknown approval arguments", () => {
     const argumentsText = JSON.stringify({ content: "x".repeat(2000) });
     const patchSummary = summarizeApproval({
       kind: "local-tool",
@@ -432,10 +442,16 @@ describe("approval review", () => {
       name: "run_check",
       arguments: argumentsText
     } as never);
+    const unknownSummary = summarizeApproval({
+      kind: "provider",
+      name: "unknown_remote_tool",
+      arguments: argumentsText
+    } as never);
 
-    expect(patchSummary).toContain(argumentsText);
-    expect(checkSummary).toContain("…");
-    expect(checkSummary).not.toContain(argumentsText);
+    expect(patchSummary).toContain("x".repeat(2000));
+    expect(checkSummary).toContain("x".repeat(2000));
+    expect(unknownSummary).toContain("characters omitted");
+    expect(unknownSummary).not.toContain("x".repeat(2000));
   });
 
   test("persists the complete OCI policy for a locator-only resume command", async () => {
@@ -452,6 +468,7 @@ describe("approval review", () => {
         ociRuntime: "podman",
         ociImage: "example/harness@sha256:fixture",
         ociAllowedCommands: ["npm", "git"],
+        ociShellMode: "ask",
         ociMaxProcessRuntimeMs: 42_000,
         ociMaxProcessOutputBytes: 12_345,
         ociMaxMemoryMb: 512,

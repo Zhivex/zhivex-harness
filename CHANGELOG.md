@@ -4,6 +4,30 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 0.11.0 - 2026-08-21
+
+### Added
+
+- Add a dependency-free terminal presentation layer with sanitized/redacted activity events, complete governed approval cards, and `y`/`n`/`v`/`q` decision handling that never partially resolves a durable approval batch.
+- Add `/pending`, `/approve`, and `/deny` so a recovered chat session can inspect and resolve its durable approval without leaving the console; persisted provider, routing, context, and OCI policy are restored before resumption.
+- Add bounded project context/rule discovery, progressive `SKILL.md` disclosure, and version-bound trusted application lifecycle hooks. Repository configuration cannot register executable host hooks.
+- Add opt-in `run_environment_shell` through `--execution oci --oci-shell ask`. The exact script is approval-bound and interpreted only by `sh` inside the no-network OCI snapshot; host mutation still requires the separate content-bound import approval.
+
+### Changed
+
+- Advance resolved config schema to `5` and the OCI execution-policy fingerprint to `2026-08-21-v4`; complete paused `0.10.0` work with the published artifact rather than rebinding it to the changed tool/context surface.
+
+### Migration from 0.10.x
+
+- Change schema-version-pinned configuration from `schemaVersion: 4` to `5`. Existing SQLite state remains readable, but paused approvals created by `0.10.x` must be completed or denied with the matching `0.10.x` artifact because context, hook, tool, and execution-policy fingerprints changed.
+- Await `harness.close()` in library cleanup paths. Lifecycle hooks can make shutdown asynchronous even when no execution environment is active.
+- Project context discovery is enabled by default. Use `--no-project-context` or `projectContext: false` when an embedding must ignore repository instructions; malformed explicit context manifests fail before provider execution.
+- OCI shell syntax remains opt-in. Existing OCI configurations keep `shellMode: "deny"`; set `--oci-shell ask` or `shellMode: "ask"` only when exact-script approval inside the no-network container is intended.
+
+### Security
+
+- Shell remains `deny` by default, is unavailable without OCI, never inherits host environment variables, and does not enable container networking. Command entrypoint lists do not claim to constrain every descendant process spawned inside the container.
+
 ## 0.10.0 - 2026-08-21
 
 ### Changed

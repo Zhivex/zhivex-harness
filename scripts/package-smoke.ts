@@ -82,6 +82,7 @@ try {
     "package/SECURITY.md",
     "package/SUPPORT.md",
     "package/docs/CLI.md",
+    "package/docs/CONTEXT_ENGINEERING.md",
     "package/docs/DURABLE_OPERATIONS.md",
     "package/docs/EXTENSIBILITY.md",
     "package/docs/CHANGE_ENVELOPES.md",
@@ -361,7 +362,7 @@ const restartedHarness = await createHarness({
     ]]
   })
 });
-assert.equal(restartedHarness.config.schemaVersion, 4);
+assert.equal(restartedHarness.config.schemaVersion, 5);
 assert.deepEqual([...restartedHarness.subagents.keys()], ["explorer", "implementer", "tester", "reviewer"]);
 assert.equal(inspectHarnessModelCapabilities(restartedHarness.agent.model).capabilities.tools, true);
 const checkpoint = await restartedHarness.store.load(bunCreatedRun.runId, restartedHarness.config.scope);

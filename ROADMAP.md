@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-21
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.9.0` are published on npm. `0.10.0` is the source candidate for a Node-first public runtime and package-manager-neutral repository checks; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.10.0` are published on npm. Version `0.11.0` is the local source release candidate for interactive operation, context engineering, and opt-in OCI shell workflows; publication and release certification remain separate operations. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -43,7 +43,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.7.0` | Multi-provider agent console | Durable sessions, extensible providers, safe role routing, and automation events | Published on npm | L |
 | `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Published on npm | M |
 | `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Published on npm | L |
-| `0.10.0` | Node-first portability | Node CLI/library, portable SQLite/processes, manager-aware checks, and Node OCI | Source candidate | L |
+| `0.10.0` | Node-first portability | Node CLI/library, portable SQLite/processes, manager-aware checks, and Node OCI | Published on npm | L |
+| `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Local release candidate | L |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -290,7 +291,7 @@ Exit criteria:
 
 ## 0.10.0 — Node-first runtime portability
 
-Status: source candidate. The full deterministic suite, evaluation, documentation, npm-installed exact-tarball smoke, direct Node/Bun imports, Bun-created approval resume under Node, and required real-Docker OCI boundary gate pass locally. The Node 22/24 CI matrix, live providers, clean release gate, tag, registry, and provenance remain separate.
+Status: published on npm with the `v0.10.0` tag. Later source work is not covered by that release's artifact or provenance evidence.
 
 Goal: remove Bun as an installation prerequisite without weakening governed execution or forcing target repositories to adopt one package manager.
 
@@ -309,6 +310,25 @@ Exit criteria:
 - Host and OCI checks cover npm by default plus explicit Bun, ambiguous lockfiles, stale script text, hidden lifecycle hooks, timeouts, cancellation, and bounded output.
 - Linux real-OCI validation passes on the preloaded Node 24 image with unchanged network/rootfs/resource/patch-import guarantees.
 - Documentation, typecheck, full tests, evaluation, build, package inspection, installed-artifact smoke, release checks, live matrix, tag, registry integrity, and provenance are closed independently.
+
+## 0.11.0 — daily-driver foundations
+
+Status: local source release candidate. It is not yet tagged or published as a new artifact.
+
+Goal: make the governed runtime practical for daily interactive work without giving repository content or shell syntax authority over host policy.
+
+Scope:
+
+- Render redacted step/tool activity and safe approval cards, and resolve recovered approvals from the durable chat console with `/pending`, `/approve`, and `/deny`.
+- Load bounded root/project context and rules, expose a metadata-only skill catalog, and load skill instructions progressively instead of injecting every skill into the initial prompt.
+- Add trusted application lifecycle hooks identified by version in the harness binding; repository manifests never introduce executable host hooks.
+- Expose full shell syntax only behind explicit `--execution oci --oci-shell ask`, with exact-script approval, denied container network, resource limits, and separate host patch-import approval.
+- Keep semantic search, IDE clients, remote workers, executable project hooks, and network-enabled sandbox profiles as later independently governed tracks.
+
+Exit criteria:
+
+- TTY, no-color, approval-resume, context traversal/symlink, skill disclosure, hook redaction/failure, and OCI shell policy regressions pass.
+- The full deterministic, package, and real-OCI gates pass from a clean commit before any release number, tag, or publication is claimed.
 
 ## 1.0.0 — Stable CLI and library contract
 
@@ -355,8 +375,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Complete the `0.10.0` Node-first source gate and inspect every runtime-facing diff, compatibility export, documentation contract, and lockfile change.
-2. Run required real-OCI validation against `node:24-bookworm-slim` plus installed-artifact smokes under Node 22/24 and secondary Bun import coverage.
-3. Dogfood npm, pnpm, Yarn, and Bun repositories, including ambiguous lockfiles, lifecycle hooks, custom OCI images, and durable state created by `0.9.x`.
-4. Complete the provider live matrices affected by the new OCI controller; keep uncertified paths provisional on any failure or missing evidence.
-5. Only after those gates, date the changelog, create the annotated tag, dispatch the reviewed release workflow, and verify registry integrity and provenance against the exact artifact.
+1. Review and commit the exact `0.11.0` source candidate on `main`, then require clean Linux/macOS CI and Node 22.13/24 artifact compatibility.
+2. Run the required real-OCI gate against `node:24-bookworm-slim` plus installed-artifact smoke coverage for terminal, context, lifecycle-hook, and OCI shell exports.
+3. Complete the provider live matrices affected by the changed context/tool fingerprint; keep any missing or failed path outside the certified release evidence.
+4. Create annotated tag `v0.11.0` from the reviewed release commit and dispatch the protected workflow only after confirming npm still lacks that immutable version.
+5. Verify the exact published tarball, `latest` tag, integrity, and SLSA provenance before calling `0.11.0` released.

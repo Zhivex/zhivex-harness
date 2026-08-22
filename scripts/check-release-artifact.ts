@@ -84,6 +84,7 @@ for (const required of [
   "package/SUPPORT.md",
   "package/docs/RELEASE.md",
   "package/docs/EXTENSIBILITY.md",
+  "package/docs/CONTEXT_ENGINEERING.md",
   "package/docs/CHANGE_ENVELOPES.md",
   "package/evaluations/golden-expectations.json",
   "package/examples/mcp-config.json",

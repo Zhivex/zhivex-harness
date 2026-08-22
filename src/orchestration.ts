@@ -37,7 +37,7 @@ export const HARNESS_SUBAGENT_PROFILE_DESCRIPTORS: readonly HarnessSubagentProfi
     toolName: "delegate_explorer",
     description: "Delegate bounded repository discovery to a read-only explorer.",
     instructions: "Inspect the repository with read-only tools. Return evidence with paths and concrete findings. Never propose or perform mutations.",
-    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "git_diff"]
+    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "load_skill", "git_diff"]
   },
   {
     id: "implementer",
@@ -51,14 +51,14 @@ export const HARNESS_SUBAGENT_PROFILE_DESCRIPTORS: readonly HarnessSubagentProfi
     toolName: "delegate_tester",
     description: "Delegate focused verification to a tester with read-only inspection and approved package-manager checks.",
     instructions: "Verify the delegated behavior with repository evidence and declared package-manager checks. Do not edit files. Report exact failures and limits.",
-    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "run_check", "git_diff"]
+    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "load_skill", "run_check", "git_diff"]
   },
   {
     id: "reviewer",
     toolName: "delegate_reviewer",
     description: "Delegate an independent read-only review of correctness, safety, and regressions.",
     instructions: "Review the requested scope independently. Inspect concrete code and diffs, prioritize actionable defects, and do not mutate the workspace.",
-    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "mutation_audit", "git_diff"]
+    toolNames: ["list_files", "read_file", "read_files", "search_files", "search_many", "load_skill", "mutation_audit", "git_diff"]
   }
 ] as const;
 
@@ -123,6 +123,7 @@ export const createHarnessSubagents = (options: {
   store: AgentRunStore;
   memory?: AgentMemoryStore;
   onTelemetryEvent?: AgentTelemetryObserver;
+  contextInstructions?: string;
 }): HarnessSubagentRuntime => {
   const definitions: AgentSubAgentDefinition<LanguageModel>[] = [];
   const agents = new Map<HarnessSubagentProfile, AgentDefinition<LanguageModel>>();
@@ -135,7 +136,7 @@ export const createHarnessSubagents = (options: {
     const baseAgent: AgentDefinition<LanguageModel> = {
       id: `zhivex-harness-${profileId}`,
       model,
-      instructions: descriptor.instructions,
+      instructions: `${descriptor.instructions}${options.contextInstructions ? `\n\n${options.contextInstructions}` : ""}`,
       maxSteps: options.config.orchestration.childBudget.maxSteps,
       tools: selectedTools,
       harness: childHarnessBinding(options.parentBinding, profileId, model, selectedToolNames, options.config),

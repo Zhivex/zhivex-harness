@@ -41,6 +41,7 @@ try {
     executionBackend: "oci",
     ociImage: process.env.ZHIVEX_HARNESS_OCI_IMAGE,
     ociAllowedCommands: ["node", "npm"],
+    ociShellMode: "ask",
     ociMaxProcessRuntimeMs: 30_000,
     ociMaxMemoryMb: 256,
     ociMaxPids: 32,
@@ -108,6 +109,12 @@ try {
   assert.match(batch.stdout, /oci-batch-first/);
   assert.match(batch.stdout, /oci-batch-second/);
 
+  const shell = await session.runShell(
+    "test -z \"${SMOKE_SECRET+x}\" && printf 'oci-shell-ok\\n' | tr '[:lower:]' '[:upper:]'"
+  );
+  assert.equal(shell.exitCode, 0, shell.stderr || shell.stdout);
+  assert.match(shell.stdout, /OCI-SHELL-OK/);
+
   const warmStatus = await session.status();
   assert.deepEqual(
     {
@@ -118,8 +125,8 @@ try {
     },
     {
       containerStarts: 1,
-      containerReuses: 3,
-      workspacePublishes: 4,
+      containerReuses: 4,
+      workspacePublishes: 5,
       workspaceExports: 1
     }
   );
