@@ -6,6 +6,7 @@ export {
   HARNESS_EXECUTION_BACKENDS,
   HARNESS_EXECUTION_POLICY_VERSION,
   HARNESS_OCI_RUNTIMES,
+  HARNESS_OCI_SHELL_MODES,
   HARNESS_REQUIRED_CAPABILITIES,
   HARNESS_SUBAGENT_PROFILES,
   BUILTIN_PROVIDER_REGISTRATIONS,
@@ -24,12 +25,14 @@ export type {
   BuiltInHarnessProvider,
   HarnessBudget,
   HarnessCompactionConfig,
+  HarnessContextConfig,
   HarnessConfig,
   HarnessConfigInput,
   HarnessCostBudget,
   HarnessExecutionBackend,
   HarnessExecutionConfig,
   HarnessOciRuntime,
+  HarnessOciShellMode,
   HarnessOrchestrationConfig,
   HarnessProvider,
   HarnessProviderRegistry,
@@ -66,6 +69,22 @@ export {
   streamResultDocument
 } from "./cli-stream.js";
 export type { StreamRunResultSource } from "./cli-stream.js";
+
+export {
+  DEFAULT_APPROVAL_SUMMARY_CHARACTERS,
+  formatApproval,
+  formatTerminalEvent,
+  formatTerminalHeader,
+  resolveTerminalApprovals,
+  sanitizeTerminalText,
+  terminalSupportsColor
+} from "./terminal-ui.js";
+export type {
+  ApprovalFormatOptions,
+  TerminalAppearanceOptions,
+  TerminalApprovalResolverOptions,
+  TerminalHeaderInput
+} from "./terminal-ui.js";
 
 export {
   HARNESS_SESSION_INDEX_FILE,
@@ -275,6 +294,43 @@ export type {
   HarnessRunOptions,
   ZhivexHarness
 } from "./harness.js";
+
+export {
+  DEFAULT_HARNESS_CONTEXT_MANIFEST,
+  DEFAULT_HARNESS_PROJECT_INSTRUCTIONS,
+  HARNESS_CONTEXT_BUNDLE_SCHEMA_VERSION,
+  HARNESS_CONTEXT_CONFIG_SCHEMA_VERSION,
+  HARNESS_LIFECYCLE_EVENTS,
+  MAX_HARNESS_CONTEXT_FILES,
+  MAX_HARNESS_CONTEXT_FILE_BYTES,
+  MAX_HARNESS_CONTEXT_TOTAL_BYTES,
+  MAX_HARNESS_SKILLS,
+  MAX_HARNESS_SKILL_DIRECTORIES,
+  MAX_HARNESS_SKILL_FILE_BYTES,
+  createEmptyHarnessContextBundle,
+  createHarnessLifecycleDispatcher,
+  harnessContextConfigurationSchema,
+  harnessContextFingerprintInput,
+  harnessLifecycleFingerprintInput,
+  harnessSkillLoadInputSchema,
+  isHarnessContextDigest,
+  loadHarnessProjectContext,
+  loadHarnessSkill,
+  renderHarnessContextInstructions
+} from "./context-engineering.js";
+export type {
+  HarnessContextBundle,
+  HarnessContextConfiguration,
+  HarnessContextManifestIdentity,
+  HarnessContextSource,
+  HarnessLifecycleEvent,
+  HarnessLifecycleEventName,
+  HarnessLifecycleHookFailure,
+  HarnessLifecycleHookRegistration,
+  HarnessLoadedSkill,
+  HarnessSkillIndexEntry,
+  LoadHarnessProjectContextOptions
+} from "./context-engineering.js";
 
 export { Workspace } from "./workspace.js";
 export type {

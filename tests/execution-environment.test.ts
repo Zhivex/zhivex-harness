@@ -126,6 +126,48 @@ const workspaceFixture = async () => {
 };
 
 describe("enforced OCI execution environment", () => {
+  test("exposes an approval-gated shell only when explicitly enabled", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const config = resolveHarnessConfig({
+      workspace: root,
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"],
+      ociShellMode: "ask"
+    });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "shell-policy-run" });
+    const tools = createExecutionEnvironmentTools(workspace, config.execution);
+
+    expect(tools.run_environment_shell).toMatchObject({
+      requiresApproval: true,
+      approvalMode: "interrupt"
+    });
+    const result = await tools.run_environment_shell!.execute({
+      script: "node --version && npm --version"
+    }, { executionEnvironment: session } as never);
+    expect(result).toMatchObject({ exitCode: 0 });
+    expect(runtime.requests.at(-1)?.command).toEqual([
+      "sh",
+      "-lc",
+      "node --version && npm --version",
+      "zhivex-harness"
+    ]);
+    expect(environment.manifest.permissions?.network?.mode).toBe("deny");
+    expect(environment.manifest.permissions?.process?.shell).toBe("allow");
+    await session.release?.({ status: "completed" });
+
+    const denied = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (denied.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    expect(createExecutionEnvironmentTools(workspace, denied.execution)).not.toHaveProperty("run_environment_shell");
+  });
+
   test("keeps the per-run controller alive without a cumulative deadline", async () => {
     expect(OCI_SESSION_CONTROLLER_SCRIPT).toContain("setInterval");
     expect(OCI_SESSION_CONTROLLER_SCRIPT).not.toContain("sleep");
@@ -508,7 +550,7 @@ describe("enforced OCI execution environment", () => {
       ["npm", "--version"],
       ["node", "--version"]
     ]);
-    harness.close();
+    await harness.close();
   });
 
   test("binds and imports executable modes, including mode-only changes", async () => {
@@ -783,7 +825,7 @@ describe("enforced OCI execution environment", () => {
     const childState = child ? await store.load(child.runId, harness.config.scope) : undefined;
     expect(childState?.executionEnvironment).toEqual(completed.state.executionEnvironment);
     await expect(readFile(path.join(root, "child-generated.txt"), "utf8")).rejects.toThrow();
-    harness.close();
+    await harness.close();
   });
 
   test("rejects MCP before discovery when the enforced boundary is active", async () => {

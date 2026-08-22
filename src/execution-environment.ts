@@ -61,6 +61,7 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "read_files",
   "search_files",
   "search_many",
+  "load_skill",
   "propose_edits",
   "apply_patch",
   "apply_reviewed_edits",
@@ -72,6 +73,7 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "git_diff",
   "run_environment_command",
   "run_environment_batch",
+  "run_environment_shell",
   "inspect_environment_patch",
   "apply_environment_patch",
   "verify_and_apply_environment_patch",
@@ -1509,6 +1511,7 @@ export interface HarnessExecutionSession extends AgentExecutionEnvironmentSessio
     commands: readonly { command: string; args: readonly string[] }[],
     context?: ToolExecutionContext
   ): Promise<HarnessCommandResult>;
+  runShell(script: string, context?: ToolExecutionContext): Promise<HarnessCommandResult>;
   runCheck(check: string, expectedScript: string, allowedChecks: readonly string[], context?: ToolExecutionContext): Promise<HarnessCommandResult>;
   inspectPatch(): Promise<EnvironmentPatchInspection>;
   importPatch(host: Workspace, patchId: FileDigest): Promise<EnvironmentPatchImportResult>;
@@ -1559,7 +1562,10 @@ export const createHarnessOciExecutionEnvironment = async (
       undeclaredTools: "deny",
       filesystem: "read-write",
       network: { mode: "deny", allowedDomains: [], allowedPorts: [], allowPrivateNetworks: false },
-      process: { shell: "allowlist", allowedCommands: [...options.config.allowedCommands] },
+      process: {
+        shell: options.config.shellMode === "ask" ? "allow" : "allowlist",
+        allowedCommands: [...options.config.allowedCommands]
+      },
       environment: { inheritedVariables: [] }
     },
     limits: {
@@ -1585,7 +1591,8 @@ export const createHarnessOciExecutionEnvironment = async (
       containerLifecycle: "warm-per-acquired-run",
       failedCommandRecovery: "discard-and-reseed",
       patchImportApproval: true,
-      hostMutationMode: "reviewed-environment-patch"
+      hostMutationMode: "reviewed-environment-patch",
+      shellMode: options.config.shellMode
     }
   };
   const binding = createAgentExecutionEnvironmentBinding(manifest);
@@ -1765,6 +1772,21 @@ export const createHarnessOciExecutionEnvironment = async (
           timedOut: results.some((result) => result.timedOut)
         };
       };
+      const runShell = async (
+        script: string,
+        context?: ToolExecutionContext
+      ): Promise<HarnessCommandResult> => {
+        if (options.config.shellMode !== "ask") {
+          throw new Error("OCI shell execution is denied by policy.");
+        }
+        if (!script || script.length > 16_384 || script.includes("\0")) {
+          throw new Error("OCI shell script must contain between 1 and 16384 characters without NUL bytes.");
+        }
+        return normalizeResult(await runtime.run({
+          ...sharedRunRequest(context),
+          command: ["sh", "-lc", script, "zhivex-harness"]
+        }));
+      };
       const session: HarnessExecutionSession = {
         kind: "zhivex-oci",
         runId: request.runId,
@@ -1780,6 +1802,18 @@ export const createHarnessOciExecutionEnvironment = async (
             const input = authorization.input as { command?: unknown; args?: unknown };
             if (typeof input.command !== "string" || !options.config.allowedCommands.includes(input.command)) {
               return { decision: "deny", reason: "The requested OCI executable is not allowlisted." };
+            }
+          }
+          if (name === "run_environment_shell") {
+            const input = authorization.input as { script?: unknown };
+            if (
+              options.config.shellMode !== "ask" ||
+              typeof input.script !== "string" ||
+              input.script.length < 1 ||
+              input.script.length > 16_384 ||
+              input.script.includes("\0")
+            ) {
+              return { decision: "deny", reason: "OCI shell execution is denied or the script is invalid." };
             }
           }
           if (name === "verify_and_apply_environment_patch" || name === "verify_and_apply_reviewed_edits") {
@@ -1853,6 +1887,7 @@ export const createHarnessOciExecutionEnvironment = async (
         },
         runCommand,
         runCommandBatch,
+        runShell,
         async runCheck(check, expectedScript, allowedChecks, context) {
           let manifestDocument: { packageManager?: unknown; scripts?: unknown };
           try {

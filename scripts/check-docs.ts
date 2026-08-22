@@ -497,7 +497,7 @@ if (manifest.version.startsWith("0.9.")) {
   }
 }
 
-if (manifest.version.startsWith("0.10.")) {
+if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")) {
   const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
   const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
   const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
@@ -648,8 +648,80 @@ if (manifest.version.startsWith("0.10.")) {
   if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
     failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
   }
-  if (!roadmap.includes("`0.10.0` is the source candidate")) {
-    failures.push("ROADMAP.md must identify the 0.10.0 Node-first source candidate.");
+  if (!roadmap.includes("`0.5.0` through `0.10.0` are published on npm")) {
+    failures.push("ROADMAP.md must identify 0.10.0 as a published Node-first release.");
+  }
+}
+
+if (manifest.version.startsWith("0.11.")) {
+  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const contextEngineering = await readFile(
+    path.join(workspace, "docs", "CONTEXT_ENGINEERING.md"),
+    "utf8"
+  );
+  const executionEnvironments = await readFile(
+    path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"),
+    "utf8"
+  );
+  const contextSource = await readFile(path.join(workspace, "src", "context-engineering.ts"), "utf8");
+  const terminalSource = await readFile(path.join(workspace, "src", "terminal-ui.ts"), "utf8");
+  const harnessSource = await readFile(path.join(workspace, "src", "harness.ts"), "utf8");
+
+  for (const heading of [
+    "## Discovery and precedence",
+    "## Progressive skills",
+    "## Lifecycle hooks",
+    "## Durable compatibility"
+  ]) {
+    if (!contextEngineering.includes(heading)) {
+      failures.push(`docs/CONTEXT_ENGINEERING.md is missing ${heading}.`);
+    }
+  }
+  for (const required of [
+    "/pending",
+    "/approve",
+    "/deny",
+    "--no-project-context",
+    "--oci-shell <deny|ask>"
+  ]) {
+    if (!cli.includes(required)) failures.push(`docs/CLI.md is missing the 0.11.x contract text: ${required}.`);
+  }
+  for (const required of ["2026-08-21-v4", "run_environment_shell", "sh -lc", "host import approval"]) {
+    if (!executionEnvironments.includes(required)) {
+      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.11.x contract text: ${required}.`);
+    }
+  }
+  for (const required of [
+    "HARNESS_CONTEXT_CONFIG_SCHEMA_VERSION = 1",
+    "loadHarnessProjectContext",
+    "loadHarnessSkill",
+    "createHarnessLifecycleDispatcher"
+  ]) {
+    if (!contextSource.includes(required)) failures.push(`0.11.x context source is missing ${required}.`);
+  }
+  for (const required of [
+    "sanitizeTerminalText",
+    "formatApproval",
+    "resolveTerminalApprovals",
+    "formatTerminalEvent"
+  ]) {
+    if (!terminalSource.includes(required)) failures.push(`0.11.x terminal source is missing ${required}.`);
+  }
+  for (const required of ["load_skill", "run_environment_shell", "lifecycleHooks"]) {
+    if (!harnessSource.includes(required)) failures.push(`0.11.x harness source is missing ${required}.`);
+  }
+  if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 5")) {
+    failures.push("0.11.x must identify configuration schema version 5.");
+  }
+  if (!providerConfig.includes('HARNESS_EXECUTION_POLICY_VERSION = "2026-08-21-v4"')) {
+    failures.push("0.11.x must bind the v4 OCI execution policy.");
+  }
+  const releaseHeading = findReleaseChangelogHeading(changelog, manifest.version);
+  if (!releaseHeading || releaseHeading.kind !== "dated" || !changelog.includes("### Migration from 0.10.x")) {
+    failures.push(`CHANGELOG.md must include a dated ${manifest.version} heading and migration from 0.10.x.`);
+  }
+  if (!roadmap.includes("`0.11.0` is the local source release candidate")) {
+    failures.push("ROADMAP.md must identify 0.11.0 as the local source release candidate.");
   }
 }
 

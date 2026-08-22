@@ -125,6 +125,12 @@ Applications constructing the harness can inject a `HarnessOciRuntimeAdapter` fo
 
 The `0.10.x` execution policy advances to `2026-08-21-v3`, changes the default image from Bun to Node 24, and makes repository checks package-manager-aware. Complete paused `0.9.x` environment approvals with their original artifact; the changed image, allowlist, controller, and policy fingerprint intentionally prevent a silent resume under `0.10.x`. Durable SQLite state remains readable without conversion.
 
+## Migration from 0.10.x
+
+Version `0.11.x` advances the execution policy to `2026-08-21-v4` and configuration schema to `5`. Existing OCI configuration retains `shellMode: "deny"`; opt into `"ask"` only when exact-script approval inside the denied-network environment is intended.
+
+Complete or deny paused `0.10.x` environment approvals with their original artifact. The new shell tool, context binding, and policy fingerprint intentionally prevent silent resume under a different authority surface; durable SQLite state remains readable without conversion.
+
 ## Certification
 
 The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate and combined approvals, failed-verifier non-import, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
@@ -138,6 +144,14 @@ The deterministic tests use an injected runtime to cover acquisition, secret exc
 Provider certification is separate and billable. The live workflow runs the required OCI gate before the model-directed Meta, Qwen, and OpenAI matrices. A deterministic OCI pass does not by itself certify a provider, and live provider success does not replace exact installed-artifact or published-registry proof.
 
 ## Known limits
+
+### 0.11.x opt-in shell policy
+
+Version `0.11.x` advances the execution policy to `2026-08-21-v4` and adds `--oci-shell deny|ask`. `deny` is the default and does not expose a shell tool. `ask` exposes `run_environment_shell`; the exact script is included in the durable approval payload and is passed as one argument to `sh -lc` by the OCI controller. The host process never parses the script.
+
+The shell shares the same ephemeral snapshot, denied network, empty inherited environment, non-root identity, read-only root filesystem, resource ceilings, failure discard/reseed behavior, and distinct content-bound host import approval as argv commands. `--yes` may resolve an exposed `ask` approval, but cannot turn `deny` into an enabled shell.
+
+`allowedCommands` is an entrypoint policy, not a seccomp-style descendant-process policy: an allowed runtime such as `node` or `npm` can itself spawn child processes inside the container. Network-enabled shell profiles remain unsupported until egress can be enforced below the process rather than merely declared.
 
 - Docker and Podman use different host security implementations; current gates certify behavior, not identical internals.
 - The default Node image and read-only host `node_modules` mount optimize npm-managed JavaScript/TypeScript checks. pnpm, Yarn, Bun, and other ecosystems need an explicit Node-capable image and executable allowlist, and dependencies should be prepared without exposing secrets.

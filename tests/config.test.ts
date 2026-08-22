@@ -26,7 +26,8 @@ describe("provider configuration", () => {
         profiles: ["explorer", "implementer", "tester", "reviewer"],
         childBudget: { maxSteps: 8, maxToolCalls: 16, maxTotalTokens: 36_000 },
         maxParallelReviews: 2
-      }
+      },
+      context: { enabled: true }
     });
     expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.6-luna");
@@ -56,6 +57,9 @@ describe("provider configuration", () => {
     expect(() => resolveHarnessConfig({ requiredCapabilities: ["telepathy"] })).toThrow("Unknown required capability");
     expect(() => resolveHarnessConfig({ subagentProfiles: ["deployer"] })).toThrow("Unknown subagent profile");
     expect(() => resolveHarnessConfig({ subagentMaxInputTokens: 50, subagentMaxTotalTokens: 10 })).toThrow("subagentMaxTotalTokens");
+    expect(resolveHarnessConfig({ projectContext: false }).context.enabled).toBe(false);
+    expect(() => resolveHarnessConfig({ contextConfigPath: "../outside.json" }))
+      .toThrow("inside the workspace");
   });
 
   test("resolves a bounded no-network OCI policy and rejects unsafe execution configuration", () => {
@@ -63,13 +67,15 @@ describe("provider configuration", () => {
       backend: "oci",
       policyVersion: HARNESS_EXECUTION_POLICY_VERSION,
       image: "node:24-bookworm-slim",
-      allowedCommands: ["node", "npm"]
+      allowedCommands: ["node", "npm"],
+      shellMode: "deny"
     });
     expect(resolveHarnessConfig({
       executionBackend: "oci",
       ociRuntime: "podman",
       ociImage: "registry.example/zhivex-node@sha256:fixture",
       ociAllowedCommands: ["npm", "git", "npm"],
+      ociShellMode: "ask",
       ociMaxMemoryMb: 512,
       ociMaxPids: 64
     }).execution).toMatchObject({
@@ -77,11 +83,13 @@ describe("provider configuration", () => {
       runtime: "podman",
       image: "registry.example/zhivex-node@sha256:fixture",
       allowedCommands: ["npm", "git"],
+      shellMode: "ask",
       maxMemoryMb: 512,
       maxPids: 64
     });
     expect(() => resolveHarnessConfig({ executionBackend: "host" })).toThrow("executionBackend");
     expect(() => resolveHarnessConfig({ executionBackend: "oci", ociRuntime: "shell" })).toThrow("ociRuntime");
+    expect(() => resolveHarnessConfig({ executionBackend: "oci", ociShellMode: "allow" })).toThrow("ociShellMode");
     expect(() => resolveHarnessConfig({ executionBackend: "oci", ociImage: "-unsafe" })).toThrow("ociImage");
     expect(resolveHarnessConfig({ executionBackend: "oci", ociAllowedCommands: ["bun"] }).execution)
       .toMatchObject({ allowedCommands: ["bun"] });

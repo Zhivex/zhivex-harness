@@ -88,6 +88,18 @@ import {
   type ChangeEnvelopePreconditions
 } from "./change-envelope.js";
 import { runPortableProcess } from "./process-runtime.js";
+import {
+  DEFAULT_HARNESS_CONTEXT_MANIFEST,
+  loadHarnessProjectContext
+} from "./context-engineering.js";
+import { Workspace } from "./workspace.js";
+import {
+  formatApproval,
+  formatTerminalEvent,
+  formatTerminalHeader,
+  resolveTerminalApprovals,
+  terminalSupportsColor
+} from "./terminal-ui.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -142,6 +154,7 @@ export interface CliOptions {
   ociRuntime?: string;
   ociImage?: string;
   ociAllowedCommands?: string[];
+  ociShellMode?: string;
   ociMaxProcessRuntimeMs?: number;
   ociMaxProcessOutputBytes?: number;
   ociMaxMemoryMb?: number;
@@ -151,6 +164,8 @@ export interface CliOptions {
   ociMaxFileWriteBytes?: number;
   ociTmpfsMb?: number;
   mcpConfigPath?: string;
+  contextConfigPath?: string;
+  projectContext?: boolean;
   prompt?: string;
   runId?: string;
   idempotencyKey?: string;
@@ -240,12 +255,15 @@ const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput => ({
   subagentMaxTotalTokens: config.orchestration.childBudget.maxTotalTokens,
   subagentTimeoutMs: config.orchestration.childTimeoutMs,
   maxParallelReviews: config.orchestration.maxParallelReviews,
+  projectContext: config.context.enabled,
+  contextConfigPath: config.context.configPath,
   executionBackend: config.execution.backend,
   ...(config.execution.backend === "oci"
     ? {
         ociRuntime: config.execution.runtime,
         ociImage: config.execution.image,
         ociAllowedCommands: [...config.execution.allowedCommands],
+        ociShellMode: config.execution.shellMode,
         ociMaxProcessRuntimeMs: config.execution.maxProcessRuntimeMs,
         ociMaxProcessOutputBytes: config.execution.maxProcessOutputBytes,
         ociMaxMemoryMb: config.execution.maxMemoryMb,
@@ -258,6 +276,18 @@ const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput => ({
     : {}),
   ...(config.mcpConfigPath ? { mcpConfigPath: config.mcpConfigPath } : {})
 });
+
+const persistedCliOptions = (input: HarnessConfigInput | undefined): Partial<CliOptions> => input
+  ? {
+      ...input,
+      ...(input.allowedChecks ? { allowedChecks: [...input.allowedChecks] } : {}),
+      ...(input.requiredCapabilities ? { requiredCapabilities: [...input.requiredCapabilities] } : {}),
+      ...(input.subagentProfiles
+        ? { subagentProfiles: [...input.subagentProfiles] as HarnessSubagentProfile[] }
+        : {}),
+      ...(input.ociAllowedCommands ? { ociAllowedCommands: [...input.ociAllowedCommands] } : {})
+    } as Partial<CliOptions>
+  : {};
 
 export const createHarnessResumeMetadata = (
   config: HarnessConfig,
@@ -424,6 +454,13 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.mcpConfigPath = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--context-config":
+        options.contextConfigPath = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--no-project-context":
+        options.projectContext = false;
+        break;
       case "--patch":
         options.patchPath = optionValue(argv, index, argument);
         index += 1;
@@ -463,6 +500,13 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
+      case "--oci-shell":
+        options.ociShellMode = optionValue(argv, index, argument);
+        if (!["deny", "ask"].includes(options.ociShellMode)) {
+          throw new CliUsageError("--oci-shell must be deny or ask.");
+        }
+        index += 1;
+        break;
       case "--store":
         options.storeBackend = optionValue(argv, index, argument);
         index += 1;
@@ -822,6 +866,8 @@ Options:
   --workspace <path>             Target workspace (default: cwd)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
+  --context-config <path>        Project context/rules/skills manifest (default: .zhivex/harness.json)
+  --no-project-context           Disable AGENTS.md and the project context manifest
   --patch <path>                 Exact patch/artifact bytes bound to a change envelope
   --preconditions <path>         Verification preconditions JSON for changes verify
   --now <ISO-8601 UTC>           Explicit millisecond verification time (default: current time)
@@ -829,6 +875,7 @@ Options:
   --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
   --oci-image <reference>        Preloaded immutable-capable OCI image
   --oci-allow-command <name>     Allow one argv executable in OCI; repeatable, include a package manager
+  --oci-shell <deny|ask>         Expose approval-gated sh inside OCI (default: deny)
   --oci-max-process-runtime-ms <n> Per-command timeout (default: 120000)
   --oci-max-process-output-bytes <n> Combined output ceiling (default: 20000)
   --oci-max-memory-mb <n>        Container memory ceiling (default: 1024)
@@ -880,11 +927,7 @@ Credentials:
   Gemini: GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY`;
 
 export const summarizeApproval = (approval: AgentApprovalRequest) => {
-  const mustShowCompleteProposal = approval.name === "apply_patch";
-  const argumentsText = !mustShowCompleteProposal && approval.arguments.length > 1200
-    ? `${approval.arguments.slice(0, 1200)}…`
-    : approval.arguments;
-  return `[${approval.kind ?? "provider"}] ${approval.name}\n${argumentsText}`;
+  return formatApproval(approval);
 };
 
 const approvalResponses = (
@@ -912,19 +955,10 @@ const terminalApprovalResolver = (
   const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
   const question = ask ?? ((text: string) => readline!.question(text));
   try {
-    const responses: AgentApprovalResponse[] = [];
-    for (const approval of approvals) {
-      process.stderr.write(`\nApproval required:\n${summarizeApproval(approval)}\n`);
-      const answer = (await question("Approve? [y/N] ")).trim().toLowerCase();
-      const approve = answer === "y" || answer === "yes";
-      responses.push({
-        provider: approval.provider,
-        approvalRequestId: approval.id,
-        approve,
-        reason: approve ? "Approved interactively." : "Denied by the operator."
-      });
-    }
-    return responses;
+    return await resolveTerminalApprovals(approvals, {
+      ask: question,
+      write: (text) => process.stderr.write(text)
+    });
   } finally {
     readline?.close();
   }
@@ -1046,6 +1080,13 @@ const streamSink = (
   if (!output.json && event.type === "text-delta") {
     tracker.streamedText = true;
     process.stdout.write(event.textDelta);
+    return;
+  }
+  if (!output.json) {
+    const line = formatTerminalEvent(event, {
+      color: terminalSupportsColor(Boolean(process.stderr.isTTY))
+    });
+    if (line) process.stderr.write(`\n${line}\n`);
   }
 };
 
@@ -1136,7 +1177,7 @@ const runOnce = async (options: CliOptions) => {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
   } finally {
-    harness.close();
+    await harness.close();
   }
 };
 
@@ -1191,7 +1232,7 @@ const reviewOnce = async (options: CliOptions) => {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
   } finally {
-    harness.close();
+    await harness.close();
   }
 };
 
@@ -1324,7 +1365,13 @@ const chat = async (options: CliOptions) => {
   try {
     const restored = await latestState(session);
     if (restored) {
-      runtimeOptions = { ...runtimeOptions, provider: restored.provider, model: restored.modelId };
+      const persisted = readHarnessResumeConfig(restored);
+      runtimeOptions = {
+        ...runtimeOptions,
+        ...persistedCliOptions(persisted),
+        provider: restored.provider,
+        model: restored.modelId
+      };
       routes = readHarnessResumeRoutes(restored);
       messages = restored.messages;
     }
@@ -1343,7 +1390,18 @@ const chat = async (options: CliOptions) => {
   };
 
   const hasActiveTurn = async () => {
-    const latest = (await refreshSession()).runs.at(-1);
+    const current = await refreshSession();
+    let latest = current.runs.at(-1);
+    if (latest) {
+      const state = await latestState(current);
+      if (state) {
+        const durableStatus = sessionStatus(state.status);
+        if (latest.status !== durableStatus) {
+          session = await sessionStore.updateRun(session.sessionId, latest.runId, { status: durableStatus });
+          latest = session.runs.at(-1);
+        }
+      }
+    }
     return latest && !["completed", "failed", "cancelled", "timed_out"].includes(latest.status)
       ? latest
       : undefined;
@@ -1355,7 +1413,7 @@ const chat = async (options: CliOptions) => {
     extraProfiles: readonly HarnessSubagentProfile[] = []
   ) => {
     const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes);
-    harness.close();
+    await harness.close();
     harness = created.harness;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
@@ -1376,13 +1434,63 @@ const chat = async (options: CliOptions) => {
 
   const restoreSession = async (selected: CliSession) => {
     const state = await latestState(selected);
+    const persisted = state ? readHarnessResumeConfig(state) : undefined;
     const nextOptions = state
-      ? { ...runtimeOptions, provider: state.provider, model: state.modelId }
+      ? { ...runtimeOptions, ...persistedCliOptions(persisted), provider: state.provider, model: state.modelId }
       : runtimeOptions;
     const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
     await replaceHarness(nextOptions, nextRoutes);
     session = selected;
     messages = state?.messages ?? [];
+  };
+
+  const continuePendingApproval = async (approve: boolean) => {
+    const current = await refreshSession();
+    const state = await latestState(current);
+    if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
+      process.stderr.write("The current session has no pending approval.\n");
+      return;
+    }
+    const tracker = { streamedText: false };
+    session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
+    let result: AgentRunOutput;
+    try {
+      result = await runHarness(
+        harness,
+        {
+          state,
+          approvals: approvalResponses(
+            state.pendingApprovals,
+            approve,
+            approve ? "Approved inline in chat." : "Denied inline in chat."
+          )
+        },
+        {
+          onEvent: streamSink({ json: false, jsonl: false }, tracker),
+          resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+        }
+      );
+    } catch {
+      const durable = await latestState(await refreshSession());
+      session = await sessionStore.updateRun(session.sessionId, state.runId, {
+        status: durable ? sessionStatus(durable.status) : "failed"
+      });
+      process.stderr.write(
+        approve
+          ? `Run ${state.runId} failed while applying the approval; inspect it with runs inspect.\n`
+          : `Run ${state.runId} ended after the denial.\n`
+      );
+      return;
+    }
+    if (!tracker.streamedText && result.outputText) process.stdout.write(result.outputText);
+    if (result.outputText || tracker.streamedText) process.stdout.write("\n");
+    messages = result.messages;
+    session = await sessionStore.updateRun(session.sessionId, state.runId, {
+      status: sessionStatus(result.status)
+    });
+    if (result.status === "waiting_approval") {
+      process.stderr.write(`Run ${state.runId} requires another decision; use /pending, /approve, or /deny.\n`);
+    }
   };
 
   const statusLine = async () => {
@@ -1396,11 +1504,14 @@ const chat = async (options: CliOptions) => {
       `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}`;
   };
 
-  process.stderr.write(
-    `Zhivex Harness ${HARNESS_VERSION} · ${harness.config.provider}/${harness.config.model}\n` +
-    `session ${session.sessionId}\n` +
-    "Type /help for console commands.\n"
-  );
+  process.stderr.write(`${formatTerminalHeader({
+    version: HARNESS_VERSION,
+    provider: harness.config.provider,
+    model: harness.config.model,
+    sessionId: session.sessionId,
+    ...(session.title ? { sessionTitle: session.title } : {})
+  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)) })}\n` +
+    "Type /help for console commands.\n");
 
   try {
     for (;;) {
@@ -1414,7 +1525,7 @@ const chat = async (options: CliOptions) => {
       if (prompt === "/help") {
         process.stderr.write(
           "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
-          "/diff · /review <task> · /resume <last|sessionId> · /compact\n" +
+          "/diff · /review <task> · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
           "/new [title] · /rename <title> · /clear · /exit\n"
         );
         continue;
@@ -1437,6 +1548,21 @@ const chat = async (options: CliOptions) => {
       if (prompt === "/compact") {
         messages = compactHarnessMessages(messages);
         process.stderr.write(`Context compacted to ${messages.length} redacted message(s).\n`);
+        continue;
+      }
+      if (prompt === "/pending") {
+        const state = await latestState(await refreshSession());
+        if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
+          process.stderr.write("The current session has no pending approval.\n");
+        } else {
+          for (const approval of state.pendingApprovals) {
+            process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+          }
+        }
+        continue;
+      }
+      if (prompt === "/approve" || prompt === "/deny") {
+        await continuePendingApproval(prompt === "/approve");
         continue;
       }
       if (prompt === "/provider" || prompt.startsWith("/provider ")) {
@@ -1541,7 +1667,7 @@ const chat = async (options: CliOptions) => {
         const active = await hasActiveTurn();
         process.stderr.write(
           active
-            ? `Session ${session.sessionId} has run ${active.runId} waiting in ${active.status}; use zhx resume ${active.runId} --approve|--deny.\n`
+            ? `Session ${session.sessionId} has run ${active.runId} in ${active.status}; use /pending, /approve, or /deny here.\n`
             : `Resumed session ${session.sessionId}.\n`
         );
         continue;
@@ -1575,7 +1701,7 @@ const chat = async (options: CliOptions) => {
       const active = await hasActiveTurn();
       if (active) {
         process.stderr.write(
-          `Run ${active.runId} is ${active.status}; resolve it with zhx resume ${active.runId} --approve|--deny before a new turn.\n`
+          `Run ${active.runId} is ${active.status}; use /pending, /approve, or /deny before a new turn.\n`
         );
         continue;
       }
@@ -1649,13 +1775,13 @@ const chat = async (options: CliOptions) => {
       });
       if (result.status === "waiting_approval") {
         process.stderr.write(
-          `Run paused: ${result.state.runId}. Resume with zhx resume ${result.state.runId} --approve|--deny.\n`
+          `Run ${result.state.runId} is paused; use /pending, /approve, or /deny here.\n`
         );
       }
     }
   } finally {
     readline.close();
-    harness.close();
+    await harness.close();
     sessionStore.close();
   }
 };
@@ -1709,6 +1835,7 @@ export interface DoctorReport {
     allowedChecks: readonly string[];
     requiredCapabilities: ReturnType<typeof resolveHarnessConfig>["requiredCapabilities"];
     orchestration: ReturnType<typeof resolveHarnessConfig>["orchestration"];
+    context: ReturnType<typeof resolveHarnessConfig>["context"];
     execution: ReturnType<typeof resolveHarnessConfig>["execution"];
     mcpConfigPath?: string;
   };
@@ -2061,6 +2188,39 @@ const inspectExecutionEnvironment = async (
   }
 };
 
+const inspectProjectContext = async (
+  config: ReturnType<typeof resolveHarnessConfig>
+): Promise<DoctorCheck> => {
+  if (!config.context.enabled) {
+    return diagnostic("project-context", "pass", "Project context loading is disabled.", {
+      enabled: false,
+      sources: 0,
+      skills: 0
+    });
+  }
+  try {
+    const workspace = await Workspace.open(config.workspace);
+    const manifestPath = path.relative(config.workspace, config.context.configPath)
+      .split(path.sep)
+      .join("/");
+    const bundle = await loadHarnessProjectContext(workspace, {
+      manifestPath,
+      requireManifest: manifestPath !== DEFAULT_HARNESS_CONTEXT_MANIFEST
+    });
+    return diagnostic("project-context", "pass", "Project context is valid and readable.", {
+      enabled: true,
+      manifestConfigured: bundle.manifest !== undefined,
+      sources: bundle.sources.length,
+      skills: bundle.skills.length
+    });
+  } catch (error) {
+    return diagnostic("project-context", "fail", "Project context cannot be loaded.", {
+      enabled: true,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+};
+
 export const createDoctorReport = async (
   options: Pick<
     CliOptions,
@@ -2097,6 +2257,7 @@ export const createDoctorReport = async (
     | "ociRuntime"
     | "ociImage"
     | "ociAllowedCommands"
+    | "ociShellMode"
     | "ociMaxProcessRuntimeMs"
     | "ociMaxProcessOutputBytes"
     | "ociMaxMemoryMb"
@@ -2106,6 +2267,8 @@ export const createDoctorReport = async (
     | "ociMaxFileWriteBytes"
     | "ociTmpfsMb"
     | "mcpConfigPath"
+    | "contextConfigPath"
+    | "projectContext"
   > = {},
   context: DoctorContext = {}
 ): Promise<DoctorReport> => {
@@ -2195,6 +2358,7 @@ export const createDoctorReport = async (
     ...(env.ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS !== undefined
       ? { ociAllowedCommands: env.ZHIVEX_HARNESS_OCI_ALLOWED_COMMANDS.split(",") }
       : {}),
+    ...(env.ZHIVEX_HARNESS_OCI_SHELL ? { ociShellMode: env.ZHIVEX_HARNESS_OCI_SHELL } : {}),
     ...(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS
       ? { ociMaxProcessRuntimeMs: Number(env.ZHIVEX_HARNESS_OCI_MAX_PROCESS_RUNTIME_MS) }
       : {}),
@@ -2214,6 +2378,8 @@ export const createDoctorReport = async (
       : {}),
     ...(env.ZHIVEX_HARNESS_OCI_TMPFS_MB ? { ociTmpfsMb: Number(env.ZHIVEX_HARNESS_OCI_TMPFS_MB) } : {}),
     ...(env.ZHIVEX_HARNESS_MCP_CONFIG ? { mcpConfigPath: env.ZHIVEX_HARNESS_MCP_CONFIG } : {}),
+    ...(env.ZHIVEX_HARNESS_CONTEXT_CONFIG ? { contextConfigPath: env.ZHIVEX_HARNESS_CONTEXT_CONFIG } : {}),
+    ...(env.ZHIVEX_HARNESS_PROJECT_CONTEXT === "0" ? { projectContext: false } : {}),
     ...options
   });
   const runtime = context.nodeVersion
@@ -2240,6 +2406,7 @@ export const createDoctorReport = async (
   checks.push(await inspectScripts(config.workspace, config.allowedChecks));
   checks.push(await inspectStateDirectory(config.workspace, config.stateDirectory));
   checks.push(await inspectOperationsStore(config.stateDirectory, config.storeBackend));
+  checks.push(await inspectProjectContext(config));
   checks.push(await inspectMcpConfiguration(config.workspace, config.mcpConfigPath));
   checks.push(await inspectExecutionEnvironment(config.execution, context.ociRuntimeAdapter));
 
@@ -2304,6 +2471,7 @@ export const createDoctorReport = async (
       allowedChecks: config.allowedChecks,
       requiredCapabilities: config.requiredCapabilities,
       orchestration: config.orchestration,
+      context: config.context,
       execution: config.execution,
       ...(config.mcpConfigPath ? { mcpConfigPath: config.mcpConfigPath } : {})
     },

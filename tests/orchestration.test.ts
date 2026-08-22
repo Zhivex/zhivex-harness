@@ -57,8 +57,8 @@ describe("bounded orchestration", () => {
       expect(alternate.agent.harness?.fingerprint).not.toBe(harness.agent.harness?.fingerprint);
       expect(alternate.subagents.get("explorer")?.harness?.fingerprint)
         .not.toBe(harness.subagents.get("explorer")?.harness?.fingerprint);
-      alternate.close();
-      harness.close();
+      await alternate.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -120,7 +120,7 @@ describe("bounded orchestration", () => {
       });
       const inspection = await inspectHarnessRun(store, harness.config, output.state.runId);
       expect(JSON.stringify(inspection.hierarchy)).toContain(output.state.childRuns![0]!.runId);
-      harness.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -199,7 +199,7 @@ describe("bounded orchestration", () => {
         : [];
       expect(journal.filter((entry) => entry.toolName === "apply_patch" && entry.status === "completed"))
         .toHaveLength(1);
-      harness.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -253,7 +253,7 @@ describe("bounded orchestration", () => {
         children: [{ status: "cancelled" }]
       });
       await expect(readFile(path.join(workspace, "cancelled.txt"), "utf8")).rejects.toThrow();
-      harness.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }
@@ -303,7 +303,7 @@ describe("bounded orchestration", () => {
         prompt: "unsafe group",
         scope: harness.config.scope
       }, ["implementer"])).rejects.toThrow("read-only");
-      harness.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

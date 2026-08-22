@@ -1,6 +1,6 @@
 # CLI contract
 
-Zhivex Harness `0.10.x` is Node-first and exposes a durable agent console, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
+Zhivex Harness `0.11.x` is Node-first and exposes a durable agent console, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands
 
@@ -40,6 +40,7 @@ Each console session is a scoped, durable chain of immutable run IDs. The sessio
 /route [role=provider[:model]] /route clear [role]
 /status                        /diff
 /review <task>                 /resume <last|sessionId>
+/pending                       /approve | /deny
 /compact                       /new [title]
 /rename <title>                /clear
 /help                          /exit
@@ -47,15 +48,19 @@ Each console session is a scoped, durable chain of immutable run IDs. The sessio
 
 Provider/model changes apply only to the next run. The console blocks them while the current run has an unresolved approval. Before a cross-model handoff it replaces future context with a bounded deterministic summary that redacts common credentials and retains tool names but not tool inputs or outputs. It never rebinds an existing run to another provider.
 
-`/resume` selects a conversation session; it does not approve a run. A pending approval still requires the explicit operator command `zhx resume <runId> --approve` or `--deny`.
+`/resume` selects a conversation session and restores its exact persisted provider, routing, context, and execution policy. `/pending` renders the current approval card without executing it; `/approve` or `/deny` continues that durable run inside the console. The operator command `zhx resume <runId> --approve|--deny` remains available for scripts and out-of-process operation.
+
+Human terminal mode renders redacted step/tool lifecycle lines and never prints tool inputs, outputs, provider payloads, or raw errors. Governed edits, checks, argv commands, and OCI shell scripts show their complete sanitized approval payload; unknown provider/MCP tools use a bounded summary with an explicit full view. `q`, EOF, or interruption leaves the entire approval batch pending.
 
 `doctor` is local and makes no provider or MCP request. It checks the active Node/Bun runtime, detected repository package manager, workspace, Git, supported package scripts, state-directory safety, provider credential presence, endpoint shape, provider configuration, the local MCP configuration file, and—when requested—the OCI runtime and preloaded image without returning secret or endpoint values.
 
 `--allow-check <script>` is repeatable and replaces the default check allowlist for that invocation. Values are declared `package.json` script names, never command text.
 
+Project context discovery reads a root `AGENTS.md` and the optional `.zhivex/harness.json` manifest. Use `--context-config <path>` to choose another workspace-contained manifest or `--no-project-context` to disable both. Context/rules are bounded and fingerprinted; skills expose metadata first and their instructions only through `load_skill`.
+
 `--require-capability <name>`, `--subagent <profile>`, and `--reviewer <explorer|reviewer>` are repeatable. `--mcp-config <path>` loads a schema-versioned file inside the canonical workspace. Child limits use `--subagent-max-steps`, `--subagent-max-tool-calls`, `--subagent-max-tool-errors`, `--subagent-max-input-tokens`, `--subagent-max-output-tokens`, `--subagent-max-total-tokens`, and `--subagent-timeout-ms`. Parallel review is capped by `--max-parallel-reviews`.
 
-`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.10.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
+`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.11.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
 `review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 
@@ -66,6 +71,7 @@ Enforced execution is opt-in:
 --oci-runtime <docker|podman>
 --oci-image <reference>
 --oci-allow-command <bare-name>
+--oci-shell <deny|ask>
 --oci-max-process-runtime-ms <n>
 --oci-max-process-output-bytes <n>
 --oci-max-memory-mb <n>
@@ -77,6 +83,8 @@ Enforced execution is opt-in:
 ```
 
 `--oci-allow-command` is repeatable, replaces the default executable allowlist, and must include at least one supported repository package manager: `npm`, `pnpm`, `yarn`, or `bun`. The default is `node,npm`; custom images must still provide Node for the internal controller. Commands are exact argv arrays, never shell strings. See [EXECUTION_ENVIRONMENTS.md](./EXECUTION_ENVIRONMENTS.md).
+
+`--oci-shell` defaults to `deny`. `ask` exposes `run_environment_shell`, whose complete script requires durable approval and runs as `sh -lc` inside the acquired no-network container. It does not add a host shell, enable networking, or remove the separate host patch-import approval. The entrypoint allowlist constrains the command requested from the container runtime; it is not a kernel-level descendant-process allowlist.
 
 ## Change admission
 
@@ -126,6 +134,6 @@ The event projector allowlists safe fields. Text deltas and token usage are reta
 
 ## Configuration schema
 
-Resolved library configuration includes `schemaVersion: 4`, an explicit `allowedChecks` array, `storeBackend`, `scope`, parent `budget`, `compaction`, `requiredCapabilities`, optional `mcpConfigPath`, an `orchestration` object with profiles, child budget/timeout, and review concurrency, and a discriminated `execution` policy. The check default is `test`, `typecheck`, `lint`, and `build`; `--allow-check` or `ZHIVEX_HARNESS_ALLOWED_CHECKS` replaces that set. Execution defaults to `{ backend: "none" }`; an OCI policy records the runtime, image, allowed commands, and every resource ceiling. Passing a different explicit schema version fails before a model or tool can run. During `0.x`, a minor release may add a new schema version with a documented migration; patch releases remain compatible.
+Resolved library configuration includes `schemaVersion: 5`, an explicit `allowedChecks` array, `storeBackend`, `scope`, parent `budget`, `compaction`, `requiredCapabilities`, project `context`, optional `mcpConfigPath`, an `orchestration` object with profiles, child budget/timeout, and review concurrency, and a discriminated `execution` policy. The check default is `test`, `typecheck`, `lint`, and `build`; `--allow-check` or `ZHIVEX_HARNESS_ALLOWED_CHECKS` replaces that set. Execution defaults to `{ backend: "none" }`; an OCI policy records the runtime, image, allowed entrypoints, shell mode, and every resource ceiling. Passing a different explicit schema version fails before a model or tool can run. During `0.x`, a minor release may add a new schema version with a documented migration; patch releases remain compatible.
 
 The default state directory is `<workspace>/.zhivex-harness/runs` and the default backend is scoped SQLite at `operations.sqlite`. Explicit external state directories are supported, but the workspace root, filesystem root, sensitive workspace paths, regular files, and symbolic-link targets are rejected before the run store is created. See [DURABLE_OPERATIONS.md](./DURABLE_OPERATIONS.md) for state migration and operations, and [EXTENSIBILITY.md](./EXTENSIBILITY.md) for capability, MCP, subagent, and review-group configuration.

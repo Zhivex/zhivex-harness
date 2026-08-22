@@ -252,7 +252,7 @@ export const runHostileRepositoryDemo = async (
     assert.equal(commandCheckpoint.status, "waiting_approval");
     approvalNamed(commandCheckpoint.state, "run_environment_command");
     assert.equal(await readFile(path.join(root, "src", "payment.ts"), "utf8"), ORIGINAL_PAYMENT);
-    first.close();
+    await first.close();
 
     progress("2/6 command paused before execution and survived a persistence reopen");
     const second = await createDemoHarness(root, stateDirectory, options.runtime);
@@ -269,7 +269,7 @@ export const runHostileRepositoryDemo = async (
     const commandResult = importCheckpoint.toolResults.find(
       (result) => result.toolName === "run_environment_command"
     );
-    second.close();
+    await second.close();
     const commandBoundaryEvidence = commandBoundaryEvidenceFrom(commandResult);
 
     progress("3/6 secret exclusion and network denial proved inside OCI; host still unchanged");
@@ -296,7 +296,7 @@ export const runHostileRepositoryDemo = async (
       "run_environment_command",
       "apply_environment_patch"
     ]);
-    third.close();
+    await third.close();
 
     progress("4/6 separately approved patch imported once; redacted ledger verified");
     const host = await Workspace.open(root);

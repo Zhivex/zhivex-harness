@@ -255,7 +255,7 @@ const failureRecovery = async () => {
     scope: first.config.scope,
     idempotencyKey: "evaluation-recovery"
   });
-  first.close();
+  await first.close();
 
   const second = await createHarness({
     provider: "openai",
@@ -275,7 +275,7 @@ const failureRecovery = async () => {
     approvals: approveAll(checkpoint.pendingApprovals)
   });
   const journal = await second.store.listToolCalls?.(output.state.runId, second.config.scope) ?? [];
-  second.close();
+  await second.close();
   const content = await readFile(path.join(workspace, "recovered.txt"), "utf8");
   const applyEntries = journal.filter((entry) => entry.toolName === "apply_patch" && entry.status === "completed");
   return evaluateState(expected("failure-recovery"), output, startedAt, [
@@ -362,7 +362,7 @@ const governedMcp = async () => {
   const output = await runHarness(harness, { prompt: "Use governed MCP" }, {
     resolveApprovals: async (approvals) => approveAll(approvals)
   });
-  harness.close();
+  await harness.close();
   return evaluateState(expected("governed-mcp"), output, startedAt, [
     ...(calls === 1 ? [] : [`Expected one MCP call, got ${calls}.`])
   ]);
@@ -399,7 +399,7 @@ const boundedSubagent = async () => {
   });
   const startedAt = Date.now();
   const output = await runHarness(harness, { prompt: "Delegate review" });
-  harness.close();
+  await harness.close();
   const child = output.state.childRuns?.[0];
   return evaluateState(expected("bounded-subagent"), output, startedAt, [
     ...(child?.agentId === "zhivex-harness-reviewer" ? [] : ["Expected reviewer child run."]),

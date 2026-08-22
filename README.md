@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.10.0` is the source candidate for the Node-first runtime and package-manager-neutral repository checks. The latest public npm release is `0.9.0`; local validation does not imply that `0.10.0` has been published or release-certified. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.11.0` is the current source release candidate. The latest public npm release remains the tagged Node-first `0.10.0` artifact until the reviewed release workflow publishes and verifies `0.11.0`; local validation alone does not publish or certify registry provenance. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -40,7 +40,15 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.10 changes
+## What 0.11 changes
+
+- adds a dependency-free terminal presentation layer with redacted activity, complete approval cards, and durable `y`/`n`/`v`/`q` decisions;
+- lets recovered chat sessions inspect and resolve their current approval with `/pending`, `/approve`, and `/deny` after restoring the exact persisted provider, routing, context, and OCI policy;
+- loads bounded `AGENTS.md`, project context, rules, and progressively disclosed skills while binding their digests into durable compatibility;
+- adds trusted application lifecycle hooks with versioned identities, bounded events, timeouts, and redacted failures; and
+- exposes exact-script shell syntax only through explicit `--execution oci --oci-shell ask`, preserving denied network and the separate host-import approval.
+
+## What 0.10 changed
 
 - makes Node.js `>=22.13.0` the primary public CLI and library runtime while retaining Bun-compatible imports and Bun-managed contributor workflows;
 - replaces `bun:sqlite` and `Bun.spawn` with `node:sqlite` and argv-only `node:child_process` boundaries without changing the durable SQLite file format;
@@ -90,7 +98,7 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 - protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
 - Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
 
-It does not include arbitrary host shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, a remote worker, or a managed sandbox service. Without `--execution oci`, shell-class tools remain unavailable. With OCI enabled, repository tools, checks, and enabled subagents share the acquired snapshot; network MCP is rejected because it cannot truthfully satisfy the no-network execution policy.
+It does not include arbitrary host shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, a remote worker, or a managed sandbox service. Without `--execution oci`, shell-class tools remain unavailable. The opt-in `--oci-shell ask` policy exposes approval-bound `sh` only inside OCI. With OCI enabled, repository tools, checks, and enabled subagents share the acquired snapshot; network MCP is rejected because it cannot truthfully satisfy the no-network execution policy.
 
 ## Requirements
 
@@ -101,19 +109,13 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Installation
 
-The currently published `0.9.0` package still uses the Bun-first runtime:
-
-```bash
-bunx --package @zhivex-ai/harness@0.9.0 zhx --version
-```
-
-After the exact `0.10.0` artifact is published and registry-verified, the Node-first installation is:
+Install the published Node-first `0.10.0` artifact with an exact version:
 
 ```bash
 npx --yes --package=@zhivex-ai/harness@0.10.0 zhx --version
 ```
 
-Do not omit the version while npm `latest` still resolves to `0.9.0`. To exercise the `0.10.0` source checkout now, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
+To exercise the source checkout, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
 
 ```bash
 bun install --frozen-lockfile
@@ -153,7 +155,9 @@ zhx chat --continue
 zhivex-harness --version
 ```
 
-Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/compact`, `/new`, `/rename`, and `/exit`.
+Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/pending`, `/approve`, `/deny`, `/compact`, `/new`, `/rename`, and `/exit`. Tool and step activity is rendered without tool payloads; approval cards sanitize terminal controls and keep governed edit/command payloads fully reviewable.
+
+Project context engineering is enabled by default. A root `AGENTS.md` plus an optional `.zhivex/harness.json` can declare bounded context files, rule files, and progressively loaded `SKILL.md` directories. Disable discovery with `--no-project-context` or select another manifest with `--context-config`.
 
 Show providers and detected configuration without printing secrets:
 
@@ -192,7 +196,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` remains rejected in `0.10.0`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` remains rejected in `0.11.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -269,9 +273,10 @@ Enable enforced local execution explicitly. The image must already exist locally
 docker pull node:24-bookworm-slim
 zhivex-harness doctor --execution oci
 zhivex-harness run --execution oci --yes "inspect, implement, test, review the environment patch, and import it"
+zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipeline inside the isolated snapshot"
 ```
 
-`--yes` approves both command execution and the distinct host patch import. Omit it when a human should review each durable approval. Configuration, threat boundary, cleanup, and certification details are in [docs/EXECUTION_ENVIRONMENTS.md](./docs/EXECUTION_ENVIRONMENTS.md).
+`--yes` approves eligible command execution and the distinct host patch import; it cannot enable a shell whose policy is `deny`. Omit it when a human should review each durable approval. Configuration, threat boundary, cleanup, and certification details are in [docs/EXECUTION_ENVIRONMENTS.md](./docs/EXECUTION_ENVIRONMENTS.md).
 
 ## Providers and defaults
 
@@ -284,7 +289,7 @@ zhivex-harness run --execution oci --yes "inspect, implement, test, review the e
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta and Qwen retain the published support conclusion for the unchanged approval/restart and delegation paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. The Node-first `0.10.0` source candidate passes the local npm-installed artifact and real OCI boundary smokes; the Node 22/24 CI matrix and live-provider release certification remain pending. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+Meta and Qwen retain the published support conclusion for the unchanged approval/restart and delegation paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. The tagged Node-first `0.10.0` artifact is published; the `0.11.0` candidate requires its own clean CI, live-provider, artifact, registry, and provenance gates. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
