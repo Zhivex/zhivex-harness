@@ -550,7 +550,7 @@ describe("enforced OCI execution environment", () => {
       ["npm", "--version"],
       ["node", "--version"]
     ]);
-    harness.close();
+    await harness.close();
   });
 
   test("binds and imports executable modes, including mode-only changes", async () => {
@@ -825,7 +825,7 @@ describe("enforced OCI execution environment", () => {
     const childState = child ? await store.load(child.runId, harness.config.scope) : undefined;
     expect(childState?.executionEnvironment).toEqual(completed.state.executionEnvironment);
     await expect(readFile(path.join(root, "child-generated.txt"), "utf8")).rejects.toThrow();
-    harness.close();
+    await harness.close();
   });
 
   test("rejects MCP before discovery when the enforced boundary is active", async () => {

@@ -14,6 +14,8 @@ For each selected provider, the base gate:
 
 Separate gates exercise reviewer delegation, mixed-provider routing, model-directed OCI execution, and the real container boundary. Passing one gate never implies that another provider or execution path is certified.
 
+The default mixed-provider route uses OpenAI as parent and Qwen as reviewer, keeping the release gate inside the certified cohort. Set `ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER` and `ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER` explicitly to certify another pair; selecting Gemini remains provisional and requires its credential plus every provider gate.
+
 ## Running the gates
 
 The package exposes dedicated Bun scripts for:

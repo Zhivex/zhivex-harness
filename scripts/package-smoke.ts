@@ -284,7 +284,7 @@ const waiting = await runHarness(harness, {
 assert.equal(waiting.status, "waiting_approval");
 await assert.rejects(readFile(path.join(workspace, "installed-approved.txt"), "utf8"));
 await writeFile("bun-created-run.json", JSON.stringify({ runId: waiting.state.runId }), "utf8");
-harness.close();
+await harness.close();
 console.log("BUN_CREATED_DURABLE_RUN_OK");
 `;
   const bunCreationPath = path.join(consumer, "bun-create-durable-run.mjs");
@@ -396,7 +396,7 @@ const inspection = await inspectHarnessRun(
 assert.equal(inspection.kind, "run-inspection");
 assert(!JSON.stringify(inspection).includes("fixture-sensitive-payload"));
 assert((await stat(path.join(stateDirectory, HARNESS_SQLITE_FILE))).isFile());
-restartedHarness.close();
+await restartedHarness.close();
 
 const cliSessions = await openCliSessionStore({
   workspace,

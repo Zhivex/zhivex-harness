@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -12,6 +12,7 @@ import {
 } from "../src/config.js";
 import { createHarness, runHarness } from "../src/harness.js";
 import { inspectHarnessRun } from "../src/operations.js";
+import { runPortableProcess } from "../src/process-runtime.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const {
@@ -32,7 +33,7 @@ const parentToken = (provider: HarnessProvider) =>
   `ZHIVEX_HARNESS_${provider.toUpperCase()}_ORCHESTRATION_OK`;
 
 const childPrompt = (provider: HarnessProvider) =>
-  `Do not call any tool. Reply exactly ${childToken(provider)}.`;
+  `Review review-target.txt with at most one read-only repository tool. Do not mutate the workspace. Include this exact token in your final response: ${childToken(provider)}.`;
 
 export const orchestrationPrompt = (provider: HarnessProvider) =>
   `Call delegate_reviewer exactly once with this exact JSON input: ${JSON.stringify({
@@ -54,9 +55,25 @@ const createLiveOrchestrationHarness = (args: {
   maxToolCalls: 4,
   subagentProfiles: ["reviewer"],
   subagentMaxSteps: 2,
-  subagentMaxToolCalls: 0,
+  subagentMaxToolCalls: 1,
   env: process.env
 });
+
+export const prepareReviewFixture = async (workspace: string) => {
+  const initialized = await runPortableProcess(["git", "init", "--quiet"], {
+    cwd: workspace,
+    timeoutMs: 10_000
+  });
+  assert.equal(initialized.exitCode, 0, initialized.stderr || initialized.stdout);
+  const target = path.join(workspace, "review-target.txt");
+  await writeFile(target, "baseline\n", "utf8");
+  const staged = await runPortableProcess(["git", "add", "--", "review-target.txt"], {
+    cwd: workspace,
+    timeoutMs: 10_000
+  });
+  assert.equal(staged.exitCode, 0, staged.stderr || staged.stdout);
+  await writeFile(target, "baseline\ncandidate change\n", "utf8");
+};
 
 const certifyProvider = async (
   provider: HarnessProvider,
@@ -67,6 +84,7 @@ const certifyProvider = async (
   const first = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory });
   let parentRunId = "";
   let childRunId = "";
+  let childToolCalls = 0;
   let totalTokens = 0;
   try {
     const result = await runHarness(first, {
@@ -84,12 +102,15 @@ const certifyProvider = async (
     assert.ok(child?.runId);
     assert.equal(child.status, "completed");
     assert.ok(child.outputText?.includes(childToken(provider)), child.outputText);
+    assert.ok(child.toolCalls <= 1, "The reviewer exceeded its one-tool certification budget.");
+    assert.equal(child.toolErrors, 0);
+    childToolCalls = child.toolCalls;
     parentRunId = result.state.runId;
     childRunId = child.runId;
     totalTokens = getAgentBudgetStatus(result.state, first.config.budget, result).consumption.totalTokens;
     assert.ok(totalTokens > 0);
   } finally {
-    first.close();
+    await first.close();
   }
 
   const reopened = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory });
@@ -105,7 +126,7 @@ const certifyProvider = async (
     assert.equal(inspection.hierarchy?.totalRuns, 2);
     assert.ok(JSON.stringify(inspection.hierarchy).includes(childRunId));
   } finally {
-    reopened.close();
+    await reopened.close();
   }
 
   return {
@@ -118,6 +139,7 @@ const certifyProvider = async (
     childPersisted: true,
     processReopened: true,
     hierarchyRuns: 2,
+    childToolCalls,
     aggregateTokens: totalTokens
   };
 };
@@ -133,6 +155,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-orchestration-${provider}-`));
     const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
     try {
+      await prepareReviewFixture(workspace);
       evidence.push(await certifyProvider(provider, model, workspace, stateDirectory));
     } catch (error) {
       const failure = JSON.parse(errorEvidence(error, env)) as { error: Record<string, unknown> };

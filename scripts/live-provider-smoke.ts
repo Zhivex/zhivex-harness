@@ -245,7 +245,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
       approvalId: approval.id
     };
   } finally {
-    harness.close();
+    await harness.close();
   }
 };
 
@@ -293,7 +293,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
       journalEntries: writeEntries.length
     };
   } finally {
-    harness.close();
+    await harness.close();
   }
 };
 

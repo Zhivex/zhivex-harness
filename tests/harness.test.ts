@@ -113,8 +113,8 @@ describe("Zhivex harness", () => {
         expect(firstBinding).not.toContain("first.example.invalid");
         expect(secondBinding).not.toContain("second.example.invalid");
       } finally {
-        first.close();
-        second.close();
+        await first.close();
+        await second.close();
       }
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -198,7 +198,7 @@ describe("Zhivex harness", () => {
           { query: "export const", matches: [{ path: "alpha.ts" }, { path: "beta.ts" }] }
         ]
       });
-      harness.close();
+      await harness.close();
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -367,7 +367,7 @@ describe("Zhivex harness", () => {
       expect(result.status).toBe("completed");
       expect(seen).toEqual([{ apiMode: "responses" }, { apiMode: "responses" }]);
       expect(await readFile(path.join(root, "continued.txt"), "utf8")).toBe("continued\n");
-      harness.close();
+      await harness.close();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

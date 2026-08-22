@@ -240,7 +240,7 @@ describe("governed MCP", () => {
       });
       expect(completed.status).toBe("completed");
       expect(calls).toBe(1);
-      harness.close();
+      await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

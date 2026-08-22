@@ -142,7 +142,7 @@ const certifyProvider = async (
       environmentBound: true
     };
   } finally {
-    harness.close();
+    await harness.close();
   }
 };
 

@@ -16,6 +16,9 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 ### Changed
 
 - Advance resolved config schema to `5` and the OCI execution-policy fingerprint to `2026-08-21-v4`; complete paused `0.10.0` work with the published artifact rather than rebinding it to the changed tool/context surface.
+- Bound the live reviewer-delegation fixture to one read-only child tool call against a temporary repository with a known diff, avoiding provider-specific false failures caused by asking a reviewer to inspect an empty non-Git workspace.
+- Align the default mixed-provider live route with the certified cohort (OpenAI parent, Qwen reviewer); Gemini routing remains an explicit provisional certification target.
+- Await asynchronous harness shutdown throughout release, evaluation, smoke, and test callers so lifecycle hooks and OCI cleanup complete before process exit.
 
 ### Migration from 0.10.x
 

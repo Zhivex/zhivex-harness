@@ -10,7 +10,7 @@ import {
 } from "../src/config.js";
 import { createHarness, runHarness } from "../src/harness.js";
 import { createHarnessRouteModels, resolveHarnessModelRoutes } from "../src/routing.js";
-import { orchestrationPrompt } from "./live-orchestration-smoke.js";
+import { orchestrationPrompt, prepareReviewFixture } from "./live-orchestration-smoke.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const {
@@ -23,14 +23,19 @@ const {
 const providerFrom = (env: NodeJS.ProcessEnv, name: string, fallback: string): HarnessProvider =>
   parseProvider(env[name]?.trim() || fallback);
 
+export const LIVE_ROUTING_DEFAULTS = {
+  parent: "openai",
+  reviewer: "qwen"
+} as const;
+
 const modelFrom = (env: NodeJS.ProcessEnv, provider: HarnessProvider) =>
   env[`ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`]?.trim() ||
   providerDescriptor(provider).defaultModel;
 
 const run = async (env: NodeJS.ProcessEnv) => {
   assertLiveOptIn(env);
-  const parentProvider = providerFrom(env, "ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER", "openai");
-  const reviewerProvider = providerFrom(env, "ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER", "gemini");
+  const parentProvider = providerFrom(env, "ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER", LIVE_ROUTING_DEFAULTS.parent);
+  const reviewerProvider = providerFrom(env, "ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER", LIVE_ROUTING_DEFAULTS.reviewer);
   if (parentProvider === reviewerProvider) {
     throw new Error("Live routing certification requires distinct parent and reviewer providers.");
   }
@@ -43,6 +48,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
   const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-live-routing-"));
   const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
   try {
+    await prepareReviewFixture(workspace);
     const harness = await createHarness({
       provider: parentProvider,
       model: parentModel,
@@ -52,7 +58,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
       maxToolCalls: 4,
       subagentProfiles: ["reviewer"],
       subagentMaxSteps: 2,
-      subagentMaxToolCalls: 0,
+      subagentMaxToolCalls: 1,
       subagentModels: createHarnessRouteModels(routes, env),
       env
     });
@@ -69,6 +75,8 @@ const run = async (env: NodeJS.ProcessEnv) => {
       assert.equal(delegations[0]?.isError, false);
       const child = result.state.childRuns?.[0];
       assert.ok(child?.runId);
+      assert.ok(child.toolCalls <= 1, "The routed reviewer exceeded its one-tool certification budget.");
+      assert.equal(child.toolErrors, 0);
       const childState = await harness.store.load(child.runId, harness.config.scope);
       assert.equal(childState?.status, "completed");
       assert.equal(childState?.provider, reviewerProvider);
@@ -78,10 +86,11 @@ const run = async (env: NodeJS.ProcessEnv) => {
         gate: "live-routing-smoke",
         parent: { provider: parentProvider, model: parentModel, runId: result.state.runId },
         reviewer: { provider: reviewerProvider, model: reviewerModel, runId: child.runId },
-        delegationExecutions: 1
+        delegationExecutions: 1,
+        childToolCalls: child.toolCalls
       }, null, 2)}\n`);
     } finally {
-      harness.close();
+      await harness.close();
     }
   } finally {
     await rm(workspace, { recursive: true, force: true });

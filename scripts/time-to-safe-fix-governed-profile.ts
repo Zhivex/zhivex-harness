@@ -420,7 +420,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     }
     const toolOciMs = ociPhaseTotal(output);
     if (toolOciMs > 0) phasesMs.agentOci = toolOciMs;
-    harness?.close();
+    await harness?.close();
   }
 
   const evidenceStartedAt = process.hrtime.bigint();
