@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { findReleaseChangelogHeading } from "./release-changelog.js";
+import { parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
 
 const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
@@ -56,6 +57,21 @@ for (const markdownFile of markdownFiles) {
 const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
+const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
+const security = await readFile(path.join(workspace, "SECURITY.md"), "utf8");
+const releaseDocumentation = await readFile(path.join(workspace, "docs", "RELEASE.md"), "utf8");
+const publicSecurity = await readFile(path.join(workspace, "docs", "PUBLIC_SECURITY.md"), "utf8");
+let releaseStatus: ReleaseStatus | undefined;
+try {
+  releaseStatus = parseReleaseStatus(JSON.parse(await readFile(
+    path.join(workspace, "release-status.json"),
+    "utf8"
+  )));
+} catch (error) {
+  failures.push(
+    `release-status.json is missing or invalid: ${error instanceof Error ? error.message : String(error)}`
+  );
+}
 const expandedTimeToSafeFixTasks = (await readFile(
   path.join(workspace, "evaluations", "time-to-safe-fix-expanded.jsonl"),
   "utf8"
@@ -73,6 +89,50 @@ if (!readme.includes(`Version \`${manifest.version}\``)) {
 }
 if (!changelog.includes(`## ${manifest.version} -`)) {
   failures.push(`CHANGELOG.md has no release entry for ${manifest.version}.`);
+}
+if (releaseStatus) {
+  const minor = `${releaseStatus.version.split(".").slice(0, 2).join(".")}.x`;
+  if (releaseStatus.version !== manifest.version) {
+    failures.push(
+      `release-status.json version ${releaseStatus.version} does not match package version ${manifest.version}.`
+    );
+  }
+  if (releaseStatus.status === "published") {
+    for (const [file, contents, required] of [
+      ["README.md", readme, `Version \`${releaseStatus.version}\` is the current public npm release`],
+      ["ROADMAP.md", roadmap, "Status: published on npm as `latest`"],
+      ["docs/RELEASE.md", releaseDocumentation, `@zhivex-ai/harness@${releaseStatus.version}\` is the latest public npm release`],
+      ["SUPPORT.md", support, `Zhivex Harness \`${minor}\` is the latest supported`],
+      ["SECURITY.md", security, `latest published \`${minor}\` patch`]
+    ] as const) {
+      if (!contents.includes(required)) {
+        failures.push(`${file} does not agree with the published release status: ${required}.`);
+      }
+    }
+    for (const [file, contents, stale] of [
+      ["README.md", readme, `Version \`${releaseStatus.version}\` is the current source release candidate`],
+      ["ROADMAP.md", roadmap, `Version \`${releaseStatus.version}\` is the local source release candidate`],
+      ["ROADMAP.md", roadmap, "It is not yet tagged or published as a new artifact"],
+      ["docs/RELEASE.md", releaseDocumentation, `Version \`${releaseStatus.version}\` is the current local source release candidate`]
+    ] as const) {
+      if (contents.includes(stale)) {
+        failures.push(`${file} still contains stale candidate state: ${stale}.`);
+      }
+    }
+  }
+  if (!readme.includes("[release status](./release-status.json)")) {
+    failures.push("README.md must link the machine-readable release status.");
+  }
+}
+for (const required of [
+  "## Enabled no-cost controls",
+  "## Cost-gated controls left disabled",
+  "larger GitHub-hosted runners",
+  "Local credentials are never copied to GitHub automatically"
+]) {
+  if (!publicSecurity.includes(required)) {
+    failures.push(`docs/PUBLIC_SECURITY.md is missing: ${required}.`);
+  }
 }
 
 if (manifest.version.startsWith("0.3.")) {
@@ -556,7 +616,12 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
       failures.push(`0.10.x package-manager resolver is missing ${required}.`);
     }
   }
-  for (const required of ["Node-first", "Node.js 22.13.0", "node:24-bookworm-slim", "npx --yes --package=@zhivex-ai/harness@0.10.0"]) {
+  for (const required of [
+    "Node-first",
+    "Node.js 22.13.0",
+    "node:24-bookworm-slim",
+    `npx --yes --package=@zhivex-ai/harness@${manifest.version}`
+  ]) {
     if (!readme.includes(required)) failures.push(`README.md is missing the 0.10.x runtime contract: ${required}.`);
   }
   if (
@@ -648,8 +713,9 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
   if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
     failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
   }
-  if (!roadmap.includes("`0.5.0` through `0.10.0` are published on npm")) {
-    failures.push("ROADMAP.md must identify 0.10.0 as a published Node-first release.");
+  const publishedThrough = manifest.version.startsWith("0.11.") ? "0.11.0" : "0.10.0";
+  if (!roadmap.includes(`\`0.5.0\` through \`${publishedThrough}\` are published on npm`)) {
+    failures.push(`ROADMAP.md must identify ${publishedThrough} as a published Node-first release.`);
   }
 }
 
@@ -720,8 +786,8 @@ if (manifest.version.startsWith("0.11.")) {
   if (!releaseHeading || releaseHeading.kind !== "dated" || !changelog.includes("### Migration from 0.10.x")) {
     failures.push(`CHANGELOG.md must include a dated ${manifest.version} heading and migration from 0.10.x.`);
   }
-  if (!roadmap.includes("`0.11.0` is the local source release candidate")) {
-    failures.push("ROADMAP.md must identify 0.11.0 as the local source release candidate.");
+  if (!roadmap.includes("Status: published on npm as `latest`")) {
+    failures.push("ROADMAP.md must identify 0.11.0 as the published latest release.");
   }
 }
 
@@ -741,6 +807,67 @@ if (certifiedProviders.length === 0) {
 }
 if (manifest.version.startsWith("0.5.") && !liveCertificationWorkflow.includes("bun run smoke:live:orchestration")) {
   failures.push(".github/workflows/live-certification.yml must run the 0.5.x orchestration matrix.");
+}
+const releaseWorkflow = await readFile(path.join(workspace, ".github", "workflows", "release.yml"), "utf8");
+for (const required of [
+  "certify-live:",
+  "environment: live-certification",
+  "needs.certify-live.result == 'success'",
+  "bun run smoke:live",
+  "bun run smoke:live:orchestration",
+  "bun run smoke:live:routing",
+  "bun run smoke:live:execution"
+]) {
+  if (!releaseWorkflow.includes(required)) {
+    failures.push(`.github/workflows/release.yml is missing the release-bound live gate: ${required}.`);
+  }
+}
+if (!liveCertificationWorkflow.includes("ref: ${{ inputs.tag }}") ||
+  !liveCertificationWorkflow.includes("fetch-depth: 0") ||
+  !liveCertificationWorkflow.includes("--tag \"$RELEASE_TAG\"")) {
+  failures.push(".github/workflows/live-certification.yml must bind certification to an exact annotated tag.");
+}
+for (const [file, workflow] of [
+  [".github/workflows/release.yml", releaseWorkflow],
+  [".github/workflows/live-certification.yml", liveCertificationWorkflow]
+] as const) {
+  if (!workflow.includes("description: Annotated vX.Y.Z tag; must match package.json and resolve to main") ||
+    !workflow.includes("required: true") || !workflow.includes("type: string")) {
+    failures.push(`${file} must require an explicit package-version-bound tag input.`);
+  }
+  if (/default:\s+v\d+\.\d+\.\d+/.test(workflow)) {
+    failures.push(`${file} must not duplicate the package version as a workflow input default.`);
+  }
+}
+const manualLiveSteps = liveCertificationWorkflow.indexOf("\n    steps:");
+if (manualLiveSteps === -1 || liveCertificationWorkflow.slice(0, manualLiveSteps).includes("${{ secrets.")) {
+  failures.push(".github/workflows/live-certification.yml must not expose provider secrets before its steps begin.");
+}
+const releaseLiveJob = releaseWorkflow.indexOf("\n  certify-live:");
+const releaseLiveSteps = releaseWorkflow.indexOf("\n    steps:", releaseLiveJob);
+if (releaseLiveJob === -1 || releaseLiveSteps === -1 ||
+  releaseWorkflow.slice(releaseLiveJob, releaseLiveSteps).includes("${{ secrets.")) {
+  failures.push(".github/workflows/release.yml must not expose provider secrets at live job scope.");
+}
+const codeqlWorkflow = await readFile(path.join(workspace, ".github", "workflows", "codeql.yml"), "utf8");
+for (const required of [
+  "security-events: write",
+  "javascript-typescript",
+  "queries: security-extended",
+  "github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28",
+  "github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28"
+]) {
+  if (!codeqlWorkflow.includes(required)) {
+    failures.push(`.github/workflows/codeql.yml is missing: ${required}.`);
+  }
+}
+const dependabot = await readFile(path.join(workspace, ".github", "dependabot.yml"), "utf8");
+for (const required of ["package-ecosystem: bun", "package-ecosystem: github-actions"]) {
+  if (!dependabot.includes(required)) failures.push(`.github/dependabot.yml is missing: ${required}.`);
+}
+const codeowners = await readFile(path.join(workspace, ".github", "CODEOWNERS"), "utf8");
+if (!codeowners.includes("* @mortiz-dev") || !codeowners.includes("/.github/ @mortiz-dev")) {
+  failures.push(".github/CODEOWNERS must assign repository and workflow ownership.");
 }
 
 if (failures.length > 0) {

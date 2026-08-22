@@ -4,6 +4,19 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+### Changed
+
+- Make provider live certification a fail-closed dependency of the publish job and bind manual certification runs to an explicit release tag.
+- Remove release-version defaults from GitHub workflow inputs. Maintainers enter the annotated tag at dispatch, and release readiness validates it against the single version source in `package.json`.
+- Add a machine-readable published-release status record and validate public documentation, release gates, and repository security configuration against it.
+- Bound installed-package smoke subprocesses by time and captured output so a stalled child process cannot hang release validation indefinitely.
+
+### Security
+
+- Add CodeQL, Dependabot, CODEOWNERS, and documented public-repository security controls. GitHub-side controls that are free for public repositories are enabled; optional cost-bearing analysis remains disabled and explicitly recorded. Live provider credentials are scoped only to the final provider-call step rather than checkout, setup, dependency installation, or deterministic validation.
+
 ## 0.11.0 - 2026-08-21
 
 ### Added

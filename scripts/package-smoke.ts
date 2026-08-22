@@ -3,6 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os";
 import path from "node:path";
 
+import { runPortableProcess } from "../src/process-runtime.js";
+
 interface CommandResult {
   exitCode: number;
   stdout: string;
@@ -42,26 +44,32 @@ for (const name of [
 
 const run = async (
   command: string[],
-  options: { cwd?: string; env?: Record<string, string | undefined>; allowFailure?: boolean } = {}
+  options: {
+    cwd?: string;
+    env?: Record<string, string | undefined>;
+    allowFailure?: boolean;
+    timeoutMs?: number;
+  } = {}
 ): Promise<CommandResult> => {
-  const child = Bun.spawn(command, {
+  const result = await runPortableProcess(command, {
     cwd: options.cwd ?? workspace,
     env: options.env ?? commandEnvironment,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe"
+    timeoutMs: options.timeoutMs ?? 180_000,
+    maxOutputCharacters: 100_000
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited
-  ]);
-  if (exitCode !== 0 && !options.allowFailure) {
+  if (result.timedOut) {
+    throw new Error(`${command.join(" ")} timed out after ${options.timeoutMs ?? 180_000}ms`);
+  }
+  if (result.exitCode !== 0 && !options.allowFailure) {
     throw new Error(
-      `${command.join(" ")} failed with exit ${exitCode}\n${stdout}\n${stderr}`
+      `${command.join(" ")} failed with exit ${result.exitCode}\n${result.stdout}\n${result.stderr}`
     );
   }
-  return { exitCode, stdout, stderr };
+  return {
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr
+  };
 };
 
 let succeeded = false;
@@ -81,12 +89,15 @@ try {
     "package/CHANGELOG.md",
     "package/SECURITY.md",
     "package/SUPPORT.md",
+    "package/release-status.json",
     "package/docs/CLI.md",
     "package/docs/CONTEXT_ENGINEERING.md",
     "package/docs/DURABLE_OPERATIONS.md",
     "package/docs/EXTENSIBILITY.md",
     "package/docs/CHANGE_ENVELOPES.md",
     "package/docs/REPOSITORY_EDITING.md",
+    "package/docs/LIVE_CERTIFICATION.md",
+    "package/docs/PUBLIC_SECURITY.md",
     "package/docs/RELEASE.md",
     "package/evaluations/golden-expectations.json",
     "package/examples/mcp-config.json",

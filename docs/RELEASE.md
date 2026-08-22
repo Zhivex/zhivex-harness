@@ -1,6 +1,6 @@
 # Release process
 
-`@zhivex-ai/harness@0.10.0` is the latest public npm release and `v0.10.0` is its matching repository tag. Version `0.11.0` is the current local source release candidate; it is not a published artifact until its own reviewed commit, annotated `v0.11.0` tag, protected workflow, registry integrity, and provenance all agree. Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, transfers, and publishes one exact tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything.
+`@zhivex-ai/harness@0.11.0` is the latest public npm release and `v0.11.0` is its matching annotated repository tag. Registry integrity and SLSA provenance agree with source commit `652a299e2d6997ca4001dd9931ef2a82645f7204`; the current machine-readable record is [release-status.json](../release-status.json). Publication is never performed from a development checkout. The confirmation-gated `.github/workflows/release.yml` workflow builds, inspects, certifies, transfers, and publishes one exact tag-bound tarball through npm Trusted Publishing/OIDC. Creating a tag alone does not publish anything, and publication does not retroactively substitute for a missing live-provider gate.
 
 ## Deterministic gates
 
@@ -24,11 +24,12 @@ Provider behavior is certified separately because it is credential-, account-, m
 ```bash
 ZHIVEX_HARNESS_LIVE=1 bun run scripts/live-provider-smoke.ts
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:orchestration
+ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:routing
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
 ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci
 ```
 
-The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The workflow must additionally pass the real OCI boundary before live model execution; model-directed environment use is recorded separately from deterministic container enforcement. Gemini remains provisional until its three provider gates and a mixed-provider route pass. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The release workflow additionally requires the mixed-provider route and model-directed execution gates against the exact annotated tag before the npm job can start; deterministic OCI enforcement remains a separate prerequisite. Gemini remains provisional until its provider, delegation, routing, and execution gates pass. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
 
 ## Exact artifact gate
 
@@ -40,17 +41,20 @@ The release workflow performs this sequence across an unprivileged validation jo
 4. create one tarball with `bun pm pack --ignore-scripts`;
 5. allow only the documented package roots, verify the packed manifest, and write `SHA512SUMS`;
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
-7. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
-8. pass that same file to the npm CLI for the registry transaction; and
-9. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
+7. run the protected base, orchestration, routing, and model-directed OCI live gates from the same annotated tag and source commit;
+8. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
+9. pass that same file to the npm CLI for the registry transaction; and
+10. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
 
 For a local artifact rehearsal after the source gate:
 
 ```bash
 mkdir -p release-artifacts
-bun pm pack --filename release-artifacts/zhivex-ai-harness-0.11.0.tgz --ignore-scripts
-bun run artifact:check -- release-artifacts/zhivex-ai-harness-0.11.0.tgz
-bun run smoke:artifact -- release-artifacts/zhivex-ai-harness-0.11.0.tgz
+HARNESS_VERSION="$(node -p 'require("./package.json").version')"
+HARNESS_ARTIFACT="release-artifacts/zhivex-ai-harness-${HARNESS_VERSION}.tgz"
+bun pm pack --filename "$HARNESS_ARTIFACT" --ignore-scripts
+bun run artifact:check -- "$HARNESS_ARTIFACT"
+bun run smoke:artifact -- "$HARNESS_ARTIFACT"
 ```
 
 `release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
@@ -65,7 +69,7 @@ Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.
 
 ## Tag and dispatch
 
-After review and merge, maintainers create an annotated version tag from the exact release commit and dispatch the protected workflow with an explicit publication confirmation. The canonical dispatch is bound to `main`; recovery is limited to the exact annotated version tag after proving it resolves to the expected commit and remains reachable from `origin/main`.
+After review and merge, maintainers create an annotated `v<package.json version>` tag from the exact release commit and dispatch the protected workflow with that tag plus an explicit publication confirmation. The workflow YAML contains no release-version default: `package.json` is the source of version truth, and the required tag input is validated against it before publication. The canonical dispatch is bound to `main`; recovery is limited to the exact annotated version tag after proving it resolves to the expected commit and remains reachable from `origin/main`.
 
 The confirmation is intentional because registry versions are immutable, and the protected environment adds a second human approval boundary. Do not use a local registry session or manual upload as an alternate path.
 

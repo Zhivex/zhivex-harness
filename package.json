@@ -53,6 +53,7 @@
     "CHANGELOG.md",
     "SECURITY.md",
     "SUPPORT.md",
+    "release-status.json",
     "LICENSE",
     "docs",
     "evaluations",
