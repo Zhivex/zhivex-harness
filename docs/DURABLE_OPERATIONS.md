@@ -108,7 +108,22 @@ Operational artifacts are schema version `1`. By default they exclude raw messag
 
 Version `0.11.0` advances configuration schema `4` to `5` and binds project context, progressive skill metadata, trusted application hook identities, and OCI shell mode into durable compatibility. The SQLite schema and file format do not change.
 
-Complete or deny paused `0.10.x` approvals with the exact `0.10.x` artifact and context that created them. New `0.11.x` runs enable bounded project context by default; disable it explicitly when required, and await `harness.close()` so asynchronous lifecycle hooks and execution-environment cleanup finish.
+Library callers can migrate a persisted configuration input without reading process environment or filesystem state:
+
+```ts
+import { migrateHarnessConfigInput, resolveHarnessConfig } from "@zhivex-ai/harness";
+
+const migrated = migrateHarnessConfigInput({
+  schemaVersion: 4,
+  provider: "openai",
+  executionBackend: "oci"
+});
+const config = resolveHarnessConfig(migrated.config);
+```
+
+The schema `4` migration writes `projectContext: false` and, for OCI, `ociShellMode: "deny"`. This preserves the old authority surface; enable either feature only after reviewing the repository and policy. Schema `5` migration is idempotent. Unversioned, older, and future inputs fail closed.
+
+Complete or deny paused `0.10.x` approvals with the exact `0.10.x` artifact and context that created them. The config migrator does not rewrite run metadata, tool fingerprints, or approval authority. New `0.11.x` runs enable bounded project context by default; disable it explicitly when required, and await `harness.close()` so asynchronous lifecycle hooks and execution-environment cleanup finish. Historical SQLite fixtures from the published `0.10.0` and `0.11.1` tarballs remain a blocking 1.0 release gate; see [GA_READINESS.md](./GA_READINESS.md).
 
 ## Migration from 0.9.x
 

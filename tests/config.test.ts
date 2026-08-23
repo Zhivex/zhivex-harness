@@ -3,16 +3,57 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 import {
   DEFAULT_PROVIDER_REGISTRY,
+  HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS,
   HARNESS_CONFIG_SCHEMA_VERSION,
   HARNESS_EXECUTION_POLICY_VERSION,
   createProviderModel,
   createProviderRegistry,
+  migrateHarnessConfigInput,
   parseProvider,
   providerAvailability,
   resolveHarnessConfig
 } from "../src/config.js";
 
 describe("provider configuration", () => {
+  test("migrates schema 4 inputs without enabling new trust surfaces", () => {
+    expect(HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS).toEqual([4, 5]);
+    const migrated = migrateHarnessConfigInput({
+      schemaVersion: 4,
+      provider: "openai",
+      workspace: ".",
+      executionBackend: "oci",
+      ociAllowedCommands: ["node", "npm"]
+    });
+    expect(migrated).toMatchObject({
+      fromVersion: 4,
+      toVersion: 5,
+      config: {
+        schemaVersion: 5,
+        projectContext: false,
+        ociShellMode: "deny"
+      }
+    });
+    expect(resolveHarnessConfig(migrated.config)).toMatchObject({
+      schemaVersion: 5,
+      context: { enabled: false },
+      execution: { backend: "oci", shellMode: "deny" }
+    });
+    expect(migrated.notes).toHaveLength(2);
+  });
+
+  test("keeps schema 5 migration idempotent and rejects unversioned or unknown inputs", () => {
+    const current = { schemaVersion: 5, provider: "qwen", projectContext: true } as const;
+    expect(migrateHarnessConfigInput(current)).toEqual({
+      fromVersion: 5,
+      toVersion: 5,
+      config: current,
+      notes: []
+    });
+    expect(() => migrateHarnessConfigInput({ provider: "openai" })).toThrow("Supported source versions");
+    expect(() => migrateHarnessConfigInput({ schemaVersion: 3 })).toThrow("Supported source versions");
+    expect(() => migrateHarnessConfigInput({ schemaVersion: 6 })).toThrow("Supported source versions");
+  });
+
   test("resolves stable defaults for every provider", () => {
     expect(resolveHarnessConfig({ provider: "meta", workspace: "." })).toMatchObject({
       schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -60,6 +101,17 @@ describe("provider configuration", () => {
     expect(resolveHarnessConfig({ projectContext: false }).context.enabled).toBe(false);
     expect(() => resolveHarnessConfig({ contextConfigPath: "../outside.json" }))
       .toThrow("inside the workspace");
+    try {
+      resolveHarnessConfig({ executionBackend: "host" });
+      throw new Error("Expected invalid execution config to fail.");
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "HarnessConfigError",
+        code: "CONFIG_INVALID",
+        category: "configuration",
+        retryable: false
+      });
+    }
   });
 
   test("resolves a bounded no-network OCI policy and rejects unsafe execution configuration", () => {

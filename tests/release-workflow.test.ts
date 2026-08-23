@@ -15,7 +15,7 @@ describe("release workflow version source", () => {
       const workflow = await readFile(path.join(workspace, workflowPath), "utf8");
 
       expect(workflow).toContain(
-        "description: Annotated vX.Y.Z tag; must match package.json and resolve to main"
+        "description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main"
       );
       expect(workflow).toContain("required: true");
       expect(workflow).toContain("ref: ${{ inputs.tag }}");
@@ -35,5 +35,19 @@ describe("release workflow version source", () => {
 
     expect(workflow).toMatch(/actions\/upload-artifact@[a-f0-9]{40}(?:\s|$)/);
     expect(workflow).toMatch(/actions\/download-artifact@[a-f0-9]{40}(?:\s|$)/);
+  });
+
+  test("release validation binds stable and prerelease versions to the correct npm channel", async () => {
+    const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
+
+    expect(workflow).toContain('--channel "$RELEASE_CHANNEL"');
+    expect(workflow).toContain("RELEASE_CHANNEL: ${{ inputs.channel }}");
+  });
+
+  test("release readiness invokes the fail-closed GA promotion gate for 1.0.0", async () => {
+    const readiness = await readFile(path.join(workspace, "scripts/check-release-readiness.ts"), "utf8");
+
+    expect(readiness).toContain('manifest.version === "1.0.0"');
+    expect(readiness).toContain('["bun", "run", "readiness:1.0:release"]');
   });
 });

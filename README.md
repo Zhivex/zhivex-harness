@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.11.1` is the current public npm release and `latest` distribution tag. Its annotated tag, exact registry integrity, SLSA provenance, and release-bound Meta/Qwen/OpenAI certification are recorded in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication remains fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.11.1` is the current public npm release and `latest` distribution tag. Its annotated tag, exact registry integrity, SLSA provenance, and release-bound Meta/Qwen/OpenAI certification are recorded in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication remains fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. The planned 1.0 promotion is tracked by the [machine-checked readiness gate](./docs/GA_READINESS.md), [API stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md), and [threat model](./docs/THREAT_MODEL.md). See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -318,6 +318,7 @@ The default `none` backend provides governance but no OS isolation and therefore
 
 ```bash
 bun run typecheck
+bun run readiness:1.0
 bun test
 bun run build
 bun run evaluate

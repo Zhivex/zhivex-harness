@@ -2,6 +2,8 @@
 
 Zhivex Harness `0.11.x` is the latest supported pre-1.0 Node-first CLI and TypeScript library. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The mutable machine-readable public release state is recorded in the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), outside immutable npm artifacts.
 
+The detailed 1.0 target is tracked in the [machine-readable support matrix](./docs/support-matrix.json) and its [human-readable view](./docs/SUPPORT_MATRIX.md). Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) once 1.0 is promoted.
+
 ## Supported baseline
 
 - Node.js `22.13.0` or newer; Node 24 LTS is the release and default OCI baseline;

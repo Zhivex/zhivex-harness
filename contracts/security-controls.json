@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "targetVersion": "1.0.0",
+  "controls": [
+    { "threat": "malicious-repository-context", "mitigations": ["bounded context files", "progressive skill loading", "digest-bound edits"], "evidence": ["tests/context-engineering.test.ts", "tests/edit-contracts.test.ts"], "residualRisk": "Trusted project instructions may influence model behavior within granted tool authority." },
+    { "threat": "compromised-model-or-provider", "mitigations": ["application-owned tools", "approval gates", "budgets", "redaction"], "evidence": ["tests/harness.test.ts", "tests/cli-stream.test.ts"], "residualRisk": "Provider receives prompts and may return adversarial content; operators must scope data and review approvals." },
+    { "threat": "hostile-mcp-server", "mitigations": ["HTTPS or allowlisted loopback", "tool allowlists", "permissions", "bounded payloads"], "evidence": ["tests/mcp.test.ts", "scripts/mcp-interoperability-smoke.ts"], "residualRisk": "An approved remote MCP service can observe the inputs explicitly sent to it." },
+    { "threat": "approval-replay-or-substitution", "mitigations": ["fingerprints", "exact proposal digests", "durable approval identity"], "evidence": ["tests/harness.test.ts", "tests/edit-contracts.test.ts"], "residualRisk": "Paused approvals require the original artifact and cannot be rebound across incompatible policy versions." },
+    { "threat": "cross-scope-state-access", "mitigations": ["tenant/user/namespace scope", "workspace binding", "scoped hierarchy reads"], "evidence": ["tests/operations.test.ts", "tests/sessions.test.ts"], "residualRisk": "A process with direct filesystem access to the local state directory remains inside the trust boundary." },
+    { "threat": "hostile-subprocess", "mitigations": ["no-network OCI", "resource ceilings", "argv allowlist", "separate host import approval"], "evidence": ["tests/execution-environment.test.ts", "scripts/oci-execution-smoke.ts"], "residualRisk": "Containers are not VMs; the host kernel and OCI daemon are trusted." },
+    { "threat": "crash-or-concurrent-writer", "mitigations": ["SQLite WAL", "optimistic revisions", "leases", "interrupted cleanup recovery"], "evidence": ["tests/operations.test.ts", "tests/execution-environment.test.ts"], "residualRisk": "Power loss and external filesystem corruption still require operator backup and recovery." },
+    { "threat": "supply-chain-substitution", "mitigations": ["annotated tag", "immutable tarball", "SHA-512", "OIDC provenance", "pinned workflow actions"], "evidence": ["tests/release-workflow.test.ts", "scripts/check-release-artifact.ts", "scripts/release-provenance.ts"], "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies." },
+    { "threat": "compromised-host-kernel-or-daemon", "mitigations": ["explicitly out of scope", "dedicated host or microVM guidance"], "evidence": ["docs/EXECUTION_ENVIRONMENTS.md", "SECURITY.md"], "residualRisk": "The harness cannot protect against an already compromised host, kernel, container daemon, or maintainer account." }
+  ]
+}

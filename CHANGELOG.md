@@ -6,6 +6,21 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+### Added
+
+- Add a machine-checked 1.0 public API/CLI/schema baseline, support matrix, threat/control map, deprecation and rollback policies, representative-evidence schema, and a fail-closed GA readiness ledger.
+- Add an explicit config schema `4` to `5` migration helper that preserves the older authority boundary by disabling project context and OCI shell exposure unless the operator opts in after review.
+- Add stable machine error codes with typed configuration/CLI usage errors and compile a TypeScript consumer against the installed release tarball.
+
+### Changed
+
+- Allow protected `1.0.0-rc.N` artifacts only on npm `next`, keep stable releases on `latest`, and reject version/channel drift before publication.
+- Expose CLI command/subcommand constants as the source for the frozen command manifest and document previously omitted child-budget options in help output.
+
+### Migration
+
+- Existing schema `5` configuration is unchanged. Call `migrateHarnessConfigInput` for an explicitly versioned schema `4` input; the pure migration does not read environment variables or filesystem state. Paused approvals remain bound to the exact older artifact and are never rewritten.
+
 ## 0.11.1 - 2026-08-23
 
 ### Changed

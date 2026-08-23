@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { readRegularFileNoFollow } from "../src/file-security.js";
+import { assertHarnessReleaseChannel } from "./release-policy.js";
 import {
   assertReleaseProvenance,
   type ProvenanceStatement
@@ -51,9 +52,6 @@ const channel = process.argv[3] ?? "latest";
 if (!artifactArgument) {
   throw new Error("Usage: bun run release:verify -- <package.tgz> [channel]");
 }
-if (!/^(?:latest|next)$/.test(channel)) {
-  throw new Error(`Unsupported release channel ${channel}`);
-}
 
 const artifact = path.resolve(process.cwd(), artifactArgument);
 const manifest = JSON.parse(
@@ -63,6 +61,7 @@ const manifest = JSON.parse(
   })).contents.toString("utf8")
 ) as PackageManifest;
 assert.equal(manifest.name, PACKAGE_NAME, "release package name is unexpected");
+assertHarnessReleaseChannel(manifest.version, channel);
 const releaseTag = `v${manifest.version}`;
 const tagType = (await Bun.$`git -C ${workspace} cat-file -t ${releaseTag}`.text()).trim();
 assert.equal(tagType, "tag", `${releaseTag} must exist locally as an annotated tag`);

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Annotated vX.Y.Z tag; must match package.json and resolve to main
+        description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main
         required: true
         type: string
       channel:
@@ -37,6 +37,7 @@ jobs:
 
     env:
       RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_CHANNEL: ${{ inputs.channel }}
 
     steps:
       - name: Checkout annotated release tag
@@ -66,7 +67,7 @@ jobs:
       - name: Validate source and release state
         run: |
           bun run release:check
-          bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --registry
+          bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "$RELEASE_CHANNEL" --registry
         env:
           ZHIVEX_HARNESS_OCI_REQUIRED: "1"
 
@@ -199,7 +200,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Verify exact annotated release target
-        run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG"
+        run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "${{ inputs.channel }}"
 
       - name: Preload enforced execution image
         run: docker pull node:24-bookworm-slim

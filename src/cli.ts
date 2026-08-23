@@ -106,6 +106,7 @@ import {
   resolveTerminalApprovals,
   terminalSupportsColor
 } from "./terminal-ui.js";
+import { HarnessConfigError, HarnessError } from "./errors.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -118,10 +119,15 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-type Command = "run" | "review" | "chat" | "providers" | "doctor" | "resume" | "runs" | "sessions" | "changes" | "help" | "version";
-type RunsCommand = "list" | "inspect" | "cancel" | "cleanup" | "export";
-type SessionsCommand = "list" | "inspect" | "rename" | "fork" | "archive";
-type ChangesCommand = "create" | "verify";
+export const CLI_COMMANDS = ["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "help", "version"] as const;
+export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export"] as const;
+export const CLI_SESSIONS_COMMANDS = ["list", "inspect", "rename", "fork", "archive"] as const;
+export const CLI_CHANGES_COMMANDS = ["create", "verify"] as const;
+
+type Command = (typeof CLI_COMMANDS)[number];
+type RunsCommand = (typeof CLI_RUNS_COMMANDS)[number];
+type SessionsCommand = (typeof CLI_SESSIONS_COMMANDS)[number];
+type ChangesCommand = (typeof CLI_CHANGES_COMMANDS)[number];
 
 export interface CliOptions {
   command: Command;
@@ -199,10 +205,10 @@ export interface CliOptions {
   jsonl: boolean;
 }
 
-const COMMANDS = new Set<Command>(["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "help", "version"]);
-const RUNS_COMMANDS = new Set<RunsCommand>(["list", "inspect", "cancel", "cleanup", "export"]);
-const SESSIONS_COMMANDS = new Set<SessionsCommand>(["list", "inspect", "rename", "fork", "archive"]);
-const CHANGES_COMMANDS = new Set<ChangesCommand>(["create", "verify"]);
+const COMMANDS = new Set<Command>(CLI_COMMANDS);
+const RUNS_COMMANDS = new Set<RunsCommand>(CLI_RUNS_COMMANDS);
+const SESSIONS_COMMANDS = new Set<SessionsCommand>(CLI_SESSIONS_COMMANDS);
+const CHANGES_COMMANDS = new Set<ChangesCommand>(CLI_CHANGES_COMMANDS);
 const CLI_TIMESTAMP_SCHEMA = z.iso.datetime({ precision: 3 });
 const RUN_STATUSES = new Set<AgentStatus>([
   "queued",
@@ -216,9 +222,9 @@ const RUN_STATUSES = new Set<AgentStatus>([
   "timed_out"
 ]);
 
-export class CliUsageError extends Error {
+export class CliUsageError extends HarnessError {
   constructor(message: string) {
-    super(message);
+    super(message, { code: "CLI_USAGE_INVALID", category: "usage" });
     this.name = "CliUsageError";
   }
 }
@@ -910,6 +916,9 @@ Options:
   --subagent <profile>           Enable explorer, implementer, tester, or reviewer; repeatable
   --subagent-max-steps <n>       Independent child step budget (default: 8)
   --subagent-max-tool-calls <n>  Independent child tool budget (default: 16)
+  --subagent-max-tool-errors <n> Independent child failed-tool budget (default: 3)
+  --subagent-max-input-tokens <n> Independent child input-token budget (default: 30000)
+  --subagent-max-output-tokens <n> Independent child output-token budget (default: 8000)
   --subagent-max-total-tokens <n> Independent child token budget (default: 36000)
   --subagent-timeout-ms <n>      Independent child timeout (default: 300000)
   --reviewer <profile>           Read-only review group member; repeatable
@@ -2683,7 +2692,9 @@ const updateIndexedSessionRun = async (
 };
 
 export const cliExitCodeForError = (error: unknown) =>
-  error instanceof CliUsageError ? CLI_EXIT_CODES.usageError : CLI_EXIT_CODES.runtimeError;
+  error instanceof CliUsageError || error instanceof HarnessConfigError
+    ? CLI_EXIT_CODES.usageError
+    : CLI_EXIT_CODES.runtimeError;
 
 const MAX_CHANGE_ENVELOPE_JSON_BYTES = 4 * 1024 * 1024;
 const MAX_CHANGE_ARTIFACT_BYTES = 64 * 1024 * 1024;

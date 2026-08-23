@@ -75,6 +75,7 @@ const inspectArtifact = async () => {
     const allowedPrefixes = [
       "package/dist/",
       "package/docs/",
+      "package/contracts/",
       "package/evaluations/",
       "package/examples/"
     ];
@@ -96,6 +97,8 @@ const inspectArtifact = async () => {
       "package/SECURITY.md",
       "package/SUPPORT.md",
       "package/docs/RELEASE.md",
+      "package/contracts/public-api.json",
+      "package/contracts/security-controls.json",
       "package/docs/EXTENSIBILITY.md",
       "package/docs/CONTEXT_ENGINEERING.md",
       "package/docs/CHANGE_ENVELOPES.md",

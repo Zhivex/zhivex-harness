@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Annotated vX.Y.Z tag; must match package.json and resolve to main
+        description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main
         required: true
         type: string
       providers:
