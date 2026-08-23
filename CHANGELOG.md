@@ -24,7 +24,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ### Security
 
-- Stream integrity-pinned historical npm archives directly into an isolated extractor instead of persisting network bytes, and constrain MCP authentication to canonical credential headers backed by dedicated `ZHIVEX_MCP_*` variables.
+- Stream integrity-pinned historical npm archives directly into an isolated extractor instead of persisting network bytes, constrain MCP authentication to canonical credential headers backed by dedicated `ZHIVEX_MCP_*` variables, publish state backups atomically without clobbering existing targets, and reject orphaned active leases for runs being imported.
 
 ### Migration
 

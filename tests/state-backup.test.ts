@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -8,8 +8,9 @@ import type { AgentRunState } from "@zhivex-ai/agents";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 
 import { resolveHarnessConfig } from "../src/config.js";
-import { openHarnessPersistence } from "../src/operations.js";
+import { HARNESS_SQLITE_FILE, openHarnessPersistence } from "../src/operations.js";
 import { openCliSessionStore } from "../src/sessions.js";
+import { SqliteDatabase } from "../src/sqlite-database.js";
 import {
   createHarnessStateBackup,
   exportHarnessStateBackup,
@@ -240,6 +241,40 @@ describe("WAL-safe logical state backup", () => {
     await expect(importHarnessStateBackup(rebound, bundle)).rejects.toThrow("rebound");
   });
 
+  test("publishes backups atomically without leaving staged files after a target conflict", async () => {
+    const { root, source } = await fixture();
+    const persistence = await openHarnessPersistence(source);
+    await persistence.store.save(terminalState("run-1", source.scope));
+    persistence.close();
+    const backupPath = path.join(root, "backup.json");
+    await writeFile(backupPath, "existing backup\n", { mode: 0o600 });
+    const entriesBefore = (await readdir(root)).sort();
+
+    await expect(exportHarnessStateBackup(source, backupPath)).rejects.toThrow();
+
+    expect(await readFile(backupPath, "utf8")).toBe("existing backup\n");
+    expect((await readdir(root)).sort()).toEqual(entriesBefore);
+  });
+
+  test("allows exactly one concurrent no-clobber state export", async () => {
+    const { root, source } = await fixture();
+    const persistence = await openHarnessPersistence(source);
+    await persistence.store.save(terminalState("run-1", source.scope));
+    persistence.close();
+    const backupPath = path.join(root, "backup.json");
+
+    const outcomes = await Promise.allSettled([
+      exportHarnessStateBackup(source, backupPath),
+      exportHarnessStateBackup(source, backupPath)
+    ]);
+
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
+    expect((await readHarnessStateBackup(backupPath)).records.runs).toHaveLength(1);
+    expect((await readdir(root)).filter((entry) => entry.startsWith(".zhivex-state-backup-")))
+      .toHaveLength(0);
+  });
+
   test("fails closed on conflicts and rolls back injected failures", async () => {
     const { root, source, target } = await fixture();
     const persistence = await openHarnessPersistence(source);
@@ -294,6 +329,32 @@ describe("WAL-safe logical state backup", () => {
     await resumed.store.save(paused);
     resumed.close();
     await expect(createHarnessStateBackup(source)).rejects.toThrow("not a terminal run");
+  });
+
+  test("refuses an orphaned active destination lease for a run being imported", async () => {
+    const { source, target } = await fixture();
+    const sourcePersistence = await openHarnessPersistence(source);
+    await sourcePersistence.store.save(terminalState("leased-import", source.scope));
+    sourcePersistence.close();
+    const bundle = await createHarnessStateBackup(source);
+
+    const targetPersistence = await openHarnessPersistence(target);
+    targetPersistence.close();
+    const database = new SqliteDatabase(path.join(target.stateDirectory, HARNESS_SQLITE_FILE), {
+      create: false,
+      strict: true
+    });
+    database.query(
+      "INSERT INTO zhivex_agent_runs_leases (run_key, run_id, owner_id, expires_at_ms) VALUES (?, ?, ?, ?)"
+    ).run(bundle.records.runs[0]!.key, "leased-import", "orphan-worker", Date.now() + 60_000);
+    database.close();
+
+    await expect(importHarnessStateBackup(target, bundle, { dryRun: true }))
+      .rejects.toThrow("active run leases");
+    await expect(importHarnessStateBackup(target, bundle)).rejects.toThrow("active run leases");
+    const afterRejectedImport = await openHarnessPersistence(target);
+    expect(await afterRejectedImport.store.load("leased-import", target.scope)).toBeUndefined();
+    afterRejectedImport.close();
   });
 
   test("reserves the wildcard scope marker so absent and literal users cannot collide", async () => {

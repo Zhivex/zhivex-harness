@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
-import { chmod, lstat, open, realpath } from "node:fs/promises";
+import { chmod, link, lstat, open, realpath, unlink } from "node:fs/promises";
 import path from "node:path";
 
 import { z } from "zod";
@@ -381,18 +381,40 @@ const writePrivateBackup = async (target: string, contents: string) => {
   if (parentEntry.isSymbolicLink() || !parentEntry.isDirectory()) {
     throw new HarnessWorkspaceError(`Backup parent must be a real non-symlink directory: ${parent}.`);
   }
+  const staged = path.join(parent, `.zhivex-state-backup-${randomUUID()}.tmp`);
   let handle;
+  let published = false;
+  let stagedExists = false;
   try {
     handle = await open(
-      requested,
+      staged,
       fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW,
       0o600
     );
+    stagedExists = true;
     await handle.writeFile(contents, "utf8");
     await handle.sync();
-    await chmod(requested, 0o600);
+    await chmod(staged, 0o600);
+    await handle.close();
+    handle = undefined;
+    // A hard link publishes the fully synced inode atomically and, unlike
+    // rename(), fails instead of replacing an existing backup target.
+    await link(staged, requested);
+    published = true;
+    await unlink(staged);
+    stagedExists = false;
+    const parentHandle = await open(parent, fsConstants.O_RDONLY);
+    try {
+      await parentHandle.sync();
+    } finally {
+      await parentHandle.close();
+    }
+  } catch (error) {
+    if (published) await unlink(requested).catch(() => undefined);
+    throw error;
   } finally {
     await handle?.close();
+    if (stagedExists) await unlink(staged).catch(() => undefined);
   }
 };
 
@@ -672,6 +694,18 @@ export const importHarnessStateBackup = async (
           ).all().filter((row) => destinationSessionIds.has(row.session_id)).map((row) => row.turn_id)
         : [])
     };
+    if (availableTables.has("zhivex_agent_runs_leases")) {
+      const activeLease = database.query<LeaseRow, []>(
+        "SELECT run_key, expires_at_ms FROM zhivex_agent_runs_leases"
+      ).all().some((row) => (
+        destinationRunKeys.has(row.run_key) || expectedKeys.runs.has(row.run_key)
+      ) && row.expires_at_ms > Date.now());
+      if (activeLease) {
+        throw new HarnessStateConflictError("State import refuses a destination with active run leases.", {
+          retryable: true
+        });
+      }
+    }
     const destinationHasState = Object.values(destinationKeys).some((keys) => keys.size > 0);
     if (destinationHasState && Object.keys(expectedKeys).some((name) =>
       !setEquals(
@@ -681,16 +715,6 @@ export const importHarnessStateBackup = async (
       throw new HarnessStateConflictError(
         "State import requires an empty destination or an exactly identical prior import."
       );
-    }
-    if (availableTables.has("zhivex_agent_runs_leases")) {
-      const activeLease = database.query<LeaseRow, []>(
-        "SELECT run_key, expires_at_ms FROM zhivex_agent_runs_leases"
-      ).all().some((row) => destinationRunKeys.has(row.run_key) && row.expires_at_ms > Date.now());
-      if (activeLease) {
-        throw new HarnessStateConflictError("State import refuses a destination with active run leases.", {
-          retryable: true
-        });
-      }
     }
     for (const run of bundle.records.runs) insertOrCompare(
       "zhivex_agent_runs", "run_id = ?", [run.key], "state_json, updated_at_ms",
