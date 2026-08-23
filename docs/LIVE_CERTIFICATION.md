@@ -56,9 +56,9 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-`@zhivex-ai/harness@0.11.0` is published as `latest` with an annotated tag, verified registry integrity, and SLSA provenance. Those supply-chain facts do not certify provider behavior. The protected remote live workflow attempted the `0.11.0` candidate but stopped before provider calls because its GitHub environment contained no provider credentials; publication therefore has no successful release-bound remote provider matrix.
+`@zhivex-ai/harness@0.11.1` is published as `latest` only after its annotated tag passes the protected base, orchestration, routing, model-directed OCI execution, registry-integrity, and SLSA provenance gates. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
-The release workflow now fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment must receive maintainer-approved provider secrets before the next release. Local `.env` credentials are never uploaded automatically.
+The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
 
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
 

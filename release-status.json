@@ -1,24 +1,19 @@
 {
   "schemaVersion": 1,
   "package": "@zhivex-ai/harness",
-  "version": "0.11.0",
-  "status": "published",
+  "version": "0.11.1",
+  "status": "candidate",
   "channel": "latest",
-  "tag": "v0.11.0",
-  "sourceCommit": "652a299e2d6997ca4001dd9931ef2a82645f7204",
+  "tag": "v0.11.1",
+  "sourceCommit": "63b9aa3a3185886a837027bc54f7211443e28547",
   "registry": "https://registry.npmjs.org/",
-  "registryIntegrity": "sha512-UTnkDWdxEUgacbxjUT4IoDqqX3j/TaOzjt+IY/i/R7rT7MZLMNiturhh/743a0+cuwG06orESRzMwWb+7Gbu1Q==",
-  "provenance": "verified",
-  "githubRelease": "https://github.com/Zhivex/zhivex-harness/releases/tag/v0.11.0",
-  "publishedAt": "2026-08-22T01:14:33.751Z",
+  "provenance": "pending",
   "liveCertification": {
-    "status": "partial",
-    "base": "passed-local-tag-source",
-    "orchestration": "passed-local-tag-source",
-    "routing": "passed-local-tag-source",
+    "status": "pending",
+    "base": "pending",
+    "orchestration": "pending",
+    "routing": "pending",
     "execution": "pending-release-bound-run",
-    "remoteWorkflow": "blocked-missing-environment-secrets",
-    "remoteWorkflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/32541832285",
-    "observedAt": "2026-08-22T10:27:47.792Z"
+    "remoteWorkflow": "pending"
   }
 }

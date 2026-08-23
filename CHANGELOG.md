@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 0.11.1 - 2026-08-23
+
 ### Changed
 
 - Make provider live certification a fail-closed dependency of the publish job and bind manual certification runs to an explicit release tag.
@@ -14,6 +16,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Bound installed-package smoke subprocesses by time and captured output so a stalled child process cannot hang release validation indefinitely.
 - Keep public documentation consistent with the published `0.11.0` artifact while preserving live-provider certification as a separate evidence boundary.
 - Retry only transient HTTP failures in the opt-in base provider smoke, using fresh temporary state and a bounded three-attempt schedule; contract and approval failures still fail immediately.
+- Preserve transient provider status from failed agent outputs before release-smoke contract assertions so retryable 429/5xx responses reach the bounded retry loop.
 - Mark create-only `expectedDigest: null` as an explicitly required tool-schema field and reinforce that contract in live certification prompts for providers that otherwise omit null-valued arguments.
 - Record current worktree live evidence separately from release-bound certification: the certified cohort passed every local gate, while Gemini Flash 3.7 passed base editing and delegation but remained blocked on provider quota/capacity during OCI execution.
 
@@ -21,7 +24,12 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 - Add CodeQL, Dependabot, CODEOWNERS, and documented public-repository security controls. GitHub-side controls that are free for public repositories are enabled; optional cost-bearing analysis remains disabled and explicitly recorded. Live provider credentials are scoped only to the final provider-call step rather than checkout, setup, dependency installation, or deterministic validation.
 - Bind workspace, context, OCI, change-envelope, and release-artifact reads to bounded regular-file descriptors that reject symbolic links, hard-linked OCI exports, special files, and concurrent content replacement.
-- Create SQLite state files and benchmark canaries exclusively, stage release archives from the exact inspected bytes, pin registry identity independently of package metadata, and classify adversarial benchmark failures without backtracking regular expressions.
+- Create SQLite state files and benchmark canaries exclusively, stage release archives from the exact inspected bytes, pin registry identity independently of package metadata, and classify adversarial benchmark failures with a linear complete-token scanner.
+- Recover canonical `.cleanup-<artifact>-<uuid>` OCI artifact directories after interrupted cleanup without weakening inode and metadata revalidation.
+
+### Migration from 0.11.0
+
+No configuration, SQLite, approval, or execution-policy migration is required. Existing `0.11.0` state remains compatible; this patch tightens failure classification, cleanup recovery, and release boundaries.
 
 ## 0.11.0 - 2026-08-21
 

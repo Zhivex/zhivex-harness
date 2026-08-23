@@ -713,7 +713,7 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
   if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
     failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
   }
-  const publishedThrough = manifest.version.startsWith("0.11.") ? "0.11.0" : "0.10.0";
+  const publishedThrough = manifest.version.startsWith("0.11.") ? manifest.version : "0.10.0";
   if (!roadmap.includes(`\`0.5.0\` through \`${publishedThrough}\` are published on npm`)) {
     failures.push(`ROADMAP.md must identify ${publishedThrough} as a published Node-first release.`);
   }
@@ -787,7 +787,7 @@ if (manifest.version.startsWith("0.11.")) {
     failures.push(`CHANGELOG.md must include a dated ${manifest.version} heading and migration from 0.10.x.`);
   }
   if (!roadmap.includes("Status: published on npm as `latest`")) {
-    failures.push("ROADMAP.md must identify 0.11.0 as the published latest release.");
+    failures.push(`ROADMAP.md must identify ${manifest.version} as the published latest release.`);
   }
   if (
     roadmap.includes("| `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Local release candidate |") ||

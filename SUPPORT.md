@@ -11,7 +11,7 @@ Zhivex Harness `0.11.x` is the latest supported pre-1.0 Node-first CLI and TypeS
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published `0.11.x` patch receives routine fixes. The exact `v0.11.0` tag source has date-bound local base and orchestration evidence for Meta, Qwen, and OpenAI plus OpenAI-to-Qwen routing evidence. Release-bound remote execution evidence remains pending, and Gemini remains provisional until its complete harness live matrix passes. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Only the most recent published `0.11.x` patch receives routine fixes. The exact `v0.11.1` tag is published only after the protected base, orchestration, OpenAI-to-Qwen routing, and model-directed OCI execution matrix passes for Meta, Qwen, and OpenAI. Gemini remains provisional until its complete harness live matrix passes. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Support channels
 

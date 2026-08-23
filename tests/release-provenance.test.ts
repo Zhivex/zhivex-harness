@@ -5,7 +5,7 @@ import {
   type ProvenanceStatement
 } from "../scripts/release-provenance.js";
 
-const version = "0.11.0";
+const version = "0.11.1";
 const sha512Hex = "a".repeat(128);
 const releaseCommit = "b".repeat(40);
 
@@ -44,7 +44,7 @@ describe("release provenance", () => {
   });
 
   test("accepts a workflow dispatch from the exact version tag", () => {
-    expect(verify("refs/tags/v0.11.0")).toBe("refs/tags/v0.11.0");
+    expect(verify("refs/tags/v0.11.1")).toBe("refs/tags/v0.11.1");
   });
 
   test.each([
@@ -54,12 +54,12 @@ describe("release provenance", () => {
     "refs/heads/feat/release-provenance-verifier"
   ])("rejects an unrelated workflow ref: %s", (ref) => {
     expect(() => verify(ref)).toThrow(
-      "provenance workflow ref must be refs/heads/main or refs/tags/v0.11.0"
+      "provenance workflow ref must be refs/heads/main or refs/tags/v0.11.1"
     );
   });
 
   test("still rejects provenance bound to another source commit", () => {
-    const statement = statementFor("refs/tags/v0.11.0");
+    const statement = statementFor("refs/tags/v0.11.1");
     statement.predicate!.buildDefinition!.resolvedDependencies = [
       { digest: { gitCommit: "c".repeat(40) } }
     ];
