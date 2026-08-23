@@ -152,11 +152,17 @@ export const parseGaRepresentativeEvaluationCoverage = (
     "representative evaluation scenarios contract drifted"
   );
   const releaseTags = candidates.map((candidate) => candidate.tag);
+  const candidateModelPins = Array.isArray(expectedModels)
+    ? expectedModels.filter((entry) =>
+        entry && typeof entry === "object" &&
+        releaseTags.includes(String((entry as Record<string, unknown>).releaseTag))
+      )
+    : expectedModels;
   const evidence = validateRepresentativeEvidence({
     schemaVersion: REPRESENTATIVE_EVIDENCE_SCHEMA_VERSION,
     kind: "harness-representative-evaluation-evidence",
     releaseTags,
-    expectedModels,
+    expectedModels: candidateModelPins,
     expectedCases,
     results: input
   }, releaseTags);

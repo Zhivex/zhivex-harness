@@ -307,6 +307,27 @@ describe("GA release-candidate evidence", () => {
     )).toHaveLength(6);
   });
 
+  test("filters the separately pinned stable release while validating recorded RC evidence", () => {
+    const candidates = [evidence(), secondEvidence()];
+    const results = evaluationResults(candidates);
+    const pins = [
+      ...expectedModels(candidates),
+      {
+        releaseTag: "v1.0.0",
+        models: { meta: "meta-stable", qwen: "qwen-stable", openai: "openai-stable" }
+      }
+    ];
+
+    expect(parseGaRepresentativeEvaluationCoverage(
+      candidates,
+      results,
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+      GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
+      expectedCases,
+      pins
+    )).toHaveLength(6);
+  });
+
   test("requires security review evidence under the dedicated review directory", () => {
     expect(parseGaSecurityReviewEvidencePath("security-reviews/1.0.0.json"))
       .toBe("security-reviews/1.0.0.json");

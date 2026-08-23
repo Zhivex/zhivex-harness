@@ -275,14 +275,20 @@ const object = (input: unknown, label: string): Record<string, unknown> => {
   return input as Record<string, unknown>;
 };
 
+export const securityReviewRequestHeaders = (
+  url: string,
+  githubToken: string | undefined = process.env.GITHUB_TOKEN?.trim()
+) => ({
+  accept: "application/json",
+  "cache-control": "no-cache",
+  ...(githubToken && new URL(url).origin === "https://api.github.com"
+    ? { authorization: `Bearer ${githubToken}` }
+    : {})
+});
+
 const defaultFetchJson = async (url: string): Promise<unknown> => {
-  const githubToken = process.env.GITHUB_TOKEN?.trim();
   const response = await fetch(url, {
-    headers: {
-      accept: "application/vnd.github+json",
-      "cache-control": "no-cache",
-      ...(githubToken ? { authorization: `Bearer ${githubToken}` } : {})
-    },
+    headers: securityReviewRequestHeaders(url),
     signal: AbortSignal.timeout(20_000)
   });
   assert(response.ok, `${url} returned HTTP ${response.status}`);

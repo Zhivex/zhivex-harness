@@ -4,6 +4,7 @@ import {
   SECURITY_CONTROL_MAP,
   SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS,
   SECURITY_REVIEW_TRUST_BOUNDARIES,
+  securityReviewRequestHeaders,
   validateSecurityReviewEvidence,
   verifySecurityReviewWorkflowEvidence,
   type SecurityReviewEvidence,
@@ -171,6 +172,21 @@ const workflowFetcher = (
 };
 
 describe("strict security review evidence", () => {
+  test("sends the GitHub token only to the exact GitHub API origin", () => {
+    expect(securityReviewRequestHeaders(
+      "https://api.github.com/repos/Zhivex/zhivex-harness/actions/runs/1",
+      "fixture-token"
+    )).toHaveProperty("authorization", "Bearer fixture-token");
+    expect(securityReviewRequestHeaders(
+      "https://registry.npmjs.org/%40zhivex-ai%2Fharness",
+      "fixture-token"
+    )).not.toHaveProperty("authorization");
+    expect(securityReviewRequestHeaders(
+      "https://api.github.com.evil.example/attestations/1",
+      "fixture-token"
+    )).not.toHaveProperty("authorization");
+  });
+
   test("accepts one exact release-bound review with complete control coverage", () => {
     expect(validateSecurityReviewEvidence(validEvidence(), binding)).toMatchObject({
       releaseTag: binding.releaseTag,
