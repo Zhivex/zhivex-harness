@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
+  GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
   assertDistinctGaReleaseCandidateEvidence,
   parseGaReleaseCandidateEvidence,
+  parseGaRepresentativeEvaluationCoverage,
+  parseGaSecurityReviewEvidencePath,
   verifyPublishedGaReleaseCandidate,
   type GaReleaseCandidateEvidence,
-  type GaReleaseEvidenceDependencies
+  type GaReleaseEvidenceDependencies,
+  type GaRepresentativeEvaluationResult
 } from "../scripts/ga-release-evidence.js";
 import type { ProvenanceStatement } from "../scripts/release-provenance.js";
 
@@ -28,6 +33,34 @@ const evidence = (overrides: Partial<GaReleaseCandidateEvidence> = {}) => ({
   liveCertification: "passed-release-bound-run",
   ...overrides
 } satisfies GaReleaseCandidateEvidence);
+
+const secondEvidence = () => evidence({
+  version: "1.0.0-rc.2",
+  tag: "v1.0.0-rc.2",
+  sourceCommit: "c".repeat(40),
+  artifactSha512: `sha512-${Buffer.alloc(64, 1).toString("base64")}`,
+  workflowUrl: "https://github.com/Zhivex/zhivex-harness/actions/runs/32195815992"
+});
+
+const evaluationResults = (
+  candidates: readonly GaReleaseCandidateEvidence[]
+): GaRepresentativeEvaluationResult[] => candidates.flatMap((candidate, candidateIndex) =>
+  GA_REPRESENTATIVE_EVALUATION_PROVIDERS.map((provider) => ({
+    releaseTag: candidate.tag,
+    sourceCommit: candidate.sourceCommit,
+    artifactSha512: candidate.artifactSha512,
+    provider,
+    model: `${provider}-fixture`,
+    datasetRevision: "representative-v1",
+    driverCommit: "d".repeat(40),
+    ociImageDigest: `sha256:${"e".repeat(64)}`,
+    workflowUrl: `https://github.com/Zhivex/zhivex-harness/actions/runs/${32195816000 + candidateIndex}`,
+    observedAt: "2026-08-23T12:30:00.000Z",
+    totalRuns: 7,
+    failedRuns: 0,
+    omittedRuns: 0
+  }))
+);
 
 const statement = (candidate: GaReleaseCandidateEvidence): ProvenanceStatement => ({
   subject: [{ name: "package.tgz", digest: { sha512: sha512Hex } }],
@@ -110,10 +143,7 @@ describe("GA release-candidate evidence", () => {
 
   test("rejects duplicated release evidence across candidates", () => {
     const first = evidence();
-    const second = evidence({
-      version: "1.0.0-rc.2",
-      tag: "v1.0.0-rc.2"
-    });
+    const second = evidence({ version: "1.0.0-rc.2", tag: "v1.0.0-rc.2" });
 
     expect(() => assertDistinctGaReleaseCandidateEvidence([first, second]))
       .toThrow("distinct sourceCommit");
@@ -130,5 +160,36 @@ describe("GA release-candidate evidence", () => {
       candidate,
       dependenciesFor(candidate, `sha512-${Buffer.alloc(64, 1).toString("base64")}`)
     )).rejects.toThrow("registry integrity differs");
+  });
+
+  test("requires one bound provider result for both release candidates", () => {
+    const candidates = [evidence(), secondEvidence()];
+    const results = evaluationResults(candidates);
+
+    expect(parseGaRepresentativeEvaluationCoverage(
+      candidates,
+      results,
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+    )).toHaveLength(6);
+    expect(() => parseGaRepresentativeEvaluationCoverage(
+      candidates,
+      results.slice(0, 3),
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+    )).toThrow("exactly 6 candidate/provider results");
+
+    results[3]!.sourceCommit = candidates[0]!.sourceCommit;
+    expect(() => parseGaRepresentativeEvaluationCoverage(
+      candidates,
+      results,
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+    )).toThrow("sourceCommit differs from its release candidate");
+  });
+
+  test("requires security review evidence under the dedicated review directory", () => {
+    expect(parseGaSecurityReviewEvidencePath("security-reviews/1.0.0.json"))
+      .toBe("security-reviews/1.0.0.json");
+    expect(() => parseGaSecurityReviewEvidencePath("")).toThrow("under security-reviews");
+    expect(() => parseGaSecurityReviewEvidencePath("docs/GA_READINESS.md"))
+      .toThrow("under security-reviews");
   });
 });

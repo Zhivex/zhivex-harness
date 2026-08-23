@@ -10,10 +10,15 @@ import {
 } from "../src/cli.js";
 import { readRegularFileNoFollow } from "../src/file-security.js";
 import {
+  GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
+  GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
   assertDistinctGaReleaseCandidateEvidence,
   parseGaReleaseCandidateEvidence,
+  parseGaRepresentativeEvaluationCoverage,
+  parseGaSecurityReviewEvidencePath,
   verifyPublishedGaReleaseCandidate,
-  type GaReleaseCandidateEvidence
+  type GaReleaseCandidateEvidence,
+  type GaRepresentativeEvaluationResult
 } from "./ga-release-evidence.js";
 
 type JsonObject = Record<string, unknown>;
@@ -199,7 +204,8 @@ for (const control of controlRows) {
 }
 
 if (evaluations.schemaVersion !== 2 || evaluations.targetVersion !== "1.0.0" ||
-  JSON.stringify(evaluations.requiredProviders) !== JSON.stringify(["meta", "qwen", "openai"])) {
+  JSON.stringify(evaluations.requiredProviders) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_PROVIDERS) ||
+  JSON.stringify(evaluations.requiredEvidence) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE)) {
   failures.push("representative evaluation matrix must use schema 2 and the certified provider cohort");
 }
 
@@ -274,21 +280,37 @@ if (releaseMode) {
   }
   const security = readiness.securityReview as JsonObject | undefined;
   if (security?.status !== "passed" || security.criticalFindings !== 0 || security.highFindings !== 0 ||
-    !evidenceIsCurrent(security.observedAt, maxAgeDays) || typeof security.evidence !== "string") {
+    !evidenceIsCurrent(security.observedAt, maxAgeDays)) {
     failures.push("GA requires a current passing security review with zero critical/high findings");
+  }
+  try {
+    const securityEvidencePath = parseGaSecurityReviewEvidencePath(security?.evidence);
+    await existingPath(securityEvidencePath, "GA security review evidence");
+  } catch (error) {
+    failures.push(
+      `GA security review evidence is invalid: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
   if (migration?.historicalFixtures !== "passed") failures.push("historical migration fixtures have not passed");
   if (evaluations.status !== "passed") failures.push("representative evaluation matrix has not passed");
   const results = Array.isArray(evaluations.results) ? evaluations.results as JsonObject[] : [];
-  const requiredEvaluationEvidence = Array.isArray(evaluations.requiredEvidence)
-    ? evaluations.requiredEvidence as string[]
-    : [];
-  for (const provider of ["meta", "qwen", "openai"]) {
-    const result = results.find((entry) => entry.provider === provider);
-    if (!result || requiredEvaluationEvidence.some((field) => result[field] === undefined || result[field] === null) ||
-      result.failedRuns !== 0 || result.omittedRuns !== 0 || !Number.isSafeInteger(result.totalRuns) || Number(result.totalRuns) < 1 ||
-      !evidenceIsCurrent(result.observedAt, maxAgeDays) || typeof result.workflowUrl !== "string") {
-      failures.push(`representative evaluation lacks a complete passing ${provider} result`);
+  const parsedResults: GaRepresentativeEvaluationResult[] = [];
+  if (parsedCandidates.length === candidates.length) {
+    try {
+      parsedResults.push(...parseGaRepresentativeEvaluationCoverage(
+        parsedCandidates,
+        results,
+        evaluations.requiredEvidence
+      ));
+    } catch (error) {
+      failures.push(
+        `representative evaluation coverage is invalid: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  for (const result of parsedResults) {
+    if (!evidenceIsCurrent(result.observedAt, maxAgeDays)) {
+      failures.push(`${result.releaseTag}/${result.provider} evaluation evidence is missing, future-dated, or stale`);
     }
   }
 }

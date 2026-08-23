@@ -15,7 +15,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 ### Changed
 
 - Allow protected `1.0.0-rc.N` artifacts only on npm `next`, keep stable releases on `latest`, and reject version/channel drift before publication.
-- Bind each GA release-candidate record to a distinct annotated tag, main-reachable commit, published npm integrity, SLSA provenance statement, and successful release workflow.
+- Bind each GA release-candidate record to a distinct annotated tag, main-reachable commit, published npm integrity, SLSA provenance statement, and successful release workflow; require provider evaluation coverage for both candidates and a concrete security-review artifact.
 - Expose CLI command/subcommand constants as the source for the frozen command manifest and document previously omitted child-budget options in help output.
 
 ### Migration

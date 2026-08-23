@@ -8,6 +8,25 @@ import { assertHarnessReleaseChannel } from "./release-policy.js";
 
 const PACKAGE_REGISTRY_URL = "https://registry.npmjs.org/%40zhivex-ai%2Fharness";
 const RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml";
+const GITHUB_ACTIONS_RUN_PATTERN = /^https:\/\/github\.com\/Zhivex\/zhivex-harness\/actions\/runs\/[1-9]\d*$/;
+
+export const GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE = [
+  "releaseTag",
+  "sourceCommit",
+  "artifactSha512",
+  "provider",
+  "model",
+  "datasetRevision",
+  "driverCommit",
+  "ociImageDigest",
+  "workflowUrl",
+  "observedAt",
+  "totalRuns",
+  "failedRuns",
+  "omittedRuns"
+] as const;
+
+export const GA_REPRESENTATIVE_EVALUATION_PROVIDERS = ["meta", "qwen", "openai"] as const;
 
 export interface GaReleaseCandidateEvidence {
   version: string;
@@ -21,6 +40,22 @@ export interface GaReleaseCandidateEvidence {
   workflowUrl: string;
   provenance: "verified";
   liveCertification: "passed-release-bound-run";
+}
+
+export interface GaRepresentativeEvaluationResult extends Record<string, unknown> {
+  releaseTag: string;
+  sourceCommit: string;
+  artifactSha512: string;
+  provider: (typeof GA_REPRESENTATIVE_EVALUATION_PROVIDERS)[number];
+  model: string;
+  datasetRevision: string;
+  driverCommit: string;
+  ociImageDigest: string;
+  workflowUrl: string;
+  observedAt: string;
+  totalRuns: number;
+  failedRuns: 0;
+  omittedRuns: 0;
 }
 
 interface RegistryDocument {
@@ -79,7 +114,7 @@ export const parseGaReleaseCandidateEvidence = (input: unknown): GaReleaseCandid
   );
   assert.match(
     String(candidate.workflowUrl),
-    /^https:\/\/github\.com\/Zhivex\/zhivex-harness\/actions\/runs\/[1-9]\d*$/,
+    GITHUB_ACTIONS_RUN_PATTERN,
     `${candidate.version} workflowUrl is invalid`
   );
   assert.equal(candidate.provenance, "verified", `${candidate.version} provenance must be verified`);
@@ -89,6 +124,115 @@ export const parseGaReleaseCandidateEvidence = (input: unknown): GaReleaseCandid
     `${candidate.version} live certification must be release-bound`
   );
   return candidate as unknown as GaReleaseCandidateEvidence;
+};
+
+export const parseGaSecurityReviewEvidencePath = (input: unknown): string => {
+  assert.equal(typeof input, "string", "security review evidence must be a workspace-relative path");
+  assert.match(
+    input,
+    /^security-reviews\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:json|md)$/,
+    "security review evidence must be a file under security-reviews/"
+  );
+  return input;
+};
+
+export const parseGaRepresentativeEvaluationCoverage = (
+  candidates: readonly GaReleaseCandidateEvidence[],
+  input: unknown,
+  requiredEvidence: unknown
+): GaRepresentativeEvaluationResult[] => {
+  assert.deepEqual(
+    requiredEvidence,
+    GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+    "representative evaluation requiredEvidence contract drifted"
+  );
+  assert(Array.isArray(input), "representative evaluation results must be an array");
+  const results = input.map((entry) => object(entry));
+  const expectedRows = candidates.length * GA_REPRESENTATIVE_EVALUATION_PROVIDERS.length;
+  assert.equal(
+    results.length,
+    expectedRows,
+    `representative evaluation must contain exactly ${expectedRows} candidate/provider results`
+  );
+
+  const parsed: GaRepresentativeEvaluationResult[] = [];
+  const workflowCandidate = new Map<string, string>();
+  for (const candidate of candidates) {
+    for (const provider of GA_REPRESENTATIVE_EVALUATION_PROVIDERS) {
+      const matches = results.filter(
+        (result) => result.releaseTag === candidate.tag && result.provider === provider
+      );
+      assert.equal(
+        matches.length,
+        1,
+        `representative evaluation requires exactly one ${provider} result for ${candidate.tag}`
+      );
+      const result = matches[0]!;
+      for (const field of GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE) {
+        assert(
+          result[field] !== undefined && result[field] !== null,
+          `${candidate.tag}/${provider} is missing ${field}`
+        );
+      }
+      for (const field of [
+        "releaseTag",
+        "sourceCommit",
+        "artifactSha512",
+        "provider",
+        "model",
+        "datasetRevision",
+        "driverCommit",
+        "ociImageDigest",
+        "workflowUrl",
+        "observedAt"
+      ] as const) {
+        assert(
+          typeof result[field] === "string" && result[field].trim().length > 0,
+          `${candidate.tag}/${provider} ${field} must be a non-empty string`
+        );
+      }
+      assert.equal(
+        result.sourceCommit,
+        candidate.sourceCommit,
+        `${candidate.tag}/${provider} sourceCommit differs from its release candidate`
+      );
+      assert.equal(
+        result.artifactSha512,
+        candidate.artifactSha512,
+        `${candidate.tag}/${provider} artifactSha512 differs from its release candidate`
+      );
+      assert.match(
+        String(result.driverCommit),
+        /^[a-f0-9]{40}$/,
+        `${candidate.tag}/${provider} driverCommit is invalid`
+      );
+      assert.match(
+        String(result.ociImageDigest),
+        /^sha256:[a-f0-9]{64}$/,
+        `${candidate.tag}/${provider} ociImageDigest is invalid`
+      );
+      assert.match(
+        String(result.workflowUrl),
+        GITHUB_ACTIONS_RUN_PATTERN,
+        `${candidate.tag}/${provider} workflowUrl is invalid`
+      );
+      assert(
+        Number.isSafeInteger(result.totalRuns) && Number(result.totalRuns) >= 1,
+        `${candidate.tag}/${provider} totalRuns must be a positive integer`
+      );
+      assert.equal(result.failedRuns, 0, `${candidate.tag}/${provider} contains failed runs`);
+      assert.equal(result.omittedRuns, 0, `${candidate.tag}/${provider} contains omitted runs`);
+
+      const previousCandidate = workflowCandidate.get(String(result.workflowUrl));
+      assert(
+        previousCandidate === undefined || previousCandidate === candidate.tag,
+        `representative evaluation workflow ${String(result.workflowUrl)} is reused across release candidates`
+      );
+      workflowCandidate.set(String(result.workflowUrl), candidate.tag);
+      parsed.push(result as GaRepresentativeEvaluationResult);
+    }
+  }
+  return parsed;
 };
 
 export const assertDistinctGaReleaseCandidateEvidence = (
