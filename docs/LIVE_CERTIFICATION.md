@@ -56,7 +56,7 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-`@zhivex-ai/harness@0.11.1` is published as `latest` only after its annotated tag passes the protected base, orchestration, routing, model-directed OCI execution, registry-integrity, and SLSA provenance gates. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
+`@zhivex-ai/harness@0.11.0` remains published as `latest` with its annotated tag, registry integrity, and SLSA provenance. Version `0.11.1` is a source release candidate whose base, orchestration, routing, model-directed OCI execution, registry-integrity, and SLSA provenance gates are still pending. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
 The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
 

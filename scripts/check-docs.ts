@@ -713,7 +713,9 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
   if (!findReleaseChangelogHeading(changelog, manifest.version) || !changelog.includes("### Migration")) {
     failures.push(`CHANGELOG.md must include a candidate or ISO-dated ${manifest.version} heading and migration notes.`);
   }
-  const publishedThrough = manifest.version.startsWith("0.11.") ? manifest.version : "0.10.0";
+  const publishedThrough = manifest.version.startsWith("0.11.")
+    ? releaseStatus?.status === "published" ? manifest.version : "0.11.0"
+    : "0.10.0";
   if (!roadmap.includes(`\`0.5.0\` through \`${publishedThrough}\` are published on npm`)) {
     failures.push(`ROADMAP.md must identify ${publishedThrough} as a published Node-first release.`);
   }
