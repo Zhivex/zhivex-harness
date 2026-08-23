@@ -134,7 +134,7 @@ export const streamResultDocument = (result: StreamRunResultSource, sequence = 0
   }
   return {
     schemaVersion: CLI_EVENT_SCHEMA_VERSION,
-    kind: "run-result" as const,
+    kind: "run-stream-result" as const,
     sequence,
     runId: result.runId,
     status: result.status,

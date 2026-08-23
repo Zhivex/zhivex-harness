@@ -74,6 +74,58 @@ export {
 export type { StreamRunResultSource } from "./cli-stream.js";
 
 export {
+  CLI_COMMAND_OPTION_CONTRACTS,
+  CLI_OPTION_DEFINITIONS,
+  CLI_OPTION_NAMES,
+  validateCliCommandOptions
+} from "./cli-options.js";
+export type {
+  CliCommandOptionContract,
+  CliCommandOptionContractKey,
+  CliOptionDefinition,
+  CliOptionName
+} from "./cli-options.js";
+
+export {
+  cliChangeEnvelopeVerificationDocumentSchema,
+  cliDoctorDocumentSchema,
+  cliErrorDocumentSchema,
+  cliJsonDocumentSchema,
+  cliJsonLineDocumentSchema,
+  cliProviderDocumentSchema,
+  cliReviewGroupDocumentSchema,
+  cliRunCancellationDocumentSchema,
+  cliRunCleanupDocumentSchema,
+  cliRunEventDocumentSchema,
+  cliRunExportDocumentSchema,
+  cliRunInspectionDocumentSchema,
+  cliRunListDocumentSchema,
+  cliRunResultDocumentSchema,
+  cliSessionDocumentSchema,
+  cliSessionListDocumentSchema,
+  cliStateExportDocumentSchema,
+  cliStateImportDocumentSchema,
+  cliStateStatusDocumentSchema,
+  cliStreamErrorDocumentSchema,
+  cliStreamResultDocumentSchema,
+  parseCliJsonDocument,
+  parseCliJsonLineDocument
+} from "./json-contracts.js";
+export type {
+  CliChangeEnvelopeVerificationDocument,
+  CliJsonDocument,
+  CliJsonLineDocument,
+  CliReviewGroupDocument,
+  CliRunEventDocument,
+  CliRunInspectionDocument,
+  CliRunListDocument,
+  CliRunResultDocument,
+  CliSessionDocument,
+  CliStreamErrorDocument,
+  CliStreamResultDocument
+} from "./json-contracts.js";
+
+export {
   DEFAULT_APPROVAL_SUMMARY_CHARACTERS,
   formatApproval,
   formatTerminalEvent,
@@ -97,6 +149,22 @@ export {
   openCliSessionStore,
   openSessionStore
 } from "./sessions.js";
+
+export {
+  HARNESS_STATE_BACKUP_MAX_BYTES,
+  HARNESS_STATE_BACKUP_SCHEMA_VERSION,
+  createHarnessStateBackup,
+  exportHarnessStateBackup,
+  importHarnessStateBackup,
+  importHarnessStateBackupFile,
+  inspectHarnessState,
+  readHarnessStateBackup,
+  stateBackupBundleSchema
+} from "./state-backup.js";
+export type {
+  HarnessStateBackupBundle,
+  HarnessStateImportOptions
+} from "./state-backup.js";
 export type {
   AppendSessionRunInput,
   CliSession,
@@ -186,13 +254,22 @@ export type {
 export { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
 
 export {
+  HARNESS_ERROR_SCHEMA_VERSION,
   HARNESS_ERROR_CODES,
+  HarnessApprovalError,
   HarnessConfigError,
-  HarnessError
+  HarnessError,
+  HarnessExecutionError,
+  HarnessProviderError,
+  HarnessStateConflictError,
+  HarnessWorkspaceError,
+  harnessErrorDocument,
+  normalizeHarnessError
 } from "./errors.js";
 export type {
   HarnessErrorCategory,
   HarnessErrorCode,
+  HarnessErrorDocument,
   HarnessErrorOptions
 } from "./errors.js";
 

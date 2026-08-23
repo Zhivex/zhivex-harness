@@ -5,9 +5,13 @@ import {
   CLI_CHANGES_COMMANDS,
   CLI_COMMANDS,
   CLI_EXIT_CODES,
+  CLI_HELP_TEXT,
   CLI_RUNS_COMMANDS,
-  CLI_SESSIONS_COMMANDS
+  CLI_SESSIONS_COMMANDS,
+  CLI_STATE_COMMANDS
 } from "../src/cli.js";
+import { CLI_COMMAND_OPTION_CONTRACTS } from "../src/cli-options.js";
+import { CLI_OPTION_NAMES } from "../src/cli-options.js";
 import { readRegularFileNoFollow } from "../src/file-security.js";
 import {
   GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
@@ -121,6 +125,16 @@ const publicIndexSource = (
     maxBytes: 2 * 1024 * 1024
   })
 ).contents.toString("utf8");
+const cliDocumentation = (
+  await readRegularFileNoFollow(path.join(workspace, "docs", "CLI.md"), {
+    label: "CLI documentation",
+    maxBytes: 2 * 1024 * 1024
+  })
+).contents.toString("utf8");
+for (const option of CLI_OPTION_NAMES) {
+  if (!CLI_HELP_TEXT.includes(option)) failures.push(`CLI help omits declared option ${option}`);
+  if (!cliDocumentation.includes(option)) failures.push(`docs/CLI.md omits declared option ${option}`);
+}
 for (const name of stableTypeExports) {
   if (!new RegExp(`\\b${name}\\b`).test(publicIndexSource)) {
     failures.push(`stable type export ${name} is absent from src/index.ts`);
@@ -133,6 +147,8 @@ if (JSON.stringify(cli?.commands) !== JSON.stringify(CLI_COMMANDS) ||
   JSON.stringify(subcommands?.runs) !== JSON.stringify(CLI_RUNS_COMMANDS) ||
   JSON.stringify(subcommands?.sessions) !== JSON.stringify(CLI_SESSIONS_COMMANDS) ||
   JSON.stringify(subcommands?.changes) !== JSON.stringify(CLI_CHANGES_COMMANDS) ||
+  JSON.stringify(subcommands?.state) !== JSON.stringify(CLI_STATE_COMMANDS) ||
+  JSON.stringify(cli?.commandOptions) !== JSON.stringify(CLI_COMMAND_OPTION_CONTRACTS) ||
   JSON.stringify(cli?.exitCodes) !== JSON.stringify(CLI_EXIT_CODES)) {
   failures.push("CLI command/subcommand/exit-code contract drifted from contracts/public-api.json");
 }
@@ -153,7 +169,8 @@ for (const [key, exportName] of [
   ["sessions", "HARNESS_SESSION_SCHEMA_VERSION"],
   ["mcp", "HARNESS_MCP_CONFIG_SCHEMA_VERSION"],
   ["changeEnvelope", "CHANGE_ENVELOPE_SCHEMA_VERSION"],
-  ["editContract", "EDIT_CONTRACT_SCHEMA_VERSION"]
+  ["editContract", "EDIT_CONTRACT_SCHEMA_VERSION"],
+  ["stateBackup", "HARNESS_STATE_BACKUP_SCHEMA_VERSION"]
 ] as const) {
   if (schemas?.[key] !== publicApi[exportName]) failures.push(`schema contract ${key} drifted from ${exportName}`);
 }
@@ -218,6 +235,16 @@ if (JSON.stringify(migration?.configSchemas) !== JSON.stringify([4, 5]) ||
   migration?.pausedApprovalPolicy !== "original-artifact-only") {
   failures.push("migration guarantee must cover config 4/5, state schema 1, and original-artifact approvals");
 }
+const historicalFixtureEvidence = exactStringArray(
+  migration?.historicalFixtureEvidence,
+  "migrationGuarantee.historicalFixtureEvidence"
+);
+if (migration?.historicalFixtures === "passed" && historicalFixtureEvidence.length === 0) {
+  failures.push("passing historical migration fixtures require committed evidence");
+}
+for (const evidence of historicalFixtureEvidence) {
+  await existingPath(evidence, "historical migration fixture evidence");
+}
 const candidates = Array.isArray(readiness.releaseCandidates) ? readiness.releaseCandidates as JsonObject[] : [];
 if (JSON.stringify(candidates.map((candidate) => candidate.version)) !== JSON.stringify(["1.0.0-rc.1", "1.0.0-rc.2"])) {
   failures.push("readiness must require exactly rc.1 and rc.2");
@@ -235,6 +262,13 @@ for (const blocker of blockers) {
   if (!["open", "closed"].includes(String(blocker.status)) ||
     typeof blocker.issue !== "string" || !/^https:\/\/github\.com\/Zhivex\/zhivex-harness\/issues\/\d+$/.test(blocker.issue)) {
     failures.push(`readiness blocker ${String(blocker.id)} must have a valid status and GitHub issue`);
+  }
+  if (blocker.status === "closed") {
+    const evidence = exactStringArray(blocker.evidence, `readiness blocker ${String(blocker.id)} evidence`);
+    if (evidence.length === 0) failures.push(`closed readiness blocker ${String(blocker.id)} requires evidence`);
+    for (const evidencePath of evidence) {
+      await existingPath(evidencePath, `readiness blocker ${String(blocker.id)} evidence`);
+    }
   }
 }
 

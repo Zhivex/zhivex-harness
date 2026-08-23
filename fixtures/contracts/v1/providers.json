@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "kind": "providers",
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "defaultModel": "gpt-fixture",
+      "credentialNames": ["OPENAI_API_KEY"],
+      "capabilities": ["streaming", "tool-calling", "approval-resume"],
+      "support": "certified",
+      "configured": false,
+      "credentials": [{ "name": "OPENAI_API_KEY", "present": false }],
+      "configuration": { "customEndpoint": false, "endpointValid": true, "endpointSecure": true }
+    }
+  ]
+}

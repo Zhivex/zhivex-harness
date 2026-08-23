@@ -23,6 +23,9 @@ zhivex-harness runs cancel <runId> [--reason <text>] [--cascade] [--final]
 zhivex-harness runs cleanup --before <date|timestamp> [--status <status>] [--limit <n>]
 zhivex-harness changes create <input.json> --patch <artifact>
 zhivex-harness changes verify <envelope.json> --patch <artifact> [--preconditions <file>] [--now <ISO-8601 UTC>]
+zhivex-harness state status
+zhivex-harness state export <backup.json>
+zhivex-harness state import <backup.json> [--apply]
 zhivex-harness --version
 zhivex-harness --help
 ```
@@ -30,6 +33,10 @@ zhivex-harness --help
 ## Command compatibility
 
 `zhx` and `zhivex-harness` point to the same installed executable. The short command is the primary interactive UX; the long command remains supported for existing scripts. Running `zhx` with no arguments in a TTY opens the console. An implicit prompt such as `zhx "inspect this repository"` and explicit `zhx run` remain one-shot executions.
+
+Options are command-specific. The exported `CLI_COMMAND_OPTION_CONTRACTS` manifest is the machine source of truth for allowed, required, repeatable, and conflicting options. A known option used with the wrong command, a repeated scalar option, an invalid enum/range, or an unsupported option fails with `CLI_USAGE_INVALID` and exit code `2`; options are never silently ignored.
+
+The checked option inventory includes `--provider`, `--model`, `--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`, `--namespace`, `--idempotency-key`, `--max-steps`, `--timeout-ms`, `--max-tool-calls`, `--max-tool-errors`, `--max-input-tokens`, `--max-output-tokens`, `--max-total-tokens`, `--input-cost-per-million`, `--output-cost-per-million`, and `--yes`, in addition to the command-specific flags documented below. The preparation gate rejects a help or documentation inventory that omits a declared option.
 
 ## Interactive console
 
@@ -62,7 +69,7 @@ Project context discovery reads a root `AGENTS.md` and the optional `.zhivex/har
 
 `--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.11.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
-`review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
+`review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Its execution limits are the `--subagent-max-*` and `--subagent-timeout-ms` child limits; parent `--max-*`/`--timeout-ms` budgets, MCP, OCI, check allowlists, automatic approval, and extra `--subagent` profiles are rejected rather than accepted without effect. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 
 Enforced execution is opt-in:
 
@@ -109,6 +116,14 @@ Every new CLI run persists its resolved, non-secret harness configuration with t
 
 Operator commands do not construct a provider model and do not require provider credentials. They must use the workspace, state directory, backend, and scope that own the target run. `cancel` creates a cooperative cancellation request by default; `--final` writes a terminal cancellation. `cleanup` requires an explicit cutoff and defaults to terminal statuses only.
 
+## State backup and restore
+
+`state status`, `state export`, and `state import` are provider-free. Export creates a logical schema-1 snapshot under a SQLite `BEGIN IMMEDIATE` transaction, so WAL state is captured consistently without copying mutable database files. Backups use owner-only permissions, a strict schema, an SHA-256 payload checksum, and immutable workspace/scope bindings. They contain terminal runs, tool journals, idempotency and parent relationships, memory, and terminal session lineage; leases, active runs, and pending approval authority are rejected.
+
+Import verifies the file type, link count, permissions, schema, checksum, bindings, and referential integrity before opening a write transaction. It is a dry-run unless `--apply` is present. Empty destinations are the normal path, identical records are no-ops, conflicting IDs fail closed, and any write failure rolls back the entire import. The checksum detects accidental or post-export modification; it is not a signature or proof of who created the backup.
+
+The literal durable `userId` value `"*"` is reserved as the absent-user scope marker and is rejected during configuration. This prevents an explicit user from colliding with tenant-wide run, journal, or memory keys.
+
 ## JSON schemas
 
 All structured documents include:
@@ -116,11 +131,13 @@ All structured documents include:
 ```json
 {
   "schemaVersion": 1,
-  "kind": "providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session | change-envelope | change-envelope-verification"
+  "kind": "providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session | change-envelope | change-envelope-verification | state-status | state-export | state-import | error"
 }
 ```
 
-Additive fields may appear within schema version `1`. Removing a field, changing its meaning, or changing a field type requires a new schema version and a migration note. Human-readable output is not a machine contract.
+The exported `parseCliJsonDocument`/`cliJsonDocumentSchema` and `parseCliJsonLineDocument`/`cliJsonLineDocumentSchema` parsers retain additive observational fields within schema version `1`. Removing a field, changing its meaning, or changing a field type requires a new schema version and a migration note. Digest-bound change-envelope and edit-contract schemas remain strict because extra bytes alter the identity being approved. Human-readable output and error messages are not machine contracts.
+
+Machine errors emit only stable `code`, `category`, and `retryable` fields. Messages, causes, stacks, provider payloads, and configuration values are excluded from JSON/JSONL error records.
 
 Provider diagnostics include credential variable names and boolean presence only. Endpoint diagnostics include validation booleans only. Neither contract contains credential values or endpoint URLs.
 
@@ -128,7 +145,7 @@ Provider diagnostics include credential variable names and boolean presence only
 
 ## JSON Lines
 
-`--jsonl` is available for `run` and approval `resume`, and is mutually exclusive with `--json`. Every event line has `schemaVersion: 1`, `kind: "run-event"`, a monotonic `sequence`, and an event `type`. A separately projected compact `run-result` is emitted as the final sequenced line; it contains only run identity/status, step/tool counts, redacted approval identity, and child run identity/status. It omits output text, mutations, approval arguments, paths, scope, provider payloads, and configuration bindings.
+`--jsonl` is available for `run` and approval `resume`, and is mutually exclusive with `--json`. Every event line has `schemaVersion: 1`, `kind: "run-event"`, a monotonic `sequence`, and an event `type`. A separately projected compact `run-stream-result` is emitted as the final sequenced line; its distinct kind prevents ambiguity with rich JSON `run-result`. It contains only run identity/status, step/tool counts, redacted approval identity, and child run identity/status. It omits output text, mutations, approval arguments, paths, scope, provider payloads, and configuration bindings. A machine-readable streaming failure uses `run-stream-error`.
 
 The event projector allowlists safe fields. Text deltas and token usage are retained; tool IDs/names, approval IDs, status, step counts, compaction counts, and provider/model identity are allowed. Tool inputs/outputs, approval arguments, provider payloads, image content, full durable states/messages, raw errors, stacks, and telemetry metadata are omitted. Consumers must still treat model text as untrusted application data.
 

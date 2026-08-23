@@ -76,6 +76,7 @@ const inspectArtifact = async () => {
       "package/dist/",
       "package/docs/",
       "package/contracts/",
+      "package/fixtures/",
       "package/evaluations/",
       "package/examples/"
     ];
@@ -83,6 +84,7 @@ const inspectArtifact = async () => {
     for (const entry of entries) {
       assert(!entry.startsWith("/"), `release artifact contains absolute path ${entry}`);
       assert(!entry.split("/").includes(".."), `release artifact contains traversal path ${entry}`);
+      assert(!entry.endsWith("-wal") && !entry.endsWith("-shm"), `release artifact contains SQLite sidecar ${entry}`);
       assert(
         exactAllowed.has(entry) || allowedPrefixes.some((prefix) => entry.startsWith(prefix)),
         `release artifact contains unexpected path ${entry}`
@@ -99,6 +101,18 @@ const inspectArtifact = async () => {
       "package/docs/RELEASE.md",
       "package/contracts/public-api.json",
       "package/contracts/security-controls.json",
+      "package/fixtures/contracts/v1/error.json",
+      "package/fixtures/contracts/v1/doctor.json",
+      "package/fixtures/contracts/v1/observational-documents.json",
+      "package/fixtures/contracts/v1/providers.json",
+      "package/fixtures/contracts/v1/run-result-forward.json",
+      "package/fixtures/contracts/v1/run-result.json",
+      "package/fixtures/contracts/v1/run-stream-result.jsonl",
+      "package/fixtures/migrations/0.10.0.json",
+      "package/fixtures/migrations/0.10.0.sqlite",
+      "package/fixtures/migrations/0.11.1.json",
+      "package/fixtures/migrations/0.11.1.sqlite",
+      "package/fixtures/migrations/README.md",
       "package/docs/EXTENSIBILITY.md",
       "package/docs/CONTEXT_ENGINEERING.md",
       "package/docs/CHANGE_ENVELOPES.md",
@@ -110,7 +124,8 @@ const inspectArtifact = async () => {
       "package/dist/index.d.ts",
       "package/dist/cli.js",
       "package/dist/zhx.js",
-      "package/dist/hostile-repository-demo.js"
+      "package/dist/hostile-repository-demo.js",
+      "package/dist/verify-historical-migrations.js"
     ]) {
       assert(entries.includes(required), `release artifact is missing ${required}`);
     }

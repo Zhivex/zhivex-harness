@@ -10,7 +10,7 @@ The preparation gate does not certify production readiness. It verifies that pub
 
 ## Promotion sequence
 
-1. Complete contract and historical migration fixtures.
+1. Keep the completed contract, error, CLI-option, historical-migration, and state-backup gates green.
 2. Publish `1.0.0-rc.1` to `next` through the protected exact-artifact workflow.
 3. Run migration, representative repository, live provider, OCI, installed-artifact, integrity, and provenance gates against that tag.
 4. Fix contract defects and publish `1.0.0-rc.2` to `next`; repeat the full matrix.

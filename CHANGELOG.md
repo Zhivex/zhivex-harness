@@ -11,16 +11,21 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Add a machine-checked 1.0 public API/CLI/schema baseline, support matrix, threat/control map, deprecation and rollback policies, representative-evidence schema, and a fail-closed GA readiness ledger.
 - Add an explicit config schema `4` to `5` migration helper that preserves the older authority boundary by disabling project context and OCI shell exposure unless the operator opts in after review.
 - Add stable machine error codes with typed configuration/CLI usage errors and compile a TypeScript consumer against the installed release tarball.
+- Add schema-1 parsers and golden fixtures for public JSON/JSONL output, a command-specific CLI option manifest, and provider-free logical SQLite state status/export/import commands.
+- Add byte-for-byte SQLite migration fixtures generated from the integrity-verified published `0.10.0` and `0.11.1` artifacts and verify them through current run and session APIs.
 
 ### Changed
 
 - Allow protected `1.0.0-rc.N` artifacts only on npm `next`, keep stable releases on `latest`, and reject version/channel drift before publication.
 - Bind each GA release-candidate record to a distinct annotated tag, main-reachable commit, published npm integrity, SLSA provenance statement, and successful release workflow; require every declared provider/scenario on both candidates, verify the evaluation workflows through GitHub, and require a concrete security-review artifact.
 - Expose CLI command/subcommand constants as the source for the frozen command manifest and document previously omitted child-budget options in help output.
+- Emit a distinct compact `run-stream-result` JSONL terminal record, keep machine errors message-free, and delay terminal JSONL output until asynchronous persistence/environment cleanup succeeds.
+- Run installed-package smoke against the exact inspected tarball in CI, reject SQLite WAL/SHM sidecars, and clean `dist` before every build.
 
 ### Migration
 
 - Existing schema `5` configuration is unchanged. Call `migrateHarnessConfigInput` for an explicitly versioned schema `4` input; the pure migration does not read environment variables or filesystem state. Paused approvals remain bound to the exact older artifact and are never rewritten.
+- Existing schema-1 JSON observers may accept additive fields, but JSONL consumers must recognize the distinct `run-stream-result` and `run-stream-error` terminal kinds. The literal durable `userId` value `"*"` is now rejected because it is reserved for the absent-user scope marker.
 
 ## 0.11.1 - 2026-08-23
 

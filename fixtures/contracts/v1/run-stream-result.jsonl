@@ -1,0 +1,1 @@
+{"schemaVersion":1,"kind":"run-stream-result","sequence":4,"runId":"run_fixture","status":"completed","provider":"openai","model":"gpt-fixture","steps":2,"toolCalls":1,"pendingApprovals":[],"children":[]}

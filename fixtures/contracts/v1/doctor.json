@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "kind": "doctor",
+  "ok": true,
+  "harnessVersion": "0.11.1",
+  "configSchemaVersion": 5,
+  "configuration": {
+    "provider": "openai",
+    "model": "gpt-fixture",
+    "workspace": "/redacted/workspace",
+    "stateDirectory": "/redacted/state",
+    "storeBackend": "sqlite",
+    "scope": { "tenantId": "local", "namespace": "fixture" },
+    "maxSteps": 12,
+    "timeoutMs": 300000,
+    "budget": { "maxSteps": 12, "maxToolCalls": 32, "maxToolErrors": 4, "maxInputTokens": 100000, "maxOutputTokens": 30000, "maxTotalTokens": 120000, "includeChildRuns": true },
+    "compaction": { "maxMessages": 100, "maxEstimatedInputTokens": 80000, "keepRecentMessages": 20 },
+    "allowedChecks": ["test", "typecheck", "lint", "build"],
+    "requiredCapabilities": [],
+    "orchestration": {
+      "profiles": ["explorer", "implementer", "tester", "reviewer"],
+      "childBudget": { "maxSteps": 8, "maxToolCalls": 16, "maxToolErrors": 3, "maxInputTokens": 30000, "maxOutputTokens": 8000, "maxTotalTokens": 36000, "includeChildRuns": false },
+      "childTimeoutMs": 300000,
+      "maxParallelReviews": 2
+    },
+    "context": { "enabled": true, "configPath": "/redacted/workspace/.zhivex/harness.json" },
+    "execution": { "backend": "none" }
+  },
+  "checks": [
+    { "id": "node", "status": "pass", "message": "Node.js satisfies the package engine requirement.", "details": { "version": "26.3.0", "required": ">=22.13.0", "primary": true } }
+  ],
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "defaultModel": "gpt-fixture",
+      "credentialNames": ["OPENAI_API_KEY"],
+      "capabilities": ["streaming", "tool-calling", "approval-resume"],
+      "support": "certified",
+      "configured": false,
+      "credentials": [{ "name": "OPENAI_API_KEY", "present": false }],
+      "configuration": { "customEndpoint": false, "endpointValid": true, "endpointSecure": true }
+    }
+  ]
+}

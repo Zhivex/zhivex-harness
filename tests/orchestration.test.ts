@@ -8,6 +8,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 
 import { createEditProposal } from "../src/edit-contracts.js";
+import { HarnessConfigError } from "../src/errors.js";
 import { createHarness, runHarness } from "../src/harness.js";
 import { cancelHarnessRun, inspectHarnessRun } from "../src/operations.js";
 import { runHarnessReviewGroup } from "../src/orchestration.js";
@@ -299,10 +300,12 @@ describe("bounded orchestration", () => {
         "explorer evidence",
         "reviewer evidence"
       ]);
-      await expect(runHarnessReviewGroup(harness, {
+      const unsafeReview = runHarnessReviewGroup(harness, {
         prompt: "unsafe group",
         scope: harness.config.scope
-      }, ["implementer"])).rejects.toThrow("read-only");
+      }, ["implementer"]);
+      await expect(unsafeReview).rejects.toBeInstanceOf(HarnessConfigError);
+      await expect(unsafeReview).rejects.toThrow("read-only");
       await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });

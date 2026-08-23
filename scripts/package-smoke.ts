@@ -106,6 +106,18 @@ try {
     "package/docs/DEPRECATIONS.md",
     "package/contracts/public-api.json",
     "package/contracts/security-controls.json",
+    "package/fixtures/contracts/v1/error.json",
+    "package/fixtures/contracts/v1/doctor.json",
+    "package/fixtures/contracts/v1/observational-documents.json",
+    "package/fixtures/contracts/v1/providers.json",
+    "package/fixtures/contracts/v1/run-result-forward.json",
+    "package/fixtures/contracts/v1/run-result.json",
+    "package/fixtures/contracts/v1/run-stream-result.jsonl",
+    "package/fixtures/migrations/0.10.0.json",
+    "package/fixtures/migrations/0.10.0.sqlite",
+    "package/fixtures/migrations/0.11.1.json",
+    "package/fixtures/migrations/0.11.1.sqlite",
+    "package/fixtures/migrations/README.md",
     "package/evaluations/golden-expectations.json",
     "package/examples/mcp-config.json",
     "package/examples/change-envelope-input.json",
@@ -114,15 +126,20 @@ try {
     "package/dist/index.d.ts",
     "package/dist/cli.js",
     "package/dist/zhx.js",
-    "package/dist/hostile-repository-demo.js"
+    "package/dist/hostile-repository-demo.js",
+    "package/dist/verify-historical-migrations.js"
   ]) {
     assert(archive.stdout.split(/\r?\n/).includes(required), `packed artifact is missing ${required}`);
   }
   for (const forbidden of [
     "package/.env",
     "package/release-status.json",
+    "package/dist/scripts/",
+    "package/dist/src/",
     "package/src/",
-    "package/tests/"
+    "package/tests/",
+    ".sqlite-wal",
+    ".sqlite-shm"
   ]) {
     assert(!archive.stdout.includes(forbidden), `packed artifact contains ${forbidden}`);
   }
@@ -133,7 +150,7 @@ try {
       name: "zhivex-harness-installed-smoke",
       private: true,
       type: "module",
-      packageManager: "npm@11.5.1",
+      packageManager: "bun@1.4.0",
       scripts: {
         test: "node -e \"console.log('test-ok')\"",
         typecheck: "node -e \"console.log('typecheck-ok')\"",
@@ -144,21 +161,19 @@ try {
     "utf8"
   );
   await run(["git", "init", "--quiet"], { cwd: consumer });
-  await run([
-    "npm",
-    "install",
-    "--ignore-scripts",
-    "--no-audit",
-    "--no-fund",
-    tarball
-  ], { cwd: consumer });
+  await run(["bun", "add", "--ignore-scripts", tarball], { cwd: consumer });
 
   const installedTypeConsumer = `
 import {
+  CLI_COMMAND_OPTION_CONTRACTS,
   HarnessConfigError,
+  HarnessStateConflictError,
   createHarness,
   migrateHarnessConfigInput,
+  parseCliJsonDocument,
+  parseCliJsonLineDocument,
   resolveHarnessConfig,
+  type CliJsonDocument,
   type HarnessConfigInput,
   type HarnessConfigMigrationResult,
   type ZhivexHarness
@@ -168,11 +183,35 @@ const legacy: HarnessConfigInput = { schemaVersion: 4, projectContext: false };
 const migrated: HarnessConfigMigrationResult = migrateHarnessConfigInput(legacy);
 const config = resolveHarnessConfig(migrated.config);
 const typedError: HarnessConfigError = new HarnessConfigError("fixture");
+const stateError: HarnessStateConflictError = new HarnessStateConflictError("fixture");
+const parsed: CliJsonDocument = parseCliJsonDocument({
+  schemaVersion: 1,
+  kind: "providers",
+  providers: [],
+  additive: true
+});
+const streamed = parseCliJsonLineDocument(JSON.stringify({
+  schemaVersion: 1,
+  kind: "run-stream-result",
+  sequence: 1,
+  runId: "run-1",
+  status: "completed",
+  provider: "openai",
+  model: "fixture",
+  steps: 0,
+  toolCalls: 0,
+  pendingApprovals: [],
+  children: []
+}));
 const create = async (): Promise<ZhivexHarness> => createHarness({
   provider: config.provider,
   workspace: config.workspace
 });
 void typedError.code;
+void stateError.retryable;
+void parsed.kind;
+void streamed.kind;
+void CLI_COMMAND_OPTION_CONTRACTS["runs:list"].allowed;
 void create;
 `;
   await writeFile(path.join(consumer, "installed-types.ts"), installedTypeConsumer, "utf8");
@@ -225,6 +264,43 @@ void create;
     const help = await run([cli, "--help"], { cwd: consumer });
     assert(help.stdout.includes("Zhivex Harness"), `installed ${path.basename(cli)} help is unavailable`);
     assert.equal(help.stderr, "", `installed ${path.basename(cli)} help emitted an unexpected warning`);
+    const irrelevantMatrix = [
+      ["run", "task", "--before", "1"],
+      ["review", "task", "--jsonl"],
+      ["review", "task", "--yes"],
+      ["review", "task", "--idempotency-key", "request-1"],
+      ["review", "task", "--max-steps", "1"],
+      ["review", "task", "--execution", "oci"],
+      ["review", "task", "--route", "implementer=openai"],
+      ["chat", "--json"],
+      ["chat", "--idempotency-key", "request-1"],
+      ["providers", "--provider", "openai", "--json"],
+      ["doctor", "--yes"],
+      ["resume", "run-1", "--approve", "--model", "fixture"],
+      ["runs", "inspect", "run-1", "--status", "failed"],
+      ["sessions", "inspect", "session-1", "--before", "1"],
+      ["changes", "create", "input.json", "--patch", "change.patch", "--json"],
+      ["state", "status", "--apply"],
+      ["version", "--json"],
+      ["help", "--json"]
+    ];
+    for (const arguments_ of irrelevantMatrix) {
+      const irrelevant = await run([cli, ...arguments_], { cwd: consumer, allowFailure: true });
+      assert.equal(
+        irrelevant.exitCode,
+        2,
+        `installed ${path.basename(cli)} accepted irrelevant options for ${arguments_[0]}`
+      );
+    }
+    const structuredUsage = await run([cli, "providers", "--provider", "openai", "--json"], {
+      cwd: consumer,
+      allowFailure: true
+    });
+    assert.deepEqual(JSON.parse(structuredUsage.stderr), {
+      schemaVersion: 1,
+      kind: "error",
+      error: { code: "CLI_USAGE_INVALID", category: "usage", retryable: false }
+    });
   }
 
   const nodeImport = await run([
@@ -235,6 +311,59 @@ void create;
   ], { cwd: consumer });
   assert(nodeImport.stdout.includes(manifest.version), "installed package is not importable through Node");
   assert.equal(nodeImport.stderr, "", "plain Node library import emitted an unexpected warning");
+
+  const installedErrors = await run([
+    "node",
+    "--input-type=module",
+    "-e",
+    `import {
+      HarnessApprovalError,
+      harnessErrorDocument,
+      loadHarnessMcpConfiguration,
+      normalizeHarnessError,
+      resolveHarnessConfig,
+      runHarnessReviewGroup,
+      validateStateDirectory,
+      Workspace
+    } from "@zhivex-ai/harness";
+    const documents = [];
+    try { resolveHarnessConfig({ maxSteps: 0 }); } catch (error) { documents.push(harnessErrorDocument(error)); }
+    try { await validateStateDirectory(process.cwd(), process.cwd()); } catch (error) { documents.push(harnessErrorDocument(error)); }
+    try { await Workspace.open(process.cwd() + "/missing-workspace"); } catch (error) { documents.push(harnessErrorDocument(error)); }
+    try { await loadHarnessMcpConfiguration(process.cwd(), process.cwd() + "/missing-mcp.json"); } catch (error) { documents.push(harnessErrorDocument(error)); }
+    try { await runHarnessReviewGroup({ config: { orchestration: { maxParallelReviews: 2 } }, subagents: new Map() }, { prompt: "fixture" }, []); } catch (error) { documents.push(harnessErrorDocument(error)); }
+    documents.push(harnessErrorDocument(Object.assign(new Error("secret"), { status: 503 })));
+    documents.push(harnessErrorDocument(new HarnessApprovalError("secret")));
+    documents.push(harnessErrorDocument(Object.assign(new Error("secret"), { name: "ConflictError" })));
+    documents.push(harnessErrorDocument(new Error("secret")));
+    console.log(JSON.stringify(documents));`
+  ], { cwd: consumer });
+  const installedErrorCodes = (JSON.parse(installedErrors.stdout) as Array<{ error: { code: string } }>)
+    .map((document) => document.error.code);
+  assert.deepEqual(installedErrorCodes, [
+    "CONFIG_INVALID",
+    "WORKSPACE_UNSAFE",
+    "WORKSPACE_UNSAFE",
+    "WORKSPACE_UNSAFE",
+    "CONFIG_INVALID",
+    "PROVIDER_UNAVAILABLE",
+    "APPROVAL_REQUIRED",
+    "STATE_CONFLICT",
+    "EXECUTION_FAILED"
+  ]);
+  assert(!installedErrors.stdout.includes("secret"));
+
+  const historicalMigrations = await run([
+    "node",
+    path.join(installedPackageRoot, "dist", "verify-historical-migrations.js")
+  ], { cwd: consumer });
+  assert(historicalMigrations.stdout.includes("migration fixtures passed"));
+
+  const stateStatus = await run([installedShortCli, "state", "status", "--json"], { cwd: consumer });
+  assert.deepEqual(
+    (({ kind, compatible }) => ({ kind, compatible }))(JSON.parse(stateStatus.stdout)),
+    { kind: "state-status", compatible: true }
+  );
 
   const providers = await run([installedCli, "providers", "--json"], { cwd: consumer });
   const providersDocument = JSON.parse(providers.stdout) as {

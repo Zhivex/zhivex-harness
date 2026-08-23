@@ -1,6 +1,8 @@
 import { lstat } from "node:fs/promises";
 import path from "node:path";
 
+import { HarnessWorkspaceError } from "./errors.js";
+
 const SENSITIVE_STATE_SEGMENTS = new Set([".git", ".env", ".npmrc", "dist", "node_modules", "src"]);
 
 const isInside = (root: string, candidate: string) => {
@@ -10,7 +12,7 @@ const isInside = (root: string, candidate: string) => {
 
 export const validateStateDirectory = async (workspace: string, stateDirectory: string) => {
   if (stateDirectory === workspace || stateDirectory === path.parse(stateDirectory).root) {
-    throw new Error("The state directory cannot be the workspace or filesystem root.");
+    throw new HarnessWorkspaceError("The state directory cannot be the workspace or filesystem root.");
   }
 
   const insideWorkspace = isInside(workspace, stateDirectory);
@@ -21,17 +23,17 @@ export const validateStateDirectory = async (workspace: string, stateDirectory: 
     ? relativeSegments.find((segment) => SENSITIVE_STATE_SEGMENTS.has(segment))
     : undefined;
   if (sensitiveSegment) {
-    throw new Error(`The state directory is inside the protected workspace path: ${sensitiveSegment}.`);
+    throw new HarnessWorkspaceError(`The state directory is inside the protected workspace path: ${sensitiveSegment}.`);
   }
 
   if (!insideWorkspace) {
     try {
       const externalEntry = await lstat(stateDirectory);
       if (externalEntry.isSymbolicLink()) {
-        throw new Error(`The state directory must not be a symbolic link: ${stateDirectory}.`);
+        throw new HarnessWorkspaceError(`The state directory must not be a symbolic link: ${stateDirectory}.`);
       }
       if (!externalEntry.isDirectory()) {
-        throw new Error(`The state directory is not a directory: ${stateDirectory}.`);
+        throw new HarnessWorkspaceError(`The state directory is not a directory: ${stateDirectory}.`);
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -47,10 +49,10 @@ export const validateStateDirectory = async (workspace: string, stateDirectory: 
     try {
       const entry = await lstat(current);
       if (entry.isSymbolicLink()) {
-        throw new Error(`The state directory must not resolve through a symbolic link: ${current}.`);
+        throw new HarnessWorkspaceError(`The state directory must not resolve through a symbolic link: ${current}.`);
       }
       if (!entry.isDirectory()) {
-        throw new Error(`The state directory path contains a non-directory entry: ${current}.`);
+        throw new HarnessWorkspaceError(`The state directory path contains a non-directory entry: ${current}.`);
       }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {

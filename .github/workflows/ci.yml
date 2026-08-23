@@ -61,6 +61,12 @@ jobs:
       - name: Inspect package contents
         run: bun run pack:inspect
 
+      - name: Verify one exact package artifact
+        run: |
+          bun pm pack --quiet --ignore-scripts --filename /tmp/zhivex-harness-ci.tgz
+          bun run artifact:check -- /tmp/zhivex-harness-ci.tgz
+          bun run scripts/package-smoke.ts /tmp/zhivex-harness-ci.tgz
+
       - name: Verify build produced no tracked changes
         run: git diff --exit-code
 
@@ -102,4 +108,5 @@ jobs:
         run: |
           node dist/cli.js --version
           node -e 'const expected = require("./package.json").version; import("./dist/index.js").then((module) => { if (module.HARNESS_VERSION !== expected) process.exit(1); })'
+          node dist/verify-historical-migrations.js
           node --input-type=module -e 'import { mkdtemp, rm } from "node:fs/promises"; import os from "node:os"; import path from "node:path"; import { openCliSessionStore, resolveHarnessConfig } from "./dist/index.js"; const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-node-compat-")); try { const config = resolveHarnessConfig({ workspace }); const store = await openCliSessionStore({ workspace, stateDirectory: config.stateDirectory, scope: config.scope }); const session = await store.create({ title: "node-compat" }); if ((await store.get(session.sessionId))?.title !== "node-compat") process.exitCode = 1; store.close(); } finally { await rm(workspace, { recursive: true, force: true }); }'

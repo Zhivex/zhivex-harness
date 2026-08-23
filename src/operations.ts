@@ -29,6 +29,7 @@ import { createAgentRunLedger } from "@zhivex-ai/agents/control-plane";
 import { defaultHarnessNamespace, type HarnessConfig, type HarnessStoreBackend } from "./config.js";
 import { SqliteDatabase } from "./sqlite-database.js";
 import { validateStateDirectory } from "./state-directory.js";
+import { HarnessStateConflictError, HarnessWorkspaceError } from "./errors.js";
 
 type SqliteDatabaseLike = SqliteAgentRunStoreOptions["db"];
 
@@ -92,7 +93,7 @@ export const listHarnessRuns = async (
   query: HarnessRunQuery = {}
 ) => {
   if (!store.list) {
-    throw new Error(`The ${config.storeBackend} run store does not support listing.`);
+    throw new HarnessStateConflictError(`The ${config.storeBackend} run store does not support listing.`);
   }
   const page = await store.list(query, config.scope);
   return {
@@ -112,7 +113,7 @@ export const inspectHarnessRun = async (
 ) => {
   const state = await store.load(runId, config.scope);
   if (!state) {
-    throw new Error(`Run ${runId} was not found in ${config.stateDirectory}.`);
+    throw new HarnessStateConflictError(`Run ${runId} was not found in ${config.stateDirectory}.`);
   }
   const redaction = createRedactionPolicy({ includeEmails: true });
   const traceOptions = createProductionTraceOptions({
@@ -193,7 +194,7 @@ export const cancelHarnessRun = async (
     ? await cancelAgentRunTree(store, runId, cancellationOptions)
     : await cancelAgentRun(store, runId, cancellationOptions);
   if (!result || ("parent" in result && !result.parent)) {
-    throw new Error(`Run ${runId} was not found in ${config.stateDirectory}.`);
+    throw new HarnessStateConflictError(`Run ${runId} was not found in ${config.stateDirectory}.`);
   }
   return {
     schemaVersion: HARNESS_OPERATIONS_SCHEMA_VERSION,
@@ -214,7 +215,7 @@ export const cleanupHarnessRuns = async (
   options: { before: number; statuses?: AgentStatus[]; limit?: number }
 ) => {
   if (!store.deleteExpired) {
-    throw new Error(`The ${config.storeBackend} run store does not support retention cleanup.`);
+    throw new HarnessStateConflictError(`The ${config.storeBackend} run store does not support retention cleanup.`);
   }
   const statuses = options.statuses?.length
     ? options.statuses
@@ -274,7 +275,7 @@ const ensurePrivateStateDirectory = async (directory: string) => {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const entry = await lstat(directory);
   if (entry.isSymbolicLink() || !entry.isDirectory()) {
-    throw new Error(`The state directory must be a real directory: ${directory}.`);
+    throw new HarnessWorkspaceError(`The state directory must be a real directory: ${directory}.`);
   }
   await chmod(directory, 0o700);
 };
@@ -367,7 +368,7 @@ export const openHarnessPersistence = async (
     databaseEntry = await lstat(databasePath);
   }
   if (databaseEntry.isSymbolicLink() || !databaseEntry.isFile()) {
-    throw new Error(`The SQLite state path must be a real file: ${databasePath}.`);
+    throw new HarnessWorkspaceError(`The SQLite state path must be a real file: ${databasePath}.`);
   }
 
   const database = new SqliteDatabase(databasePath, { create: false, strict: true });
@@ -386,7 +387,7 @@ export const openHarnessPersistence = async (
       openedEntry.dev !== databaseEntry.dev ||
       openedEntry.ino !== databaseEntry.ino
     ) {
-      throw new Error(`The SQLite state path changed while it was being opened: ${databasePath}.`);
+      throw new HarnessWorkspaceError(`The SQLite state path changed while it was being opened: ${databasePath}.`);
     }
     database.exec("PRAGMA journal_mode = WAL");
     database.exec("PRAGMA busy_timeout = 5000");

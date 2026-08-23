@@ -97,6 +97,14 @@ import {
   type HarnessLifecycleHookFailure,
   type HarnessLifecycleHookRegistration
 } from "./context-engineering.js";
+import {
+  HarnessConfigError,
+  HarnessError,
+  HarnessExecutionError,
+  HarnessStateConflictError,
+  HarnessWorkspaceError,
+  normalizeHarnessError
+} from "./errors.js";
 
 const APPROVAL_VERSION = "2026-08-17-v5";
 const TOOL_CONTRACT_VERSION = "workspace-verified-transaction-v3";
@@ -773,31 +781,49 @@ const createProviderCompatibleBudget = (config: HarnessConfig) => {
 
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options, options.providerRegistry);
-  const workspace = await Workspace.open(config.workspace);
+  let workspace: Workspace;
+  try {
+    workspace = await Workspace.open(config.workspace);
+  } catch (error) {
+    throw new HarnessWorkspaceError("Harness workspace could not be opened safely.", { cause: error });
+  }
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const contextManifestPath = path.relative(config.workspace, config.context.configPath)
     .split(path.sep)
     .join("/");
-  const contextBundle = config.context.enabled
-    ? await loadHarnessProjectContext(workspace, {
-        manifestPath: contextManifestPath,
-        requireManifest: contextManifestPath !== DEFAULT_HARNESS_CONTEXT_MANIFEST
-      })
-    : createEmptyHarnessContextBundle();
+  let contextBundle: HarnessContextBundle;
+  try {
+    contextBundle = config.context.enabled
+      ? await loadHarnessProjectContext(workspace, {
+          manifestPath: contextManifestPath,
+          requireManifest: contextManifestPath !== DEFAULT_HARNESS_CONTEXT_MANIFEST
+        })
+      : createEmptyHarnessContextBundle();
+  } catch (error) {
+    throw new HarnessConfigError("Harness project context configuration is invalid.", { cause: error });
+  }
   const contextInstructions = renderHarnessContextInstructions(contextBundle);
   const lifecycleHooks = [...(options.lifecycleHooks ?? [])];
   const dispatchLifecycle = createHarnessLifecycleDispatcher(
     lifecycleHooks,
     options.onLifecycleHookError
   );
-  const executionEnvironment = config.execution.backend === "oci"
-    ? await createHarnessOciExecutionEnvironment({
+  let executionEnvironment: HarnessOciExecutionEnvironment | undefined;
+  if (config.execution.backend === "oci") {
+    try {
+      executionEnvironment = await createHarnessOciExecutionEnvironment({
         config: config.execution,
         workspace,
         stateDirectory: config.stateDirectory,
         ...(options.ociRuntimeAdapter ? { runtime: options.ociRuntimeAdapter } : {})
-      })
-    : undefined;
+      });
+    } catch (error) {
+      throw new HarnessExecutionError("Enforced execution environment could not be created.", {
+        cause: error,
+        retryable: true
+      });
+    }
+  }
   const model = options.modelInstance ?? createProviderModel(
     config,
     options.env ?? process.env,
@@ -809,19 +835,32 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
       ? ["tools" as const, "streaming" as const]
       : [])
   ])];
-  const capabilities = assertHarnessModelCapabilities(model, capabilityRequirements, "harness run");
-  for (const [profile, subagentModel] of Object.entries(options.subagentModels ?? {})) {
-    if (subagentModel) {
-      assertHarnessModelCapabilities(subagentModel, ["streaming", "tools"], `${profile} subagent`);
+  let capabilities: HarnessModelCapabilityReport;
+  try {
+    capabilities = assertHarnessModelCapabilities(model, capabilityRequirements, "harness run");
+    for (const [profile, subagentModel] of Object.entries(options.subagentModels ?? {})) {
+      if (subagentModel) {
+        assertHarnessModelCapabilities(subagentModel, ["streaming", "tools"], `${profile} subagent`);
+      }
     }
+  } catch (error) {
+    throw new HarnessConfigError("Harness model capabilities do not satisfy the configured requirements.", {
+      cause: error
+    });
   }
-  const mcpConfiguration = options.mcpConfiguration === undefined
-    ? config.mcpConfigPath
-      ? await loadHarnessMcpConfiguration(config.workspace, config.mcpConfigPath)
-      : { schemaVersion: HARNESS_MCP_CONFIG_SCHEMA_VERSION, servers: [] }
-    : normalizeHarnessMcpConfiguration(options.mcpConfiguration);
+  let mcpConfiguration: HarnessMcpConfiguration;
+  try {
+    mcpConfiguration = options.mcpConfiguration === undefined
+      ? config.mcpConfigPath
+        ? await loadHarnessMcpConfiguration(config.workspace, config.mcpConfigPath)
+        : { schemaVersion: HARNESS_MCP_CONFIG_SCHEMA_VERSION, servers: [] }
+      : normalizeHarnessMcpConfiguration(options.mcpConfiguration);
+  } catch (error) {
+    if (error instanceof HarnessError) throw error;
+    throw new HarnessConfigError("Harness MCP configuration is invalid.", { cause: error });
+  }
   if (executionEnvironment && mcpConfiguration.servers.length > 0) {
-    throw new Error("Enforced OCI execution denies MCP tools before discovery because they execute outside the declared no-network environment boundary.");
+    throw new HarnessConfigError("Enforced OCI execution denies MCP tools before discovery because they execute outside the declared no-network environment boundary.");
   }
   const allWorkspaceTools = createWorkspaceTools(workspace, config.allowedChecks);
   const workspaceTools: ToolSet = executionEnvironment
@@ -841,14 +880,20 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
           execute: async (input) => serializeJsonValue(await loadHarnessSkill(workspace, contextBundle, input))
         })
       };
-  const mcpTools = await createHarnessMcpTools(mcpConfiguration, {
-    ...(options.mcpClients ? { clients: options.mcpClients } : {}),
-    env: options.env ?? process.env,
-    ...(options.fetchImplementation ? { fetchImplementation: options.fetchImplementation } : {})
-  });
+  let mcpTools: ToolSet;
+  try {
+    mcpTools = await createHarnessMcpTools(mcpConfiguration, {
+      ...(options.mcpClients ? { clients: options.mcpClients } : {}),
+      env: options.env ?? process.env,
+      ...(options.fetchImplementation ? { fetchImplementation: options.fetchImplementation } : {})
+    });
+  } catch (error) {
+    if (error instanceof HarnessError) throw error;
+    throw new HarnessExecutionError("Harness MCP tool discovery failed.", { cause: error, retryable: true });
+  }
   for (const name of Object.keys(mcpTools)) {
     if (name in workspaceTools || name in executionTools || name in contextTools) {
-      throw new Error(`MCP tool ${name} conflicts with a built-in workspace tool.`);
+      throw new HarnessConfigError(`MCP tool ${name} conflicts with a built-in workspace tool.`);
     }
   }
   const tools: ToolSet = { ...workspaceTools, ...executionTools, ...contextTools, ...mcpTools };
@@ -1375,7 +1420,7 @@ export const runHarness = async (
           actual.version !== expected.version ||
           actual.fingerprint !== expected.fingerprint
         ) {
-          throw new Error(
+          throw new HarnessStateConflictError(
             `Run ${nextInput.state.runId} was created by a different harness fingerprint and cannot be resumed.`
           );
         }
@@ -1439,12 +1484,12 @@ export const runHarness = async (
       };
     }
 
-    throw new Error("The run exceeded the limit of 50 approval rounds.");
+    throw new HarnessExecutionError("The run exceeded the limit of 50 approval rounds.");
   } catch (error) {
     if (!lifecycleFinished) {
       await harness.dispatchLifecycle({ type: "run-finished", runId, status: "failed" });
     }
-    throw error;
+    throw normalizeHarnessError(error);
   }
 };
 

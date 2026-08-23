@@ -123,7 +123,9 @@ const config = resolveHarnessConfig(migrated.config);
 
 The schema `4` migration writes `projectContext: false` and, for OCI, `ociShellMode: "deny"`. This preserves the old authority surface; enable either feature only after reviewing the repository and policy. Schema `5` migration is idempotent. Unversioned, older, and future inputs fail closed.
 
-Complete or deny paused `0.10.x` approvals with the exact `0.10.x` artifact and context that created them. The config migrator does not rewrite run metadata, tool fingerprints, or approval authority. New `0.11.x` runs enable bounded project context by default; disable it explicitly when required, and await `harness.close()` so asynchronous lifecycle hooks and execution-environment cleanup finish. Historical SQLite fixtures from the published `0.10.0` and `0.11.1` tarballs remain a blocking 1.0 release gate; see [GA_READINESS.md](./GA_READINESS.md).
+Complete or deny paused `0.10.x` approvals with the exact `0.10.x` artifact and context that created them. The config migrator does not rewrite run metadata, tool fingerprints, or approval authority. New `0.11.x` runs enable bounded project context by default; disable it explicitly when required, and await `harness.close()` so asynchronous lifecycle hooks and execution-environment cleanup finish.
+
+The historical migration gate is backed by SQLite files captured byte-for-byte from the exact published `0.10.0` and `0.11.1` tarballs after SHA-512 verification, paired with logical JSON expectations and recorded database digests. `bun run migration:check` copies and opens both historical databases with the current runtime, and CI repeats the compiled verifier on the supported Node.js lines. Regenerate them only with `bun run migration:fixtures`; the generator verifies registry integrity and never executes package lifecycle scripts. See [`fixtures/migrations/README.md`](../fixtures/migrations/README.md) and [GA_READINESS.md](./GA_READINESS.md).
 
 ## Migration from 0.9.x
 

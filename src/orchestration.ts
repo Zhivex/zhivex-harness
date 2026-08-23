@@ -22,6 +22,7 @@ import type {
   HarnessConfig,
   HarnessSubagentProfile
 } from "./config.js";
+import { HarnessConfigError } from "./errors.js";
 
 export interface HarnessSubagentProfileDescriptor {
   id: HarnessSubagentProfile;
@@ -202,21 +203,21 @@ export const runHarnessReviewGroup = async (
 ): Promise<HarnessReviewGroupResult> => {
   const uniqueProfiles = [...new Set(profiles)];
   if (uniqueProfiles.length === 0) {
-    throw new Error("A review group requires at least one profile.");
+    throw new HarnessConfigError("A review group requires at least one profile.");
   }
   if (uniqueProfiles.length > runtime.config.orchestration.maxParallelReviews) {
-    throw new Error(
+    throw new HarnessConfigError(
       `Review group exceeds maxParallelReviews=${runtime.config.orchestration.maxParallelReviews}.`
     );
   }
   const unsafe = uniqueProfiles.find((profile) => profile !== "explorer" && profile !== "reviewer");
   if (unsafe) {
-    throw new Error(`Parallel review accepts read-only explorer/reviewer profiles, not ${unsafe}.`);
+    throw new HarnessConfigError(`Parallel review accepts read-only explorer/reviewer profiles, not ${unsafe}.`);
   }
   const members = uniqueProfiles.map((profile) => {
     const agent = runtime.subagents.get(profile);
     if (!agent) {
-      throw new Error(`Subagent profile ${profile} is not enabled.`);
+      throw new HarnessConfigError(`Subagent profile ${profile} is not enabled.`);
     }
     return { name: profile, agent };
   });
