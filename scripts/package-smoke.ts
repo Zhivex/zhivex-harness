@@ -4,6 +4,12 @@ import os from "node:os";
 import path from "node:path";
 
 import { runPortableProcess } from "../src/process-runtime.js";
+import {
+  assertStableApiSignatureSnapshot,
+  buildStableApiSignatureSnapshot,
+  parseStableApiSignatureSnapshot,
+  type PublicApiStabilityContract
+} from "./stable-api-signatures.js";
 
 interface CommandResult {
   exitCode: number;
@@ -99,12 +105,15 @@ try {
     "package/docs/PUBLIC_SECURITY.md",
     "package/docs/RELEASE.md",
     "package/docs/GA_READINESS.md",
+    "package/docs/GEMINI_1_0_DECISION.md",
     "package/docs/SUPPORT_MATRIX.md",
     "package/docs/THREAT_MODEL.md",
     "package/docs/ROLLBACK.md",
+    "package/docs/SECURITY_REVIEW_EVIDENCE.md",
     "package/docs/STABILITY.md",
     "package/docs/DEPRECATIONS.md",
     "package/contracts/public-api.json",
+    "package/contracts/stable-api-signatures.json",
     "package/contracts/security-controls.json",
     "package/fixtures/contracts/v1/error.json",
     "package/fixtures/contracts/v1/doctor.json",
@@ -119,6 +128,9 @@ try {
     "package/fixtures/migrations/0.11.1.sqlite",
     "package/fixtures/migrations/README.md",
     "package/evaluations/golden-expectations.json",
+    "package/evaluations/representative-assembly-matrix.json",
+    "package/evaluations/representative-matrix.json",
+    "package/evaluations/representative-repositories.jsonl",
     "package/examples/mcp-config.json",
     "package/examples/change-envelope-input.json",
     "package/examples/change.patch",
@@ -311,6 +323,62 @@ void create;
   ], { cwd: consumer });
   assert(nodeImport.stdout.includes(manifest.version), "installed package is not importable through Node");
   assert.equal(nodeImport.stderr, "", "plain Node library import emitted an unexpected warning");
+
+  const installedRuntimeNamespace = await run([
+    "node",
+    "--input-type=module",
+    "-e",
+    'import("@zhivex-ai/harness").then((module) => console.log(JSON.stringify(Object.keys(module).sort())))'
+  ], { cwd: consumer });
+  const installedContract = JSON.parse(
+    await readFile(path.join(installedPackageRoot, "contracts", "public-api.json"), "utf8")
+  ) as {
+    schemaVersion?: number;
+    runtimeExports?: string[];
+    stableRuntimeExports?: string[];
+    betaRuntimeExports?: string[];
+    experimentalRuntimeExports?: string[];
+    typeExports?: string[];
+    stableTypeExports?: string[];
+    betaTypeExports?: string[];
+    experimentalTypeExports?: string[];
+    stableSignatures?: string;
+  };
+  assert.equal(installedContract.schemaVersion, 1, "installed public API contract must use schema 1");
+  const installedRuntimeNames = JSON.parse(installedRuntimeNamespace.stdout) as string[];
+  assert.deepEqual(installedContract.runtimeExports, installedRuntimeNames);
+  assert.deepEqual(
+    [
+      ...(installedContract.stableRuntimeExports ?? []),
+      ...(installedContract.betaRuntimeExports ?? []),
+      ...(installedContract.experimentalRuntimeExports ?? [])
+    ].sort(),
+    installedRuntimeNames,
+    "installed runtime exports must have exactly one explicit stability tier"
+  );
+  const installedDeclaration = await readFile(path.join(installedPackageRoot, "dist", "index.d.ts"), "utf8");
+  const installedTypeNames = [...installedDeclaration.matchAll(/export type\s*\{([^}]*)\}/gs)]
+    .flatMap((match) => match[1]!.split(",").map((entry) => entry.trim()).filter(Boolean))
+    .sort();
+  assert.deepEqual(installedContract.typeExports, installedTypeNames);
+  assert.deepEqual(
+    [
+      ...(installedContract.stableTypeExports ?? []),
+      ...(installedContract.betaTypeExports ?? []),
+      ...(installedContract.experimentalTypeExports ?? [])
+    ].sort(),
+    installedTypeNames,
+    "installed type exports must have exactly one explicit stability tier"
+  );
+  assert.equal(installedContract.stableSignatures, "stable-api-signatures.json");
+  const expectedStableSignatures = parseStableApiSignatureSnapshot(JSON.parse(
+    await readFile(path.join(installedPackageRoot, "contracts", installedContract.stableSignatures), "utf8")
+  ));
+  const actualStableSignatures = buildStableApiSignatureSnapshot(
+    path.join(installedPackageRoot, "dist", "index.d.ts"),
+    installedContract as PublicApiStabilityContract
+  );
+  assertStableApiSignatureSnapshot(expectedStableSignatures, actualStableSignatures);
 
   const installedErrors = await run([
     "node",

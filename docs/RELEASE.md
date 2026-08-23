@@ -29,7 +29,7 @@ ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
 ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci
 ```
 
-The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The release workflow additionally requires the mixed-provider route and model-directed execution gates against the exact annotated tag before the npm job can start; deterministic OCI enforcement remains a separate prerequisite. Gemini remains provisional until its provider, delegation, routing, and execution gates pass. Integrated provisional providers are reported separately and must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The release workflow additionally requires the mixed-provider route, model-directed execution, and representative repository gates against the exact annotated tag before the npm job can start; deterministic OCI enforcement remains a separate prerequisite. Gemini is explicitly provisional and excluded from the 1.0 cohort under [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md). Integrated provisional providers must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
 
 ## Exact artifact gate
 
@@ -42,9 +42,10 @@ The release workflow performs this sequence across an unprivileged validation jo
 5. allow only the documented package roots, verify the packed manifest, and write `SHA512SUMS`;
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
 7. run the protected base, orchestration, routing, and model-directed OCI live gates from the same annotated tag and source commit;
-8. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
-9. pass that same file to the npm CLI for the registry transaction; and
-10. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
+8. run the 14-case governed representative repository matrix for Meta, Qwen, and OpenAI against the same artifact binding and one digest-pinned OCI image; reject missing/selective/unsafe runs and upload only the strict sanitized evidence document;
+9. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
+10. pass that same file to the npm CLI for the registry transaction; and
+11. retry within one absolute five-minute deadline through registry and attestation propagation, capping every request and sleep by the remaining time, then verify the distribution tag, byte-identical SHA-512 integrity, and SLSA subject/repository/workflow/ref/commit evidence. The ref must be `main` or the exact `v<package-version>` tag; arbitrary branches and tags fail closed.
 
 For a local artifact rehearsal after the source gate:
 
@@ -73,7 +74,7 @@ After review and merge, maintainers create an annotated `v<package.json version>
 
 The confirmation is intentional because registry versions are immutable, and the protected environment adds a second human approval boundary. Do not use a local registry session or manual upload as an alternate path.
 
-Release candidates use versions and annotated tags such as `1.0.0-rc.1` / `v1.0.0-rc.1` and must publish to `next`. Stable versions must publish to `latest`; the readiness gate rejects either channel mismatch before registry mutation. Before any `1.0.0` dispatch, `bun run readiness:1.0:release` must pass. That gate requires two complete RC records, current security and representative evaluation evidence, historical migration fixtures, and no open GA blocker. See [GA_READINESS.md](./GA_READINESS.md), [ROLLBACK.md](./ROLLBACK.md), and [DEPRECATIONS.md](./DEPRECATIONS.md).
+Release candidates use versions and annotated tags such as `1.0.0-rc.1` / `v1.0.0-rc.1` and must publish to `next`. Stable versions must publish to `latest`; the readiness gate rejects either channel mismatch before registry mutation. The representative assembly matrix explicitly authorizes RC.1, RC.2, and the final `v1.0.0` tag and pins the Meta, Qwen, and OpenAI model for each, so both candidate and stable publication execute the exact unpacked tarball runtime rather than a checkout-only build. Before any `1.0.0` dispatch, `bun run readiness:1.0:release` must pass. That gate requires two complete RC records, current security and representative evaluation evidence, historical migration fixtures, and no open GA blocker. See [GA_READINESS.md](./GA_READINESS.md), [ROLLBACK.md](./ROLLBACK.md), and [DEPRECATIONS.md](./DEPRECATIONS.md).
 
 If npm accepted the immutable version but the post-publication verifier failed during propagation, rerun only the failed `publish` job. It downloads the already validated artifact, skips `npm publish` only when the registry version has byte-identical integrity, and repeats the registry/provenance verification. Never rebuild, bump, or republish the same version to recover a post-publication false negative.
 
@@ -82,7 +83,7 @@ If npm accepted the immutable version but the post-publication verifier failed d
 Do not dispatch or approve publication when any of these is true:
 
 - the repository is not public, the tag is not annotated, the tagged commit is not on `main`, or the worktree used to create it was dirty;
-- deterministic, installed-artifact, required live-provider, or release-artifact evidence failed;
+- deterministic, installed-artifact, required live-provider, representative-repository, or release-artifact evidence failed;
 - package scope ownership, 2FA, the intended `public` access level, or the protected environment is unclear;
 - the inspected package contents and the to-be-published artifact are not the same file;
 - the package version already exists in npm;

@@ -4,7 +4,7 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.0.0-rc.1 - 2026-08-23
 
 ### Added
 
@@ -13,6 +13,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Add stable machine error codes with typed configuration/CLI usage errors and compile a TypeScript consumer against the installed release tarball.
 - Add schema-1 parsers and golden fixtures for public JSON/JSONL output, a command-specific CLI option manifest, and provider-free logical SQLite state status/export/import commands.
 - Add byte-for-byte SQLite migration fixtures generated from the integrity-verified published `0.10.0` and `0.11.1` artifacts and verify them through current run and session APIs.
+- Add a seven-repository, 14-run representative matrix with strict per-case evidence generation, sanitized cross-provider assembly, and a protected Meta/Qwen/OpenAI release job that blocks npm publication.
+- Add a strict release-candidate security-review schema covering every control, trust boundary, authority-bearing tool, finding, reviewer, artifact binding, and remotely verified CI/CodeQL/release workflow.
 
 ### Changed
 
@@ -21,6 +23,9 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Expose CLI command/subcommand constants as the source for the frozen command manifest and document previously omitted child-budget options in help output.
 - Emit a distinct compact `run-stream-result` JSONL terminal record, keep machine errors message-free, and delay terminal JSONL output until asynchronous persistence/environment cleanup succeeds.
 - Run installed-package smoke against the exact inspected tarball in CI, reject SQLite WAL/SHM sidecars, and clean `dist` before every build.
+- Classify all 213 runtime and 166 type exports explicitly as Stable, Beta, or Experimental, and compare the complete partition with the installed tarball namespace and declarations.
+- Bind every Stable runtime and type export to a reproducible declaration-closure hash and verify that signature snapshot against source-emitted and installed-tarball declarations.
+- Keep Gemini explicitly provisional and outside the 1.0 certified cohort; accept later corrective RCs only as a contiguous sequence after the required RC.1 and RC.2.
 
 ### Security
 

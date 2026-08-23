@@ -1,6 +1,8 @@
 # API stability
 
-[`../contracts/public-api.json`](../contracts/public-api.json) is the machine-checked 1.0 baseline for the package root, binaries, CLI commands/subcommands, exit codes, and document schemas. Every runtime export is present in the snapshot. Exports listed as stable form the intended 1.x compatibility surface; Time-to-Safe-Fix exports are experimental; remaining root exports are beta until explicitly promoted before the final 1.0 freeze.
+[`../contracts/public-api.json`](../contracts/public-api.json) is the machine-checked 1.0 baseline for the package root, binaries, CLI commands/subcommands, exit codes, and document schemas. Every runtime and type export is present in the snapshot and belongs to exactly one explicit tier. Exports listed as stable form the intended 1.x compatibility surface; Time-to-Safe-Fix exports are experimental; the explicitly listed beta exports may evolve under the policy below.
+
+[`../contracts/stable-api-signatures.json`](../contracts/stable-api-signatures.json) binds every Stable runtime and type export to a reproducible SHA-256 signature derived from emitted TypeScript declarations. Each signature includes the local declaration dependency closure, so a Beta helper type cannot change the effective signature of a Stable API unnoticed. `bun run contract:check` regenerates declarations in a temporary directory and fails on drift; `bun run contract:signatures:update` is only for a reviewed compatible baseline update or the next major version. The installed-package smoke repeats the comparison against the exact tarball declarations.
 
 Stable means removal, incompatible signature/type change, semantic change, or stricter accepted input requires the next major release, except for a documented urgent security correction. Additive observational JSON fields are compatible. Digest-bound and signed-style documents use strict parsers: adding a field requires a new schema because unknown bytes change canonical identity.
 
@@ -8,4 +10,4 @@ The schema-1 observational parsers preserve unknown additive fields and distingu
 
 Beta APIs may change in a minor with changelog and migration guidance. Experimental APIs may change without a deprecation window and must not be the sole supported route for a stable operation. Human-readable terminal text and error messages are not contracts; command identity, exit codes, structured document schemas, and `HarnessError.code/category/retryable` are.
 
-Before `1.0.0-rc.1`, maintainers must decide whether each implicit-beta root export is promoted, moved to an explicit subpath, or removed. The snapshot intentionally rejects unreviewed additions and removals so that decision cannot happen accidentally.
+Before `1.0.0-rc.1`, maintainers classified every current runtime and type export as stable, beta, or experimental. The gate rejects unreviewed additions, removals, omissions, and membership in more than one tier so future stability changes remain deliberate. Root aliases remain available during 1.x; any future beta subpath must be additive until the next major release.

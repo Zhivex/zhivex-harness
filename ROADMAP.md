@@ -355,7 +355,7 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
-Status: preparation gate implemented. Public API/CLI/schema baselines, config `4 → 5` migration, support/security/rollback policy, RC channel enforcement, and evidence requirements are machine-checked. GA remains blocked on the open items in [`docs/ga-readiness.json`](./docs/ga-readiness.json), including historical tarball fixtures, representative repository evidence, security review, and two real release candidates.
+Status: RC.1 source and release gates prepared. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements are machine-checked. No `1.0.0-rc.1` publication is claimed until its exact tag completes the protected workflow. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): representative results across the required release candidates and the final-candidate security review.
 
 Scope:
 
@@ -398,8 +398,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Keep future publication fail-closed on base, orchestration, routing, model-directed OCI execution, exact-artifact, integrity, and provenance evidence.
-2. Revalidate date-bound provider evidence when a provider, default model, endpoint, or governed execution contract changes.
-3. Stabilize the CLI, config, JSON/event, library export, state migration, and error contracts required for the first `1.0.0` release candidate.
-4. Publish the support matrix, threat model, migration/export path, and representative cross-provider repository evaluation evidence.
-5. Complete two release candidates without a contract-breaking defect before promoting `1.0.0` to `latest`.
+1. Merge the RC.1 preparation commit, create the annotated `v1.0.0-rc.1` tag, and dispatch the protected workflow to npm `next`.
+2. Verify registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and representative repository evidence before recording RC.1.
+3. Run the observation/correction cycle, then prepare and publish an independent `v1.0.0-rc.2`; add a contiguous corrective RC if needed.
+4. Complete the named security review against the final published candidate and close every critical/high finding.
+5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes.

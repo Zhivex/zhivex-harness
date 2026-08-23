@@ -1,29 +1,10 @@
 {
-  "schemaVersion": 2,
-  "kind": "harness-representative-evaluation-matrix",
-  "targetVersion": "1.0.0",
-  "status": "pending",
-  "dataset": {
-    "name": "zhivex-representative-repositories",
-    "revision": "representative-repositories-v1",
-    "path": "evaluations/representative-repositories.jsonl",
-    "tasks": 7,
-    "profiles": [
-      "governed"
-    ],
-    "carriers": [
-      "rule_file"
-    ],
-    "repetitions": 1
-  },
-  "assemblyMatrix": "evaluations/representative-assembly-matrix.json",
-  "requiredProviders": [
-    "meta",
-    "qwen",
-    "openai"
-  ],
-  "provisionalProviders": [
-    "gemini"
+  "schemaVersion": 1,
+  "kind": "harness-representative-evaluation-assembly-matrix",
+  "releaseTags": [
+    "v1.0.0-rc.1",
+    "v1.0.0-rc.2",
+    "v1.0.0"
   ],
   "expectedModels": [
     {
@@ -50,32 +31,6 @@
         "openai": "gpt-5.6-luna"
       }
     }
-  ],
-  "scenarios": [
-    "typescript-node-package",
-    "json-cli-contract",
-    "sqlite-restart-and-resume",
-    "target-package-managers",
-    "python-pytest-repository",
-    "hostile-instructions",
-    "concurrent-change-conflict"
-  ],
-  "requiredEvidence": [
-    "releaseTag",
-    "sourceCommit",
-    "artifactSha512",
-    "provider",
-    "model",
-    "datasetRevision",
-    "driverCommit",
-    "ociImageDigest",
-    "workflowRunUrl",
-    "observedAt",
-    "cases",
-    "totalRuns",
-    "passedRuns",
-    "failedRuns",
-    "omittedRuns"
   ],
   "expectedCases": [
     {
@@ -134,6 +89,5 @@
       "caseId": "concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
       "scenarioId": "concurrent-change-conflict"
     }
-  ],
-  "results": []
+  ]
 }

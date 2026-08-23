@@ -5,6 +5,13 @@ import {
   type ProvenanceStatement
 } from "./release-provenance.js";
 import { assertHarnessReleaseChannel } from "./release-policy.js";
+import {
+  REPRESENTATIVE_EVIDENCE_PROVIDERS,
+  REPRESENTATIVE_EVIDENCE_SCHEMA_VERSION,
+  REPRESENTATIVE_EVIDENCE_SCENARIOS,
+  validateRepresentativeEvidence,
+  type RepresentativeProviderResult
+} from "./representative-evidence.js";
 
 const PACKAGE_REGISTRY_URL = "https://registry.npmjs.org/%40zhivex-ai%2Fharness";
 const RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml";
@@ -19,25 +26,18 @@ export const GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE = [
   "datasetRevision",
   "driverCommit",
   "ociImageDigest",
-  "workflowUrl",
+  "workflowRunUrl",
   "observedAt",
-  "scenarios",
+  "cases",
   "totalRuns",
+  "passedRuns",
   "failedRuns",
   "omittedRuns"
 ] as const;
 
-export const GA_REPRESENTATIVE_EVALUATION_PROVIDERS = ["meta", "qwen", "openai"] as const;
+export const GA_REPRESENTATIVE_EVALUATION_PROVIDERS = REPRESENTATIVE_EVIDENCE_PROVIDERS;
 
-export const GA_REPRESENTATIVE_EVALUATION_SCENARIOS = [
-  "typescript-node-package",
-  "json-cli-contract",
-  "sqlite-restart-and-resume",
-  "target-package-managers",
-  "python-pytest-repository",
-  "hostile-instructions",
-  "concurrent-change-conflict"
-] as const;
+export const GA_REPRESENTATIVE_EVALUATION_SCENARIOS = REPRESENTATIVE_EVIDENCE_SCENARIOS;
 
 export interface GaReleaseCandidateEvidence {
   version: string;
@@ -53,22 +53,7 @@ export interface GaReleaseCandidateEvidence {
   liveCertification: "passed-release-bound-run";
 }
 
-export interface GaRepresentativeEvaluationResult extends Record<string, unknown> {
-  releaseTag: string;
-  sourceCommit: string;
-  artifactSha512: string;
-  provider: (typeof GA_REPRESENTATIVE_EVALUATION_PROVIDERS)[number];
-  model: string;
-  datasetRevision: string;
-  driverCommit: string;
-  ociImageDigest: string;
-  workflowUrl: string;
-  observedAt: string;
-  scenarios: readonly string[];
-  totalRuns: number;
-  failedRuns: 0;
-  omittedRuns: 0;
-}
+export type GaRepresentativeEvaluationResult = RepresentativeProviderResult;
 
 interface RegistryDocument {
   time?: Record<string, string>;
@@ -142,8 +127,8 @@ export const parseGaSecurityReviewEvidencePath = (input: unknown): string => {
   assert.equal(typeof input, "string", "security review evidence must be a workspace-relative path");
   assert.match(
     input,
-    /^security-reviews\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:json|md)$/,
-    "security review evidence must be a file under security-reviews/"
+    /^security-reviews\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/,
+    "security review evidence must be a JSON file under security-reviews/"
   );
   return input;
 };
@@ -152,7 +137,9 @@ export const parseGaRepresentativeEvaluationCoverage = (
   candidates: readonly GaReleaseCandidateEvidence[],
   input: unknown,
   requiredEvidence: unknown,
-  declaredScenarios: unknown
+  declaredScenarios: unknown,
+  expectedCases: unknown,
+  expectedModels: unknown
 ): GaRepresentativeEvaluationResult[] => {
   assert.deepEqual(
     requiredEvidence,
@@ -164,106 +151,34 @@ export const parseGaRepresentativeEvaluationCoverage = (
     GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
     "representative evaluation scenarios contract drifted"
   );
-  assert(Array.isArray(input), "representative evaluation results must be an array");
-  const results = input.map((entry) => object(entry));
-  const expectedRows = candidates.length * GA_REPRESENTATIVE_EVALUATION_PROVIDERS.length;
-  assert.equal(
-    results.length,
-    expectedRows,
-    `representative evaluation must contain exactly ${expectedRows} candidate/provider results`
-  );
-
-  const parsed: GaRepresentativeEvaluationResult[] = [];
-  const workflowCandidate = new Map<string, string>();
-  for (const candidate of candidates) {
-    const candidateWorkflows = new Set<string>();
-    for (const provider of GA_REPRESENTATIVE_EVALUATION_PROVIDERS) {
-      const matches = results.filter(
-        (result) => result.releaseTag === candidate.tag && result.provider === provider
-      );
-      assert.equal(
-        matches.length,
-        1,
-        `representative evaluation requires exactly one ${provider} result for ${candidate.tag}`
-      );
-      const result = matches[0]!;
-      for (const field of GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE) {
-        assert(
-          result[field] !== undefined && result[field] !== null,
-          `${candidate.tag}/${provider} is missing ${field}`
-        );
-      }
-      for (const field of [
-        "releaseTag",
-        "sourceCommit",
-        "artifactSha512",
-        "provider",
-        "model",
-        "datasetRevision",
-        "driverCommit",
-        "ociImageDigest",
-        "workflowUrl",
-        "observedAt"
-      ] as const) {
-        assert(
-          typeof result[field] === "string" && result[field].trim().length > 0,
-          `${candidate.tag}/${provider} ${field} must be a non-empty string`
-        );
-      }
-      assert.equal(
-        result.sourceCommit,
-        candidate.sourceCommit,
-        `${candidate.tag}/${provider} sourceCommit differs from its release candidate`
-      );
-      assert.equal(
-        result.artifactSha512,
-        candidate.artifactSha512,
-        `${candidate.tag}/${provider} artifactSha512 differs from its release candidate`
-      );
-      assert.match(
-        String(result.driverCommit),
-        /^[a-f0-9]{40}$/,
-        `${candidate.tag}/${provider} driverCommit is invalid`
-      );
-      assert.match(
-        String(result.ociImageDigest),
-        /^sha256:[a-f0-9]{64}$/,
-        `${candidate.tag}/${provider} ociImageDigest is invalid`
-      );
-      assert.match(
-        String(result.workflowUrl),
-        GITHUB_ACTIONS_RUN_PATTERN,
-        `${candidate.tag}/${provider} workflowUrl is invalid`
-      );
-      assert.deepEqual(
-        result.scenarios,
-        GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
-        `${candidate.tag}/${provider} does not cover every declared scenario`
-      );
-      assert(
-        Number.isSafeInteger(result.totalRuns) &&
-          Number(result.totalRuns) >= GA_REPRESENTATIVE_EVALUATION_SCENARIOS.length,
-        `${candidate.tag}/${provider} totalRuns must cover every declared scenario`
-      );
-      assert.equal(result.failedRuns, 0, `${candidate.tag}/${provider} contains failed runs`);
-      assert.equal(result.omittedRuns, 0, `${candidate.tag}/${provider} contains omitted runs`);
-
-      const previousCandidate = workflowCandidate.get(String(result.workflowUrl));
-      assert(
-        previousCandidate === undefined || previousCandidate === candidate.tag,
-        `representative evaluation workflow ${String(result.workflowUrl)} is reused across release candidates`
-      );
-      workflowCandidate.set(String(result.workflowUrl), candidate.tag);
-      candidateWorkflows.add(String(result.workflowUrl));
-      parsed.push(result as GaRepresentativeEvaluationResult);
-    }
+  const releaseTags = candidates.map((candidate) => candidate.tag);
+  const evidence = validateRepresentativeEvidence({
+    schemaVersion: REPRESENTATIVE_EVIDENCE_SCHEMA_VERSION,
+    kind: "harness-representative-evaluation-evidence",
+    releaseTags,
+    expectedModels,
+    expectedCases,
+    results: input
+  }, releaseTags);
+  for (const result of evidence.results) {
+    const candidate = candidates.find((entry) => entry.tag === result.releaseTag)!;
     assert.equal(
-      candidateWorkflows.size,
-      1,
-      `${candidate.tag} provider results must share one representative evaluation workflow`
+      result.sourceCommit,
+      candidate.sourceCommit,
+      `${result.releaseTag}/${result.provider} sourceCommit differs from its release candidate`
+    );
+    assert.equal(
+      result.artifactSha512,
+      candidate.artifactSha512,
+      `${result.releaseTag}/${result.provider} artifactSha512 differs from its release candidate`
+    );
+    assert.equal(
+      result.workflowRunUrl,
+      candidate.workflowUrl,
+      `${result.releaseTag}/${result.provider} workflow differs from its release candidate`
     );
   }
-  return parsed;
+  return evidence.results;
 };
 
 export const assertDistinctGaReleaseCandidateEvidence = (
@@ -274,6 +189,20 @@ export const assertDistinctGaReleaseCandidateEvidence = (
       new Set(candidates.map((candidate) => candidate[field])).size,
       candidates.length,
       `release candidates must have distinct ${field} values`
+    );
+  }
+};
+
+export const assertGaReleaseCandidateSequence = (versions: readonly unknown[]) => {
+  assert(
+    versions.length >= 2,
+    "readiness must record at least rc.1 and rc.2"
+  );
+  for (const [index, version] of versions.entries()) {
+    assert.equal(
+      version,
+      `1.0.0-rc.${index + 1}`,
+      "readiness release candidates must be a contiguous sequence starting at 1.0.0-rc.1"
     );
   }
 };
@@ -318,7 +247,7 @@ export const verifyGaRepresentativeEvaluationWorkflows = async (
     const workflowUrls = new Set(
       results
         .filter((result) => result.releaseTag === candidate.tag)
-        .map((result) => result.workflowUrl)
+        .map((result) => result.workflowRunUrl)
     );
     assert.equal(workflowUrls.size, 1, `${candidate.tag} must have one representative evaluation workflow`);
     const workflowUrl = [...workflowUrls][0]!;

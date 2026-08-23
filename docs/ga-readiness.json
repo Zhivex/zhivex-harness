@@ -122,6 +122,19 @@
     },
     { "id": "representative-evaluation-evidence", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/31" },
     { "id": "security-review", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/32" },
-    { "id": "gemini-ga-decision", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/33" }
+    {
+      "id": "gemini-ga-decision",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/33",
+      "evidence": [
+        ".github/workflows/release.yml",
+        "docs/GA_READINESS.md",
+        "docs/GEMINI_1_0_DECISION.md",
+        "docs/LIVE_CERTIFICATION.md",
+        "docs/support-matrix.json",
+        "evaluations/representative-matrix.json",
+        "src/providers.ts"
+      ]
+    }
   ]
 }
