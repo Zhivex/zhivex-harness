@@ -101,5 +101,5 @@ jobs:
       - name: Execute the Node-first artifact
         run: |
           node dist/cli.js --version
-          node -e 'import("./dist/index.js").then((module) => { if (module.HARNESS_VERSION !== "0.11.0") process.exit(1); })'
+          node -e 'const expected = require("./package.json").version; import("./dist/index.js").then((module) => { if (module.HARNESS_VERSION !== expected) process.exit(1); })'
           node --input-type=module -e 'import { mkdtemp, rm } from "node:fs/promises"; import os from "node:os"; import path from "node:path"; import { openCliSessionStore, resolveHarnessConfig } from "./dist/index.js"; const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-node-compat-")); try { const config = resolveHarnessConfig({ workspace }); const store = await openCliSessionStore({ workspace, stateDirectory: config.stateDirectory, scope: config.scope }); const session = await store.create({ title: "node-compat" }); if ((await store.get(session.sessionId))?.title !== "node-compat") process.exitCode = 1; store.close(); } finally { await rm(workspace, { recursive: true, force: true }); }'

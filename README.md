@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.11.0` is the current public npm release and `latest` distribution tag. Its annotated tag, exact registry integrity, and SLSA provenance resolve to source commit `652a299e2d6997ca4001dd9931ef2a82645f7204`. Provider evidence remains a separate gate: the exact tag source has local base, orchestration, and OpenAI-to-Qwen routing evidence, while a release-bound remote execution matrix remains pending until the protected GitHub environment receives maintainer-approved provider credentials. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.11.1` is the current source release candidate; `0.11.0` remains the public npm release and `latest` distribution tag until protected publication completes. Candidate provenance and certification are pending in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication is fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -109,10 +109,10 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Installation
 
-Install the published Node-first `0.11.0` artifact with an exact version:
+After protected publication, install the Node-first `0.11.1` artifact with an exact version:
 
 ```bash
-npx --yes --package=@zhivex-ai/harness@0.11.0 zhx --version
+npx --yes --package=@zhivex-ai/harness@0.11.1 zhx --version
 ```
 
 To exercise the source checkout, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
