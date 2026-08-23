@@ -56,13 +56,19 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-`@zhivex-ai/harness@0.11.0` remains published as `latest` with its annotated tag, registry integrity, and SLSA provenance. Version `0.11.1` is a source release candidate whose base, orchestration, routing, model-directed OCI execution, registry-integrity, and SLSA provenance gates are still pending. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
+`@zhivex-ai/harness@0.11.1` is published as `latest` with annotated tag `v0.11.1`, exact registry integrity, and verified SLSA provenance. The same tag passed the protected base, orchestration, routing, and model-directed OCI execution matrix before npm publication. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
 The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
 
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
 
-## Current local tag-source evidence
+## Current release-bound evidence
+
+On 2026-08-23, protected [release workflow 32648233081](https://github.com/Zhivex/zhivex-harness/actions/runs/32648233081) checked out annotated tag `v0.11.1` at `d7e3e87a64999bc9244b55c398f1ef49b89d5a29`. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each passed proposal/approval/restart/exactly-once, bounded reviewer delegation with persisted child state, and model-directed command/review/separate-import execution against the pinned no-network OCI image. The same run passed the OpenAI-parent/Qwen-reviewer route before publishing the exact validated tarball.
+
+The public package is bound to SHA-512 integrity `sha512-lF1ZzWi4HKsAUAdrpFb6Gf3afsrv89Mkm6tnqA/EGCHGWKZ7c1qQaM2opxrKFQIFQhfWJO4BrYMWQLDWC840kA==` and SLSA provenance for the release workflow, tag, and source commit. Gemini was not part of the certified release cohort and remains provisional.
+
+## Historical local tag-source evidence
 
 On 2026-08-22, a clean checkout of annotated tag `v0.11.0` at `652a299e2d6997ca4001dd9931ef2a82645f7204` passed the base proposal/approval/restart/exactly-once matrix for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna`. The same checkout passed bounded reviewer delegation and persistence for all three providers plus the OpenAI-parent/Qwen-reviewer mixed route.
 

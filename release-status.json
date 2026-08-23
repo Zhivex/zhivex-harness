@@ -2,18 +2,23 @@
   "schemaVersion": 1,
   "package": "@zhivex-ai/harness",
   "version": "0.11.1",
-  "status": "candidate",
+  "status": "published",
   "channel": "latest",
   "tag": "v0.11.1",
-  "sourceCommit": "63b9aa3a3185886a837027bc54f7211443e28547",
+  "sourceCommit": "d7e3e87a64999bc9244b55c398f1ef49b89d5a29",
   "registry": "https://registry.npmjs.org/",
-  "provenance": "pending",
+  "registryIntegrity": "sha512-lF1ZzWi4HKsAUAdrpFb6Gf3afsrv89Mkm6tnqA/EGCHGWKZ7c1qQaM2opxrKFQIFQhfWJO4BrYMWQLDWC840kA==",
+  "provenance": "verified",
+  "githubRelease": "https://github.com/Zhivex/zhivex-harness/releases/tag/v0.11.1",
+  "publishedAt": "2026-08-23T15:24:37.716Z",
   "liveCertification": {
-    "status": "pending",
-    "base": "pending",
-    "orchestration": "pending",
-    "routing": "pending",
-    "execution": "pending-release-bound-run",
-    "remoteWorkflow": "pending"
+    "status": "certified",
+    "base": "passed-release-bound-run",
+    "orchestration": "passed-release-bound-run",
+    "routing": "passed-release-bound-run",
+    "execution": "passed-release-bound-run",
+    "remoteWorkflow": "passed",
+    "remoteWorkflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/32648233081",
+    "observedAt": "2026-08-23T15:24:11.534Z"
   }
 }
