@@ -64,6 +64,35 @@ describe("release status", () => {
     expect(parseReleaseStatus(candidate)).toEqual(candidate);
   });
 
+  test("accepts complete release-bound certification evidence", () => {
+    const certified = {
+      ...status,
+      liveCertification: {
+        status: "certified",
+        base: "passed-release-bound-run",
+        orchestration: "passed-release-bound-run",
+        routing: "passed-release-bound-run",
+        execution: "passed-release-bound-run",
+        remoteWorkflow: "passed",
+        remoteWorkflowRun: "https://github.com/Zhivex/zhivex-harness/actions/runs/1",
+        observedAt: "2026-08-23T12:00:00.000Z"
+      }
+    } as const;
+
+    expect(parseReleaseStatus(certified)).toEqual(certified);
+  });
+
+  test("rejects certified state without complete release-bound evidence", () => {
+    expect(() => parseReleaseStatus({
+      ...status,
+      liveCertification: {
+        ...status.liveCertification,
+        status: "certified",
+        remoteWorkflow: "passed"
+      }
+    })).toThrow();
+  });
+
   test("rejects candidate publication claims", () => {
     expect(() => parseReleaseStatus({
       schemaVersion: 1,

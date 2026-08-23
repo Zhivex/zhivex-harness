@@ -12,6 +12,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 - Make provider live certification a fail-closed dependency of the publish job and bind manual certification runs to an explicit release tag.
 - Remove release-version defaults from GitHub workflow inputs. Maintainers enter the annotated tag at dispatch, and release readiness validates it against the single version source in `package.json`.
+- Keep release-artifact transfer actions pinned to immutable commit SHAs while allowing Dependabot SHA upgrades, and represent successful remote tag-bound certification explicitly in the release-status schema.
 - Add a mutable machine-readable repository release-status record, keep it outside immutable npm artifacts, and validate public documentation, release gates, and repository security configuration against it.
 - Bound installed-package smoke subprocesses by time and captured output so a stalled child process cannot hang release validation indefinitely.
 - Keep public documentation consistent with the published `0.11.0` artifact while preserving live-provider certification as a separate evidence boundary.
