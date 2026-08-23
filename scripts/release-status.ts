@@ -3,7 +3,8 @@ import { z } from "zod";
 const liveEvidenceSchema = z.enum([
   "pending",
   "passed-local-tag-source",
-  "pending-release-bound-run"
+  "pending-release-bound-run",
+  "passed-release-bound-run"
 ]);
 
 const releaseStatusBaseShape = {
@@ -64,6 +65,24 @@ export const releaseStatusSchema = z.discriminatedUnion("status", [
       path: ["tag"],
       message: "release tag must match the recorded version"
     });
+  }
+  if (status.liveCertification.status === "certified") {
+    for (const phase of ["base", "orchestration", "routing", "execution"] as const) {
+      if (status.liveCertification[phase] !== "passed-release-bound-run") {
+        context.addIssue({
+          code: "custom",
+          path: ["liveCertification", phase],
+          message: "certified releases require release-bound evidence for every live phase"
+        });
+      }
+    }
+    if (status.liveCertification.remoteWorkflow !== "passed") {
+      context.addIssue({
+        code: "custom",
+        path: ["liveCertification", "remoteWorkflow"],
+        message: "certified releases require a successful remote workflow"
+      });
+    }
   }
 });
 

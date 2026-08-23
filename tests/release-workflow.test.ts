@@ -29,4 +29,11 @@ describe("release workflow version source", () => {
     expect(workflow).toContain('const expected = require("./package.json").version');
     expect(workflow).not.toMatch(/HARNESS_VERSION !== "\d+\.\d+\.\d+"/);
   });
+
+  test("release artifact transfer actions are pinned to immutable commit SHAs", async () => {
+    const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
+
+    expect(workflow).toMatch(/actions\/upload-artifact@[a-f0-9]{40}(?:\s|$)/);
+    expect(workflow).toMatch(/actions\/download-artifact@[a-f0-9]{40}(?:\s|$)/);
+  });
 });

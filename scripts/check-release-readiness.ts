@@ -170,8 +170,6 @@ for (const required of [
   "bun pm pack",
   "bun run artifact:check",
   "bun run smoke:artifact",
-  "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
-  "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
   "(cd release-artifacts && shasum -a 512 -c SHA512SUMS)",
   'npm publish "./$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"',
   'bun run release:status -- "$ARTIFACT"',
@@ -187,6 +185,12 @@ for (const required of [
 ]) {
   if (!releaseWorkflow.includes(required)) {
     failures.push(`release workflow is missing: ${required}`);
+  }
+}
+for (const action of ["actions/upload-artifact", "actions/download-artifact"]) {
+  const escapedAction = action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!new RegExp(`${escapedAction}@[a-f0-9]{40}(?:\\s|$)`).test(releaseWorkflow)) {
+    failures.push(`release workflow must pin ${action} to a full commit SHA`);
   }
 }
 if (/default:\s+v\d+\.\d+\.\d+/.test(releaseWorkflow)) {
