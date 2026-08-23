@@ -16,6 +16,13 @@ import {
 } from "@zhivex-ai/core";
 import { z } from "zod";
 
+import {
+  HarnessConfigError,
+  HarnessError,
+  HarnessExecutionError,
+  HarnessProviderError,
+  HarnessWorkspaceError
+} from "./errors.js";
 import { HARNESS_VERSION } from "./version.js";
 
 export const HARNESS_MCP_CONFIG_SCHEMA_VERSION = 1 as const;
@@ -55,6 +62,10 @@ export type HarnessMcpClients = Readonly<Record<string, McpClient>>;
 
 const identifier = z.string().min(1).max(64).regex(/^[A-Za-z][A-Za-z0-9_-]*$/);
 const toolName = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]*$/);
+const mcpCredentialEnvironmentVariable = z.string()
+  .min(12)
+  .max(128)
+  .regex(/^ZHIVEX_MCP_[A-Z0-9_]+$/);
 const serverSchema = z.object({
   name: identifier,
   transport: z.enum(["http", "custom"]),
@@ -65,7 +76,7 @@ const serverSchema = z.object({
   permissions: z.array(z.enum(HARNESS_MCP_PERMISSIONS)).min(1).max(4),
   headerEnv: z.record(
     z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/),
-    z.string().min(1).max(128).regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+    mcpCredentialEnvironmentVariable
   ).default({}),
   trustServerToolAnnotations: z.boolean().default(false),
   maxListPages: z.number().int().min(1).max(20).default(5),
@@ -119,7 +130,12 @@ const forbiddenHeaders = new Set([
   "transfer-encoding"
 ]);
 
-export const normalizeHarnessMcpConfiguration = (value: unknown): HarnessMcpConfiguration => {
+const credentialHeaders: ReadonlyMap<string, string> = new Map([
+  ["authorization", "authorization"],
+  ["x-api-key", "x-api-key"]
+] as const);
+
+const normalizeHarnessMcpConfigurationUnsafe = (value: unknown): HarnessMcpConfiguration => {
   const parsed = configurationSchema.parse(value);
   const names = new Set<string>();
   const prefixes = new Set<string>();
@@ -138,10 +154,22 @@ export const normalizeHarnessMcpConfiguration = (value: unknown): HarnessMcpConf
     if (includeTools.some((name) => excludeTools.includes(name))) {
       throw new Error(`MCP server ${server.name} includes and excludes the same tool.`);
     }
-    for (const header of Object.keys(server.headerEnv)) {
-      if (forbiddenHeaders.has(header.toLowerCase())) {
+    const headerEnv: Record<string, string> = {};
+    for (const [header, variable] of Object.entries(server.headerEnv)) {
+      const lowerHeader = header.toLowerCase();
+      if (forbiddenHeaders.has(lowerHeader)) {
         throw new Error(`MCP server ${server.name} cannot configure header ${header}.`);
       }
+      const canonicalHeader = credentialHeaders.get(lowerHeader);
+      if (!canonicalHeader) {
+        throw new Error(
+          `MCP server ${server.name} supports only authorization and x-api-key credential headers.`
+        );
+      }
+      if (headerEnv[canonicalHeader]) {
+        throw new Error(`MCP server ${server.name} configures duplicate header ${canonicalHeader}.`);
+      }
+      headerEnv[canonicalHeader] = variable;
     }
     if (server.transport === "http" && !server.url) {
       throw new Error(`MCP server ${server.name} requires url for HTTP transport.`);
@@ -168,7 +196,7 @@ export const normalizeHarnessMcpConfiguration = (value: unknown): HarnessMcpConf
       excludeTools,
       toolNamePrefix: prefix,
       permissions: [...new Set(server.permissions)],
-      headerEnv: { ...server.headerEnv },
+      headerEnv,
       trustServerToolAnnotations: server.trustServerToolAnnotations,
       maxListPages: server.maxListPages,
       maxListedTools: server.maxListedTools,
@@ -180,31 +208,57 @@ export const normalizeHarnessMcpConfiguration = (value: unknown): HarnessMcpConf
   return { schemaVersion: HARNESS_MCP_CONFIG_SCHEMA_VERSION, servers };
 };
 
-export const loadHarnessMcpConfiguration = async (
+export const normalizeHarnessMcpConfiguration = (value: unknown): HarnessMcpConfiguration => {
+  try {
+    return normalizeHarnessMcpConfigurationUnsafe(value);
+  } catch (error) {
+    if (error instanceof HarnessError) throw error;
+    throw new HarnessConfigError(
+      error instanceof Error ? error.message : "Harness MCP configuration is invalid.",
+      { cause: error }
+    );
+  }
+};
+
+const loadHarnessMcpConfigurationUnsafe = async (
   workspace: string,
   configPath: string
 ): Promise<HarnessMcpConfiguration> => {
   const entry = await lstat(configPath);
   if (entry.isSymbolicLink() || !entry.isFile()) {
-    throw new Error(`MCP configuration must be a regular non-symlink file: ${configPath}.`);
+    throw new HarnessWorkspaceError(`MCP configuration must be a regular non-symlink file: ${configPath}.`);
   }
   if (entry.size > 1024 * 1024) {
-    throw new Error("MCP configuration cannot exceed 1 MiB.");
+    throw new HarnessConfigError("MCP configuration cannot exceed 1 MiB.");
   }
   const [canonicalWorkspace, canonicalConfig] = await Promise.all([
     realpath(workspace),
     realpath(configPath)
   ]);
   if (!isInsidePath(canonicalWorkspace, canonicalConfig)) {
-    throw new Error("MCP configuration must remain inside the canonical workspace.");
+    throw new HarnessWorkspaceError("MCP configuration must remain inside the canonical workspace.");
   }
   let value: unknown;
   try {
     value = JSON.parse(await readFile(canonicalConfig, "utf8"));
   } catch (error) {
-    throw new Error("MCP configuration is not valid JSON.", { cause: error });
+    throw new HarnessConfigError("MCP configuration is not valid JSON.", { cause: error });
   }
   return normalizeHarnessMcpConfiguration(value);
+};
+
+export const loadHarnessMcpConfiguration = async (
+  workspace: string,
+  configPath: string
+): Promise<HarnessMcpConfiguration> => {
+  try {
+    return await loadHarnessMcpConfigurationUnsafe(workspace, configPath);
+  } catch (error) {
+    if (error instanceof HarnessError) throw error;
+    throw new HarnessWorkspaceError(`MCP configuration could not be read safely: ${configPath}.`, {
+      cause: error
+    });
+  }
 };
 
 const promptInjectionPatterns = [
@@ -218,7 +272,7 @@ const assertSafeMcpPayload = (serverName: string, value: unknown) => {
   const serialized = JSON.stringify(value);
   const matched = promptInjectionPatterns.find((pattern) => pattern.test(serialized));
   if (matched) {
-    throw new Error(`MCP server ${serverName} returned probable prompt-injection content.`);
+    throw new HarnessExecutionError(`MCP server ${serverName} returned probable prompt-injection content.`);
   }
   return serialized;
 };
@@ -228,7 +282,7 @@ const boundedClient = (client: McpClient, server: HarnessMcpServerConfig): McpCl
     const result = await client.listTools(input, options);
     const serialized = assertSafeMcpPayload(server.name, result);
     if (new TextEncoder().encode(serialized).byteLength > server.maxOutputBytes) {
-      throw new Error(`MCP server ${server.name} tool discovery exceeded ${server.maxOutputBytes} bytes.`);
+      throw new HarnessExecutionError(`MCP server ${server.name} tool discovery exceeded ${server.maxOutputBytes} bytes.`);
     }
     return result;
   },
@@ -236,7 +290,7 @@ const boundedClient = (client: McpClient, server: HarnessMcpServerConfig): McpCl
     const result = await client.callTool(input, options);
     const serialized = assertSafeMcpPayload(server.name, result);
     if (new TextEncoder().encode(serialized).byteLength > server.maxOutputBytes) {
-      throw new Error(`MCP server ${server.name} result exceeded ${server.maxOutputBytes} bytes.`);
+      throw new HarnessExecutionError(`MCP server ${server.name} result exceeded ${server.maxOutputBytes} bytes.`);
     }
     return result;
   }
@@ -271,7 +325,7 @@ const readBoundedBody = async (response: Response, limit: number) => {
       total += value.byteLength;
       if (total > limit) {
         await reader.cancel();
-        throw new Error(`MCP HTTP response exceeded ${limit} bytes.`);
+        throw new HarnessExecutionError(`MCP HTTP response exceeded ${limit} bytes.`);
       }
       chunks.push(value);
     }
@@ -311,9 +365,14 @@ export const createHttpMcpClient = (
   fetchImplementation: FetchImplementation = fetch
 ): McpClient => {
   if (server.transport !== "http" || !server.url) {
-    throw new Error(`MCP server ${server.name} is not configured for HTTP transport.`);
+    throw new HarnessConfigError(`MCP server ${server.name} is not configured for HTTP transport.`);
   }
-  const staticHeaders = resolveHeaders(server, env);
+  let staticHeaders: Record<string, string>;
+  try {
+    staticHeaders = resolveHeaders(server, env);
+  } catch (error) {
+    throw new HarnessConfigError(`MCP server ${server.name} headers are not configured safely.`, { cause: error });
+  }
   let sessionId: string | undefined;
   let requestId = 0;
   let initialization: Promise<void> | undefined;
@@ -323,22 +382,33 @@ export const createHttpMcpClient = (
     options: McpCallToolOptions = {},
     expectResponse = true
   ) => {
-    const response = await fetchImplementation(server.url!, {
-      method: "POST",
-      redirect: "error",
-      headers: {
-        ...staticHeaders,
-        "content-type": "application/json",
-        accept: "application/json, text/event-stream",
-        "mcp-protocol-version": "2025-06-18",
-        ...(sessionId ? { "mcp-session-id": sessionId } : {})
-      },
-      body: JSON.stringify(payload),
-      ...(options.abortSignal ? { signal: options.abortSignal } : {})
-    });
+    let response: Response;
+    try {
+      response = await fetchImplementation(server.url!, {
+        method: "POST",
+        redirect: "error",
+        headers: {
+          ...staticHeaders,
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+          "mcp-protocol-version": "2025-06-18",
+          ...(sessionId ? { "mcp-session-id": sessionId } : {})
+        },
+        body: JSON.stringify(payload),
+        ...(options.abortSignal ? { signal: options.abortSignal } : {})
+      });
+    } catch (error) {
+      throw new HarnessProviderError(`MCP server ${server.name} could not be reached.`, {
+        cause: error,
+        retryable: true
+      });
+    }
     if (!response.ok) {
       await response.body?.cancel();
-      throw new Error(`MCP server ${server.name} returned HTTP ${response.status}.`);
+      throw new HarnessProviderError(`MCP server ${server.name} returned HTTP ${response.status}.`, {
+        cause: Object.assign(new Error("MCP HTTP failure"), { status: response.status }),
+        retryable: response.status === 429 || response.status >= 500
+      });
     }
     sessionId = response.headers.get("mcp-session-id") ?? sessionId;
     if (!expectResponse) {
@@ -346,7 +416,11 @@ export const createHttpMcpClient = (
       return undefined;
     }
     const body = await readBoundedBody(response, server.maxOutputBytes);
-    return parseHttpPayload(body, response.headers.get("content-type"));
+    try {
+      return parseHttpPayload(body, response.headers.get("content-type"));
+    } catch (error) {
+      throw new HarnessExecutionError(`MCP server ${server.name} returned an invalid response.`, { cause: error });
+    }
   };
 
   const rpc = async (
@@ -357,15 +431,15 @@ export const createHttpMcpClient = (
     const id = ++requestId;
     const payload = await post({ jsonrpc: "2.0", id, method, params }, options);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-      throw new Error(`MCP server ${server.name} returned an invalid JSON-RPC response.`);
+      throw new HarnessExecutionError(`MCP server ${server.name} returned an invalid JSON-RPC response.`);
     }
     const record = payload as Record<string, unknown>;
     if (record.id !== id) {
-      throw new Error(`MCP server ${server.name} returned a mismatched JSON-RPC id.`);
+      throw new HarnessExecutionError(`MCP server ${server.name} returned a mismatched JSON-RPC id.`);
     }
     if (record.error && typeof record.error === "object") {
       const message = (record.error as { message?: unknown }).message;
-      throw new Error(
+      throw new HarnessExecutionError(
         `MCP server ${server.name} JSON-RPC error: ${typeof message === "string" ? message : "unknown error"}.`
       );
     }
@@ -380,11 +454,11 @@ export const createHttpMcpClient = (
         clientInfo: { name: "zhivex-harness", version: HARNESS_VERSION }
       }, options);
       if (!result || typeof result !== "object" || Array.isArray(result)) {
-        throw new Error(`MCP server ${server.name} returned an invalid initialize result.`);
+        throw new HarnessExecutionError(`MCP server ${server.name} returned an invalid initialize result.`);
       }
       const negotiatedVersion = (result as { protocolVersion?: unknown }).protocolVersion;
       if (negotiatedVersion !== "2025-06-18") {
-        throw new Error(
+        throw new HarnessExecutionError(
           `MCP server ${server.name} negotiated unsupported protocol version ${String(negotiatedVersion)}.`
         );
       }
@@ -401,11 +475,11 @@ export const createHttpMcpClient = (
       await ensureInitialized(options);
       const result = await rpc("tools/list", input as JsonValue, options);
       if (!result || typeof result !== "object" || Array.isArray(result)) {
-        throw new Error(`MCP server ${server.name} returned an invalid tools/list result.`);
+        throw new HarnessExecutionError(`MCP server ${server.name} returned an invalid tools/list result.`);
       }
       const tools = (result as { tools?: unknown }).tools;
       if (!Array.isArray(tools)) {
-        throw new Error(`MCP server ${server.name} tools/list result has no tools array.`);
+        throw new HarnessExecutionError(`MCP server ${server.name} tools/list result has no tools array.`);
       }
       return result as McpListToolsResponse;
     },
@@ -434,7 +508,7 @@ export const createHarnessMcpTools = async (
       ? createHttpMcpClient(server, options.env ?? process.env, options.fetchImplementation ?? fetch)
       : undefined);
     if (!client) {
-      throw new Error(`MCP server ${server.name} requires an injected custom client.`);
+      throw new HarnessConfigError(`MCP server ${server.name} requires an injected custom client.`);
     }
     const discovered = await createMcpToolSet(boundedClient(client, server), {
       toolNamePrefix: server.toolNamePrefix,
@@ -450,10 +524,10 @@ export const createHarnessMcpTools = async (
     const requiresApproval = server.permissions.some((permission) => permission !== "read");
     for (const [name, definition] of Object.entries(discovered)) {
       if (tools[name]) {
-        throw new Error(`Duplicate harness tool name after MCP discovery: ${name}.`);
+        throw new HarnessExecutionError(`Duplicate harness tool name after MCP discovery: ${name}.`);
       }
       if (!("execute" in definition)) {
-        throw new Error(`MCP server ${server.name} produced a non-callable tool ${name}.`);
+        throw new HarnessExecutionError(`MCP server ${server.name} produced a non-callable tool ${name}.`);
       }
       const effectiveRequiresApproval = requiresApproval || definition.requiresApproval === true;
       tools[name] = {

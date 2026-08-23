@@ -21,6 +21,7 @@ import {
   withTemporaryHarnessProfiles
 } from "../src/cli.js";
 import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
+import { parseCliJsonDocument } from "../src/json-contracts.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
@@ -171,18 +172,27 @@ describe("CLI parsing", () => {
     expect(() => parseCliArgs(["runs", "cleanup"])).toThrow("--before");
   });
 
-  test("parses governed MCP, capability, and review-group options", () => {
+  test("parses capability, context, and review-group options", () => {
     expect(parseCliArgs([
-      "review",
+      "run",
       "--mcp-config",
       "harness.mcp.json",
+      "--subagent",
+      "explorer",
+      "inspect"
+    ])).toMatchObject({
+      command: "run",
+      mcpConfigPath: "harness.mcp.json",
+      subagentProfiles: ["explorer"],
+      prompt: "inspect"
+    });
+    expect(parseCliArgs([
+      "review",
       "--context-config",
       ".zhivex/custom.json",
       "--no-project-context",
       "--require-capability",
       "tools",
-      "--subagent",
-      "explorer",
       "--reviewer",
       "reviewer",
       "--subagent-max-total-tokens",
@@ -191,11 +201,9 @@ describe("CLI parsing", () => {
       "durability"
     ])).toMatchObject({
       command: "review",
-      mcpConfigPath: "harness.mcp.json",
       contextConfigPath: ".zhivex/custom.json",
       projectContext: false,
       requiredCapabilities: ["tools"],
-      subagentProfiles: ["explorer"],
       reviewers: ["reviewer"],
       subagentMaxTotalTokens: 12_000,
       prompt: "review durability"
@@ -287,7 +295,7 @@ describe("CLI parsing", () => {
       verificationTime: "2026-08-20T12:00:00.000Z"
     });
     expect(() => parseCliArgs(["changes", "verify", "envelope.json"]))
-      .toThrow("requires --patch");
+      .toThrow("--patch is required by changes verify");
   });
 });
 
@@ -536,6 +544,7 @@ describe("versioned JSON contracts", () => {
     });
     expect(JSON.stringify(document)).not.toContain("secret-api-value");
     expect(JSON.stringify(document)).not.toContain("secret-host");
+    expect(parseCliJsonDocument(document)).toEqual(document);
   });
 
   test("versions final run results", () => {
@@ -557,6 +566,7 @@ describe("versioned JSON contracts", () => {
         currentStep: 0,
         maxSteps: 12,
         outputText: "done",
+        scope: { tenantId: "local", namespace: "fixture" },
         pendingApprovals: []
       }
     } as never, {
@@ -585,7 +595,18 @@ describe("versioned JSON contracts", () => {
           includeChildRuns: true
         }
       },
-      capabilities: { provider: "openai", model: "gpt-test", capabilities: {} },
+      capabilities: {
+        provider: "openai",
+        model: "gpt-test",
+        capabilities: {
+          streaming: true,
+          tools: true,
+          "structured-output": true,
+          "parallel-tools": true,
+          reasoning: true,
+          "web-search": false
+        }
+      },
       mcpConfiguration: { schemaVersion: 1, servers: [] },
       workspace: { mutationAudit: () => [] }
     } as never);
@@ -598,6 +619,7 @@ describe("versioned JSON contracts", () => {
       stateDirectory: "/tmp/state",
       mutations: []
     });
+    expect(parseCliJsonDocument(document)).toEqual(document);
   });
 });
 
@@ -611,13 +633,24 @@ describe("CLI process contract", () => {
 
     const invalidConfig = await runCli(["doctor", "--execution", "host", "--json"]);
     expect(invalidConfig.exitCode).toBe(CLI_EXIT_CODES.usageError);
-    expect(invalidConfig.stderr).toContain("executionBackend");
+    expect(JSON.parse(invalidConfig.stderr)).toEqual({
+      schemaVersion: 1,
+      kind: "error",
+      error: {
+        code: "CONFIG_INVALID",
+        category: "configuration",
+        retryable: false
+      }
+    });
 
     const invalidEnvironmentProvider = await runCli(["doctor", "--json"], {
       ZHIVEX_HARNESS_PROVIDER: "deepseek"
     });
     expect(invalidEnvironmentProvider.exitCode).toBe(CLI_EXIT_CODES.usageError);
-    expect(invalidEnvironmentProvider.stderr).toContain("Unknown provider");
+    expect(JSON.parse(invalidEnvironmentProvider.stderr)).toMatchObject({
+      kind: "error",
+      error: { code: "CONFIG_INVALID", category: "configuration" }
+    });
 
     const runtime = await runCli(["chat"]);
     expect(runtime.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
@@ -636,6 +669,19 @@ describe("CLI process contract", () => {
       schemaVersion: CLI_JSON_SCHEMA_VERSION,
       kind: "doctor",
       ok: false
+    });
+  });
+
+  test("keeps JSONL terminal errors on stdout with a valid positive sequence", async () => {
+    const result = await runCli(["run", "--jsonl", "--max-steps", "invalid", "task"]);
+    expect(result.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim().split("\n")).toHaveLength(1);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      schemaVersion: 1,
+      kind: "run-stream-error",
+      sequence: 1,
+      error: { code: "CLI_USAGE_INVALID", category: "usage", retryable: false }
     });
   });
 
@@ -672,6 +718,27 @@ describe("CLI process contract", () => {
         kind: "run-list",
         backend: "sqlite",
         runs: []
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("classifies a missing durable session as a state conflict", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-session-cli-error-"));
+    try {
+      const result = await runCli([
+        "sessions",
+        "inspect",
+        "missing-session",
+        "--workspace",
+        workspace,
+        "--json"
+      ]);
+      expect(result.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        kind: "error",
+        error: { code: "STATE_CONFLICT", category: "state", retryable: false }
       });
     } finally {
       await rm(workspace, { recursive: true, force: true });
@@ -715,6 +782,7 @@ describe("doctor", () => {
           }
         }
       });
+      expect(parseCliJsonDocument(report)).toEqual(report);
       expect(report.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
         "node",
         "workspace",

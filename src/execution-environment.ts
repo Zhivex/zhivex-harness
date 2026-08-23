@@ -41,6 +41,7 @@ import {
   type MutationAuditEntry
 } from "./edit-contracts.js";
 import { FileSizeLimitError, readRegularFileNoFollow } from "./file-security.js";
+import { HarnessError, HarnessExecutionError } from "./errors.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { Workspace, type CommandResult } from "./workspace.js";
 
@@ -1536,7 +1537,7 @@ export interface CreateHarnessOciEnvironmentOptions {
   runtime?: HarnessOciRuntimeAdapter;
 }
 
-export const createHarnessOciExecutionEnvironment = async (
+const createHarnessOciExecutionEnvironmentUnsafe = async (
   options: CreateHarnessOciEnvironmentOptions
 ): Promise<HarnessOciExecutionEnvironment> => {
   const runtime = options.runtime ?? new CliOciRuntimeAdapter(options.config.runtime);
@@ -1949,6 +1950,50 @@ export const createHarnessOciExecutionEnvironment = async (
       return session;
     }
   };
+};
+
+const executionBoundaryError = (error: unknown, message: string): never => {
+  if (error instanceof HarnessError || (error instanceof Error && error.name === "ToolExecutionSuspendedError")) {
+    throw error;
+  }
+  throw new HarnessExecutionError(error instanceof Error ? error.message : message, {
+    cause: error,
+    retryable: true
+  });
+};
+
+const typedExecutionSession = (session: AgentExecutionEnvironmentSession) => new Proxy(session, {
+  get(target, property, receiver) {
+    const value = Reflect.get(target, property, receiver);
+    if (typeof value !== "function") return value;
+    return async (...args: unknown[]) => {
+      try {
+        return await Reflect.apply(value, target, args);
+      } catch (error) {
+        return executionBoundaryError(error, "Enforced execution session failed.");
+      }
+    };
+  }
+}) as AgentExecutionEnvironmentSession;
+
+export const createHarnessOciExecutionEnvironment = async (
+  options: CreateHarnessOciEnvironmentOptions
+): Promise<HarnessOciExecutionEnvironment> => {
+  try {
+    const environment = await createHarnessOciExecutionEnvironmentUnsafe(options);
+    return {
+      ...environment,
+      async acquire(request) {
+        try {
+          return typedExecutionSession(await environment.acquire(request));
+        } catch (error) {
+          return executionBoundaryError(error, "Enforced execution environment acquisition failed.");
+        }
+      }
+    };
+  } catch (error) {
+    return executionBoundaryError(error, "Enforced execution environment could not be created.");
+  }
 };
 
 export interface ExecutionArtifactCleanupResult {

@@ -4,7 +4,7 @@ import path from "node:path";
 
 import type { LanguageModel } from "@zhivex-ai/agents";
 import type { AgentStoreScope } from "@zhivex-ai/agents/ops";
-import { HarnessConfigError } from "./errors.js";
+import { HarnessConfigError, HarnessProviderError } from "./errors.js";
 import {
   BUILTIN_PROVIDER_REGISTRATIONS,
   DEFAULT_PROVIDER_REGISTRY,
@@ -306,6 +306,9 @@ const scopeValue = (name: string, value: string | undefined, fallback?: string) 
   }
   if (normalized.length > 128 || /[\u0000-\u001f\u007f]/.test(normalized)) {
     throw new HarnessConfigError(`${name} must contain 1-128 printable characters.`);
+  }
+  if (name === "userId" && normalized === "*") {
+    throw new HarnessConfigError('userId cannot be the reserved "*" scope marker.');
   }
   return normalized;
 };
@@ -732,7 +735,16 @@ export const createProviderModel = (
   config: Pick<HarnessConfig, "provider" | "model">,
   env: NodeJS.ProcessEnv = process.env,
   registry: HarnessProviderRegistry = DEFAULT_PROVIDER_REGISTRY
-): LanguageModel => registry.createModel(config, env);
+): LanguageModel => {
+  try {
+    return registry.createModel(config, env);
+  } catch (error) {
+    throw new HarnessProviderError(`Provider ${config.provider} could not be initialized.`, {
+      cause: error,
+      retryable: false
+    });
+  }
+};
 
 export const providerAvailability = (
   env: NodeJS.ProcessEnv = process.env,

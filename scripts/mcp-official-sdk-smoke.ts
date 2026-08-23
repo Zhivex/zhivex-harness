@@ -63,12 +63,12 @@ try {
       url: `http://127.0.0.1:${httpServer.port}/mcp`,
       includeTools: ["lookup"],
       permissions: ["read", "network"],
-      headerEnv: { authorization: "OFFICIAL_MCP_AUTH" },
+      headerEnv: { authorization: "ZHIVEX_MCP_OFFICIAL_AUTH" },
       maxOutputBytes: 16 * 1024
     }]
   });
   const tools = await createHarnessMcpTools(configuration, {
-    env: { OFFICIAL_MCP_AUTH: authorization }
+    env: { ZHIVEX_MCP_OFFICIAL_AUTH: authorization }
   });
   const lookup = tools.official_lookup;
   assert(lookup && "execute" in lookup, "official SDK MCP lookup tool was not discovered");

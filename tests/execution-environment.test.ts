@@ -22,6 +22,7 @@ import {
   type OciRunRequest
 } from "../src/execution-environment.js";
 import { createExecutionEnvironmentTools, createHarness, runHarness } from "../src/harness.js";
+import { HarnessExecutionError } from "../src/errors.js";
 import { Workspace } from "../src/workspace.js";
 
 const temporaryDirectories: string[] = [];
@@ -126,6 +127,20 @@ const workspaceFixture = async () => {
 };
 
 describe("enforced OCI execution environment", () => {
+  test("types failures from the public OCI environment boundary", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const runtime = new FakeOciRuntime();
+    runtime.inspectImage = async () => { throw new Error("runtime unavailable"); };
+    await expect(createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    })).rejects.toThrow(HarnessExecutionError);
+  });
+
   test("exposes an approval-gated shell only when explicitly enabled", async () => {
     const { root, workspace } = await workspaceFixture();
     const runtime = new FakeOciRuntime();

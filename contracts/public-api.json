@@ -7,8 +7,11 @@
     "BUN_ENGINE_RANGE",
     "CHANGE_ENVELOPE_DIGEST_ALGORITHM",
     "CHANGE_ENVELOPE_SCHEMA_VERSION",
+    "CLI_COMMAND_OPTION_CONTRACTS",
     "CLI_EVENT_SCHEMA_VERSION",
     "CLI_JSON_SCHEMA_VERSION",
+    "CLI_OPTION_DEFINITIONS",
+    "CLI_OPTION_NAMES",
     "CliOciRuntimeAdapter",
     "DEFAULT_ALLOWED_CHECKS",
     "DEFAULT_APPROVAL_SUMMARY_CHARACTERS",
@@ -25,6 +28,7 @@
     "HARNESS_CONTEXT_BUNDLE_SCHEMA_VERSION",
     "HARNESS_CONTEXT_CONFIG_SCHEMA_VERSION",
     "HARNESS_ERROR_CODES",
+    "HARNESS_ERROR_SCHEMA_VERSION",
     "HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION",
     "HARNESS_EXECUTION_BACKENDS",
     "HARNESS_EXECUTION_POLICY_VERSION",
@@ -41,11 +45,18 @@
     "HARNESS_SESSION_INDEX_FILE",
     "HARNESS_SESSION_SCHEMA_VERSION",
     "HARNESS_SQLITE_FILE",
+    "HARNESS_STATE_BACKUP_MAX_BYTES",
+    "HARNESS_STATE_BACKUP_SCHEMA_VERSION",
     "HARNESS_SUBAGENT_PROFILES",
     "HARNESS_SUBAGENT_PROFILE_DESCRIPTORS",
     "HARNESS_VERSION",
+    "HarnessApprovalError",
     "HarnessConfigError",
     "HarnessError",
+    "HarnessExecutionError",
+    "HarnessProviderError",
+    "HarnessStateConflictError",
+    "HarnessWorkspaceError",
     "MAX_CHANGE_ENVELOPE_APPROVALS",
     "MAX_CHANGE_ENVELOPE_APPROVAL_SCOPES",
     "MAX_CHANGE_ENVELOPE_ATTESTATIONS",
@@ -88,6 +99,27 @@
     "classifyTimeToSafeFixFailure",
     "cleanupHarnessExecutionArtifacts",
     "cleanupHarnessRuns",
+    "cliChangeEnvelopeVerificationDocumentSchema",
+    "cliDoctorDocumentSchema",
+    "cliErrorDocumentSchema",
+    "cliJsonDocumentSchema",
+    "cliJsonLineDocumentSchema",
+    "cliProviderDocumentSchema",
+    "cliReviewGroupDocumentSchema",
+    "cliRunCancellationDocumentSchema",
+    "cliRunCleanupDocumentSchema",
+    "cliRunEventDocumentSchema",
+    "cliRunExportDocumentSchema",
+    "cliRunInspectionDocumentSchema",
+    "cliRunListDocumentSchema",
+    "cliRunResultDocumentSchema",
+    "cliSessionDocumentSchema",
+    "cliSessionListDocumentSchema",
+    "cliStateExportDocumentSchema",
+    "cliStateImportDocumentSchema",
+    "cliStateStatusDocumentSchema",
+    "cliStreamErrorDocumentSchema",
+    "cliStreamResultDocumentSchema",
     "compactHarnessMessages",
     "computeChangeEnvelopeDigest",
     "computeChangeEnvelopeEvidenceDigest",
@@ -100,6 +132,7 @@
     "createHarnessMcpTools",
     "createHarnessOciExecutionEnvironment",
     "createHarnessRouteModels",
+    "createHarnessStateBackup",
     "createHarnessSubagents",
     "createHttpMcpClient",
     "createProviderModel",
@@ -118,6 +151,7 @@
     "editProposalSchema",
     "estimateMessageTokens",
     "executionFingerprintInput",
+    "exportHarnessStateBackup",
     "externalAttestationReferenceSchema",
     "fileDigestSchema",
     "formatApproval",
@@ -125,12 +159,16 @@
     "formatTerminalHeader",
     "harnessContextConfigurationSchema",
     "harnessContextFingerprintInput",
+    "harnessErrorDocument",
     "harnessExecutionSession",
     "harnessLifecycleFingerprintInput",
     "harnessSkillLoadInputSchema",
+    "importHarnessStateBackup",
+    "importHarnessStateBackupFile",
     "injectTimeToSafeFixAttack",
     "inspectHarnessModelCapabilities",
     "inspectHarnessRun",
+    "inspectHarnessState",
     "isHarnessContextDigest",
     "listHarnessRuns",
     "loadHarnessMcpConfiguration",
@@ -141,15 +179,19 @@
     "moveFileInputSchema",
     "mutationAuditEntrySchema",
     "mutationOperationSchema",
+    "normalizeHarnessError",
     "normalizeHarnessMcpConfiguration",
     "openCliSessionStore",
     "openHarnessPersistence",
     "openSessionStore",
+    "parseCliJsonDocument",
+    "parseCliJsonLineDocument",
     "parseHarnessModelRoute",
     "parseProvider",
     "providerAvailability",
     "providerDescriptor",
     "quarantineFileInputSchema",
+    "readHarnessStateBackup",
     "renderHarnessContextInstructions",
     "resolveHarnessConfig",
     "resolveHarnessModelRoutes",
@@ -162,12 +204,14 @@
     "serializeHarnessModelRoutes",
     "serializeStreamEvent",
     "serializeStreamResult",
+    "stateBackupBundleSchema",
     "streamEventDocument",
     "streamResultDocument",
     "terminalSupportsColor",
     "timeToSafeFixDriverResultSchema",
     "timeToSafeFixLatencyStatistics",
     "timeToSafeFixTaskSchema",
+    "validateCliCommandOptions",
     "validateEditProposal",
     "validateStateDirectory",
     "verifyChangeEnvelope",
@@ -176,22 +220,32 @@
   "stableRuntimeExports": [
     "BUN_ENGINE_RANGE",
     "CHANGE_ENVELOPE_SCHEMA_VERSION",
+    "CLI_COMMAND_OPTION_CONTRACTS",
     "CLI_EVENT_SCHEMA_VERSION",
     "CLI_JSON_SCHEMA_VERSION",
+    "CLI_OPTION_DEFINITIONS",
+    "CLI_OPTION_NAMES",
     "DEFAULT_ALLOWED_CHECKS",
     "DEFAULT_OCI_EXECUTION",
     "DEFAULT_PROVIDER_REGISTRY",
     "HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS",
     "HARNESS_CONFIG_SCHEMA_VERSION",
     "HARNESS_ERROR_CODES",
+    "HARNESS_ERROR_SCHEMA_VERSION",
     "HARNESS_EXECUTION_BACKENDS",
     "HARNESS_EXECUTION_POLICY_VERSION",
     "HARNESS_MCP_CONFIG_SCHEMA_VERSION",
     "HARNESS_OPERATIONS_SCHEMA_VERSION",
     "HARNESS_SESSION_SCHEMA_VERSION",
+    "HARNESS_STATE_BACKUP_SCHEMA_VERSION",
     "HARNESS_VERSION",
+    "HarnessApprovalError",
     "HarnessConfigError",
     "HarnessError",
+    "HarnessExecutionError",
+    "HarnessProviderError",
+    "HarnessStateConflictError",
+    "HarnessWorkspaceError",
     "NODE_ENGINE_RANGE",
     "PROVIDERS",
     "Workspace",
@@ -199,29 +253,43 @@
     "cancelHarnessRun",
     "canonicalizeChangeEnvelope",
     "cleanupHarnessRuns",
+    "cliJsonDocumentSchema",
+    "cliJsonLineDocumentSchema",
     "computeChangeEnvelopeDigest",
     "createChangeEnvelope",
     "createEditProposal",
     "createHarness",
     "createHarnessMcpTools",
     "createHarnessOciExecutionEnvironment",
+    "createHarnessStateBackup",
     "createHttpMcpClient",
     "createProviderModel",
     "digestChangeEnvelopeArtifact",
+    "exportHarnessStateBackup",
+    "harnessErrorDocument",
+    "importHarnessStateBackup",
+    "importHarnessStateBackupFile",
     "inspectHarnessRun",
+    "inspectHarnessState",
     "listHarnessRuns",
     "loadHarnessMcpConfiguration",
     "migrateHarnessConfigInput",
+    "normalizeHarnessError",
     "normalizeHarnessMcpConfiguration",
     "openCliSessionStore",
     "openHarnessPersistence",
+    "parseCliJsonDocument",
+    "parseCliJsonLineDocument",
     "parseHarnessModelRoute",
     "parseProvider",
     "providerAvailability",
+    "readHarnessStateBackup",
     "resolveHarnessConfig",
     "runHarness",
     "serializeStreamEvent",
     "serializeStreamResult",
+    "stateBackupBundleSchema",
+    "validateCliCommandOptions",
     "verifyChangeEnvelope"
   ],
   "experimentalRuntimeExports": [
@@ -242,8 +310,23 @@
   ],
   "stableTypeExports": [
     "ChangeEnvelope",
+    "CliChangeEnvelopeVerificationDocument",
+    "CliCommandOptionContract",
+    "CliCommandOptionContractKey",
+    "CliJsonDocument",
+    "CliJsonLineDocument",
+    "CliOptionDefinition",
+    "CliOptionName",
+    "CliReviewGroupDocument",
+    "CliRunEventDocument",
+    "CliRunInspectionDocument",
+    "CliRunListDocument",
+    "CliRunResultDocument",
     "CliSession",
+    "CliSessionDocument",
     "CliSessionStore",
+    "CliStreamErrorDocument",
+    "CliStreamResultDocument",
     "CreateHarnessOptions",
     "HarnessBudget",
     "HarnessConfig",
@@ -254,6 +337,7 @@
     "HarnessCostBudget",
     "HarnessErrorCategory",
     "HarnessErrorCode",
+    "HarnessErrorDocument",
     "HarnessExecutionBackend",
     "HarnessExecutionConfig",
     "HarnessExecutionSession",
@@ -263,6 +347,8 @@
     "HarnessProviderRegistry",
     "HarnessRequiredCapability",
     "HarnessRunOptions",
+    "HarnessStateBackupBundle",
+    "HarnessStateImportOptions",
     "HarnessStoreBackend",
     "HarnessSubagentProfile",
     "ProviderAvailability",
@@ -273,14 +359,564 @@
   ],
   "implicitTier": "beta",
   "cli": {
-    "commands": ["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "help", "version"],
+    "commands": [
+      "run",
+      "review",
+      "chat",
+      "providers",
+      "doctor",
+      "resume",
+      "runs",
+      "sessions",
+      "changes",
+      "state",
+      "help",
+      "version"
+    ],
     "subcommands": {
-      "runs": ["list", "inspect", "cancel", "cleanup", "export"],
-      "sessions": ["list", "inspect", "rename", "fork", "archive"],
-      "changes": ["create", "verify"]
+      "runs": [
+        "list",
+        "inspect",
+        "cancel",
+        "cleanup",
+        "export"
+      ],
+      "sessions": [
+        "list",
+        "inspect",
+        "rename",
+        "fork",
+        "archive"
+      ],
+      "changes": [
+        "create",
+        "verify"
+      ],
+      "state": [
+        "status",
+        "export",
+        "import"
+      ]
     },
-    "binaries": ["zhivex-harness", "zhx"],
-    "exitCodes": { "success": 0, "runtimeError": 1, "usageError": 2, "doctorFailed": 3 }
+    "binaries": [
+      "zhivex-harness",
+      "zhx"
+    ],
+    "exitCodes": {
+      "success": 0,
+      "runtimeError": 1,
+      "usageError": 2,
+      "doctorFailed": 3
+    },
+    "commandOptions": {
+      "run": {
+        "allowed": [
+          "--provider",
+          "--model",
+          "--route",
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--mcp-config",
+          "--context-config",
+          "--no-project-context",
+          "--execution",
+          "--oci-runtime",
+          "--oci-image",
+          "--oci-allow-command",
+          "--oci-shell",
+          "--oci-max-process-runtime-ms",
+          "--oci-max-process-output-bytes",
+          "--oci-max-memory-mb",
+          "--oci-max-pids",
+          "--oci-max-cpus",
+          "--oci-max-workspace-bytes",
+          "--oci-max-file-write-bytes",
+          "--oci-tmpfs-mb",
+          "--max-steps",
+          "--timeout-ms",
+          "--max-tool-calls",
+          "--max-tool-errors",
+          "--max-input-tokens",
+          "--max-output-tokens",
+          "--max-total-tokens",
+          "--max-cost-usd",
+          "--input-cost-per-million",
+          "--output-cost-per-million",
+          "--subagent-max-steps",
+          "--subagent-max-tool-calls",
+          "--subagent-max-tool-errors",
+          "--subagent-max-input-tokens",
+          "--subagent-max-output-tokens",
+          "--subagent-max-total-tokens",
+          "--subagent-timeout-ms",
+          "--allow-check",
+          "--require-capability",
+          "--subagent",
+          "--idempotency-key",
+          "--yes",
+          "--json",
+          "--jsonl"
+        ],
+        "required": [],
+        "repeatable": [
+          "--route",
+          "--oci-allow-command",
+          "--allow-check",
+          "--require-capability",
+          "--subagent"
+        ],
+        "conflicts": {
+          "--json": [
+            "--jsonl"
+          ],
+          "--jsonl": [
+            "--json"
+          ]
+        }
+      },
+      "review": {
+        "allowed": [
+          "--provider",
+          "--model",
+          "--route",
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--context-config",
+          "--no-project-context",
+          "--subagent-max-steps",
+          "--subagent-max-tool-calls",
+          "--subagent-max-tool-errors",
+          "--subagent-max-input-tokens",
+          "--subagent-max-output-tokens",
+          "--subagent-max-total-tokens",
+          "--subagent-timeout-ms",
+          "--max-parallel-reviews",
+          "--require-capability",
+          "--reviewer",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [
+          "--route",
+          "--require-capability",
+          "--reviewer"
+        ],
+        "conflicts": {}
+      },
+      "chat": {
+        "allowed": [
+          "--provider",
+          "--model",
+          "--route",
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--mcp-config",
+          "--context-config",
+          "--no-project-context",
+          "--execution",
+          "--oci-runtime",
+          "--oci-image",
+          "--oci-allow-command",
+          "--oci-shell",
+          "--oci-max-process-runtime-ms",
+          "--oci-max-process-output-bytes",
+          "--oci-max-memory-mb",
+          "--oci-max-pids",
+          "--oci-max-cpus",
+          "--oci-max-workspace-bytes",
+          "--oci-max-file-write-bytes",
+          "--oci-tmpfs-mb",
+          "--max-steps",
+          "--timeout-ms",
+          "--max-tool-calls",
+          "--max-tool-errors",
+          "--max-input-tokens",
+          "--max-output-tokens",
+          "--max-total-tokens",
+          "--max-cost-usd",
+          "--input-cost-per-million",
+          "--output-cost-per-million",
+          "--subagent-max-steps",
+          "--subagent-max-tool-calls",
+          "--subagent-max-tool-errors",
+          "--subagent-max-input-tokens",
+          "--subagent-max-output-tokens",
+          "--subagent-max-total-tokens",
+          "--subagent-timeout-ms",
+          "--allow-check",
+          "--require-capability",
+          "--subagent",
+          "--yes",
+          "--session",
+          "--continue"
+        ],
+        "required": [],
+        "repeatable": [
+          "--route",
+          "--oci-allow-command",
+          "--allow-check",
+          "--require-capability",
+          "--subagent"
+        ],
+        "conflicts": {
+          "--session": [
+            "--continue"
+          ],
+          "--continue": [
+            "--session"
+          ]
+        }
+      },
+      "providers": {
+        "allowed": [
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "doctor": {
+        "allowed": [
+          "--provider",
+          "--model",
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--mcp-config",
+          "--context-config",
+          "--no-project-context",
+          "--execution",
+          "--oci-runtime",
+          "--oci-image",
+          "--oci-allow-command",
+          "--oci-shell",
+          "--oci-max-process-runtime-ms",
+          "--oci-max-process-output-bytes",
+          "--oci-max-memory-mb",
+          "--oci-max-pids",
+          "--oci-max-cpus",
+          "--oci-max-workspace-bytes",
+          "--oci-max-file-write-bytes",
+          "--oci-tmpfs-mb",
+          "--max-steps",
+          "--timeout-ms",
+          "--max-tool-calls",
+          "--max-tool-errors",
+          "--max-input-tokens",
+          "--max-output-tokens",
+          "--max-total-tokens",
+          "--max-cost-usd",
+          "--input-cost-per-million",
+          "--output-cost-per-million",
+          "--subagent-max-steps",
+          "--subagent-max-tool-calls",
+          "--subagent-max-tool-errors",
+          "--subagent-max-input-tokens",
+          "--subagent-max-output-tokens",
+          "--subagent-max-total-tokens",
+          "--subagent-timeout-ms",
+          "--allow-check",
+          "--require-capability",
+          "--subagent",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [
+          "--oci-allow-command",
+          "--allow-check",
+          "--require-capability",
+          "--subagent"
+        ],
+        "conflicts": {}
+      },
+      "resume": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--approve",
+          "--deny",
+          "--json",
+          "--jsonl"
+        ],
+        "required": [
+          [
+            "--approve",
+            "--deny"
+          ]
+        ],
+        "repeatable": [],
+        "conflicts": {
+          "--approve": [
+            "--deny"
+          ],
+          "--deny": [
+            "--approve"
+          ],
+          "--json": [
+            "--jsonl"
+          ],
+          "--jsonl": [
+            "--json"
+          ]
+        }
+      },
+      "runs:list": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--status",
+          "--limit",
+          "--cursor",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [
+          "--status"
+        ],
+        "conflicts": {}
+      },
+      "runs:inspect": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "runs:cancel": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--reason",
+          "--cascade",
+          "--final",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "runs:cleanup": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--before",
+          "--status",
+          "--limit",
+          "--json"
+        ],
+        "required": [
+          "--before"
+        ],
+        "repeatable": [
+          "--status"
+        ],
+        "conflicts": {}
+      },
+      "runs:export": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "sessions:list": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--limit",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "sessions:inspect": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "sessions:rename": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "sessions:fork": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "sessions:archive": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "changes:create": {
+        "allowed": [
+          "--patch"
+        ],
+        "required": [
+          "--patch"
+        ],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "changes:verify": {
+        "allowed": [
+          "--patch",
+          "--preconditions",
+          "--now"
+        ],
+        "required": [
+          "--patch"
+        ],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "state:status": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "state:export": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "state:import": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--apply",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "help": {
+        "allowed": [
+          "--help"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "version": {
+        "allowed": [
+          "--version"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      }
+    }
   },
   "schemas": {
     "config": 5,
@@ -290,6 +926,7 @@
     "sessions": 1,
     "mcp": 1,
     "changeEnvelope": 1,
-    "editContract": 1
+    "editContract": 1,
+    "stateBackup": 1
   }
 }

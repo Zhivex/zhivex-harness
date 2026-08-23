@@ -119,7 +119,7 @@ describe("CLI JSONL stream contract", () => {
 
     expect(streamResultDocument(source, 8)).toEqual({
       schemaVersion: CLI_EVENT_SCHEMA_VERSION,
-      kind: "run-result",
+      kind: "run-stream-result",
       sequence: 8,
       runId: "run-1",
       status: "waiting_approval",

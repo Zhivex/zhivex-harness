@@ -16,7 +16,15 @@
     "operationsSchema": 1,
     "sessionSchema": 1,
     "pausedApprovalPolicy": "original-artifact-only",
-    "historicalFixtures": "pending"
+    "historicalFixtures": "passed",
+    "historicalFixtureEvidence": [
+      ".github/workflows/ci.yml",
+      "fixtures/migrations/0.10.0.json",
+      "fixtures/migrations/0.10.0.sqlite",
+      "fixtures/migrations/0.11.1.json",
+      "fixtures/migrations/0.11.1.sqlite",
+      "scripts/verify-historical-migrations.ts"
+    ]
   },
   "securityReview": {
     "status": "pending",
@@ -56,11 +64,62 @@
     }
   ],
   "blockers": [
-    { "id": "public-json-contracts", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/26" },
-    { "id": "cli-option-contract", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/27" },
-    { "id": "complete-error-taxonomy", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/28" },
-    { "id": "historical-migration-fixtures", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/29" },
-    { "id": "consistent-state-backup", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/30" },
+    {
+      "id": "public-json-contracts",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/26",
+      "evidence": [
+        "contracts/public-api.json",
+        "fixtures/contracts/v1/doctor.json",
+        "fixtures/contracts/v1/observational-documents.json",
+        "fixtures/contracts/v1/providers.json",
+        "fixtures/contracts/v1/run-result.json",
+        "tests/json-contracts.test.ts"
+      ]
+    },
+    {
+      "id": "cli-option-contract",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/27",
+      "evidence": [
+        "scripts/package-smoke.ts",
+        "src/cli-options.ts",
+        "tests/cli-options.test.ts"
+      ]
+    },
+    {
+      "id": "complete-error-taxonomy",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/28",
+      "evidence": [
+        "scripts/package-smoke.ts",
+        "src/errors.ts",
+        "tests/errors.test.ts"
+      ]
+    },
+    {
+      "id": "historical-migration-fixtures",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/29",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "fixtures/migrations/0.10.0.json",
+        "fixtures/migrations/0.10.0.sqlite",
+        "fixtures/migrations/0.11.1.json",
+        "fixtures/migrations/0.11.1.sqlite",
+        "scripts/verify-historical-migrations.ts"
+      ]
+    },
+    {
+      "id": "consistent-state-backup",
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/30",
+      "evidence": [
+        "docs/CLI.md",
+        "src/state-backup.ts",
+        "tests/state-backup.test.ts"
+      ]
+    },
     { "id": "representative-evaluation-evidence", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/31" },
     { "id": "security-review", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/32" },
     { "id": "gemini-ga-decision", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/33" }

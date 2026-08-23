@@ -8,7 +8,7 @@
       "includeTools": ["search_docs", "read_page"],
       "permissions": ["read", "network"],
       "headerEnv": {
-        "x-api-key": "DOCS_MCP_API_KEY"
+        "x-api-key": "ZHIVEX_MCP_DOCS_API_KEY"
       },
       "callToolTimeoutMs": 30000,
       "maxOutputBytes": 262144

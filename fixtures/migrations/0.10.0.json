@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "kind": "published-migration-fixture",
+  "provenance": {
+    "package": "@zhivex-ai/harness",
+    "version": "0.10.0",
+    "tarball": "https://registry.npmjs.org/@zhivex-ai/harness/-/harness-0.10.0.tgz",
+    "integrity": "sha512-ecy7Kj4iKmzgnVd9f21/d3SqFqvUjFk5TPx2Esjg17tRopRzYQglPp9WYTrieBuc9x3Qh/7V/ZafXEprS69ffg==",
+    "sqliteSha256": "sha256:49a6d298ea7d62de30c8c948aa66ad7d4b27f48656019b6ef30103572da7c28d",
+    "generatedBy": "scripts/generate-historical-migration-fixtures.ts",
+    "dependencySource": "current frozen node_modules; published harness dist is integrity-verified"
+  },
+  "schemas": {
+    "config": 4,
+    "operations": 1,
+    "sessions": 1
+  },
+  "configInput": {
+    "schemaVersion": 4,
+    "provider": "openai",
+    "model": "published-fixture-model",
+    "workspace": "/",
+    "stateDirectory": "<state-directory>",
+    "storeBackend": "sqlite",
+    "tenantId": "migration-tenant",
+    "namespace": "published-fixture",
+    "projectContext": false,
+    "executionBackend": "none"
+  },
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "revision": 0,
+      "runId": "published-paused",
+      "provider": "openai",
+      "modelId": "published-fixture-model",
+      "status": "waiting_approval",
+      "messages": [],
+      "steps": [],
+      "toolResults": [],
+      "currentStep": 0,
+      "maxSteps": 4,
+      "outputText": "secret token=abcdefgh12345678",
+      "pendingApprovals": [
+        {
+          "provider": "local",
+          "id": "approval-published",
+          "name": "apply_patch",
+          "arguments": "fixture-sensitive-approval",
+          "rawData": {
+            "source": "published-fixture"
+          }
+        }
+      ],
+      "compactions": [],
+      "scope": {
+        "tenantId": "migration-tenant",
+        "namespace": "published-fixture"
+      },
+      "startedAt": 1000,
+      "updatedAt": 2000,
+      "harness": {
+        "schemaVersion": 1,
+        "id": "zhivex-harness",
+        "version": "0.10.0",
+        "fingerprint": "sha256:4a11a835f3f3fff9d554d6dac59c40784198a76112cca4125040efa6a26c8805",
+        "algorithm": "sha256"
+      },
+      "metadata": {
+        "zhivexHarnessResume": {
+          "schemaVersion": 1,
+          "config": {
+            "schemaVersion": 4,
+            "provider": "openai",
+            "model": "published-fixture-model",
+            "workspace": "/",
+            "stateDirectory": "<state-directory>",
+            "storeBackend": "sqlite",
+            "scope": {
+              "tenantId": "migration-tenant",
+              "namespace": "published-fixture"
+            },
+            "maxSteps": 12,
+            "timeoutMs": 900000,
+            "budget": {
+              "maxSteps": 12,
+              "maxToolCalls": 32,
+              "maxToolErrors": 4,
+              "maxInputTokens": 100000,
+              "maxOutputTokens": 30000,
+              "maxTotalTokens": 120000,
+              "includeChildRuns": true
+            },
+            "compaction": {
+              "maxMessages": 60,
+              "maxEstimatedInputTokens": 40000,
+              "keepRecentMessages": 12
+            },
+            "allowedChecks": [
+              "test",
+              "typecheck",
+              "lint",
+              "build"
+            ],
+            "requiredCapabilities": [
+              "streaming",
+              "tools"
+            ],
+            "orchestration": {
+              "profiles": [
+                "explorer",
+                "implementer",
+                "tester",
+                "reviewer"
+              ],
+              "childBudget": {
+                "maxSteps": 8,
+                "maxToolCalls": 16,
+                "maxToolErrors": 3,
+                "maxInputTokens": 30000,
+                "maxOutputTokens": 8000,
+                "maxTotalTokens": 36000,
+                "includeChildRuns": false
+              },
+              "childTimeoutMs": 300000,
+              "maxParallelReviews": 2
+            },
+            "execution": {
+              "backend": "none"
+            }
+          }
+        }
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "revision": 0,
+      "runId": "published-parent",
+      "provider": "openai",
+      "modelId": "published-fixture-model",
+      "status": "completed",
+      "messages": [],
+      "steps": [],
+      "toolResults": [],
+      "currentStep": 0,
+      "maxSteps": 4,
+      "outputText": "secret token=abcdefgh12345678",
+      "pendingApprovals": [],
+      "compactions": [],
+      "scope": {
+        "tenantId": "migration-tenant",
+        "namespace": "published-fixture"
+      },
+      "startedAt": 1000,
+      "updatedAt": 2000,
+      "idempotencyKey": "published-request"
+    },
+    {
+      "schemaVersion": 1,
+      "revision": 0,
+      "runId": "published-child",
+      "provider": "openai",
+      "modelId": "published-fixture-model",
+      "status": "completed",
+      "messages": [],
+      "steps": [],
+      "toolResults": [],
+      "currentStep": 0,
+      "maxSteps": 4,
+      "outputText": "secret token=abcdefgh12345678",
+      "pendingApprovals": [],
+      "compactions": [],
+      "scope": {
+        "tenantId": "migration-tenant",
+        "namespace": "published-fixture"
+      },
+      "parentRunId": "published-parent",
+      "startedAt": 1000,
+      "updatedAt": 2000
+    }
+  ],
+  "toolJournal": [
+    {
+      "runId": "published-child",
+      "scope": {
+        "tenantId": "migration-tenant",
+        "namespace": "published-fixture"
+      },
+      "toolCallId": "published-tool",
+      "toolName": "read_file",
+      "status": "completed",
+      "idempotencyKey": "published-tool-request",
+      "revision": 0,
+      "output": {
+        "redacted": true
+      },
+      "completedAt": 2000,
+      "updatedAt": 2000
+    }
+  ],
+  "memory": [],
+  "sessions": [
+    {
+      "schemaVersion": 1,
+      "sessionId": "session-parent",
+      "workspaceKey": "<workspace-key>",
+      "scopeKey": "<scope-key>",
+      "title": "published terminal history",
+      "revision": 2,
+      "createdAt": 3001,
+      "updatedAt": 3006,
+      "archivedAt": 3006,
+      "runs": [
+        {
+          "turnId": "turn-1",
+          "sequence": 0,
+          "runId": "published-parent",
+          "provider": "openai",
+          "model": "published-fixture-model",
+          "status": "completed",
+          "createdAt": 3002,
+          "updatedAt": 3002,
+          "completedAt": 3002
+        },
+        {
+          "turnId": "turn-2",
+          "sequence": 1,
+          "runId": "published-child",
+          "provider": "openai",
+          "model": "published-fixture-model",
+          "status": "completed",
+          "createdAt": 3003,
+          "updatedAt": 3003,
+          "completedAt": 3003
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "sessionId": "session-fork",
+      "workspaceKey": "<workspace-key>",
+      "scopeKey": "<scope-key>",
+      "title": "published fork",
+      "parentSessionId": "session-parent",
+      "forkedFromTurnId": "turn-2",
+      "revision": 0,
+      "createdAt": 3005,
+      "updatedAt": 3005,
+      "runs": [
+        {
+          "turnId": "turn-3",
+          "sourceTurnId": "turn-1",
+          "sequence": 0,
+          "runId": "published-parent",
+          "provider": "openai",
+          "model": "published-fixture-model",
+          "status": "completed",
+          "createdAt": 3002,
+          "updatedAt": 3002,
+          "completedAt": 3002
+        },
+        {
+          "turnId": "turn-4",
+          "sourceTurnId": "turn-2",
+          "sequence": 1,
+          "runId": "published-child",
+          "provider": "openai",
+          "model": "published-fixture-model",
+          "status": "completed",
+          "createdAt": 3003,
+          "updatedAt": 3003,
+          "completedAt": 3003
+        }
+      ]
+    }
+  ],
+  "sqliteTables": [
+    {
+      "name": "zhivex_agent_memory",
+      "sql": "CREATE TABLE zhivex_agent_memory (\n      memory_key TEXT PRIMARY KEY,\n      messages_json TEXT NOT NULL,\n      updated_at_ms INTEGER NOT NULL\n    )"
+    },
+    {
+      "name": "zhivex_agent_runs",
+      "sql": "CREATE TABLE zhivex_agent_runs (\n      run_id TEXT PRIMARY KEY,\n      state_json TEXT NOT NULL,\n      updated_at_ms INTEGER NOT NULL\n    )"
+    },
+    {
+      "name": "zhivex_agent_runs_idempotency",
+      "sql": "CREATE TABLE zhivex_agent_runs_idempotency (\n      idempotency_key TEXT PRIMARY KEY,\n      run_id TEXT NOT NULL,\n      updated_at_ms INTEGER NOT NULL\n    )"
+    },
+    {
+      "name": "zhivex_agent_runs_leases",
+      "sql": "CREATE TABLE zhivex_agent_runs_leases (\n    run_key TEXT PRIMARY KEY,\n    run_id TEXT NOT NULL,\n    owner_id TEXT NOT NULL,\n    expires_at_ms INTEGER NOT NULL\n  )"
+    },
+    {
+      "name": "zhivex_agent_runs_parents",
+      "sql": "CREATE TABLE zhivex_agent_runs_parents (\n      run_id TEXT PRIMARY KEY,\n      parent_run_id TEXT NOT NULL,\n      updated_at_ms INTEGER NOT NULL\n    )"
+    },
+    {
+      "name": "zhivex_agent_runs_tool_journal",
+      "sql": "CREATE TABLE zhivex_agent_runs_tool_journal (\n    run_key TEXT NOT NULL,\n    tool_call_id TEXT NOT NULL,\n    entry_json TEXT NOT NULL,\n    revision INTEGER NOT NULL,\n    updated_at_ms INTEGER NOT NULL,\n    PRIMARY KEY (run_key, tool_call_id)\n  )"
+    },
+    {
+      "name": "zhivex_cli_session_runs",
+      "sql": "CREATE TABLE zhivex_cli_session_runs (\n        turn_id TEXT PRIMARY KEY,\n        source_turn_id TEXT,\n        session_id TEXT NOT NULL REFERENCES zhivex_cli_sessions(session_id) ON DELETE CASCADE,\n        ordinal INTEGER NOT NULL,\n        run_id TEXT NOT NULL,\n        provider TEXT NOT NULL,\n        model TEXT NOT NULL,\n        role TEXT,\n        status TEXT NOT NULL CHECK (status IN ('created', 'running', 'waiting_approval', 'cancel_requested', 'completed', 'failed', 'cancelled', 'timed_out')),\n        created_at INTEGER NOT NULL,\n        updated_at INTEGER NOT NULL,\n        completed_at INTEGER,\n        metadata_bytes INTEGER NOT NULL,\n        UNIQUE (session_id, ordinal),\n        UNIQUE (session_id, run_id),\n        CHECK (ordinal >= 0),\n        CHECK (metadata_bytes >= 0)\n      )"
+    },
+    {
+      "name": "zhivex_cli_session_schema",
+      "sql": "CREATE TABLE zhivex_cli_session_schema (\n        singleton INTEGER PRIMARY KEY CHECK (singleton = 1),\n        version INTEGER NOT NULL\n      )"
+    },
+    {
+      "name": "zhivex_cli_sessions",
+      "sql": "CREATE TABLE zhivex_cli_sessions (\n        session_id TEXT PRIMARY KEY,\n        workspace_key TEXT NOT NULL,\n        scope_key TEXT NOT NULL,\n        title TEXT,\n        parent_session_id TEXT,\n        forked_from_turn_id TEXT,\n        revision INTEGER NOT NULL DEFAULT 0,\n        activity_seq INTEGER NOT NULL,\n        created_at INTEGER NOT NULL,\n        updated_at INTEGER NOT NULL,\n        archived_at INTEGER,\n        deleted_at INTEGER,\n        metadata_bytes INTEGER NOT NULL,\n        CHECK (length(session_id) <= 260),\n        CHECK (metadata_bytes >= 0)\n      )"
+    }
+  ]
+}

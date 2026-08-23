@@ -126,12 +126,12 @@ try {
       url: `http://127.0.0.1:${server.port}/mcp`,
       includeTools: ["lookup"],
       permissions: ["read", "network"],
-      headerEnv: { authorization: "CONTROLLED_MCP_AUTH" },
+      headerEnv: { authorization: "ZHIVEX_MCP_CONTROLLED_AUTH" },
       maxOutputBytes: 16 * 1024
     }]
   });
   const tools = await createHarnessMcpTools(configuration, {
-    env: { CONTROLLED_MCP_AUTH: authorization }
+    env: { ZHIVEX_MCP_CONTROLLED_AUTH: authorization }
   });
   const lookup = tools.controlled_lookup;
   assert(lookup && "execute" in lookup, "controlled MCP lookup tool was not discovered");

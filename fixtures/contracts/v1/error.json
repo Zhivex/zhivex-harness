@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "error",
+  "error": {
+    "code": "EXECUTION_FAILED",
+    "category": "execution",
+    "retryable": false
+  }
+}

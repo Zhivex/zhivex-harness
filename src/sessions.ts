@@ -7,6 +7,7 @@ import type { AgentStoreScope } from "@zhivex-ai/agents/ops";
 
 import { SqliteDatabase } from "./sqlite-database.js";
 import { validateStateDirectory } from "./state-directory.js";
+import { HarnessConfigError, HarnessStateConflictError, HarnessWorkspaceError } from "./errors.js";
 
 export const HARNESS_SESSION_INDEX_FILE = "operations.sqlite";
 export const HARNESS_SESSION_SCHEMA_VERSION = 1 as const;
@@ -220,23 +221,23 @@ const byteLength = (value: string) => Buffer.byteLength(value, "utf8");
 const boundedInteger = (name: string, value: number | undefined, fallback: number, minimum: number) => {
   const resolved = value ?? fallback;
   if (!Number.isSafeInteger(resolved) || resolved < minimum) {
-    throw new Error(`${name} must be an integer greater than or equal to ${minimum}.`);
+    throw new HarnessConfigError(`${name} must be an integer greater than or equal to ${minimum}.`);
   }
   return resolved;
 };
 
 const assertTimestamp = (name: string, value: number) => {
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`${name} must be a non-negative integer timestamp.`);
+    throw new HarnessConfigError(`${name} must be a non-negative integer timestamp.`);
   }
 };
 
 const assertIdentifier = (name: string, value: string) => {
   if (!ID_PATTERN.test(value)) {
-    throw new Error(`${name} contains unsupported characters or exceeds 256 bytes.`);
+    throw new HarnessConfigError(`${name} contains unsupported characters or exceeds 256 bytes.`);
   }
   if (metadataRedaction.redactText(value) !== value) {
-    throw new Error(`${name} resembles sensitive metadata and cannot be stored in the session index.`);
+    throw new HarnessConfigError(`${name} resembles sensitive metadata and cannot be stored in the session index.`);
   }
   return value;
 };
@@ -244,7 +245,7 @@ const assertIdentifier = (name: string, value: string) => {
 const assertScopeSegment = (name: string, value: string) => {
   const normalized = value.trim();
   if (!normalized || normalized.length > 128 || /[\u0000-\u001f\u007f]/.test(normalized)) {
-    throw new Error(`${name} must contain 1-128 printable characters.`);
+    throw new HarnessConfigError(`${name} must contain 1-128 printable characters.`);
   }
   return normalized;
 };
@@ -255,10 +256,10 @@ const normalizeTitle = (value: string | undefined | null, maxMetadataBytes: numb
   }
   const normalized = metadataRedaction.redactText(value).replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
   if (!normalized) {
-    throw new Error("Session title must not be empty.");
+    throw new HarnessConfigError("Session title must not be empty.");
   }
   if (byteLength(normalized) > maxMetadataBytes) {
-    throw new Error(`Session title exceeds the ${maxMetadataBytes}-byte metadata limit.`);
+    throw new HarnessConfigError(`Session title exceeds the ${maxMetadataBytes}-byte metadata limit.`);
   }
   return normalized;
 };
@@ -282,7 +283,7 @@ const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) 
   await mkdir(requestedStateDirectory, { recursive: true, mode: 0o700 });
   const directoryEntry = await lstat(requestedStateDirectory);
   if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
-    throw new Error(`The session state directory must be a real directory: ${requestedStateDirectory}.`);
+    throw new HarnessWorkspaceError(`The session state directory must be a real directory: ${requestedStateDirectory}.`);
   }
   await chmod(requestedStateDirectory, 0o700);
   const canonicalStateDirectory = await realpath(requestedStateDirectory);
@@ -298,7 +299,7 @@ const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) 
     databaseEntry = await lstat(databasePath);
   }
   if (databaseEntry.isSymbolicLink() || !databaseEntry.isFile()) {
-    throw new Error(`The session SQLite path must be a real file: ${databasePath}.`);
+    throw new HarnessWorkspaceError(`The session SQLite path must be a real file: ${databasePath}.`);
   }
   await chmod(databasePath, 0o600);
   return { databasePath, databaseEntry };
@@ -333,7 +334,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
   const workspace = await realpath(path.resolve(options.workspace));
   const workspaceEntry = await stat(workspace);
   if (!workspaceEntry.isDirectory()) {
-    throw new Error(`The session workspace is not a directory: ${workspace}.`);
+    throw new HarnessWorkspaceError(`The session workspace is not a directory: ${workspace}.`);
   }
   const scopeValue = normalizeScope(options.scope);
   const workspaceKey = stableKey("workspace", workspace);
@@ -350,7 +351,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
 
   const assertOpen = () => {
     if (closed) {
-      throw new Error("The CLI session store is closed.");
+      throw new HarnessStateConflictError("The CLI session store is closed.");
     }
   };
 
@@ -366,7 +367,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
           AS size
       `).get(workspaceKey, scopeKey)?.size ?? 0;
       if (size > maxIndexBytes) {
-        throw new Error(`Session index metadata exceeds the ${maxIndexBytes}-byte limit.`);
+        throw new HarnessStateConflictError(`Session index metadata exceeds the ${maxIndexBytes}-byte limit.`);
       }
       database.exec("COMMIT");
       return result;
@@ -382,7 +383,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
 
   const ensureRevision = (row: SessionRow, expected: number | undefined) => {
     if (expected !== undefined && row.revision !== expected) {
-      throw new Error(`Session ${row.session_id} changed concurrently (expected revision ${expected}, found ${row.revision}).`);
+      throw new HarnessStateConflictError(`Session ${row.session_id} changed concurrently (expected revision ${expected}, found ${row.revision}).`, { retryable: true });
     }
   };
 
@@ -400,7 +401,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
   const requireSessionRow = (candidateSessionId: string, includeDeleted = false) => {
     const row = selectSessionRow(candidateSessionId, includeDeleted);
     if (!row) {
-      throw new Error(`Session ${candidateSessionId} was not found in this workspace and scope.`);
+      throw new HarnessStateConflictError(`Session ${candidateSessionId} was not found in this workspace and scope.`);
     }
     return row;
   };
@@ -451,7 +452,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
   const assertNoActiveRun = (candidateSessionId: string, action: string) => {
     const latest = latestRunRow(candidateSessionId);
     if (latest && ACTIVE_STATUSES.has(latest.status)) {
-      throw new Error(`Cannot ${action} session ${candidateSessionId} while run ${latest.run_id} is ${latest.status}.`);
+      throw new HarnessStateConflictError(`Cannot ${action} session ${candidateSessionId} while run ${latest.run_id} is ${latest.status}.`);
     }
   };
 
@@ -467,13 +468,13 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
     const role = input.role === undefined ? null : assertIdentifier("role", input.role);
     const status = input.status ?? "created";
     if (!(SESSION_RUN_STATUSES as readonly string[]).includes(status)) {
-      throw new Error(`Unsupported session run status: ${String(status)}.`);
+      throw new HarnessConfigError(`Unsupported session run status: ${String(status)}.`);
     }
     const createdAt = input.createdAt ?? now();
     assertTimestamp("createdAt", createdAt);
     const entryBytes = metadataSize({ runId, provider, model, role });
     if (entryBytes > maxMetadataBytes) {
-      throw new Error(`Run reference metadata exceeds the ${maxMetadataBytes}-byte limit.`);
+      throw new HarnessConfigError(`Run reference metadata exceeds the ${maxMetadataBytes}-byte limit.`);
     }
     const candidateTurnId = turnId();
     database.query(`
@@ -505,7 +506,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
       openedEntry.dev !== databaseEntry.dev ||
       openedEntry.ino !== databaseEntry.ino
     ) {
-      throw new Error(`The session SQLite path changed while it was being opened: ${databasePath}.`);
+      throw new HarnessWorkspaceError(`The session SQLite path changed while it was being opened: ${databasePath}.`);
     }
     database.exec("PRAGMA journal_mode = WAL");
     database.exec("PRAGMA busy_timeout = 5000");
@@ -562,7 +563,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
       "SELECT version FROM zhivex_cli_session_schema WHERE singleton = 1"
     ).get()?.version;
     if (schemaVersion !== HARNESS_SESSION_SCHEMA_VERSION) {
-      throw new Error(`Unsupported CLI session schema version: ${String(schemaVersion)}.`);
+      throw new HarnessStateConflictError(`Unsupported CLI session schema version: ${String(schemaVersion)}.`);
     }
     await chmod(databasePath, 0o600);
   } catch (error) {
@@ -606,7 +607,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
           WHERE workspace_key = ?1 AND scope_key = ?2
         `).get(workspaceKey, scopeKey)?.count ?? 0;
         if (count >= maxSessions) {
-          throw new Error(`Session limit reached for this workspace and scope (${maxSessions}). Archive and prune an older session.`);
+          throw new HarnessStateConflictError(`Session limit reached for this workspace and scope (${maxSessions}). Archive and prune an older session.`);
         }
         const createdAt = now();
         assertTimestamp("now", createdAt);
@@ -636,7 +637,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
       assertOpen();
       const limit = boundedInteger("limit", query.limit, 50, 1);
       if (limit > MAX_LIST_LIMIT) {
-        throw new Error(`limit cannot exceed ${MAX_LIST_LIMIT}.`);
+        throw new HarnessConfigError(`limit cannot exceed ${MAX_LIST_LIMIT}.`);
       }
       const rows = database.query<SessionRow, [string, string, number]>(`
         SELECT session_id, title, parent_session_id, forked_from_turn_id, revision, activity_seq,
@@ -723,7 +724,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
         const row = requireSessionRow(candidateSessionId);
         ensureRevision(row, appendOptions.expectedRevision);
         if (row.archived_at !== null) {
-          throw new Error(`Cannot append a run to archived session ${candidateSessionId}.`);
+          throw new HarnessStateConflictError(`Cannot append a run to archived session ${candidateSessionId}.`);
         }
         const existing = database.query<RunRow, [string, string]>(`
           SELECT turn_id, source_turn_id, ordinal, run_id, provider, model, role, status,
@@ -740,14 +741,14 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
           ) {
             return hydrate(row);
           }
-          throw new Error(`Run ${input.runId} is already immutably bound to ${existing.provider}/${existing.model} in this session.`);
+          throw new HarnessStateConflictError(`Run ${input.runId} is already immutably bound to ${existing.provider}/${existing.model} in this session.`);
         }
         assertNoActiveRun(candidateSessionId, "start another run in");
         const count = database.query<CountRow, [string]>(
           "SELECT COUNT(*) AS count FROM zhivex_cli_session_runs WHERE session_id = ?1"
         ).get(candidateSessionId)?.count ?? 0;
         if (count >= maxRuns) {
-          throw new Error(`Run-reference limit reached for session ${candidateSessionId} (${maxRuns}).`);
+          throw new HarnessStateConflictError(`Run-reference limit reached for session ${candidateSessionId} (${maxRuns}).`);
         }
         insertRun(candidateSessionId, input, count);
         const updatedAt = now();
@@ -772,15 +773,15 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
           FROM zhivex_cli_session_runs WHERE session_id = ?1 AND run_id = ?2
         `).get(candidateSessionId, runId);
         if (!run) {
-          throw new Error(`Run ${runId} is not linked to session ${candidateSessionId}.`);
+          throw new HarnessStateConflictError(`Run ${runId} is not linked to session ${candidateSessionId}.`);
         }
         if (!STATUS_TRANSITIONS[run.status].has(input.status)) {
-          throw new Error(`Run ${runId} cannot transition from ${run.status} to ${input.status}.`);
+          throw new HarnessStateConflictError(`Run ${runId} cannot transition from ${run.status} to ${input.status}.`);
         }
         const updatedAt = input.updatedAt ?? now();
         assertTimestamp("updatedAt", updatedAt);
         if (updatedAt < run.updated_at) {
-          throw new Error(`Run ${runId} update timestamp cannot move backwards.`);
+          throw new HarnessStateConflictError(`Run ${runId} update timestamp cannot move backwards.`);
         }
         const completedAt = isTerminal(input.status)
           ? input.completedAt ?? updatedAt
@@ -788,7 +789,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
         if (completedAt !== null) {
           assertTimestamp("completedAt", completedAt);
           if (completedAt < run.created_at || completedAt > updatedAt) {
-            throw new Error("completedAt must be between the run creation and update timestamps.");
+            throw new HarnessConfigError("completedAt must be between the run creation and update timestamps.");
           }
         }
         database.query(`
@@ -815,7 +816,7 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
         if (input.atTurnId) {
           const index = sourceRuns.findIndex((run) => run.turnId === input.atTurnId);
           if (index < 0) {
-            throw new Error(`Turn ${input.atTurnId} is not part of session ${candidateSessionId}.`);
+            throw new HarnessStateConflictError(`Turn ${input.atTurnId} is not part of session ${candidateSessionId}.`);
           }
           forkRuns = sourceRuns.slice(0, index + 1);
           forkedFromTurnId = input.atTurnId;
@@ -824,17 +825,17 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
         }
         const branchPoint = forkRuns.at(-1);
         if (branchPoint && !isTerminal(branchPoint.status)) {
-          throw new Error(`Cannot fork from non-terminal run ${branchPoint.runId} (${branchPoint.status}).`);
+          throw new HarnessStateConflictError(`Cannot fork from non-terminal run ${branchPoint.runId} (${branchPoint.status}).`);
         }
         if (forkRuns.length > maxRuns) {
-          throw new Error(`Fork history exceeds the ${maxRuns}-run limit.`);
+          throw new HarnessStateConflictError(`Fork history exceeds the ${maxRuns}-run limit.`);
         }
         const count = database.query<CountRow, [string, string]>(`
           SELECT COUNT(*) AS count FROM zhivex_cli_sessions
           WHERE workspace_key = ?1 AND scope_key = ?2
         `).get(workspaceKey, scopeKey)?.count ?? 0;
         if (count >= maxSessions) {
-          throw new Error(`Session limit reached for this workspace and scope (${maxSessions}).`);
+          throw new HarnessStateConflictError(`Session limit reached for this workspace and scope (${maxSessions}).`);
         }
         const createdAt = now();
         assertTimestamp("now", createdAt);

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import {
+  createRedactionPolicy,
   getAgentBudgetStatus,
   type AgentApprovalRequest,
   type AgentApprovalResponse,
@@ -94,6 +95,7 @@ import {
   UnsafeFileTypeError
 } from "./file-security.js";
 import { runPortableProcess } from "./process-runtime.js";
+import { SqliteDatabase } from "./sqlite-database.js";
 import {
   DEFAULT_HARNESS_CONTEXT_MANIFEST,
   loadHarnessProjectContext
@@ -106,7 +108,23 @@ import {
   resolveTerminalApprovals,
   terminalSupportsColor
 } from "./terminal-ui.js";
-import { HarnessConfigError, HarnessError } from "./errors.js";
+import {
+  HarnessConfigError,
+  HarnessError,
+  HarnessStateConflictError,
+  harnessErrorDocument,
+  normalizeHarnessError
+} from "./errors.js";
+import {
+  CLI_OPTION_DEFINITIONS,
+  validateCliCommandOptions,
+  type CliCommandOptionContractKey
+} from "./cli-options.js";
+import {
+  exportHarnessStateBackup,
+  importHarnessStateBackupFile,
+  inspectHarnessState
+} from "./state-backup.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -119,15 +137,40 @@ export const CLI_EXIT_CODES = {
   doctorFailed: 3
 } as const;
 
-export const CLI_COMMANDS = ["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "help", "version"] as const;
+const CLI_STREAM_ERROR_SEQUENCE = Symbol("cliStreamErrorSequence");
+const terminalErrorRedaction = createRedactionPolicy({ includeEmails: true });
+
+export const annotateCliStreamError = (error: unknown, lastSequence: number | undefined) => {
+  const normalized = error instanceof Error ? error : normalizeHarnessError(error);
+  Object.defineProperty(normalized, CLI_STREAM_ERROR_SEQUENCE, {
+    configurable: true,
+    enumerable: false,
+    value: (lastSequence ?? 0) + 1
+  });
+  return normalized;
+};
+
+export const cliStreamErrorSequence = (error: unknown) =>
+  error && typeof error === "object" &&
+  Number.isSafeInteger((error as { [CLI_STREAM_ERROR_SEQUENCE]?: unknown })[CLI_STREAM_ERROR_SEQUENCE])
+    ? (error as { [CLI_STREAM_ERROR_SEQUENCE]: number })[CLI_STREAM_ERROR_SEQUENCE]
+    : 1;
+
+export const terminalErrorMessage = (error: unknown) => terminalErrorRedaction.redactText(
+  error instanceof Error ? error.message : String(error)
+);
+
+export const CLI_COMMANDS = ["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "state", "help", "version"] as const;
 export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export"] as const;
 export const CLI_SESSIONS_COMMANDS = ["list", "inspect", "rename", "fork", "archive"] as const;
 export const CLI_CHANGES_COMMANDS = ["create", "verify"] as const;
+export const CLI_STATE_COMMANDS = ["status", "export", "import"] as const;
 
 type Command = (typeof CLI_COMMANDS)[number];
 type RunsCommand = (typeof CLI_RUNS_COMMANDS)[number];
 type SessionsCommand = (typeof CLI_SESSIONS_COMMANDS)[number];
 type ChangesCommand = (typeof CLI_CHANGES_COMMANDS)[number];
+type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 
 export interface CliOptions {
   command: Command;
@@ -184,10 +227,12 @@ export interface CliOptions {
   runsCommand?: RunsCommand;
   sessionsCommand?: SessionsCommand;
   changesCommand?: ChangesCommand;
+  stateCommand?: StateCommand;
   artifactPath?: string;
   patchPath?: string;
   preconditionsPath?: string;
   verificationTime?: string;
+  backupPath?: string;
   sessionId?: string;
   sessionTitle?: string;
   continueSession: boolean;
@@ -199,6 +244,7 @@ export interface CliOptions {
   reason?: string;
   cascade: boolean;
   final: boolean;
+  apply: boolean;
   yes: boolean;
   approve?: boolean;
   json: boolean;
@@ -209,6 +255,7 @@ const COMMANDS = new Set<Command>(CLI_COMMANDS);
 const RUNS_COMMANDS = new Set<RunsCommand>(CLI_RUNS_COMMANDS);
 const SESSIONS_COMMANDS = new Set<SessionsCommand>(CLI_SESSIONS_COMMANDS);
 const CHANGES_COMMANDS = new Set<ChangesCommand>(CLI_CHANGES_COMMANDS);
+const STATE_COMMANDS = new Set<StateCommand>(CLI_STATE_COMMANDS);
 const CLI_TIMESTAMP_SCHEMA = z.iso.datetime({ precision: 3 });
 const RUN_STATUSES = new Set<AgentStatus>([
   "queued",
@@ -398,6 +445,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     command,
     cascade: false,
     final: false,
+    apply: false,
     yes: false,
     json: false,
     jsonl: false,
@@ -405,6 +453,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     implicitCommand: true
   };
   let positionalOnly = false;
+  const optionCounts = new Map<string, number>();
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -418,6 +467,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (argument === "--") {
       positionalOnly = true;
       continue;
+    }
+    const canonicalOption = argument === "-h"
+      ? "--help"
+      : argument === "-v"
+        ? "--version"
+        : argument;
+    if (canonicalOption in CLI_OPTION_DEFINITIONS) {
+      optionCounts.set(canonicalOption, (optionCounts.get(canonicalOption) ?? 0) + 1);
     }
     if (!commandWasExplicit && COMMANDS.has(argument as Command)) {
       command = argument as Command;
@@ -743,6 +800,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--final":
         options.final = true;
         break;
+      case "--apply":
+        options.apply = true;
+        break;
       case "--help":
       case "-h":
         options.command = "help";
@@ -794,9 +854,6 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       }
       options.runId = runId;
     }
-    if (runsCommand === "cleanup" && options.before === undefined) {
-      throw new CliUsageError("runs cleanup requires --before.");
-    }
     if (positional.length > 0) {
       throw new CliUsageError(`runs ${runsCommand} received unexpected positional arguments.`);
     }
@@ -831,14 +888,25 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       throw new CliUsageError(`changes ${changesCommand} requires an input JSON file.`);
     }
     options.artifactPath = artifactPath;
-    if (!options.patchPath) {
-      throw new CliUsageError(`changes ${changesCommand} requires --patch <file>.`);
-    }
     if (changesCommand === "create" && (options.preconditionsPath || options.verificationTime)) {
       throw new CliUsageError("--preconditions and --now are only supported by changes verify.");
     }
     if (positional.length > 0) {
       throw new CliUsageError(`changes ${changesCommand} received unexpected positional arguments.`);
+    }
+  } else if (options.command === "state") {
+    const stateCommand = positional.shift() as StateCommand | undefined;
+    if (!stateCommand || !STATE_COMMANDS.has(stateCommand)) {
+      throw new CliUsageError("state requires one of: status, export, import.");
+    }
+    options.stateCommand = stateCommand;
+    if (stateCommand !== "status") {
+      const backupPath = positional.shift();
+      if (!backupPath) throw new CliUsageError(`state ${stateCommand} requires a backup JSON path.`);
+      options.backupPath = backupPath;
+    }
+    if (positional.length > 0) {
+      throw new CliUsageError(`state ${stateCommand} received unexpected positional arguments.`);
     }
   } else if (options.command === "run" || options.command === "review") {
     const prompt = positional.join(" ").trim();
@@ -849,10 +917,35 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError(`${options.command} does not accept positional arguments.`);
   }
 
+  const commandKey = options.command === "runs"
+    ? `runs:${options.runsCommand}`
+    : options.command === "sessions"
+      ? `sessions:${options.sessionsCommand}`
+      : options.command === "changes"
+        ? `changes:${options.changesCommand}`
+        : options.command === "state"
+          ? `state:${options.stateCommand}`
+        : options.command;
+  try {
+    validateCliCommandOptions(commandKey as CliCommandOptionContractKey, optionCounts);
+  } catch (error) {
+    throw new CliUsageError(error instanceof Error ? error.message : String(error));
+  }
+  if (options.command === "review") {
+    const invalidRoute = options.routes
+      ?.map((route) => parseHarnessModelRoute(route))
+      .find((route) => route.profile !== "explorer" && route.profile !== "reviewer");
+    if (invalidRoute) {
+      throw new CliUsageError(
+        `review cannot route the unused ${invalidRoute.profile} profile; use explorer or reviewer.`
+      );
+    }
+  }
+
   return options;
 };
 
-const help = `Zhivex Harness v${HARNESS_VERSION}
+export const CLI_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
 
 Usage:
   zhx                              Start the interactive console
@@ -866,6 +959,9 @@ Usage:
   zhx sessions list|inspect|rename|fork|archive
   zhx changes create <input.json> --patch <artifact>
   zhx changes verify <envelope.json> --patch <artifact> [--preconditions <file>]
+  zhx state status
+  zhx state export <backup.json>
+  zhx state import <backup.json> [--apply]
 
 The long command zhivex-harness remains supported for compatibility.
 
@@ -926,6 +1022,12 @@ Options:
   --yes                          Automatically approve writes and checks
   --json                         Emit structured final output
   --jsonl                        Stream redacted JSON Lines, then the final result
+  --cursor <cursor>              Continue a paginated run listing
+  --before <date|timestamp>      Explicit retention cutoff for runs cleanup
+  --reason <text>                Bounded operator cancellation reason
+  --cascade                      Cancel a run and its known child runs
+  --final                        Record terminal cancellation immediately
+  --apply                        Apply a validated state import (default: dry-run)
   -h, --help                     Show this help
   -v, --version                  Show the version
 
@@ -1172,8 +1274,9 @@ const runOnce = async (options: CliOptions) => {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
   const { harness, routes } = await createConfiguredHarness(options);
+  const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+  let closeAttempted = false;
   try {
-    const tracker = { streamedText: false };
     const result = await runHarness(
       harness,
       {
@@ -1187,12 +1290,18 @@ const runOnce = async (options: CliOptions) => {
         resolveApprovals: terminalApprovalResolver(options.yes)
       }
     );
+    closeAttempted = true;
+    await harness.close();
     printTerminalResult(result, harness, options, tracker);
     if (result.status === "failed" || result.status === "timed_out") {
       process.exitCode = CLI_EXIT_CODES.runtimeError;
     }
-  } finally {
-    await harness.close();
+  } catch (error) {
+    if (!closeAttempted) {
+      closeAttempted = true;
+      await harness.close().catch(() => undefined);
+    }
+    throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
   }
 };
 
@@ -1231,16 +1340,19 @@ const reviewOnce = async (options: CliOptions) => {
               usage: member.output.usage
             }
           : {}),
-        ...(member.error ? { error: member.error } : {})
+        ...(member.error ? { error: harnessErrorDocument(member.error).error } : {})
       }))
     };
     if (options.json) {
       process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
     } else {
-      for (const output of document.outputs) {
+      for (const [index, output] of document.outputs.entries()) {
         process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
         if ("output" in output && output.output) process.stdout.write(`${output.output}\n`);
-        if (output.error) process.stdout.write(`Error: ${output.error.message}\n`);
+        const memberError = result.outputs[index]?.error;
+        if (memberError) {
+          process.stdout.write(`Error [${output.error?.code ?? "EXECUTION_FAILED"}]: ${terminalErrorMessage(memberError)}\n`);
+        }
       }
     }
     if (result.status === "failed") {
@@ -1262,13 +1374,19 @@ const resumeRun = async (options: CliOptions) => {
   const initialConfig = resolveHarnessConfig(options);
   await validateStateDirectory(initialConfig.workspace, initialConfig.stateDirectory);
   const persistence = await openHarnessPersistence(initialConfig);
+  let persistenceClosed = false;
+  const closePersistence = () => {
+    if (persistenceClosed) return;
+    persistenceClosed = true;
+    persistence.close();
+  };
   try {
     const state = await persistence.store.load(options.runId, initialConfig.scope);
     if (!state) {
-      throw new Error(`Run ${options.runId} was not found in ${initialConfig.stateDirectory}.`);
+      throw new HarnessStateConflictError(`Run ${options.runId} was not found in ${initialConfig.stateDirectory}.`);
     }
     if (state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
-      throw new Error(`Run ${options.runId} is not waiting for approval (status: ${state.status}).`);
+      throw new HarnessStateConflictError(`Run ${options.runId} is not waiting for approval (status: ${state.status}).`);
     }
 
     for (const approval of state.pendingApprovals) {
@@ -1287,7 +1405,7 @@ const resumeRun = async (options: CliOptions) => {
         persistedConfig.storeBackend !== initialConfig.storeBackend ||
         JSON.stringify(persistedConfig.scope) !== JSON.stringify(initialConfig.scope)
       ) {
-        throw new Error(
+        throw new HarnessStateConflictError(
           "Resume locator options do not match the persisted workspace, state directory, store, or scope."
         );
       }
@@ -1311,33 +1429,50 @@ const resumeRun = async (options: CliOptions) => {
       onTelemetryEvent: orchestrationObserver(options.json || options.jsonl)
     });
     const approve = options.approve;
-    const tracker = { streamedText: false };
-    const result = await runHarness(
-      harness,
-      {
-        state,
-        approvals: approvalResponses(
-          state.pendingApprovals,
-          approve,
-          approve ? "Approved by resume --approve." : "Denied by resume --deny."
-        )
-      },
-      {
-        onEvent: streamSink(options, tracker),
-        resolveApprovals: async (approvals) => approvalResponses(
-          approvals,
-          approve,
-          approve ? "Approved by resume --approve." : "Denied by resume --deny."
-        )
+    const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+    let harnessCloseAttempted = false;
+    try {
+      const result = await runHarness(
+        harness,
+        {
+          state,
+          approvals: approvalResponses(
+            state.pendingApprovals,
+            approve,
+            approve ? "Approved by resume --approve." : "Denied by resume --deny."
+          )
+        },
+        {
+          onEvent: streamSink(options, tracker),
+          resolveApprovals: async (approvals) => approvalResponses(
+            approvals,
+            approve,
+            approve ? "Approved by resume --approve." : "Denied by resume --deny."
+          )
+        }
+      );
+      await updateIndexedSessionRun(harness.config, result.state.runId, result.status);
+      harnessCloseAttempted = true;
+      await harness.close();
+      closePersistence();
+      printTerminalResult(result, harness, options, tracker);
+      if (result.status === "failed" || result.status === "timed_out") {
+        process.exitCode = CLI_EXIT_CODES.runtimeError;
       }
-    );
-    await updateIndexedSessionRun(harness.config, result.state.runId, result.status);
-    printTerminalResult(result, harness, options, tracker);
-    if (result.status === "failed" || result.status === "timed_out") {
-      process.exitCode = CLI_EXIT_CODES.runtimeError;
+    } catch (error) {
+      if (!harnessCloseAttempted) {
+        harnessCloseAttempted = true;
+        await harness.close().catch(() => undefined);
+      }
+      try {
+        closePersistence();
+      } catch {
+        // Preserve the operation or first cleanup failure as the terminal cause.
+      }
+      throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
     }
   } finally {
-    persistence.close();
+    closePersistence();
   }
 };
 
@@ -1358,7 +1493,7 @@ const chat = async (options: CliOptions) => {
   if (options.sessionId && !selectedSession) {
     sessionStore.close();
     readline.close();
-    throw new Error(`Session ${options.sessionId} was not found.`);
+    throw new HarnessStateConflictError(`Session ${options.sessionId} was not found.`);
   }
   let session: CliSession = selectedSession ?? await sessionStore.create();
   let messages: AgentRunOutput["messages"] = [];
@@ -1369,7 +1504,7 @@ const chat = async (options: CliOptions) => {
     const persistence = await openHarnessPersistence(baseConfig);
     try {
       const state = await persistence.store.load(latest.runId, baseConfig.scope);
-      if (!state) throw new Error(`Run ${latest.runId} referenced by session ${selected.sessionId} was not found.`);
+      if (!state) throw new HarnessStateConflictError(`Run ${latest.runId} referenced by session ${selected.sessionId} was not found.`);
       return state;
     } finally {
       persistence.close();
@@ -1399,7 +1534,7 @@ const chat = async (options: CliOptions) => {
 
   const refreshSession = async () => {
     const refreshed = await sessionStore.get(session.sessionId);
-    if (!refreshed) throw new Error(`Session ${session.sessionId} was not found.`);
+    if (!refreshed) throw new HarnessStateConflictError(`Session ${session.sessionId} was not found.`);
     session = refreshed;
     return session;
   };
@@ -2119,11 +2254,47 @@ const inspectOperationsStore = async (
         safe: false
       });
     }
-    return diagnostic("operations-store", "pass", "SQLite durable operations store is available.", {
-      backend: storeBackend,
-      databasePath,
-      safe: true
-    });
+    const database = new SqliteDatabase(databasePath, { create: false, readonly: true, strict: true });
+    try {
+      const integrity = database.query<{ quick_check: string }, []>("PRAGMA quick_check").get()?.quick_check;
+      const tables = new Set(database.query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type = 'table'"
+      ).all().map((row) => row.name));
+      const requiredOperationsTables = [
+        "zhivex_agent_runs",
+        "zhivex_agent_runs_idempotency",
+        "zhivex_agent_runs_parents",
+        "zhivex_agent_runs_leases",
+        "zhivex_agent_runs_tool_journal",
+        "zhivex_agent_memory"
+      ];
+      const operationsCompatible = requiredOperationsTables.every((table) => tables.has(table));
+      const sessionVersion = tables.has("zhivex_cli_session_schema")
+        ? database.query<{ version: number }, []>(
+            "SELECT version FROM zhivex_cli_session_schema WHERE singleton = 1"
+          ).get()?.version
+        : undefined;
+      const sessionCompatible = sessionVersion === undefined || sessionVersion === 1;
+      const compatible = integrity === "ok" && operationsCompatible && sessionCompatible;
+      return diagnostic(
+        "operations-store",
+        compatible ? "pass" : "fail",
+        compatible
+          ? "SQLite durable operations store is integral and schema-compatible."
+          : "SQLite durable operations store failed integrity or schema compatibility checks.",
+        {
+          backend: storeBackend,
+          databasePath,
+          safe: true,
+          integrity: integrity === "ok",
+          operationsSchema: operationsCompatible ? 1 : "unsupported",
+          sessionSchema: sessionVersion ?? "not-initialized",
+          compatible
+        }
+      );
+    } finally {
+      database.close(false);
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return diagnostic("operations-store", "pass", "SQLite durable operations store will be created on first use.", {
@@ -2642,7 +2813,7 @@ const manageSessions = async (options: CliOptions) => {
       }
       case "inspect":
         session = await store.get(options.sessionId!);
-        if (!session) throw new Error(`Session ${options.sessionId} was not found.`);
+        if (!session) throw new HarnessStateConflictError(`Session ${options.sessionId} was not found.`);
         document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
         break;
       case "rename":
@@ -2787,11 +2958,32 @@ const manageChanges = async (options: CliOptions) => {
   if (!result.valid) process.exitCode = CLI_EXIT_CODES.runtimeError;
 };
 
+const manageState = async (options: CliOptions) => {
+  const config = resolveHarnessConfig(options);
+  let document: unknown;
+  switch (options.stateCommand) {
+    case "status":
+      document = await inspectHarnessState(config);
+      break;
+    case "export":
+      document = await exportHarnessStateBackup(config, options.backupPath!);
+      break;
+    case "import":
+      document = await importHarnessStateBackupFile(config, options.backupPath!, {
+        dryRun: !options.apply
+      });
+      break;
+    default:
+      throw new CliUsageError("state requires one of: status, export, import.");
+  }
+  process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+};
+
 export const main = async (argv = process.argv.slice(2)) => {
   const options = parseCliArgs(argv);
   switch (options.command) {
     case "help":
-      process.stdout.write(`${help}\n`);
+      process.stdout.write(`${CLI_HELP_TEXT}\n`);
       return;
     case "version":
       process.stdout.write(`${HARNESS_VERSION}\n`);
@@ -2817,6 +3009,9 @@ export const main = async (argv = process.argv.slice(2)) => {
     case "changes":
       await manageChanges(options);
       return;
+    case "state":
+      await manageState(options);
+      return;
     case "run":
       if (options.implicitCommand && !options.prompt && process.stdin.isTTY && process.stdout.isTTY) {
         await chat(options);
@@ -2840,8 +3035,18 @@ const isMainModule = (() => {
 
 if (isMainModule) {
   main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`Error: ${message}\n`);
+    const document = harnessErrorDocument(error);
+    if (process.argv.includes("--jsonl")) {
+      process.stdout.write(`${JSON.stringify({
+        ...document,
+        kind: "run-stream-error",
+        sequence: cliStreamErrorSequence(error)
+      })}\n`);
+    } else if (process.argv.includes("--json")) {
+      process.stderr.write(`${JSON.stringify(document)}\n`);
+    } else {
+      process.stderr.write(`Error: ${terminalErrorMessage(error)}\n`);
+    }
     process.exitCode = cliExitCodeForError(error);
   });
 }

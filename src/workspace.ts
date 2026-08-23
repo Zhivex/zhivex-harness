@@ -27,6 +27,7 @@ import {
 } from "./file-security.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { runPortableProcess } from "./process-runtime.js";
+import { HarnessWorkspaceError } from "./errors.js";
 
 const HARD_IGNORES = new Set([".git", ".next", ".turbo", ".zhivex-harness", "coverage", "dist", "node_modules"]);
 const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
@@ -217,7 +218,7 @@ const cursorDecode = (value: string): unknown => {
   try {
     return JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
   } catch {
-    throw new Error("The pagination cursor is invalid.");
+    throw new HarnessWorkspaceError("The pagination cursor is invalid.");
   }
 };
 
@@ -328,19 +329,26 @@ export class Workspace {
   }
 
   static async open(root: string): Promise<Workspace> {
-    const resolved = await realpath(path.resolve(root));
-    if (!(await stat(resolved)).isDirectory()) throw new Error(`The workspace is not a directory: ${root}`);
-    return new Workspace(resolved);
+    try {
+      const resolved = await realpath(path.resolve(root));
+      if (!(await stat(resolved)).isDirectory()) {
+        throw new HarnessWorkspaceError(`The workspace is not a directory: ${root}`);
+      }
+      return new Workspace(resolved);
+    } catch (error) {
+      if (error instanceof HarnessWorkspaceError) throw error;
+      throw new HarnessWorkspaceError(`The workspace could not be opened safely: ${root}`, { cause: error });
+    }
   }
 
   private lexicalPath(relativePath: string) {
-    if (!relativePath || relativePath.includes("\0")) throw new Error("The path must be a valid relative path.");
+    if (!relativePath || relativePath.includes("\0")) throw new HarnessWorkspaceError("The path must be a valid relative path.");
     const candidate = path.resolve(this.root, relativePath);
-    if (!isInside(this.root, candidate)) throw new Error(`The path escapes the workspace: ${relativePath}`);
+    if (!isInside(this.root, candidate)) throw new HarnessWorkspaceError(`The path escapes the workspace: ${relativePath}`);
     const relative = wirePath(path.relative(this.root, candidate));
     if (relative && isHardIgnored(relative)) {
       const blocked = relative.split("/").find((segment) => HARD_IGNORES.has(segment.toLocaleLowerCase()) || isSensitiveName(segment));
-      throw new Error(`The path is protected by the harness policy: ${blocked}`);
+      throw new HarnessWorkspaceError(`The path is protected by the harness policy: ${blocked}`);
     }
     return candidate;
   }
@@ -350,7 +358,7 @@ export class Workspace {
     options: { requireFile?: boolean; allowMissing?: boolean; skipLeafValidation?: boolean } = {}
   ) {
     const candidate = this.lexicalPath(relativePath);
-    if (candidate === this.root && options.requireFile) throw new Error("The workspace root is not a regular file.");
+    if (candidate === this.root && options.requireFile) throw new HarnessWorkspaceError("The workspace root is not a regular file.");
     const segments = path.relative(this.root, candidate).split(path.sep).filter(Boolean);
     let current = this.root;
     for (let index = 0; index < segments.length; index += 1) {
@@ -367,10 +375,10 @@ export class Workspace {
         throw error;
       }
       if (entry.isSymbolicLink()) {
-        throw new Error(`The path resolves outside the workspace or through a symbolic link: ${relativePath}`);
+        throw new HarnessWorkspaceError(`The path resolves outside the workspace or through a symbolic link: ${relativePath}`);
       }
-      if (!leaf && !entry.isDirectory()) throw new Error(`A path ancestor is not a directory: ${relativePath}`);
-      if (leaf && options.requireFile && !entry.isFile()) throw new Error("The path does not point to a regular file.");
+      if (!leaf && !entry.isDirectory()) throw new HarnessWorkspaceError(`A path ancestor is not a directory: ${relativePath}`);
+      if (leaf && options.requireFile && !entry.isFile()) throw new HarnessWorkspaceError("The path does not point to a regular file.");
     }
     return { path: candidate, exists: true as const };
   }
@@ -383,7 +391,7 @@ export class Workspace {
       maxBytes: MAX_FILE_BYTES
     });
     const { contents } = file;
-    if (!allowBinary && contents.includes(0)) throw new Error("The file appears to be binary and cannot be read as text.");
+    if (!allowBinary && contents.includes(0)) throw new HarnessWorkspaceError("The file appears to be binary and cannot be read as text.");
     return {
       path: wirePath(path.relative(this.root, safe.path)),
       absolutePath: safe.path,
@@ -452,7 +460,7 @@ export class Workspace {
     const walk = async (directory: string, base: string, inherited: readonly IgnoreRule[]) => {
       const directoryEntry = await lstat(directory);
       if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
-        throw new Error(`A workspace directory changed while it was being indexed: ${base || "."}`);
+        throw new HarnessWorkspaceError(`A workspace directory changed while it was being indexed: ${base || "."}`);
       }
       directories.push(this.fingerprint(base, "directory", directoryEntry));
       const rules = await this.rulesForDirectory(directory, base, inherited, ignoreFiles);
@@ -515,7 +523,7 @@ export class Workspace {
         if (attempt === 2 || (code !== "ENOENT" && !changedDuringIndexing)) throw error;
       }
     }
-    throw new Error("The workspace kept changing while its file index was being built.");
+    throw new HarnessWorkspaceError("The workspace kept changing while its file index was being built.");
   }
 
   private async getWorkspaceIndex(): Promise<WorkspaceIndex> {
@@ -576,12 +584,12 @@ export class Workspace {
     options: number | ListFilesOptions = {}
   ): Promise<ListFilesResult<WorkspaceFile | WorkspaceTopologyFile>> {
     const start = await this.safePath(relativePath);
-    if (!(await lstat(start.path)).isDirectory()) throw new Error("list_files requires a directory.");
+    if (!(await lstat(start.path)).isDirectory()) throw new HarnessWorkspaceError("list_files requires a directory.");
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const input = typeof options === "number" ? { limit: options } : options;
     const limit = input.limit ?? 200;
     const includeDigests = input.includeDigests ?? true;
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw new Error("limit must be between 1 and 5000.");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 5000) throw new HarnessWorkspaceError("limit must be between 1 and 5000.");
     let after = "";
     let cursorIndexVersion: string | undefined;
     if (input.cursor) {
@@ -589,14 +597,14 @@ export class Workspace {
       if (parsed.v !== 2 || parsed.kind !== "list" || parsed.path !== requestPath || parsed.limit !== limit ||
         parsed.includeDigests !== includeDigests || typeof parsed.indexVersion !== "string" ||
         typeof parsed.after !== "string") {
-        throw new Error("The pagination cursor does not match this list request.");
+        throw new HarnessWorkspaceError("The pagination cursor does not match this list request.");
       }
       after = parsed.after;
       cursorIndexVersion = parsed.indexVersion;
     }
     const index = await this.getWorkspaceIndex();
     if (cursorIndexVersion && cursorIndexVersion !== index.version) {
-      throw new Error("The pagination cursor is stale because the workspace changed.");
+      throw new HarnessWorkspaceError("The pagination cursor is stale because the workspace changed.");
     }
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
     let candidateIndex = after
@@ -641,9 +649,9 @@ export class Workspace {
   }
 
   private renderReadFile(file: StableFile, startLine = 1, endLine?: number) {
-    if (!Number.isSafeInteger(startLine) || startLine < 1) throw new Error("startLine must be a positive integer.");
+    if (!Number.isSafeInteger(startLine) || startLine < 1) throw new HarnessWorkspaceError("startLine must be a positive integer.");
     if (endLine !== undefined && (!Number.isSafeInteger(endLine) || endLine < startLine)) {
-      throw new Error("endLine must be greater than or equal to startLine.");
+      throw new HarnessWorkspaceError("endLine must be greater than or equal to startLine.");
     }
     const lines = file.contents.toString("utf8").split(/\r?\n/);
     const boundedEnd = Math.min(endLine ?? startLine + 399, startLine + 1999, lines.length);
@@ -664,7 +672,7 @@ export class Workspace {
 
   async readFiles(requests: readonly ReadFilesRequest[]) {
     if (!Array.isArray(requests) || requests.length < 1 || requests.length > MAX_READ_BATCH_FILES) {
-      throw new Error(`readFiles requires between 1 and ${MAX_READ_BATCH_FILES} file requests.`);
+      throw new HarnessWorkspaceError(`readFiles requires between 1 and ${MAX_READ_BATCH_FILES} file requests.`);
     }
     const ordered = requests.map((request) => ({
       ...request,
@@ -677,13 +685,13 @@ export class Workspace {
     for (const request of ordered) {
       if (!Number.isSafeInteger(request.startLine ?? 1) || (request.startLine ?? 1) < 1 ||
         (request.endLine !== undefined && (!Number.isSafeInteger(request.endLine) || request.endLine < (request.startLine ?? 1)))) {
-        throw new Error(`Invalid line range for ${request.path}.`);
+        throw new HarnessWorkspaceError(`Invalid line range for ${request.path}.`);
       }
       if (stableFiles.has(request.path)) continue;
       const file = await this.readStableFile(request.path, false);
       totalBytes += file.contents.byteLength;
       if (totalBytes > MAX_READ_BATCH_BYTES) {
-        throw new Error(`readFiles exceeds the aggregate ${MAX_READ_BATCH_BYTES}-byte source limit.`);
+        throw new HarnessWorkspaceError(`readFiles exceeds the aggregate ${MAX_READ_BATCH_BYTES}-byte source limit.`);
       }
       stableFiles.set(request.path, file);
     }
@@ -708,12 +716,12 @@ export class Workspace {
   }
 
   async searchFiles(query: string, relativePath = ".", options: SearchFilesOptions = {}) {
-    if (!query || query.length > 200) throw new Error("The search query must be between 1 and 200 characters.");
+    if (!query || query.length > 200) throw new HarnessWorkspaceError("The search query must be between 1 and 200 characters.");
     const start = await this.safePath(relativePath);
-    if (!(await lstat(start.path)).isDirectory()) throw new Error("search_files requires a directory.");
+    if (!(await lstat(start.path)).isDirectory()) throw new HarnessWorkspaceError("search_files requires a directory.");
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const limit = options.limit ?? options.maxMatches ?? 100;
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error("limit must be between 1 and 500.");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new HarnessWorkspaceError("limit must be between 1 and 500.");
     const caseSensitive = options.caseSensitive ?? false;
     let afterPath = "";
     let afterLine = 0;
@@ -723,7 +731,7 @@ export class Workspace {
       if (parsed.v !== 2 || parsed.kind !== "search" || parsed.path !== requestPath || parsed.query !== query ||
         parsed.caseSensitive !== caseSensitive || parsed.limit !== limit || typeof parsed.afterPath !== "string" ||
         !Number.isSafeInteger(parsed.afterLine) || typeof parsed.indexVersion !== "string") {
-        throw new Error("The pagination cursor does not match this search request.");
+        throw new HarnessWorkspaceError("The pagination cursor does not match this search request.");
       }
       afterPath = parsed.afterPath;
       afterLine = parsed.afterLine as number;
@@ -731,7 +739,7 @@ export class Workspace {
     }
     const index = await this.getWorkspaceIndex();
     if (cursorIndexVersion && cursorIndexVersion !== index.version) {
-      throw new Error("The pagination cursor is stale because the workspace changed.");
+      throw new HarnessWorkspaceError("The pagination cursor is stale because the workspace changed.");
     }
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
     const needle = caseSensitive ? query : query.toLocaleLowerCase();
@@ -787,19 +795,19 @@ export class Workspace {
 
   async searchMany(queries: readonly SearchManyQuery[], relativePath = ".", options: SearchManyOptions = {}) {
     if (!Array.isArray(queries) || queries.length < 1 || queries.length > MAX_SEARCH_MANY_QUERIES) {
-      throw new Error(`searchMany requires between 1 and ${MAX_SEARCH_MANY_QUERIES} queries.`);
+      throw new HarnessWorkspaceError(`searchMany requires between 1 and ${MAX_SEARCH_MANY_QUERIES} queries.`);
     }
     const limitPerQuery = options.limitPerQuery ?? 50;
     if (!Number.isSafeInteger(limitPerQuery) || limitPerQuery < 1 || limitPerQuery > MAX_SEARCH_MANY_MATCHES ||
       limitPerQuery * queries.length > MAX_SEARCH_MANY_MATCHES) {
-      throw new Error(`searchMany allows at most ${MAX_SEARCH_MANY_MATCHES} aggregate matches.`);
+      throw new HarnessWorkspaceError(`searchMany allows at most ${MAX_SEARCH_MANY_MATCHES} aggregate matches.`);
     }
     const seen = new Set<string>();
     const states = queries.map((input) => {
-      if (!input.query || input.query.length > 200) throw new Error("Each search query must be between 1 and 200 characters.");
+      if (!input.query || input.query.length > 200) throw new HarnessWorkspaceError("Each search query must be between 1 and 200 characters.");
       const caseSensitive = input.caseSensitive ?? false;
       const key = `${caseSensitive ? "1" : "0"}\0${input.query}`;
-      if (seen.has(key)) throw new Error("searchMany queries must be unique.");
+      if (seen.has(key)) throw new HarnessWorkspaceError("searchMany queries must be unique.");
       seen.add(key);
       return {
         query: input.query,
@@ -810,7 +818,7 @@ export class Workspace {
       };
     });
     const start = await this.safePath(relativePath);
-    if (!(await lstat(start.path)).isDirectory()) throw new Error("searchMany requires a directory.");
+    if (!(await lstat(start.path)).isDirectory()) throw new HarnessWorkspaceError("searchMany requires a directory.");
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
     const index = await this.getWorkspaceIndex();
@@ -862,7 +870,7 @@ export class Workspace {
   private async secureWorkspaceDirectory(directory: string, mode = 0o755) {
     const resolvedInput = path.resolve(directory);
     if (!isInside(this.root, resolvedInput)) {
-      throw new Error("A mutation directory escapes the workspace.");
+      throw new HarnessWorkspaceError("A mutation directory escapes the workspace.");
     }
     const segments = path.relative(this.root, resolvedInput).split(path.sep).filter(Boolean);
     let current = this.root;
@@ -870,8 +878,8 @@ export class Workspace {
       current = path.join(current, segment);
       try {
         const entry = await lstat(current);
-        if (entry.isSymbolicLink()) throw new Error("A mutation directory must not contain a symbolic link.");
-        if (!entry.isDirectory()) throw new Error("A mutation directory contains a non-directory entry.");
+        if (entry.isSymbolicLink()) throw new HarnessWorkspaceError("A mutation directory must not contain a symbolic link.");
+        if (!entry.isDirectory()) throw new HarnessWorkspaceError("A mutation directory contains a non-directory entry.");
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         try {
@@ -880,13 +888,13 @@ export class Workspace {
           if ((mkdirError as NodeJS.ErrnoException).code !== "EEXIST") throw mkdirError;
           const raced = await lstat(current);
           if (raced.isSymbolicLink() || !raced.isDirectory()) {
-            throw new Error("A mutation directory changed during creation.");
+            throw new HarnessWorkspaceError("A mutation directory changed during creation.");
           }
         }
       }
     }
     const canonical = await realpath(current);
-    if (!isInside(this.root, canonical)) throw new Error("A mutation directory resolves outside the workspace.");
+    if (!isInside(this.root, canonical)) throw new HarnessWorkspaceError("A mutation directory resolves outside the workspace.");
     return canonical;
   }
 
@@ -919,11 +927,11 @@ export class Workspace {
     const targetPaths = new Set(proposal.changes.map((change) => change.path));
     for (const [targetPath, binding] of modes) {
       if (!targetPaths.has(targetPath)) {
-        throw new Error(`Patch mode binding has no matching content target: ${targetPath}.`);
+        throw new HarnessWorkspaceError(`Patch mode binding has no matching content target: ${targetPath}.`);
       }
       for (const [label, mode] of [["before", binding.beforeMode], ["after", binding.afterMode]] as const) {
         if (mode !== undefined && (!Number.isSafeInteger(mode) || mode < 0 || mode > 0o777)) {
-          throw new Error(`Patch ${label} mode must be an integer between 0 and 0777: ${targetPath}.`);
+          throw new HarnessWorkspaceError(`Patch ${label} mode must be an integer between 0 and 0777: ${targetPath}.`);
         }
       }
     }
@@ -932,7 +940,7 @@ export class Workspace {
       const previous = ordered[index - 1];
       const current = ordered[index];
       if (previous && current && current.path.startsWith(`${previous.path}/`)) {
-        throw new Error(`Patch targets conflict as ancestor and descendant: ${previous.path}, ${current.path}.`);
+        throw new HarnessWorkspaceError(`Patch targets conflict as ancestor and descendant: ${previous.path}, ${current.path}.`);
       }
     }
     const prepared: Array<{
@@ -948,18 +956,18 @@ export class Workspace {
         const modeBinding = modes.get(change.path);
         let before: StableFile | undefined;
         if (change.expectedDigest === null) {
-          if (safe.exists) throw new Error(`The patch target already exists: ${change.path}.`);
+          if (safe.exists) throw new HarnessWorkspaceError(`The patch target already exists: ${change.path}.`);
           if (modeBinding?.beforeMode !== undefined) {
-            throw new Error(`Create-only patch mode binding cannot declare a before mode: ${change.path}.`);
+            throw new HarnessWorkspaceError(`Create-only patch mode binding cannot declare a before mode: ${change.path}.`);
           }
         } else {
-          if (!safe.exists) throw new Error(`The patch target no longer exists: ${change.path}.`);
+          if (!safe.exists) throw new HarnessWorkspaceError(`The patch target no longer exists: ${change.path}.`);
           before = await this.readStableFile(change.path);
           if (before.digest !== change.expectedDigest) {
-            throw new Error(`Stale patch rejected for ${change.path}: expected ${change.expectedDigest}, found ${before.digest}.`);
+            throw new HarnessWorkspaceError(`Stale patch rejected for ${change.path}: expected ${change.expectedDigest}, found ${before.digest}.`);
           }
           if (modeBinding?.beforeMode !== undefined && before.mode !== modeBinding.beforeMode) {
-            throw new Error(`Stale patch mode rejected for ${change.path}: expected ${modeBinding.beforeMode.toString(8)}, found ${before.mode.toString(8)}.`);
+            throw new HarnessWorkspaceError(`Stale patch mode rejected for ${change.path}: expected ${modeBinding.beforeMode.toString(8)}, found ${before.mode.toString(8)}.`);
           }
         }
         const temporary = await this.stageFile(
@@ -985,9 +993,9 @@ export class Workspace {
         await this.safePath(item.change.path, { allowMissing: item.change.expectedDigest === null });
         if (item.before) {
           const current = await this.readStableFile(item.change.path);
-          if (current.digest !== item.change.expectedDigest) throw new Error(`Stale patch rejected for ${item.change.path}.`);
+          if (current.digest !== item.change.expectedDigest) throw new HarnessWorkspaceError(`Stale patch rejected for ${item.change.path}.`);
           if (item.modeBinding?.beforeMode !== undefined && current.mode !== item.modeBinding.beforeMode) {
-            throw new Error(`Stale patch mode rejected for ${item.change.path}.`);
+            throw new HarnessWorkspaceError(`Stale patch mode rejected for ${item.change.path}.`);
           }
           await rename(item.temporary, item.target);
         } else {
@@ -995,7 +1003,7 @@ export class Workspace {
             await link(item.temporary, item.target);
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-              throw new Error(`The patch target was created concurrently: ${item.change.path}.`);
+              throw new HarnessWorkspaceError(`The patch target was created concurrently: ${item.change.path}.`);
             }
             throw error;
           }
@@ -1034,7 +1042,7 @@ export class Workspace {
   /** @deprecated Use applyPatch with an inspected expectedDigest. */
   async writeFile(relativePath: string, content: string, overwrite = false) {
     const safe = await this.safePath(relativePath, { allowMissing: true });
-    if (safe.exists && !overwrite) throw new Error("The file already exists; use applyPatch with its expected digest.");
+    if (safe.exists && !overwrite) throw new HarnessWorkspaceError("The file already exists; use applyPatch with its expected digest.");
     const before = safe.exists ? await this.readStableFile(relativePath) : undefined;
     const changes = [{ path: relativePath, expectedDigest: before?.digest ?? null, content }];
     const proposal = createEditProposal({ changes });
@@ -1044,11 +1052,11 @@ export class Workspace {
 
   /** @deprecated Use applyPatch with an inspected expectedDigest. */
   async replaceInFile(relativePath: string, oldText: string, newText: string) {
-    if (!oldText) throw new Error("oldText cannot be empty.");
+    if (!oldText) throw new HarnessWorkspaceError("oldText cannot be empty.");
     const before = await this.readStableFile(relativePath, false);
     const contents = before.contents.toString("utf8");
     const occurrences = contents.split(oldText).length - 1;
-    if (occurrences !== 1) throw new Error(`oldText must occur exactly once; found ${occurrences} occurrences.`);
+    if (occurrences !== 1) throw new HarnessWorkspaceError(`oldText must occur exactly once; found ${occurrences} occurrences.`);
     const updated = contents.replace(oldText, newText);
     const changes = [{ path: relativePath, expectedDigest: before.digest, content: updated }];
     const proposal = createEditProposal({ changes });
@@ -1059,20 +1067,20 @@ export class Workspace {
   async moveFile(input: MoveFileInput): Promise<MoveFileResult> {
     const parsed = moveFileInputSchema.parse(input);
     const source = await this.readStableFile(parsed.source);
-    if (source.digest !== parsed.expectedDigest) throw new Error(`Stale move rejected for ${parsed.source}.`);
+    if (source.digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale move rejected for ${parsed.source}.`);
     const destination = await this.safePath(parsed.destination, { allowMissing: true });
-    if (destination.exists) throw new Error(`Move destination already exists: ${parsed.destination}.`);
+    if (destination.exists) throw new HarnessWorkspaceError(`Move destination already exists: ${parsed.destination}.`);
     await this.secureWorkspaceDirectory(path.dirname(destination.path));
     const destinationRecheck = await this.safePath(parsed.destination, { allowMissing: true });
-    if (destinationRecheck.exists) throw new Error(`Move destination already exists: ${parsed.destination}.`);
-    if ((await this.readStableFile(parsed.source)).digest !== parsed.expectedDigest) throw new Error(`Stale move rejected for ${parsed.source}.`);
+    if (destinationRecheck.exists) throw new HarnessWorkspaceError(`Move destination already exists: ${parsed.destination}.`);
+    if ((await this.readStableFile(parsed.source)).digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale move rejected for ${parsed.source}.`);
     let linked = false;
     try {
       await link(source.absolutePath, destination.path);
       linked = true;
       const linkedFile = await this.readStableFile(parsed.destination);
       if (linkedFile.digest !== source.digest) {
-        throw new Error(`Move destination changed before commit: ${parsed.destination}.`);
+        throw new HarnessWorkspaceError(`Move destination changed before commit: ${parsed.destination}.`);
       }
       await unlink(source.absolutePath);
     } catch (error) {
@@ -1092,10 +1100,10 @@ export class Workspace {
       try {
         const entry = await lstat(current);
         if (entry.isSymbolicLink()) {
-          throw new Error("Harness quarantine must not resolve through a symbolic link.");
+          throw new HarnessWorkspaceError("Harness quarantine must not resolve through a symbolic link.");
         }
         if (!entry.isDirectory()) {
-          throw new Error("Harness quarantine path contains a non-directory entry.");
+          throw new HarnessWorkspaceError("Harness quarantine path contains a non-directory entry.");
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT" || !create) throw error;
@@ -1105,13 +1113,13 @@ export class Workspace {
           if ((mkdirError as NodeJS.ErrnoException).code !== "EEXIST") throw mkdirError;
           const racedEntry = await lstat(current);
           if (racedEntry.isSymbolicLink() || !racedEntry.isDirectory()) {
-            throw new Error("Harness quarantine path changed during creation.");
+            throw new HarnessWorkspaceError("Harness quarantine path changed during creation.");
           }
         }
       }
     }
     const resolved = await realpath(current);
-    if (!isInside(this.root, resolved)) throw new Error("Harness quarantine resolves outside the workspace.");
+    if (!isInside(this.root, resolved)) throw new HarnessWorkspaceError("Harness quarantine resolves outside the workspace.");
     return resolved;
   }
 
@@ -1129,15 +1137,15 @@ export class Workspace {
   async quarantineFile(input: QuarantineFileInput): Promise<QuarantineFileResult> {
     const parsed = quarantineFileInputSchema.parse(input);
     const source = await this.readStableFile(parsed.path);
-    if (source.digest !== parsed.expectedDigest) throw new Error(`Stale quarantine rejected for ${parsed.path}.`);
+    if (source.digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale quarantine rejected for ${parsed.path}.`);
     const quarantineId = `${Date.now()}-${randomUUID()}`;
     const directory = await this.secureQuarantineDirectory(true);
     const dataPath = path.join(directory, `${quarantineId}.data`);
-    if ((await this.readStableFile(parsed.path)).digest !== parsed.expectedDigest) throw new Error(`Stale quarantine rejected for ${parsed.path}.`);
+    if ((await this.readStableFile(parsed.path)).digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale quarantine rejected for ${parsed.path}.`);
     await link(source.absolutePath, dataPath);
     if (digestBytes((await this.readInternalRegularFile(dataPath, "Quarantine payload", MAX_FILE_BYTES)).contents) !== source.digest) {
       await unlink(dataPath).catch(() => {});
-      throw new Error(`Quarantine payload changed before commit: ${parsed.path}.`);
+      throw new HarnessWorkspaceError(`Quarantine payload changed before commit: ${parsed.path}.`);
     }
     const manifest: QuarantineManifest = {
       schemaVersion: 1,
@@ -1173,35 +1181,35 @@ export class Workspace {
       );
       manifest = JSON.parse(manifestFile.contents.toString("utf8")) as QuarantineManifest;
     } catch {
-      throw new Error(`Quarantine entry was not found: ${parsed.quarantineId}.`);
+      throw new HarnessWorkspaceError(`Quarantine entry was not found: ${parsed.quarantineId}.`);
     }
     if (manifest.schemaVersion !== 1 || manifest.quarantineId !== parsed.quarantineId || manifest.status !== "quarantined") {
-      throw new Error(`Quarantine entry is not restorable: ${parsed.quarantineId}.`);
+      throw new HarnessWorkspaceError(`Quarantine entry is not restorable: ${parsed.quarantineId}.`);
     }
     const dataPath = path.join(directory, `${parsed.quarantineId}.data`);
     const dataFile = await this.readInternalRegularFile(dataPath, "Quarantine payload", MAX_FILE_BYTES);
     const digest = digestBytes(dataFile.contents);
     if (digest !== manifest.digest || (parsed.expectedDigest && parsed.expectedDigest !== digest)) {
-      throw new Error(`Quarantine digest mismatch: ${parsed.quarantineId}.`);
+      throw new HarnessWorkspaceError(`Quarantine digest mismatch: ${parsed.quarantineId}.`);
     }
     const destinationPath = parsed.destination ?? manifest.originalPath;
     const destination = await this.safePath(destinationPath, { allowMissing: true });
-    if (destination.exists) throw new Error(`Restore destination already exists: ${destinationPath}.`);
+    if (destination.exists) throw new HarnessWorkspaceError(`Restore destination already exists: ${destinationPath}.`);
     await this.secureWorkspaceDirectory(path.dirname(destination.path));
     const destinationRecheck = await this.safePath(destinationPath, { allowMissing: true });
-    if (destinationRecheck.exists) throw new Error(`Restore destination already exists: ${destinationPath}.`);
+    if (destinationRecheck.exists) throw new HarnessWorkspaceError(`Restore destination already exists: ${destinationPath}.`);
     const dataRecheck = await lstat(dataPath);
     if (dataRecheck.isSymbolicLink() || !dataRecheck.isFile() || dataRecheck.dev !== dataFile.stat.dev ||
       dataRecheck.ino !== dataFile.stat.ino || dataRecheck.size !== dataFile.stat.size ||
       dataRecheck.mtimeMs !== dataFile.stat.mtimeMs) {
-      throw new Error("Quarantine payload changed before restore commit.");
+      throw new HarnessWorkspaceError("Quarantine payload changed before restore commit.");
     }
     await link(dataPath, destination.path);
     const linkedDestination = await this.readInternalRegularFile(destination.path, "Restore destination", MAX_FILE_BYTES);
     if (linkedDestination.stat.dev !== dataFile.stat.dev || linkedDestination.stat.ino !== dataFile.stat.ino ||
       digestBytes(linkedDestination.contents) !== digest) {
       await unlink(destination.path).catch(() => {});
-      throw new Error("Restore destination did not match the quarantined payload.");
+      throw new HarnessWorkspaceError("Restore destination did not match the quarantined payload.");
     }
     const restoredManifest: QuarantineManifest = {
       ...manifest,
@@ -1245,7 +1253,7 @@ export class Workspace {
         (await this.readStableFile("package.json", false)).contents.toString("utf8")
       ) as { packageManager?: unknown; scripts?: unknown };
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error("The workspace does not contain a package.json file.");
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new HarnessWorkspaceError("The workspace does not contain a package.json file.");
       throw error;
     }
     const resolved = await resolvePackageCheckCommand(
