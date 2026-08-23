@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { readRegularFileNoFollow } from "../src/file-security.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
+import { assertHarnessReleaseChannel, parseHarnessReleaseVersion } from "./release-policy.js";
 
 interface CommandResult {
   exitCode: number;
@@ -64,6 +65,7 @@ const optionValue = (name: string): string | undefined => {
 const registryCheckRequested = process.argv.includes("--registry");
 const tagCheckRequested = process.argv.includes("--tag");
 const requestedTag = optionValue("--tag");
+const requestedChannel = optionValue("--channel");
 const failures: string[] = [];
 const manifest = JSON.parse(
   await readReleaseText("package.json")
@@ -72,8 +74,23 @@ const manifest = JSON.parse(
 if (manifest.name !== PACKAGE_NAME) {
   failures.push(`package name must be ${PACKAGE_NAME}`);
 }
-if (!manifest.version || !/^0\.11\.\d+$/.test(manifest.version)) {
-  failures.push("package version must be a stable 0.11.x version");
+if (!manifest.version) {
+  failures.push("package version is required");
+} else {
+  try {
+    parseHarnessReleaseVersion(manifest.version);
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+}
+if (requestedChannel === undefined && process.argv.includes("--channel")) {
+  failures.push("--channel requires latest or next");
+} else if (requestedChannel && manifest.version) {
+  try {
+    assertHarnessReleaseChannel(manifest.version, requestedChannel);
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
 }
 if (manifest.private === true) {
   failures.push("package.json is still private");
@@ -119,6 +136,7 @@ for (const requiredFile of [
   "LICENSE",
   "SECURITY.md",
   "SUPPORT.md",
+  "contracts",
   "docs",
   "evaluations",
   "examples"
@@ -157,14 +175,16 @@ if (manifest.version) {
 const releaseWorkflow = await readReleaseText(".github/workflows/release.yml");
 for (const required of [
   "workflow_dispatch:",
-  "description: Annotated vX.Y.Z tag; must match package.json and resolve to main",
+  "description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main",
   "required: true",
   "type: string",
+  "actions: read",
   "id-token: write",
   "environment: npm",
   "package-manager-cache: false",
   "bun install --frozen-lockfile --ignore-scripts",
   "bun run release:check",
+  "GITHUB_TOKEN: ${{ github.token }}",
   "docker pull node:24-bookworm-slim",
   "ZHIVEX_HARNESS_OCI_REQUIRED",
   "bun pm pack",
@@ -192,6 +212,9 @@ for (const action of ["actions/upload-artifact", "actions/download-artifact"]) {
   if (!new RegExp(`${escapedAction}@[a-f0-9]{40}(?:\\s|$)`).test(releaseWorkflow)) {
     failures.push(`release workflow must pin ${action} to a full commit SHA`);
   }
+}
+if (!releaseWorkflow.includes('--channel "$RELEASE_CHANNEL"')) {
+  failures.push("release workflow must validate the npm channel before publication");
 }
 if (/default:\s+v\d+\.\d+\.\d+/.test(releaseWorkflow)) {
   failures.push("release workflow must not duplicate the package version as a tag input default");
@@ -261,6 +284,15 @@ if (registryCheckRequested && manifest.name && manifest.version) {
     }
   } catch (error) {
     failures.push(`npm registry readiness request failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+if (manifest.version === "1.0.0") {
+  const gaReadiness = await run(["bun", "run", "readiness:1.0:release"], true);
+  if (gaReadiness.exitCode !== 0) {
+    failures.push(
+      `1.0 GA promotion gate failed: ${gaReadiness.stderr || gaReadiness.stdout || "unknown failure"}`
+    );
   }
 }
 

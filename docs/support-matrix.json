@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "targetVersion": "1.0.0",
+  "evidenceAsOf": "2026-08-23",
+  "levels": ["supported", "secondary", "provisional", "unsupported"],
+  "entries": [
+    { "id": "runtime-node-22", "dimension": "runtime", "target": "Node.js 22.13+", "level": "supported", "evidence": [".github/workflows/ci.yml", "scripts/package-smoke.ts"] },
+    { "id": "runtime-node-24", "dimension": "runtime", "target": "Node.js 24", "level": "supported", "evidence": [".github/workflows/ci.yml", ".github/workflows/release.yml"] },
+    { "id": "runtime-bun", "dimension": "runtime", "target": "Bun 1.4+", "level": "secondary", "evidence": [".github/workflows/ci.yml", "scripts/package-smoke.ts"] },
+    { "id": "os-linux", "dimension": "operating-system", "target": "Linux", "level": "supported", "evidence": [".github/workflows/ci.yml"] },
+    { "id": "os-macos", "dimension": "operating-system", "target": "macOS", "level": "supported", "evidence": [".github/workflows/ci.yml"] },
+    { "id": "os-windows", "dimension": "operating-system", "target": "Windows", "level": "unsupported", "evidence": ["SUPPORT.md"] },
+    { "id": "vcs-git", "dimension": "version-control", "target": "Git workspaces", "level": "supported", "evidence": ["tests/workspace.test.ts", "scripts/package-smoke.ts"] },
+    { "id": "store-sqlite", "dimension": "store", "target": "SQLite", "level": "supported", "evidence": ["tests/operations.test.ts", "tests/sessions.test.ts"] },
+    { "id": "store-file", "dimension": "store", "target": "file migration backend", "level": "secondary", "evidence": ["tests/operations.test.ts", "docs/DURABLE_OPERATIONS.md"] },
+    { "id": "oci-docker", "dimension": "oci-runtime", "target": "Docker on Linux", "level": "supported", "evidence": [".github/workflows/ci.yml", "scripts/oci-execution-smoke.ts"] },
+    { "id": "oci-podman", "dimension": "oci-runtime", "target": "Podman", "level": "provisional", "evidence": ["tests/execution-environment.test.ts"] },
+    { "id": "pm-npm", "dimension": "target-package-manager", "target": "npm", "level": "supported", "evidence": ["scripts/oci-execution-smoke.ts", "scripts/package-smoke.ts"] },
+    { "id": "pm-bun", "dimension": "target-package-manager", "target": "Bun", "level": "secondary", "evidence": ["tests/package-manager.test.ts", "scripts/package-smoke.ts"] },
+    { "id": "pm-pnpm", "dimension": "target-package-manager", "target": "pnpm", "level": "provisional", "evidence": ["tests/package-manager.test.ts"] },
+    { "id": "pm-yarn", "dimension": "target-package-manager", "target": "Yarn", "level": "provisional", "evidence": ["tests/package-manager.test.ts"] },
+    { "id": "mcp-http", "dimension": "mcp-transport", "target": "bounded Streamable HTTP JSON-RPC", "level": "supported", "evidence": ["scripts/mcp-interoperability-smoke.ts", "scripts/mcp-official-sdk-smoke.ts"] },
+    { "id": "mcp-stdio", "dimension": "mcp-transport", "target": "stdio", "level": "unsupported", "evidence": ["SUPPORT.md"] },
+    { "id": "provider-meta", "dimension": "provider", "target": "Meta muse-spark-1.2", "level": "supported", "evidence": ["docs/LIVE_CERTIFICATION.md", "release-status.json"] },
+    { "id": "provider-qwen", "dimension": "provider", "target": "Qwen qwen3.8-max", "level": "supported", "evidence": ["docs/LIVE_CERTIFICATION.md", "release-status.json"] },
+    { "id": "provider-openai", "dimension": "provider", "target": "OpenAI gpt-5.6-luna", "level": "supported", "evidence": ["docs/LIVE_CERTIFICATION.md", "release-status.json"] },
+    { "id": "provider-gemini", "dimension": "provider", "target": "Gemini gemini-3.6-flash / 3.7-flash", "level": "provisional", "evidence": ["docs/LIVE_CERTIFICATION.md"] }
+  ]
+}

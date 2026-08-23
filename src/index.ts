@@ -2,6 +2,7 @@ export {
   DEFAULT_ALLOWED_CHECKS,
   DEFAULT_OCI_EXECUTION,
   DEFAULT_SUBAGENT_BUDGET,
+  HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS,
   HARNESS_CONFIG_SCHEMA_VERSION,
   HARNESS_EXECUTION_BACKENDS,
   HARNESS_EXECUTION_POLICY_VERSION,
@@ -16,6 +17,7 @@ export {
   createProviderModel,
   createProviderRegistry,
   defaultHarnessNamespace,
+  migrateHarnessConfigInput,
   parseProvider,
   providerAvailability,
   providerDescriptor,
@@ -28,6 +30,7 @@ export type {
   HarnessContextConfig,
   HarnessConfig,
   HarnessConfigInput,
+  HarnessConfigMigrationResult,
   HarnessCostBudget,
   HarnessExecutionBackend,
   HarnessExecutionConfig,
@@ -181,6 +184,17 @@ export type {
 } from "./orchestration.js";
 
 export { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
+
+export {
+  HARNESS_ERROR_CODES,
+  HarnessConfigError,
+  HarnessError
+} from "./errors.js";
+export type {
+  HarnessErrorCategory,
+  HarnessErrorCode,
+  HarnessErrorOptions
+} from "./errors.js";
 
 export {
   CHANGE_ENVELOPE_DIGEST_ALGORITHM,

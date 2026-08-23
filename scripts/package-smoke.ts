@@ -98,6 +98,14 @@ try {
     "package/docs/LIVE_CERTIFICATION.md",
     "package/docs/PUBLIC_SECURITY.md",
     "package/docs/RELEASE.md",
+    "package/docs/GA_READINESS.md",
+    "package/docs/SUPPORT_MATRIX.md",
+    "package/docs/THREAT_MODEL.md",
+    "package/docs/ROLLBACK.md",
+    "package/docs/STABILITY.md",
+    "package/docs/DEPRECATIONS.md",
+    "package/contracts/public-api.json",
+    "package/contracts/security-controls.json",
     "package/evaluations/golden-expectations.json",
     "package/examples/mcp-config.json",
     "package/examples/change-envelope-input.json",
@@ -143,6 +151,47 @@ try {
     "--no-audit",
     "--no-fund",
     tarball
+  ], { cwd: consumer });
+
+  const installedTypeConsumer = `
+import {
+  HarnessConfigError,
+  createHarness,
+  migrateHarnessConfigInput,
+  resolveHarnessConfig,
+  type HarnessConfigInput,
+  type HarnessConfigMigrationResult,
+  type ZhivexHarness
+} from "@zhivex-ai/harness";
+
+const legacy: HarnessConfigInput = { schemaVersion: 4, projectContext: false };
+const migrated: HarnessConfigMigrationResult = migrateHarnessConfigInput(legacy);
+const config = resolveHarnessConfig(migrated.config);
+const typedError: HarnessConfigError = new HarnessConfigError("fixture");
+const create = async (): Promise<ZhivexHarness> => createHarness({
+  provider: config.provider,
+  workspace: config.workspace
+});
+void typedError.code;
+void create;
+`;
+  await writeFile(path.join(consumer, "installed-types.ts"), installedTypeConsumer, "utf8");
+  await writeFile(path.join(consumer, "tsconfig.json"), `${JSON.stringify({
+    compilerOptions: {
+      target: "ES2022",
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      strict: true,
+      noEmit: true,
+      skipLibCheck: true
+    },
+    include: ["installed-types.ts"]
+  }, null, 2)}\n`, "utf8");
+  await run([
+    "node",
+    path.join(workspace, "node_modules", "typescript", "bin", "tsc"),
+    "--project",
+    path.join(consumer, "tsconfig.json")
   ], { cwd: consumer });
 
   const installedPackageRoot = path.join(consumer, "node_modules", "@zhivex-ai", "harness");

@@ -609,6 +609,16 @@ describe("CLI process contract", () => {
     const usage = await runCli(["run", "--max-steps", "invalid"]);
     expect(usage.exitCode).toBe(CLI_EXIT_CODES.usageError);
 
+    const invalidConfig = await runCli(["doctor", "--execution", "host", "--json"]);
+    expect(invalidConfig.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(invalidConfig.stderr).toContain("executionBackend");
+
+    const invalidEnvironmentProvider = await runCli(["doctor", "--json"], {
+      ZHIVEX_HARNESS_PROVIDER: "deepseek"
+    });
+    expect(invalidEnvironmentProvider.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    expect(invalidEnvironmentProvider.stderr).toContain("Unknown provider");
+
     const runtime = await runCli(["chat"]);
     expect(runtime.exitCode).toBe(CLI_EXIT_CODES.runtimeError);
 

@@ -4,6 +4,7 @@ import path from "node:path";
 
 import type { LanguageModel } from "@zhivex-ai/agents";
 import type { AgentStoreScope } from "@zhivex-ai/agents/ops";
+import { HarnessConfigError } from "./errors.js";
 import {
   BUILTIN_PROVIDER_REGISTRATIONS,
   DEFAULT_PROVIDER_REGISTRY,
@@ -29,6 +30,7 @@ import {
 export const DEFAULT_ALLOWED_CHECKS = ["test", "typecheck", "lint", "build"] as const;
 
 export const HARNESS_CONFIG_SCHEMA_VERSION = 5 as const;
+export const HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS = [4, 5] as const;
 
 export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
 
@@ -226,6 +228,61 @@ export interface HarnessConfigInput {
   mcpConfigPath?: string;
 }
 
+export interface HarnessConfigMigrationResult {
+  fromVersion: (typeof HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS)[number];
+  toVersion: typeof HARNESS_CONFIG_SCHEMA_VERSION;
+  config: HarnessConfigInput;
+  notes: readonly string[];
+}
+
+/**
+ * Migrates a persisted configuration input without consulting process
+ * environment variables or resolving filesystem paths. Schema 4 predates
+ * project-context discovery and OCI shell exposure, so the migration records
+ * both features as disabled to preserve the behavior of the original input.
+ */
+export const migrateHarnessConfigInput = (
+  input: HarnessConfigInput
+): HarnessConfigMigrationResult => {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new HarnessConfigError("Harness config migration requires an object.");
+  }
+  const fromVersion = input.schemaVersion;
+  if (
+    fromVersion !== 4 &&
+    fromVersion !== HARNESS_CONFIG_SCHEMA_VERSION
+  ) {
+    throw new HarnessConfigError(
+      `Unsupported config schema version for migration: ${String(fromVersion)}. ` +
+      `Supported source versions: ${HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS.join(", ")}.`
+    );
+  }
+  if (fromVersion === HARNESS_CONFIG_SCHEMA_VERSION) {
+    return {
+      fromVersion,
+      toVersion: HARNESS_CONFIG_SCHEMA_VERSION,
+      config: { ...input },
+      notes: []
+    };
+  }
+  return {
+    fromVersion,
+    toVersion: HARNESS_CONFIG_SCHEMA_VERSION,
+    config: {
+      ...input,
+      schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
+      projectContext: false,
+      ...(input.executionBackend === "oci" ? { ociShellMode: "deny" } : {})
+    },
+    notes: [
+      "Project context remains disabled to preserve schema 4 behavior; enable it explicitly after reviewing repository instructions.",
+      ...(input.executionBackend === "oci"
+        ? ["OCI shell exposure remains denied to preserve schema 4 behavior."]
+        : [])
+    ]
+  };
+};
+
 const integerOption = (
   name: string,
   input: number | undefined,
@@ -236,7 +293,7 @@ const integerOption = (
 ) => {
   const value = input ?? (envValue === undefined ? fallback : Number(envValue));
   if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
-    throw new Error(`${name} must be an integer between ${minimum} and ${maximum}.`);
+    throw new HarnessConfigError(`${name} must be an integer between ${minimum} and ${maximum}.`);
   }
   return value;
 };
@@ -248,7 +305,7 @@ const scopeValue = (name: string, value: string | undefined, fallback?: string) 
     return undefined;
   }
   if (normalized.length > 128 || /[\u0000-\u001f\u007f]/.test(normalized)) {
-    throw new Error(`${name} must contain 1-128 printable characters.`);
+    throw new HarnessConfigError(`${name} must contain 1-128 printable characters.`);
   }
   return normalized;
 };
@@ -263,7 +320,7 @@ const nonNegativeNumberOption = (
   }
   const value = input ?? Number(envValue);
   if (!Number.isFinite(value) || value! < 0) {
-    throw new Error(`${name} must be a non-negative number.`);
+    throw new HarnessConfigError(`${name} must be a non-negative number.`);
   }
   return value!;
 };
@@ -299,11 +356,11 @@ const resolveAllowedChecks = (configured: readonly string[] | undefined) => {
   );
   const checks = [...new Set(source.map((value) => value.trim()).filter(Boolean))];
   if (checks.length > 50) {
-    throw new Error("allowedChecks cannot contain more than 50 script names.");
+    throw new HarnessConfigError("allowedChecks cannot contain more than 50 script names.");
   }
   const invalid = checks.find((value) => !/^[A-Za-z0-9][A-Za-z0-9:_-]{0,63}$/.test(value));
   if (invalid) {
-    throw new Error(
+    throw new HarnessConfigError(
       `Invalid allowed check name: ${invalid}. Use 1-64 letters, digits, colon, underscore, or hyphen.`
     );
   }
@@ -327,7 +384,7 @@ const resolveRequiredCapabilities = (configured: readonly string[] | undefined) 
     !(HARNESS_REQUIRED_CAPABILITIES as readonly string[]).includes(value)
   );
   if (invalid) {
-    throw new Error(
+    throw new HarnessConfigError(
       `Unknown required capability: ${invalid}. Use ${HARNESS_REQUIRED_CAPABILITIES.join(", ")}.`
     );
   }
@@ -345,7 +402,7 @@ const resolveSubagentProfiles = (configured: readonly string[] | undefined) => {
     !(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(value)
   );
   if (invalid) {
-    throw new Error(
+    throw new HarnessConfigError(
       `Unknown subagent profile: ${invalid}. Use ${HARNESS_SUBAGENT_PROFILES.join(", ")}.`
     );
   }
@@ -360,14 +417,14 @@ const resolveOciAllowedCommands = (configured: readonly string[] | undefined) =>
   );
   const commands = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
   if (commands.length === 0 || commands.length > 50) {
-    throw new Error("ociAllowedCommands must contain between 1 and 50 executable names.");
+    throw new HarnessConfigError("ociAllowedCommands must contain between 1 and 50 executable names.");
   }
   const invalid = commands.find((value) => !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/.test(value));
   if (invalid) {
-    throw new Error(`Invalid OCI command name: ${invalid}. Use a bare executable name without a path.`);
+    throw new HarnessConfigError(`Invalid OCI command name: ${invalid}. Use a bare executable name without a path.`);
   }
   if (!commands.some((command) => ["npm", "pnpm", "yarn", "bun"].includes(command))) {
-    throw new Error(
+    throw new HarnessConfigError(
       "ociAllowedCommands must include npm, pnpm, yarn, or bun so declared package checks remain available."
     );
   }
@@ -379,7 +436,7 @@ const resolveExecutionConfig = (input: HarnessConfigInput): HarnessExecutionConf
     .trim()
     .toLowerCase();
   if (!(HARNESS_EXECUTION_BACKENDS as readonly string[]).includes(backend)) {
-    throw new Error(`executionBackend must be one of: ${HARNESS_EXECUTION_BACKENDS.join(", ")}.`);
+    throw new HarnessConfigError(`executionBackend must be one of: ${HARNESS_EXECUTION_BACKENDS.join(", ")}.`);
   }
   if (backend === "none") {
     return { backend: "none" };
@@ -388,11 +445,11 @@ const resolveExecutionConfig = (input: HarnessConfigInput): HarnessExecutionConf
     .trim()
     .toLowerCase();
   if (!(HARNESS_OCI_RUNTIMES as readonly string[]).includes(runtime)) {
-    throw new Error(`ociRuntime must be one of: ${HARNESS_OCI_RUNTIMES.join(", ")}.`);
+    throw new HarnessConfigError(`ociRuntime must be one of: ${HARNESS_OCI_RUNTIMES.join(", ")}.`);
   }
   const image = (input.ociImage ?? process.env.ZHIVEX_HARNESS_OCI_IMAGE ?? DEFAULT_OCI_EXECUTION.image).trim();
   if (!image || image.length > 512 || /[\u0000-\u001f\u007f\s]/.test(image) || image.startsWith("-")) {
-    throw new Error("ociImage must be a non-empty OCI image reference without whitespace or control characters.");
+    throw new HarnessConfigError("ociImage must be a non-empty OCI image reference without whitespace or control characters.");
   }
   const shellMode = (
     input.ociShellMode ??
@@ -400,7 +457,7 @@ const resolveExecutionConfig = (input: HarnessConfigInput): HarnessExecutionConf
     DEFAULT_OCI_EXECUTION.shellMode
   ).trim().toLowerCase();
   if (!(HARNESS_OCI_SHELL_MODES as readonly string[]).includes(shellMode)) {
-    throw new Error(`ociShellMode must be one of: ${HARNESS_OCI_SHELL_MODES.join(", ")}.`);
+    throw new HarnessConfigError(`ociShellMode must be one of: ${HARNESS_OCI_SHELL_MODES.join(", ")}.`);
   }
   const maxWorkspaceBytes = integerOption(
     "ociMaxWorkspaceBytes",
@@ -419,7 +476,7 @@ const resolveExecutionConfig = (input: HarnessConfigInput): HarnessExecutionConf
     16 * 1024 * 1024
   );
   if (maxFileWriteBytes > maxWorkspaceBytes) {
-    throw new Error("ociMaxFileWriteBytes cannot exceed ociMaxWorkspaceBytes.");
+    throw new HarnessConfigError("ociMaxFileWriteBytes cannot exceed ociMaxWorkspaceBytes.");
   }
   return {
     backend: "oci",
@@ -471,7 +528,7 @@ const canonicalProjectContextFile = (
     relative.startsWith(`..${path.sep}`) ||
     path.isAbsolute(relative)
   ) {
-    throw new Error("contextConfigPath must resolve inside the workspace.");
+    throw new HarnessConfigError("contextConfigPath must resolve inside the workspace.");
   }
   return candidate;
 };
@@ -479,7 +536,17 @@ const canonicalProjectContextFile = (
 export const parseProvider = (
   value: string | undefined,
   registry: HarnessProviderRegistry = DEFAULT_PROVIDER_REGISTRY
-): HarnessProvider => registry.parse(value);
+): HarnessProvider => {
+  try {
+    return registry.parse(value);
+  } catch (error) {
+    if (error instanceof HarnessConfigError) throw error;
+    throw new HarnessConfigError(
+      error instanceof Error ? error.message : String(error),
+      { cause: error }
+    );
+  }
+};
 
 export const providerDescriptor = (
   provider: HarnessProvider,
@@ -494,7 +561,7 @@ export const resolveHarnessConfig = (
     input.schemaVersion !== undefined &&
     input.schemaVersion !== HARNESS_CONFIG_SCHEMA_VERSION
   ) {
-    throw new Error(
+    throw new HarnessConfigError(
       `Unsupported config schema version: ${input.schemaVersion}. Expected ${HARNESS_CONFIG_SCHEMA_VERSION}.`
     );
   }
@@ -517,7 +584,7 @@ export const resolveHarnessConfig = (
   );
   const storeBackend = (input.storeBackend ?? process.env.ZHIVEX_HARNESS_STORE ?? "sqlite").trim().toLowerCase();
   if (!(HARNESS_STORE_BACKENDS as readonly string[]).includes(storeBackend)) {
-    throw new Error(`storeBackend must be one of: ${HARNESS_STORE_BACKENDS.join(", ")}.`);
+    throw new HarnessConfigError(`storeBackend must be one of: ${HARNESS_STORE_BACKENDS.join(", ")}.`);
   }
   const tenantId = scopeValue(
     "tenantId",
@@ -548,7 +615,7 @@ export const resolveHarnessConfig = (
     includeChildRuns: true
   };
   if (budget.maxTotalTokens < budget.maxInputTokens || budget.maxTotalTokens < budget.maxOutputTokens) {
-    throw new Error("maxTotalTokens must be greater than or equal to the input and output token limits.");
+    throw new HarnessConfigError("maxTotalTokens must be greater than or equal to the input and output token limits.");
   }
   const maxCostUsd = nonNegativeNumberOption(
     "maxCostUsd",
@@ -566,10 +633,10 @@ export const resolveHarnessConfig = (
     process.env.ZHIVEX_HARNESS_OUTPUT_COST_PER_MILLION
   );
   if (maxCostUsd !== undefined && inputCostPerMillion === undefined && outputCostPerMillion === undefined) {
-    throw new Error("maxCostUsd requires inputCostPerMillion or outputCostPerMillion pricing.");
+    throw new HarnessConfigError("maxCostUsd requires inputCostPerMillion or outputCostPerMillion pricing.");
   }
   if (maxCostUsd === undefined && (inputCostPerMillion !== undefined || outputCostPerMillion !== undefined)) {
-    throw new Error("Token pricing requires maxCostUsd.");
+    throw new HarnessConfigError("Token pricing requires maxCostUsd.");
   }
   const compaction: HarnessCompactionConfig = {
     maxMessages: integerOption("compactionMaxMessages", input.compactionMaxMessages, process.env.ZHIVEX_HARNESS_COMPACTION_MAX_MESSAGES, DEFAULT_HARNESS_COMPACTION.maxMessages, 4, 10_000),
@@ -577,7 +644,7 @@ export const resolveHarnessConfig = (
     keepRecentMessages: integerOption("compactionKeepRecentMessages", input.compactionKeepRecentMessages, process.env.ZHIVEX_HARNESS_COMPACTION_KEEP_RECENT, DEFAULT_HARNESS_COMPACTION.keepRecentMessages, 2, 1_000)
   };
   if (compaction.keepRecentMessages >= compaction.maxMessages) {
-    throw new Error("compactionKeepRecentMessages must be smaller than compactionMaxMessages.");
+    throw new HarnessConfigError("compactionKeepRecentMessages must be smaller than compactionMaxMessages.");
   }
   const childBudget: HarnessBudget = {
     maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, 30),
@@ -589,7 +656,7 @@ export const resolveHarnessConfig = (
     includeChildRuns: false
   };
   if (childBudget.maxTotalTokens < childBudget.maxInputTokens || childBudget.maxTotalTokens < childBudget.maxOutputTokens) {
-    throw new Error("subagentMaxTotalTokens must be greater than or equal to the child input and output token limits.");
+    throw new HarnessConfigError("subagentMaxTotalTokens must be greater than or equal to the child input and output token limits.");
   }
   const orchestration: HarnessOrchestrationConfig = {
     profiles: resolveSubagentProfiles(input.subagentProfiles),

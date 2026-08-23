@@ -355,6 +355,8 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
+Status: preparation gate implemented. Public API/CLI/schema baselines, config `4 → 5` migration, support/security/rollback policy, RC channel enforcement, and evidence requirements are machine-checked. GA remains blocked on the open items in [`docs/ga-readiness.json`](./docs/ga-readiness.json), including historical tarball fixtures, representative repository evidence, security review, and two real release candidates.
+
 Scope:
 
 - Stabilize CLI commands, config schema, JSON/event schemas, library exports, state migrations, and error taxonomy.

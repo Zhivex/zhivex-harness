@@ -2,6 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { findReleaseChangelogHeading } from "./release-changelog.js";
+import { parseHarnessReleaseVersion } from "./release-policy.js";
 import { parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
 
 const workspace = path.resolve(import.meta.dir, "..");
@@ -61,6 +62,12 @@ const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
 const security = await readFile(path.join(workspace, "SECURITY.md"), "utf8");
 const releaseDocumentation = await readFile(path.join(workspace, "docs", "RELEASE.md"), "utf8");
 const publicSecurity = await readFile(path.join(workspace, "docs", "PUBLIC_SECURITY.md"), "utf8");
+let packageRelease: ReturnType<typeof parseHarnessReleaseVersion> | undefined;
+try {
+  packageRelease = parseHarnessReleaseVersion(manifest.version);
+} catch (error) {
+  failures.push(`package release version is invalid: ${error instanceof Error ? error.message : String(error)}`);
+}
 let releaseStatus: ReleaseStatus | undefined;
 try {
   releaseStatus = parseReleaseStatus(JSON.parse(await readFile(
@@ -84,7 +91,7 @@ const liveCertificationWorkflow = await readFile(
   path.join(workspace, ".github", "workflows", "live-certification.yml"),
   "utf8"
 );
-if (!readme.includes(`Version \`${manifest.version}\``)) {
+if (!packageRelease?.prerelease && !readme.includes(`Version \`${manifest.version}\``)) {
   failures.push(`README.md does not identify package version ${manifest.version}.`);
 }
 if (!changelog.includes(`## ${manifest.version} -`)) {
@@ -92,10 +99,13 @@ if (!changelog.includes(`## ${manifest.version} -`)) {
 }
 if (releaseStatus) {
   const minor = `${releaseStatus.version.split(".").slice(0, 2).join(".")}.x`;
-  if (releaseStatus.version !== manifest.version) {
+  if (!packageRelease?.prerelease && releaseStatus.version !== manifest.version) {
     failures.push(
       `release-status.json version ${releaseStatus.version} does not match package version ${manifest.version}.`
     );
+  }
+  if (packageRelease?.prerelease && (releaseStatus.status !== "published" || releaseStatus.channel !== "latest")) {
+    failures.push("a prerelease source must preserve the published latest record in release-status.json");
   }
   if (releaseStatus.status === "published") {
     for (const [file, contents, required] of [
@@ -839,7 +849,7 @@ for (const [file, workflow] of [
   [".github/workflows/release.yml", releaseWorkflow],
   [".github/workflows/live-certification.yml", liveCertificationWorkflow]
 ] as const) {
-  if (!workflow.includes("description: Annotated vX.Y.Z tag; must match package.json and resolve to main") ||
+  if (!workflow.includes("description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main") ||
     !workflow.includes("required: true") || !workflow.includes("type: string")) {
     failures.push(`${file} must require an explicit package-version-bound tag input.`);
   }

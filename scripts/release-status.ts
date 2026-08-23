@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { assertHarnessReleaseChannel, parseHarnessReleaseVersion } from "./release-policy.js";
+
 const liveEvidenceSchema = z.enum([
   "pending",
   "passed-local-tag-source",
@@ -10,9 +12,9 @@ const liveEvidenceSchema = z.enum([
 const releaseStatusBaseShape = {
   schemaVersion: z.literal(1),
   package: z.literal("@zhivex-ai/harness"),
-  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  version: z.string(),
   channel: z.enum(["latest", "next"]),
-  tag: z.string().regex(/^v\d+\.\d+\.\d+$/),
+  tag: z.string(),
   sourceCommit: z.string().regex(/^[a-f0-9]{40}$/),
   registry: z.literal("https://registry.npmjs.org/")
 } as const;
@@ -59,7 +61,17 @@ export const releaseStatusSchema = z.discriminatedUnion("status", [
   candidateReleaseStatusSchema,
   publishedReleaseStatusSchema
 ]).superRefine((status, context) => {
-  if (status.tag !== `v${status.version}`) {
+  let release: ReturnType<typeof parseHarnessReleaseVersion> | undefined;
+  try {
+    release = assertHarnessReleaseChannel(status.version, status.channel);
+  } catch (error) {
+    context.addIssue({
+      code: "custom",
+      path: ["version"],
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+  if (status.tag !== (release?.tag ?? `v${status.version}`)) {
     context.addIssue({
       code: "custom",
       path: ["tag"],

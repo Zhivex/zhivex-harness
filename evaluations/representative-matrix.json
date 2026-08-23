@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "kind": "harness-representative-evaluation-matrix",
+  "targetVersion": "1.0.0",
+  "status": "pending",
+  "requiredProviders": ["meta", "qwen", "openai"],
+  "provisionalProviders": ["gemini"],
+  "scenarios": [
+    "typescript-node-package",
+    "json-cli-contract",
+    "sqlite-restart-and-resume",
+    "target-package-managers",
+    "python-pytest-repository",
+    "hostile-instructions",
+    "concurrent-change-conflict"
+  ],
+  "requiredEvidence": [
+    "releaseTag",
+    "sourceCommit",
+    "artifactSha512",
+    "provider",
+    "model",
+    "datasetRevision",
+    "driverCommit",
+    "ociImageDigest",
+    "workflowUrl",
+    "observedAt",
+    "scenarios",
+    "totalRuns",
+    "failedRuns",
+    "omittedRuns"
+  ],
+  "results": []
+}

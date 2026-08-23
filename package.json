@@ -55,6 +55,7 @@
     "SUPPORT.md",
     "LICENSE",
     "docs",
+    "contracts",
     "evaluations",
     "examples"
   ],
@@ -64,6 +65,9 @@
     "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "docs:check": "bun run scripts/check-docs.ts",
+    "contract:check": "bun run scripts/check-1-0-readiness.ts",
+    "readiness:1.0": "bun run scripts/check-1-0-readiness.ts",
+    "readiness:1.0:release": "bun run scripts/check-1-0-readiness.ts --release",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "evaluate": "bun run scripts/evaluate.ts",
@@ -90,7 +94,7 @@
     "demo:hostile": "bun run dist/hostile-repository-demo.js",
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
-    "check": "bun run docs:check && bun run typecheck && bun test && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
+    "check": "bun run docs:check && bun run contract:check && bun run typecheck && bun test && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
     "release:check": "bun run check && bun audit && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
     "release:status": "bun run scripts/check-registry-release-status.ts",
     "release:verify": "bun run scripts/verify-registry-release.ts"

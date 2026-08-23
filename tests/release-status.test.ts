@@ -82,6 +82,31 @@ describe("release status", () => {
     expect(parseReleaseStatus(certified)).toEqual(certified);
   });
 
+  test("accepts an RC only on next and rejects channel drift", () => {
+    const candidate = {
+      schemaVersion: 1,
+      package: "@zhivex-ai/harness",
+      version: "1.0.0-rc.1",
+      status: "candidate",
+      channel: "next",
+      tag: "v1.0.0-rc.1",
+      sourceCommit: "c".repeat(40),
+      registry: "https://registry.npmjs.org/",
+      provenance: "pending",
+      liveCertification: {
+        status: "pending",
+        base: "pending",
+        orchestration: "pending",
+        routing: "pending",
+        execution: "pending-release-bound-run",
+        remoteWorkflow: "pending"
+      }
+    } as const;
+
+    expect(parseReleaseStatus(candidate)).toEqual(candidate);
+    expect(() => parseReleaseStatus({ ...candidate, channel: "latest" })).toThrow("must use npm channel next");
+  });
+
   test("rejects certified state without complete release-bound evidence", () => {
     expect(() => parseReleaseStatus({
       ...status,

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "targetVersion": "1.0.0",
+  "phase": "preparation",
+  "evidenceMaxAgeDays": 30,
+  "contractManifest": "contracts/public-api.json",
+  "stabilityPolicy": "docs/STABILITY.md",
+  "supportMatrix": "docs/support-matrix.json",
+  "securityControls": "contracts/security-controls.json",
+  "threatModel": "docs/THREAT_MODEL.md",
+  "rollbackPolicy": "docs/ROLLBACK.md",
+  "deprecationPolicy": "docs/DEPRECATIONS.md",
+  "representativeEvaluation": "evaluations/representative-matrix.json",
+  "migrationGuarantee": {
+    "configSchemas": [4, 5],
+    "operationsSchema": 1,
+    "sessionSchema": 1,
+    "pausedApprovalPolicy": "original-artifact-only",
+    "historicalFixtures": "pending"
+  },
+  "securityReview": {
+    "status": "pending",
+    "criticalFindings": null,
+    "highFindings": null,
+    "observedAt": null,
+    "evidence": null
+  },
+  "releaseCandidates": [
+    {
+      "version": "1.0.0-rc.1",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/34",
+      "status": "pending",
+      "channel": null,
+      "tag": null,
+      "contractBreakingDefects": null,
+      "publishedAt": null,
+      "sourceCommit": null,
+      "artifactSha512": null,
+      "workflowUrl": null,
+      "provenance": null,
+      "liveCertification": null
+    },
+    {
+      "version": "1.0.0-rc.2",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/35",
+      "status": "pending",
+      "channel": null,
+      "tag": null,
+      "contractBreakingDefects": null,
+      "publishedAt": null,
+      "sourceCommit": null,
+      "artifactSha512": null,
+      "workflowUrl": null,
+      "provenance": null,
+      "liveCertification": null
+    }
+  ],
+  "blockers": [
+    { "id": "public-json-contracts", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/26" },
+    { "id": "cli-option-contract", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/27" },
+    { "id": "complete-error-taxonomy", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/28" },
+    { "id": "historical-migration-fixtures", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/29" },
+    { "id": "consistent-state-backup", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/30" },
+    { "id": "representative-evaluation-evidence", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/31" },
+    { "id": "security-review", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/32" },
+    { "id": "gemini-ga-decision", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/33" }
+  ]
+}
