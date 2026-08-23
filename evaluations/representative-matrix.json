@@ -25,6 +25,7 @@
     "ociImageDigest",
     "workflowUrl",
     "observedAt",
+    "scenarios",
     "totalRuns",
     "failedRuns",
     "omittedRuns"

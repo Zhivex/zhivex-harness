@@ -3,10 +3,12 @@ import { describe, expect, test } from "bun:test";
 import {
   GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
   GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+  GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
   assertDistinctGaReleaseCandidateEvidence,
   parseGaReleaseCandidateEvidence,
   parseGaRepresentativeEvaluationCoverage,
   parseGaSecurityReviewEvidencePath,
+  verifyGaRepresentativeEvaluationWorkflows,
   verifyPublishedGaReleaseCandidate,
   type GaReleaseCandidateEvidence,
   type GaReleaseEvidenceDependencies,
@@ -56,6 +58,7 @@ const evaluationResults = (
     ociImageDigest: `sha256:${"e".repeat(64)}`,
     workflowUrl: `https://github.com/Zhivex/zhivex-harness/actions/runs/${32195816000 + candidateIndex}`,
     observedAt: "2026-08-23T12:30:00.000Z",
+    scenarios: [...GA_REPRESENTATIVE_EVALUATION_SCENARIOS],
     totalRuns: 7,
     failedRuns: 0,
     omittedRuns: 0
@@ -169,20 +172,63 @@ describe("GA release-candidate evidence", () => {
     expect(parseGaRepresentativeEvaluationCoverage(
       candidates,
       results,
-      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+      GA_REPRESENTATIVE_EVALUATION_SCENARIOS
     )).toHaveLength(6);
     expect(() => parseGaRepresentativeEvaluationCoverage(
       candidates,
       results.slice(0, 3),
-      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+      GA_REPRESENTATIVE_EVALUATION_SCENARIOS
     )).toThrow("exactly 6 candidate/provider results");
 
     results[3]!.sourceCommit = candidates[0]!.sourceCommit;
     expect(() => parseGaRepresentativeEvaluationCoverage(
       candidates,
       results,
-      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+      GA_REPRESENTATIVE_EVALUATION_SCENARIOS
     )).toThrow("sourceCommit differs from its release candidate");
+  });
+
+  test("requires every declared scenario and verifies the candidate workflow runs", async () => {
+    const candidates = [evidence(), secondEvidence()];
+    const results = evaluationResults(candidates);
+    results[0]!.scenarios = results[0]!.scenarios.slice(1);
+    expect(() => parseGaRepresentativeEvaluationCoverage(
+      candidates,
+      results,
+      GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+      GA_REPRESENTATIVE_EVALUATION_SCENARIOS
+    )).toThrow("does not cover every declared scenario");
+
+    const completeResults = evaluationResults(candidates);
+    await expect(verifyGaRepresentativeEvaluationWorkflows(candidates, completeResults, {
+      fetchJson: async (url) => {
+        const runId = url.slice(url.lastIndexOf("/") + 1);
+        const candidateIndex = Number(runId) - 32195816000;
+        const candidate = candidates[candidateIndex]!;
+        return {
+          html_url: completeResults[candidateIndex * 3]!.workflowUrl,
+          head_sha: candidate.sourceCommit,
+          event: "workflow_dispatch",
+          status: "completed",
+          conclusion: "success",
+          path: ".github/workflows/release.yml"
+        };
+      }
+    })).resolves.toBeUndefined();
+
+    await expect(verifyGaRepresentativeEvaluationWorkflows(candidates, completeResults, {
+      fetchJson: async () => ({
+        html_url: completeResults[0]!.workflowUrl,
+        head_sha: candidates[0]!.sourceCommit,
+        event: "workflow_dispatch",
+        status: "completed",
+        conclusion: "success",
+        path: ".github/workflows/ci.yml"
+      })
+    })).rejects.toThrow("unexpected workflow");
   });
 
   test("requires security review evidence under the dedicated review directory", () => {

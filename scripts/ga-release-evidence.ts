@@ -21,12 +21,23 @@ export const GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE = [
   "ociImageDigest",
   "workflowUrl",
   "observedAt",
+  "scenarios",
   "totalRuns",
   "failedRuns",
   "omittedRuns"
 ] as const;
 
 export const GA_REPRESENTATIVE_EVALUATION_PROVIDERS = ["meta", "qwen", "openai"] as const;
+
+export const GA_REPRESENTATIVE_EVALUATION_SCENARIOS = [
+  "typescript-node-package",
+  "json-cli-contract",
+  "sqlite-restart-and-resume",
+  "target-package-managers",
+  "python-pytest-repository",
+  "hostile-instructions",
+  "concurrent-change-conflict"
+] as const;
 
 export interface GaReleaseCandidateEvidence {
   version: string;
@@ -53,6 +64,7 @@ export interface GaRepresentativeEvaluationResult extends Record<string, unknown
   ociImageDigest: string;
   workflowUrl: string;
   observedAt: string;
+  scenarios: readonly string[];
   totalRuns: number;
   failedRuns: 0;
   omittedRuns: 0;
@@ -139,12 +151,18 @@ export const parseGaSecurityReviewEvidencePath = (input: unknown): string => {
 export const parseGaRepresentativeEvaluationCoverage = (
   candidates: readonly GaReleaseCandidateEvidence[],
   input: unknown,
-  requiredEvidence: unknown
+  requiredEvidence: unknown,
+  declaredScenarios: unknown
 ): GaRepresentativeEvaluationResult[] => {
   assert.deepEqual(
     requiredEvidence,
     GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
     "representative evaluation requiredEvidence contract drifted"
+  );
+  assert.deepEqual(
+    declaredScenarios,
+    GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
+    "representative evaluation scenarios contract drifted"
   );
   assert(Array.isArray(input), "representative evaluation results must be an array");
   const results = input.map((entry) => object(entry));
@@ -158,6 +176,7 @@ export const parseGaRepresentativeEvaluationCoverage = (
   const parsed: GaRepresentativeEvaluationResult[] = [];
   const workflowCandidate = new Map<string, string>();
   for (const candidate of candidates) {
+    const candidateWorkflows = new Set<string>();
     for (const provider of GA_REPRESENTATIVE_EVALUATION_PROVIDERS) {
       const matches = results.filter(
         (result) => result.releaseTag === candidate.tag && result.provider === provider
@@ -216,9 +235,15 @@ export const parseGaRepresentativeEvaluationCoverage = (
         GITHUB_ACTIONS_RUN_PATTERN,
         `${candidate.tag}/${provider} workflowUrl is invalid`
       );
+      assert.deepEqual(
+        result.scenarios,
+        GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
+        `${candidate.tag}/${provider} does not cover every declared scenario`
+      );
       assert(
-        Number.isSafeInteger(result.totalRuns) && Number(result.totalRuns) >= 1,
-        `${candidate.tag}/${provider} totalRuns must be a positive integer`
+        Number.isSafeInteger(result.totalRuns) &&
+          Number(result.totalRuns) >= GA_REPRESENTATIVE_EVALUATION_SCENARIOS.length,
+        `${candidate.tag}/${provider} totalRuns must cover every declared scenario`
       );
       assert.equal(result.failedRuns, 0, `${candidate.tag}/${provider} contains failed runs`);
       assert.equal(result.omittedRuns, 0, `${candidate.tag}/${provider} contains omitted runs`);
@@ -229,8 +254,14 @@ export const parseGaRepresentativeEvaluationCoverage = (
         `representative evaluation workflow ${String(result.workflowUrl)} is reused across release candidates`
       );
       workflowCandidate.set(String(result.workflowUrl), candidate.tag);
+      candidateWorkflows.add(String(result.workflowUrl));
       parsed.push(result as GaRepresentativeEvaluationResult);
     }
+    assert.equal(
+      candidateWorkflows.size,
+      1,
+      `${candidate.tag} provider results must share one representative evaluation workflow`
+    );
   }
   return parsed;
 };
@@ -275,6 +306,41 @@ const defaultFetchJson = async (url: string): Promise<unknown> => {
   });
   assert(response.ok, `${url} returned HTTP ${response.status}`);
   return await response.json();
+};
+
+export const verifyGaRepresentativeEvaluationWorkflows = async (
+  candidates: readonly GaReleaseCandidateEvidence[],
+  results: readonly GaRepresentativeEvaluationResult[],
+  dependencies: Pick<GaReleaseEvidenceDependencies, "fetchJson"> = {}
+) => {
+  const fetchJson = dependencies.fetchJson ?? defaultFetchJson;
+  for (const candidate of candidates) {
+    const workflowUrls = new Set(
+      results
+        .filter((result) => result.releaseTag === candidate.tag)
+        .map((result) => result.workflowUrl)
+    );
+    assert.equal(workflowUrls.size, 1, `${candidate.tag} must have one representative evaluation workflow`);
+    const workflowUrl = [...workflowUrls][0]!;
+    const runId = workflowUrl.slice(workflowUrl.lastIndexOf("/") + 1);
+    const workflow = object(await fetchJson(
+      `https://api.github.com/repos/Zhivex/zhivex-harness/actions/runs/${runId}`
+    )) as WorkflowRunDocument;
+    assert.equal(workflow.html_url, workflowUrl, `${candidate.tag} evaluation workflow URL differs from GitHub`);
+    assert.equal(
+      workflow.head_sha,
+      candidate.sourceCommit,
+      `${candidate.tag} evaluation workflow commit differs from its release candidate`
+    );
+    assert.equal(workflow.event, "workflow_dispatch", `${candidate.tag} evaluation was not manually dispatched`);
+    assert.equal(workflow.status, "completed", `${candidate.tag} evaluation workflow has not completed`);
+    assert.equal(workflow.conclusion, "success", `${candidate.tag} evaluation workflow did not succeed`);
+    assert.equal(
+      workflow.path,
+      RELEASE_WORKFLOW_PATH,
+      `${candidate.tag} evaluation evidence used an unexpected workflow`
+    );
+  }
 };
 
 export const verifyPublishedGaReleaseCandidate = async (

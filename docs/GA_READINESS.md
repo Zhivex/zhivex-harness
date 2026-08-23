@@ -4,7 +4,7 @@
 
 RC evidence is not accepted on self-report alone. In release mode the gate resolves each exact annotated tag, verifies its commit is reachable from `origin/main`, matches the publication timestamp and recorded SHA-512 integrity against the published npm version, validates the npm SLSA provenance, and checks the recorded successful release workflow through the GitHub API. The two candidates must have distinct tags, commits, artifacts, and workflow runs.
 
-Representative evaluation requires exactly one complete result for every certified provider on both RCs. Each row is bound to its candidate tag, source commit, and published artifact integrity; workflow evidence cannot be reused across candidates. A passing security review must reference an existing bounded regular file under `security-reviews/`; a status string alone is not evidence.
+Representative evaluation requires exactly one complete result for every certified provider on both RCs. Each row must cover every declared scenario and is bound to its candidate tag, source commit, and published artifact integrity. All provider rows for a candidate share one workflow run; the gate verifies that run exists, succeeded, used the release workflow, and executed at the candidate commit. Workflow evidence cannot be reused across candidates. A passing security review must reference an existing bounded regular file under `security-reviews/`; a status string alone is not evidence.
 
 The preparation gate does not certify production readiness. It verifies that public API/CLI/schema baselines, migration targets, support claims, security controls, rollback rules, and evidence requirements remain machine-readable and internally consistent.
 

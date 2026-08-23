@@ -12,10 +12,12 @@ import { readRegularFileNoFollow } from "../src/file-security.js";
 import {
   GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
   GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
+  GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
   assertDistinctGaReleaseCandidateEvidence,
   parseGaReleaseCandidateEvidence,
   parseGaRepresentativeEvaluationCoverage,
   parseGaSecurityReviewEvidencePath,
+  verifyGaRepresentativeEvaluationWorkflows,
   verifyPublishedGaReleaseCandidate,
   type GaReleaseCandidateEvidence,
   type GaRepresentativeEvaluationResult
@@ -205,7 +207,8 @@ for (const control of controlRows) {
 
 if (evaluations.schemaVersion !== 2 || evaluations.targetVersion !== "1.0.0" ||
   JSON.stringify(evaluations.requiredProviders) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_PROVIDERS) ||
-  JSON.stringify(evaluations.requiredEvidence) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE)) {
+  JSON.stringify(evaluations.requiredEvidence) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE) ||
+  JSON.stringify(evaluations.scenarios) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_SCENARIOS)) {
   failures.push("representative evaluation matrix must use schema 2 and the certified provider cohort");
 }
 
@@ -300,8 +303,10 @@ if (releaseMode) {
       parsedResults.push(...parseGaRepresentativeEvaluationCoverage(
         parsedCandidates,
         results,
-        evaluations.requiredEvidence
+        evaluations.requiredEvidence,
+        evaluations.scenarios
       ));
+      await verifyGaRepresentativeEvaluationWorkflows(parsedCandidates, parsedResults);
     } catch (error) {
       failures.push(
         `representative evaluation coverage is invalid: ${error instanceof Error ? error.message : String(error)}`
