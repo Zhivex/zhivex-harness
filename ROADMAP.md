@@ -3,7 +3,7 @@
 - Status: active
 - Baseline date: 2026-08-21
 
-This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.11.0` are published on npm. Version `0.11.1` is the local source release candidate for file and release hardening without a `0.11.x` contract change. It is not yet tagged or published as a new artifact; registry publication, supply-chain provenance, and provider certification remain separate evidence boundaries. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
+This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.11.1` are published on npm. Version `0.11.1` delivers file and release hardening without a `0.11.x` contract change; registry publication, supply-chain provenance, and provider certification remain separate evidence boundaries. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
 ## Planning principles
 
@@ -45,7 +45,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Published on npm | L |
 | `0.10.0` | Node-first portability | Node CLI/library, portable SQLite/processes, manager-aware checks, and Node OCI | Published on npm | L |
 | `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Published on npm | L |
-| `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Local release candidate | S |
+| `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Published on npm | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
@@ -333,7 +333,7 @@ Exit criteria:
 
 ## 0.11.1 — security and release hardening
 
-Status: local source release candidate. It is not yet tagged or published as a new artifact; provenance and release-bound live certification remain pending.
+Status: published on npm as `latest` with annotated tag `v0.11.1`, exact registry integrity, SLSA provenance, and successful release-bound Meta/Qwen/OpenAI certification.
 
 Goal: ship the reviewed security and release hardening accumulated after `0.11.0` without changing configuration, durable state, or execution-policy contracts.
 
@@ -396,8 +396,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Configure maintainer-approved provider secrets in the protected `live-certification` environment and run the complete release-bound matrix against the exact annotated tag.
-2. Keep publication fail-closed on base, orchestration, routing, model-directed OCI execution, exact-artifact, integrity, and provenance evidence.
+1. Keep future publication fail-closed on base, orchestration, routing, model-directed OCI execution, exact-artifact, integrity, and provenance evidence.
+2. Revalidate date-bound provider evidence when a provider, default model, endpoint, or governed execution contract changes.
 3. Stabilize the CLI, config, JSON/event, library export, state migration, and error contracts required for the first `1.0.0` release candidate.
 4. Publish the support matrix, threat model, migration/export path, and representative cross-provider repository evaluation evidence.
 5. Complete two release candidates without a contract-breaking defect before promoting `1.0.0` to `latest`.

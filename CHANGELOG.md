@@ -15,7 +15,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Keep release-artifact transfer actions pinned to immutable commit SHAs while allowing Dependabot SHA upgrades, and represent successful remote tag-bound certification explicitly in the release-status schema.
 - Add a mutable machine-readable repository release-status record, keep it outside immutable npm artifacts, and validate public documentation, release gates, and repository security configuration against it.
 - Bound installed-package smoke subprocesses by time and captured output so a stalled child process cannot hang release validation indefinitely.
-- Keep public documentation consistent with the published `0.11.0` artifact while preserving live-provider certification as a separate evidence boundary.
+- Keep public documentation consistent with candidate and published artifact state while preserving live-provider certification as a separate evidence boundary.
 - Retry only transient HTTP failures in the opt-in base provider smoke, using fresh temporary state and a bounded three-attempt schedule; contract and approval failures still fail immediately.
 - Preserve transient provider status from failed agent outputs before release-smoke contract assertions so retryable 429/5xx responses reach the bounded retry loop.
 - Mark create-only `expectedDigest: null` as an explicitly required tool-schema field and reinforce that contract in live certification prompts for providers that otherwise omit null-valued arguments.

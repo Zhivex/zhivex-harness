@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.11.1` is the current source release candidate; `0.11.0` remains the public npm release and `latest` distribution tag until protected publication completes. Candidate provenance and certification are pending in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication is fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.11.1` is the current public npm release and `latest` distribution tag. Its annotated tag, exact registry integrity, SLSA provenance, and release-bound Meta/Qwen/OpenAI certification are recorded in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication remains fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -109,7 +109,7 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Installation
 
-After protected publication, install the Node-first `0.11.1` artifact with an exact version:
+Install the Node-first `0.11.1` artifact with an exact version:
 
 ```bash
 npx --yes --package=@zhivex-ai/harness@0.11.1 zhx --version
@@ -196,7 +196,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` remains rejected in `0.11.0`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` remains rejected in `0.11.1`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -282,14 +282,14 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 
 | Provider | Default model | Current support |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.6 edit, delegation, and OCI execution certified |
-| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · GPT-5.6 Luna, Terra, and Sol base workflow passed locally; release recertification pending |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.11.1 release-bound base, delegation, and OCI execution certified |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.11.1 release-bound base, delegation, routing, and OCI execution certified |
+| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · 0.11.1 release-bound base, delegation, routing, and OCI execution certified |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-Meta and Qwen retain the published support conclusion for the unchanged approval/restart and delegation paths. OpenAI remains GPT-5.6-first from `0.8.0`: Luna is the default, while Terra and Sol remain explicit `--model` selections. The tagged Node-first `0.11.0` artifact is published with registry integrity and provenance; its release-bound remote provider matrix remains pending and is not implied by publication. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+The exact `v0.11.1` tag passed proposal/approval/restart, bounded delegation, OpenAI-parent/Qwen-reviewer routing, and model-directed OCI execution for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` on 2026-08-23. Luna remains the OpenAI default, while Terra and Sol remain explicit `--model` selections with older local base evidence only. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
 
 ## Security boundaries
 
