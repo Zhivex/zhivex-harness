@@ -62,6 +62,10 @@ export type HarnessMcpClients = Readonly<Record<string, McpClient>>;
 
 const identifier = z.string().min(1).max(64).regex(/^[A-Za-z][A-Za-z0-9_-]*$/);
 const toolName = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]*$/);
+const mcpCredentialEnvironmentVariable = z.string()
+  .min(12)
+  .max(128)
+  .regex(/^ZHIVEX_MCP_[A-Z0-9_]+$/);
 const serverSchema = z.object({
   name: identifier,
   transport: z.enum(["http", "custom"]),
@@ -72,7 +76,7 @@ const serverSchema = z.object({
   permissions: z.array(z.enum(HARNESS_MCP_PERMISSIONS)).min(1).max(4),
   headerEnv: z.record(
     z.string().min(1).max(128).regex(/^[A-Za-z0-9-]+$/),
-    z.string().min(1).max(128).regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+    mcpCredentialEnvironmentVariable
   ).default({}),
   trustServerToolAnnotations: z.boolean().default(false),
   maxListPages: z.number().int().min(1).max(20).default(5),
@@ -126,6 +130,11 @@ const forbiddenHeaders = new Set([
   "transfer-encoding"
 ]);
 
+const credentialHeaders: ReadonlyMap<string, string> = new Map([
+  ["authorization", "authorization"],
+  ["x-api-key", "x-api-key"]
+] as const);
+
 const normalizeHarnessMcpConfigurationUnsafe = (value: unknown): HarnessMcpConfiguration => {
   const parsed = configurationSchema.parse(value);
   const names = new Set<string>();
@@ -145,10 +154,22 @@ const normalizeHarnessMcpConfigurationUnsafe = (value: unknown): HarnessMcpConfi
     if (includeTools.some((name) => excludeTools.includes(name))) {
       throw new Error(`MCP server ${server.name} includes and excludes the same tool.`);
     }
-    for (const header of Object.keys(server.headerEnv)) {
-      if (forbiddenHeaders.has(header.toLowerCase())) {
+    const headerEnv: Record<string, string> = {};
+    for (const [header, variable] of Object.entries(server.headerEnv)) {
+      const lowerHeader = header.toLowerCase();
+      if (forbiddenHeaders.has(lowerHeader)) {
         throw new Error(`MCP server ${server.name} cannot configure header ${header}.`);
       }
+      const canonicalHeader = credentialHeaders.get(lowerHeader);
+      if (!canonicalHeader) {
+        throw new Error(
+          `MCP server ${server.name} supports only authorization and x-api-key credential headers.`
+        );
+      }
+      if (headerEnv[canonicalHeader]) {
+        throw new Error(`MCP server ${server.name} configures duplicate header ${canonicalHeader}.`);
+      }
+      headerEnv[canonicalHeader] = variable;
     }
     if (server.transport === "http" && !server.url) {
       throw new Error(`MCP server ${server.name} requires url for HTTP transport.`);
@@ -175,7 +196,7 @@ const normalizeHarnessMcpConfigurationUnsafe = (value: unknown): HarnessMcpConfi
       excludeTools,
       toolNamePrefix: prefix,
       permissions: [...new Set(server.permissions)],
-      headerEnv: { ...server.headerEnv },
+      headerEnv,
       trustServerToolAnnotations: server.trustServerToolAnnotations,
       maxListPages: server.maxListPages,
       maxListedTools: server.maxListedTools,

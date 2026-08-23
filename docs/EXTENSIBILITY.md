@@ -49,7 +49,7 @@ The schema is versioned independently:
       "url": "https://mcp.example.com/rpc",
       "includeTools": ["search_docs", "read_page"],
       "permissions": ["read", "network"],
-      "headerEnv": { "x-api-key": "DOCS_MCP_API_KEY" },
+      "headerEnv": { "x-api-key": "ZHIVEX_MCP_DOCS_API_KEY" },
       "callToolTimeoutMs": 30000,
       "maxOutputBytes": 262144
     }
@@ -57,7 +57,7 @@ The schema is versioned independently:
 }
 ```
 
-Every server requires a non-empty tool allowlist and permission set. Tool discovery is paginated and bounded. Tool names are prefixed with `<server>_` unless an explicit safe prefix is supplied. Configuration contains environment-variable names rather than credential values; diagnostics and fingerprints never include resolved header values.
+Every server requires a non-empty tool allowlist and permission set. Tool discovery is paginated and bounded. Tool names are prefixed with `<server>_` unless an explicit safe prefix is supplied. Configuration contains environment-variable names rather than credential values; diagnostics and fingerprints never include resolved header values. Credential variables must use the dedicated `ZHIVEX_MCP_*` namespace, and HTTP authentication is limited to the canonical `authorization` and `x-api-key` headers so a workspace file cannot select unrelated process credentials or arbitrary outbound headers.
 
 The built-in transport supports HTTPS and loopback HTTP. Redirects, URL credentials, unsafe configurable headers, oversized configuration, symlinked configuration, and configuration outside the workspace are rejected. `stdio` is intentionally unavailable because spawning an MCP server is process execution; it remains deferred until the enforced execution environment in `0.6.x`.
 

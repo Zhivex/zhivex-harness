@@ -22,10 +22,15 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Emit a distinct compact `run-stream-result` JSONL terminal record, keep machine errors message-free, and delay terminal JSONL output until asynchronous persistence/environment cleanup succeeds.
 - Run installed-package smoke against the exact inspected tarball in CI, reject SQLite WAL/SHM sidecars, and clean `dist` before every build.
 
+### Security
+
+- Stream integrity-pinned historical npm archives directly into an isolated extractor instead of persisting network bytes, and constrain MCP authentication to canonical credential headers backed by dedicated `ZHIVEX_MCP_*` variables.
+
 ### Migration
 
 - Existing schema `5` configuration is unchanged. Call `migrateHarnessConfigInput` for an explicitly versioned schema `4` input; the pure migration does not read environment variables or filesystem state. Paused approvals remain bound to the exact older artifact and are never rewritten.
 - Existing schema-1 JSON observers may accept additive fields, but JSONL consumers must recognize the distinct `run-stream-result` and `run-stream-error` terminal kinds. The literal durable `userId` value `"*"` is now rejected because it is reserved for the absent-user scope marker.
+- Rename MCP credential variables to the `ZHIVEX_MCP_*` namespace; HTTP `headerEnv` entries now accept only `authorization` and `x-api-key`.
 
 ## 0.11.1 - 2026-08-23
 

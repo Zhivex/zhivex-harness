@@ -58,8 +58,11 @@ const tarballBytes = async (release: (typeof releases)[number]) => {
   return new Uint8Array(await response.arrayBuffer());
 };
 
-const command = (argv: string[]) => {
-  const result = spawnSync(argv[0]!, argv.slice(1), { encoding: "utf8" });
+const command = (argv: string[], input?: Uint8Array) => {
+  const result = spawnSync(argv[0]!, argv.slice(1), {
+    encoding: "utf8",
+    ...(input ? { input } : {})
+  });
   if (result.status !== 0) {
     throw new Error(`${argv.join(" ")} failed: ${result.stderr || result.stdout}`);
   }
@@ -116,9 +119,9 @@ for (const release of releases) {
     if (actualIntegrity !== release.integrity) {
       throw new Error(`${release.version} integrity mismatch: ${actualIntegrity}.`);
     }
-    const archivePath = path.join(root, `zhivex-harness-${release.version}.tgz`);
-    await writeFile(archivePath, bytes, { mode: 0o600 });
-    command(["tar", "-xzf", archivePath, "-C", root]);
+    // Keep verified registry bytes off disk. The archive is pinned above and
+    // tar receives it only as stdin with a constant argv and isolated target.
+    command(["tar", "-xzf", "-", "-C", root], bytes);
     const packageRoot = path.join(root, "package");
     await symlink(path.join(workspace, "node_modules"), path.join(packageRoot, "node_modules"));
     const published = await import(

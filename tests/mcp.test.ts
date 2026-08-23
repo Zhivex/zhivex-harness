@@ -65,6 +65,28 @@ describe("governed MCP", () => {
       schemaVersion: 1,
       servers: [{ name: "docs", transport: "http", url: "https://example.com", includeTools: ["lookup"], permissions: ["network"], trustServerToolAnnotations: true }]
     })).toThrow("trust annotations");
+    expect(() => normalizeHarnessMcpConfiguration({
+      schemaVersion: 1,
+      servers: [{
+        name: "docs",
+        transport: "http",
+        url: "https://example.com",
+        includeTools: ["lookup"],
+        permissions: ["network"],
+        headerEnv: { authorization: "OPENAI_API_KEY" }
+      }]
+    })).toThrow();
+    expect(() => normalizeHarnessMcpConfiguration({
+      schemaVersion: 1,
+      servers: [{
+        name: "docs",
+        transport: "http",
+        url: "https://example.com",
+        includeTools: ["lookup"],
+        permissions: ["network"],
+        headerEnv: { "x-secret": "ZHIVEX_MCP_DOCS_TOKEN" }
+      }]
+    })).toThrow("only authorization and x-api-key");
   });
 
   test("discovers only allowlisted tools and preserves read-only supervision", async () => {
@@ -109,7 +131,7 @@ describe("governed MCP", () => {
         url: "https://mcp.example.invalid/rpc",
         includeTools: ["lookup"],
         permissions: ["read", "network"],
-        headerEnv: { authorization: "MCP_TEST_AUTH" }
+        headerEnv: { authorization: "ZHIVEX_MCP_TEST_AUTH" }
       }]
     });
     const requests: Array<{ body: Record<string, unknown>; headers: Headers; redirect?: RequestRedirect }> = [];
@@ -149,7 +171,7 @@ describe("governed MCP", () => {
     }) as typeof fetch;
     const httpClient = createHttpMcpClient(
       configuration.servers[0]!,
-      { MCP_TEST_AUTH: "Bearer fixture" },
+      { ZHIVEX_MCP_TEST_AUTH: "Bearer fixture" },
       fetchImplementation
     );
 
