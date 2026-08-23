@@ -55,6 +55,9 @@ const TERMINAL_STATUSES = new Set<AgentStatus>([
   "cancelled",
   "timed_out"
 ]);
+const EXECUTION_ARTIFACT_DIRECTORY_PATTERN = /^[a-f0-9]{24}$/;
+const STAGED_EXECUTION_ARTIFACT_DIRECTORY_PATTERN =
+  /^\.cleanup-([a-f0-9]{24})-[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
 const BUILT_IN_TOOL_NAMES = new Set([
   "list_files",
   "read_file",
@@ -1968,7 +1971,11 @@ export const cleanupHarnessExecutionArtifacts = async (
     throw error;
   }
   for (const entry of entries) {
-    if (!entry.isDirectory() || entry.isSymbolicLink() || !/^[a-f0-9]{24}$/.test(entry.name)) {
+    const stagedMatch = STAGED_EXECUTION_ARTIFACT_DIRECTORY_PATTERN.exec(entry.name);
+    const artifactName = EXECUTION_ARTIFACT_DIRECTORY_PATTERN.test(entry.name)
+      ? entry.name
+      : stagedMatch?.[1];
+    if (!entry.isDirectory() || entry.isSymbolicLink() || !artifactName) {
       result.skipped += 1;
       continue;
     }
@@ -1993,7 +2000,7 @@ export const cleanupHarnessExecutionArtifacts = async (
         continue;
       }
 
-      const stagedDirectory = path.join(root, `.cleanup-${entry.name}-${randomUUID()}`);
+      const stagedDirectory = path.join(root, `.cleanup-${artifactName}-${randomUUID()}`);
       let staged = false;
       try {
         await rename(directory, stagedDirectory);

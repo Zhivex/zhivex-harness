@@ -129,6 +129,15 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(new Error("Tool failed."))).toMatchObject({
       code: "TOOL_EXECUTION_FAILED"
     });
+    for (const message of [
+      "toolchain build failed",
+      "mytool failed",
+      "terminal toolkit unavailable"
+    ]) {
+      expect(classifyTimeToSafeFixFailure(new Error(message))).toMatchObject({
+        code: "UNCLASSIFIED_FAILURE"
+      });
+    }
 
     for (const message of [
       `${"approval".repeat(16_000)}x`,

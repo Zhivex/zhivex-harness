@@ -14,7 +14,8 @@ const {
   providerRunInput,
   redacted,
   requireCredentials,
-  selectedProviders
+  selectedProviders,
+  throwTransientRunFailure
 } = liveProviderSmokeInternals;
 
 describe("live provider smoke contract", () => {
@@ -70,6 +71,27 @@ describe("live provider smoke contract", () => {
     expect(isTransientProviderFailure(Object.assign(new Error("limited"), { statusCode: 429 }))).toBe(true);
     expect(isTransientProviderFailure(Object.assign(new Error("bad request"), { status: 400 }))).toBe(false);
     expect(isTransientProviderFailure(new Error("contract failure"))).toBe(false);
+  });
+
+  test("preserves transient status returned in a failed run before contract assertions", () => {
+    const returnedFailure = {
+      status: "failed",
+      error: { message: "Provider request failed with HTTP 503 Service Unavailable." }
+    };
+    let propagated: unknown;
+    try {
+      throwTransientRunFailure(returnedFailure);
+    } catch (error) {
+      propagated = error;
+    }
+
+    expect(propagated).toBeInstanceOf(Error);
+    expect((propagated as { status?: unknown }).status).toBe(503);
+    expect(isTransientProviderFailure(propagated)).toBe(true);
+    expect(() => throwTransientRunFailure({
+      status: "failed",
+      error: { message: "Provider request failed with HTTP 400 Bad Request." }
+    })).not.toThrow();
   });
 
   test("accepts only complete orchestrator-owned child phase arguments", () => {

@@ -87,12 +87,32 @@ const assertLiveOptIn = (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const isTransientProviderFailure = (error: unknown) => {
-  const candidate = error as { status?: unknown; statusCode?: unknown };
-  const statusValue = candidate.status ?? candidate.statusCode;
+const transientProviderStatus = (error: unknown) => {
+  const candidate = error && typeof error === "object"
+    ? error as { message?: unknown; status?: unknown; statusCode?: unknown }
+    : undefined;
+  const statusValue = candidate?.status ?? candidate?.statusCode;
   const status = typeof statusValue === "number" ? statusValue : Number(statusValue);
-  return status === 408 || status === 425 || status === 429 || status === 500 ||
-    status === 502 || status === 503 || status === 504;
+  if (status === 408 || status === 425 || status === 429 || status === 500 ||
+    status === 502 || status === 503 || status === 504) {
+    return status;
+  }
+  if (typeof candidate?.message !== "string") return undefined;
+  const match = candidate.message.match(/(?:^|[^\d])(408|425|429|500|502|503|504)(?=$|[^\d])/);
+  return match ? Number(match[1]) : undefined;
+};
+
+const isTransientProviderFailure = (error: unknown) => transientProviderStatus(error) !== undefined;
+
+const throwTransientRunFailure = (result: { status: string; error?: unknown }) => {
+  if (result.status !== "failed" || !result.error) return;
+  const status = transientProviderStatus(result.error);
+  if (status === undefined) return;
+  const message = (result.error as { message?: unknown }).message;
+  throw Object.assign(
+    new Error(typeof message === "string" ? message : `Provider request failed with status ${status}.`),
+    { status }
+  );
 };
 
 const redacted = (value: string, env: NodeJS.ProcessEnv) => {
@@ -225,6 +245,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
       scope: harness.config.scope,
       idempotencyKey: `live-certification-${args.provider}`
     });
+    throwTransientRunFailure(result);
 
     assert.equal(
       result.status,
@@ -280,6 +301,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
         reason: "Opt-in live provider certification."
       }]
     });
+    throwTransientRunFailure(result);
 
     assert.equal(result.status, "completed", result.outputText || result.error?.message);
     assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
@@ -477,7 +499,8 @@ export const liveProviderSmokeInternals = {
   providerRunInput,
   redacted,
   requireCredentials,
-  selectedProviders
+  selectedProviders,
+  throwTransientRunFailure
 };
 
 if (import.meta.main) {
