@@ -44,6 +44,13 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("RELEASE_CHANNEL: ${{ inputs.channel }}");
   });
 
+  test("release validation can verify recorded GitHub workflow evidence", async () => {
+    const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
+
+    expect(workflow).toContain("actions: read");
+    expect(workflow).toContain("GITHUB_TOKEN: ${{ github.token }}");
+  });
+
   test("release readiness invokes the fail-closed GA promotion gate for 1.0.0", async () => {
     const readiness = await readFile(path.join(workspace, "scripts/check-release-readiness.ts"), "utf8");
 

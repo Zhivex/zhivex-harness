@@ -83,6 +83,17 @@ describe("provider configuration", () => {
 
   test("rejects unknown providers and invalid step budgets", () => {
     expect(() => parseProvider("deepseek")).toThrow("Unknown provider");
+    try {
+      resolveHarnessConfig({ provider: "deepseek" });
+      throw new Error("Expected an unknown provider to fail.");
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "HarnessConfigError",
+        code: "CONFIG_INVALID",
+        category: "configuration",
+        retryable: false
+      });
+    }
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ schemaVersion: 3 })).toThrow("Unsupported config schema");

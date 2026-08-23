@@ -22,6 +22,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -69,6 +70,7 @@ jobs:
           bun run release:check
           bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "$RELEASE_CHANNEL" --registry
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           ZHIVEX_HARNESS_OCI_REQUIRED: "1"
 
       - name: Pack exact release artifact with Bun

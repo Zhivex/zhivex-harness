@@ -9,6 +9,12 @@ import {
   CLI_SESSIONS_COMMANDS
 } from "../src/cli.js";
 import { readRegularFileNoFollow } from "../src/file-security.js";
+import {
+  assertDistinctGaReleaseCandidateEvidence,
+  parseGaReleaseCandidateEvidence,
+  verifyPublishedGaReleaseCandidate,
+  type GaReleaseCandidateEvidence
+} from "./ga-release-evidence.js";
 
 type JsonObject = Record<string, unknown>;
 
@@ -234,14 +240,36 @@ if (releaseMode) {
   for (const blocker of blockers) {
     if (blocker.status !== "closed") failures.push(`GA blocker remains open: ${String(blocker.id)}`);
   }
+  const parsedCandidates: GaReleaseCandidateEvidence[] = [];
   for (const candidate of candidates) {
-    if (candidate.status !== "passed" || candidate.contractBreakingDefects !== 0 ||
-      !evidenceIsCurrent(candidate.publishedAt, maxAgeDays) ||
-      typeof candidate.sourceCommit !== "string" || !/^[a-f0-9]{40}$/.test(candidate.sourceCommit) ||
-      typeof candidate.artifactSha512 !== "string" || !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(candidate.artifactSha512) ||
-      typeof candidate.workflowUrl !== "string" || candidate.provenance !== "verified" ||
-      candidate.liveCertification !== "passed-release-bound-run") {
-      failures.push(`${String(candidate.version)} lacks complete passing release evidence`);
+    try {
+      const parsed = parseGaReleaseCandidateEvidence(candidate);
+      if (!evidenceIsCurrent(parsed.publishedAt, maxAgeDays)) {
+        failures.push(`${parsed.version} publication evidence is missing, future-dated, or stale`);
+      }
+      parsedCandidates.push(parsed);
+    } catch (error) {
+      failures.push(
+        `${String(candidate.version)} lacks complete passing release evidence: ` +
+        `${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+  if (parsedCandidates.length === candidates.length) {
+    try {
+      assertDistinctGaReleaseCandidateEvidence(parsedCandidates);
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+    for (const candidate of parsedCandidates) {
+      try {
+        await verifyPublishedGaReleaseCandidate(candidate);
+      } catch (error) {
+        failures.push(
+          `${candidate.version} published evidence verification failed: ` +
+          `${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   }
   const security = readiness.securityReview as JsonObject | undefined;

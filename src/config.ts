@@ -536,7 +536,17 @@ const canonicalProjectContextFile = (
 export const parseProvider = (
   value: string | undefined,
   registry: HarnessProviderRegistry = DEFAULT_PROVIDER_REGISTRY
-): HarnessProvider => registry.parse(value);
+): HarnessProvider => {
+  try {
+    return registry.parse(value);
+  } catch (error) {
+    if (error instanceof HarnessConfigError) throw error;
+    throw new HarnessConfigError(
+      error instanceof Error ? error.message : String(error),
+      { cause: error }
+    );
+  }
+};
 
 export const providerDescriptor = (
   provider: HarnessProvider,

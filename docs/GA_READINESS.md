@@ -2,6 +2,8 @@
 
 [`ga-readiness.json`](./ga-readiness.json) is the fail-closed source for the 1.0 promotion gate. `bun run readiness:1.0` validates the preparation assets on every change. `bun run readiness:1.0:release` is intentionally red until all blockers are closed, the security and representative evaluation evidence is complete and recent, two published RCs have zero known contract-breaking defects, and `package.json` is exactly `1.0.0`.
 
+RC evidence is not accepted on self-report alone. In release mode the gate resolves each exact annotated tag, verifies its commit is reachable from `origin/main`, matches the publication timestamp and recorded SHA-512 integrity against the published npm version, validates the npm SLSA provenance, and checks the recorded successful release workflow through the GitHub API. The two candidates must have distinct tags, commits, artifacts, and workflow runs.
+
 The preparation gate does not certify production readiness. It verifies that public API/CLI/schema baselines, migration targets, support claims, security controls, rollback rules, and evidence requirements remain machine-readable and internally consistent.
 
 ## Promotion sequence
