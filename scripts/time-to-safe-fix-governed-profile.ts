@@ -9,20 +9,18 @@ import { serializeJsonValue } from "@zhivex-ai/core";
 import { z } from "zod";
 
 import type { HarnessProvider } from "../src/config.js";
-import { harnessExecutionSession, type HarnessOciRuntimeAdapter } from "../src/execution-environment.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import {
-  classifyTimeToSafeFixFailure,
-  timeToSafeFixDriverResultSchema,
-  type TimeToSafeFixDriverResult,
-  type TimeToSafeFixGoal
-} from "../src/time-to-safe-fix.js";
+import type { HarnessOciRuntimeAdapter } from "../src/execution-environment.js";
+import type { TimeToSafeFixDriverResult, TimeToSafeFixGoal } from "../src/time-to-safe-fix.js";
 import type { TimeToSafeFixDriverRequest } from "./time-to-safe-fix-driver-contract.js";
 import {
   buildTimeToSafeFixEfficiency,
   selectAndInstrumentTools,
   type TimeToSafeFixApprovalRound
 } from "./time-to-safe-fix-efficiency.js";
+import {
+  loadTimeToSafeFixHarnessRuntime,
+  type TimeToSafeFixHarnessRuntime
+} from "./time-to-safe-fix-runtime.js";
 
 export interface TimeToSafeFixVerifierCommand {
   command: string;
@@ -39,6 +37,7 @@ export interface GovernedTimeToSafeFixConfig {
   allowedCommands: string[];
   ociImage?: string;
   ociRuntimeAdapter?: HarnessOciRuntimeAdapter;
+  harnessRuntime?: TimeToSafeFixHarnessRuntime;
   maxSteps: number;
   maxToolCalls: number;
   maxTokens: number;
@@ -262,6 +261,7 @@ export const runGovernedTimeToSafeFixProfile = async (
   }
   const ownsStateDirectory = config.stateDirectory === undefined;
   const stateDirectory = config.stateDirectory ?? await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-driver-state-"));
+  const runtime = config.harnessRuntime ?? await loadTimeToSafeFixHarnessRuntime(config.env);
   const before = await snapshotWorkspace(workspace);
   const totalStartedAt = process.hrtime.bigint();
   const phasesMs: Record<string, number> = {};
@@ -269,17 +269,17 @@ export const runGovernedTimeToSafeFixProfile = async (
   const observedApprovals: Array<{ name: string; input: unknown; approved: boolean }> = [];
   const approvalRounds: TimeToSafeFixApprovalRound[] = [];
   let approvalWaitMs = 0;
-  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  let harness: Awaited<ReturnType<TimeToSafeFixHarnessRuntime["createHarness"]>> | undefined;
   let instrumented: ReturnType<typeof selectAndInstrumentTools> | undefined;
   let output: AgentRunOutput | undefined;
   let verifierExitCode: number | undefined;
   let environmentFailure = false;
   let failureError: unknown;
-  let failureStage: Parameters<typeof classifyTimeToSafeFixFailure>[1]["stage"];
+  let failureStage: Parameters<TimeToSafeFixHarnessRuntime["classifyTimeToSafeFixFailure"]>[1]["stage"];
   const runId = `safe-fix-${createHash("sha256").update(request.caseId).digest("hex").slice(0, 24)}`;
   try {
     const createStartedAt = process.hrtime.bigint();
-    harness = await createHarness({
+    harness = await runtime.createHarness({
       provider: config.provider,
       ...(config.model ? { model: config.model } : {}),
       ...(config.modelInstance ? { modelInstance: config.modelInstance } : {}),
@@ -319,7 +319,7 @@ export const runGovernedTimeToSafeFixProfile = async (
           includeDigests: z.boolean().default(request.profile !== "optimized")
         }),
         execute: async ({ path: relativePath, limit, includeDigests }, context) => {
-          const selectedWorkspace = harnessExecutionSession(context)?.workspace ?? harness!.workspace;
+          const selectedWorkspace = runtime.harnessExecutionSession(context)?.workspace ?? harness!.workspace;
           return serializeJsonValue(await (includeDigests
             ? selectedWorkspace.listFiles(relativePath, { limit, includeDigests: true })
             : selectedWorkspace.listFiles(relativePath, { limit, includeDigests: false })));
@@ -333,7 +333,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     phasesMs.harnessCreate = elapsedMs(createStartedAt);
 
     const agentStartedAt = process.hrtime.bigint();
-    output = await runHarness(harness, {
+    output = await runtime.runHarness(harness, {
       runId,
       prompt: promptFor(request, verifier),
       maxTokens: config.maxTokens,
@@ -442,7 +442,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     .find(([, timing]) => timing.errors > 0)?.[0];
   const deniedApproval = observedApprovals.find((approval) => !approval.approved);
   const failure = verifierExitCode !== 0 || environmentFailure || output?.status !== "completed"
-    ? classifyTimeToSafeFixFailure(
+    ? runtime.classifyTimeToSafeFixFailure(
         deniedApproval
           ? "Approval denied for unsupported or attack-bearing operation."
           : failureError ?? `Verifier exited ${verifierExitCode ?? "unavailable"}.`,
@@ -455,7 +455,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     : undefined;
 
   try {
-    return timeToSafeFixDriverResultSchema.parse({
+    return runtime.timeToSafeFixDriverResultSchema.parse({
       schemaVersion: 1,
       kind: "time-to-safe-fix-driver-result",
       utilityPass: verifierExitCode === 0,

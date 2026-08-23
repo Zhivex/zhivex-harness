@@ -14,10 +14,27 @@ import { CLI_COMMAND_OPTION_CONTRACTS } from "../src/cli-options.js";
 import { CLI_OPTION_NAMES } from "../src/cli-options.js";
 import { readRegularFileNoFollow } from "../src/file-security.js";
 import {
+  assertStableApiSignatureSnapshot,
+  buildStableApiSignatureSnapshot,
+  emitWorkspaceDeclarations,
+  parseStableApiSignatureSnapshot,
+  type PublicApiStabilityContract
+} from "./stable-api-signatures.js";
+import { verifySecurityReviewWorkflowEvidence } from "./security-review-evidence.js";
+import {
+  parseRepresentativeEvidenceAssemblyMatrix,
+  type RepresentativeEvidenceAssemblyMatrix
+} from "./assemble-representative-evidence.js";
+import {
+  REPRESENTATIVE_DATASET_NAME,
+  REPRESENTATIVE_DATASET_REVISION
+} from "./generate-representative-evidence.js";
+import {
   GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
   GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE,
   GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
   assertDistinctGaReleaseCandidateEvidence,
+  assertGaReleaseCandidateSequence,
   parseGaReleaseCandidateEvidence,
   parseGaRepresentativeEvaluationCoverage,
   parseGaSecurityReviewEvidencePath,
@@ -80,6 +97,13 @@ const contract = await readJson("contracts/public-api.json");
 const support = await readJson("docs/support-matrix.json");
 const controls = await readJson("contracts/security-controls.json");
 const evaluations = await readJson("evaluations/representative-matrix.json");
+const evaluationDataset = evaluations.dataset as JsonObject | undefined;
+if (typeof evaluations.assemblyMatrix === "string") {
+  await existingPath(evaluations.assemblyMatrix, "representative evaluation assembly matrix");
+}
+if (typeof evaluationDataset?.path === "string") {
+  await existingPath(evaluationDataset.path, "representative evaluation dataset");
+}
 
 if (readiness.schemaVersion !== 1 || readiness.targetVersion !== "1.0.0") {
   failures.push("docs/ga-readiness.json must target schema 1 and version 1.0.0");
@@ -97,8 +121,29 @@ for (const key of [
   await existingPath(readiness[key], `readiness.${key}`);
 }
 
-if (contract.schemaVersion !== 1 || contract.targetVersion !== "1.0.0" || contract.implicitTier !== "beta") {
-  failures.push("contracts/public-api.json must define the schema-1 1.0 contract and implicit beta tier");
+if (contract.schemaVersion !== 1 || contract.targetVersion !== "1.0.0" || "implicitTier" in contract) {
+  failures.push("contracts/public-api.json must define the schema-1 1.0 contract without implicit tiers");
+}
+if (contract.stableSignatures !== "stable-api-signatures.json") {
+  failures.push("contracts/public-api.json must bind the Stable declaration signature snapshot");
+} else {
+  try {
+    const expectedSignatures = parseStableApiSignatureSnapshot(await readJson(
+      path.join("contracts", contract.stableSignatures)
+    ));
+    const emitted = await emitWorkspaceDeclarations(workspace);
+    try {
+      const actualSignatures = buildStableApiSignatureSnapshot(
+        emitted.entry,
+        contract as unknown as PublicApiStabilityContract
+      );
+      assertStableApiSignatureSnapshot(expectedSignatures, actualSignatures);
+    } finally {
+      await emitted.cleanup();
+    }
+  } catch (error) {
+    failures.push(`Stable API signature contract failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 const expectedExports = exactStringArray(contract.runtimeExports, "contract.runtimeExports");
 const actualExports = Object.keys(publicApi).sort();
@@ -111,13 +156,30 @@ if (expectedExports.join("\n") !== actualExports.join("\n")) {
   );
 }
 const stableExports = exactStringArray(contract.stableRuntimeExports, "contract.stableRuntimeExports");
+const betaExports = exactStringArray(contract.betaRuntimeExports, "contract.betaRuntimeExports");
 const experimentalExports = exactStringArray(contract.experimentalRuntimeExports, "contract.experimentalRuntimeExports");
+const expectedTypeExports = exactStringArray(contract.typeExports, "contract.typeExports");
 const stableTypeExports = exactStringArray(contract.stableTypeExports, "contract.stableTypeExports");
-for (const name of [...stableExports, ...experimentalExports]) {
+const betaTypeExports = exactStringArray(contract.betaTypeExports, "contract.betaTypeExports");
+const experimentalTypeExports = exactStringArray(
+  contract.experimentalTypeExports,
+  "contract.experimentalTypeExports"
+);
+for (const name of [...stableExports, ...betaExports, ...experimentalExports]) {
   if (!expectedExports.includes(name)) failures.push(`classified export ${name} is absent from runtimeExports`);
 }
-for (const name of stableExports) {
-  if (experimentalExports.includes(name)) failures.push(`export ${name} cannot be stable and experimental`);
+const classifiedExports = [...stableExports, ...betaExports, ...experimentalExports];
+for (const name of classifiedExports) {
+  if (classifiedExports.indexOf(name) !== classifiedExports.lastIndexOf(name)) {
+    failures.push(`export ${name} cannot belong to multiple stability tiers`);
+  }
+}
+if ([...classifiedExports].sort().join("\n") !== expectedExports.join("\n")) {
+  const classified = new Set(classifiedExports);
+  failures.push(
+    `every runtime export must have exactly one explicit stability tier (unclassified: ${expectedExports
+      .filter((name) => !classified.has(name)).join(", ") || "none"})`
+  );
 }
 const publicIndexSource = (
   await readRegularFileNoFollow(path.join(workspace, "src/index.ts"), {
@@ -125,6 +187,34 @@ const publicIndexSource = (
     maxBytes: 2 * 1024 * 1024
   })
 ).contents.toString("utf8");
+const actualTypeExports = [...publicIndexSource.matchAll(/export type\s*\{([^}]*)\}/gs)]
+  .flatMap((match) => match[1]!.split(",").map((entry) => entry.trim()).filter(Boolean))
+  .sort();
+if (new Set(actualTypeExports).size !== actualTypeExports.length) {
+  failures.push("src/index.ts contains duplicate public type exports");
+}
+if (expectedTypeExports.join("\n") !== actualTypeExports.join("\n")) {
+  const expected = new Set(expectedTypeExports);
+  const actual = new Set(actualTypeExports);
+  failures.push(
+    `public type export drift (missing: ${expectedTypeExports.filter((name) => !actual.has(name)).join(", ") || "none"}; ` +
+    `unclassified: ${actualTypeExports.filter((name) => !expected.has(name)).join(", ") || "none"})`
+  );
+}
+const classifiedTypeExports = [...stableTypeExports, ...betaTypeExports, ...experimentalTypeExports];
+for (const name of classifiedTypeExports) {
+  if (!expectedTypeExports.includes(name)) failures.push(`classified type export ${name} is absent from typeExports`);
+  if (classifiedTypeExports.indexOf(name) !== classifiedTypeExports.lastIndexOf(name)) {
+    failures.push(`type export ${name} cannot belong to multiple stability tiers`);
+  }
+}
+if ([...classifiedTypeExports].sort().join("\n") !== expectedTypeExports.join("\n")) {
+  const classified = new Set(classifiedTypeExports);
+  failures.push(
+    `every type export must have exactly one explicit stability tier (unclassified: ${expectedTypeExports
+      .filter((name) => !classified.has(name)).join(", ") || "none"})`
+  );
+}
 const cliDocumentation = (
   await readRegularFileNoFollow(path.join(workspace, "docs", "CLI.md"), {
     label: "CLI documentation",
@@ -135,12 +225,6 @@ for (const option of CLI_OPTION_NAMES) {
   if (!CLI_HELP_TEXT.includes(option)) failures.push(`CLI help omits declared option ${option}`);
   if (!cliDocumentation.includes(option)) failures.push(`docs/CLI.md omits declared option ${option}`);
 }
-for (const name of stableTypeExports) {
-  if (!new RegExp(`\\b${name}\\b`).test(publicIndexSource)) {
-    failures.push(`stable type export ${name} is absent from src/index.ts`);
-  }
-}
-
 const cli = contract.cli as JsonObject | undefined;
 const subcommands = cli?.subcommands as JsonObject | undefined;
 if (JSON.stringify(cli?.commands) !== JSON.stringify(CLI_COMMANDS) ||
@@ -222,11 +306,38 @@ for (const control of controlRows) {
   }
 }
 
-if (evaluations.schemaVersion !== 2 || evaluations.targetVersion !== "1.0.0" ||
+if (evaluations.schemaVersion !== 2 ||
+  evaluations.kind !== "harness-representative-evaluation-matrix" ||
+  evaluations.targetVersion !== "1.0.0" ||
   JSON.stringify(evaluations.requiredProviders) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_PROVIDERS) ||
   JSON.stringify(evaluations.requiredEvidence) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_REQUIRED_EVIDENCE) ||
   JSON.stringify(evaluations.scenarios) !== JSON.stringify(GA_REPRESENTATIVE_EVALUATION_SCENARIOS)) {
   failures.push("representative evaluation matrix must use schema 2 and the certified provider cohort");
+}
+if (evaluationDataset?.name !== REPRESENTATIVE_DATASET_NAME ||
+  evaluationDataset?.revision !== REPRESENTATIVE_DATASET_REVISION ||
+  evaluationDataset?.path !== "evaluations/representative-repositories.jsonl" ||
+  evaluationDataset?.tasks !== GA_REPRESENTATIVE_EVALUATION_SCENARIOS.length ||
+  JSON.stringify(evaluationDataset?.profiles) !== JSON.stringify(["governed"]) ||
+  JSON.stringify(evaluationDataset?.carriers) !== JSON.stringify(["rule_file"]) ||
+  evaluationDataset?.repetitions !== 1) {
+  failures.push("representative evaluation dataset/matrix execution contract drifted");
+}
+let assemblyMatrix: RepresentativeEvidenceAssemblyMatrix | undefined;
+try {
+  assemblyMatrix = parseRepresentativeEvidenceAssemblyMatrix(
+    await readJson(String(evaluations.assemblyMatrix))
+  );
+  if (JSON.stringify(assemblyMatrix.expectedCases) !== JSON.stringify(evaluations.expectedCases)) {
+    failures.push("representative evaluation expectedCases drifted from its assembly matrix");
+  }
+  if (JSON.stringify(assemblyMatrix.expectedModels) !== JSON.stringify(evaluations.expectedModels)) {
+    failures.push("representative evaluation expectedModels drifted from its assembly matrix");
+  }
+} catch (error) {
+  failures.push(
+    `representative evaluation assembly matrix is invalid: ${error instanceof Error ? error.message : String(error)}`
+  );
 }
 
 const migration = readiness.migrationGuarantee as JsonObject | undefined;
@@ -246,13 +357,22 @@ for (const evidence of historicalFixtureEvidence) {
   await existingPath(evidence, "historical migration fixture evidence");
 }
 const candidates = Array.isArray(readiness.releaseCandidates) ? readiness.releaseCandidates as JsonObject[] : [];
-if (JSON.stringify(candidates.map((candidate) => candidate.version)) !== JSON.stringify(["1.0.0-rc.1", "1.0.0-rc.2"])) {
-  failures.push("readiness must require exactly rc.1 and rc.2");
+try {
+  assertGaReleaseCandidateSequence(candidates.map((candidate) => candidate.version));
+} catch (error) {
+  failures.push(error instanceof Error ? error.message : String(error));
 }
 for (const candidate of candidates) {
   if (typeof candidate.issue !== "string" || !/^https:\/\/github\.com\/Zhivex\/zhivex-harness\/issues\/\d+$/.test(candidate.issue)) {
     failures.push(`${String(candidate.version)} must link its GitHub issue`);
   }
+}
+if (assemblyMatrix && JSON.stringify(assemblyMatrix.releaseTags) !==
+  JSON.stringify([
+    ...candidates.map((candidate) => `v${String(candidate.version)}`),
+    `v${String(readiness.targetVersion)}`
+  ])) {
+  failures.push("representative assembly releaseTags must cover the readiness candidate sequence and stable target");
 }
 const blockers = Array.isArray(readiness.blockers) ? readiness.blockers as JsonObject[] : [];
 if (blockers.length === 0 || new Set(blockers.map((blocker) => blocker.id)).size !== blockers.length) {
@@ -323,6 +443,27 @@ if (releaseMode) {
   try {
     const securityEvidencePath = parseGaSecurityReviewEvidencePath(security?.evidence);
     await existingPath(securityEvidencePath, "GA security review evidence");
+    const finalCandidate = parsedCandidates.at(-1);
+    if (finalCandidate) {
+      const securityEvidence = await readJson(securityEvidencePath);
+      const verifiedReview = await verifySecurityReviewWorkflowEvidence(securityEvidence, {
+        releaseTag: finalCandidate.tag,
+        sourceCommit: finalCandidate.sourceCommit,
+        artifactSha512: finalCandidate.artifactSha512
+      });
+      if (security?.observedAt !== verifiedReview.observedAt) {
+        failures.push("GA security review observedAt differs from its verified evidence");
+      }
+      const openCritical = verifiedReview.findings.filter(
+        (finding) => finding.status === "open" && finding.severity === "critical"
+      ).length;
+      const openHigh = verifiedReview.findings.filter(
+        (finding) => finding.status === "open" && finding.severity === "high"
+      ).length;
+      if (security?.criticalFindings !== openCritical || security?.highFindings !== openHigh) {
+        failures.push("GA security review finding counts differ from its verified inventory");
+      }
+    }
   } catch (error) {
     failures.push(
       `GA security review evidence is invalid: ${error instanceof Error ? error.message : String(error)}`
@@ -338,7 +479,9 @@ if (releaseMode) {
         parsedCandidates,
         results,
         evaluations.requiredEvidence,
-        evaluations.scenarios
+        evaluations.scenarios,
+        evaluations.expectedCases,
+        evaluations.expectedModels
       ));
       await verifyGaRepresentativeEvaluationWorkflows(parsedCandidates, parsedResults);
     } catch (error) {

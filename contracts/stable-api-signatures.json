@@ -1,0 +1,490 @@
+{
+  "schemaVersion": 1,
+  "targetVersion": "1.0.0",
+  "format": "typescript-declaration-ast-v1",
+  "stableRuntimeExports": [
+    {
+      "name": "BUN_ENGINE_RANGE",
+      "sha256": "sha256:d4bb149bb582c2cccb4800ec6e1ba556f4fdc8d2c787910fd452129b9470b415"
+    },
+    {
+      "name": "CHANGE_ENVELOPE_SCHEMA_VERSION",
+      "sha256": "sha256:c9b56beb61e46150d80c6177090564df2b5091da49bb1bfa2a2d93d823935fbc"
+    },
+    {
+      "name": "CLI_COMMAND_OPTION_CONTRACTS",
+      "sha256": "sha256:24b4f1884ff228de6027655bf75908e8267cfbf8852235971252bebe19581412"
+    },
+    {
+      "name": "CLI_EVENT_SCHEMA_VERSION",
+      "sha256": "sha256:f6ddfa6a429b01eb2761af9e0c88ec135cf79a8581e1c719605193abdb78cdc5"
+    },
+    {
+      "name": "CLI_JSON_SCHEMA_VERSION",
+      "sha256": "sha256:dbed99cc19dcccb65799dc6d5809d4c0f59444e824997aed9f5dd2ed0066c2d9"
+    },
+    {
+      "name": "CLI_OPTION_DEFINITIONS",
+      "sha256": "sha256:e9f6878dc5cf6a6d82f902fb6157db0f65932234ca69ed7f87e89f3dbb4811de"
+    },
+    {
+      "name": "CLI_OPTION_NAMES",
+      "sha256": "sha256:72f3b2f6a13b1bed6977b8d0ac43327246efb492b99ec5975a7c9e6b81196723"
+    },
+    {
+      "name": "DEFAULT_ALLOWED_CHECKS",
+      "sha256": "sha256:0d9aab206ca78f4cdeaefa63d6a910af654210214c3815737cc5fcce3fe49154"
+    },
+    {
+      "name": "DEFAULT_OCI_EXECUTION",
+      "sha256": "sha256:57e3e3ea0d483dbfc92cf49d8361de195eb929aa1571166669e8db5a8a133721"
+    },
+    {
+      "name": "DEFAULT_PROVIDER_REGISTRY",
+      "sha256": "sha256:276449c7e5075b253029314dbb183e9f3db8c077edabb062c937ea5f03274bdf"
+    },
+    {
+      "name": "HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS",
+      "sha256": "sha256:cd293e3dde73bf15c5bde30f4249ccf26c8c24e3cf0358485109ec5abd7bae91"
+    },
+    {
+      "name": "HARNESS_CONFIG_SCHEMA_VERSION",
+      "sha256": "sha256:a3be799ba24187c73f4a9f5a4545a2759a839982cf7a8fe9f469707b2c9c2859"
+    },
+    {
+      "name": "HARNESS_ERROR_CODES",
+      "sha256": "sha256:935cc700bacad502f5d0a9dd93a1c6fee138e12d85107a5eedb6d93071789614"
+    },
+    {
+      "name": "HARNESS_ERROR_SCHEMA_VERSION",
+      "sha256": "sha256:2cf7dfe8330d011d7ebe34f92c09f9686500ac623f93e6f976b05ae45d05236b"
+    },
+    {
+      "name": "HARNESS_EXECUTION_BACKENDS",
+      "sha256": "sha256:55572774d29f3a901f79acc234562ca0cfd73e72df08aa898ab05b22feb7c5d1"
+    },
+    {
+      "name": "HARNESS_EXECUTION_POLICY_VERSION",
+      "sha256": "sha256:4bc4c3bef38df39499b9448fb2eeb20dc6e9c69bb2a89a16a55b348387fbd9cf"
+    },
+    {
+      "name": "HARNESS_MCP_CONFIG_SCHEMA_VERSION",
+      "sha256": "sha256:73f4b53042b233838cedd2299f1a098de7baa42bd10cc7840103865020206ab9"
+    },
+    {
+      "name": "HARNESS_OPERATIONS_SCHEMA_VERSION",
+      "sha256": "sha256:8781344ac13427e0d8bca6b07f0ff37fda5c6ac9368d0b0ceaa64c6ef347424f"
+    },
+    {
+      "name": "HARNESS_SESSION_SCHEMA_VERSION",
+      "sha256": "sha256:6160ddd721b84b893839d9080933aef546e145ba768082165b29bc1abe7598ff"
+    },
+    {
+      "name": "HARNESS_STATE_BACKUP_SCHEMA_VERSION",
+      "sha256": "sha256:4d97497d2c21433c7dc60377840e94ac0a83fd9851bbcac11fb1ec39932ec509"
+    },
+    {
+      "name": "HARNESS_VERSION",
+      "sha256": "sha256:244d3df1b7341344f6dc56ff1df1d5155a6f5c3aced8485f9a3d5b65e8c99435"
+    },
+    {
+      "name": "HarnessApprovalError",
+      "sha256": "sha256:c2660d97644a19901530f9cdc750b438f5f932b75802cd47c49bdf65d5ab8a2e"
+    },
+    {
+      "name": "HarnessConfigError",
+      "sha256": "sha256:c1437c18f19f00ff6f5fda99c4c14c90f5c3ceec0f16dd03b818da30531fea39"
+    },
+    {
+      "name": "HarnessError",
+      "sha256": "sha256:e08500b700abec01bf1cf5db8a8a5dae8eab76dcbdc9d9d9c66335ff25444a1f"
+    },
+    {
+      "name": "HarnessExecutionError",
+      "sha256": "sha256:805b9531781cbfa59cbffbf40312072f7d8c662819df2897c0fa743de36f374d"
+    },
+    {
+      "name": "HarnessProviderError",
+      "sha256": "sha256:2e607b49b357d7f977a8a359b7e18e5253be31b590276490c2382277d78b5932"
+    },
+    {
+      "name": "HarnessStateConflictError",
+      "sha256": "sha256:fefa62cf9cb205d0896d7a4f9b917602fbd124718d383c877785421c772dfac4"
+    },
+    {
+      "name": "HarnessWorkspaceError",
+      "sha256": "sha256:d2aa6c17a672810f6bf0b8a69681eb96da6cab0147c54e3bd857337f53262170"
+    },
+    {
+      "name": "NODE_ENGINE_RANGE",
+      "sha256": "sha256:5b0b17cc472607f9d5dd403bc7f801c4391cd59103485bf27e7eac4c35689a0f"
+    },
+    {
+      "name": "PROVIDERS",
+      "sha256": "sha256:dc814e3a99afbf696e3b1b891390e8d2d801d85944c04655c9001c270ff99a1b"
+    },
+    {
+      "name": "Workspace",
+      "sha256": "sha256:998e988c9e272bad560364310d9176995bd5bb5a9430ad1a5d531d2ecac04ec4"
+    },
+    {
+      "name": "appendUserMessage",
+      "sha256": "sha256:be6162f464ae193e22c27bfe6fc30e27102e1d496228e79c9eba9b2570b13a3a"
+    },
+    {
+      "name": "cancelHarnessRun",
+      "sha256": "sha256:1f99d252e7599162f092be99e6ec09385b217b1a52f707c1f011981da7ff8b84"
+    },
+    {
+      "name": "canonicalizeChangeEnvelope",
+      "sha256": "sha256:b5cd58593ae9924ebdfa1bfe880e188715ccdbc874f6cbe869ece321ce4846ff"
+    },
+    {
+      "name": "cleanupHarnessRuns",
+      "sha256": "sha256:47d90628b9d994966d70a0abd32c4fc030fcde15c590f19df9960d4ea7b40e60"
+    },
+    {
+      "name": "cliJsonDocumentSchema",
+      "sha256": "sha256:4f4e013dc4257a7d0b2b955de39e7e4592e37fbe066fbc214144901ac0145bae"
+    },
+    {
+      "name": "cliJsonLineDocumentSchema",
+      "sha256": "sha256:a00398e038e75d033a3bec83bd9141a5d398f77af4cc8dc12bb79a050e85999a"
+    },
+    {
+      "name": "computeChangeEnvelopeDigest",
+      "sha256": "sha256:ab53adbcab3888129b08825410bcdcff26566e960041f952c2f210c3e1ec56fd"
+    },
+    {
+      "name": "createChangeEnvelope",
+      "sha256": "sha256:3eb87d3a8169a4eac9e31cb32792ba1791948d297d3f8f5d5fbe77b5ec5dad87"
+    },
+    {
+      "name": "createEditProposal",
+      "sha256": "sha256:0ae0ea0933d2abee7a41c86ad851c826b74b9dea115915d6d79b700e3ef588df"
+    },
+    {
+      "name": "createHarness",
+      "sha256": "sha256:d2673ba626d469d04c7921e4965396cdd41c4fb4686810ad756c7b7dda02adde"
+    },
+    {
+      "name": "createHarnessMcpTools",
+      "sha256": "sha256:524ba004e52c389a7dfe2014f7f60f99948165f58b4f8540eca439bee48f2cac"
+    },
+    {
+      "name": "createHarnessOciExecutionEnvironment",
+      "sha256": "sha256:bc01ccd685341e91df9e0468f2247644cbf0f0cefd3b2cb7d032da0da8cfcd9d"
+    },
+    {
+      "name": "createHarnessStateBackup",
+      "sha256": "sha256:642206afc9ce96dc2fa63cfa9ed420189c4f7bfb2278217f9496fcdfdeb7b17b"
+    },
+    {
+      "name": "createHttpMcpClient",
+      "sha256": "sha256:38e767b9485cc31efd1ce2bbc166443ce37334f60a4a56c2df73dd827d1061bf"
+    },
+    {
+      "name": "createProviderModel",
+      "sha256": "sha256:873f7232c2058fdcd4d0850ec795d544f0034da41672bca661c0025a5970ebf6"
+    },
+    {
+      "name": "digestChangeEnvelopeArtifact",
+      "sha256": "sha256:f827c1b9882b2bfc73d57a261c3cf1dc20bbbfa3caa5bee528b8c03ffcf754b5"
+    },
+    {
+      "name": "exportHarnessStateBackup",
+      "sha256": "sha256:357768e86657a79c1294b6a4a8bce338ae89885b1a0b9afba2dfd9a389e90107"
+    },
+    {
+      "name": "harnessErrorDocument",
+      "sha256": "sha256:f9679ae46816d693c77acc0ecb2c35e99ab5952950f415407a1c94270bacee12"
+    },
+    {
+      "name": "importHarnessStateBackup",
+      "sha256": "sha256:2f5ea480dc18f433e22afe6dee5df019218679a16e5b45c0356c44d29941b16d"
+    },
+    {
+      "name": "importHarnessStateBackupFile",
+      "sha256": "sha256:5d9be175f24cbaf371bb8cb83a3e6aae1ae65f2503992c7efaaa72a21f4ffd99"
+    },
+    {
+      "name": "inspectHarnessRun",
+      "sha256": "sha256:6e50c6d70456ea542b0857c31286369bbf601a27a01d368c4c37f5259e87472b"
+    },
+    {
+      "name": "inspectHarnessState",
+      "sha256": "sha256:e7ef2228c6927447e32491bd5fc785cacbe44f990de849fe45b3301f07f14622"
+    },
+    {
+      "name": "listHarnessRuns",
+      "sha256": "sha256:157ca25fdcc4356dea09d20e0d0607125d64d1a4acd5e651ad42bf6feedab621"
+    },
+    {
+      "name": "loadHarnessMcpConfiguration",
+      "sha256": "sha256:806b5e47f8d4ca837f28cbfeb175ab649af50c65d432f6a7c9a206dbda0b49eb"
+    },
+    {
+      "name": "migrateHarnessConfigInput",
+      "sha256": "sha256:da2759c9399366d0e977d79db49d40315e097d6d4a105e4a879058a6dcce0cbd"
+    },
+    {
+      "name": "normalizeHarnessError",
+      "sha256": "sha256:d165e0ae2fbab774665e5166bc6e117dea071c918c7406b546f0f562d5733365"
+    },
+    {
+      "name": "normalizeHarnessMcpConfiguration",
+      "sha256": "sha256:fdc6b8de6818be18e449ab76d5d5f9f8397af7fac4814263bba8d19c9a8c6cd6"
+    },
+    {
+      "name": "openCliSessionStore",
+      "sha256": "sha256:97c478975ef9e6429585f6b7e321ddbdc3aee3bca99805ec29754ffb4e80ec9a"
+    },
+    {
+      "name": "openHarnessPersistence",
+      "sha256": "sha256:163b96aa091aa85213d517bc7d37eb950c595bfb6a29000da7d17cc7f3b5e6aa"
+    },
+    {
+      "name": "parseCliJsonDocument",
+      "sha256": "sha256:27a0b88dabcb4c2a55e7c066899da89a8a7f72fa35c00b1a002b232ff6edd339"
+    },
+    {
+      "name": "parseCliJsonLineDocument",
+      "sha256": "sha256:b575a62cc6cb16bcba5f7421ba62b64ec7d19fdc7afb82db58ff977cab8aab46"
+    },
+    {
+      "name": "parseHarnessModelRoute",
+      "sha256": "sha256:8432a69f69333c5ed0cec25181df15582911af7ed436c0c91a492502471c2ed8"
+    },
+    {
+      "name": "parseProvider",
+      "sha256": "sha256:cf54dd99d80bb0055b22e8e36d8f235f10da67ea1a58e1be99188c59a174ec03"
+    },
+    {
+      "name": "providerAvailability",
+      "sha256": "sha256:674b6f97d07b46359961b122e967b9073bf874a918b7215f67d04036dd86b03b"
+    },
+    {
+      "name": "readHarnessStateBackup",
+      "sha256": "sha256:14285ee1ee986924aee669622a0caecf2c46b5e546218bbc63697bc3687e9837"
+    },
+    {
+      "name": "resolveHarnessConfig",
+      "sha256": "sha256:2d78e0cf8ae84ddd911268fabbd1fa85a992719f7ea12a9ceee0323d351f7e50"
+    },
+    {
+      "name": "runHarness",
+      "sha256": "sha256:4d1eabf4c6158612429c2087f61e9052fc1adf2560b69d7e16bac9bc368e745b"
+    },
+    {
+      "name": "serializeStreamEvent",
+      "sha256": "sha256:07aa16b64d20355d410da09e6f02945da006ab5eb2d94516b7b027c9ff25209d"
+    },
+    {
+      "name": "serializeStreamResult",
+      "sha256": "sha256:2bf832ca69843b8a88c21cca0bcf9b3e7f51e444db1b28368d5ecfc401cbb8a8"
+    },
+    {
+      "name": "stateBackupBundleSchema",
+      "sha256": "sha256:e0bf7c9634affa7fa5dcb78754c38ea44618f4007fd76b975f7616484b6af7b0"
+    },
+    {
+      "name": "validateCliCommandOptions",
+      "sha256": "sha256:0db6291eaea426f120f5ee900cc0c0332007e7897587f49ac5f5b8f23cde209a"
+    },
+    {
+      "name": "verifyChangeEnvelope",
+      "sha256": "sha256:19ef81480f885d2464df35715393c04f479e2b242972eef94a561378d61c2f95"
+    }
+  ],
+  "stableTypeExports": [
+    {
+      "name": "ChangeEnvelope",
+      "sha256": "sha256:212e85942e31641258cdd1018628572b3587bedd513b477ac0504a34dbaa71d2"
+    },
+    {
+      "name": "CliChangeEnvelopeVerificationDocument",
+      "sha256": "sha256:128883d066ce29ecb7d784716a9d37b328c8b62ad0fc23a10fd2d043c94917d0"
+    },
+    {
+      "name": "CliCommandOptionContract",
+      "sha256": "sha256:f3bed3621e3602410c3ca3e8585754a6937a810d4f874d308e2e3b6c939723ac"
+    },
+    {
+      "name": "CliCommandOptionContractKey",
+      "sha256": "sha256:ebba6d15bf9d4d4a1f556c49f82a13f60791825574662f58b228372265b82437"
+    },
+    {
+      "name": "CliJsonDocument",
+      "sha256": "sha256:24aa4cebc3886320be98e46c0c38542c15a9ec46afd18920a51e88d2ebd87147"
+    },
+    {
+      "name": "CliJsonLineDocument",
+      "sha256": "sha256:ef53f0cc28e4826b8db67c3070c6a00d553ace67f4b9f338970662dcfede5c7e"
+    },
+    {
+      "name": "CliOptionDefinition",
+      "sha256": "sha256:ff4e3c3fab35befcf51de4223812f5a08880947956c3014d18dda9f36dd2fa06"
+    },
+    {
+      "name": "CliOptionName",
+      "sha256": "sha256:650c835c1b9dafc111608dc5214b555b2b0527442f2bdfc2d42ef74d0d306208"
+    },
+    {
+      "name": "CliReviewGroupDocument",
+      "sha256": "sha256:432a3d91e4289ec68990de4b0a3a670a196acb7913c9372c8347d420c9bb47e2"
+    },
+    {
+      "name": "CliRunEventDocument",
+      "sha256": "sha256:6555e1d03451e0cfad7c906f5f1e27b69fc2c2b5980db838b13b08cca9695bfa"
+    },
+    {
+      "name": "CliRunInspectionDocument",
+      "sha256": "sha256:2f5ed355d934d439c6f24060a1405dc086fa888d15dccad842f59690b9537503"
+    },
+    {
+      "name": "CliRunListDocument",
+      "sha256": "sha256:b1731d45a48faa41d1c96fdb141429fcca9476e95845cb3eebe834524e9a61fc"
+    },
+    {
+      "name": "CliRunResultDocument",
+      "sha256": "sha256:0f6b5651e16fff1f727a63ad780afb5ad5fdd0394aac1072532b14a311783f8d"
+    },
+    {
+      "name": "CliSession",
+      "sha256": "sha256:cba402dcd894964dad646948b48e758b4747dcca60632344e96ba6fd3d1b02b2"
+    },
+    {
+      "name": "CliSessionDocument",
+      "sha256": "sha256:58cb6cae92da62ac9ec147103ed218ee9167980fa21aec92ab4d295256f4f13f"
+    },
+    {
+      "name": "CliSessionStore",
+      "sha256": "sha256:0f7af5faf8b98df07c7a7c12a997d36699263bff00f2075c0ab2bca7d8e056a2"
+    },
+    {
+      "name": "CliStreamErrorDocument",
+      "sha256": "sha256:694055cb726a6a6bf296d1b93a41b77194671e00d01c52b2044d932a764954ee"
+    },
+    {
+      "name": "CliStreamResultDocument",
+      "sha256": "sha256:e2cc00682ff7a09464e794a663c7f6fdb0d1592c9c6a33f3309e3605072b09ba"
+    },
+    {
+      "name": "CreateHarnessOptions",
+      "sha256": "sha256:21fcdd288395e9fe4f9cd379cffa13c53a22ec654ca4602b1700cdde7b15637a"
+    },
+    {
+      "name": "HarnessBudget",
+      "sha256": "sha256:5824301ecd5e057bb1d84f3de75fffc5307d36a2f64b949796c2077ae4ebd8d3"
+    },
+    {
+      "name": "HarnessConfig",
+      "sha256": "sha256:636c2d4a142e341cefa3f94edb2281953e4469d32ab66c207da3abe6d3530cae"
+    },
+    {
+      "name": "HarnessConfigInput",
+      "sha256": "sha256:d0797335d49ef69414e08611bf98aaa686f678be404c95a50979147df20ef270"
+    },
+    {
+      "name": "HarnessConfigMigrationResult",
+      "sha256": "sha256:3b5f4b7f766c7733573b69178b330e4102baf71fdbfe16420be84b59c0abfcad"
+    },
+    {
+      "name": "HarnessContextBundle",
+      "sha256": "sha256:d471245ae5d1c6914a6983182d9eabc047c01b4ec7270881f2fb8eae6d0d5b18"
+    },
+    {
+      "name": "HarnessContextConfig",
+      "sha256": "sha256:e89625535c552aa05a23542162d4439c70bb5f3cab4f265f14e88be505f4fbb4"
+    },
+    {
+      "name": "HarnessCostBudget",
+      "sha256": "sha256:7e936416672e6c6ce046cbe88218c0e7d88f0b27b8491a38049af6f14d6cc5e8"
+    },
+    {
+      "name": "HarnessErrorCategory",
+      "sha256": "sha256:c885ed83ae956c5f1fbb6d66131900a2d688b44f9ffc49fb5b8cf10d2c84f6c6"
+    },
+    {
+      "name": "HarnessErrorCode",
+      "sha256": "sha256:10c98e3bcac862f0945c02829ef345f016678fa40ea5dc3ed501fe3f051d3fc7"
+    },
+    {
+      "name": "HarnessErrorDocument",
+      "sha256": "sha256:255e3c8b57aa188ea21a548445577e71f7eb052984096452c9e402162d9e4ded"
+    },
+    {
+      "name": "HarnessExecutionBackend",
+      "sha256": "sha256:e05d28189e1a2806f506c1feb670440410e499a959516186eaf7c1cb5e14900b"
+    },
+    {
+      "name": "HarnessExecutionConfig",
+      "sha256": "sha256:fbc47e225857db9cc36a0cc61eb6a3f036a0c64cd16bdd743c202cd5edb881e8"
+    },
+    {
+      "name": "HarnessExecutionSession",
+      "sha256": "sha256:52d52761e770cbf54fa0e87b9fa0cb7b9a1e74bc35500d0a37bb8d0048b17bd9"
+    },
+    {
+      "name": "HarnessMcpConfiguration",
+      "sha256": "sha256:ce1d2900e701537db8a063af806c66a5f6d6ca296557931af407d6075556afce"
+    },
+    {
+      "name": "HarnessModelRoute",
+      "sha256": "sha256:d9194ea7f0baa2b6b6b97bd0b3f4330059cf7fb43bbf480562e53eb109902759"
+    },
+    {
+      "name": "HarnessProvider",
+      "sha256": "sha256:23f3e11d4a7e03e09e0b1d4ce2148d1fe8af10c11ef339e0ef2c8242facec5c2"
+    },
+    {
+      "name": "HarnessProviderRegistry",
+      "sha256": "sha256:ee78a8fe170c5c9c2f486960c29d28fc1b1d61540a4b2ca48a65f0f0983c35cd"
+    },
+    {
+      "name": "HarnessRequiredCapability",
+      "sha256": "sha256:e24f4c2312f84baf9e584230631354d96d45c0a37b3d59b93b2e2ff1c5598e40"
+    },
+    {
+      "name": "HarnessRunOptions",
+      "sha256": "sha256:fbc89053a700fd05ebe25b0bc98a72a2817267274d55105678bb9ee6da5ab173"
+    },
+    {
+      "name": "HarnessStateBackupBundle",
+      "sha256": "sha256:5df85d2ef5e4de727cce61b8fb3aa4b73f57a6aa5285b76f6661dbbba43517c1"
+    },
+    {
+      "name": "HarnessStateImportOptions",
+      "sha256": "sha256:72b6ab22a7dd369978e4c9f0fab7ba6e932503c70d3ada42b1137a20e211b739"
+    },
+    {
+      "name": "HarnessStoreBackend",
+      "sha256": "sha256:9d197faa17b2f340f7c3320842baa570be679996b4e86f53c2538fbc2e28e1ba"
+    },
+    {
+      "name": "HarnessSubagentProfile",
+      "sha256": "sha256:a7a68eb8b71ef61b895f63f22fa11aad48cf6ee2374957ea5864d7454be87a39"
+    },
+    {
+      "name": "ProviderAvailability",
+      "sha256": "sha256:7d3edae55de47e2cfaad86b406042dddd726acaffef337ef663708c3d1096a40"
+    },
+    {
+      "name": "ProviderDescriptor",
+      "sha256": "sha256:01670e34e6325f642305c0e7e615ba7d1b0c651e43ff652539fb900abf1fe322"
+    },
+    {
+      "name": "ProviderRegistration",
+      "sha256": "sha256:324b4a4c055036c897c9b2c1592f2fc5ba68e0b4b375182407867330a1710982"
+    },
+    {
+      "name": "SessionRunStatus",
+      "sha256": "sha256:e136103e73830039a9035441ef8a771dabd8c012dd1b04ad053972e3cc7866f7"
+    },
+    {
+      "name": "ZhivexHarness",
+      "sha256": "sha256:b165b5eb63b24371c7ab1ca83b95a9c553e7200aa89e94306ca4a7434eb1bb39"
+    }
+  ],
+  "digest": "sha256:f8e29fb0b909e3b1d1d1a0f851f87ca391ae97011fc6866bb2cc064f0d83bfd9"
+}

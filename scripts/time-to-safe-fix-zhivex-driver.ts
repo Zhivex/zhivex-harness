@@ -3,9 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
-  createProviderModel,
   parseProvider,
-  resolveHarnessConfig,
   type HarnessProvider
 } from "../src/config.js";
 import type { HarnessExecutionConfig } from "../src/config.js";
@@ -19,6 +17,7 @@ import {
   runGovernedTimeToSafeFixProfile,
   type TimeToSafeFixVerifierCommand
 } from "./time-to-safe-fix-governed-profile.js";
+import { loadTimeToSafeFixHarnessRuntime } from "./time-to-safe-fix-runtime.js";
 
 interface DriverOptions {
   provider: HarnessProvider;
@@ -192,14 +191,15 @@ export const runZhivexTimeToSafeFixDriver = async (
   options: DriverOptions,
   env: NodeJS.ProcessEnv = process.env
 ) => {
+  const harnessRuntime = await loadTimeToSafeFixHarnessRuntime(env);
   const cwd = await realpath(process.cwd());
   const workspace = await realpath(request.workspace);
   if (cwd !== workspace) throw new Error("Driver request workspace must match the child process working directory.");
   const stateDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-entry-state-"));
   try {
-    const resolved = resolveHarnessConfig(driverConfigInput(options, workspace));
+    const resolved = harnessRuntime.resolveHarnessConfig(driverConfigInput(options, workspace));
     if (resolved.execution.backend !== "oci") throw new Error("Driver requires enforced OCI execution.");
-    const model = createProviderModel(resolved, env);
+    const model = harnessRuntime.createProviderModel(resolved, env);
     const verifierCommand = (candidate: TimeToSafeFixDriverRequest) => verifierFor(options, candidate);
     if (request.profile === "direct") {
       return await runDirectProfile(request, {
@@ -218,6 +218,7 @@ export const runZhivexTimeToSafeFixDriver = async (
       ...(options.model ? { model: options.model } : {}),
       modelInstance: model,
       env,
+      harnessRuntime,
       stateDirectory,
       verifierCommand,
       allowedCommands: options.allowedCommands,

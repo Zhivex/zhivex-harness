@@ -102,7 +102,8 @@ jobs:
     needs:
       - validate
       - certify-live
-    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' }}
+      - representative-evaluation
+    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm
@@ -228,3 +229,126 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+  representative-evaluation:
+    name: Certify representative repository matrix
+    needs: validate
+    if: ${{ needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: live-certification
+    permissions:
+      contents: read
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      REPRESENTATIVE_DATASET: evaluations/representative-repositories.jsonl
+      REPRESENTATIVE_DATASET_NAME: zhivex-representative-repositories
+      REPRESENTATIVE_DATASET_REVISION: representative-repositories-v1
+      REPRESENTATIVE_IMAGE: zhivex-harness/time-to-safe-fix:node24-pytest9
+      WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Checkout annotated release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Setup Node runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Install immutable dependencies with Bun
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Download immutable validated artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-release-${{ github.sha }}
+          path: release-artifacts
+
+      - name: Bind dataset, driver, artifact, source, and OCI image
+        run: |
+          ARTIFACT="release-artifacts/zhivex-ai-harness-${RELEASE_TAG#v}.tgz"
+          (cd release-artifacts && shasum -a 512 -c SHA512SUMS)
+          bun run artifact:check -- "$ARTIFACT"
+          bun run benchmark:safe-fix:image:build
+          ARTIFACT_SHA512="$(bun -e 'import { createHash } from "node:crypto"; const bytes = await Bun.file(process.argv[1]).arrayBuffer(); process.stdout.write(`sha512-${createHash("sha512").update(Buffer.from(bytes)).digest("base64")}`);' "$ARTIFACT")"
+          RUNTIME_ROOT="$GITHUB_WORKSPACE/release-artifacts/representative-runtime"
+          mkdir -p "$RUNTIME_ROOT"
+          tar -xzf "$ARTIFACT" -C "$RUNTIME_ROOT"
+          RUNTIME_MODULE="$RUNTIME_ROOT/package/dist/index.js"
+          test -f "$RUNTIME_MODULE"
+          RUNTIME_VERSION="$(bun -e 'import { pathToFileURL } from "node:url"; const runtime = await import(pathToFileURL(process.argv[1]).href); process.stdout.write(runtime.HARNESS_VERSION);' "$RUNTIME_MODULE")"
+          test "$RUNTIME_VERSION" = "${RELEASE_TAG#v}"
+          echo "ARTIFACT_SHA512=$ARTIFACT_SHA512" >> "$GITHUB_ENV"
+          echo "ZHIVEX_SAFE_FIX_HARNESS_RUNTIME=$RUNTIME_MODULE" >> "$GITHUB_ENV"
+          echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "DRIVER_COMMIT=$(git log -1 --format=%H -- scripts/benchmark-time-to-safe-fix.ts scripts/time-to-safe-fix-zhivex-driver.ts scripts/time-to-safe-fix-direct-profile.ts scripts/time-to-safe-fix-governed-profile.ts scripts/time-to-safe-fix-runtime.ts scripts/generate-representative-evidence.ts scripts/representative-evidence.ts evaluations/representative-repositories.jsonl docker/time-to-safe-fix.Dockerfile docker/time-to-safe-fix.requirements.txt src/time-to-safe-fix.ts)" >> "$GITHUB_ENV"
+          echo "OCI_IMAGE_DIGEST=$(docker image inspect "$REPRESENTATIVE_IMAGE" --format '{{.Id}}')" >> "$GITHUB_ENV"
+          mkdir -p release-artifacts/representative-rows release-artifacts/representative-raw
+
+      - name: Evaluate Meta against the complete pinned matrix
+        run: |
+          REPORT=release-artifacts/representative-raw/meta.json
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider meta --model muse-spark-1.2 > release-artifacts/representative-rows/meta.json
+        env:
+          ZHIVEX_SAFE_FIX_PROVIDER: meta
+          ZHIVEX_SAFE_FIX_MODEL: muse-spark-1.2
+          ZHIVEX_SAFE_FIX_OCI_IMAGE: ${{ env.REPRESENTATIVE_IMAGE }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+
+      - name: Evaluate Qwen against the complete pinned matrix
+        run: |
+          REPORT=release-artifacts/representative-raw/qwen.json
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider qwen --model qwen3.8-max > release-artifacts/representative-rows/qwen.json
+        env:
+          ZHIVEX_SAFE_FIX_PROVIDER: qwen
+          ZHIVEX_SAFE_FIX_MODEL: qwen3.8-max
+          ZHIVEX_SAFE_FIX_OCI_IMAGE: ${{ env.REPRESENTATIVE_IMAGE }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+
+      - name: Evaluate OpenAI against the complete pinned matrix
+        run: |
+          REPORT=release-artifacts/representative-raw/openai.json
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider openai --model gpt-5.6-luna > release-artifacts/representative-rows/openai.json
+        env:
+          ZHIVEX_SAFE_FIX_PROVIDER: openai
+          ZHIVEX_SAFE_FIX_MODEL: gpt-5.6-luna
+          ZHIVEX_SAFE_FIX_OCI_IMAGE: ${{ env.REPRESENTATIVE_IMAGE }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Assemble sanitized fail-closed evidence
+        run: >-
+          bun run scripts/assemble-representative-evidence.ts
+          --release-tag "$RELEASE_TAG"
+          --matrix evaluations/representative-assembly-matrix.json
+          --input-dir release-artifacts/representative-rows
+          > "release-artifacts/representative-evidence-${RELEASE_TAG#v}.json"
+
+      - name: Upload sanitized representative evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: representative-evidence-${{ github.sha }}
+          path: release-artifacts/representative-evidence-*.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

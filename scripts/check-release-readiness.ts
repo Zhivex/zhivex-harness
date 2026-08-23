@@ -201,7 +201,13 @@ for (const required of [
   "bun run smoke:live",
   "bun run smoke:live:orchestration",
   "bun run smoke:live:routing",
-  "bun run smoke:live:execution"
+  "bun run smoke:live:execution",
+  "representative-evaluation:",
+  "needs.representative-evaluation.result == 'success'",
+  "evaluations/representative-repositories.jsonl",
+  "scripts/generate-representative-evidence.ts",
+  "scripts/assemble-representative-evidence.ts",
+  "path: release-artifacts/representative-evidence-*.json"
 ]) {
   if (!releaseWorkflow.includes(required)) {
     failures.push(`release workflow is missing: ${required}`);
