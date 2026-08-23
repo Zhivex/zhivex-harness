@@ -22,4 +22,11 @@ describe("release workflow version source", () => {
       expect(workflow).not.toMatch(/default:\s+v\d+\.\d+\.\d+/);
     });
   }
+
+  test("CI verifies the built version against package.json without a duplicate literal", async () => {
+    const workflow = await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8");
+
+    expect(workflow).toContain('const expected = require("./package.json").version');
+    expect(workflow).not.toMatch(/HARNESS_VERSION !== "\d+\.\d+\.\d+"/);
+  });
 });
