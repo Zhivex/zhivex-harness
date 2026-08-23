@@ -92,10 +92,6 @@ export const assembleRepresentativeEvidence = (
 };
 
 const readBoundedJson = async (filePath: string, label: string) => {
-  const suppliedEntry = await lstat(filePath);
-  if (!suppliedEntry.isFile() || suppliedEntry.isSymbolicLink()) {
-    throw new Error(`${label} must be a regular non-symlink file.`);
-  }
   const handle = await open(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const entry = await handle.stat();

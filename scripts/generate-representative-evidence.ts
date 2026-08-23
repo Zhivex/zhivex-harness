@@ -1,5 +1,5 @@
 import { constants, realpathSync } from "node:fs";
-import { lstat, open } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
@@ -257,10 +257,6 @@ export const parseRepresentativeEvidenceGeneratorOptions = (args: readonly strin
 };
 
 const readBoundedJson = async (filePath: string, label: string) => {
-  const suppliedEntry = await lstat(filePath);
-  if (suppliedEntry.isSymbolicLink()) {
-    throw new Error(`${label} must be a single regular non-symlink file.`);
-  }
   const handle = await open(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
     const entry = await handle.stat();

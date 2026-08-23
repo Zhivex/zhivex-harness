@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -161,6 +161,40 @@ describe("representative evidence assembler", () => {
       path.join(root, "matrix.json"),
       inputDirectory
     )).rejects.toThrow("must contain only");
+  });
+
+  test("opens matrix and provider inputs with no-follow descriptor semantics", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "representative-assembly-symlink-"));
+    temporaryDirectories.push(root);
+    const inputDirectory = path.join(root, "inputs");
+    await Bun.write(path.join(inputDirectory, ".keep"), "");
+    await rm(path.join(inputDirectory, ".keep"));
+    const matrixTarget = path.join(root, "matrix-target.json");
+    const matrixLink = path.join(root, "matrix.json");
+    await writeFile(matrixTarget, JSON.stringify(matrix()), "utf8");
+    await symlink(matrixTarget, matrixLink);
+    for (const row of rows()) {
+      await writeFile(path.join(inputDirectory, `${row.provider}.json`), JSON.stringify(row), "utf8");
+    }
+
+    await expect(assembleRepresentativeEvidenceFromFiles(
+      "v1.0.0-rc.1",
+      matrixLink,
+      inputDirectory
+    )).rejects.toThrow();
+
+    await rm(matrixLink);
+    await writeFile(matrixLink, JSON.stringify(matrix()), "utf8");
+    const qwenPath = path.join(inputDirectory, "qwen.json");
+    const qwenTarget = path.join(root, "qwen-target.json");
+    await rm(qwenPath);
+    await writeFile(qwenTarget, JSON.stringify(rows()[1]), "utf8");
+    await symlink(qwenTarget, qwenPath);
+    await expect(assembleRepresentativeEvidenceFromFiles(
+      "v1.0.0-rc.1",
+      matrixLink,
+      inputDirectory
+    )).rejects.toThrow();
   });
 
   test("requires each CLI option exactly once", () => {
