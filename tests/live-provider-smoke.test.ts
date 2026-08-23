@@ -9,11 +9,13 @@ const {
   assertLiveOptIn,
   certificationPrompt,
   errorEvidence,
+  isTransientProviderFailure,
   parsePhaseArguments,
   providerRunInput,
   redacted,
   requireCredentials,
-  selectedProviders
+  selectedProviders,
+  throwTransientRunFailure
 } = liveProviderSmokeInternals;
 
 describe("live provider smoke contract", () => {
@@ -64,6 +66,34 @@ describe("live provider smoke contract", () => {
     expect(evidence).toContain("[REDACTED]");
   });
 
+  test("retries only bounded transient provider failures", () => {
+    expect(isTransientProviderFailure(Object.assign(new Error("busy"), { status: 503 }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("limited"), { statusCode: 429 }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("bad request"), { status: 400 }))).toBe(false);
+    expect(isTransientProviderFailure(new Error("contract failure"))).toBe(false);
+  });
+
+  test("preserves transient status returned in a failed run before contract assertions", () => {
+    const returnedFailure = {
+      status: "failed",
+      error: { message: "Provider request failed with HTTP 503 Service Unavailable." }
+    };
+    let propagated: unknown;
+    try {
+      throwTransientRunFailure(returnedFailure);
+    } catch (error) {
+      propagated = error;
+    }
+
+    expect(propagated).toBeInstanceOf(Error);
+    expect((propagated as { status?: unknown }).status).toBe(503);
+    expect(isTransientProviderFailure(propagated)).toBe(true);
+    expect(() => throwTransientRunFailure({
+      status: "failed",
+      error: { message: "Provider request failed with HTTP 400 Bad Request." }
+    })).not.toThrow();
+  });
+
   test("accepts only complete orchestrator-owned child phase arguments", () => {
     expect(parsePhaseArguments([])).toBeUndefined();
     expect(parsePhaseArguments([
@@ -86,6 +116,7 @@ describe("live provider smoke contract", () => {
     const prompt = certificationPrompt("meta");
     expect(prompt).toContain("Call propose_edits exactly once");
     expect(prompt).toContain("then call apply_patch exactly once");
+    expect(prompt).toContain("Keep it present with the explicit JSON value null");
     expect(prompt).toContain("Calling apply_patch is how you request operator approval");
     expect(prompt).toContain("Do not ask for approval in text");
     expect(prompt.indexOf("propose_edits")).toBeLessThan(prompt.indexOf("apply_patch"));

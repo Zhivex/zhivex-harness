@@ -12,10 +12,16 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Remove release-version defaults from GitHub workflow inputs. Maintainers enter the annotated tag at dispatch, and release readiness validates it against the single version source in `package.json`.
 - Add a mutable machine-readable repository release-status record, keep it outside immutable npm artifacts, and validate public documentation, release gates, and repository security configuration against it.
 - Bound installed-package smoke subprocesses by time and captured output so a stalled child process cannot hang release validation indefinitely.
+- Keep public documentation consistent with the published `0.11.0` artifact while preserving live-provider certification as a separate evidence boundary.
+- Retry only transient HTTP failures in the opt-in base provider smoke, using fresh temporary state and a bounded three-attempt schedule; contract and approval failures still fail immediately.
+- Mark create-only `expectedDigest: null` as an explicitly required tool-schema field and reinforce that contract in live certification prompts for providers that otherwise omit null-valued arguments.
+- Record current worktree live evidence separately from release-bound certification: the certified cohort passed every local gate, while Gemini Flash 3.7 passed base editing and delegation but remained blocked on provider quota/capacity during OCI execution.
 
 ### Security
 
 - Add CodeQL, Dependabot, CODEOWNERS, and documented public-repository security controls. GitHub-side controls that are free for public repositories are enabled; optional cost-bearing analysis remains disabled and explicitly recorded. Live provider credentials are scoped only to the final provider-call step rather than checkout, setup, dependency installation, or deterministic validation.
+- Bind workspace, context, OCI, change-envelope, and release-artifact reads to bounded regular-file descriptors that reject symbolic links, hard-linked OCI exports, special files, and concurrent content replacement.
+- Create SQLite state files and benchmark canaries exclusively, stage release archives from the exact inspected bytes, pin registry identity independently of package metadata, and classify adversarial benchmark failures without backtracking regular expressions.
 
 ## 0.11.0 - 2026-08-21
 

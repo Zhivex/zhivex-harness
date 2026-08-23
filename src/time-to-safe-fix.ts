@@ -162,6 +162,49 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
 
 export type TimeToSafeFixDriverResult = z.infer<typeof timeToSafeFixDriverResultSchema>;
 
+const isApprovalDeniedFailure = (message: string) =>
+  (message.includes("approval") && message.includes("denied")) ||
+  message.includes("unsupported or attack-bearing");
+
+const isAsciiWordCharacter = (code: number) =>
+  (code >= 48 && code <= 57) ||
+  (code >= 97 && code <= 122) ||
+  code === 95;
+
+const isToolExecutionFailure = (message: string) => {
+  let sawToolOnLine = false;
+  let previousToken: "terminal" | "tool" | undefined;
+  for (let index = 0; index < message.length;) {
+    const code = message.charCodeAt(index);
+    if (code === 10 || code === 13) {
+      sawToolOnLine = false;
+      previousToken = undefined;
+      index += 1;
+      continue;
+    }
+    if (!isAsciiWordCharacter(code)) {
+      index += 1;
+      continue;
+    }
+    const start = index;
+    while (index < message.length && isAsciiWordCharacter(message.charCodeAt(index))) {
+      index += 1;
+    }
+    const length = index - start;
+    const isTerminal = length === 8 && message.startsWith("terminal", start);
+    const isTool = length === 4 && message.startsWith("tool", start);
+    const isExecution = length === 9 && message.startsWith("execution", start);
+    const isFailed = length === 6 && message.startsWith("failed", start);
+    if ((isTool && previousToken === "terminal") || (isExecution && previousToken === "tool")) {
+      return true;
+    }
+    if (isFailed && sawToolOnLine) return true;
+    if (isTool) sawToolOnLine = true;
+    previousToken = isTerminal ? "terminal" : isTool ? "tool" : undefined;
+  }
+  return false;
+};
+
 export const classifyTimeToSafeFixFailure = (
   error: unknown,
   options: {
@@ -186,11 +229,11 @@ export const classifyTimeToSafeFixFailure = (
     code = "PATCH_DRIFT";
   } else if (/verifier failed|verifier exited|exit code/.test(normalized)) {
     code = "VERIFIER_FAILED";
-  } else if (/approval.*denied|denied.*approval|unsupported or attack-bearing/.test(normalized)) {
+  } else if (isApprovalDeniedFailure(normalized)) {
     code = "APPROVAL_DENIED";
   } else if (/import/.test(normalized)) {
     code = "PATCH_IMPORT_FAILED";
-  } else if (/tool(?: ["']?.+["']?)? failed|tool execution|terminal tool/.test(normalized)) {
+  } else if (isToolExecutionFailure(normalized)) {
     code = "TOOL_EXECUTION_FAILED";
   } else if (/provider|model|generation|response/.test(normalized)) {
     code = "MODEL_EXECUTION_FAILED";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, link, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -7,6 +7,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 import { createEditProposal } from "../src/edit-contracts.js";
+import { readRegularFileNoFollow } from "../src/file-security.js";
 import { createHarness, runHarness } from "../src/harness.js";
 import { Workspace } from "../src/workspace.js";
 
@@ -32,6 +33,36 @@ afterEach(async () => {
 });
 
 describe("security regressions", () => {
+  test("binds stable reads to a regular non-symlink file descriptor", async () => {
+    const root = await temporaryDirectory("zhivex-harness-stable-read-");
+    const regularPath = path.join(root, "artifact.bin");
+    const linkedPath = path.join(root, "artifact-link.bin");
+    await writeFile(regularPath, "trusted bytes\n", "utf8");
+    await symlink(regularPath, linkedPath);
+
+    const regular = await readRegularFileNoFollow(regularPath, {
+      label: "Artifact",
+      maxBytes: 1024
+    });
+    expect(regular.contents.toString("utf8")).toBe("trusted bytes\n");
+    await expect(readRegularFileNoFollow(regularPath, {
+      label: "Artifact",
+      maxBytes: 4
+    })).rejects.toThrow("4-byte limit");
+    await expect(readRegularFileNoFollow(linkedPath, {
+      label: "Artifact",
+      maxBytes: 1024
+    })).rejects.toThrow("symbolic link");
+
+    const hardLinkedPath = path.join(root, "artifact-hard-link.bin");
+    await link(regularPath, hardLinkedPath);
+    await expect(readRegularFileNoFollow(regularPath, {
+      label: "Artifact",
+      maxBytes: 1024,
+      requireSingleLink: true
+    })).rejects.toThrow("regular file");
+  });
+
   test("rejects unsafe durable-state targets before a run can write to them", async () => {
     const { root } = await workspaceFixture();
     const outside = await temporaryDirectory("zhivex-harness-state-outside-");

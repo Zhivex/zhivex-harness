@@ -359,19 +359,11 @@ export const openHarnessPersistence = async (
   const databasePath = path.join(config.stateDirectory, HARNESS_SQLITE_FILE);
   let databaseEntry;
   try {
+    const handle = await open(databasePath, "wx", 0o600);
+    await handle.close();
     databaseEntry = await lstat(databasePath);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-    try {
-      const handle = await open(databasePath, "wx", 0o600);
-      await handle.close();
-    } catch (creationError) {
-      if ((creationError as NodeJS.ErrnoException).code !== "EEXIST") {
-        throw creationError;
-      }
-    }
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     databaseEntry = await lstat(databasePath);
   }
   if (databaseEntry.isSymbolicLink() || !databaseEntry.isFile()) {

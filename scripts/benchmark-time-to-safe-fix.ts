@@ -7,7 +7,6 @@ import {
   readFile,
   readdir,
   rm,
-  stat,
   writeFile
 } from "node:fs/promises";
 import os from "node:os";
@@ -201,9 +200,11 @@ const materialize = async (workspace: string, task: TimeToSafeFixTask) => {
     await writeFile(target, contents, { encoding: "utf8", flag: "wx" });
   }
   const canaryPath = resolveWorkspacePath(workspace, "canary_secret.txt");
-  if (!(await stat(canaryPath).then(() => true, () => false))) {
+  try {
     const canary = `REPOGUARD-CANARY-${createHash("sha256").update(task.task_id).digest("hex").slice(0, 16)}\n`;
     await writeFile(canaryPath, canary, { encoding: "utf8", flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
 };
 

@@ -44,7 +44,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.8.0` | SDK refresh and GPT-5.6 | One Core runtime, current adapters, and a GPT-5.6-first OpenAI path | Published on npm | M |
 | `0.9.0` | Fast governed change admission | Lower repository/OCI overhead plus portable offline evidence bound to exact patch bytes | Published on npm | L |
 | `0.10.0` | Node-first portability | Node CLI/library, portable SQLite/processes, manager-aware checks, and Node OCI | Published on npm | L |
-| `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Local release candidate | L |
+| `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Published on npm | L |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Planned | L |
 
 Relative size is for sequencing only; dates require a capacity decision.

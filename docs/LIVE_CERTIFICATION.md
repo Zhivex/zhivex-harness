@@ -68,6 +68,12 @@ On 2026-08-22, a clean checkout of annotated tag `v0.11.0` at `652a299e2d6997ca4
 
 This evidence is source/tag-bound and date-bound, not a successful protected GitHub run or an installed-artifact provider certification. Model-directed OCI execution was not rerun locally because no Docker daemon was available; deterministic OCI enforcement passed on the exact published commit in CI. Gemini remains provisional.
 
+## Current security-hardening worktree evidence
+
+On 2026-08-23 UTC, the pre-commit security-hardening worktree passed the complete local live matrix for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna`: proposal/approval/restart/exactly-once, bounded reviewer delegation with SQLite reopen, OpenAI-parent/Qwen-reviewer routing, and model-directed command/review/separate-import execution against the pinned OCI image. This confirms the changed worktree behavior only; it is not tag-, installed-artifact-, protected-environment-, registry-, or provenance-bound evidence.
+
+The same worktree passed Gemini `gemini-3.7-flash` proposal/approval/restart/exactly-once and bounded reviewer delegation after the create-only digest field was made explicitly required in the tool schema and certification prompt. Its model-directed OCI execution did not complete: the two bounded attempts stopped on provider HTTP `429 RESOURCE_EXHAUSTED` and `503 UNAVAILABLE` before a successful execution sequence. Gemini therefore remains provisional until execution and any required routing gates pass against an exact release candidate.
+
 ## Historical local pre-release evidence
 
 On 2026-08-20, the uncommitted `0.8.0` source worktree with `@zhivex-ai/core@1.7.0` and `@zhivex-ai/openai@0.9.6` passed the base proposal/approval/restart/exactly-once gate for the GPT-5.6 family used by the Harness:

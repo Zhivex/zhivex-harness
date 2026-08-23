@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -423,6 +423,32 @@ describe("enforced OCI execution environment", () => {
     expect(runtime.requests).toHaveLength(1);
     expect(runtime.requests[0]?.command).toEqual(["npm", "--ignore-scripts", "run", "test"]);
     await session.release?.({ status: "completed" });
+  });
+
+  test("removes a cleanup directory staged by an interrupted prior run", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
+    const environment = await createHarnessOciExecutionEnvironment({
+      config: config.execution,
+      workspace,
+      stateDirectory: config.stateDirectory,
+      runtime
+    });
+    const session = await environment.acquire({ runId: "interrupted-cleanup-run" });
+    await session.release?.({ status: "completed" });
+
+    const environmentsRoot = path.join(config.stateDirectory, "environments");
+    const [artifactName] = await readdir(environmentsRoot);
+    expect(artifactName).toMatch(/^[a-f0-9]{24}$/);
+    const stagedName = `.cleanup-${artifactName}-00000000-0000-4000-8000-000000000000`;
+    const stagedDirectory = path.join(environmentsRoot, stagedName);
+    await rename(path.join(environmentsRoot, artifactName!), stagedDirectory);
+
+    const cleanup = await cleanupHarnessExecutionArtifacts(config.stateDirectory, Date.now() + 1_000);
+    expect(cleanup).toEqual({ scanned: 1, deleted: 1, skipped: 0 });
+    await expect(stat(stagedDirectory)).rejects.toThrow();
   });
 
   test("requires one approval for execution and keeps approved command changes off the host", async () => {
