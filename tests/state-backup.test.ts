@@ -254,6 +254,13 @@ describe("WAL-safe logical state backup", () => {
 
     expect(await readFile(backupPath, "utf8")).toBe("existing backup\n");
     expect((await readdir(root)).sort()).toEqual(entriesBefore);
+
+    const realParent = path.join(root, "backup-parent");
+    const linkedParent = path.join(root, "linked-backup-parent");
+    await mkdir(realParent);
+    await symlink(realParent, linkedParent);
+    await expect(exportHarnessStateBackup(source, path.join(linkedParent, "backup.json")))
+      .rejects.toThrow("real non-symlink directory");
   });
 
   test("allows exactly one concurrent no-clobber state export", async () => {

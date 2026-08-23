@@ -377,9 +377,17 @@ export const createHarnessStateBackup = async (config: HarnessConfig): Promise<H
 const writePrivateBackup = async (target: string, contents: string) => {
   const requested = path.resolve(target);
   const parent = path.dirname(requested);
-  const parentEntry = await lstat(parent);
-  if (parentEntry.isSymbolicLink() || !parentEntry.isDirectory()) {
-    throw new HarnessWorkspaceError(`Backup parent must be a real non-symlink directory: ${parent}.`);
+  let parentHandle;
+  try {
+    parentHandle = await open(parent, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    if (!(await parentHandle.stat()).isDirectory()) {
+      throw new Error("Backup parent is not a directory.");
+    }
+  } catch (error) {
+    await parentHandle?.close();
+    throw new HarnessWorkspaceError(`Backup parent must be a real non-symlink directory: ${parent}.`, {
+      cause: error
+    });
   }
   const staged = path.join(parent, `.zhivex-state-backup-${randomUUID()}.tmp`);
   let handle;
@@ -403,18 +411,14 @@ const writePrivateBackup = async (target: string, contents: string) => {
     published = true;
     await unlink(staged);
     stagedExists = false;
-    const parentHandle = await open(parent, fsConstants.O_RDONLY);
-    try {
-      await parentHandle.sync();
-    } finally {
-      await parentHandle.close();
-    }
+    await parentHandle.sync();
   } catch (error) {
     if (published) await unlink(requested).catch(() => undefined);
     throw error;
   } finally {
     await handle?.close();
     if (stagedExists) await unlink(staged).catch(() => undefined);
+    await parentHandle.close();
   }
 };
 

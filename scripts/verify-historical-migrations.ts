@@ -58,6 +58,23 @@ const fixtureRoot = path.resolve(import.meta.dirname, "..", "fixtures", "migrati
 const loadFixture = async (version: keyof typeof expected): Promise<HistoricalFixture> =>
   JSON.parse(await readFile(path.join(fixtureRoot, `${version}.json`), "utf8")) as HistoricalFixture;
 
+const trustedMigrationInput = (
+  version: keyof typeof expected,
+  workspace: string,
+  stateDirectory: string
+): HarnessConfigInput => ({
+  schemaVersion: expected[version].config,
+  provider: "openai",
+  model: "published-fixture-model",
+  workspace,
+  stateDirectory,
+  storeBackend: "sqlite",
+  tenantId: "migration-tenant",
+  namespace: "published-fixture",
+  projectContext: false,
+  executionBackend: "none"
+});
+
 const verifyFixtureShape = (fixture: HistoricalFixture, version: keyof typeof expected) => {
   assert.equal(fixture.schemaVersion, 1);
   assert.equal(fixture.kind, "published-migration-fixture");
@@ -68,6 +85,11 @@ const verifyFixtureShape = (fixture: HistoricalFixture, version: keyof typeof ex
   assert.equal(fixture.schemas.config, expected[version].config);
   assert.equal(fixture.schemas.operations, 1);
   assert.equal(fixture.schemas.sessions, 1);
+  assert.deepEqual(fixture.configInput, trustedMigrationInput(
+    version,
+    "/",
+    "<state-directory>"
+  ));
   assert.match(fixture.provenance.tarball, new RegExp(`harness-${version.replaceAll(".", "\\.")}\\.tgz$`));
   assert.equal(fixture.provenance.generatedBy, "scripts/generate-historical-migration-fixtures.ts");
 
@@ -102,7 +124,10 @@ const verifyFixtureShape = (fixture: HistoricalFixture, version: keyof typeof ex
   assert(!JSON.stringify(fixture.sessions).includes("abcdefgh12345678"));
 };
 
-const verifyHistoricalDatabase = async (fixture: HistoricalFixture) => {
+const verifyHistoricalDatabase = async (
+  fixture: HistoricalFixture,
+  version: keyof typeof expected
+) => {
   const source = path.join(fixtureRoot, `${fixture.provenance.version}.sqlite`);
   const bytes = await readFile(source);
   const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -134,11 +159,7 @@ const verifyHistoricalDatabase = async (fixture: HistoricalFixture) => {
     assert.deepEqual(tableDefinitions, fixture.sqliteTables);
     raw.close();
 
-    const migrated = migrateHarnessConfigInput({
-      ...fixture.configInput,
-      workspace,
-      stateDirectory
-    });
+    const migrated = migrateHarnessConfigInput(trustedMigrationInput(version, workspace, stateDirectory));
     const config = resolveHarnessConfig(migrated.config);
     const persistence = await openHarnessPersistence(config, { migrateLegacyFileStore: false });
     const page = await persistence.store.list?.({ limit: 100 }, config.scope);
@@ -204,18 +225,17 @@ const verifyHistoricalDatabase = async (fixture: HistoricalFixture) => {
   }
 };
 
-const verifyCurrentMigration = async (fixture: HistoricalFixture) => {
+const verifyCurrentMigration = async (
+  fixture: HistoricalFixture,
+  version: keyof typeof expected
+) => {
   const root = await mkdtemp(path.join(os.tmpdir(), `zhivex-migration-check-${fixture.provenance.version}-`));
   try {
     const workspace = path.join(root, "workspace");
     const stateDirectory = path.join(root, "state");
     await mkdir(workspace);
     await mkdir(stateDirectory);
-    const input: HarnessConfigInput = {
-      ...fixture.configInput,
-      workspace,
-      stateDirectory
-    };
+    const input = trustedMigrationInput(version, workspace, stateDirectory);
     const migrated = migrateHarnessConfigInput(input);
     assert.equal(migrated.fromVersion, fixture.schemas.config);
     assert.equal(migrated.toVersion, 5);
@@ -303,8 +323,8 @@ export const verifyHistoricalMigrations = async () => {
   for (const version of Object.keys(expected) as Array<keyof typeof expected>) {
     const fixture = await loadFixture(version);
     verifyFixtureShape(fixture, version);
-    await verifyHistoricalDatabase(fixture);
-    await verifyCurrentMigration(fixture);
+    await verifyHistoricalDatabase(fixture, version);
+    await verifyCurrentMigration(fixture, version);
   }
 };
 
