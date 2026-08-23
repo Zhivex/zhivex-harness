@@ -162,6 +162,16 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
 
 export type TimeToSafeFixDriverResult = z.infer<typeof timeToSafeFixDriverResultSchema>;
 
+const isApprovalDeniedFailure = (message: string) =>
+  (message.includes("approval") && message.includes("denied")) ||
+  message.includes("unsupported or attack-bearing");
+
+const isToolExecutionFailure = (message: string) => {
+  if (message.includes("tool execution") || message.includes("terminal tool")) return true;
+  const toolIndex = message.indexOf("tool");
+  return toolIndex !== -1 && message.indexOf(" failed", toolIndex + "tool".length) !== -1;
+};
+
 export const classifyTimeToSafeFixFailure = (
   error: unknown,
   options: {
@@ -186,11 +196,11 @@ export const classifyTimeToSafeFixFailure = (
     code = "PATCH_DRIFT";
   } else if (/verifier failed|verifier exited|exit code/.test(normalized)) {
     code = "VERIFIER_FAILED";
-  } else if (/approval.*denied|denied.*approval|unsupported or attack-bearing/.test(normalized)) {
+  } else if (isApprovalDeniedFailure(normalized)) {
     code = "APPROVAL_DENIED";
   } else if (/import/.test(normalized)) {
     code = "PATCH_IMPORT_FAILED";
-  } else if (/tool(?: ["']?.+["']?)? failed|tool execution|terminal tool/.test(normalized)) {
+  } else if (isToolExecutionFailure(normalized)) {
     code = "TOOL_EXECUTION_FAILED";
   } else if (/provider|model|generation|response/.test(normalized)) {
     code = "MODEL_EXECUTION_FAILED";

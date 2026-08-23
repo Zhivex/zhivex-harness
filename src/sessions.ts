@@ -276,8 +276,6 @@ const stableKey = (kind: string, value: string) =>
 const sessionId = () => `ses_${randomUUID()}`;
 const turnId = () => `turn_${randomUUID()}`;
 
-const isMissing = (error: unknown) => (error as NodeJS.ErrnoException).code === "ENOENT";
-
 const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) => {
   const requestedStateDirectory = path.resolve(stateDirectory);
   await validateStateDirectory(workspace, requestedStateDirectory);
@@ -292,19 +290,11 @@ const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) 
 
   let databaseEntry;
   try {
+    const handle = await open(databasePath, "wx", 0o600);
+    await handle.close();
     databaseEntry = await lstat(databasePath);
   } catch (error) {
-    if (!isMissing(error)) {
-      throw error;
-    }
-    try {
-      const handle = await open(databasePath, "wx", 0o600);
-      await handle.close();
-    } catch (creationError) {
-      if ((creationError as NodeJS.ErrnoException).code !== "EEXIST") {
-        throw creationError;
-      }
-    }
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     databaseEntry = await lstat(databasePath);
   }
   if (databaseEntry.isSymbolicLink() || !databaseEntry.isFile()) {

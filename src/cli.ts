@@ -3,7 +3,7 @@
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
 import { constants as fsConstants, realpathSync } from "node:fs";
-import { access, lstat, readFile, stat } from "node:fs/promises";
+import { access, lstat, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -87,6 +87,12 @@ import {
   verifyChangeEnvelope,
   type ChangeEnvelopePreconditions
 } from "./change-envelope.js";
+import {
+  FileChangedWhileReadingError,
+  FileSizeLimitError,
+  readRegularFileNoFollow,
+  UnsafeFileTypeError
+} from "./file-security.js";
 import { runPortableProcess } from "./process-runtime.js";
 import {
   DEFAULT_HARNESS_CONTEXT_MANIFEST,
@@ -1947,14 +1953,11 @@ const inspectGit = async (workspace: string): Promise<DoctorCheck> => {
 const inspectScripts = async (workspace: string, allowedChecks: readonly string[]): Promise<DoctorCheck> => {
   const packagePath = path.join(workspace, "package.json");
   try {
-    const packageStat = await stat(packagePath);
-    if (!packageStat.isFile() || packageStat.size > 1024 * 1024) {
-      return diagnostic("scripts", "warn", "package.json is not a readable regular file.", {
-        packageJson: false,
-        available: []
-      });
-    }
-    const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as {
+    const packageFile = await readRegularFileNoFollow(packagePath, {
+      label: "package.json",
+      maxBytes: 1024 * 1024
+    });
+    const packageJson = JSON.parse(packageFile.contents.toString("utf8")) as {
       packageManager?: unknown;
       scripts?: unknown;
     };
@@ -2688,27 +2691,21 @@ const MAX_CHANGE_ARTIFACT_BYTES = 64 * 1024 * 1024;
 const readStableCliArtifact = async (filePath: string, maxBytes: number) => {
   const absolute = path.resolve(process.cwd(), filePath);
   try {
-    const before = await lstat(absolute);
-    if (before.isSymbolicLink() || !before.isFile()) {
-      throw new CliUsageError(`Change artifact must be a regular non-symlink file: ${filePath}`);
-    }
-    if (before.size > maxBytes) {
-      throw new CliUsageError(`Change artifact exceeds the ${maxBytes}-byte limit: ${filePath}`);
-    }
-    const contents = await readFile(absolute);
-    const after = await lstat(absolute);
-    if (
-      before.dev !== after.dev ||
-      before.ino !== after.ino ||
-      before.size !== after.size ||
-      before.mtimeMs !== after.mtimeMs ||
-      before.ctimeMs !== after.ctimeMs
-    ) {
-      throw new CliUsageError(`Change artifact changed while it was being read: ${filePath}`);
-    }
-    return contents;
+    return (await readRegularFileNoFollow(absolute, {
+      label: `Change artifact ${filePath}`,
+      maxBytes
+    })).contents;
   } catch (error) {
     if (error instanceof CliUsageError) throw error;
+    if (error instanceof UnsafeFileTypeError) {
+      throw new CliUsageError(`Change artifact must be a regular non-symlink file: ${filePath}`);
+    }
+    if (error instanceof FileSizeLimitError) {
+      throw new CliUsageError(`Change artifact exceeds the ${maxBytes}-byte limit: ${filePath}`);
+    }
+    if (error instanceof FileChangedWhileReadingError) {
+      throw new CliUsageError(`Change artifact changed while it was being read: ${filePath}`);
+    }
     const code = error && typeof error === "object" && "code" in error
       ? (error as NodeJS.ErrnoException).code
       : undefined;

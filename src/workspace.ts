@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Stats } from "node:fs";
-import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
+import { link, lstat, mkdir, open, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -20,6 +20,11 @@ import {
   type RestoreFileInput,
   type RestoreFileResult
 } from "./edit-contracts.js";
+import {
+  readRegularFileNoFollow,
+  statRegularFileNoFollow,
+  UnsafeFileTypeError
+} from "./file-security.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { runPortableProcess } from "./process-runtime.js";
 
@@ -340,13 +345,18 @@ export class Workspace {
     return candidate;
   }
 
-  private async safePath(relativePath: string, options: { requireFile?: boolean; allowMissing?: boolean } = {}) {
+  private async safePath(
+    relativePath: string,
+    options: { requireFile?: boolean; allowMissing?: boolean; skipLeafValidation?: boolean } = {}
+  ) {
     const candidate = this.lexicalPath(relativePath);
     if (candidate === this.root && options.requireFile) throw new Error("The workspace root is not a regular file.");
     const segments = path.relative(this.root, candidate).split(path.sep).filter(Boolean);
     let current = this.root;
     for (let index = 0; index < segments.length; index += 1) {
       current = path.join(current, segments[index] as string);
+      const leaf = index === segments.length - 1;
+      if (leaf && options.skipLeafValidation) continue;
       let entry;
       try {
         entry = await lstat(current);
@@ -359,7 +369,6 @@ export class Workspace {
       if (entry.isSymbolicLink()) {
         throw new Error(`The path resolves outside the workspace or through a symbolic link: ${relativePath}`);
       }
-      const leaf = index === segments.length - 1;
       if (!leaf && !entry.isDirectory()) throw new Error(`A path ancestor is not a directory: ${relativePath}`);
       if (leaf && options.requireFile && !entry.isFile()) throw new Error("The path does not point to a regular file.");
     }
@@ -368,21 +377,19 @@ export class Workspace {
 
   private async readStableFile(relativePath: string, allowBinary = true): Promise<StableFile> {
     this.indexMetrics.stableFileReads += 1;
-    const safe = await this.safePath(relativePath, { requireFile: true });
-    const before = await lstat(safe.path);
-    if (before.size > MAX_FILE_BYTES) throw new Error(`The file exceeds the ${MAX_FILE_BYTES}-byte limit.`);
-    const contents = await readFile(safe.path);
-    const after = await lstat(safe.path);
-    if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) {
-      throw new Error(`The file changed while it was being read: ${relativePath}`);
-    }
+    const safe = await this.safePath(relativePath, { skipLeafValidation: true });
+    const file = await readRegularFileNoFollow(safe.path, {
+      label: "The file",
+      maxBytes: MAX_FILE_BYTES
+    });
+    const { contents } = file;
     if (!allowBinary && contents.includes(0)) throw new Error("The file appears to be binary and cannot be read as text.");
     return {
       path: wirePath(path.relative(this.root, safe.path)),
       absolutePath: safe.path,
       contents,
       digest: digestBytes(contents),
-      mode: before.mode & 0o777
+      mode: file.stat.mode & 0o777
     };
   }
 
@@ -419,22 +426,20 @@ export class Workspace {
     for (const filename of IGNORE_FILES) {
       try {
         const ignorePath = path.join(directory, filename);
-        const before = await lstat(ignorePath);
-        if (before.isSymbolicLink() || !before.isFile()) continue;
-        if (before.size <= MAX_FILE_BYTES) {
-          const contents = await readFile(ignorePath);
-          const after = await lstat(ignorePath);
-          if (after.isSymbolicLink() || !after.isFile() || !this.sameFingerprint(after, this.fingerprint("", "ignore-file", before))) {
-            throw new Error(`The ignore file changed while the workspace was being indexed: ${wirePath(path.relative(this.root, ignorePath))}`);
-          }
-          const digest = digestBytes(contents);
-          ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", after, digest));
-          rules.push(...parseIgnoreRules(contents.toString("utf8"), base));
-        } else {
-          ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", before));
+        const inspected = await statRegularFileNoFollow(ignorePath, { label: "The ignore file" });
+        if (inspected.size > MAX_FILE_BYTES) {
+          ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", inspected));
+          continue;
         }
+        const file = await readRegularFileNoFollow(ignorePath, {
+          label: "The ignore file",
+          maxBytes: MAX_FILE_BYTES
+        });
+        const digest = digestBytes(file.contents);
+        ignoreFiles.push(this.fingerprint(wirePath(path.relative(this.root, ignorePath)), "ignore-file", file.stat, digest));
+        rules.push(...parseIgnoreRules(file.contents.toString("utf8"), base));
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT" && !(error instanceof UnsafeFileTypeError)) throw error;
       }
     }
     return rules;
@@ -474,13 +479,17 @@ export class Workspace {
       }
       for (const fingerprint of index.ignoreFiles) {
         const absolute = path.join(this.root, fingerprint.path);
-        const before = await lstat(absolute);
-        if (before.isSymbolicLink() || !before.isFile() || !this.sameFingerprint(before, fingerprint)) return false;
         if (fingerprint.digest) {
-          const contents = await readFile(absolute);
-          const after = await lstat(absolute);
-          if (after.isSymbolicLink() || !after.isFile() || !this.sameFingerprint(after, fingerprint) ||
-            digestBytes(contents) !== fingerprint.digest) return false;
+          const file = await readRegularFileNoFollow(absolute, {
+            label: "The ignore file",
+            maxBytes: MAX_FILE_BYTES
+          });
+          if (!this.sameFingerprint(file.stat, fingerprint) || digestBytes(file.contents) !== fingerprint.digest) {
+            return false;
+          }
+        } else {
+          const inspected = await statRegularFileNoFollow(absolute, { label: "The ignore file" });
+          if (!this.sameFingerprint(inspected, fingerprint)) return false;
         }
       }
       return true;
@@ -1114,16 +1123,7 @@ export class Workspace {
   }
 
   private async readInternalRegularFile(target: string, label: string, maxBytes: number) {
-    const before = await lstat(target);
-    if (before.isSymbolicLink() || !before.isFile()) throw new Error(`${label} must be a regular non-symlink file.`);
-    if (before.size > maxBytes) throw new Error(`${label} exceeds its size limit.`);
-    const contents = await readFile(target);
-    const after = await lstat(target);
-    if (after.isSymbolicLink() || !after.isFile() || before.dev !== after.dev || before.ino !== after.ino ||
-      before.size !== after.size || before.mtimeMs !== after.mtimeMs) {
-      throw new Error(`${label} changed while it was being read.`);
-    }
-    return { contents, stat: before };
+    return await readRegularFileNoFollow(target, { label, maxBytes });
   }
 
   async quarantineFile(input: QuarantineFileInput): Promise<QuarantineFileResult> {
@@ -1135,7 +1135,7 @@ export class Workspace {
     const dataPath = path.join(directory, `${quarantineId}.data`);
     if ((await this.readStableFile(parsed.path)).digest !== parsed.expectedDigest) throw new Error(`Stale quarantine rejected for ${parsed.path}.`);
     await link(source.absolutePath, dataPath);
-    if (digestBytes(await readFile(dataPath)) !== source.digest) {
+    if (digestBytes((await this.readInternalRegularFile(dataPath, "Quarantine payload", MAX_FILE_BYTES)).contents) !== source.digest) {
       await unlink(dataPath).catch(() => {});
       throw new Error(`Quarantine payload changed before commit: ${parsed.path}.`);
     }
@@ -1197,9 +1197,9 @@ export class Workspace {
       throw new Error("Quarantine payload changed before restore commit.");
     }
     await link(dataPath, destination.path);
-    const linkedDestination = await lstat(destination.path);
-    if (linkedDestination.isSymbolicLink() || !linkedDestination.isFile() || linkedDestination.dev !== dataFile.stat.dev ||
-      linkedDestination.ino !== dataFile.stat.ino || digestBytes(await readFile(destination.path)) !== digest) {
+    const linkedDestination = await this.readInternalRegularFile(destination.path, "Restore destination", MAX_FILE_BYTES);
+    if (linkedDestination.stat.dev !== dataFile.stat.dev || linkedDestination.stat.ino !== dataFile.stat.ino ||
+      digestBytes(linkedDestination.contents) !== digest) {
       await unlink(destination.path).catch(() => {});
       throw new Error("Restore destination did not match the quarantined payload.");
     }

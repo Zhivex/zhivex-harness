@@ -119,6 +119,29 @@ describe("time-to-safe-fix benchmark", () => {
     });
   });
 
+  test("classifies approval and tool failures in linear time on adversarial input", () => {
+    expect(classifyTimeToSafeFixFailure(new Error("Approval was denied."))).toMatchObject({
+      code: "APPROVAL_DENIED"
+    });
+    expect(classifyTimeToSafeFixFailure(new Error('Tool "run_check" failed: exit 1.'))).toMatchObject({
+      code: "TOOL_EXECUTION_FAILED"
+    });
+    expect(classifyTimeToSafeFixFailure(new Error("Tool failed."))).toMatchObject({
+      code: "TOOL_EXECUTION_FAILED"
+    });
+
+    for (const message of [
+      `${"approval".repeat(16_000)}x`,
+      `${'tool "'.repeat(8_000)}x`
+    ]) {
+      const startedAt = performance.now();
+      expect(classifyTimeToSafeFixFailure(new Error(message))).toMatchObject({
+        code: "UNCLASSIFIED_FAILURE"
+      });
+      expect(performance.now() - startedAt).toBeLessThan(250);
+    }
+  });
+
   test("persists an external driver deadline as a retryable timeout", async () => {
     const benchmarkScript = path.resolve(import.meta.dir, "..", "scripts", "benchmark-time-to-safe-fix.ts");
     const execution = await new Promise<{ exitCode: number | null; signal: NodeJS.Signals | null; stdout: string }>(

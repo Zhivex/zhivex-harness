@@ -789,6 +789,12 @@ if (manifest.version.startsWith("0.11.")) {
   if (!roadmap.includes("Status: published on npm as `latest`")) {
     failures.push("ROADMAP.md must identify 0.11.0 as the published latest release.");
   }
+  if (
+    roadmap.includes("| `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Local release candidate |") ||
+    readme.includes("the `0.11.0` candidate requires")
+  ) {
+    failures.push("0.11.x documentation still contains stale 0.11.0 candidate status.");
+  }
 }
 
 const providerDescriptorMatches = [...providerConfig.matchAll(

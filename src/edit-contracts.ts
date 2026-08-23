@@ -18,6 +18,10 @@ export const fileDigestSchema = z.string().regex(
 
 export type FileDigest = z.infer<typeof fileDigestSchema>;
 
+const expectedEditDigestSchema = fileDigestSchema.nullable().describe(
+  "Required. Use the inspected sha256 digest for an existing file, or explicit JSON null for a create-only target. Never omit this field."
+);
+
 export const workspaceFilePathSchema = z.string()
   .min(1)
   .max(1024)
@@ -30,7 +34,7 @@ export const workspaceFilePathSchema = z.string()
 
 export const editChangeSchema = z.strictObject({
   path: workspaceFilePathSchema,
-  expectedDigest: fileDigestSchema.nullable(),
+  expectedDigest: expectedEditDigestSchema,
   content: z.string()
 }).superRefine((change, context) => {
   if (Buffer.byteLength(change.content, "utf8") > MAX_EDIT_FILE_BYTES) {
@@ -79,7 +83,7 @@ export const editProposalInputSchema = z.strictObject({
 
 export const editProposalChangeSchema = z.strictObject({
   path: workspaceFilePathSchema,
-  expectedDigest: fileDigestSchema.nullable(),
+  expectedDigest: expectedEditDigestSchema,
   contentDigest: fileDigestSchema,
   bytes: z.number().int().min(0).max(MAX_EDIT_FILE_BYTES)
 });

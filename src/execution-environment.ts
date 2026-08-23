@@ -6,7 +6,6 @@ import {
   copyFile,
   lstat,
   mkdir,
-  readFile,
   readdir,
   realpath,
   rename,
@@ -41,6 +40,7 @@ import {
   type FileDigest,
   type MutationAuditEntry
 } from "./edit-contracts.js";
+import { FileSizeLimitError, readRegularFileNoFollow } from "./file-security.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { Workspace, type CommandResult } from "./workspace.js";
 
@@ -347,7 +347,10 @@ const validateSynchronizedSnapshot = async (
   const seal = createHash("sha256");
   const metadata = createHash("sha256");
   const visit = async (directory: string, relativeDirectory = "") => {
-    for (const name of (await readdir(directory)).sort()) {
+    const children = (await readdir(directory, { withFileTypes: true }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+    for (const child of children) {
+      const name = child.name;
       const relative = relativeDirectory ? `${relativeDirectory}/${name}` : name;
       const absolute = path.join(directory, name);
       if (!isInside(stagedRoot, absolute) || relative.length > 1_024) {
@@ -361,50 +364,53 @@ const validateSynchronizedSnapshot = async (
         await rm(absolute, { recursive: true, force: true });
         continue;
       }
-      const entry = await lstat(absolute);
-      if (entry.isSymbolicLink()) {
+      if (child.isSymbolicLink()) {
         throw new Error(`OCI workspace export contains a symbolic link: ${relative}.`);
       }
-      if (entry.isDirectory()) {
-        updateSnapshotMetadata(metadata, "directory", relative, entry);
-        seal.update(`directory\0${relative}\0${entry.mode & 0o777}\0`);
+      if (child.isDirectory()) {
+        const directoryEntry = await lstat(absolute);
+        if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
+          throw new Error(`OCI workspace export directory changed while it was being validated: ${relative}.`);
+        }
+        updateSnapshotMetadata(metadata, "directory", relative, directoryEntry);
+        seal.update(`directory\0${relative}\0${directoryEntry.mode & 0o777}\0`);
         await visit(absolute, relative);
         continue;
       }
-      if (!entry.isFile() || entry.nlink !== 1) {
+      if (!child.isFile()) {
         throw new Error(`OCI workspace export contains a special or linked file: ${relative}.`);
       }
-      const contents = await readFile(absolute);
-      const after = await lstat(absolute);
-      if (
-        after.isSymbolicLink() ||
-        !after.isFile() ||
-        after.nlink !== 1 ||
-        entry.dev !== after.dev ||
-        entry.ino !== after.ino ||
-        entry.size !== after.size ||
-        entry.mtimeMs !== after.mtimeMs ||
-        entry.ctimeMs !== after.ctimeMs ||
-        (entry.mode & 0o777) !== (after.mode & 0o777)
-      ) {
-        throw new Error(`OCI workspace export changed while it was being validated: ${relative}.`);
+      let file;
+      try {
+        file = await readRegularFileNoFollow(absolute, {
+          label: `OCI workspace export file ${relative}`,
+          maxBytes: maxWorkspaceBytes - totalBytes,
+          requireSingleLink: true
+        });
+      } catch (error) {
+        if (error instanceof FileSizeLimitError) {
+          throw new Error(`OCI workspace export exceeds the ${maxWorkspaceBytes}-byte workspace limit.`);
+        }
+        throw error;
       }
+      const contents = file.contents;
+      const entry = file.stat;
       totalBytes += entry.size;
       if (totalBytes > maxWorkspaceBytes) {
         throw new Error(`OCI workspace export exceeds the ${maxWorkspaceBytes}-byte workspace limit.`);
       }
       const contentDigest = digest(contents);
-      updateSnapshotMetadata(metadata, "file", relative, after);
+      updateSnapshotMetadata(metadata, "file", relative, entry);
       seal.update(`file\0${relative}\0${entry.mode & 0o777}\0${entry.size}\0${contentDigest}\0`);
       if (entry.size > maxFileWriteBytes) {
         const previous = path.join(previousRoot, ...relative.split("/"));
         let unchanged = false;
         try {
-          const previousEntry = await lstat(previous);
-          unchanged = previousEntry.isFile() &&
-            !previousEntry.isSymbolicLink() &&
-            previousEntry.size === entry.size &&
-            digest(await readFile(previous)) === contentDigest;
+          const previousFile = await readRegularFileNoFollow(previous, {
+            label: `Previous OCI workspace file ${relative}`,
+            maxBytes: entry.size
+          });
+          unchanged = previousFile.stat.size === entry.size && digest(previousFile.contents) === contentDigest;
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         }
@@ -1176,26 +1182,17 @@ const readSnapshotFile = async (
   if (!isInside(workspace.root, absolute)) {
     throw new Error(`Snapshot file escaped its workspace: ${expected.path}.`);
   }
-  const before = await lstat(absolute);
-  if (before.isSymbolicLink() || !before.isFile()) {
-    throw new Error(`Snapshot source is not a regular file: ${expected.path}.`);
-  }
-  const contents = await readFile(absolute);
-  const after = await lstat(absolute);
-  if (
-    before.dev !== after.dev ||
-    before.ino !== after.ino ||
-    before.size !== after.size ||
-    before.mtimeMs !== after.mtimeMs ||
-    (before.mode & 0o777) !== (after.mode & 0o777)
-  ) {
-    throw new Error(`Snapshot source changed while reading: ${expected.path}.`);
-  }
+  const file = await readRegularFileNoFollow(absolute, {
+    label: `Snapshot source ${expected.path}`,
+    maxBytes: expected.bytes
+  });
+  const { contents } = file;
+  const entry = file.stat;
   const actualDigest = digest(contents);
   if (
     actualDigest !== expected.digest ||
     contents.byteLength !== expected.bytes ||
-    (before.mode & 0o777) !== expected.mode
+    (entry.mode & 0o777) !== expected.mode
   ) {
     throw new Error(`Snapshot source changed after inventory: ${expected.path}.`);
   }
@@ -1624,9 +1621,11 @@ export const createHarnessOciExecutionEnvironment = async (
       const snapshotRoot = path.join(directory, "workspace");
       let metadata: EnvironmentMetadata;
       try {
-        const entry = await lstat(metadataPath);
-        if (entry.isSymbolicLink() || !entry.isFile()) throw new Error("Execution metadata must be a regular file.");
-        metadata = JSON.parse(await readFile(metadataPath, "utf8")) as EnvironmentMetadata;
+        const metadataFile = await readRegularFileNoFollow(metadataPath, {
+          label: "Execution metadata",
+          maxBytes: 1024 * 1024
+        });
+        metadata = JSON.parse(metadataFile.contents.toString("utf8")) as EnvironmentMetadata;
         if (
           metadata.schemaVersion !== HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION ||
           metadata.runId !== request.runId ||
@@ -1891,7 +1890,11 @@ export const createHarnessOciExecutionEnvironment = async (
         async runCheck(check, expectedScript, allowedChecks, context) {
           let manifestDocument: { packageManager?: unknown; scripts?: unknown };
           try {
-            manifestDocument = JSON.parse(await readFile(path.join(snapshotRoot, "package.json"), "utf8"));
+            const manifestFile = await readRegularFileNoFollow(path.join(snapshotRoot, "package.json"), {
+              label: "Snapshot package.json",
+              maxBytes: 1024 * 1024
+            });
+            manifestDocument = JSON.parse(manifestFile.contents.toString("utf8"));
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code === "ENOENT") {
               throw new Error("The environment snapshot does not contain package.json.");
@@ -1971,23 +1974,53 @@ export const cleanupHarnessExecutionArtifacts = async (
     }
     result.scanned += 1;
     const directory = path.join(root, entry.name);
-    const resolved = await realpath(directory);
-    if (!isInside(root, resolved)) {
-      result.skipped += 1;
-      continue;
-    }
     try {
+      const resolved = await realpath(directory);
+      if (!isInside(root, resolved)) throw new Error("unsafe execution artifact directory");
+      const directoryEntry = await lstat(directory);
+      if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
+        throw new Error("unsafe execution artifact directory");
+      }
       const metadataPath = path.join(directory, "environment.json");
-      const metadataEntry = await lstat(metadataPath);
-      if (metadataEntry.isSymbolicLink() || !metadataEntry.isFile()) throw new Error("unsafe metadata");
-      const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as EnvironmentMetadata;
+      const metadataFile = await readRegularFileNoFollow(metadataPath, {
+        label: "Execution cleanup metadata",
+        maxBytes: 1024 * 1024
+      });
+      const metadata = JSON.parse(metadataFile.contents.toString("utf8")) as EnvironmentMetadata;
       const releasedAt = metadata.releasedAt ? Date.parse(metadata.releasedAt) : Number.NaN;
       if (!metadata.status || !TERMINAL_STATUSES.has(metadata.status) || !Number.isFinite(releasedAt) || releasedAt >= before) {
         result.skipped += 1;
         continue;
       }
-      await rm(directory, { recursive: true, force: true });
-      result.deleted += 1;
+
+      const stagedDirectory = path.join(root, `.cleanup-${entry.name}-${randomUUID()}`);
+      let staged = false;
+      try {
+        await rename(directory, stagedDirectory);
+        staged = true;
+        const movedEntry = await lstat(stagedDirectory);
+        if (
+          movedEntry.isSymbolicLink() ||
+          !movedEntry.isDirectory() ||
+          movedEntry.dev !== directoryEntry.dev ||
+          movedEntry.ino !== directoryEntry.ino
+        ) {
+          throw new Error("execution artifact directory changed before cleanup");
+        }
+        const recheckedMetadata = await readRegularFileNoFollow(
+          path.join(stagedDirectory, "environment.json"),
+          { label: "Execution cleanup metadata", maxBytes: 1024 * 1024 }
+        );
+        if (!recheckedMetadata.contents.equals(metadataFile.contents)) {
+          throw new Error("execution artifact metadata changed before cleanup");
+        }
+        await rm(stagedDirectory, { recursive: true, force: true });
+        staged = false;
+        result.deleted += 1;
+      } catch (error) {
+        if (staged) await rename(stagedDirectory, directory).catch(() => undefined);
+        throw error;
+      }
     } catch {
       result.skipped += 1;
     }

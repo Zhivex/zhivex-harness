@@ -18,6 +18,8 @@ const OPT_IN_VARIABLE = "ZHIVEX_HARNESS_LIVE";
 const PROVIDERS_VARIABLE = "ZHIVEX_HARNESS_LIVE_PROVIDERS";
 const CHILD_MARKER = "ZHIVEX_HARNESS_LIVE_CHILD";
 const PHASE_TIMEOUT_MS = 180_000;
+const MAX_TRANSIENT_ATTEMPTS = 3;
+const TRANSIENT_RETRY_DELAY_MS = 5_000;
 
 interface PhaseArguments {
   phase: "request" | "resume";
@@ -83,6 +85,14 @@ const assertLiveOptIn = (env: NodeJS.ProcessEnv) => {
   if (env[OPT_IN_VARIABLE] !== "1") {
     throw new Error(`Refusing live requests without ${OPT_IN_VARIABLE}=1.`);
   }
+};
+
+const isTransientProviderFailure = (error: unknown) => {
+  const candidate = error as { status?: unknown; statusCode?: unknown };
+  const statusValue = candidate.status ?? candidate.statusCode;
+  const status = typeof statusValue === "number" ? statusValue : Number(statusValue);
+  return status === 408 || status === 425 || status === 429 || status === 500 ||
+    status === 502 || status === 503 || status === 504;
 };
 
 const redacted = (value: string, env: NodeJS.ProcessEnv) => {
@@ -187,6 +197,7 @@ const certificationPrompt = (provider: HarnessProvider) => {
   return `Perform this exact reviewed-edit workflow:
 1. Call propose_edits exactly once with this exact JSON input: ${JSON.stringify({ changes })}.
 2. Read proposalId from that tool result, then call apply_patch exactly once with that proposalId and the same changes.
+The expectedDigest field is required in both calls. Keep it present with the explicit JSON value null; never omit it.
 Calling apply_patch is how you request operator approval: the runtime will pause before executing it. Do not ask for approval in text and do not finish after propose_edits.
 Do not invent or calculate proposalId, do not skip propose_edits, and do not call any other tool.
 After the approved apply_patch result, reply exactly ${completionToken(provider)}.`;
@@ -369,41 +380,49 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
   > = [];
   for (const provider of providers) {
     const model = env[modelEnvironmentName(provider)]?.trim() || providerDescriptor(provider).defaultModel;
-    const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-live-${provider}-`));
-    const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
-    try {
-      const request = await runChild([
-        "--phase", "request",
-        "--provider", provider,
-        "--model", model,
-        "--workspace", workspace,
-        "--state-dir", stateDirectory
-      ], env);
-      assert.equal(request.phase, "request");
-      assert.equal(request.provider, provider);
-      await assert.rejects(readFile(path.join(workspace, certificationPath(provider)), "utf8"));
+    for (let attempt = 1; attempt <= MAX_TRANSIENT_ATTEMPTS; attempt += 1) {
+      const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-live-${provider}-`));
+      const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+      try {
+        const request = await runChild([
+          "--phase", "request",
+          "--provider", provider,
+          "--model", model,
+          "--workspace", workspace,
+          "--state-dir", stateDirectory
+        ], env);
+        assert.equal(request.phase, "request");
+        assert.equal(request.provider, provider);
+        await assert.rejects(readFile(path.join(workspace, certificationPath(provider)), "utf8"));
 
-      const resumed = await runChild([
-        "--phase", "resume",
-        "--provider", provider,
-        "--model", model,
-        "--workspace", workspace,
-        "--state-dir", stateDirectory,
-        "--run-id", request.runId
-      ], env);
-      assert.equal(resumed.phase, "resume");
-      assert.equal(resumed.provider, provider);
-      assert.equal(resumed.toolExecutions, 1);
-      assert.equal(resumed.journalEntries, 1);
-      assert.equal(await readFile(path.join(workspace, certificationPath(provider)), "utf8"), certificationContent(provider));
-      evidence.push({ ...resumed, ok: true });
-    } catch (error) {
-      const failure = JSON.parse(errorEvidence(error, env)) as {
-        error: Record<string, unknown>;
-      };
-      evidence.push({ ok: false, provider, model, error: failure.error });
-    } finally {
-      await rm(workspace, { recursive: true, force: true });
+        const resumed = await runChild([
+          "--phase", "resume",
+          "--provider", provider,
+          "--model", model,
+          "--workspace", workspace,
+          "--state-dir", stateDirectory,
+          "--run-id", request.runId
+        ], env);
+        assert.equal(resumed.phase, "resume");
+        assert.equal(resumed.provider, provider);
+        assert.equal(resumed.toolExecutions, 1);
+        assert.equal(resumed.journalEntries, 1);
+        assert.equal(await readFile(path.join(workspace, certificationPath(provider)), "utf8"), certificationContent(provider));
+        evidence.push({ ...resumed, ok: true });
+        break;
+      } catch (error) {
+        if (attempt < MAX_TRANSIENT_ATTEMPTS && isTransientProviderFailure(error)) {
+          await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS * attempt));
+          continue;
+        }
+        const failure = JSON.parse(errorEvidence(error, env)) as {
+          error: Record<string, unknown>;
+        };
+        evidence.push({ ok: false, provider, model, error: failure.error });
+        break;
+      } finally {
+        await rm(workspace, { recursive: true, force: true });
+      }
     }
   }
   const ok = evidence.every((entry) => entry.ok);
@@ -453,6 +472,7 @@ export const liveProviderSmokeInternals = {
   assertLiveOptIn,
   certificationPrompt,
   errorEvidence,
+  isTransientProviderFailure,
   parsePhaseArguments,
   providerRunInput,
   redacted,

@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import { constants as fsConstants } from "node:fs";
-import { lstat, open, readdir } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { z } from "zod";
 
 import { fileDigestSchema, workspaceFilePathSchema, type FileDigest } from "./edit-contracts.js";
+import { readRegularFileNoFollow } from "./file-security.js";
 import type { Workspace } from "./workspace.js";
 
 export const HARNESS_CONTEXT_CONFIG_SCHEMA_VERSION = 1 as const;
@@ -163,14 +163,10 @@ const validateRelativePath = (value: string) => {
   return normalized;
 };
 
-const stableEntry = (before: Awaited<ReturnType<typeof lstat>>, after: Awaited<ReturnType<typeof lstat>>) =>
-  before.dev === after.dev && before.ino === after.ino && before.size === after.size &&
-  before.mtimeMs === after.mtimeMs && before.ctimeMs === after.ctimeMs;
-
 const resolveSafeWorkspaceEntry = async (
   workspace: Pick<Workspace, "root">,
   relativePath: string,
-  options: { allowMissing?: boolean; directory?: boolean } = {}
+  options: { allowMissing?: boolean; directory?: boolean; skipLeafValidation?: boolean } = {}
 ) => {
   const normalized = validateRelativePath(relativePath);
   const absolutePath = path.resolve(workspace.root, normalized);
@@ -182,6 +178,8 @@ const resolveSafeWorkspaceEntry = async (
   const segments = normalized.split("/");
   for (let index = 0; index < segments.length; index += 1) {
     current = path.join(current, segments[index] as string);
+    const leaf = index === segments.length - 1;
+    if (leaf && options.skipLeafValidation) continue;
     let entry;
     try {
       entry = await lstat(current);
@@ -192,7 +190,6 @@ const resolveSafeWorkspaceEntry = async (
     if (entry.isSymbolicLink()) {
       throw new Error(`The harness context path cannot contain a symbolic link: ${relativePath}`);
     }
-    const leaf = index === segments.length - 1;
     if (!leaf && !entry.isDirectory()) {
       throw new Error(`A harness context path ancestor is not a directory: ${relativePath}`);
     }
@@ -212,41 +209,37 @@ const readStableWorkspaceText = async (
   maxBytes: number,
   allowMissing = false
 ): Promise<StableTextFile | undefined> => {
-  const resolved = await resolveSafeWorkspaceEntry(workspace, relativePath, { allowMissing });
+  const resolved = await resolveSafeWorkspaceEntry(workspace, relativePath, {
+    allowMissing,
+    skipLeafValidation: true
+  });
   if (!resolved) return undefined;
-  const before = await lstat(resolved.path);
-  if (before.size > maxBytes) {
-    throw new Error(`Harness context file ${resolved.relativePath} exceeds the ${maxBytes}-byte limit.`);
-  }
-  const handle = await open(resolved.path, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  let file;
   try {
-    const opened = await handle.stat();
-    if (!opened.isFile() || !stableEntry(before, opened)) {
-      throw new Error(`Harness context file changed while opening: ${resolved.relativePath}`);
-    }
-    const contents = await handle.readFile();
-    const after = await handle.stat();
-    if (!stableEntry(opened, after) || contents.byteLength !== after.size) {
-      throw new Error(`Harness context file changed while reading: ${resolved.relativePath}`);
-    }
-    if (contents.includes(0)) {
-      throw new Error(`Harness context file must be UTF-8 text: ${resolved.relativePath}`);
-    }
-    let content: string;
-    try {
-      content = new TextDecoder("utf-8", { fatal: true }).decode(contents);
-    } catch {
-      throw new Error(`Harness context file must be valid UTF-8: ${resolved.relativePath}`);
-    }
-    return {
-      path: resolved.relativePath,
-      digest: digestBytes(contents),
-      bytes: contents.byteLength,
-      content
-    };
-  } finally {
-    await handle.close();
+    file = await readRegularFileNoFollow(resolved.path, {
+      label: `Harness context file ${resolved.relativePath}`,
+      maxBytes
+    });
+  } catch (error) {
+    if (allowMissing && (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
   }
+  const { contents } = file;
+  if (contents.includes(0)) {
+    throw new Error(`Harness context file must be UTF-8 text: ${resolved.relativePath}`);
+  }
+  let content: string;
+  try {
+    content = new TextDecoder("utf-8", { fatal: true }).decode(contents);
+  } catch {
+    throw new Error(`Harness context file must be valid UTF-8: ${resolved.relativePath}`);
+  }
+  return {
+    path: resolved.relativePath,
+    digest: digestBytes(contents),
+    bytes: contents.byteLength,
+    content
+  };
 };
 
 const parseConfiguration = (file: StableTextFile): HarnessContextConfiguration => {

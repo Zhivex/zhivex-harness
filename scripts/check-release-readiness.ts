@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { readRegularFileNoFollow } from "../src/file-security.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 
 interface CommandResult {
@@ -28,6 +28,14 @@ interface PackageManifest {
 }
 
 const workspace = path.resolve(import.meta.dir, "..");
+const PACKAGE_NAME = "@zhivex-ai/harness";
+const PACKAGE_REGISTRY_URL = "https://registry.npmjs.org/%40zhivex-ai%2Fharness";
+const readReleaseText = async (relativePath: string) => (
+  await readRegularFileNoFollow(path.join(workspace, relativePath), {
+    label: `Release source ${relativePath}`,
+    maxBytes: 2 * 1024 * 1024
+  })
+).contents.toString("utf8");
 
 const run = async (command: string[], allowFailure = false): Promise<CommandResult> => {
   const child = Bun.spawn(command, {
@@ -58,11 +66,11 @@ const tagCheckRequested = process.argv.includes("--tag");
 const requestedTag = optionValue("--tag");
 const failures: string[] = [];
 const manifest = JSON.parse(
-  await readFile(path.join(workspace, "package.json"), "utf8")
+  await readReleaseText("package.json")
 ) as PackageManifest;
 
-if (manifest.name !== "@zhivex-ai/harness") {
-  failures.push("package name must be @zhivex-ai/harness");
+if (manifest.name !== PACKAGE_NAME) {
+  failures.push(`package name must be ${PACKAGE_NAME}`);
 }
 if (!manifest.version || !/^0\.11\.\d+$/.test(manifest.version)) {
   failures.push("package version must be a stable 0.11.x version");
@@ -133,7 +141,7 @@ if (!manifest.scripts?.["artifact:check"] || !manifest.scripts?.["smoke:artifact
   failures.push("package scripts do not expose exact-artifact inspection and installation gates");
 }
 
-const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
+const changelog = await readReleaseText("CHANGELOG.md");
 if (manifest.version) {
   const releaseHeading = findReleaseChangelogHeading(changelog, manifest.version);
   if (!releaseHeading || releaseHeading.kind !== "dated") {
@@ -146,10 +154,7 @@ if (manifest.version) {
   }
 }
 
-const releaseWorkflow = await readFile(
-  path.join(workspace, ".github", "workflows", "release.yml"),
-  "utf8"
-);
+const releaseWorkflow = await readReleaseText(".github/workflows/release.yml");
 for (const required of [
   "workflow_dispatch:",
   "description: Annotated vX.Y.Z tag; must match package.json and resolve to main",
@@ -235,9 +240,8 @@ if (process.env.GITHUB_ACTIONS === "true") {
 }
 
 if (registryCheckRequested && manifest.name && manifest.version) {
-  const registryUrl = `https://registry.npmjs.org/${encodeURIComponent(manifest.name)}`;
   try {
-    const response = await fetch(registryUrl, {
+    const response = await fetch(PACKAGE_REGISTRY_URL, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(15_000)
     });

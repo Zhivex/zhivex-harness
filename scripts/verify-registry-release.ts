@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { readRegularFileNoFollow } from "../src/file-security.js";
 import {
   assertReleaseProvenance,
   type ProvenanceStatement
@@ -43,6 +43,9 @@ interface AttestationDocument {
 }
 
 const workspace = path.resolve(import.meta.dir, "..");
+const PACKAGE_NAME = "@zhivex-ai/harness";
+const PACKAGE_REGISTRY_URL = "https://registry.npmjs.org/%40zhivex-ai%2Fharness";
+const MAX_RELEASE_ARTIFACT_BYTES = 512 * 1024 * 1024;
 const artifactArgument = process.argv[2];
 const channel = process.argv[3] ?? "latest";
 if (!artifactArgument) {
@@ -53,10 +56,13 @@ if (!/^(?:latest|next)$/.test(channel)) {
 }
 
 const artifact = path.resolve(process.cwd(), artifactArgument);
-assert((await stat(artifact)).isFile(), `${artifact} is not a regular file`);
 const manifest = JSON.parse(
-  await readFile(path.join(workspace, "package.json"), "utf8")
+  (await readRegularFileNoFollow(path.join(workspace, "package.json"), {
+    label: "Release package.json",
+    maxBytes: 1024 * 1024
+  })).contents.toString("utf8")
 ) as PackageManifest;
+assert.equal(manifest.name, PACKAGE_NAME, "release package name is unexpected");
 const releaseTag = `v${manifest.version}`;
 const tagType = (await Bun.$`git -C ${workspace} cat-file -t ${releaseTag}`.text()).trim();
 assert.equal(tagType, "tag", `${releaseTag} must exist locally as an annotated tag`);
@@ -72,10 +78,13 @@ assert.equal(
   0,
   `${releaseTag} commit ${releaseCommit} is not reachable from origin/main`
 );
-const artifactBytes = await readFile(artifact);
+const artifactBytes = (await readRegularFileNoFollow(artifact, {
+  label: "Release artifact",
+  maxBytes: MAX_RELEASE_ARTIFACT_BYTES
+})).contents;
 const sha512Hex = createHash("sha512").update(artifactBytes).digest("hex");
 const expectedIntegrity = `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}`;
-const packageUrl = `https://registry.npmjs.org/${encodeURIComponent(manifest.name)}`;
+const packageUrl = PACKAGE_REGISTRY_URL;
 const propagationWindowMs = 5 * 60_000;
 const retryDelayMs = 10_000;
 const propagationDeadlineMs = performance.now() + propagationWindowMs;
