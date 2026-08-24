@@ -382,20 +382,27 @@ export const runDirectProfile = async (
       agentFailureMessage && !/^Tool \"[^\"]+\" failed:/.test(agentFailureMessage)
     ) || output?.status === "timed_out";
     const failedTool = [...instrumented.timings.entries()].find(([, timing]) => timing.errors > 0)?.[0];
+    const agentFailed = agentFailure !== undefined;
+    const failureStage = agentFailed
+      ? failedTool ? "tool" : "model"
+      : verification.timedOut || verification.exitCode !== 0
+        ? "verification"
+        : failedTool
+          ? "tool"
+          : "model";
+    const failureOrigin = agentFailed
+      ? failedTool ? "tool_execution" : "agent_run"
+      : verification.timedOut || verification.exitCode !== 0
+        ? "verification"
+        : failedTool
+          ? "tool_execution"
+          : "agent_run";
     const failure = verification.exitCode !== 0 || agentFailureMessage || output?.status !== "completed"
       ? classifyTimeToSafeFixFailure(
           agentFailure ?? `Verifier exited ${verification.exitCode}.`,
           {
-            stage: verification.timedOut || verification.exitCode !== 0
-              ? "verification"
-              : failedTool
-                ? "tool"
-                : "model",
-            origin: verification.timedOut || verification.exitCode !== 0
-              ? "verification"
-              : failedTool
-                ? "tool_execution"
-                : "agent_run",
+            stage: failureStage,
+            origin: failureOrigin,
             ...(failedTool ? { toolName: failedTool } : {}),
             timedOut: verification.timedOut || output?.status === "timed_out"
           }
