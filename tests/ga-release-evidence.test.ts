@@ -208,6 +208,18 @@ describe("GA release-candidate evidence", () => {
   test("records failed immutable attempts without counting them as passing candidates", () => {
     expect(parseGaReleaseCandidateRecord(failedEvidence())).toEqual(failedEvidence());
     expect(parseGaFailedReleaseCandidateEvidence(failedEvidence()).provenance).toBe("not-published");
+    expect(parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "passed-release-bound-run",
+      failedGates: ["representative-evaluation"]
+    })).liveCertification).toBe("passed-release-bound-run");
+    expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "failed-release-bound-run",
+      failedGates: ["representative-evaluation"]
+    }))).toThrow(/live certification must agree with failedGates/);
+    expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "passed-release-bound-run",
+      failedGates: ["live-provider-certification"]
+    }))).toThrow(/live certification must agree with failedGates/);
     expect(() => parseGaFailedReleaseCandidateEvidence({
       ...failedEvidence(),
       publishedAt: "2026-08-23T23:54:37Z"

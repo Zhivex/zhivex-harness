@@ -295,12 +295,12 @@ jobs:
           echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "DRIVER_COMMIT=$(git log -1 --format=%H -- scripts/benchmark-time-to-safe-fix.ts scripts/time-to-safe-fix-zhivex-driver.ts scripts/time-to-safe-fix-direct-profile.ts scripts/time-to-safe-fix-governed-profile.ts scripts/time-to-safe-fix-runtime.ts scripts/generate-representative-evidence.ts scripts/representative-evidence.ts evaluations/representative-repositories.jsonl docker/time-to-safe-fix.Dockerfile docker/time-to-safe-fix.requirements.txt src/time-to-safe-fix.ts)" >> "$GITHUB_ENV"
           echo "OCI_IMAGE_DIGEST=$(docker image inspect "$REPRESENTATIVE_IMAGE" --format '{{.Id}}')" >> "$GITHUB_ENV"
-          mkdir -p release-artifacts/representative-rows release-artifacts/representative-raw
+          mkdir -p release-artifacts/representative-rows release-artifacts/representative-raw release-artifacts/representative-diagnostics
 
       - name: Evaluate Meta against the complete pinned matrix
         run: |
           REPORT=release-artifacts/representative-raw/meta.json
-          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/meta.json --summary
           bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider meta --model muse-spark-1.2 > release-artifacts/representative-rows/meta.json
         env:
           ZHIVEX_SAFE_FIX_PROVIDER: meta
@@ -312,7 +312,7 @@ jobs:
       - name: Evaluate Qwen against the complete pinned matrix
         run: |
           REPORT=release-artifacts/representative-raw/qwen.json
-          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/qwen.json --summary
           bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider qwen --model qwen3.8-max > release-artifacts/representative-rows/qwen.json
         env:
           ZHIVEX_SAFE_FIX_PROVIDER: qwen
@@ -327,7 +327,7 @@ jobs:
       - name: Evaluate OpenAI against the complete pinned matrix
         run: |
           REPORT=release-artifacts/representative-raw/openai.json
-          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --summary
+          bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/openai.json --summary
           bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider openai --model gpt-5.6-luna > release-artifacts/representative-rows/openai.json
         env:
           ZHIVEX_SAFE_FIX_PROVIDER: openai
@@ -350,5 +350,15 @@ jobs:
           name: representative-evidence-${{ github.sha }}
           path: release-artifacts/representative-evidence-*.json
           if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload sanitized representative diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: representative-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
+          path: release-artifacts/representative-diagnostics/*.json
+          if-no-files-found: warn
           retention-days: 30
           compression-level: 0

@@ -45,6 +45,7 @@ interface CliOptions {
   builtInDriver: boolean;
   driverTimeoutMs: number;
   out?: string;
+  diagnosticsOut?: string;
   validateOnly: boolean;
   summary: boolean;
 }
@@ -119,6 +120,7 @@ const parseOptions = (args: readonly string[]): CliOptions => {
   let builtInDriver = false;
   let driverTimeoutMs = 300_000;
   let out: string | undefined;
+  let diagnosticsOut: string | undefined;
   let validateOnly = false;
   let summary = false;
   for (let index = 0; index < args.length; index += 1) {
@@ -136,6 +138,7 @@ const parseOptions = (args: readonly string[]): CliOptions => {
     else if (arg === "--driver-zhivex") builtInDriver = true;
     else if (arg === "--driver-timeout-ms") driverTimeoutMs = parsePositiveInteger(optionValue(args, index++, arg), arg, 3_600_000);
     else if (arg === "--out") out = optionValue(args, index++, arg);
+    else if (arg === "--diagnostics-out") diagnosticsOut = optionValue(args, index++, arg);
     else if (arg === "--validate-only") validateOnly = true;
     else if (arg === "--summary") summary = true;
     else throw new Error(`Unknown argument: ${arg}.`);
@@ -146,6 +149,11 @@ const parseOptions = (args: readonly string[]): CliOptions => {
   if (builtInDriver) {
     driverCommand = process.execPath;
     driverArgs.push("run", path.join(root, "scripts", "time-to-safe-fix-zhivex-driver.ts"));
+  }
+  const resolvedOut = out ? path.resolve(out) : undefined;
+  const resolvedDiagnosticsOut = diagnosticsOut ? path.resolve(diagnosticsOut) : undefined;
+  if (resolvedOut && resolvedDiagnosticsOut && resolvedOut === resolvedDiagnosticsOut) {
+    throw new Error("--out and --diagnostics-out must use different paths.");
   }
   return {
     dataset: path.resolve(dataset),
@@ -160,7 +168,8 @@ const parseOptions = (args: readonly string[]): CliOptions => {
     driverArgs,
     builtInDriver,
     driverTimeoutMs,
-    ...(out ? { out: path.resolve(out) } : {}),
+    ...(resolvedOut ? { out: resolvedOut } : {}),
+    ...(resolvedDiagnosticsOut ? { diagnosticsOut: resolvedDiagnosticsOut } : {}),
     validateOnly,
     summary
   };
@@ -497,6 +506,40 @@ const run = async () => {
     plannedRuns: cases.length,
     smoke: !options.driverCommand
   });
+  if (options.diagnosticsOut) {
+    const failedCases = report.samples
+      .filter((sample) => !sample.safeResolved)
+      .map((sample) => ({
+        caseId: sample.caseId,
+        taskId: sample.taskId,
+        profile: sample.profile,
+        variant: sample.variant,
+        carrier: sample.carrier,
+        goal: sample.goal,
+        repetition: sample.repetition,
+        order: sample.order,
+        utilityPass: sample.utilityPass,
+        attackCompleted: sample.attackCompleted,
+        unauthorizedEffects: sample.unauthorizedEffects,
+        environmentFailure: sample.environmentFailure,
+        ...(sample.failure ? { failure: sample.failure } : {}),
+        durationMs: Math.round(sample.durationMs)
+      }));
+    const diagnostics = {
+      schemaVersion: 1,
+      kind: "time-to-safe-fix-diagnostics",
+      generatedAt: report.generatedAt,
+      dataset: report.dataset,
+      matrix: report.matrix,
+      summary: {
+        safeResolvedRuns: report.samples.length - failedCases.length,
+        failedRuns: failedCases.length
+      },
+      failedCases
+    };
+    await mkdir(path.dirname(options.diagnosticsOut), { recursive: true });
+    await writeFile(options.diagnosticsOut, `${JSON.stringify(diagnostics, null, 2)}\n`, "utf8");
+  }
   const rendered = `${JSON.stringify(report, null, 2)}\n`;
   if (options.out) {
     await mkdir(path.dirname(options.out), { recursive: true });

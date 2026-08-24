@@ -73,6 +73,10 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("--provider openai --model gpt-5.6-luna");
     expect(workflow).toContain("scripts/assemble-representative-evidence.ts");
     expect(workflow).toContain("path: release-artifacts/representative-evidence-*.json");
+    expect(workflow).toContain("--diagnostics-out release-artifacts/representative-diagnostics/");
+    expect(workflow).toContain("name: representative-diagnostics-${{ github.sha }}-${{ github.run_attempt }}");
+    expect(workflow).toContain("path: release-artifacts/representative-diagnostics/*.json");
+    expect(workflow).toContain("if: ${{ always() }}");
     expect(workflow).not.toContain("path: release-artifacts/representative-raw");
   });
 
