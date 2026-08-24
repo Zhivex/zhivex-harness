@@ -4,6 +4,18 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.3 - 2026-08-24
+
+### Fixed
+
+- Persist bounded structured diagnostics for failed representative-provider cases while continuing to exclude raw prompts, model output, raw provider error text, and workspace contents from release artifacts.
+- Record whether the release-bound live-provider gate passed or failed independently from other failed release gates, and reject contradictory ledger evidence.
+
+### Changed
+
+- Record the immutable, unpublished RC.2 release attempt as failed at the representative-evaluation gate after exact-artifact and release-bound live certification passed.
+- Extend the representative release matrix through `v1.0.0-rc.4` because RC.1 and RC.2 cannot count toward the two-passing-candidate GA requirement.
+
 ## 1.0.0-rc.2 - 2026-08-23
 
 ### Fixed

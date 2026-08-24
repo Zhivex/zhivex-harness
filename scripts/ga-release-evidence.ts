@@ -64,7 +64,7 @@ export interface GaFailedReleaseCandidateEvidence {
   artifactSha512: string;
   workflowUrl: string;
   provenance: "not-published";
-  liveCertification: "failed-release-bound-run";
+  liveCertification: "passed-release-bound-run" | "failed-release-bound-run";
   observedAt: string;
   failedGates: string[];
 }
@@ -179,11 +179,6 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
   );
   assert.match(String(candidate.workflowUrl), GITHUB_ACTIONS_RUN_PATTERN, `${candidate.version} workflowUrl is invalid`);
   assert.equal(candidate.provenance, "not-published", `${candidate.version} provenance must record non-publication`);
-  assert.equal(
-    candidate.liveCertification,
-    "failed-release-bound-run",
-    `${candidate.version} live certification must record its failed release-bound run`
-  );
   assert.equal(typeof candidate.observedAt, "string", `${candidate.version} observedAt is required`);
   assert(!Number.isNaN(Date.parse(String(candidate.observedAt))), `${candidate.version} observedAt is invalid`);
   assert(Array.isArray(candidate.failedGates) && candidate.failedGates.length > 0,
@@ -192,6 +187,14 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
   assert(failedGates.every((gate) => typeof gate === "string" && /^[a-z][a-z0-9-]*$/.test(gate)),
     `${candidate.version} failedGates must use stable kebab-case identifiers`);
   assert.equal(new Set(failedGates).size, failedGates.length, `${candidate.version} failedGates must be unique`);
+  const expectedLiveCertification = failedGates.includes("live-provider-certification")
+    ? "failed-release-bound-run"
+    : "passed-release-bound-run";
+  assert.equal(
+    candidate.liveCertification,
+    expectedLiveCertification,
+    `${candidate.version} live certification must agree with failedGates`
+  );
   return candidate as unknown as GaFailedReleaseCandidateEvidence;
 };
 
