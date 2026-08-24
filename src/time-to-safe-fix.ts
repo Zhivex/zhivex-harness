@@ -22,6 +22,24 @@ export const TIME_TO_SAFE_FIX_FAILURE_STAGES = [
 ] as const;
 export type TimeToSafeFixFailureStage = (typeof TIME_TO_SAFE_FIX_FAILURE_STAGES)[number];
 
+export const TIME_TO_SAFE_FIX_FAILURE_ORIGINS = [
+  "driver_setup",
+  "external_driver",
+  "harness_create",
+  "agent_run",
+  "approval_resolution",
+  "tool_execution",
+  "verification",
+  "patch_import",
+  "evidence"
+] as const;
+export type TimeToSafeFixFailureOrigin = (typeof TIME_TO_SAFE_FIX_FAILURE_ORIGINS)[number];
+
+export const TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES = [
+  "QWEN_DUPLICATE_TOOL_CALL_ID"
+] as const;
+export type TimeToSafeFixDiagnosticCode = (typeof TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES)[number];
+
 export const TIME_TO_SAFE_FIX_PROFILES = ["direct", "governed", "optimized"] as const;
 export type TimeToSafeFixProfile = (typeof TIME_TO_SAFE_FIX_PROFILES)[number];
 
@@ -105,7 +123,9 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   environmentFailure: z.boolean(),
   failure: z.strictObject({
     stage: z.enum(TIME_TO_SAFE_FIX_FAILURE_STAGES),
+    origin: z.enum(TIME_TO_SAFE_FIX_FAILURE_ORIGINS).optional(),
     code: z.string().min(1).max(64).regex(/^[A-Z][A-Z0-9_]*$/),
+    diagnosticCode: z.enum(TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES).optional(),
     toolName: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.:+-]+$/).optional(),
     retryable: z.boolean(),
     harnessError: z.strictObject({
@@ -199,6 +219,20 @@ const structuredHarnessFailure = (error: unknown): {
   };
 };
 
+const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticCode | undefined => {
+  if (!error || typeof error !== "object" || depth > 4) return undefined;
+  const record = error as { diagnosticCode?: unknown; cause?: unknown };
+  if (
+    error instanceof Error &&
+    error.name === "QwenToolCallIdError" &&
+    typeof record.diagnosticCode === "string" &&
+    (TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES as readonly string[]).includes(record.diagnosticCode)
+  ) {
+    return record.diagnosticCode as TimeToSafeFixDiagnosticCode;
+  }
+  return safeDiagnosticCode(record.cause, depth + 1);
+};
+
 const isAsciiWordCharacter = (code: number) =>
   (code >= 48 && code <= 57) ||
   (code >= 97 && code <= 122) ||
@@ -242,6 +276,7 @@ export const classifyTimeToSafeFixFailure = (
   error: unknown,
   options: {
     stage?: TimeToSafeFixFailureStage;
+    origin?: TimeToSafeFixFailureOrigin;
     toolName?: string;
     timedOut?: boolean;
   } = {}
@@ -249,6 +284,7 @@ export const classifyTimeToSafeFixFailure = (
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();
   const structured = structuredHarnessFailure(error);
+  const diagnosticCode = safeDiagnosticCode(error);
   let code = "UNCLASSIFIED_FAILURE";
   let retryable = false;
   if (options.timedOut || /timed? out|timeout/.test(normalized)) {
@@ -282,7 +318,9 @@ export const classifyTimeToSafeFixFailure = (
   }
   return {
     stage: options.stage ?? "unknown",
+    ...(options.origin ? { origin: options.origin } : {}),
     code,
+    ...(diagnosticCode ? { diagnosticCode } : {}),
     ...(options.toolName ? { toolName: options.toolName } : {}),
     retryable,
     ...(structured ? { harnessError: structured } : {})

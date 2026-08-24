@@ -460,15 +460,25 @@ const normalizedToolCall = (
   toolCall: ToolCall,
   seenIds: Set<string>
 ): ToolCall => {
-  const id = typeof toolCall.id === "string" && toolCall.id.trim().length > 0
-    ? toolCall.id
+  const providerId = typeof toolCall.id === "string" ? toolCall.id.trim() : "";
+  const id = providerId.length > 0 && !/^\d+$/.test(providerId)
+    ? providerId
     : generatedToolCallId(model, input, index, toolCall);
   if (seenIds.has(id)) {
-    throw new Error(`Qwen returned a duplicate tool-call id: ${id}.`);
+    throw new QwenToolCallIdError(`Qwen returned a duplicate tool-call id: ${id}.`);
   }
   seenIds.add(id);
   return id === toolCall.id ? toolCall : { ...toolCall, id };
 };
+
+class QwenToolCallIdError extends Error {
+  readonly diagnosticCode = "QWEN_DUPLICATE_TOOL_CALL_ID" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "QwenToolCallIdError";
+  }
+}
 
 const normalizeMessageToolCallIds = (
   model: Pick<LanguageModel, "provider" | "modelId">,

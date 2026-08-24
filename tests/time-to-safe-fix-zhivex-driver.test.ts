@@ -535,4 +535,68 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     });
     expect(await readFile(path.join(workspace, "src", "value.ts"), "utf8")).toBe(before);
   });
+
+  test("attributes a wrapped Qwen adapter invariant to the agent run", async () => {
+    const workspace = await temporaryDirectory("zhivex-driver-qwen-diagnostic-");
+    const stateDirectory = await temporaryDirectory("zhivex-driver-qwen-diagnostic-state-");
+    await mkdir(path.join(workspace, "src"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+    await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+    const request = driverRequest(workspace, { caseId: "driver-qwen-diagnostic" });
+    const baseModel = createMockLanguageModel({
+      provider: "qwen.chat",
+      modelId: "qwen3.8-max",
+      streamEvents: []
+    });
+    const adapterError = Object.assign(new Error("Qwen returned a duplicate tool-call id."), {
+      name: "QwenToolCallIdError",
+      diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
+    });
+    const model = new Proxy(baseModel, {
+      get(target, property, receiver) {
+        if (property === "stream") return () => { throw adapterError; };
+        return Reflect.get(target, property, receiver);
+      }
+    });
+
+    const result = await runGovernedTimeToSafeFixProfile(request, {
+      provider: "qwen",
+      modelInstance: model,
+      stateDirectory,
+      verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+      allowedCommands: ["node", "npm"],
+      ociRuntimeAdapter: new FakeOciRuntime(),
+      maxSteps: 16,
+      maxToolCalls: 24,
+      maxTokens: 2_000,
+      timeoutMs: 30_000,
+      approvalDelayMs: 0,
+      ociMaxProcessRuntimeMs: 10_000,
+      ociMaxProcessOutputBytes: 20_000,
+      ociMaxMemoryMb: 256,
+      ociMaxPids: 32,
+      ociMaxCpus: 1,
+      ociMaxWorkspaceBytes: 8 * 1024 * 1024,
+      ociMaxFileWriteBytes: 1024 * 1024,
+      ociTmpfsMb: 64
+    });
+
+    expect(result).toMatchObject({
+      utilityPass: true,
+      environmentFailure: true,
+      failure: {
+        stage: "model",
+        origin: "agent_run",
+        code: "EXECUTION_FAILED",
+        diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID",
+        retryable: false,
+        harnessError: {
+          code: "EXECUTION_FAILED",
+          category: "execution",
+          retryable: false
+        }
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("Qwen returned a duplicate tool-call id");
+  });
 });

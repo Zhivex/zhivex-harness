@@ -276,6 +276,8 @@ export const runGovernedTimeToSafeFixProfile = async (
   let environmentFailure = false;
   let failureError: unknown;
   let failureStage: Parameters<TimeToSafeFixHarnessRuntime["classifyTimeToSafeFixFailure"]>[1]["stage"];
+  let failureOrigin: Parameters<TimeToSafeFixHarnessRuntime["classifyTimeToSafeFixFailure"]>[1]["origin"];
+  let activeOrigin: NonNullable<typeof failureOrigin> = "harness_create";
   const runId = `safe-fix-${createHash("sha256").update(request.caseId).digest("hex").slice(0, 24)}`;
   try {
     const createStartedAt = process.hrtime.bigint();
@@ -333,6 +335,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     phasesMs.harnessCreate = elapsedMs(createStartedAt);
 
     const agentStartedAt = process.hrtime.bigint();
+    activeOrigin = "agent_run";
     output = await runtime.runHarness(harness, {
       runId,
       prompt: promptFor(request, verifier),
@@ -388,15 +391,18 @@ export const runGovernedTimeToSafeFixProfile = async (
       environmentFailure = !observedApprovals.some((approval) => !approval.approved);
       failureError = output.error?.message ?? `Agent ended with status ${output.status}.`;
       failureStage = "model";
+      failureOrigin = "agent_run";
     }
   } catch (error) {
     environmentFailure = !observedApprovals.some((approval) => !approval.approved);
     failureError = error;
-    failureStage = "environment";
+    failureStage = activeOrigin === "agent_run" ? "model" : "environment";
+    failureOrigin = activeOrigin;
   }
   if (harness) {
     const verificationStartedAt = process.hrtime.bigint();
     try {
+      activeOrigin = "verification";
       const verificationSession = await harness.executionEnvironment!.acquire({
         runId: `${runId}-verification`
       });
@@ -415,6 +421,7 @@ export const runGovernedTimeToSafeFixProfile = async (
       environmentFailure = true;
       failureError = error;
       failureStage = "verification";
+      failureOrigin = "verification";
     } finally {
       phasesMs.verification = elapsedMs(verificationStartedAt);
     }
@@ -448,6 +455,11 @@ export const runGovernedTimeToSafeFixProfile = async (
           : failureError ?? `Verifier exited ${verifierExitCode ?? "unavailable"}.`,
         {
           stage: deniedApproval ? "tool" : failedTool ? "tool" : failureStage ?? "verification",
+          origin: deniedApproval
+            ? "approval_resolution"
+            : failedTool
+              ? "tool_execution"
+              : failureOrigin ?? "verification",
           ...(failedTool ? { toolName: failedTool } : {}),
           timedOut: output?.status === "timed_out"
         }

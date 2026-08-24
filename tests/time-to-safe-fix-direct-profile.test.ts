@@ -230,6 +230,7 @@ describe("Time-to-Safe-Fix direct profile", () => {
       toolCalls: 1,
       failure: {
         stage: "tool",
+        origin: "tool_execution",
         code: "TOOL_EXECUTION_FAILED",
         toolName: "delete_file",
         retryable: false
