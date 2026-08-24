@@ -53,6 +53,41 @@ export interface GaReleaseCandidateEvidence {
   liveCertification: "passed-release-bound-run";
 }
 
+export interface GaFailedReleaseCandidateEvidence {
+  version: string;
+  status: "failed-gates";
+  channel: "next";
+  tag: string;
+  contractBreakingDefects: null;
+  publishedAt: null;
+  sourceCommit: string;
+  artifactSha512: string;
+  workflowUrl: string;
+  provenance: "not-published";
+  liveCertification: "failed-release-bound-run";
+  observedAt: string;
+  failedGates: string[];
+}
+
+export interface GaPendingReleaseCandidateEvidence {
+  version: string;
+  status: "pending";
+  channel: null;
+  tag: null;
+  contractBreakingDefects: null;
+  publishedAt: null;
+  sourceCommit: null;
+  artifactSha512: null;
+  workflowUrl: null;
+  provenance: null;
+  liveCertification: null;
+}
+
+export type GaReleaseCandidateRecord =
+  | GaReleaseCandidateEvidence
+  | GaFailedReleaseCandidateEvidence
+  | GaPendingReleaseCandidateEvidence;
+
 export type GaRepresentativeEvaluationResult = RepresentativeProviderResult;
 
 interface RegistryDocument {
@@ -121,6 +156,75 @@ export const parseGaReleaseCandidateEvidence = (input: unknown): GaReleaseCandid
     `${candidate.version} live certification must be release-bound`
   );
   return candidate as unknown as GaReleaseCandidateEvidence;
+};
+
+export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedReleaseCandidateEvidence => {
+  const candidate = object(input);
+  assert.equal(typeof candidate.version, "string", "failed release candidate version is required");
+  const release = assertHarnessReleaseChannel(candidate.version, String(candidate.channel));
+  assert(release.prerelease, `${candidate.version} must be a release candidate`);
+  assert.equal(candidate.status, "failed-gates", `${candidate.version} status must be failed-gates`);
+  assert.equal(candidate.tag, release.tag, `${candidate.version} tag must be ${release.tag}`);
+  assert.equal(
+    candidate.contractBreakingDefects,
+    null,
+    `${candidate.version} cannot claim a contract-defect count after failed gates`
+  );
+  assert.equal(candidate.publishedAt, null, `${candidate.version} failed attempt must not claim publication`);
+  assert.match(String(candidate.sourceCommit), /^[a-f0-9]{40}$/, `${candidate.version} sourceCommit is invalid`);
+  assert.match(
+    String(candidate.artifactSha512),
+    /^sha512-[A-Za-z0-9+/]+={0,2}$/,
+    `${candidate.version} artifactSha512 is invalid`
+  );
+  assert.match(String(candidate.workflowUrl), GITHUB_ACTIONS_RUN_PATTERN, `${candidate.version} workflowUrl is invalid`);
+  assert.equal(candidate.provenance, "not-published", `${candidate.version} provenance must record non-publication`);
+  assert.equal(
+    candidate.liveCertification,
+    "failed-release-bound-run",
+    `${candidate.version} live certification must record its failed release-bound run`
+  );
+  assert.equal(typeof candidate.observedAt, "string", `${candidate.version} observedAt is required`);
+  assert(!Number.isNaN(Date.parse(String(candidate.observedAt))), `${candidate.version} observedAt is invalid`);
+  assert(Array.isArray(candidate.failedGates) && candidate.failedGates.length > 0,
+    `${candidate.version} failedGates must identify at least one gate`);
+  const failedGates = candidate.failedGates as unknown[];
+  assert(failedGates.every((gate) => typeof gate === "string" && /^[a-z][a-z0-9-]*$/.test(gate)),
+    `${candidate.version} failedGates must use stable kebab-case identifiers`);
+  assert.equal(new Set(failedGates).size, failedGates.length, `${candidate.version} failedGates must be unique`);
+  return candidate as unknown as GaFailedReleaseCandidateEvidence;
+};
+
+export const parseGaPendingReleaseCandidateEvidence = (input: unknown): GaPendingReleaseCandidateEvidence => {
+  const candidate = object(input);
+  assert.equal(typeof candidate.version, "string", "pending release candidate version is required");
+  const release = assertHarnessReleaseChannel(candidate.version, "next");
+  assert(release.prerelease, `${candidate.version} must be a release candidate`);
+  assert.equal(candidate.status, "pending", `${candidate.version} status must be pending`);
+  for (const field of [
+    "channel",
+    "tag",
+    "contractBreakingDefects",
+    "publishedAt",
+    "sourceCommit",
+    "artifactSha512",
+    "workflowUrl",
+    "provenance",
+    "liveCertification"
+  ] as const) {
+    assert.equal(candidate[field], null, `${candidate.version} pending ${field} must be null`);
+  }
+  return candidate as unknown as GaPendingReleaseCandidateEvidence;
+};
+
+export const parseGaReleaseCandidateRecord = (input: unknown): GaReleaseCandidateRecord => {
+  const candidate = object(input);
+  if (candidate.status === "passed") return parseGaReleaseCandidateEvidence(candidate);
+  if (candidate.status === "failed-gates") return parseGaFailedReleaseCandidateEvidence(candidate);
+  if (candidate.status === "pending") return parseGaPendingReleaseCandidateEvidence(candidate);
+  throw new assert.AssertionError({
+    message: `${String(candidate.version)} release candidate status must be pending, failed-gates, or passed`
+  });
 };
 
 export const parseGaSecurityReviewEvidencePath = (input: unknown): string => {
@@ -211,6 +315,12 @@ export const assertGaReleaseCandidateSequence = (versions: readonly unknown[]) =
       "readiness release candidates must be a contiguous sequence starting at 1.0.0-rc.1"
     );
   }
+};
+
+export const assertAtLeastTwoPassingGaReleaseCandidates = (
+  candidates: readonly GaReleaseCandidateEvidence[]
+) => {
+  assert(candidates.length >= 2, "GA requires at least two passing release candidates");
 };
 
 const defaultRunGit = async (arguments_: readonly string[]) => {

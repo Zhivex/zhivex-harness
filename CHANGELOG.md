@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.2 - 2026-08-23
+
+### Fixed
+
+- Normalize missing or whitespace-only Qwen tool-call IDs at the built-in provider boundary before durable agent state, approvals, or tool journals can observe them; preserve valid provider IDs and reject duplicate IDs fail-closed.
+
+### Changed
+
+- Record immutable release attempts that fail protected gates without claiming npm publication or provenance, exclude them from passing GA evidence, and require two later passing candidates before stable promotion.
+- Extend the representative release matrix through `v1.0.0-rc.3` because the failed, unpublished RC.1 attempt cannot count toward the two-candidate GA requirement.
+
 ## 1.0.0-rc.1 - 2026-08-23
 
 ### Added
