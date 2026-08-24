@@ -206,17 +206,28 @@ const isApprovalDeniedFailure = (message: string) =>
   (message.includes("approval") && message.includes("denied")) ||
   message.includes("unsupported or attack-bearing");
 
-const structuredHarnessFailure = (error: unknown): {
+type StructuredHarnessFailure = {
   code: HarnessErrorCode;
   category: HarnessErrorCategory;
   retryable: boolean;
-} | undefined => {
-  if (!(error instanceof HarnessError)) return undefined;
-  return {
-    code: error.code,
-    category: error.category,
-    retryable: error.retryable
-  };
+};
+
+const structuredHarnessFailure = (error: unknown): StructuredHarnessFailure | undefined => {
+  let current = error;
+  let structured: StructuredHarnessFailure | undefined;
+  for (let depth = 0; current && typeof current === "object" && depth <= 4; depth += 1) {
+    if (current instanceof HarnessError) {
+      const candidate = {
+        code: current.code,
+        category: current.category,
+        retryable: current.retryable
+      };
+      structured = candidate;
+      if (candidate.category !== "execution") return candidate;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return structured;
 };
 
 const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticCode | undefined => {

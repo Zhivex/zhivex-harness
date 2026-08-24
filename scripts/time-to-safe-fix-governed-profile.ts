@@ -343,6 +343,10 @@ export const runGovernedTimeToSafeFixProfile = async (
       maxSteps: config.maxSteps,
       scope: harness.config.scope,
       timeoutMs: config.timeoutMs,
+      policy: {
+        leaseTtlMs: config.timeoutMs + 30_000,
+        heartbeatMs: 10_000
+      },
       idempotencyKey: runId
     }, {
       resolveApprovals: async (pending) => {
@@ -427,7 +431,16 @@ export const runGovernedTimeToSafeFixProfile = async (
     }
     const toolOciMs = ociPhaseTotal(output);
     if (toolOciMs > 0) phasesMs.agentOci = toolOciMs;
-    await harness?.close();
+    try {
+      await harness.close();
+    } catch (error) {
+      environmentFailure = true;
+      if (failureError === undefined) {
+        failureError = error;
+        failureStage = "environment";
+        failureOrigin = "driver_setup";
+      }
+    }
   }
 
   const evidenceStartedAt = process.hrtime.bigint();

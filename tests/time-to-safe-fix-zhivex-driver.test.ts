@@ -7,6 +7,8 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
+import * as harnessRuntime from "../src/index.js";
+
 import type {
   HarnessOciRuntimeAdapter,
   OciCommandBatchResult,
@@ -247,6 +249,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       ]
     });
     const runtime = new FakeOciRuntime();
+    let observedPolicy: { leaseTtlMs?: number; heartbeatMs?: number } | undefined;
     const result = await runGovernedTimeToSafeFixProfile(request, {
       provider: "openai",
       modelInstance: model,
@@ -254,6 +257,13 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
       allowedCommands: ["node", "npm"],
       ociRuntimeAdapter: runtime,
+      harnessRuntime: {
+        ...harnessRuntime,
+        runHarness(harness, input, options) {
+          observedPolicy = input.policy;
+          return harnessRuntime.runHarness(harness, input, options);
+        }
+      },
       maxSteps: 16,
       maxToolCalls: 24,
       maxTokens: 2_000,
@@ -289,6 +299,74 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     expect(result.toolCalls).toBe(5);
     expect(await readFile(path.join(workspace, "src", "value.ts"), "utf8")).toBe(after);
     expect(runtime.requests.length).toBeGreaterThanOrEqual(2);
+    expect(observedPolicy).toEqual({ leaseTtlMs: 60_000, heartbeatMs: 10_000 });
+  });
+
+  test("reports close failures without discarding the driver result", async () => {
+    const workspace = await temporaryDirectory("zhivex-driver-close-failure-");
+    const stateDirectory = await temporaryDirectory("zhivex-driver-close-failure-state-");
+    await mkdir(path.join(workspace, "src"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+    await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+    const model = createMockLanguageModel({
+      streamEvents: [[
+        { type: "text-delta", textDelta: "completed" },
+        { type: "finish", finishReason: "stop" }
+      ]]
+    });
+
+    const result = await runGovernedTimeToSafeFixProfile(driverRequest(workspace, {
+      caseId: "driver-close-failure"
+    }), {
+      provider: "openai",
+      modelInstance: model,
+      stateDirectory,
+      verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+      allowedCommands: ["node", "npm"],
+      ociRuntimeAdapter: new FakeOciRuntime(),
+      harnessRuntime: {
+        ...harnessRuntime,
+        createHarness(options) {
+          return harnessRuntime.createHarness({
+            ...options,
+            lifecycleHooks: [{
+              id: "close-failure-fixture",
+              version: "1",
+              events: ["harness-closed"],
+              failureMode: "fail",
+              handle() {
+                throw new Error("fixture close failure");
+              }
+            }]
+          });
+        }
+      },
+      maxSteps: 16,
+      maxToolCalls: 24,
+      maxTokens: 2_000,
+      timeoutMs: 30_000,
+      approvalDelayMs: 0,
+      ociMaxProcessRuntimeMs: 10_000,
+      ociMaxProcessOutputBytes: 20_000,
+      ociMaxMemoryMb: 256,
+      ociMaxPids: 32,
+      ociMaxCpus: 1,
+      ociMaxWorkspaceBytes: 8 * 1024 * 1024,
+      ociMaxFileWriteBytes: 1024 * 1024,
+      ociTmpfsMb: 64
+    });
+
+    expect(result).toMatchObject({
+      utilityPass: true,
+      environmentFailure: true,
+      failure: {
+        stage: "environment",
+        origin: "driver_setup",
+        code: "UNCLASSIFIED_FAILURE",
+        retryable: false
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("fixture close failure");
   });
 
   test("optimized profile completes from one approved verified-edit receipt", async () => {

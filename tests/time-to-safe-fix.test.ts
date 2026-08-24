@@ -4,7 +4,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { HarnessExecutionError, HarnessProviderError } from "../src/errors.js";
+import {
+  HarnessExecutionError,
+  HarnessProviderError,
+  HarnessStateConflictError
+} from "../src/errors.js";
 import {
   classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
@@ -206,6 +210,24 @@ describe("time-to-safe-fix benchmark", () => {
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
+    });
+  });
+
+  test("prefers a specific typed Harness cause over an execution wrapper", () => {
+    const stateConflict = new HarnessStateConflictError("Worker lease changed.", { retryable: true });
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessExecutionError("Harness execution failed.", { cause: stateConflict }),
+      { stage: "model", origin: "agent_run" }
+    )).toEqual({
+      stage: "model",
+      origin: "agent_run",
+      code: "STATE_CONFLICT",
+      retryable: true,
+      harnessError: {
+        code: "STATE_CONFLICT",
+        category: "state",
+        retryable: true
+      }
     });
   });
 
