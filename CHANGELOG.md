@@ -8,7 +8,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ### Fixed
 
-- Preserve stable typed Harness failure `code`, `category`, and `retryable` metadata before Time-to-Safe-Fix message heuristics, so transient provider and OCI execution failures remain machine-classifiable without retaining raw error text.
+- Preserve stable typed Harness failure `code`, `category`, and `retryable` metadata alongside Time-to-Safe-Fix semantic classification, so transient provider and OCI execution failures remain machine-classifiable without retaining raw error text.
 
 ### Changed
 

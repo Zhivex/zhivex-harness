@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import {
+  HARNESS_ERROR_CODES,
   HarnessError,
   type HarnessErrorCategory,
   type HarnessErrorCode
@@ -105,17 +106,21 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   failure: z.strictObject({
     stage: z.enum(TIME_TO_SAFE_FIX_FAILURE_STAGES),
     code: z.string().min(1).max(64).regex(/^[A-Z][A-Z0-9_]*$/),
-    category: z.enum([
-      "configuration",
-      "usage",
-      "workspace",
-      "state",
-      "provider",
-      "approval",
-      "execution"
-    ]).optional(),
     toolName: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.:+-]+$/).optional(),
-    retryable: z.boolean()
+    retryable: z.boolean(),
+    harnessError: z.strictObject({
+      code: z.enum(HARNESS_ERROR_CODES),
+      category: z.enum([
+        "configuration",
+        "usage",
+        "workspace",
+        "state",
+        "provider",
+        "approval",
+        "execution"
+      ]),
+      retryable: z.boolean()
+    }).optional()
   }).optional(),
   durationMs: z.number().finite().min(0),
   systemDurationMs: z.number().finite().min(0).optional(),
@@ -245,14 +250,12 @@ export const classifyTimeToSafeFixFailure = (
   const normalized = message.toLowerCase();
   const structured = structuredHarnessFailure(error);
   let code = "UNCLASSIFIED_FAILURE";
-  let category: HarnessErrorCategory | undefined;
   let retryable = false;
   if (options.timedOut || /timed? out|timeout/.test(normalized)) {
     code = "TIMEOUT";
     retryable = true;
   } else if (structured && structured.category !== "execution") {
     code = structured.code;
-    category = structured.category;
     retryable = structured.retryable;
   } else if (/rate.?limit|too many requests|temporar(?:y|ily)|connection reset|service unavailable|getaddrinfo|enotfound|network/.test(normalized)) {
     code = "PROVIDER_TRANSIENT_FAILURE";
@@ -271,7 +274,6 @@ export const classifyTimeToSafeFixFailure = (
     code = "TOOL_EXECUTION_FAILED";
   } else if (structured) {
     code = structured.code;
-    category = structured.category;
     retryable = structured.retryable;
   } else if (/provider|model|generation|response/.test(normalized)) {
     code = "MODEL_EXECUTION_FAILED";
@@ -281,9 +283,9 @@ export const classifyTimeToSafeFixFailure = (
   return {
     stage: options.stage ?? "unknown",
     code,
-    ...(category ? { category } : {}),
     ...(options.toolName ? { toolName: options.toolName } : {}),
-    retryable
+    retryable,
+    ...(structured ? { harnessError: structured } : {})
   };
 };
 

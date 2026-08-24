@@ -129,8 +129,12 @@ describe("time-to-safe-fix benchmark", () => {
     )).toEqual({
       stage: "environment",
       code: "EXECUTION_FAILED",
-      category: "execution",
-      retryable: true
+      retryable: true,
+      harnessError: {
+        code: "EXECUTION_FAILED",
+        category: "execution",
+        retryable: true
+      }
     });
     expect(classifyTimeToSafeFixFailure(
       new HarnessProviderError("Provider response failed.", { retryable: false }),
@@ -138,8 +142,25 @@ describe("time-to-safe-fix benchmark", () => {
     )).toEqual({
       stage: "model",
       code: "PROVIDER_UNAVAILABLE",
-      category: "provider",
-      retryable: false
+      retryable: false,
+      harnessError: {
+        code: "PROVIDER_UNAVAILABLE",
+        category: "provider",
+        retryable: false
+      }
+    });
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessExecutionError("Container network setup failed.", { retryable: true }),
+      { stage: "environment" }
+    )).toEqual({
+      stage: "environment",
+      code: "PROVIDER_TRANSIENT_FAILURE",
+      retryable: true,
+      harnessError: {
+        code: "EXECUTION_FAILED",
+        category: "execution",
+        retryable: true
+      }
     });
     expect(classifyTimeToSafeFixFailure({
       code: "EXECUTION_FAILED",
