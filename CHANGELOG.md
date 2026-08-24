@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.4 - 2026-08-24
+
+### Fixed
+
+- Preserve stable typed Harness failure `code`, `category`, and `retryable` metadata alongside Time-to-Safe-Fix semantic classification, so transient provider and OCI execution failures remain machine-classifiable without retaining raw error text.
+
+### Changed
+
+- Record the immutable, unpublished RC.3 release attempt as failed at the representative-evaluation gate after exact-artifact, release-bound live certification, and the Meta matrix passed.
+- Extend the representative release matrix through `v1.0.0-rc.5` because RC.1, RC.2, and RC.3 cannot count toward the two-passing-candidate GA requirement.
+
 ## 1.0.0-rc.3 - 2026-08-24
 
 ### Fixed
