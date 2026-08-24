@@ -355,7 +355,7 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
-Status: RC.1 and RC.2 passed exact-artifact validation but failed protected certification, so both publications were skipped and npm remained unchanged. RC.3 now preserves bounded structured diagnostics even when a representative provider gate fails; RC.4 is required so two independent candidates can still complete without a contract-breaking defect. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): representative results across two passing release candidates and the final-candidate security review.
+Status: RC.1, RC.2, and RC.3 passed exact-artifact validation but failed protected certification, so all three publications were skipped and npm remained unchanged. RC.3 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with three environment failures. RC.4 preserves typed Harness failure metadata so the next observation can distinguish retryable provider/OCI failures without retaining raw error text; RC.5 is now required so two independent candidates can still pass without a contract-breaking defect. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): representative results across two passing release candidates and the final-candidate security review.
 
 Scope:
 
@@ -398,8 +398,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Merge the machine-readable RC.2 failure record and sanitized representative-diagnostics hardening, then create the annotated `v1.0.0-rc.3` tag.
-2. Dispatch the protected RC.3 workflow to npm `next` and require registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
-3. Run the observation cycle and publish an independent passing `v1.0.0-rc.4` through the same full gate.
-4. Complete the named security review against RC.4 and close every critical/high finding.
+1. Merge the machine-readable RC.3 failure record and typed failure-metadata propagation, then create the annotated `v1.0.0-rc.4` tag.
+2. Dispatch the protected RC.4 workflow to npm `next` and require registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
+3. Run the observation cycle and publish an independent passing `v1.0.0-rc.5` through the same full gate.
+4. Complete the named security review against RC.5 and close every critical/high finding.
 5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.

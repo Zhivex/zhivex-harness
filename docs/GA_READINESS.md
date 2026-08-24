@@ -13,9 +13,9 @@ The preparation gate does not certify production readiness. It verifies that pub
 ## Promotion sequence
 
 1. Keep the completed contract, error, CLI-option, historical-migration, and state-backup gates green.
-2. Preserve the failed, unpublished `1.0.0-rc.1` and `1.0.0-rc.2` attempts and their protected-workflow evidence; never retag or reuse them.
-3. Publish the forward-observable `1.0.0-rc.3` to `next` and run migration, representative repository, live provider, OCI, installed-artifact, integrity, and provenance gates against that exact tag.
-4. Complete the observation cycle, publish an independent `1.0.0-rc.4` to `next`, and repeat the full matrix so RC.3 and RC.4 provide two passing candidates.
+2. Preserve the failed, unpublished `1.0.0-rc.1`, `1.0.0-rc.2`, and `1.0.0-rc.3` attempts and their protected-workflow evidence; never retag or reuse them.
+3. Publish the forward-observable `1.0.0-rc.4` to `next` and run migration, representative repository, live provider, OCI, installed-artifact, integrity, and provenance gates against that exact tag.
+4. Complete the observation cycle, publish an independent `1.0.0-rc.5` to `next`, and repeat the full matrix so RC.4 and RC.5 can provide two passing candidates.
 5. Record a current security review with no open critical/high findings against the final passing candidate.
 6. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
 7. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.

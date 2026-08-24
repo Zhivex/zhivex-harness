@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { HarnessExecutionError, HarnessProviderError } from "../src/errors.js";
 import {
   classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
@@ -116,6 +117,38 @@ describe("time-to-safe-fix benchmark", () => {
       stage: "environment",
       code: "PROVIDER_TRANSIENT_FAILURE",
       retryable: true
+    });
+  });
+
+  test("preserves stable typed Harness failure metadata before message heuristics", () => {
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessExecutionError("Enforced execution environment failed with opaque details.", {
+        retryable: true
+      }),
+      { stage: "environment" }
+    )).toEqual({
+      stage: "environment",
+      code: "EXECUTION_FAILED",
+      category: "execution",
+      retryable: true
+    });
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessProviderError("Provider response failed.", { retryable: false }),
+      { stage: "model" }
+    )).toEqual({
+      stage: "model",
+      code: "PROVIDER_UNAVAILABLE",
+      category: "provider",
+      retryable: false
+    });
+    expect(classifyTimeToSafeFixFailure({
+      code: "EXECUTION_FAILED",
+      category: "execution",
+      retryable: true
+    })).toEqual({
+      stage: "unknown",
+      code: "UNCLASSIFIED_FAILURE",
+      retryable: false
     });
   });
 

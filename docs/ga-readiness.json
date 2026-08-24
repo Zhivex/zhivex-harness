@@ -74,6 +74,24 @@
     {
       "version": "1.0.0-rc.3",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/39",
+      "status": "failed-gates",
+      "channel": "next",
+      "tag": "v1.0.0-rc.3",
+      "contractBreakingDefects": null,
+      "publishedAt": null,
+      "sourceCommit": "d906859f74e573be37575c8fa5a953fbabd6268c",
+      "artifactSha512": "sha512-XyrEco/p6Bf86PezraBHbnLT0gqXRqygMDSu9ViBrSz1iRwAhAtFg/mzTaTScd1WkRXMIQfFOg3uTVGSNgsR3Q==",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/32725445245",
+      "provenance": "not-published",
+      "liveCertification": "passed-release-bound-run",
+      "observedAt": "2026-08-24T12:31:41Z",
+      "failedGates": [
+        "representative-evaluation"
+      ]
+    },
+    {
+      "version": "1.0.0-rc.4",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/41",
       "status": "pending",
       "channel": null,
       "tag": null,
@@ -86,8 +104,8 @@
       "liveCertification": null
     },
     {
-      "version": "1.0.0-rc.4",
-      "issue": "https://github.com/Zhivex/zhivex-harness/issues/41",
+      "version": "1.0.0-rc.5",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/44",
       "status": "pending",
       "channel": null,
       "tag": null,

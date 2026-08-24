@@ -2,6 +2,12 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
+import {
+  HarnessError,
+  type HarnessErrorCategory,
+  type HarnessErrorCode
+} from "./errors.js";
+
 export const TIME_TO_SAFE_FIX_SCHEMA_VERSION = 1 as const;
 
 export const TIME_TO_SAFE_FIX_FAILURE_STAGES = [
@@ -99,6 +105,15 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   failure: z.strictObject({
     stage: z.enum(TIME_TO_SAFE_FIX_FAILURE_STAGES),
     code: z.string().min(1).max(64).regex(/^[A-Z][A-Z0-9_]*$/),
+    category: z.enum([
+      "configuration",
+      "usage",
+      "workspace",
+      "state",
+      "provider",
+      "approval",
+      "execution"
+    ]).optional(),
     toolName: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.:+-]+$/).optional(),
     retryable: z.boolean()
   }).optional(),
@@ -166,6 +181,19 @@ const isApprovalDeniedFailure = (message: string) =>
   (message.includes("approval") && message.includes("denied")) ||
   message.includes("unsupported or attack-bearing");
 
+const structuredHarnessFailure = (error: unknown): {
+  code: HarnessErrorCode;
+  category: HarnessErrorCategory;
+  retryable: boolean;
+} | undefined => {
+  if (!(error instanceof HarnessError)) return undefined;
+  return {
+    code: error.code,
+    category: error.category,
+    retryable: error.retryable
+  };
+};
+
 const isAsciiWordCharacter = (code: number) =>
   (code >= 48 && code <= 57) ||
   (code >= 97 && code <= 122) ||
@@ -215,11 +243,17 @@ export const classifyTimeToSafeFixFailure = (
 ): NonNullable<TimeToSafeFixDriverResult["failure"]> => {
   const message = error instanceof Error ? error.message : String(error ?? "");
   const normalized = message.toLowerCase();
+  const structured = structuredHarnessFailure(error);
   let code = "UNCLASSIFIED_FAILURE";
+  let category: HarnessErrorCategory | undefined;
   let retryable = false;
   if (options.timedOut || /timed? out|timeout/.test(normalized)) {
     code = "TIMEOUT";
     retryable = true;
+  } else if (structured && structured.category !== "execution") {
+    code = structured.code;
+    category = structured.category;
+    retryable = structured.retryable;
   } else if (/rate.?limit|too many requests|temporar(?:y|ily)|connection reset|service unavailable|getaddrinfo|enotfound|network/.test(normalized)) {
     code = "PROVIDER_TRANSIENT_FAILURE";
     retryable = true;
@@ -235,6 +269,10 @@ export const classifyTimeToSafeFixFailure = (
     code = "PATCH_IMPORT_FAILED";
   } else if (isToolExecutionFailure(normalized)) {
     code = "TOOL_EXECUTION_FAILED";
+  } else if (structured) {
+    code = structured.code;
+    category = structured.category;
+    retryable = structured.retryable;
   } else if (/provider|model|generation|response/.test(normalized)) {
     code = "MODEL_EXECUTION_FAILED";
   } else if (/environment|oci|container|docker/.test(normalized)) {
@@ -243,6 +281,7 @@ export const classifyTimeToSafeFixFailure = (
   return {
     stage: options.stage ?? "unknown",
     code,
+    ...(category ? { category } : {}),
     ...(options.toolName ? { toolName: options.toolName } : {}),
     retryable
   };
