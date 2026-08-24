@@ -13,6 +13,7 @@ import {
   providerAvailability,
   resolveHarnessConfig
 } from "../src/config.js";
+import { providerModelInternals } from "../src/providers.js";
 
 describe("provider configuration", () => {
   test("migrates schema 4 inputs without enabling new trust surfaces", () => {
@@ -223,6 +224,98 @@ describe("provider configuration", () => {
       { provider: "gemini", model: "gemini-3.6-flash" },
       { GOOGLE_GENERATIVE_AI_API_KEY: "gemini-test" }
     )).toMatchObject({ provider: "gemini", modelId: "gemini-3.6-flash" });
+  });
+
+  test("normalizes missing Qwen tool-call ids deterministically without rewriting valid ids", async () => {
+    const capabilities = createMockLanguageModel().capabilities;
+    const input = {
+      messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "repair" }] }]
+    };
+    const providerModel = {
+      provider: "qwen",
+      modelId: "qwen3.8-max",
+      capabilities,
+      generate: async () => ({
+        messages: [{
+          role: "assistant" as const,
+          parts: [
+            { type: "tool-call" as const, toolCall: { id: "", name: "inspect_file", input: { path: "a.ts" } } },
+            { type: "tool-call" as const, toolCall: { id: "provider-id", name: "inspect_file", input: { path: "b.ts" } } }
+          ]
+        }]
+      }),
+      stream: async () => (async function* () {
+        yield { type: "tool-call" as const, toolCall: { id: "   ", name: "inspect_file", input: { path: "a.ts" } } };
+        yield { type: "tool-call" as const, toolCall: { id: "", name: "inspect_file", input: { path: "a.ts" } } };
+        yield { type: "tool-call" as const, toolCall: { id: "provider-id", name: "inspect_file", input: { path: "b.ts" } } };
+      })()
+    };
+    const model = providerModelInternals.withQwenDurableToolCallIds(providerModel);
+
+    const generated = await model.generate(input);
+    const generatedCalls = generated.messages?.[0]?.parts
+      .filter((part) => part.type === "tool-call")
+      .map((part) => part.toolCall.id);
+    expect(generatedCalls?.[0]).toMatch(/^harness_call_[a-f0-9]{48}$/);
+    expect(generatedCalls?.[1]).toBe("provider-id");
+
+    const collectIds = async () => {
+      const ids: string[] = [];
+      for await (const event of await model.stream!(input)) {
+        if (event.type === "tool-call") ids.push(event.toolCall.id);
+      }
+      return ids;
+    };
+    const first = await collectIds();
+    const second = await collectIds();
+    expect(first).toEqual(second);
+    expect(first[0]).toMatch(/^harness_call_[a-f0-9]{48}$/);
+    expect(first[1]).toMatch(/^harness_call_[a-f0-9]{48}$/);
+    expect(first[0]).not.toBe(first[1]);
+    expect(first[2]).toBe("provider-id");
+  });
+
+  test("fails closed when Qwen reuses a tool-call id", async () => {
+    const capabilities = createMockLanguageModel().capabilities;
+    const input = {
+      messages: [{
+        role: "assistant" as const,
+        parts: [{
+          type: "tool-call" as const,
+          toolCall: { id: "prior-id", name: "inspect_file", input: { path: "a.ts" } }
+        }]
+      }]
+    };
+    const providerModel = {
+      provider: "qwen",
+      modelId: "qwen3.8-max",
+      capabilities,
+      generate: async () => ({
+        messages: [{
+          role: "assistant" as const,
+          parts: [
+            { type: "tool-call" as const, toolCall: { id: "duplicate", name: "inspect_file", input: { path: "a.ts" } } },
+            { type: "tool-call" as const, toolCall: { id: "duplicate", name: "inspect_file", input: { path: "b.ts" } } }
+          ]
+        }]
+      }),
+      stream: async () => (async function* () {
+        yield {
+          type: "tool-call" as const,
+          toolCall: { id: "prior-id", name: "inspect_file", input: { path: "b.ts" } }
+        };
+      })()
+    };
+    const model = providerModelInternals.withQwenDurableToolCallIds(providerModel);
+
+    await expect(model.generate(input)).rejects.toThrow("duplicate tool-call id: duplicate");
+    const events = await model.stream!(input);
+    const consume = async () => {
+      for await (const _event of events) {
+        // Consume the wrapped stream so validation runs at the provider boundary.
+      }
+    };
+    await expect(consume()).rejects.toThrow("duplicate tool-call id: prior-id");
   });
 
   test("accepts an injected registry across config, factories, and availability", () => {

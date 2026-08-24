@@ -6,12 +6,16 @@ import {
   GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
   assertDistinctGaReleaseCandidateEvidence,
   assertGaReleaseCandidateSequence,
+  assertAtLeastTwoPassingGaReleaseCandidates,
+  parseGaFailedReleaseCandidateEvidence,
   parseGaReleaseCandidateEvidence,
+  parseGaReleaseCandidateRecord,
   parseGaRepresentativeEvaluationCoverage,
   parseGaSecurityReviewEvidencePath,
   verifyGaRepresentativeEvaluationWorkflows,
   verifyPublishedGaReleaseCandidate,
   type GaReleaseCandidateEvidence,
+  type GaFailedReleaseCandidateEvidence,
   type GaReleaseEvidenceDependencies,
   type GaRepresentativeEvaluationResult
 } from "../scripts/ga-release-evidence.js";
@@ -48,6 +52,23 @@ const secondEvidence = () => evidence({
   artifactSha512: `sha512-${Buffer.alloc(64, 1).toString("base64")}`,
   workflowUrl: "https://github.com/Zhivex/zhivex-harness/actions/runs/32195815992"
 });
+
+const failedEvidence = (overrides: Partial<GaFailedReleaseCandidateEvidence> = {}) => ({
+  version: "1.0.0-rc.1",
+  status: "failed-gates",
+  channel: "next",
+  tag: "v1.0.0-rc.1",
+  contractBreakingDefects: null,
+  publishedAt: null,
+  sourceCommit,
+  artifactSha512,
+  workflowUrl,
+  provenance: "not-published",
+  liveCertification: "failed-release-bound-run",
+  observedAt: "2026-08-23T23:54:37Z",
+  failedGates: ["live-provider-certification", "representative-evaluation"],
+  ...overrides
+} satisfies GaFailedReleaseCandidateEvidence);
 
 const evaluationResults = (
   candidates: readonly GaReleaseCandidateEvidence[]
@@ -182,6 +203,19 @@ describe("GA release-candidate evidence", () => {
       .toThrow("at least rc.1 and rc.2");
     expect(() => assertGaReleaseCandidateSequence(["1.0.0-rc.1", "1.0.0-rc.3"]))
       .toThrow("contiguous sequence");
+  });
+
+  test("records failed immutable attempts without counting them as passing candidates", () => {
+    expect(parseGaReleaseCandidateRecord(failedEvidence())).toEqual(failedEvidence());
+    expect(parseGaFailedReleaseCandidateEvidence(failedEvidence()).provenance).toBe("not-published");
+    expect(() => parseGaFailedReleaseCandidateEvidence({
+      ...failedEvidence(),
+      publishedAt: "2026-08-23T23:54:37Z"
+    })).toThrow("must not claim publication");
+    expect(() => assertAtLeastTwoPassingGaReleaseCandidates([secondEvidence()]))
+      .toThrow("at least two passing release candidates");
+    expect(() => assertAtLeastTwoPassingGaReleaseCandidates([evidence(), secondEvidence()]))
+      .not.toThrow();
   });
 
   test("rejects lightweight tags and registry integrity drift", async () => {

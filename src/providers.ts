@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 
 import type { LanguageModel } from "@zhivex-ai/agents";
+import {
+  wrapLanguageModel,
+  type GenerateResult,
+  type ModelGenerateInput,
+  type ModelMessage,
+  type StreamEvent,
+  type ToolCall
+} from "@zhivex-ai/core";
 import { createGemini } from "@zhivex-ai/gemini";
 import { createMeta } from "@zhivex-ai/meta";
 import { createOpenAI } from "@zhivex-ai/openai";
@@ -420,6 +428,109 @@ const optionalQwenRegion = (value: string | undefined): QwenRegion | undefined =
   throw new Error(`Invalid QWEN_REGION: ${value}.`);
 };
 
+const generatedToolCallId = (
+  model: Pick<LanguageModel, "provider" | "modelId">,
+  input: ModelGenerateInput,
+  index: number,
+  toolCall: Pick<ToolCall, "name" | "input">
+) => `harness_call_${createHash("sha256")
+  .update(JSON.stringify({
+    provider: model.provider,
+    modelId: model.modelId,
+    messages: input.messages,
+    index,
+    name: toolCall.name,
+    input: toolCall.input
+  }))
+  .digest("hex")
+  .slice(0, 48)}`;
+
+const existingToolCallIds = (messages: readonly ModelMessage[]) => new Set(messages.flatMap((message) =>
+  message.parts.flatMap((part) => {
+    if (part.type === "tool-call") return [part.toolCall.id];
+    if (part.type === "tool-result") return [part.toolResult.toolCallId];
+    return [];
+  }).filter((id) => typeof id === "string" && id.length > 0)
+));
+
+const normalizedToolCall = (
+  model: Pick<LanguageModel, "provider" | "modelId">,
+  input: ModelGenerateInput,
+  index: number,
+  toolCall: ToolCall,
+  seenIds: Set<string>
+): ToolCall => {
+  const id = typeof toolCall.id === "string" && toolCall.id.trim().length > 0
+    ? toolCall.id
+    : generatedToolCallId(model, input, index, toolCall);
+  if (seenIds.has(id)) {
+    throw new Error(`Qwen returned a duplicate tool-call id: ${id}.`);
+  }
+  seenIds.add(id);
+  return id === toolCall.id ? toolCall : { ...toolCall, id };
+};
+
+const normalizeMessageToolCallIds = (
+  model: Pick<LanguageModel, "provider" | "modelId">,
+  input: ModelGenerateInput,
+  messages: readonly ModelMessage[],
+  seenIds = existingToolCallIds(input.messages)
+): ModelMessage[] => {
+  let index = 0;
+  return messages.map((message) => ({
+    ...message,
+    parts: message.parts.map((part) => part.type === "tool-call"
+      ? {
+          ...part,
+          toolCall: normalizedToolCall(model, input, index++, part.toolCall, seenIds)
+        }
+      : part)
+  }));
+};
+
+const normalizeGenerateToolCallIds = (
+  model: Pick<LanguageModel, "provider" | "modelId">,
+  input: ModelGenerateInput,
+  result: GenerateResult
+): GenerateResult => {
+  const messages = result.messages
+    ? normalizeMessageToolCallIds(model, input, result.messages)
+    : undefined;
+  const message = result.message
+    ? normalizeMessageToolCallIds(model, input, [result.message])[0]
+    : undefined;
+  return {
+    ...result,
+    ...(message ? { message } : {}),
+    ...(messages ? { messages } : {})
+  };
+};
+
+const normalizeStreamToolCallIds = async function* (
+  model: Pick<LanguageModel, "provider" | "modelId">,
+  input: ModelGenerateInput,
+  events: AsyncIterable<StreamEvent>
+): AsyncIterable<StreamEvent> {
+  let index = 0;
+  const seenIds = existingToolCallIds(input.messages);
+  for await (const event of events) {
+    if (event.type !== "tool-call") {
+      yield event;
+      continue;
+    }
+    yield {
+      ...event,
+      toolCall: normalizedToolCall(model, input, index++, event.toolCall, seenIds)
+    };
+  }
+};
+
+const withQwenDurableToolCallIds = (model: LanguageModel): LanguageModel => wrapLanguageModel(model, [{
+  name: "harness-qwen-durable-tool-call-ids",
+  wrapGenerate: async ({ input }, next) => normalizeGenerateToolCallIds(model, input, await next()),
+  wrapStream: async ({ input }, next) => normalizeStreamToolCallIds(model, input, await next())
+}]);
+
 export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = Object.freeze([
   {
     descriptor: {
@@ -461,12 +572,12 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
       const baseURL = env.QWEN_BASE_URL?.trim();
       const workspaceId = env.QWEN_WORKSPACE_ID?.trim();
       const region = optionalQwenRegion(env.QWEN_REGION?.trim());
-      return createQwen({
+      return withQwenDurableToolCallIds(createQwen({
         apiKey: credentials.require(),
         ...(baseURL ? { baseURL } : {}),
         ...(workspaceId ? { workspaceId } : {}),
         ...(region ? { region } : {})
-      })(model);
+      })(model));
     }
   },
   {
@@ -509,3 +620,8 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
 
 export const DEFAULT_PROVIDER_REGISTRY = createProviderRegistry(BUILTIN_PROVIDER_REGISTRATIONS);
 export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = DEFAULT_PROVIDER_REGISTRY.descriptors;
+
+export const providerModelInternals = {
+  generatedToolCallId,
+  withQwenDurableToolCallIds
+};

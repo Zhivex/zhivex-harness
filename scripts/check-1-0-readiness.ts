@@ -35,7 +35,9 @@ import {
   GA_REPRESENTATIVE_EVALUATION_SCENARIOS,
   assertDistinctGaReleaseCandidateEvidence,
   assertGaReleaseCandidateSequence,
+  assertAtLeastTwoPassingGaReleaseCandidates,
   parseGaReleaseCandidateEvidence,
+  parseGaReleaseCandidateRecord,
   parseGaRepresentativeEvaluationCoverage,
   parseGaSecurityReviewEvidencePath,
   verifyGaRepresentativeEvaluationWorkflows,
@@ -366,6 +368,14 @@ for (const candidate of candidates) {
   if (typeof candidate.issue !== "string" || !/^https:\/\/github\.com\/Zhivex\/zhivex-harness\/issues\/\d+$/.test(candidate.issue)) {
     failures.push(`${String(candidate.version)} must link its GitHub issue`);
   }
+  try {
+    parseGaReleaseCandidateRecord(candidate);
+  } catch (error) {
+    failures.push(
+      `${String(candidate.version)} release candidate record is invalid: ` +
+      `${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 }
 if (assemblyMatrix && JSON.stringify(assemblyMatrix.releaseTags) !==
   JSON.stringify([
@@ -405,6 +415,7 @@ if (releaseMode) {
   }
   const parsedCandidates: GaReleaseCandidateEvidence[] = [];
   for (const candidate of candidates) {
+    if (candidate.status === "failed-gates") continue;
     try {
       const parsed = parseGaReleaseCandidateEvidence(candidate);
       if (!evidenceIsCurrent(parsed.publishedAt, maxAgeDays)) {
@@ -418,7 +429,12 @@ if (releaseMode) {
       );
     }
   }
-  if (parsedCandidates.length === candidates.length) {
+  try {
+    assertAtLeastTwoPassingGaReleaseCandidates(parsedCandidates);
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+  if (parsedCandidates.length >= 2) {
     try {
       assertDistinctGaReleaseCandidateEvidence(parsedCandidates);
     } catch (error) {
@@ -473,7 +489,7 @@ if (releaseMode) {
   if (evaluations.status !== "passed") failures.push("representative evaluation matrix has not passed");
   const results = Array.isArray(evaluations.results) ? evaluations.results as JsonObject[] : [];
   const parsedResults: GaRepresentativeEvaluationResult[] = [];
-  if (parsedCandidates.length === candidates.length) {
+  if (parsedCandidates.length >= 2) {
     try {
       parsedResults.push(...parseGaRepresentativeEvaluationCoverage(
         parsedCandidates,
