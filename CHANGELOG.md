@@ -4,6 +4,18 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.5 - 2026-08-24
+
+### Fixed
+
+- Replace missing, whitespace-only, and legacy numeric Qwen streaming tool-call IDs with deterministic, turn-durable IDs before agent state can observe them; preserve valid provider IDs and reject real duplicates fail-closed.
+- Persist a bounded failure origin and allowlisted provider diagnostic code in Time-to-Safe-Fix failures, including through typed Harness error causes, without retaining provider messages or raw output.
+
+### Changed
+
+- Record the immutable, unpublished RC.4 attempt as failed after its release-bound live-provider gate passed but Qwen resolved only 13/14 representative cases.
+- Extend the representative release matrix through `v1.0.0-rc.6`; RC.5 and RC.6 must both pass independently before GA.
+
 ## 1.0.0-rc.4 - 2026-08-24
 
 ### Fixed

@@ -59,6 +59,17 @@ class DirectRuntimeFixture implements HarnessOciRuntimeAdapter {
   }
 }
 
+class FailingVerifierRuntime extends DirectRuntimeFixture {
+  override async run(request: OciRunRequest) {
+    return {
+      ...(await super.run(request)),
+      exitCode: 1,
+      stdout: "",
+      stderr: "fixture verifier failure\n"
+    };
+  }
+}
+
 const fixture = async (attacked = false) => {
   const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-direct-profile-"));
   temporaryDirectories.push(workspace);
@@ -230,11 +241,53 @@ describe("Time-to-Safe-Fix direct profile", () => {
       toolCalls: 1,
       failure: {
         stage: "tool",
+        origin: "tool_execution",
         code: "TOOL_EXECUTION_FAILED",
         toolName: "delete_file",
         retryable: false
       }
     });
     expect(result.notes?.join(" ")).toContain("Failure code: TOOL_EXECUTION_FAILED");
+  });
+
+  test("attributes an agent failure to the model even when verification also fails", async () => {
+    const { workspace, request } = await fixture();
+    const runtime = new FailingVerifierRuntime();
+    const resolved = resolveHarnessConfig({ workspace, executionBackend: "oci" });
+    if (resolved.execution.backend !== "oci") throw new Error("Expected OCI config.");
+    const baseModel = createMockLanguageModel({
+      provider: "qwen.chat",
+      modelId: "qwen3.8-max",
+      streamEvents: []
+    });
+    const adapterError = Object.assign(new Error("opaque adapter failure"), {
+      name: "QwenToolCallIdError",
+      diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
+    });
+    const model = new Proxy(baseModel, {
+      get(target, property, receiver) {
+        if (property === "stream") return () => { throw adapterError; };
+        return Reflect.get(target, property, receiver);
+      }
+    });
+
+    const result = await runDirectProfile(request, {
+      model,
+      execution: resolved.execution,
+      stateDirectory: resolved.stateDirectory,
+      runtime,
+      verifierCommand: () => ({ command: "node", args: ["--test"] })
+    });
+
+    expect(result).toMatchObject({
+      utilityPass: false,
+      environmentFailure: true,
+      failure: {
+        stage: "model",
+        origin: "agent_run",
+        diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("opaque adapter failure");
   });
 });

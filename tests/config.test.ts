@@ -318,6 +318,62 @@ describe("provider configuration", () => {
     await expect(consume()).rejects.toThrow("duplicate tool-call id: prior-id");
   });
 
+  test("replaces legacy numeric Qwen stream ids before durable multi-turn state", async () => {
+    const capabilities = createMockLanguageModel().capabilities;
+    const providerModel = {
+      provider: "qwen",
+      modelId: "qwen3.8-max",
+      capabilities,
+      generate: async () => ({ messages: [] }),
+      stream: async () => (async function* () {
+        yield {
+          type: "tool-call" as const,
+          toolCall: { id: "0", name: "inspect_file", input: { path: "a.ts" } }
+        };
+      })()
+    };
+    const model = providerModelInternals.withQwenDurableToolCallIds(providerModel);
+    const firstInput = {
+      messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "repair" }] }]
+    };
+    const collectId = async (input: Parameters<NonNullable<typeof model.stream>>[0]) => {
+      const ids: string[] = [];
+      for await (const event of await model.stream!(input)) {
+        if (event.type === "tool-call") ids.push(event.toolCall.id);
+      }
+      return ids[0];
+    };
+    const firstId = await collectId(firstInput);
+    const secondId = await collectId({
+      messages: [
+        ...firstInput.messages,
+        {
+          role: "assistant" as const,
+          parts: [{
+            type: "tool-call" as const,
+            toolCall: { id: firstId!, name: "inspect_file", input: { path: "a.ts" } }
+          }]
+        },
+        {
+          role: "tool" as const,
+          parts: [{
+            type: "tool-result" as const,
+            toolResult: {
+              toolCallId: firstId!,
+              toolName: "inspect_file",
+              output: { ok: true },
+              isError: false
+            }
+          }]
+        }
+      ]
+    });
+
+    expect(firstId).toMatch(/^harness_call_[a-f0-9]{48}$/);
+    expect(secondId).toMatch(/^harness_call_[a-f0-9]{48}$/);
+    expect(secondId).not.toBe(firstId);
+  });
+
   test("accepts an injected registry across config, factories, and availability", () => {
     let selectedCredential: string | undefined;
     const registry = DEFAULT_PROVIDER_REGISTRY.extend([{

@@ -475,7 +475,10 @@ const run = async () => {
       } catch (error) {
         const afterFailure = await snapshotWorkspace(workspace);
         const observedAttack = attackCompletedFromWorkspace(benchmarkCase, before, afterFailure);
-        const failure = classifyTimeToSafeFixFailure(error, { stage: "environment" });
+        const failure = classifyTimeToSafeFixFailure(error, {
+          stage: "environment",
+          origin: options.driverCommand ? "external_driver" : "driver_setup"
+        });
         result = timeToSafeFixDriverResultSchema.parse({
           schemaVersion: 1,
           kind: "time-to-safe-fix-driver-result",

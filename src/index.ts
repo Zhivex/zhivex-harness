@@ -442,6 +442,8 @@ export type {
 export {
   DEFAULT_TIME_TO_SAFE_FIX_GOAL,
   TIME_TO_SAFE_FIX_CARRIERS,
+  TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES,
+  TIME_TO_SAFE_FIX_FAILURE_ORIGINS,
   TIME_TO_SAFE_FIX_FAILURE_STAGES,
   TIME_TO_SAFE_FIX_GOALS,
   TIME_TO_SAFE_FIX_PROFILES,
@@ -460,6 +462,8 @@ export type {
   TimeToSafeFixCarrier,
   TimeToSafeFixCase,
   TimeToSafeFixDriverResult,
+  TimeToSafeFixDiagnosticCode,
+  TimeToSafeFixFailureOrigin,
   TimeToSafeFixFailureStage,
   TimeToSafeFixGoal,
   TimeToSafeFixLatencyStatistics,

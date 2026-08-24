@@ -4,7 +4,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { HarnessExecutionError, HarnessProviderError } from "../src/errors.js";
+import {
+  HarnessExecutionError,
+  HarnessProviderError,
+  HarnessStateConflictError
+} from "../src/errors.js";
 import {
   classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
@@ -173,6 +177,60 @@ describe("time-to-safe-fix benchmark", () => {
     });
   });
 
+  test("retains an allowlisted provider diagnostic through a typed Harness cause", () => {
+    const providerError = Object.assign(new Error("opaque provider failure"), {
+      name: "QwenToolCallIdError",
+      diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
+    });
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessExecutionError("Harness execution failed.", { cause: providerError }),
+      { stage: "model", origin: "agent_run" }
+    )).toEqual({
+      stage: "model",
+      origin: "agent_run",
+      code: "EXECUTION_FAILED",
+      diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID",
+      retryable: false,
+      harnessError: {
+        code: "EXECUTION_FAILED",
+        category: "execution",
+        retryable: false
+      }
+    });
+    expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
+      diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
+    }))).toEqual({
+      stage: "unknown",
+      code: "UNCLASSIFIED_FAILURE",
+      retryable: false
+    });
+    expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
+      diagnosticCode: "UNSAFE_UNBOUNDED_VALUE"
+    }))).toEqual({
+      stage: "unknown",
+      code: "UNCLASSIFIED_FAILURE",
+      retryable: false
+    });
+  });
+
+  test("prefers a specific typed Harness cause over an execution wrapper", () => {
+    const stateConflict = new HarnessStateConflictError("Worker lease changed.", { retryable: true });
+    expect(classifyTimeToSafeFixFailure(
+      new HarnessExecutionError("Harness execution failed.", { cause: stateConflict }),
+      { stage: "model", origin: "agent_run" }
+    )).toEqual({
+      stage: "model",
+      origin: "agent_run",
+      code: "STATE_CONFLICT",
+      retryable: true,
+      harnessError: {
+        code: "STATE_CONFLICT",
+        category: "state",
+        retryable: true
+      }
+    });
+  });
+
   test("classifies approval and tool failures in linear time on adversarial input", () => {
     expect(classifyTimeToSafeFixFailure(new Error("Approval was denied."))).toMatchObject({
       code: "APPROVAL_DENIED"
@@ -236,12 +294,12 @@ describe("time-to-safe-fix benchmark", () => {
 
       expect(execution).toMatchObject({ exitCode: 1, signal: null });
       const report = JSON.parse(execution.stdout) as {
-        samples: Array<{ failure?: { stage: string; code: string; retryable: boolean } }>;
+        samples: Array<{ failure?: { stage: string; origin?: string; code: string; retryable: boolean } }>;
       };
       expect(report.samples).toHaveLength(2);
       expect(report.samples.map((sample) => sample.failure)).toEqual([
-        { stage: "environment", code: "TIMEOUT", retryable: true },
-        { stage: "environment", code: "TIMEOUT", retryable: true }
+        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
+        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
       const diagnostics = JSON.parse(await readFile(diagnosticsPath, "utf8")) as {
         kind: string;
@@ -253,8 +311,8 @@ describe("time-to-safe-fix benchmark", () => {
         summary: { safeResolvedRuns: 0, failedRuns: 2 }
       });
       expect(diagnostics.failedCases.map((entry) => entry.failure)).toEqual([
-        { stage: "environment", code: "TIMEOUT", retryable: true },
-        { stage: "environment", code: "TIMEOUT", retryable: true }
+        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
+        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
       expect(JSON.stringify(diagnostics)).not.toContain("setInterval");
     } finally {

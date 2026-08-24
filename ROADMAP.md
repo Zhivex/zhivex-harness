@@ -398,8 +398,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Merge the machine-readable RC.3 failure record and typed failure-metadata propagation, then create the annotated `v1.0.0-rc.4` tag.
-2. Dispatch the protected RC.4 workflow to npm `next` and require registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
-3. Run the observation cycle and publish an independent passing `v1.0.0-rc.5` through the same full gate.
-4. Complete the named security review against RC.5 and close every critical/high finding.
+1. Merge the Qwen durable-ID correction, RC.4 failure record, and bounded failure-origin diagnostics only after the Qwen representative matrix passes outside the release workflow.
+2. Create and dispatch the exact annotated `v1.0.0-rc.5` through npm `next`, registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
+3. Run the observation cycle and publish an independent passing `v1.0.0-rc.6` through the same full gate.
+4. Complete the named security review against RC.6 and close every critical/high finding.
 5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.

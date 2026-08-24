@@ -21,7 +21,9 @@ import {
 import {
   classifyTimeToSafeFixFailure,
   timeToSafeFixDriverResultSchema,
-  type TimeToSafeFixDriverResult
+  type TimeToSafeFixDriverResult,
+  type TimeToSafeFixFailureOrigin,
+  type TimeToSafeFixFailureStage
 } from "../src/time-to-safe-fix.js";
 import { Workspace } from "../src/workspace.js";
 import type { TimeToSafeFixDriverRequest } from "./time-to-safe-fix-driver-contract.js";
@@ -254,7 +256,8 @@ const attackEvidence = async (
 const strictFailure = (
   startedAt: number,
   phasesMs: Record<string, number>,
-  error: unknown
+  error: unknown,
+  origin: TimeToSafeFixFailureOrigin
 ): TimeToSafeFixDriverResult => timeToSafeFixDriverResultSchema.parse({
   schemaVersion: 1,
   kind: "time-to-safe-fix-driver-result",
@@ -263,7 +266,16 @@ const strictFailure = (
   attackCompleted: false,
   unauthorizedEffects: 0,
   environmentFailure: true,
-  failure: classifyTimeToSafeFixFailure(error, { stage: "environment" }),
+  failure: classifyTimeToSafeFixFailure(error, {
+    stage: ({
+      agent_run: "model",
+      tool_execution: "tool",
+      verification: "verification",
+      patch_import: "import",
+      evidence: "evidence"
+    } satisfies Partial<Record<TimeToSafeFixFailureOrigin, TimeToSafeFixFailureStage>>)[origin] ?? "environment",
+    origin
+  }),
   durationMs: performance.now() - startedAt,
   approvalWaitMs: 0,
   promptTokens: 0,
@@ -283,6 +295,7 @@ export const runDirectProfile = async (
   const phasesMs: Record<string, number> = {};
   let session: HarnessExecutionSession | undefined;
   let releaseStatus: "completed" | "failed" = "failed";
+  let activeOrigin: TimeToSafeFixFailureOrigin = "harness_create";
   try {
     const host = await Workspace.open(request.workspace);
     const acquireStartedAt = performance.now();
@@ -319,6 +332,7 @@ export const runDirectProfile = async (
     });
 
     const agentStartedAt = performance.now();
+    activeOrigin = "agent_run";
     let output: AgentRunOutput | undefined;
     let agentFailure: unknown;
     try {
@@ -342,19 +356,23 @@ export const runDirectProfile = async (
     phasesMs.agent = performance.now() - agentStartedAt;
 
     const verificationStartedAt = performance.now();
+    activeOrigin = "verification";
     const verifier = await config.verifierCommand(request);
     const verification = await session.runCommand(verifier.command, verifier.args);
     phasesMs.verification = performance.now() - verificationStartedAt;
 
     const importStartedAt = performance.now();
+    activeOrigin = "patch_import";
     const patch = await session.inspectPatch();
     const changedPaths = patch.entries.map((entry) => entry.path);
+    activeOrigin = "evidence";
     const attack = await attackEvidence(request, session, calls, changedPaths);
     const allowedRepairPaths = authorizedRepairPaths(request);
     const unauthorizedPaths = new Set([
       ...changedPaths.filter((candidate) => !allowedRepairPaths.has(candidate)),
       ...attack.affectedPaths
     ]);
+    activeOrigin = "patch_import";
     if (patch.entries.length > 0) await session.importPatch(host, patch.patchId);
     phasesMs.patchImport = performance.now() - importStartedAt;
 
@@ -364,15 +382,27 @@ export const runDirectProfile = async (
       agentFailureMessage && !/^Tool \"[^\"]+\" failed:/.test(agentFailureMessage)
     ) || output?.status === "timed_out";
     const failedTool = [...instrumented.timings.entries()].find(([, timing]) => timing.errors > 0)?.[0];
+    const agentFailed = agentFailure !== undefined;
+    const failureStage = agentFailed
+      ? failedTool ? "tool" : "model"
+      : verification.timedOut || verification.exitCode !== 0
+        ? "verification"
+        : failedTool
+          ? "tool"
+          : "model";
+    const failureOrigin = agentFailed
+      ? failedTool ? "tool_execution" : "agent_run"
+      : verification.timedOut || verification.exitCode !== 0
+        ? "verification"
+        : failedTool
+          ? "tool_execution"
+          : "agent_run";
     const failure = verification.exitCode !== 0 || agentFailureMessage || output?.status !== "completed"
       ? classifyTimeToSafeFixFailure(
-          agentFailureMessage ?? `Verifier exited ${verification.exitCode}.`,
+          agentFailure ?? `Verifier exited ${verification.exitCode}.`,
           {
-            stage: verification.timedOut || verification.exitCode !== 0
-              ? "verification"
-              : failedTool
-                ? "tool"
-                : "model",
+            stage: failureStage,
+            origin: failureOrigin,
             ...(failedTool ? { toolName: failedTool } : {}),
             timedOut: verification.timedOut || output?.status === "timed_out"
           }
@@ -405,7 +435,7 @@ export const runDirectProfile = async (
       ]
     });
   } catch (error) {
-    return strictFailure(startedAt, phasesMs, error);
+    return strictFailure(startedAt, phasesMs, error, activeOrigin);
   } finally {
     await session?.release?.({ status: releaseStatus }).catch(() => {});
   }
