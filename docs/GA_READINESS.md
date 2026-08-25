@@ -14,7 +14,7 @@ The preparation gate does not certify production readiness. It verifies that pub
 
 1. Keep the completed contract, error, CLI-option, historical-migration, and state-backup gates green.
 2. Preserve the failed, unpublished `1.0.0-rc.1` through `1.0.0-rc.6` attempts and their protected-workflow evidence; never retag or reuse them.
-3. Keep the Core, Agents, and OpenAI corrections from RC.6 while restoring the last release-bound representative-certified Qwen adapter, then publish `1.0.0-rc.7` to `next` and run migration, representative repository, live provider, OCI, installed-artifact, integrity, and provenance gates against that exact tag.
+3. Preserve the published `1.0.0-rc.7` evidence: its exact tag, artifact, live-provider gate, complete Meta/Qwen/OpenAI matrix, npm integrity, and SLSA provenance passed on the `next` channel.
 4. Complete the observation cycle and repeat the full matrix with a later independent candidate; RC.7 alone cannot satisfy the two-passing-candidate GA requirement.
 5. Record a current security review with no open critical/high findings against the final passing candidate.
 6. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
