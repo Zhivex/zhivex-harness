@@ -398,8 +398,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Merge the Qwen durable-ID correction, RC.4 failure record, and bounded failure-origin diagnostics only after the Qwen representative matrix passes outside the release workflow.
-2. Create and dispatch the exact annotated `v1.0.0-rc.5` through npm `next`, registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
-3. Run the observation cycle and publish an independent passing `v1.0.0-rc.6` through the same full gate.
-4. Complete the named security review against RC.6 and close every critical/high finding.
+1. Burn in the coordinated OpenAI Responses SDK correction and its sanitized Harness diagnostic outside the release workflow.
+2. Create and dispatch the exact annotated `v1.0.0-rc.6` through npm `next`, registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
+3. If RC.6 passes, run the observation cycle and append a later independent candidate through the same full gate so two candidates can count toward GA.
+4. Complete the named security review against the final passing candidate and close every critical/high finding.
 5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.

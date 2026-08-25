@@ -58,7 +58,7 @@ bun run benchmark:safe-fix -- \
 
 ## Built-in Zhivex OCI driver
 
-The built-in driver runs all three profiles with the same provider model, budgets, verifier derivation, OCI limits, and benchmark image. `direct` uses the comparison runtime without Harness governance. Both Harness profiles use bounded grouped discovery and digest-bound edits; `governed` retains separate edit, command, and host-import approvals, while `optimized` exposes a four-tool surface and finishes through one approved `verify_and_apply_reviewed_edits` transaction. Both governed profiles still require explicit approval, OCI execution, independent verification, and validated publication back to the host workspace.
+The built-in driver runs all three profiles with the same provider model, budgets, verifier derivation, OCI limits, and benchmark image. `direct` uses the comparison runtime without Harness governance. Both Harness profiles use bounded grouped discovery and digest-bound edits; `governed` retains separate edit, command, and host-import approvals and completes from the signed, journaled `apply_environment_patch` receipt, while `optimized` exposes a four-tool surface and finishes through one approved `verify_and_apply_reviewed_edits` transaction. Neither profile requests a redundant provider summary after its terminal import. Both governed profiles still require explicit approval, OCI execution, independent verification, and validated publication back to the host workspace.
 
 Build the benchmark image first, then configure a live provider in `.env`. The benchmark-specific variables take precedence over the corresponding `ZHIVEX_HARNESS_*` variables:
 

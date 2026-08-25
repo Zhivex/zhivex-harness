@@ -8,7 +8,7 @@ Built-in registrations are Meta, Qwen, OpenAI, and Gemini. Each registration own
 
 Library callers can use `DEFAULT_PROVIDER_REGISTRY`, `BUILTIN_PROVIDER_REGISTRATIONS`, `createProviderRegistry`, or `DEFAULT_PROVIDER_REGISTRY.extend(...)`, then pass the registry to `resolveHarnessConfig`, `createProviderModel`, provider diagnostics, or `createHarness({ providerRegistry })`. Registration IDs, environment-variable names, defaults, diagnostics, and factories are validated before they become selectable.
 
-The coordinated SDK batch pins `@zhivex-ai/agents@1.2.0`, `@zhivex-ai/core@1.7.0`, `@zhivex-ai/meta@0.2.2`, `@zhivex-ai/qwen@0.10.2`, `@zhivex-ai/openai@0.9.6`, and `@zhivex-ai/gemini@0.10.5`. A Core override keeps one runtime contract identity across every adapter.
+The coordinated SDK batch pins `@zhivex-ai/agents@1.3.0`, `@zhivex-ai/core@1.10.0`, `@zhivex-ai/meta@0.2.2`, `@zhivex-ai/qwen@0.10.3`, `@zhivex-ai/openai@0.10.0`, and `@zhivex-ai/gemini@0.10.5`. A Core override keeps one runtime contract identity across every adapter.
 
 OpenAI is based on the GPT-5.6 family: `gpt-5.6-luna` is the default, with `gpt-5.6-terra` and `gpt-5.6-sol` available through `--model`. Availability remains organization-dependent while the upstream family is in limited preview, and the adapter uses the Responses API by default.
 

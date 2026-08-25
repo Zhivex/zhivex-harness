@@ -6,6 +6,7 @@ import path from "node:path";
 
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+import { ProviderToolCallError } from "@zhivex-ai/core";
 
 import * as harnessRuntime from "../src/index.js";
 
@@ -241,11 +242,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         toolCall("apply", "apply_reviewed_edits", { changes: [change] }),
         toolCall("verify", "run_environment_command", { command: "node", args: ["verify.mjs"] }),
         toolCall("inspect", "inspect_environment_patch", {}),
-        toolCall("import", "apply_environment_patch", { patchId }),
-        [
-          { type: "text-delta", textDelta: "fixed" },
-          { type: "finish", finishReason: "stop" }
-        ]
+        toolCall("import", "apply_environment_patch", { patchId })
       ]
     });
     const runtime = new FakeOciRuntime();
@@ -288,7 +285,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       approvals: 3,
       efficiency: {
         activeToolDefinitions: 7,
-        modelTurns: 6,
+        modelTurns: 5,
         approvalRounds: [
           { index: 1, toolNames: ["apply_reviewed_edits"], approved: 1, denied: 0 },
           { index: 2, toolNames: ["run_environment_command"], approved: 1, denied: 0 },
@@ -676,5 +673,67 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       }
     });
     expect(JSON.stringify(result)).not.toContain("Qwen returned a duplicate tool-call id");
+  });
+
+  test("preserves the sanitized OpenAI Responses tool-call diagnostic", async () => {
+    const workspace = await temporaryDirectory("zhivex-driver-openai-diagnostic-");
+    const stateDirectory = await temporaryDirectory("zhivex-driver-openai-diagnostic-state-");
+    await mkdir(path.join(workspace, "src"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+    await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+    const request = driverRequest(workspace, { caseId: "driver-openai-diagnostic" });
+    const baseModel = createMockLanguageModel({
+      provider: "openai.responses",
+      modelId: "gpt-5.6-luna",
+      streamEvents: []
+    });
+    const adapterError = new ProviderToolCallError({
+      provider: "openai",
+      transport: "responses",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+      reason: "invalid_json",
+      retryable: true
+    });
+    const model = new Proxy(baseModel, {
+      get(target, property, receiver) {
+        if (property === "stream") return () => { throw adapterError; };
+        return Reflect.get(target, property, receiver);
+      }
+    });
+
+    const result = await runGovernedTimeToSafeFixProfile(request, {
+      provider: "openai",
+      modelInstance: model,
+      stateDirectory,
+      verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+      allowedCommands: ["node", "npm"],
+      ociRuntimeAdapter: new FakeOciRuntime(),
+      maxSteps: 16,
+      maxToolCalls: 24,
+      maxTokens: 2_000,
+      timeoutMs: 30_000,
+      approvalDelayMs: 0,
+      ociMaxProcessRuntimeMs: 10_000,
+      ociMaxProcessOutputBytes: 20_000,
+      ociMaxMemoryMb: 256,
+      ociMaxPids: 32,
+      ociMaxCpus: 1,
+      ociMaxWorkspaceBytes: 8 * 1024 * 1024,
+      ociMaxFileWriteBytes: 1024 * 1024,
+      ociTmpfsMb: 64
+    });
+
+    expect(result).toMatchObject({
+      utilityPass: true,
+      environmentFailure: true,
+      failure: {
+        stage: "model",
+        origin: "agent_run",
+        code: "MODEL_EXECUTION_FAILED",
+        diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+        retryable: true
+      }
+    });
+    expect(JSON.stringify(result)).not.toContain("invalid_json");
   });
 });
