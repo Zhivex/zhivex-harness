@@ -4,6 +4,19 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.6 - 2026-08-25
+
+### Fixed
+
+- Upgrade the coordinated Zhivex SDK batch to `@zhivex-ai/core@1.10.0`, `@zhivex-ai/agents@1.3.0`, `@zhivex-ai/openai@0.10.0`, and `@zhivex-ai/qwen@0.10.3`, retaining exact pins and one Core override across every provider adapter.
+- Preserve the sanitized OpenAI Responses tool-call diagnostic and retryability from durable SDK failures in Time-to-Safe-Fix evidence without retaining raw arguments, provider payloads, or error messages.
+- Complete the governed representative driver from the signed, journaled `apply_environment_patch` receipt after its separate edit, verifier, inspection, and import approvals, avoiding a redundant final provider turn after the authorized repair is already durable.
+
+### Changed
+
+- Record the immutable, unpublished RC.5 attempt as failed after exact-artifact validation and release-bound live certification passed but OpenAI resolved only 13/14 representative cases.
+- Advance the next candidate to `v1.0.0-rc.6`; because RC.5 cannot count toward GA, a later independent passing candidate will still be required before stable promotion.
+
 ## 1.0.0-rc.5 - 2026-08-24
 
 ### Fixed

@@ -4,6 +4,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { ProviderToolCallError } from "@zhivex-ai/core";
+
 import {
   HarnessExecutionError,
   HarnessProviderError,
@@ -209,6 +211,52 @@ describe("time-to-safe-fix benchmark", () => {
     }))).toEqual({
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
+      retryable: false
+    });
+    expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
+      name: "ProviderToolCallError",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID"
+    }))).toEqual({
+      stage: "unknown",
+      code: "UNCLASSIFIED_FAILURE",
+      retryable: false
+    });
+
+    const openAIError = new ProviderToolCallError({
+      provider: "openai",
+      transport: "responses",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+      reason: "invalid_json",
+      retryable: true
+    });
+    expect(classifyTimeToSafeFixFailure(openAIError, {
+      stage: "model",
+      origin: "agent_run"
+    })).toEqual({
+      stage: "model",
+      origin: "agent_run",
+      code: "MODEL_EXECUTION_FAILED",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+      retryable: true
+    });
+
+    expect(classifyTimeToSafeFixFailure({
+      message: "Provider tool call could not be materialized safely.",
+      category: "provider-tool-call",
+      provider: "openai",
+      transport: "responses",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+      reason: "stream_truncated",
+      retryable: false,
+      effectsPossible: true
+    }, {
+      stage: "model",
+      origin: "agent_run"
+    })).toEqual({
+      stage: "model",
+      origin: "agent_run",
+      code: "MODEL_EXECUTION_FAILED",
+      diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
       retryable: false
     });
   });

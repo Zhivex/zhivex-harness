@@ -36,7 +36,8 @@ export const TIME_TO_SAFE_FIX_FAILURE_ORIGINS = [
 export type TimeToSafeFixFailureOrigin = (typeof TIME_TO_SAFE_FIX_FAILURE_ORIGINS)[number];
 
 export const TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES = [
-  "QWEN_DUPLICATE_TOOL_CALL_ID"
+  "QWEN_DUPLICATE_TOOL_CALL_ID",
+  "OPENAI_RESPONSES_TOOL_CALL_INVALID"
 ] as const;
 export type TimeToSafeFixDiagnosticCode = (typeof TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES)[number];
 
@@ -232,16 +233,48 @@ const structuredHarnessFailure = (error: unknown): StructuredHarnessFailure | un
 
 const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticCode | undefined => {
   if (!error || typeof error !== "object" || depth > 4) return undefined;
-  const record = error as { diagnosticCode?: unknown; cause?: unknown };
-  if (
+  const record = error as {
+    category?: unknown;
+    provider?: unknown;
+    diagnosticCode?: unknown;
+    cause?: unknown;
+  };
+  const openAIProviderFailure =
+    record.category === "provider-tool-call" &&
+    record.provider === "openai" &&
+    record.diagnosticCode === "OPENAI_RESPONSES_TOOL_CALL_INVALID";
+  const qwenProviderFailure =
     error instanceof Error &&
     error.name === "QwenToolCallIdError" &&
+    record.diagnosticCode === "QWEN_DUPLICATE_TOOL_CALL_ID";
+  if (
+    (qwenProviderFailure || openAIProviderFailure) &&
     typeof record.diagnosticCode === "string" &&
     (TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES as readonly string[]).includes(record.diagnosticCode)
   ) {
     return record.diagnosticCode as TimeToSafeFixDiagnosticCode;
   }
   return safeDiagnosticCode(record.cause, depth + 1);
+};
+
+const safeProviderToolCallRetryable = (error: unknown, depth = 0): boolean | undefined => {
+  if (!error || typeof error !== "object" || depth > 4) return undefined;
+  const record = error as {
+    category?: unknown;
+    provider?: unknown;
+    diagnosticCode?: unknown;
+    retryable?: unknown;
+    cause?: unknown;
+  };
+  if (
+    record.category === "provider-tool-call" &&
+    record.provider === "openai" &&
+    record.diagnosticCode === "OPENAI_RESPONSES_TOOL_CALL_INVALID" &&
+    typeof record.retryable === "boolean"
+  ) {
+    return record.retryable;
+  }
+  return safeProviderToolCallRetryable(record.cause, depth + 1);
 };
 
 const isAsciiWordCharacter = (code: number) =>
@@ -292,10 +325,15 @@ export const classifyTimeToSafeFixFailure = (
     timedOut?: boolean;
   } = {}
 ): NonNullable<TimeToSafeFixDriverResult["failure"]> => {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  const message = error instanceof Error
+    ? error.message
+    : error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message
+      : String(error ?? "");
   const normalized = message.toLowerCase();
   const structured = structuredHarnessFailure(error);
   const diagnosticCode = safeDiagnosticCode(error);
+  const providerToolCallRetryable = safeProviderToolCallRetryable(error);
   let code = "UNCLASSIFIED_FAILURE";
   let retryable = false;
   if (options.timedOut || /timed? out|timeout/.test(normalized)) {
@@ -304,6 +342,9 @@ export const classifyTimeToSafeFixFailure = (
   } else if (structured && structured.category !== "execution") {
     code = structured.code;
     retryable = structured.retryable;
+  } else if (providerToolCallRetryable !== undefined) {
+    code = "MODEL_EXECUTION_FAILED";
+    retryable = providerToolCallRetryable;
   } else if (/rate.?limit|too many requests|temporar(?:y|ily)|connection reset|service unavailable|getaddrinfo|enotfound|network/.test(normalized)) {
     code = "PROVIDER_TRANSIENT_FAILURE";
     retryable = true;

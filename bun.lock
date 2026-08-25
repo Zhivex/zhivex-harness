@@ -5,12 +5,12 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.2.0",
-        "@zhivex-ai/core": "1.7.0",
+        "@zhivex-ai/agents": "1.3.0",
+        "@zhivex-ai/core": "1.10.0",
         "@zhivex-ai/gemini": "0.10.5",
         "@zhivex-ai/meta": "0.2.2",
-        "@zhivex-ai/openai": "0.9.6",
-        "@zhivex-ai/qwen": "0.10.2",
+        "@zhivex-ai/openai": "0.10.0",
+        "@zhivex-ai/qwen": "0.10.3",
         "zod": "4.4.3",
       },
       "devDependencies": {
@@ -22,7 +22,7 @@
     },
   },
   "overrides": {
-    "@zhivex-ai/core": "1.7.0",
+    "@zhivex-ai/core": "1.10.0",
   },
   "packages": {
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
@@ -33,17 +33,17 @@
 
     "@types/node": ["@types/node@26.2.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.2.0", "", { "dependencies": { "@zhivex-ai/core": "^1.5.0" } }, "sha512-CiaF+Kyj0c0buy9/WFXg3Xl26j/dbuYlRF9G05X6MTrPiRQNawXLaT0xhO0ZoAneDd1XfDvx/jaXP1ImS3YJ3Q=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.3.0", "", { "dependencies": { "@zhivex-ai/core": "^1.10.0" } }, "sha512-n5ZJurG8mq+334VLnTZNS10/AUwQimvoSPIUHq90SgT3aE6dBBUwAWXZpoZTSCUtQi2F0jV/fX7k7OTfyO2kdA=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.7.0", "", { "dependencies": { "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-IQxDUao5ChaiOLP2btFWymlK/SmdiJ9Jw58tCoyZCwQ+9mQutYvV5hPcl9hReseMBsxhZcnL6X46K8LQQzHpXw=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.10.0", "", { "dependencies": { "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-DYZ0gOYuTdY0xjtBc7x4usVLUCqrjL8JxnYHh/V0SpgOVV8xI1a0+BoiknDm9fe07tjlWk2WAW9BXLEDDIAFMA=="],
 
     "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.10.5", "", { "dependencies": { "@zhivex-ai/core": "^1.4.0", "zod": "^4.4.3" } }, "sha512-fA/Tk3Kbix+SH+zn7hRmyrmEv9HY7HZenLQu8lAyddaVeFTUUNC3NHPqeHrMvg2QghAtWdCsa7Rro2Fd+lB9pw=="],
 
     "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.2", "", { "dependencies": { "@zhivex-ai/core": "^1.3.0", "zod": "^4.4.3" } }, "sha512-1Qu1Swp6hG20Dd6OpiBoIIpqKCVHzBEpRsPHyA/iUK0jHXcqvw71d4kzbQcLe7VBcKgZJoHwzo4vOa8uN8CKKw=="],
 
-    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.9.6", "", { "dependencies": { "@zhivex-ai/core": "^1.0.2", "zod": "^4.4.3" } }, "sha512-8PhDLXAGYv7nFrsGfrVIuTKtYRLnqdgSMmsRR75ajPsCMecEqvCG8uYnAnvehqnPc4SynbyvjBkKHynqT5LDYw=="],
+    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.10.0", "", { "dependencies": { "@zhivex-ai/core": "^1.10.0", "zod": "^4.4.3" } }, "sha512-PzGrlD94XqMKw+9y5wGwjPnRuO4FrB5gR4tZJT3irAk5IIlkd97ARz2WlZqHr4kepWYDzenAk4+83vKJdTAMHQ=="],
 
-    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.10.2", "", { "dependencies": { "@zhivex-ai/core": "^1.4.0", "ws": "^8.21.1", "zod": "^4.4.3" } }, "sha512-mzuYv7fFbuZX3e+V1IKm2nxQMjSTrU5dz8/gphQJ4+4WQryVDxwyEPZEs5jbNghTMlToQkmcEUFq0sptpnuOnQ=="],
+    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.10.3", "", { "dependencies": { "@zhivex-ai/core": "^1.4.0", "ws": "^8.21.1", "zod": "^4.4.3" } }, "sha512-Rayb/DTNEmvdIaiMtEYiHhn/BYVWSFFC7a6/6YJ25jJZc4o1PoUCF3TYE2aWcjWm+7p+GY0b1vUxkIIJuzv+tg=="],
 
     "bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 
