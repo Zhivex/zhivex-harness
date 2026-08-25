@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.7 - 2026-08-25
+
+### Fixed
+
+- Keep `@zhivex-ai/core@1.10.0`, `@zhivex-ai/agents@1.3.0`, and `@zhivex-ai/openai@0.10.0`, while restoring `@zhivex-ai/qwen@0.10.2`, the last adapter that passed the complete release-bound Qwen representative matrix. Qwen `0.10.3` failed closed before the Harness durable tool-call-ID normalizer could recover the affected turns.
+
+### Changed
+
+- Record the immutable, unpublished RC.6 attempt as failed after exact-artifact and release-bound live certification passed, while Qwen resolved only 12/14 representative cases in both the original protected run and one retry; npm publication remained skipped.
+- Extend the representative release matrix through `v1.0.0-rc.7`; because RC.6 cannot count toward GA, a later independent passing candidate will still be required before stable promotion.
+
 ## 1.0.0-rc.6 - 2026-08-25
 
 ### Fixed

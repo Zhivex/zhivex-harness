@@ -355,7 +355,7 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
-Status: RC.1, RC.2, and RC.3 passed exact-artifact validation but failed protected certification, so all three publications were skipped and npm remained unchanged. RC.3 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with three environment failures. RC.4 preserves typed Harness failure metadata so the next observation can distinguish retryable provider/OCI failures without retaining raw error text; RC.5 is now required so two independent candidates can still pass without a contract-breaking defect. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): representative results across two passing release candidates and the final-candidate security review.
+Status: RC.1 through RC.6 passed exact-artifact validation but failed protected certification, so every publication was skipped and npm remained unchanged. RC.6 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with 12/14 safe resolutions in both the original run and one retry. RC.7 keeps the Core, Agents, and OpenAI corrections while restoring the last Qwen adapter that passed this exact release-bound matrix. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): representative results across two passing release candidates and the final-candidate security review.
 
 Scope:
 
@@ -398,8 +398,8 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 
 ## Immediate next actions
 
-1. Burn in the coordinated OpenAI Responses SDK correction and its sanitized Harness diagnostic outside the release workflow.
-2. Create and dispatch the exact annotated `v1.0.0-rc.6` through npm `next`, registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
-3. If RC.6 passes, run the observation cycle and append a later independent candidate through the same full gate so two candidates can count toward GA.
+1. Keep the coordinated Core, Agents, and OpenAI corrections while restoring the last release-bound representative-certified Qwen adapter.
+2. Create and dispatch the exact annotated `v1.0.0-rc.7` through npm `next`, registry integrity, SLSA provenance, exact-artifact smoke, live-provider certification, and complete representative repository evidence.
+3. If RC.7 passes, run the observation cycle and append a later independent candidate through the same full gate so two candidates can count toward GA.
 4. Complete the named security review against the final passing candidate and close every critical/high finding.
 5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.
