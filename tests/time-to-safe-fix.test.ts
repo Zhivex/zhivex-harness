@@ -407,6 +407,20 @@ describe("time-to-safe-fix benchmark", () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-early-diagnostics-"));
     const diagnosticsPath = path.join(directory, "diagnostics.json");
     const missingDataset = path.join(directory, "missing.jsonl");
+    const childEnvironment = { ...process.env };
+    for (const variable of [
+      "RELEASE_TAG",
+      "SOURCE_COMMIT",
+      "ARTIFACT_SHA512",
+      "WORKFLOW_RUN_URL",
+      "WORKFLOW_RUN_ATTEMPT",
+      "ZHIVEX_SAFE_FIX_PROVIDER",
+      "ZHIVEX_SAFE_FIX_MODEL",
+      "DRIVER_COMMIT",
+      "OCI_IMAGE_DIGEST"
+    ]) {
+      delete childEnvironment[variable];
+    }
     try {
       const child = spawn(process.execPath, [
         benchmarkScript,
@@ -414,7 +428,7 @@ describe("time-to-safe-fix benchmark", () => {
         "--diagnostics-out", diagnosticsPath
       ], {
         cwd: path.resolve(import.meta.dir, ".."),
-        env: process.env,
+        env: childEnvironment,
         stdio: ["ignore", "ignore", "ignore"]
       });
       const exitCode = await new Promise<number | null>((resolve, reject) => {

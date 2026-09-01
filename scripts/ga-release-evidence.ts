@@ -61,7 +61,7 @@ export interface GaFailedReleaseCandidateEvidence {
   contractBreakingDefects: null;
   publishedAt: null;
   sourceCommit: string;
-  artifactSha512: string;
+  artifactSha512: string | null;
   workflowUrl: string;
   provenance: "not-published";
   liveCertification: "passed-release-bound-run" | "failed-release-bound-run" | "not-run";
@@ -172,11 +172,6 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
   );
   assert.equal(candidate.publishedAt, null, `${candidate.version} failed attempt must not claim publication`);
   assert.match(String(candidate.sourceCommit), /^[a-f0-9]{40}$/, `${candidate.version} sourceCommit is invalid`);
-  assert.match(
-    String(candidate.artifactSha512),
-    /^sha512-[A-Za-z0-9+/]+={0,2}$/,
-    `${candidate.version} artifactSha512 is invalid`
-  );
   assert.match(String(candidate.workflowUrl), GITHUB_ACTIONS_RUN_PATTERN, `${candidate.version} workflowUrl is invalid`);
   assert.equal(candidate.provenance, "not-published", `${candidate.version} provenance must record non-publication`);
   assert.equal(typeof candidate.observedAt, "string", `${candidate.version} observedAt is required`);
@@ -187,6 +182,7 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
   assert(failedGates.every((gate) => typeof gate === "string" && /^[a-z][a-z0-9-]*$/.test(gate)),
     `${candidate.version} failedGates must use stable kebab-case identifiers`);
   assert.equal(new Set(failedGates).size, failedGates.length, `${candidate.version} failedGates must be unique`);
+  const preArtifactFailure = failedGates.includes("deterministic-validation");
   if (failedGates.includes("artifact-binding")) {
     assert.deepEqual(
       failedGates,
@@ -194,7 +190,25 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
       `${candidate.version} artifact-binding failure must not claim outcomes for gates that did not run`
     );
   }
-  const expectedLiveCertification = failedGates.includes("artifact-binding")
+  if (preArtifactFailure) {
+    assert.deepEqual(
+      failedGates,
+      ["deterministic-validation"],
+      `${candidate.version} deterministic-validation failure must not claim outcomes for gates that did not run`
+    );
+    assert.equal(
+      candidate.artifactSha512,
+      null,
+      `${candidate.version} deterministic-validation failure must not claim an artifact digest`
+    );
+  } else {
+    assert.match(
+      String(candidate.artifactSha512),
+      /^sha512-[A-Za-z0-9+/]+={0,2}$/,
+      `${candidate.version} artifactSha512 is invalid`
+    );
+  }
+  const expectedLiveCertification = failedGates.includes("artifact-binding") || preArtifactFailure
     ? "not-run"
     : failedGates.includes("live-provider-certification")
       ? "failed-release-bound-run"
