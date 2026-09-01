@@ -216,6 +216,11 @@ describe("GA release-candidate evidence", () => {
       liveCertification: "not-run",
       failedGates: ["artifact-binding"]
     })).liveCertification).toBe("not-run");
+    expect(parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      artifactSha512: null,
+      liveCertification: "not-run",
+      failedGates: ["deterministic-validation"]
+    })).artifactSha512).toBeNull();
     expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
       liveCertification: "failed-release-bound-run",
       failedGates: ["representative-evaluation"]
@@ -232,6 +237,11 @@ describe("GA release-candidate evidence", () => {
       liveCertification: "not-run",
       failedGates: ["artifact-binding", "live-provider-certification"]
     }))).toThrow(/must not claim outcomes for gates that did not run/);
+    expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      artifactSha512,
+      liveCertification: "not-run",
+      failedGates: ["deterministic-validation"]
+    }))).toThrow(/must not claim an artifact digest/);
     expect(() => parseGaFailedReleaseCandidateEvidence({
       ...failedEvidence(),
       publishedAt: "2026-08-23T23:54:37Z"

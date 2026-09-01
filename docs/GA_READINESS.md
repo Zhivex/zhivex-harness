@@ -16,9 +16,10 @@ The preparation gate does not certify production readiness. It verifies that pub
 2. Preserve the failed, unpublished `1.0.0-rc.1` through `1.0.0-rc.6` attempts and the separate failed `1.0.0-rc.8` attempt with their protected-workflow evidence; never retag or reuse them.
 3. Preserve the published `1.0.0-rc.7` evidence: its exact tag, artifact, live-provider gate, complete Meta/Qwen/OpenAI matrix, npm integrity, and SLSA provenance passed on the `next` channel.
 4. Record that `1.0.0-rc.8` passed exact-tag readiness but failed artifact binding because the manual workflow packed before building `dist/`; OCI and provider gates did not run, no diagnostic artifact was produced, and npm publication was not dispatched.
-5. Treat `1.0.0-rc.9` as pending, then run its exact tag through artifact binding, live-provider, mixed-routing, model-directed OCI, and the complete Meta/Qwen/OpenAI representative matrix; RC.7 alone cannot satisfy the two-passing-candidate GA requirement.
-6. Record a current security review with no open critical/high findings against the final passing candidate.
-7. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
-8. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
+5. Preserve `1.0.0-rc.9` as an immutable failed attempt: release-bound deterministic validation exposed an environment-sensitive diagnostic test before packing, so no release tarball was created and every live, representative, and npm job was skipped.
+6. Treat `1.0.0-rc.10` as pending, then run its exact tag through deterministic and artifact binding, live-provider, mixed-routing, model-directed OCI, and the complete Meta/Qwen/OpenAI representative matrix; RC.7 alone cannot satisfy the two-passing-candidate GA requirement.
+7. Record a current security review with no open critical/high findings against the final passing candidate.
+8. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
+9. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
 
 Gemini is explicitly provisional and excluded from the 1.0 GA-certified cohort. The decision and its promotion criteria are recorded in [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md); partial or capacity-blocked evidence is never certification.

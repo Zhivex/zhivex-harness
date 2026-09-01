@@ -4,6 +4,18 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.10 - 2026-09-01
+
+### Fixed
+
+- Isolate the non-release early-diagnostic fixture from release-bound environment variables, so the test remains hermetic when `bun test` runs inside the validation job while real incomplete diagnostic bindings continue to fail closed.
+- Allow the immutable readiness ledger to record a deterministic pre-artifact failure with an explicit null artifact digest and `not-run` live certification instead of inventing an artifact identity.
+
+### Changed
+
+- Record the immutable, unpublished RC.9 attempt as failed during deterministic validation before packing: one environment-sensitive test failed, no release tarball was created, every live/representative gate was skipped, and npm publication was not dispatched.
+- Extend the representative release matrices through `v1.0.0-rc.10`; RC.10 remains pending until its distinct commit and annotated tag complete the full protected workflow.
+
 ## 1.0.0-rc.9 - 2026-09-01
 
 ### Fixed
