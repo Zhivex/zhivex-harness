@@ -212,6 +212,10 @@ describe("GA release-candidate evidence", () => {
       liveCertification: "passed-release-bound-run",
       failedGates: ["representative-evaluation"]
     })).liveCertification).toBe("passed-release-bound-run");
+    expect(parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "not-run",
+      failedGates: ["artifact-binding"]
+    })).liveCertification).toBe("not-run");
     expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
       liveCertification: "failed-release-bound-run",
       failedGates: ["representative-evaluation"]
@@ -220,6 +224,14 @@ describe("GA release-candidate evidence", () => {
       liveCertification: "passed-release-bound-run",
       failedGates: ["live-provider-certification"]
     }))).toThrow(/live certification must agree with failedGates/);
+    expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "failed-release-bound-run",
+      failedGates: ["artifact-binding"]
+    }))).toThrow(/live certification must agree with failedGates/);
+    expect(() => parseGaFailedReleaseCandidateEvidence(failedEvidence({
+      liveCertification: "not-run",
+      failedGates: ["artifact-binding", "live-provider-certification"]
+    }))).toThrow(/must not claim outcomes for gates that did not run/);
     expect(() => parseGaFailedReleaseCandidateEvidence({
       ...failedEvidence(),
       publishedAt: "2026-08-23T23:54:37Z"

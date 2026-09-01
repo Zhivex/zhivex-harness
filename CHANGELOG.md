@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.9 - 2026-09-01
+
+### Fixed
+
+- Build `dist/` before the manual tag-bound live-certification workflow packs and inspects the candidate, preventing a source-only tarball from failing artifact binding before OCI and provider gates can run.
+
+### Changed
+
+- Record the immutable, unpublished RC.8 attempt as failed at artifact binding: exact-tag readiness passed, but OCI and every provider gate were skipped, no diagnostic artifact was produced, and npm publication was not dispatched.
+- Extend the representative release matrices through `v1.0.0-rc.9`; RC.9 remains pending until its exact tag completes protected certification.
+
 ## 1.0.0-rc.8 - 2026-09-01
 
 ### Fixed

@@ -160,6 +160,24 @@
     {
       "version": "1.0.0-rc.8",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/31",
+      "status": "failed-gates",
+      "channel": "next",
+      "tag": "v1.0.0-rc.8",
+      "contractBreakingDefects": null,
+      "publishedAt": null,
+      "sourceCommit": "db1c6917e23be73c2b4c83ed7762dc676d39f038",
+      "artifactSha512": "sha512-SaVLNFzrR2BKEyI11N7Dhx4nDrbt+3AQbD5BVaO4hex5umGP5STpyawSbk742GNUZ/MhqlzhBiS4se2DDpkhRg==",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33558133048",
+      "provenance": "not-published",
+      "liveCertification": "not-run",
+      "observedAt": "2026-09-01T20:55:44Z",
+      "failedGates": [
+        "artifact-binding"
+      ]
+    },
+    {
+      "version": "1.0.0-rc.9",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/31",
       "status": "pending",
       "channel": null,
       "tag": null,
