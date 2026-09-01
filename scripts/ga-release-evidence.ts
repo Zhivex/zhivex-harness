@@ -64,7 +64,7 @@ export interface GaFailedReleaseCandidateEvidence {
   artifactSha512: string;
   workflowUrl: string;
   provenance: "not-published";
-  liveCertification: "passed-release-bound-run" | "failed-release-bound-run";
+  liveCertification: "passed-release-bound-run" | "failed-release-bound-run" | "not-run";
   observedAt: string;
   failedGates: string[];
 }
@@ -187,9 +187,18 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
   assert(failedGates.every((gate) => typeof gate === "string" && /^[a-z][a-z0-9-]*$/.test(gate)),
     `${candidate.version} failedGates must use stable kebab-case identifiers`);
   assert.equal(new Set(failedGates).size, failedGates.length, `${candidate.version} failedGates must be unique`);
-  const expectedLiveCertification = failedGates.includes("live-provider-certification")
-    ? "failed-release-bound-run"
-    : "passed-release-bound-run";
+  if (failedGates.includes("artifact-binding")) {
+    assert.deepEqual(
+      failedGates,
+      ["artifact-binding"],
+      `${candidate.version} artifact-binding failure must not claim outcomes for gates that did not run`
+    );
+  }
+  const expectedLiveCertification = failedGates.includes("artifact-binding")
+    ? "not-run"
+    : failedGates.includes("live-provider-certification")
+      ? "failed-release-bound-run"
+      : "passed-release-bound-run";
   assert.equal(
     candidate.liveCertification,
     expectedLiveCertification,

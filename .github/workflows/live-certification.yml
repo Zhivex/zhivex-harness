@@ -62,6 +62,7 @@ jobs:
         run: |
           mkdir -p release-artifacts/live-diagnostics
           ARTIFACT="release-artifacts/zhivex-ai-harness-${RELEASE_TAG#v}.tgz"
+          bun run build
           bun pm pack --filename "$ARTIFACT" --ignore-scripts
           bun run artifact:check -- "$ARTIFACT"
           ARTIFACT_SHA512="$(bun -e 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; process.stdout.write(`sha512-${createHash("sha512").update(readFileSync(process.argv[1])).digest("base64")}`);' "$ARTIFACT")"

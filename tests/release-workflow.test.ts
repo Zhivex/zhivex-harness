@@ -135,10 +135,19 @@ describe("release workflow version source", () => {
     const manual = await readFile(path.join(workspace, ".github/workflows/live-certification.yml"), "utf8");
 
     const releaseLive = release.slice(release.indexOf("  certify-live:"), release.indexOf("  representative-evaluation:"));
+    const manualBinding = manual.slice(
+      manual.indexOf("      - name: Bind immutable live diagnostic identity"),
+      manual.indexOf("      - name: Preload OCI execution image")
+    );
     expect(releaseLive).toContain("name: Download immutable validated artifact");
     expect(releaseLive).toContain("shasum -a 512 -c SHA512SUMS");
-    expect(manual).toContain('bun pm pack --filename "$ARTIFACT" --ignore-scripts');
-    expect(manual).toContain('bun run artifact:check -- "$ARTIFACT"');
+    expect(manualBinding).toContain("bun run build");
+    expect(manualBinding).toContain('bun pm pack --filename "$ARTIFACT" --ignore-scripts');
+    expect(manualBinding).toContain('bun run artifact:check -- "$ARTIFACT"');
+    expect(manualBinding.indexOf("bun run build"))
+      .toBeLessThan(manualBinding.indexOf('bun pm pack --filename "$ARTIFACT" --ignore-scripts'));
+    expect(manualBinding.indexOf('bun pm pack --filename "$ARTIFACT" --ignore-scripts'))
+      .toBeLessThan(manualBinding.indexOf('bun run artifact:check -- "$ARTIFACT"'));
   });
 
   test("representative evaluation loads the exact unpacked artifact runtime", async () => {
