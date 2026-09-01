@@ -77,7 +77,68 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("name: representative-diagnostics-${{ github.sha }}-${{ github.run_attempt }}");
     expect(workflow).toContain("path: release-artifacts/representative-diagnostics/*.json");
     expect(workflow).toContain("if: ${{ always() }}");
+    expect(workflow).toContain("WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}");
+    expect(workflow).toContain("id: representative_meta");
+    expect(workflow).toContain("id: representative_qwen");
+    expect(workflow).toContain("id: representative_openai");
+    expect(workflow).toContain("steps.representative_meta.outcome == 'success'");
+    expect(workflow).toContain("steps.representative_qwen.outcome == 'success'");
+    expect(workflow).toContain("steps.representative_openai.outcome == 'success'");
+    expect(workflow).toContain("scripts/release-diagnostics.ts");
+    expect(workflow).toContain("--diagnostics-dir release-artifacts/representative-diagnostics");
+    expect(workflow).toContain('--gate "meta=${{ steps.representative_meta.outcome }}"');
+    expect(workflow).toContain('--gate "qwen=${{ steps.representative_qwen.outcome }}"');
+    expect(workflow).toContain('--gate "openai=${{ steps.representative_openai.outcome }}"');
     expect(workflow).not.toContain("path: release-artifacts/representative-raw");
+  });
+
+  for (const workflowPath of workflowPaths) {
+    test(`${workflowPath} completes every live gate before enforcing the aggregate result`, async () => {
+      const workflow = await readFile(path.join(workspace, workflowPath), "utf8");
+
+      for (const gate of [
+        "live_oci_preload",
+        "live_oci",
+        "live_base",
+        "live_orchestration",
+        "live_routing",
+        "live_execution"
+      ]) {
+        const diagnosticGate = gate.replace("live_", "").replaceAll("_", "-");
+        expect(workflow).toContain(`id: ${gate}`);
+        expect(workflow).toContain(`--gate "${diagnosticGate}=\${{ steps.${gate}.outcome }}"`);
+        const block = workflow.match(new RegExp(
+          `id: ${gate}\\n([\\s\\S]*?)(?=\\n      - name:)`
+        ))?.[0];
+        expect(block).toContain("continue-on-error: true");
+        expect(block).toContain("bun run scripts/run-release-gate.ts");
+        expect(block).toContain(`--gate ${diagnosticGate}`);
+        expect(block).toContain(
+          `--out release-artifacts/live-diagnostics/${diagnosticGate}.json`
+        );
+      }
+      expect(workflow).toContain("name: Enforce complete live certification result");
+      expect(workflow).toContain("if: ${{ always() }}");
+      expect(workflow).toContain("scripts/release-diagnostics.ts");
+      expect(workflow).toContain("--diagnostics-dir release-artifacts/live-diagnostics");
+      expect(workflow).toContain("WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}");
+      expect(workflow).toContain('echo "ARTIFACT_SHA512=$ARTIFACT_SHA512" >> "$GITHUB_ENV"');
+      expect(workflow).toContain('echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"');
+      expect(workflow).toContain("name: Upload sanitized live diagnostics");
+      expect(workflow).toContain("name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}");
+      expect(workflow).toContain("path: release-artifacts/live-diagnostics/*.json");
+    });
+  }
+
+  test("release-bound live diagnostics use the validated tarball while manual certification packs the tag", async () => {
+    const release = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
+    const manual = await readFile(path.join(workspace, ".github/workflows/live-certification.yml"), "utf8");
+
+    const releaseLive = release.slice(release.indexOf("  certify-live:"), release.indexOf("  representative-evaluation:"));
+    expect(releaseLive).toContain("name: Download immutable validated artifact");
+    expect(releaseLive).toContain("shasum -a 512 -c SHA512SUMS");
+    expect(manual).toContain('bun pm pack --filename "$ARTIFACT" --ignore-scripts');
+    expect(manual).toContain('bun run artifact:check -- "$ARTIFACT"');
   });
 
   test("representative evaluation loads the exact unpacked artifact runtime", async () => {

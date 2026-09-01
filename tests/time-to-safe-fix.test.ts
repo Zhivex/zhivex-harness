@@ -315,6 +315,9 @@ describe("time-to-safe-fix benchmark", () => {
     const benchmarkScript = path.resolve(import.meta.dir, "..", "scripts", "benchmark-time-to-safe-fix.ts");
     const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-diagnostics-"));
     const diagnosticsPath = path.join(directory, "diagnostics.json");
+    const sourceCommit = "a".repeat(40);
+    const driverCommit = "b".repeat(40);
+    const artifactSha512 = `sha512-${Buffer.alloc(64, 7).toString("base64")}`;
     try {
       const execution = await new Promise<{ exitCode: number | null; signal: NodeJS.Signals | null; stdout: string }>(
         (resolve, reject) => {
@@ -330,7 +333,18 @@ describe("time-to-safe-fix benchmark", () => {
             "--diagnostics-out", diagnosticsPath
           ], {
             cwd: path.resolve(import.meta.dir, ".."),
-            env: process.env,
+            env: {
+              ...process.env,
+              RELEASE_TAG: "v1.0.0-rc.8",
+              SOURCE_COMMIT: sourceCommit,
+              ARTIFACT_SHA512: artifactSha512,
+              WORKFLOW_RUN_URL: "https://github.com/Zhivex/zhivex-harness/actions/runs/123456",
+              WORKFLOW_RUN_ATTEMPT: "2",
+              ZHIVEX_SAFE_FIX_PROVIDER: "qwen",
+              ZHIVEX_SAFE_FIX_MODEL: "qwen3.8-max",
+              DRIVER_COMMIT: driverCommit,
+              OCI_IMAGE_DIGEST: `sha256:${"c".repeat(64)}`
+            },
             stdio: ["ignore", "pipe", "ignore"]
           });
           let stdout = "";
@@ -350,19 +364,91 @@ describe("time-to-safe-fix benchmark", () => {
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
       const diagnostics = JSON.parse(await readFile(diagnosticsPath, "utf8")) as {
+        schemaVersion: number;
         kind: string;
+        status: string;
+        binding: Record<string, unknown>;
         summary: { safeResolvedRuns: number; failedRuns: number };
-        failedCases: Array<{ failure?: { code: string; retryable: boolean } }>;
+        failedCases: Array<{
+          caseFingerprint: string;
+          failure?: { code: string; retryable: boolean };
+        }>;
       };
       expect(diagnostics).toMatchObject({
+        schemaVersion: 2,
         kind: "time-to-safe-fix-diagnostics",
+        status: "failed",
+        binding: {
+          releaseTag: "v1.0.0-rc.8",
+          sourceCommit,
+          artifactSha512,
+          workflowRunAttempt: 2,
+          provider: "qwen",
+          model: "qwen3.8-max",
+          driverCommit,
+          ociImageDigest: `sha256:${"c".repeat(64)}`
+        },
         summary: { safeResolvedRuns: 0, failedRuns: 2 }
       });
+      expect(diagnostics.failedCases.every((entry) => /^sha256:[a-f0-9]{64}$/.test(entry.caseFingerprint)))
+        .toBe(true);
       expect(diagnostics.failedCases.map((entry) => entry.failure)).toEqual([
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
       expect(JSON.stringify(diagnostics)).not.toContain("setInterval");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("preserves a sanitized terminal diagnostic when setup fails before the matrix", async () => {
+    const benchmarkScript = path.resolve(import.meta.dir, "..", "scripts", "benchmark-time-to-safe-fix.ts");
+    const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-early-diagnostics-"));
+    const diagnosticsPath = path.join(directory, "diagnostics.json");
+    const missingDataset = path.join(directory, "missing.jsonl");
+    try {
+      const child = spawn(process.execPath, [
+        benchmarkScript,
+        "--dataset", missingDataset,
+        "--diagnostics-out", diagnosticsPath
+      ], {
+        cwd: path.resolve(import.meta.dir, ".."),
+        env: process.env,
+        stdio: ["ignore", "ignore", "ignore"]
+      });
+      const exitCode = await new Promise<number | null>((resolve, reject) => {
+        child.once("error", reject);
+        child.once("close", resolve);
+      });
+      expect(exitCode).toBe(1);
+      const diagnostics = JSON.parse(await readFile(diagnosticsPath, "utf8")) as {
+        schemaVersion: number;
+        status: string;
+        summary: { failedRuns: number };
+        failedCases: unknown[];
+        terminalFailure: {
+          stage: string;
+          origin: string;
+          code: string;
+          retryable: boolean;
+          fingerprint: string;
+        };
+      };
+      expect(diagnostics).toMatchObject({
+        schemaVersion: 2,
+        status: "failed",
+        summary: { failedRuns: 1 },
+        failedCases: [],
+        terminalFailure: {
+          stage: "environment",
+          origin: "driver_setup",
+          retryable: false
+        }
+      });
+      expect(JSON.stringify(diagnostics)).not.toContain(missingDataset);
+      expect(diagnostics.terminalFailure.code).toMatch(/^[A-Z][A-Z0-9_]*$/);
+      expect(diagnostics.terminalFailure.fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

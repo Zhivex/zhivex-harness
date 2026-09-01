@@ -15,9 +15,10 @@ The preparation gate does not certify production readiness. It verifies that pub
 1. Keep the completed contract, error, CLI-option, historical-migration, and state-backup gates green.
 2. Preserve the failed, unpublished `1.0.0-rc.1` through `1.0.0-rc.6` attempts and their protected-workflow evidence; never retag or reuse them.
 3. Preserve the published `1.0.0-rc.7` evidence: its exact tag, artifact, live-provider gate, complete Meta/Qwen/OpenAI matrix, npm integrity, and SLSA provenance passed on the `next` channel.
-4. Complete the observation cycle and repeat the full matrix with a later independent candidate; RC.7 alone cannot satisfy the two-passing-candidate GA requirement.
-5. Record a current security review with no open critical/high findings against the final passing candidate.
-6. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
-7. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
+4. Treat `1.0.0-rc.8` as pending while the coordinated Core `1.11.0`, Qwen `0.11.1`, and Gemini `0.11.0` refresh completes deterministic and installed-artifact validation.
+5. Run the exact RC.8 tag through live-provider, mixed-routing, model-directed OCI, and the complete Meta/Qwen/OpenAI representative matrix; RC.7 alone cannot satisfy the two-passing-candidate GA requirement.
+6. Record a current security review with no open critical/high findings against the final passing candidate.
+7. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
+8. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
 
 Gemini is explicitly provisional and excluded from the 1.0 GA-certified cohort. The decision and its promotion criteria are recorded in [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md); partial or capacity-blocked evidence is never certification.

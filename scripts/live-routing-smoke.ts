@@ -99,7 +99,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
 
 if (import.meta.main) {
   run(process.env).catch((error: unknown) => {
-    process.stderr.write(`${errorEvidence(error, process.env)}\n`);
+    process.stderr.write(`${errorEvidence(error, process.env, "live-routing-smoke")}\n`);
     process.exitCode = 1;
   });
 }

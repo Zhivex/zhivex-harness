@@ -8,11 +8,11 @@ Built-in registrations are Meta, Qwen, OpenAI, and Gemini. Each registration own
 
 Library callers can use `DEFAULT_PROVIDER_REGISTRY`, `BUILTIN_PROVIDER_REGISTRATIONS`, `createProviderRegistry`, or `DEFAULT_PROVIDER_REGISTRY.extend(...)`, then pass the registry to `resolveHarnessConfig`, `createProviderModel`, provider diagnostics, or `createHarness({ providerRegistry })`. Registration IDs, environment-variable names, defaults, diagnostics, and factories are validated before they become selectable.
 
-The coordinated SDK batch pins `@zhivex-ai/agents@1.3.0`, `@zhivex-ai/core@1.10.0`, `@zhivex-ai/meta@0.2.2`, `@zhivex-ai/qwen@0.10.2`, `@zhivex-ai/openai@0.10.0`, and `@zhivex-ai/gemini@0.10.5`. Qwen remains on the last adapter that passed the complete release-bound representative matrix; `0.10.3` failed closed before Harness could normalize provider tool-call IDs. A Core override keeps one runtime contract identity across every adapter.
+The coordinated SDK batch pins `@zhivex-ai/agents@1.3.0`, `@zhivex-ai/core@1.11.0`, `@zhivex-ai/meta@0.2.2`, `@zhivex-ai/qwen@0.11.1`, `@zhivex-ai/openai@0.10.0`, and `@zhivex-ai/gemini@0.11.0`. Qwen `0.11.x` normalizes missing, placeholder, and continuation tool-call identifiers inside the adapter; Harness retains its deterministic provider-boundary normalizer as defense in depth until the exact candidate passes the complete release-bound representative matrix. A Core override keeps one runtime contract identity across every adapter, while Core `1.11.0` makes its Beta provider-conformance evidence contract available without changing the Harness Stable API.
 
 OpenAI is based on the GPT-5.6 family: `gpt-5.6-luna` is the default, with `gpt-5.6-terra` and `gpt-5.6-sol` available through `--model`. Availability remains organization-dependent while the upstream family is in limited preview, and the adapter uses the Responses API by default.
 
-Gemini defaults to `gemini-3.6-flash`, uses `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and accepts optional `GEMINI_BASE_URL`. It is provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed harness live matrix; adapter-level evidence alone does not make the harness integration certified.
+Gemini still defaults to `gemini-3.6-flash`, uses `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and accepts optional `GEMINI_BASE_URL`. Adapter `0.11.0` adds modeled Gemini 3.7 and media/realtime surfaces, but the default and support level do not change implicitly. Gemini remains provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed Harness live matrix; adapter-level evidence alone does not make the Harness integration certified.
 
 ## Capability gate
 

@@ -90,11 +90,11 @@ const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
   "@zhivex-ai/agents": "1.3.0",
-  "@zhivex-ai/core": "1.10.0",
-  "@zhivex-ai/gemini": "0.10.5",
+  "@zhivex-ai/core": "1.11.0",
+  "@zhivex-ai/gemini": "0.11.0",
   "@zhivex-ai/meta": "0.2.2",
   "@zhivex-ai/openai": "0.10.0",
-  "@zhivex-ai/qwen": "0.10.2"
+  "@zhivex-ai/qwen": "0.11.1"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {
@@ -105,7 +105,9 @@ for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDe
   }
 }
 if (manifest.overrides?.["@zhivex-ai/core"] !== expectedCurrentSdkDependencies["@zhivex-ai/core"]) {
-  failures.push("The coordinated SDK batch must override one @zhivex-ai/core@1.10.0 runtime.");
+  failures.push(
+    `The coordinated SDK batch must override one @zhivex-ai/core@${expectedCurrentSdkDependencies["@zhivex-ai/core"]} runtime.`
+  );
 }
 const liveCertificationWorkflow = await readFile(
   path.join(workspace, ".github", "workflows", "live-certification.yml"),

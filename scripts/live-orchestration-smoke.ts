@@ -18,8 +18,9 @@ import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 const {
   assertLiveOptIn,
   errorEvidence,
+  providerCredentialFailure,
+  providerHasCredentials,
   providerRunInput,
-  requireCredentials,
   selectedProviders
 } = liveProviderSmokeInternals;
 
@@ -147,18 +148,23 @@ const certifyProvider = async (
 const run = async (env: NodeJS.ProcessEnv) => {
   assertLiveOptIn(env);
   const providers = selectedProviders(env);
-  requireCredentials(providers, env);
   const evidence: Array<Record<string, unknown>> = [];
 
   for (const provider of providers) {
     const model = env[modelEnvironmentName(provider)]?.trim() || providerDescriptor(provider).defaultModel;
+    if (!providerHasCredentials(provider, env)) {
+      evidence.push({ ok: false, provider, model, error: providerCredentialFailure(provider) });
+      continue;
+    }
     const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-orchestration-${provider}-`));
     const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
     try {
       await prepareReviewFixture(workspace);
       evidence.push(await certifyProvider(provider, model, workspace, stateDirectory));
     } catch (error) {
-      const failure = JSON.parse(errorEvidence(error, env)) as { error: Record<string, unknown> };
+      const failure = JSON.parse(errorEvidence(error, env, "live-orchestration-smoke")) as {
+        error: Record<string, unknown>;
+      };
       evidence.push({ ok: false, provider, model, error: failure.error });
     } finally {
       await rm(workspace, { recursive: true, force: true });
@@ -183,7 +189,7 @@ export const liveOrchestrationSmokeInternals = {
 
 if (import.meta.main) {
   run(process.env).catch((error: unknown) => {
-    process.stderr.write(`${errorEvidence(error, process.env)}\n`);
+    process.stderr.write(`${errorEvidence(error, process.env, "live-orchestration-smoke")}\n`);
     process.exitCode = 1;
   });
 }
