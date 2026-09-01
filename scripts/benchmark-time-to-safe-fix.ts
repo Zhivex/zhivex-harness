@@ -6,6 +6,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  rename,
   rm,
   writeFile
 } from "node:fs/promises";
@@ -13,6 +14,13 @@ import os from "node:os";
 import path from "node:path";
 
 import { createEditProposal } from "../src/edit-contracts.js";
+import {
+  assertNoForbiddenDiagnosticContent,
+  diagnosticFingerprint,
+  parseTimeToSafeFixDiagnostic,
+  releaseDiagnosticBindingFromEnv,
+  type ReleaseDiagnosticBinding
+} from "./release-diagnostics.js";
 import {
   classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
@@ -46,6 +54,7 @@ interface CliOptions {
   driverTimeoutMs: number;
   out?: string;
   diagnosticsOut?: string;
+  diagnosticsBinding?: ReleaseDiagnosticBinding;
   validateOnly: boolean;
   summary: boolean;
 }
@@ -155,6 +164,9 @@ const parseOptions = (args: readonly string[]): CliOptions => {
   if (resolvedOut && resolvedDiagnosticsOut && resolvedOut === resolvedDiagnosticsOut) {
     throw new Error("--out and --diagnostics-out must use different paths.");
   }
+  const diagnosticsBinding = resolvedDiagnosticsOut
+    ? releaseDiagnosticBindingFromEnv(process.env)
+    : undefined;
   return {
     dataset: path.resolve(dataset),
     datasetName,
@@ -170,10 +182,50 @@ const parseOptions = (args: readonly string[]): CliOptions => {
     driverTimeoutMs,
     ...(resolvedOut ? { out: resolvedOut } : {}),
     ...(resolvedDiagnosticsOut ? { diagnosticsOut: resolvedDiagnosticsOut } : {}),
+    ...(diagnosticsBinding ? { diagnosticsBinding } : {}),
     validateOnly,
     summary
   };
 };
+
+const diagnosticDataset = (options: CliOptions, tasks: number) => ({
+  name: options.datasetName,
+  ...(options.datasetRevision ? { revision: options.datasetRevision } : {}),
+  tasks
+});
+
+const diagnosticMatrix = (options: CliOptions, plannedRuns: number, completedRuns: number) => ({
+  profiles: options.profiles,
+  carriers: options.carriers,
+  repetitions: options.repetitions,
+  plannedRuns,
+  completedRuns
+});
+
+const writeDiagnosticsDocument = async (options: CliOptions, document: Record<string, unknown>) => {
+  if (!options.diagnosticsOut) return;
+  const value = {
+    schemaVersion: 2,
+    kind: "time-to-safe-fix-diagnostics",
+    ...(options.diagnosticsBinding ? { binding: options.diagnosticsBinding } : {}),
+    ...document
+  };
+  assertNoForbiddenDiagnosticContent(value);
+  const validated = parseTimeToSafeFixDiagnostic(value);
+  await mkdir(path.dirname(options.diagnosticsOut), { recursive: true });
+  const temporaryPath = `${options.diagnosticsOut}.tmp-${process.pid}`;
+  await writeFile(temporaryPath, `${JSON.stringify(validated, null, 2)}\n`, "utf8");
+  await rename(temporaryPath, options.diagnosticsOut);
+};
+
+const initializeDiagnostics = (options: CliOptions) => writeDiagnosticsDocument(options, {
+  generatedAt: new Date().toISOString(),
+  status: "running",
+  dataset: diagnosticDataset(options, 0),
+  matrix: diagnosticMatrix(options, 0, 0),
+  summary: { safeResolvedRuns: 0, failedRuns: 0 },
+  failedCases: []
+});
 
 const readTasks = async (dataset: string) => {
   const source = await readFile(dataset, "utf8");
@@ -426,8 +478,7 @@ const externalDriver = async (
   child.stdin.end(`${JSON.stringify(request)}\n`);
 });
 
-const run = async () => {
-  const options = parseOptions(process.argv.slice(2));
+const run = async (options: CliOptions) => {
   const allTasks = await readTasks(options.dataset);
   const tasks = allTasks.slice(0, Math.min(options.tasks, allTasks.length));
   const cases = createTimeToSafeFixCases({
@@ -512,26 +563,35 @@ const run = async () => {
   if (options.diagnosticsOut) {
     const failedCases = report.samples
       .filter((sample) => !sample.safeResolved)
-      .map((sample) => ({
-        caseId: sample.caseId,
-        taskId: sample.taskId,
-        profile: sample.profile,
-        variant: sample.variant,
-        carrier: sample.carrier,
-        goal: sample.goal,
-        repetition: sample.repetition,
-        order: sample.order,
-        utilityPass: sample.utilityPass,
-        attackCompleted: sample.attackCompleted,
-        unauthorizedEffects: sample.unauthorizedEffects,
-        environmentFailure: sample.environmentFailure,
-        ...(sample.failure ? { failure: sample.failure } : {}),
-        durationMs: Math.round(sample.durationMs)
-      }));
-    const diagnostics = {
-      schemaVersion: 1,
-      kind: "time-to-safe-fix-diagnostics",
+      .map((sample) => {
+        const failureIdentity = {
+          ...(options.diagnosticsBinding ? { binding: options.diagnosticsBinding } : {}),
+          caseId: sample.caseId,
+          provider: options.diagnosticsBinding?.provider,
+          model: options.diagnosticsBinding?.model,
+          ...(sample.failure ? { failure: sample.failure } : {})
+        };
+        return {
+          caseId: sample.caseId,
+          caseFingerprint: diagnosticFingerprint(failureIdentity),
+          taskId: sample.taskId,
+          profile: sample.profile,
+          variant: sample.variant,
+          carrier: sample.carrier,
+          goal: sample.goal,
+          repetition: sample.repetition,
+          order: sample.order,
+          utilityPass: sample.utilityPass,
+          attackCompleted: sample.attackCompleted,
+          unauthorizedEffects: sample.unauthorizedEffects,
+          environmentFailure: sample.environmentFailure,
+          ...(sample.failure ? { failure: sample.failure } : {}),
+          durationMs: Math.round(sample.durationMs)
+        };
+      });
+    await writeDiagnosticsDocument(options, {
       generatedAt: report.generatedAt,
+      status: failedCases.length === 0 ? "passed" : "failed",
       dataset: report.dataset,
       matrix: report.matrix,
       summary: {
@@ -539,9 +599,7 @@ const run = async () => {
         failedRuns: failedCases.length
       },
       failedCases
-    };
-    await mkdir(path.dirname(options.diagnosticsOut), { recursive: true });
-    await writeFile(options.diagnosticsOut, `${JSON.stringify(diagnostics, null, 2)}\n`, "utf8");
+    });
   }
   const rendered = `${JSON.stringify(report, null, 2)}\n`;
   if (options.out) {
@@ -606,7 +664,39 @@ const run = async () => {
   if (samples.some((sample) => sample.environmentFailure)) process.exitCode = 1;
 };
 
-run().catch((error: unknown) => {
-  process.stderr.write(`[safe-fix] failed: ${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
-});
+if (import.meta.main) {
+  let options: CliOptions | undefined;
+  try {
+    options = parseOptions(process.argv.slice(2));
+    await initializeDiagnostics(options);
+    await run(options);
+  } catch (error) {
+    const failure = classifyTimeToSafeFixFailure(error, {
+      stage: "environment",
+      origin: "driver_setup"
+    });
+    if (options?.diagnosticsOut) {
+      try {
+        await writeDiagnosticsDocument(options, {
+          generatedAt: new Date().toISOString(),
+          status: "failed",
+          dataset: diagnosticDataset(options, 0),
+          matrix: diagnosticMatrix(options, 0, 0),
+          summary: { safeResolvedRuns: 0, failedRuns: 1 },
+          failedCases: [],
+          terminalFailure: {
+            ...failure,
+            fingerprint: diagnosticFingerprint({
+              ...(options.diagnosticsBinding ? { binding: options.diagnosticsBinding } : {}),
+              failure
+            })
+          }
+        });
+      } catch {
+        // The initial running document remains the fail-closed evidence when finalization is unavailable.
+      }
+    }
+    process.stderr.write(`[safe-fix] failed: ${failure.code}\n`);
+    process.exitCode = 1;
+  }
+}

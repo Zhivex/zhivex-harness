@@ -12,7 +12,12 @@ import {
   type HarnessProvider
 } from "../src/config.js";
 import { createEditProposal } from "../src/edit-contracts.js";
+import { HarnessConfigError } from "../src/errors.js";
 import { createHarness, runHarness } from "../src/harness.js";
+import {
+  restoreSanitizedOperationalError,
+  sanitizeOperationalError
+} from "./release-diagnostics.js";
 
 const OPT_IN_VARIABLE = "ZHIVEX_HARNESS_LIVE";
 const PROVIDERS_VARIABLE = "ZHIVEX_HARNESS_LIVE_PROVIDERS";
@@ -71,13 +76,18 @@ const selectedProviders = (env: NodeJS.ProcessEnv): HarnessProvider[] => {
   return selected as HarnessProvider[];
 };
 
+const providerHasCredentials = (provider: HarnessProvider, env: NodeJS.ProcessEnv) => {
+  const descriptor = providerDescriptor(provider);
+  return descriptor.credentialNames.some((name) => Boolean(env[name]?.trim()));
+};
+
+const providerCredentialFailure = (provider: HarnessProvider) =>
+  sanitizeOperationalError(new HarnessConfigError(`Missing live credentials for ${provider}.`));
+
 const requireCredentials = (providers: readonly HarnessProvider[], env: NodeJS.ProcessEnv) => {
-  const missing = providers.filter((provider) => {
-    const descriptor = providerDescriptor(provider);
-    return !descriptor.credentialNames.some((name) => Boolean(env[name]?.trim()));
-  });
+  const missing = providers.filter((provider) => !providerHasCredentials(provider, env));
   if (missing.length > 0) {
-    throw new Error(`Missing live credentials for: ${missing.join(", ")}.`);
+    throw new HarnessConfigError(`Missing live credentials for: ${missing.join(", ")}.`);
   }
 };
 
@@ -358,21 +368,8 @@ const runChild = async (args: string[], env: NodeJS.ProcessEnv): Promise<PhaseOu
     if (exitCode !== 0) {
       const diagnostic = redacted(stderr.trim() || stdout.trim() || `Live child exited ${exitCode}.`, env);
       try {
-        const parsed = JSON.parse(diagnostic) as {
-          error?: { name?: string; message?: string; status?: unknown; statusCode?: unknown; responseBody?: unknown };
-        };
-        if (parsed.error?.message) {
-          const childError = new Error(parsed.error.message) as Error & {
-            status?: unknown;
-            statusCode?: unknown;
-            responseBody?: unknown;
-          };
-          childError.name = parsed.error.name ?? "LiveChildError";
-          childError.status = parsed.error.status;
-          childError.statusCode = parsed.error.statusCode;
-          childError.responseBody = parsed.error.responseBody;
-          throw childError;
-        }
+        const parsed = JSON.parse(diagnostic) as { error?: unknown };
+        if (parsed.error !== undefined) throw restoreSanitizedOperationalError(parsed.error);
       } catch (error) {
         if (error instanceof Error && error.name !== "SyntaxError") {
           throw error;
@@ -389,7 +386,6 @@ const runChild = async (args: string[], env: NodeJS.ProcessEnv): Promise<PhaseOu
 const orchestrate = async (env: NodeJS.ProcessEnv) => {
   assertLiveOptIn(env);
   const providers = selectedProviders(env);
-  requireCredentials(providers, env);
 
   const evidence: Array<
     | (ResumePhaseOutput & { ok: true })
@@ -402,6 +398,10 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
   > = [];
   for (const provider of providers) {
     const model = env[modelEnvironmentName(provider)]?.trim() || providerDescriptor(provider).defaultModel;
+    if (!providerHasCredentials(provider, env)) {
+      evidence.push({ ok: false, provider, model, error: providerCredentialFailure(provider) });
+      continue;
+    }
     for (let attempt = 1; attempt <= MAX_TRANSIENT_ATTEMPTS; attempt += 1) {
       const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-live-${provider}-`));
       const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
@@ -469,25 +469,18 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const errorEvidence = (error: unknown, env: NodeJS.ProcessEnv) => {
-  const candidate = error as Error & {
-    status?: unknown;
-    statusCode?: unknown;
-    responseBody?: unknown;
-  };
+const errorEvidence = (
+  error: unknown,
+  env: NodeJS.ProcessEnv,
+  gate = "live-provider-smoke"
+) => {
+  void env;
   const evidence = {
     ok: false,
-    gate: "live-provider-smoke",
-    error: {
-      name: error instanceof Error ? error.name : "Error",
-      message: error instanceof Error ? error.message : String(error),
-      ...(candidate.status !== undefined ? { status: candidate.status } : {}),
-      ...(candidate.statusCode !== undefined ? { statusCode: candidate.statusCode } : {}),
-      ...(candidate.responseBody !== undefined ? { responseBody: candidate.responseBody } : {}),
-      ...(error instanceof Error && error.stack ? { stack: error.stack } : {})
-    }
+    gate,
+    error: sanitizeOperationalError(error)
   };
-  return redacted(JSON.stringify(evidence, null, 2), env);
+  return JSON.stringify(evidence, null, 2);
 };
 
 export const liveProviderSmokeInternals = {
@@ -496,6 +489,8 @@ export const liveProviderSmokeInternals = {
   errorEvidence,
   isTransientProviderFailure,
   parsePhaseArguments,
+  providerCredentialFailure,
+  providerHasCredentials,
   providerRunInput,
   redacted,
   requireCredentials,

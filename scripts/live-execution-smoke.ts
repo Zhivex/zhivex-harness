@@ -16,9 +16,10 @@ import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 const {
   assertLiveOptIn,
   errorEvidence,
+  providerCredentialFailure,
+  providerHasCredentials,
   providerRunInput,
   redacted,
-  requireCredentials,
   selectedProviders
 } = liveProviderSmokeInternals;
 
@@ -147,18 +148,23 @@ const certifyProvider = async (
 };
 
 const executionError = (error: unknown, env: NodeJS.ProcessEnv) => {
-  const base = JSON.parse(errorEvidence(error, env)) as { error: Record<string, unknown> };
+  const base = JSON.parse(errorEvidence(error, env, "live-execution-smoke")) as {
+    error: Record<string, unknown>;
+  };
   return base.error;
 };
 
 const run = async (env: NodeJS.ProcessEnv) => {
   assertLiveOptIn(env);
   const providers = selectedProviders(env);
-  requireCredentials(providers, env);
   const evidence: Array<Record<string, unknown>> = [];
 
   for (const provider of providers) {
     const model = env[modelEnvironmentName(provider)]?.trim() || providerDescriptor(provider).defaultModel;
+    if (!providerHasCredentials(provider, env)) {
+      evidence.push({ ok: false, provider, model, error: providerCredentialFailure(provider) });
+      continue;
+    }
     const workspace = await mkdtemp(path.join(os.tmpdir(), `zhivex-harness-live-oci-${provider}-`));
     const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
     try {

@@ -355,7 +355,7 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
-Status: RC.1 through RC.6 passed exact-artifact validation but failed protected certification, so every publication was skipped and npm remained unchanged. RC.6 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with 12/14 safe resolutions in both the original run and one retry. RC.7 retained the Core, Agents, and OpenAI corrections, restored Qwen to the last adapter certified by this matrix, passed exact-artifact, live-provider, and all three 14-case representative gates, and was published to npm `next` with verified SHA-512 integrity and SLSA provenance. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): a later independent passing release candidate and the final-candidate security review.
+Status: RC.1 through RC.6 passed exact-artifact validation but failed protected certification, so every publication was skipped and npm remained unchanged. RC.6 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with 12/14 safe resolutions in both the original run and one retry. RC.7 retained the Core, Agents, and OpenAI corrections, restored Qwen to the last adapter certified by this matrix, passed exact-artifact, live-provider, and all three 14-case representative gates, and was published to npm `next` with verified SHA-512 integrity and SLSA provenance. RC.8 is the pending coordinated Core `1.11.0`, Qwen `0.11.1`, and Gemini `0.11.0` refresh; it does not count toward GA until its exact artifact passes every protected gate. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. GA remains blocked on the two open evidence classes in [`docs/ga-readiness.json`](./docs/ga-readiness.json): a later independent passing release candidate and the final-candidate security review.
 
 Scope:
 
@@ -399,6 +399,7 @@ These can become separate post-1.0 tracks after the CLI/runtime contract and sec
 ## Immediate next actions
 
 1. Preserve RC.7's published exact-artifact, live-provider, representative-matrix, registry-integrity, and SLSA provenance evidence.
-2. Run the observation cycle and append a later independent candidate through the same full gate so two candidates can count toward GA.
-3. Complete the named security review against the final passing candidate and close every critical/high finding.
-4. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.
+2. Complete deterministic, installed-artifact, and real-OCI validation for the coordinated RC.8 dependency refresh.
+3. After merge and an annotated tag, run RC.8 through live-provider, mixed-routing, model-directed OCI, and the complete representative matrix before any publication decision.
+4. Complete the named security review against the final passing candidate and close every critical/high finding.
+5. Promote a separately tagged and verified `1.0.0` artifact to `latest` only after the release-mode readiness gate passes with two passing candidates.

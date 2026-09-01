@@ -179,6 +179,8 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
       ZHIVEX_HARNESS_LIVE: "1"
       ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai
+      WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     steps:
       - name: Checkout annotated release tag
@@ -205,20 +207,50 @@ jobs:
       - name: Verify exact annotated release target
         run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "${{ inputs.channel }}"
 
+      - name: Download immutable validated artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-release-${{ github.sha }}
+          path: release-artifacts
+
+      - name: Bind immutable live diagnostic identity
+        run: |
+          ARTIFACT="release-artifacts/zhivex-ai-harness-${RELEASE_TAG#v}.tgz"
+          (cd release-artifacts && shasum -a 512 -c SHA512SUMS)
+          bun run artifact:check -- "$ARTIFACT"
+          ARTIFACT_SHA512="$(bun -e 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; process.stdout.write(`sha512-${createHash("sha512").update(readFileSync(process.argv[1])).digest("base64")}`);' "$ARTIFACT")"
+          echo "ARTIFACT_SHA512=$ARTIFACT_SHA512" >> "$GITHUB_ENV"
+          echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          mkdir -p release-artifacts/live-diagnostics
+
       - name: Preload enforced execution image
-        run: docker pull node:24-bookworm-slim
+        id: live_oci_preload
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate oci-preload
+          --out release-artifacts/live-diagnostics/oci-preload.json
+          -- docker pull node:24-bookworm-slim
 
       - name: Certify deterministic OCI boundary
-        run: bun run smoke:oci
+        id: live_oci
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate oci
+          --out release-artifacts/live-diagnostics/oci.json
+          -- bun run smoke:oci
         env:
           ZHIVEX_HARNESS_OCI_REQUIRED: "1"
 
-      - name: Certify base, orchestration, routing, and model-directed execution
-        run: |
-          bun run smoke:live
-          bun run smoke:live:orchestration
-          bun run smoke:live:routing
-          bun run smoke:live:execution
+      - name: Certify base provider behavior
+        id: live_base
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate base
+          --out release-artifacts/live-diagnostics/base.json
+          -- bun run smoke:live
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
@@ -229,6 +261,86 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Certify bounded reviewer orchestration
+        id: live_orchestration
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate orchestration
+          --out release-artifacts/live-diagnostics/orchestration.json
+          -- bun run smoke:live:orchestration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Certify mixed-provider routing
+        id: live_routing
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate routing
+          --out release-artifacts/live-diagnostics/routing.json
+          -- bun run smoke:live:routing
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Certify model-directed execution
+        id: live_execution
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate execution
+          --out release-artifacts/live-diagnostics/execution.json
+          -- bun run smoke:live:execution
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Enforce complete live certification result
+        if: ${{ always() }}
+        run: >-
+          bun run scripts/release-diagnostics.ts
+          --title "Release-bound live certification"
+          --diagnostics-dir release-artifacts/live-diagnostics
+          --gate "oci-preload=${{ steps.live_oci_preload.outcome }}"
+          --gate "oci=${{ steps.live_oci.outcome }}"
+          --gate "base=${{ steps.live_base.outcome }}"
+          --gate "orchestration=${{ steps.live_orchestration.outcome }}"
+          --gate "routing=${{ steps.live_routing.outcome }}"
+          --gate "execution=${{ steps.live_execution.outcome }}"
+
+      - name: Upload sanitized live diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
+          path: release-artifacts/live-diagnostics/*.json
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
 
   representative-evaluation:
     name: Certify representative repository matrix
@@ -247,6 +359,7 @@ jobs:
       REPRESENTATIVE_DATASET_REVISION: representative-repositories-v1
       REPRESENTATIVE_IMAGE: zhivex-harness/time-to-safe-fix:node24-pytest9
       WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     steps:
       - name: Checkout annotated release tag
@@ -298,6 +411,8 @@ jobs:
           mkdir -p release-artifacts/representative-rows release-artifacts/representative-raw release-artifacts/representative-diagnostics
 
       - name: Evaluate Meta against the complete pinned matrix
+        id: representative_meta
+        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/meta.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/meta.json --summary
@@ -310,6 +425,8 @@ jobs:
           META_BASE_URL: ${{ secrets.META_BASE_URL }}
 
       - name: Evaluate Qwen against the complete pinned matrix
+        id: representative_qwen
+        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/qwen.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/qwen.json --summary
@@ -325,6 +442,8 @@ jobs:
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
 
       - name: Evaluate OpenAI against the complete pinned matrix
+        id: representative_openai
+        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/openai.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/openai.json --summary
@@ -337,6 +456,8 @@ jobs:
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
 
       - name: Assemble sanitized fail-closed evidence
+        id: representative_assembly
+        if: ${{ steps.representative_meta.outcome == 'success' && steps.representative_qwen.outcome == 'success' && steps.representative_openai.outcome == 'success' }}
         run: >-
           bun run scripts/assemble-representative-evidence.ts
           --release-tag "$RELEASE_TAG"
@@ -345,6 +466,7 @@ jobs:
           > "release-artifacts/representative-evidence-${RELEASE_TAG#v}.json"
 
       - name: Upload sanitized representative evidence
+        if: ${{ steps.representative_assembly.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: representative-evidence-${{ github.sha }}
@@ -352,6 +474,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
+
+      - name: Enforce complete representative result
+        if: ${{ always() }}
+        run: >-
+          bun run scripts/release-diagnostics.ts
+          --title "Representative repository certification"
+          --diagnostics-dir release-artifacts/representative-diagnostics
+          --gate "meta=${{ steps.representative_meta.outcome }}"
+          --gate "qwen=${{ steps.representative_qwen.outcome }}"
+          --gate "openai=${{ steps.representative_openai.outcome }}"
 
       - name: Upload sanitized representative diagnostics
         if: ${{ always() }}

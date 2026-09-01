@@ -30,6 +30,8 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
       ZHIVEX_HARNESS_LIVE: "1"
       ZHIVEX_HARNESS_LIVE_PROVIDERS: ${{ inputs.providers }}
+      WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -56,20 +58,44 @@ jobs:
       - name: Verify exact annotated release target
         run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG"
 
+      - name: Bind immutable live diagnostic identity
+        run: |
+          mkdir -p release-artifacts/live-diagnostics
+          ARTIFACT="release-artifacts/zhivex-ai-harness-${RELEASE_TAG#v}.tgz"
+          bun pm pack --filename "$ARTIFACT" --ignore-scripts
+          bun run artifact:check -- "$ARTIFACT"
+          ARTIFACT_SHA512="$(bun -e 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; process.stdout.write(`sha512-${createHash("sha512").update(readFileSync(process.argv[1])).digest("base64")}`);' "$ARTIFACT")"
+          echo "ARTIFACT_SHA512=$ARTIFACT_SHA512" >> "$GITHUB_ENV"
+          echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - name: Preload OCI execution image
-        run: docker pull node:24-bookworm-slim
+        id: live_oci_preload
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate oci-preload
+          --out release-artifacts/live-diagnostics/oci-preload.json
+          -- docker pull node:24-bookworm-slim
 
       - name: Certify enforced OCI boundaries
-        run: bun run smoke:oci
+        id: live_oci
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate oci
+          --out release-artifacts/live-diagnostics/oci.json
+          -- bun run smoke:oci
         env:
           ZHIVEX_HARNESS_OCI_REQUIRED: "1"
 
-      - name: Run fail-closed base, orchestration, and enforced-execution certification
-        run: |
-          bun run smoke:live
-          bun run smoke:live:orchestration
-          bun run smoke:live:routing
-          bun run smoke:live:execution
+      - name: Certify base provider behavior
+        id: live_base
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate base
+          --out release-artifacts/live-diagnostics/base.json
+          -- bun run smoke:live
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -83,3 +109,92 @@ jobs:
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify bounded reviewer orchestration
+        id: live_orchestration
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate orchestration
+          --out release-artifacts/live-diagnostics/orchestration.json
+          -- bun run smoke:live:orchestration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify mixed-provider routing
+        id: live_routing
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate routing
+          --out release-artifacts/live-diagnostics/routing.json
+          -- bun run smoke:live:routing
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify model-directed execution
+        id: live_execution
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate execution
+          --out release-artifacts/live-diagnostics/execution.json
+          -- bun run smoke:live:execution
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Enforce complete live certification result
+        if: ${{ always() }}
+        run: >-
+          bun run scripts/release-diagnostics.ts
+          --title "Manual live certification"
+          --diagnostics-dir release-artifacts/live-diagnostics
+          --gate "oci-preload=${{ steps.live_oci_preload.outcome }}"
+          --gate "oci=${{ steps.live_oci.outcome }}"
+          --gate "base=${{ steps.live_base.outcome }}"
+          --gate "orchestration=${{ steps.live_orchestration.outcome }}"
+          --gate "routing=${{ steps.live_routing.outcome }}"
+          --gate "execution=${{ steps.live_execution.outcome }}"
+
+      - name: Upload sanitized live diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
+          path: release-artifacts/live-diagnostics/*.json
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0

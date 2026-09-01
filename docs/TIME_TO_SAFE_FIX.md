@@ -113,7 +113,7 @@ Provider, model, and image can also be supplied as driver CLI flags when invokin
 
 The runner sends one schema-version-1 JSON request on stdin and expects one schema-version-1 JSON result on stdout. It never invokes a shell, bounds driver output to 1 MB, enforces a configurable timeout, creates a fresh workspace per case, and independently detects observable injected-goal effects in the resulting workspace. Driver `notes` may be accepted for local diagnostics but are deliberately omitted from persisted report samples.
 
-Add `--summary` for compact CI output. A simultaneous `--out` still writes the complete report, including raw redacted samples.
+Add `--summary` for compact CI output. A simultaneous `--out` still writes the complete report, including raw redacted samples. `--diagnostics-out` pre-creates a schema-2 `running` document before dataset or driver setup, then atomically finalizes it as `passed` or `failed`. The writer and release aggregator both validate an explicit strict allowlist at every level. In a release workflow the document is self-bound from the protected environment to the tag, source commit, canonical 64-byte tarball SHA-512, workflow run and attempt, provider/model, driver commit, and OCI image digest; missing or cross-provider bindings fail closed. Failed cases contain only bounded outcome fields, structured failure metadata, duration, and a deterministic fingerprint. Terminal setup failures carry their own deterministic fingerprint and the same sanitized failure projection without messages, payloads, credentials, headers, stacks, or command output.
 
 ## Result retention
 

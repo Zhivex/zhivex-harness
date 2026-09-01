@@ -11,6 +11,8 @@ const {
   errorEvidence,
   isTransientProviderFailure,
   parsePhaseArguments,
+  providerCredentialFailure,
+  providerHasCredentials,
   providerRunInput,
   redacted,
   requireCredentials,
@@ -50,7 +52,22 @@ describe("live provider smoke contract", () => {
     })).not.toThrow();
   });
 
-  test("redacts secrets from text and structured error evidence", () => {
+  test("records a missing credential per provider without blocking the rest of the cohort", () => {
+    const env = {
+      MODEL_API_KEY: "meta-secret",
+      OPENAI_API_KEY: "openai-secret"
+    };
+    expect(providerHasCredentials("meta", env)).toBe(true);
+    expect(providerHasCredentials("qwen", env)).toBe(false);
+    expect(providerHasCredentials("openai", env)).toBe(true);
+    expect(providerCredentialFailure("qwen")).toMatchObject({
+      code: "CONFIG_INVALID",
+      category: "configuration",
+      retryable: false
+    });
+  });
+
+  test("projects structured errors without messages, payloads, or stacks", () => {
     const env = {
       OPENAI_API_KEY: "live-super-secret",
       OPENAI_BASE_URL: "https://private-endpoint.example/v1"
@@ -59,11 +76,31 @@ describe("live provider smoke contract", () => {
       "before [REDACTED] [REDACTED] after"
     );
 
-    const error = new Error("request rejected for live-super-secret");
+    const error = Object.assign(new Error("raw model output live-super-secret"), {
+      status: 503,
+      responseBody: { output: "raw provider payload" }
+    });
     const evidence = errorEvidence(error, env);
-    expect(() => JSON.parse(evidence)).not.toThrow();
+    const parsed = JSON.parse(evidence) as {
+      gate: string;
+      error: Record<string, unknown>;
+    };
+    expect(parsed).toMatchObject({
+      gate: "live-provider-smoke",
+      error: {
+        code: "PROVIDER_UNAVAILABLE",
+        category: "provider",
+        retryable: true,
+        status: 503
+      }
+    });
+    expect(parsed.error.fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(evidence).not.toContain("live-super-secret");
-    expect(evidence).toContain("[REDACTED]");
+    expect(evidence).not.toContain("raw model output");
+    expect(evidence).not.toContain("raw provider payload");
+    expect(parsed.error).not.toHaveProperty("message");
+    expect(parsed.error).not.toHaveProperty("responseBody");
+    expect(parsed.error).not.toHaveProperty("stack");
   });
 
   test("retries only bounded transient provider failures", () => {

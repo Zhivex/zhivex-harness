@@ -4,6 +4,19 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.8 - Unreleased
+
+### Fixed
+
+- Complete HAR-HU-01 release diagnostics without relaying child stdout/stderr: every live gate now persists only strict sanitized outcomes identified by provider or phase, and the final summary remains fail-closed.
+- Record a missing provider credential as that provider's configuration failure so the remaining selected providers still execute, and include OCI image preload as an independent diagnostic gate instead of short-circuiting the matrix.
+
+### Changed
+
+- Refresh the coordinated Zhivex dependency set to the current published versions verified for this candidate: `@zhivex-ai/core@1.11.0`, `@zhivex-ai/qwen@0.11.1`, and `@zhivex-ai/gemini@0.11.0`, while retaining current Agents `1.3.0`, Meta `0.2.2`, OpenAI `0.10.0`, exact package pins, and one Core override across every adapter.
+- Keep the Harness Qwen tool-call-ID normalizer as a defense-in-depth boundary while adopting the adapter's current missing/placeholder-ID normalization, Responses continuation correlation, and Bun realtime frame-limit correction.
+- Authorize `v1.0.0-rc.8` in the representative evaluation matrices and record it as pending. No live-provider, representative-repository, release-artifact, registry, or provenance result is claimed before the exact candidate completes those gates.
+
 ## 1.0.0-rc.7 - 2026-08-25
 
 ### Fixed
