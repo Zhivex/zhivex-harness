@@ -4,7 +4,7 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## 1.0.0-rc.8 - Unreleased
+## 1.0.0-rc.8 - 2026-09-01
 
 ### Fixed
 
