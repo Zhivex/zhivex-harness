@@ -1,4 +1,4 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -23,6 +23,7 @@ import {
   HarnessProviderError,
   HarnessWorkspaceError
 } from "./errors.js";
+import { readRegularFileNoFollow } from "./file-security.js";
 import { HARNESS_VERSION } from "./version.js";
 
 export const HARNESS_MCP_CONFIG_SCHEMA_VERSION = 1 as const;
@@ -228,19 +229,34 @@ const loadHarnessMcpConfigurationUnsafe = async (
   if (entry.isSymbolicLink() || !entry.isFile()) {
     throw new HarnessWorkspaceError(`MCP configuration must be a regular non-symlink file: ${configPath}.`);
   }
-  if (entry.size > 1024 * 1024) {
-    throw new HarnessConfigError("MCP configuration cannot exceed 1 MiB.");
-  }
-  const [canonicalWorkspace, canonicalConfig] = await Promise.all([
+  const [canonicalWorkspace, canonicalConfigParent] = await Promise.all([
     realpath(workspace),
-    realpath(configPath)
+    realpath(path.dirname(configPath))
   ]);
+  const canonicalConfig = path.join(canonicalConfigParent, path.basename(configPath));
   if (!isInsidePath(canonicalWorkspace, canonicalConfig)) {
     throw new HarnessWorkspaceError("MCP configuration must remain inside the canonical workspace.");
   }
+  let contents: Buffer;
+  try {
+    const file = await readRegularFileNoFollow(canonicalConfig, {
+      label: "MCP configuration",
+      maxBytes: 1024 * 1024,
+      requireSingleLink: true
+    });
+    if (file.stat.dev !== entry.dev || file.stat.ino !== entry.ino) {
+      throw new HarnessWorkspaceError("MCP configuration changed before its descriptor-bound read.");
+    }
+    contents = file.contents;
+  } catch (error) {
+    throw new HarnessWorkspaceError(
+      error instanceof Error ? error.message : "MCP configuration could not be read safely.",
+      { cause: error }
+    );
+  }
   let value: unknown;
   try {
-    value = JSON.parse(await readFile(canonicalConfig, "utf8"));
+    value = JSON.parse(contents.toString("utf8"));
   } catch (error) {
     throw new HarnessConfigError("MCP configuration is not valid JSON.", { cause: error });
   }

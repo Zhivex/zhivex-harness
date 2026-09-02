@@ -38,6 +38,10 @@ const MAX_READ_BATCH_FILES = 20;
 const MAX_READ_BATCH_BYTES = 2 * MAX_FILE_BYTES;
 const MAX_SEARCH_MANY_QUERIES = 10;
 const MAX_SEARCH_MANY_MATCHES = 500;
+const MAX_GIT_DISCOVERY_OUTPUT = 1_000_000;
+const MAX_GIT_DIFF_PATHS = 2_048;
+const MAX_GIT_DIFF_ARGV_CHARACTERS = 128_000;
+const GIT_SAFE_PREFIX = ["git", "-c", "core.fsmonitor=false"] as const;
 
 const isSensitiveName = (name: string) => {
   const normalized = name.toLocaleLowerCase();
@@ -313,6 +317,122 @@ const isIgnoredByRules = (relativePath: string, isDirectory: boolean, rules: rea
 
 const spawnBounded = async (command: string[], cwd: string, timeoutMs = 120_000): Promise<CommandResult> => {
   return await runPortableProcess(command, { cwd, timeoutMs });
+};
+
+const gitCommand = (...args: string[]) => [...GIT_SAFE_PREFIX, ...args];
+
+const gitDiscovery = async (command: string[], cwd: string) =>
+  await runPortableProcess(command, {
+    cwd,
+    timeoutMs: 15_000,
+    maxOutputCharacters: MAX_GIT_DISCOVERY_OUTPUT,
+    stderr: "ignore"
+  });
+
+const gitDiscoveryFailure = (result: CommandResult, label: string): CommandResult => ({
+  command: result.command,
+  exitCode: result.exitCode,
+  stdout: "",
+  stderr: result.timedOut
+    ? `${label} timed out without exposing repository-controlled output.`
+    : `${label} failed without exposing repository-controlled output.`,
+  timedOut: result.timedOut
+});
+
+const nulFields = (result: CommandResult, label: string) => {
+  if (result.stdout === "") return [];
+  if (!result.stdout.endsWith("\0")) {
+    throw new HarnessWorkspaceError(`${label} exceeded its safe discovery bound or returned malformed output.`);
+  }
+  return result.stdout.slice(0, -1).split("\0");
+};
+
+const safeGitPath = (candidate: string) => {
+  const normalized = wirePath(candidate);
+  return normalized !== "" && normalized !== "." && !path.isAbsolute(candidate) &&
+    !normalized.startsWith("../") && !isHardIgnored(normalized);
+};
+
+const renderGitPath = (candidate: string) =>
+  /[\0\r\n\t]/.test(candidate) ? JSON.stringify(candidate) : candidate;
+
+const filteredGitStatus = (result: CommandResult): CommandResult => {
+  if (result.exitCode !== 0 || result.timedOut) return gitDiscoveryFailure(result, "Git status");
+  const fields = nulFields(result, "Git status");
+  const lines: string[] = [];
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index] ?? "";
+    if (field.length < 4 || field[2] !== " ") {
+      throw new HarnessWorkspaceError("Git status returned malformed porcelain output.");
+    }
+    const status = field.slice(0, 2);
+    const target = field.slice(3);
+    const renamed = status.includes("R") || status.includes("C");
+    const source = renamed ? fields[index += 1] : undefined;
+    if (!safeGitPath(target) || (source !== undefined && !safeGitPath(source))) continue;
+    lines.push(source === undefined
+      ? `${status} ${renderGitPath(target)}`
+      : `${status} ${renderGitPath(source)} -> ${renderGitPath(target)}`);
+  }
+  return { ...result, stdout: lines.length === 0 ? "" : `${lines.join("\n")}\n`, stderr: "" };
+};
+
+const filteredGitDiffPaths = (result: CommandResult, label: string): string[] | CommandResult => {
+  if (result.exitCode !== 0 || result.timedOut) return gitDiscoveryFailure(result, label);
+  const fields = nulFields(result, label);
+  const paths: string[] = [];
+  for (let index = 0; index < fields.length;) {
+    const status = fields[index++] ?? "";
+    if (!/^[ACDMRTUXB][0-9]*$/.test(status)) {
+      throw new HarnessWorkspaceError(`${label} returned malformed name-status output.`);
+    }
+    const count = status.startsWith("R") || status.startsWith("C") ? 2 : 1;
+    const changePaths = fields.slice(index, index + count);
+    if (changePaths.length !== count) {
+      throw new HarnessWorkspaceError(`${label} returned incomplete name-status output.`);
+    }
+    index += count;
+    if (changePaths.every(safeGitPath)) paths.push(...changePaths);
+  }
+  return [...new Set(paths)];
+};
+
+const emptyGitDiff = (command: string[]): CommandResult => ({
+  command,
+  exitCode: 0,
+  stdout: "",
+  stderr: "",
+  timedOut: false
+});
+
+const runFilteredGitDiff = async (
+  discovery: CommandResult,
+  cwd: string,
+  cached: boolean
+): Promise<CommandResult> => {
+  const label = cached ? "Git staged diff discovery" : "Git diff discovery";
+  const paths = filteredGitDiffPaths(discovery, label);
+  if (!Array.isArray(paths)) return paths;
+  const command = gitCommand(
+    "diff",
+    ...(cached ? ["--cached"] : []),
+    "--no-ext-diff",
+    "--no-textconv",
+    "--ignore-submodules=all",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+    "--",
+    ...paths
+  );
+  if (paths.length === 0) return emptyGitDiff(command);
+  if (paths.length > MAX_GIT_DIFF_PATHS || command.reduce((total, value) => total + value.length + 1, 0) > MAX_GIT_DIFF_ARGV_CHARACTERS) {
+    return {
+      ...emptyGitDiff(command.slice(0, command.length - paths.length)),
+      exitCode: 1,
+      stderr: `${label} found too many changed paths to render safely.`
+    };
+  }
+  return await spawnBounded(command, cwd, 15_000);
 };
 
 export class Workspace {
@@ -1271,10 +1391,15 @@ export class Workspace {
   }
 
   async gitDiff(): Promise<{ status: CommandResult; diff: CommandResult; staged: CommandResult }> {
-    const [statusResult, diffResult, stagedResult] = await Promise.all([
-      spawnBounded(["git", "status", "--short", "--untracked-files=all"], this.root, 15_000),
-      spawnBounded(["git", "diff", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/"], this.root, 15_000),
-      spawnBounded(["git", "diff", "--cached", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/"], this.root, 15_000)
+    const [statusDiscovery, diffDiscovery, stagedDiscovery] = await Promise.all([
+      gitDiscovery(gitCommand("status", "--short", "--untracked-files=all", "--ignore-submodules=all", "-z"), this.root),
+      gitDiscovery(gitCommand("diff", "--name-status", "-z", "--no-ext-diff", "--no-textconv", "--ignore-submodules=all"), this.root),
+      gitDiscovery(gitCommand("diff", "--cached", "--name-status", "-z", "--no-ext-diff", "--no-textconv", "--ignore-submodules=all"), this.root)
+    ]);
+    const statusResult = filteredGitStatus(statusDiscovery);
+    const [diffResult, stagedResult] = await Promise.all([
+      runFilteredGitDiff(diffDiscovery, this.root, false),
+      runFilteredGitDiff(stagedDiscovery, this.root, true)
     ]);
     return { status: statusResult, diff: diffResult, staged: stagedResult };
   }
