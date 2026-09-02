@@ -307,6 +307,7 @@ export const runGovernedTimeToSafeFixProfile = async (
       ociTmpfsMb: config.ociTmpfsMb,
       maxSteps: config.maxSteps,
       maxToolCalls: config.maxToolCalls,
+      maxOutputTokens: config.maxTokens,
       timeoutMs: config.timeoutMs,
       compactionMaxMessages: request.profile === "optimized" ? 10 : 16,
       compactionMaxEstimatedInputTokens: request.profile === "optimized" ? 8_000 : 12_000,
