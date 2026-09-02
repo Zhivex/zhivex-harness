@@ -4,7 +4,7 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## 1.0.0-rc.11 - 2026-09-01
+## 1.0.0-rc.11 - 2026-09-02
 
 ### Fixed
 
@@ -13,7 +13,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 ### Changed
 
 - Record the immutable, unpublished RC.10 attempt as failed after its exact tarball passed artifact binding: Meta completed 14/14 representative cases, Qwen completed 13/14, and an OpenAI account-funding issue surfaced as retryable HTTP 500 failures across live and representative gates; npm publication remained skipped.
-- Extend the representative release matrices through `v1.0.0-rc.11`; RC.11 remains pending until OpenAI recovers and the distinct candidate completes every protected gate.
+- Record the protected RC.11 workflow's fail-closed first attempt, where one Qwen representative case returned `EXECUTION_FAILED`, Meta and OpenAI completed 14/14, Qwen completed 13/14, no unauthorized effects were observed, and npm publication remained skipped for that attempt.
+- Publish the complete second RC.11 attempt to `next` only after every deterministic, exact-artifact, OCI, live-provider, and representative gate passed from scratch; Meta, Qwen, and OpenAI each completed 14/14, and the registry artifact passed exact SHA-512 integrity plus SLSA provenance verification.
 
 ## 1.0.0-rc.10 - 2026-09-01
 

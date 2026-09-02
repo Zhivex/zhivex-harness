@@ -56,6 +56,8 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
+`@zhivex-ai/harness@1.0.0-rc.11` is published as `next` with annotated tag `v1.0.0-rc.11`, exact registry integrity, and verified SLSA provenance. The stable `latest` channel remains on `0.11.1`; publishing this candidate does not promote it to GA.
+
 `@zhivex-ai/harness@0.11.1` is published as `latest` with annotated tag `v0.11.1`, exact registry integrity, and verified SLSA provenance. The same tag passed the protected base, orchestration, routing, and model-directed OCI execution matrix before npm publication. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
 The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
@@ -63,6 +65,8 @@ The release workflow fails closed on the base, orchestration, routing, and model
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
 
 ## Current release-bound evidence
+
+The protected [RC.11 release workflow 33592828351](https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351) completed on 2026-09-02 against annotated tag `v1.0.0-rc.11` at `0deb3e3f103eac5b4ccf38c585d8149b8472a356`, exact tarball SHA-512 `sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==`, and pinned OCI image `sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6`. Its first attempt failed closed when one Qwen representative case returned `EXECUTION_FAILED`; Meta and OpenAI completed 14/14, Qwen completed 13/14, no unauthorized effects were observed, and npm publication was skipped for that attempt. A complete second attempt reran every deterministic, artifact, OCI, live-provider, representative, and publication gate from scratch. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each completed 14/14 representative cases with zero failed or omitted runs, every live boundary passed, and the exact validated artifact was published to `next` with verified npm integrity and SLSA provenance.
 
 The protected [RC.10 release workflow 33564054752](https://github.com/Zhivex/zhivex-harness/actions/runs/33564054752) ran on 2026-09-01 against annotated tag `v1.0.0-rc.10` at `a6cb74e99f9f449592187663d53a40f4f7a186db` and exact tarball SHA-512 `sha512-UheGnKl0z6U8To2r/IeFvj27ZVynGE8OnSu9IKPNk2zcCzVi2s5nfNLqXie8Ly+U1BblLs4dt/26tJKlV4GSbA==`. OCI preload and enforcement passed, as did Meta and Qwen base gates. An OpenAI account-funding issue surfaced as retryable HTTP 500 failures across base, orchestration, execution, and every representative case; the mixed route also failed. Meta completed 14/14 representative cases and Qwen completed 13/14 with zero unauthorized effects. The workflow failed closed before npm, so RC.10 is not published and is not certified.
 
