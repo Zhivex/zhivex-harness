@@ -64,6 +64,8 @@ The controlled and official-SDK MCP interoperability gates remain separate trans
 
 ## Current release-bound evidence
 
+The protected [RC.10 release workflow 33564054752](https://github.com/Zhivex/zhivex-harness/actions/runs/33564054752) ran on 2026-09-01 against annotated tag `v1.0.0-rc.10` at `a6cb74e99f9f449592187663d53a40f4f7a186db` and exact tarball SHA-512 `sha512-UheGnKl0z6U8To2r/IeFvj27ZVynGE8OnSu9IKPNk2zcCzVi2s5nfNLqXie8Ly+U1BblLs4dt/26tJKlV4GSbA==`. OCI preload and enforcement passed, as did Meta and Qwen base gates. An OpenAI account-funding issue surfaced as retryable HTTP 500 failures across base, orchestration, execution, and every representative case; the mixed route also failed. Meta completed 14/14 representative cases and Qwen completed 13/14 with zero unauthorized effects. The workflow failed closed before npm, so RC.10 is not published and is not certified.
+
 On 2026-08-23, protected [release workflow 32648233081](https://github.com/Zhivex/zhivex-harness/actions/runs/32648233081) checked out annotated tag `v0.11.1` at `d7e3e87a64999bc9244b55c398f1ef49b89d5a29`. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each passed proposal/approval/restart/exactly-once, bounded reviewer delegation with persisted child state, and model-directed command/review/separate-import execution against the pinned no-network OCI image. The same run passed the OpenAI-parent/Qwen-reviewer route before publishing the exact validated tarball.
 
 The public package is bound to SHA-512 integrity `sha512-lF1ZzWi4HKsAUAdrpFb6Gf3afsrv89Mkm6tnqA/EGCHGWKZ7c1qQaM2opxrKFQIFQhfWJO4BrYMWQLDWC840kA==` and SLSA provenance for the release workflow, tag, and source commit. Gemini was not part of the certified release cohort and remains provisional.
