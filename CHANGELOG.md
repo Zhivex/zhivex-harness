@@ -4,6 +4,19 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.12 - 2026-09-02
+
+### Fixed
+
+- Keep `git_diff` read-only even under hostile repository configuration: disable repository-controlled filesystem monitors, external diffs, text conversion, and submodule processing; discover changed paths with NUL-safe output; and render only paths permitted by the Harness hard-ignore and sensitive-name policy.
+- Bind MCP configuration loading to one regular, single-link file descriptor with `O_NOFOLLOW`, a 1 MiB limit, canonical-parent containment, and inode continuity from initial inspection through the stable read.
+
+### Changed
+
+- Expand the security-review inventory from mutation/execution tools to all 28 model-facing tool classes, including repository reads, inspection, skill loading, delegation, and dynamic MCP tools, with a regression that rejects future inventory drift.
+- Require direct mitigation, regression evidence, residual risk, and passing status for every reviewed trust boundary and authority-bearing tool. Non-informational findings now require an owner, disposition, rationale, and HTTPS follow-up; critical/high findings cannot be accepted without mitigation.
+- Preserve published RC.11 as immutable historical evidence while authorizing RC.12 as the new pending candidate required by HAR-HU-03 remediation. No RC.12 artifact, live certification, registry integrity, or provenance is claimed before the exact tag completes the protected workflow.
+
 ## 1.0.0-rc.11 - 2026-09-02
 
 ### Fixed

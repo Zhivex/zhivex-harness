@@ -15,7 +15,7 @@ The machine-readable control map is [`../contracts/security-controls.json`](../c
 
 ## Security boundaries
 
-Repository reads are bounded and no-follow. Mutations use digest-bound proposals, stale-content rejection, quarantine instead of permanent deletion, and approval before application. Provider calls cannot create new application authority. MCP is restricted by transport, tool, permission, and payload policy. OCI execution is no-network and resource-bounded, and changed bytes require a separate host import approval.
+Repository reads are bounded and no-follow. Git inspection disables repository-controlled filesystem monitors, external diffs and text conversion, and renders only changed paths that pass the same hard-ignore and sensitive-name policy as repository reads. Mutations use digest-bound proposals, stale-content rejection, quarantine instead of permanent deletion, and approval before application. Provider calls cannot create new application authority. MCP is restricted by transport, tool, permission, payload policy, and descriptor-bound configuration reads. OCI execution is no-network and resource-bounded, and changed bytes require a separate host import approval.
 
 Durable state is scoped by workspace and tenant/user/namespace, uses optimistic revisions and leases, and does not permit incompatible paused approvals to be rebound. Release publication uses an annotated tag, one inspected tarball, checksum verification, protected live certification, npm OIDC, and SLSA provenance.
 

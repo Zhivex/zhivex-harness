@@ -225,6 +225,20 @@
       "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351",
       "provenance": "verified",
       "liveCertification": "passed-release-bound-run"
+    },
+    {
+      "version": "1.0.0-rc.12",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
+      "status": "pending",
+      "channel": null,
+      "tag": null,
+      "contractBreakingDefects": null,
+      "publishedAt": null,
+      "sourceCommit": null,
+      "artifactSha512": null,
+      "workflowUrl": null,
+      "provenance": null,
+      "liveCertification": null
     }
   ],
   "blockers": [

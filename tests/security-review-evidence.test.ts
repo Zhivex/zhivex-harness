@@ -10,6 +10,8 @@ import {
   type SecurityReviewEvidence,
   type SecurityReviewReleaseBinding
 } from "../scripts/security-review-evidence.js";
+import { createExecutionEnvironmentTools, createWorkspaceTools } from "../src/harness.js";
+import { HARNESS_SUBAGENT_PROFILE_DESCRIPTORS } from "../src/orchestration.js";
 
 const binding = {
   releaseTag: "v1.0.0-rc.1",
@@ -56,6 +58,10 @@ const validEvidence = (
     severity: "medium",
     status: "open",
     title: "Documented non-blocking residual observation",
+    owner: "security-reviewer",
+    disposition: "accepted",
+    rationale: "The reviewed residual risk is accepted for this release candidate.",
+    followUpUrl: "https://github.com/Zhivex/zhivex-harness/issues/100",
     controlThreats: ["compromised-host-kernel-or-daemon"]
   }],
   coverage: {
@@ -68,11 +74,19 @@ const validEvidence = (
     })),
     trustBoundaries: SECURITY_REVIEW_TRUST_BOUNDARIES.map((boundary) => ({
       id: boundary.id,
-      controlThreats: [...boundary.controlThreats]
+      controlThreats: [...boundary.controlThreats],
+      mitigations: ["Reviewer confirmed the mapped control mitigations at this boundary."],
+      regressionEvidence: ["contracts/security-controls.json"],
+      residualRisk: "Reviewer confirmed the mapped residual risk at this boundary.",
+      status: "passed" as const
     })),
     authorityBearingTools: SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS.map((tool) => ({
       id: tool.id,
-      controlThreats: [...tool.controlThreats]
+      controlThreats: [...tool.controlThreats],
+      mitigations: ["Reviewer confirmed the mapped control mitigations for this tool."],
+      regressionEvidence: ["tests/security.test.ts"],
+      residualRisk: "Reviewer confirmed the mapped residual risk for this tool.",
+      status: "passed" as const
     }))
   }
 });
@@ -172,6 +186,18 @@ const workflowFetcher = (
 };
 
 describe("strict security review evidence", () => {
+  test("keeps the authority inventory synchronized with every model-facing tool class", () => {
+    const actualTools = [
+      ...Object.keys(createWorkspaceTools({} as never, [])),
+      ...Object.keys(createExecutionEnvironmentTools({} as never, { shellMode: "ask" } as never)),
+      "load_skill",
+      ...HARNESS_SUBAGENT_PROFILE_DESCRIPTORS.map((profile) => profile.toolName),
+      "mcp-network-tool"
+    ];
+    expect([...new Set(SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS.map((tool) => tool.id))].sort())
+      .toEqual([...new Set(actualTools)].sort());
+  });
+
   test("sends the GitHub token only to the exact GitHub API origin", () => {
     expect(securityReviewRequestHeaders(
       "https://api.github.com/repos/Zhivex/zhivex-harness/actions/runs/1",
@@ -274,6 +300,10 @@ describe("strict security review evidence", () => {
         severity,
         status: "open",
         title: "Blocking finding",
+        owner: "security-reviewer",
+        disposition: "mitigated",
+        rationale: "Fixture mitigation remains open to exercise the blocking severity rule.",
+        followUpUrl: "https://github.com/Zhivex/zhivex-harness/issues/101",
         controlThreats: ["supply-chain-substitution"]
       }];
       expect(() => validateSecurityReviewEvidence(review, binding))
@@ -281,6 +311,41 @@ describe("strict security review evidence", () => {
     }
 
     expect(validateSecurityReviewEvidence(validEvidence(), binding).findings[0]?.severity).toBe("medium");
+  });
+
+  test("never permits critical or high findings to pass by acceptance alone", () => {
+    const review = copy();
+    review.findings = [{
+      id: "accepted-high-finding",
+      severity: "high",
+      status: "resolved",
+      title: "A high finding cannot be waived",
+      owner: "security-reviewer",
+      disposition: "accepted",
+      rationale: "This fixture must be rejected even with an explicit rationale.",
+      followUpUrl: "https://github.com/Zhivex/zhivex-harness/issues/102",
+      controlThreats: ["supply-chain-substitution"]
+    }];
+    expect(() => validateSecurityReviewEvidence(review, binding))
+      .toThrow("critical/high findings cannot be accepted");
+  });
+
+  test("requires ownership, disposition, rationale, and follow-up for actionable findings", () => {
+    for (const field of ["owner", "disposition", "rationale", "followUpUrl"] as const) {
+      const review = copy();
+      delete review.findings[0]![field];
+      expect(() => validateSecurityReviewEvidence(review, binding), field)
+        .toThrow(`${field} is required for non-informational findings`);
+    }
+  });
+
+  test("requires direct mitigation, regression, residual-risk, and status coverage for boundaries and tools", () => {
+    for (const collection of ["trustBoundaries", "authorityBearingTools"] as const) {
+      const review = copy();
+      const entry = review.coverage[collection][0]! as Record<string, unknown>;
+      delete entry.regressionEvidence;
+      expect(() => validateSecurityReviewEvidence(review, binding), collection).toThrow();
+    }
   });
 
   test("rejects missing, unknown, or drifted control-map coverage", () => {

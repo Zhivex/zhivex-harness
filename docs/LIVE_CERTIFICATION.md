@@ -58,6 +58,8 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 `@zhivex-ai/harness@1.0.0-rc.11` is published as `next` with annotated tag `v1.0.0-rc.11`, exact registry integrity, and verified SLSA provenance. The stable `latest` channel remains on `0.11.1`; publishing this candidate does not promote it to GA.
 
+`v1.0.0-rc.12` is authorized as a pending corrective candidate for the HAR-HU-03 security-review remediation. It has no release-bound live, representative, registry, integrity, or provenance evidence until its exact commit is merged, tagged, and completes the protected workflow; RC.11 remains immutable and is not retagged.
+
 `@zhivex-ai/harness@0.11.1` is published as `latest` with annotated tag `v0.11.1`, exact registry integrity, and verified SLSA provenance. The same tag passed the protected base, orchestration, routing, and model-directed OCI execution matrix before npm publication. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
 The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.

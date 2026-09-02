@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { link, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -328,6 +328,10 @@ describe("governed MCP", () => {
       const linkPath = path.join(workspace, "linked.json");
       await symlink(configPath, linkPath);
       await expect(loadHarnessMcpConfiguration(workspace, linkPath)).rejects.toThrow("non-symlink");
+      const hardLinkPath = path.join(workspace, "hard-linked.json");
+      await link(configPath, hardLinkPath);
+      await expect(loadHarnessMcpConfiguration(workspace, configPath)).rejects.toThrow("regular file");
+      await expect(loadHarnessMcpConfiguration(workspace, hardLinkPath)).rejects.toThrow("regular file");
     } finally {
       await rm(workspace, { recursive: true, force: true });
       await rm(outside, { recursive: true, force: true });

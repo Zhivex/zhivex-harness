@@ -26,6 +26,11 @@ const workspaceFixture = async () => {
   return { root, workspace: await Workspace.open(root) };
 };
 
+const runGit = (root: string, ...args: string[]) => {
+  const result = Bun.spawnSync(["git", ...args], { cwd: root, stdout: "pipe", stderr: "pipe" });
+  expect(result.exitCode, result.stderr.toString()).toBe(0);
+};
+
 afterEach(async () => {
   await Promise.all(
     temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true }))
@@ -214,6 +219,56 @@ describe("security regressions", () => {
     expect(result.stderr).toContain("output truncated");
     expect(result.stdout.length).toBeLessThan(20_200);
     expect(result.stderr.length).toBeLessThan(20_500);
+  });
+
+  test("git diff excludes sensitive paths and disables repository-controlled command hooks", async () => {
+    const { root, workspace } = await workspaceFixture();
+    await mkdir(path.join(root, "nested"));
+    await writeFile(path.join(root, "public.txt"), "public baseline\n", "utf8");
+    await writeFile(path.join(root, ".env"), "SECRET=baseline-secret\n", "utf8");
+    await writeFile(path.join(root, ".env.example"), "SAFE=baseline\n", "utf8");
+    await writeFile(path.join(root, ".gitattributes"), "*.inspect diff=probe\n", "utf8");
+    await writeFile(path.join(root, "public.inspect"), "inspect baseline\n", "utf8");
+    await writeFile(path.join(root, "nested", "private.pem"), "baseline-private-key\n", "utf8");
+    runGit(root, "init", "--quiet");
+    runGit(root, "config", "user.name", "Zhivex Fixture");
+    runGit(root, "config", "user.email", "fixture@zhivex.invalid");
+    runGit(root, "config", "commit.gpgsign", "false");
+    runGit(root, "add", "-f", ".");
+    runGit(root, "commit", "--quiet", "--no-gpg-sign", "-m", "baseline");
+
+    await writeFile(path.join(root, "public.txt"), "public changed\n", "utf8");
+    await writeFile(path.join(root, ".env"), "SECRET=changed-secret-canary\n", "utf8");
+    await writeFile(path.join(root, ".env.example"), "SAFE=changed-example\n", "utf8");
+    await writeFile(path.join(root, "public.inspect"), "inspect changed\n", "utf8");
+    await writeFile(path.join(root, "nested", "private.pem"), "changed-private-canary\n", "utf8");
+    await writeFile(path.join(root, ".npmrc"), "//registry.invalid/:_authToken=untracked-canary\n", "utf8");
+    runGit(root, "add", "-f", ".env", ".env.example", "public.txt");
+
+    const marker = path.join(root, "fsmonitor-executed");
+    const fsmonitor = path.join(root, "fsmonitor.sh");
+    await writeFile(fsmonitor, `#!/bin/sh\nprintf executed > ${JSON.stringify(marker)}\n`, { mode: 0o755 });
+    runGit(root, "config", "core.fsmonitor", fsmonitor);
+    const textconvMarker = path.join(root, "textconv-executed");
+    const textconv = path.join(root, "textconv.sh");
+    await writeFile(textconv, `#!/bin/sh\nprintf executed > ${JSON.stringify(textconvMarker)}\nprintf converted\n`, { mode: 0o755 });
+    runGit(root, "config", "diff.probe.textconv", textconv);
+
+    const result = await workspace.gitDiff();
+    const exposed = JSON.stringify(result);
+
+    expect(result.status.exitCode).toBe(0);
+    expect(result.diff.exitCode).toBe(0);
+    expect(result.staged.exitCode).toBe(0);
+    expect(exposed).toContain("public changed");
+    expect(exposed).toContain("SAFE=changed-example");
+    expect(exposed).not.toContain("changed-secret-canary");
+    expect(exposed).not.toContain("changed-private-canary");
+    expect(exposed).not.toContain("untracked-canary");
+    expect(exposed).not.toContain(".npmrc");
+    expect(exposed).not.toContain("private.pem");
+    await expect(readFile(marker, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(textconvMarker, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   test("kills timed-out Git subprocesses before returning", async () => {

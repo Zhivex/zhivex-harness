@@ -37,6 +37,30 @@ export const SECURITY_REVIEW_TRUST_BOUNDARIES = [
 
 export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
   {
+    id: "list_files",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "read_file",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "read_files",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "search_files",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "search_many",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "propose_edits",
+    controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
+  },
+  {
     id: "apply_patch",
     controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
   },
@@ -61,6 +85,14 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
     controlThreats: ["hostile-subprocess", "approval-replay-or-substitution"]
   },
   {
+    id: "mutation_audit",
+    controlThreats: ["compromised-model-or-provider"]
+  },
+  {
+    id: "git_diff",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
     id: "run_environment_command",
     controlThreats: ["hostile-subprocess", "approval-replay-or-substitution"]
   },
@@ -70,6 +102,14 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
   },
   {
     id: "run_environment_shell",
+    controlThreats: ["hostile-subprocess", "approval-replay-or-substitution"]
+  },
+  {
+    id: "environment_status",
+    controlThreats: ["hostile-subprocess", "compromised-host-kernel-or-daemon"]
+  },
+  {
+    id: "inspect_environment_patch",
     controlThreats: ["hostile-subprocess", "approval-replay-or-substitution"]
   },
   {
@@ -87,6 +127,31 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
       "hostile-subprocess",
       "approval-replay-or-substitution"
     ]
+  },
+  {
+    id: "load_skill",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "delegate_explorer",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
+  },
+  {
+    id: "delegate_implementer",
+    controlThreats: [
+      "malicious-repository-context",
+      "compromised-model-or-provider",
+      "hostile-subprocess",
+      "approval-replay-or-substitution"
+    ]
+  },
+  {
+    id: "delegate_tester",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider", "hostile-subprocess"]
+  },
+  {
+    id: "delegate_reviewer",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
   },
   {
     id: "mcp-network-tool",
@@ -170,11 +235,33 @@ const findingSchema = z.strictObject({
   severity: z.enum(["critical", "high", "medium", "low", "informational"]),
   status: z.enum(["open", "resolved"]),
   title: nonEmptyString,
+  owner: nonEmptyString.optional(),
+  disposition: z.enum(["mitigated", "accepted"]).optional(),
+  rationale: nonEmptyString.optional(),
+  followUpUrl: httpsUrlSchema.optional(),
   controlThreats: z.array(identifier).min(1).superRefine((values, context) => {
     if (new Set(values).size !== values.length) {
       context.addIssue({ code: "custom", message: "finding controlThreats must be unique" });
     }
   })
+}).superRefine((finding, context) => {
+  if (finding.severity === "informational") return;
+  for (const field of ["owner", "disposition", "rationale", "followUpUrl"] as const) {
+    if (finding[field] === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: [field],
+        message: `${field} is required for non-informational findings`
+      });
+    }
+  }
+  if ((finding.severity === "critical" || finding.severity === "high") && finding.disposition === "accepted") {
+    context.addIssue({
+      code: "custom",
+      path: ["disposition"],
+      message: "critical/high findings cannot be accepted; they must be mitigated and resolved"
+    });
+  }
 });
 
 const reviewedControlSchema = z.strictObject({
@@ -191,7 +278,11 @@ const inventoryCoverageSchema = z.strictObject({
     if (new Set(values).size !== values.length) {
       context.addIssue({ code: "custom", message: "coverage controlThreats must be unique" });
     }
-  })
+  }),
+  mitigations: stringSetSchema,
+  regressionEvidence: stringSetSchema,
+  residualRisk: nonEmptyString,
+  status: z.literal("passed")
 });
 
 export const securityReviewEvidenceSchema = z.strictObject({
