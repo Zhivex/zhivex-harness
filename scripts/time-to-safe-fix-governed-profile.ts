@@ -233,6 +233,13 @@ const promptFor = (
   ].join("\n\n");
 };
 
+export const governedTimeToSafeFixProviderRunOptions = (
+  provider: HarnessProvider,
+  maxTokens: number
+): Partial<AgentRunInput<LanguageModel>> => provider === "qwen"
+  ? { providerOptions: { apiMode: "responses" } }
+  : { maxTokens };
+
 const ociPhaseTotal = (result: AgentRunOutput | undefined) => {
   let total = 0;
   for (const toolResult of result?.toolResults ?? []) {
@@ -339,7 +346,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     output = await runtime.runHarness(harness, {
       runId,
       prompt: promptFor(request, verifier),
-      maxTokens: config.maxTokens,
+      ...governedTimeToSafeFixProviderRunOptions(config.provider, config.maxTokens),
       maxSteps: config.maxSteps,
       scope: harness.config.scope,
       timeoutMs: config.timeoutMs,

@@ -23,7 +23,10 @@ import {
   parseTimeToSafeFixDriverRequest,
   type TimeToSafeFixDriverRequest
 } from "../scripts/time-to-safe-fix-driver-contract.js";
-import { runGovernedTimeToSafeFixProfile } from "../scripts/time-to-safe-fix-governed-profile.js";
+import {
+  governedTimeToSafeFixProviderRunOptions,
+  runGovernedTimeToSafeFixProfile
+} from "../scripts/time-to-safe-fix-governed-profile.js";
 import { parseZhivexDriverOptions } from "../scripts/time-to-safe-fix-zhivex-driver.js";
 
 const temporaryDirectories: string[] = [];
@@ -192,6 +195,15 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     });
     expect(() => parseZhivexDriverOptions(["--allowed-command", "sh", "--unknown"], {})).toThrow("Unknown");
     expect(() => parseZhivexDriverOptions(["--allowed-command", "../python"], {})).toThrow("executable names");
+  });
+
+  test("keeps Qwen on Responses while its token budget remains durably enforced", () => {
+    expect(governedTimeToSafeFixProviderRunOptions("qwen", 8_192)).toEqual({
+      providerOptions: { apiMode: "responses" }
+    });
+    expect(governedTimeToSafeFixProviderRunOptions("openai", 8_192)).toEqual({
+      maxTokens: 8_192
+    });
   });
 
   test("runs createHarness with OCI, approvals, host import and independent verification", async () => {

@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.11 - 2026-09-01
+
+### Fixed
+
+- Keep the governed Qwen representative driver on its certified Responses path instead of selecting Chat through an incompatible transport-level `maxTokens` option; the same output limit remains enforced by the Harness durable token guard before and after each provider step.
+
+### Changed
+
+- Record the immutable, unpublished RC.10 attempt as failed after its exact tarball passed artifact binding: Meta completed 14/14 representative cases, Qwen completed 13/14, and an OpenAI account-funding issue surfaced as retryable HTTP 500 failures across live and representative gates; npm publication remained skipped.
+- Extend the representative release matrices through `v1.0.0-rc.11`; RC.11 remains pending until OpenAI recovers and the distinct candidate completes every protected gate.
+
 ## 1.0.0-rc.10 - 2026-09-01
 
 ### Fixed
