@@ -84,6 +84,23 @@ const expandedTimeToSafeFixTasks = (await readFile(
   "utf8"
 )).split(/\r?\n/).filter((line) => line.trim()).map((line) => JSON.parse(line) as { task_id?: string });
 const liveCertification = await readFile(path.join(workspace, "docs", "LIVE_CERTIFICATION.md"), "utf8");
+const gaReadiness = JSON.parse(await readFile(
+  path.join(workspace, "docs", "ga-readiness.json"),
+  "utf8"
+)) as {
+  releaseCandidates?: Array<{ version?: string; status?: string; channel?: string }>;
+};
+for (const candidate of gaReadiness.releaseCandidates ?? []) {
+  if (candidate.status !== "passed" || candidate.channel !== "next" || !candidate.version) continue;
+  const rcLabel = candidate.version.replace(/^1\.0\.0-rc\./, "RC.");
+  const escapedLabel = rcLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!new RegExp(`${escapedLabel}[^\\n]*published to npm \`next\``).test(roadmap)) {
+    failures.push(`ROADMAP.md must identify passed ${candidate.version} as published to npm next.`);
+  }
+  if (roadmap.includes(`Complete ${rcLabel} `)) {
+    failures.push(`ROADMAP.md still instructs maintainers to complete passed candidate ${candidate.version}.`);
+  }
+}
 const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"), "utf8")}\n${
   await readFile(path.join(workspace, "src", "providers.ts"), "utf8")
 }`;

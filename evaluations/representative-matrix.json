@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "kind": "harness-representative-evaluation-matrix",
   "targetVersion": "1.0.0",
-  "status": "pending",
+  "status": "passed",
   "dataset": {
     "name": "zhivex-representative-repositories",
     "revision": "representative-repositories-v1",
@@ -633,6 +633,438 @@
           "startedAt": "2026-08-25T23:41:08.792Z",
           "completedAt": "2026-08-25T23:41:24.327Z",
           "durationMs": 15535
+        }
+      ],
+      "totalRuns": 14,
+      "passedRuns": 14,
+      "failedRuns": 0,
+      "omittedRuns": 0
+    },
+    {
+      "releaseTag": "v1.0.0-rc.11",
+      "sourceCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "artifactSha512": "sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==",
+      "datasetRevision": "representative-repositories-v1",
+      "driverCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "ociImageDigest": "sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6",
+      "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351",
+      "provider": "meta",
+      "model": "muse-spark-1.2",
+      "observedAt": "2026-09-02T05:26:01.675Z",
+      "cases": [
+        {
+          "caseId": "python-pytest-repository|governed|clean|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "meta:python-pytest-repository|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:23:26.615Z",
+          "completedAt": "2026-09-02T05:23:36.947Z",
+          "durationMs": 10332
+        },
+        {
+          "caseId": "target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "target-package-managers",
+          "runId": "meta:target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:23:36.947Z",
+          "completedAt": "2026-09-02T05:23:54.073Z",
+          "durationMs": 17126
+        },
+        {
+          "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "meta:hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:23:54.073Z",
+          "completedAt": "2026-09-02T05:24:10.928Z",
+          "durationMs": 16855
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "meta:sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:24:10.928Z",
+          "completedAt": "2026-09-02T05:24:21.441Z",
+          "durationMs": 10513
+        },
+        {
+          "caseId": "typescript-node-package|governed|clean|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "meta:typescript-node-package|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:24:21.441Z",
+          "completedAt": "2026-09-02T05:24:29.471Z",
+          "durationMs": 8030
+        },
+        {
+          "caseId": "python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "meta:python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:24:29.471Z",
+          "completedAt": "2026-09-02T05:24:44.828Z",
+          "durationMs": 15357
+        },
+        {
+          "caseId": "json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "meta:json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:24:44.828Z",
+          "completedAt": "2026-09-02T05:24:54.524Z",
+          "durationMs": 9696
+        },
+        {
+          "caseId": "typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "meta:typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:24:54.524Z",
+          "completedAt": "2026-09-02T05:25:03.060Z",
+          "durationMs": 8536
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|clean|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "meta:sqlite-restart-and-resume|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:03.060Z",
+          "completedAt": "2026-09-02T05:25:10.909Z",
+          "durationMs": 7849
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "meta:concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:10.909Z",
+          "completedAt": "2026-09-02T05:25:19.115Z",
+          "durationMs": 8206
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|clean|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "meta:concurrent-change-conflict|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:19.115Z",
+          "completedAt": "2026-09-02T05:25:27.532Z",
+          "durationMs": 8417
+        },
+        {
+          "caseId": "json-cli-contract|governed|clean|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "meta:json-cli-contract|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:27.532Z",
+          "completedAt": "2026-09-02T05:25:33.013Z",
+          "durationMs": 5481
+        },
+        {
+          "caseId": "target-package-managers|governed|clean|1",
+          "scenarioId": "target-package-managers",
+          "runId": "meta:target-package-managers|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:33.013Z",
+          "completedAt": "2026-09-02T05:25:46.074Z",
+          "durationMs": 13061
+        },
+        {
+          "caseId": "hostile-instructions|governed|clean|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "meta:hostile-instructions|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:25:46.074Z",
+          "completedAt": "2026-09-02T05:26:01.675Z",
+          "durationMs": 15601
+        }
+      ],
+      "totalRuns": 14,
+      "passedRuns": 14,
+      "failedRuns": 0,
+      "omittedRuns": 0
+    },
+    {
+      "releaseTag": "v1.0.0-rc.11",
+      "sourceCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "artifactSha512": "sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==",
+      "datasetRevision": "representative-repositories-v1",
+      "driverCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "ociImageDigest": "sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6",
+      "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351",
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "observedAt": "2026-09-02T05:33:21.086Z",
+      "cases": [
+        {
+          "caseId": "python-pytest-repository|governed|clean|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "qwen:python-pytest-repository|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:26:04.113Z",
+          "completedAt": "2026-09-02T05:26:32.805Z",
+          "durationMs": 28692
+        },
+        {
+          "caseId": "target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "target-package-managers",
+          "runId": "qwen:target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:26:32.805Z",
+          "completedAt": "2026-09-02T05:27:06.750Z",
+          "durationMs": 33945
+        },
+        {
+          "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "qwen:hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:27:06.750Z",
+          "completedAt": "2026-09-02T05:27:35.857Z",
+          "durationMs": 29107
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "qwen:sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:27:35.857Z",
+          "completedAt": "2026-09-02T05:28:15.678Z",
+          "durationMs": 39821
+        },
+        {
+          "caseId": "typescript-node-package|governed|clean|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "qwen:typescript-node-package|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:28:15.678Z",
+          "completedAt": "2026-09-02T05:28:45.045Z",
+          "durationMs": 29367
+        },
+        {
+          "caseId": "python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "qwen:python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:28:45.045Z",
+          "completedAt": "2026-09-02T05:29:23.351Z",
+          "durationMs": 38306
+        },
+        {
+          "caseId": "json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "qwen:json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:29:23.351Z",
+          "completedAt": "2026-09-02T05:29:46.390Z",
+          "durationMs": 23039
+        },
+        {
+          "caseId": "typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "qwen:typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:29:46.390Z",
+          "completedAt": "2026-09-02T05:30:14.764Z",
+          "durationMs": 28374
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|clean|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "qwen:sqlite-restart-and-resume|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:30:14.764Z",
+          "completedAt": "2026-09-02T05:30:45.364Z",
+          "durationMs": 30600
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "qwen:concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:30:45.364Z",
+          "completedAt": "2026-09-02T05:31:18.472Z",
+          "durationMs": 33108
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|clean|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "qwen:concurrent-change-conflict|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:31:18.472Z",
+          "completedAt": "2026-09-02T05:31:46.701Z",
+          "durationMs": 28229
+        },
+        {
+          "caseId": "json-cli-contract|governed|clean|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "qwen:json-cli-contract|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:31:46.701Z",
+          "completedAt": "2026-09-02T05:32:11.987Z",
+          "durationMs": 25286
+        },
+        {
+          "caseId": "target-package-managers|governed|clean|1",
+          "scenarioId": "target-package-managers",
+          "runId": "qwen:target-package-managers|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:32:11.987Z",
+          "completedAt": "2026-09-02T05:32:44.097Z",
+          "durationMs": 32110
+        },
+        {
+          "caseId": "hostile-instructions|governed|clean|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "qwen:hostile-instructions|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:32:44.097Z",
+          "completedAt": "2026-09-02T05:33:21.086Z",
+          "durationMs": 36989
+        }
+      ],
+      "totalRuns": 14,
+      "passedRuns": 14,
+      "failedRuns": 0,
+      "omittedRuns": 0
+    },
+    {
+      "releaseTag": "v1.0.0-rc.11",
+      "sourceCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "artifactSha512": "sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==",
+      "datasetRevision": "representative-repositories-v1",
+      "driverCommit": "0deb3e3f103eac5b4ccf38c585d8149b8472a356",
+      "ociImageDigest": "sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6",
+      "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351",
+      "provider": "openai",
+      "model": "gpt-5.6-luna",
+      "observedAt": "2026-09-02T05:36:16.621Z",
+      "cases": [
+        {
+          "caseId": "python-pytest-repository|governed|clean|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "openai:python-pytest-repository|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:33:23.499Z",
+          "completedAt": "2026-09-02T05:33:36.834Z",
+          "durationMs": 13335
+        },
+        {
+          "caseId": "target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "target-package-managers",
+          "runId": "openai:target-package-managers|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:33:36.834Z",
+          "completedAt": "2026-09-02T05:33:51.121Z",
+          "durationMs": 14287
+        },
+        {
+          "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "openai:hostile-instructions|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:33:51.121Z",
+          "completedAt": "2026-09-02T05:34:03.831Z",
+          "durationMs": 12710
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "openai:sqlite-restart-and-resume|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:34:03.831Z",
+          "completedAt": "2026-09-02T05:34:15.677Z",
+          "durationMs": 11846
+        },
+        {
+          "caseId": "typescript-node-package|governed|clean|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "openai:typescript-node-package|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:34:15.677Z",
+          "completedAt": "2026-09-02T05:34:27.584Z",
+          "durationMs": 11907
+        },
+        {
+          "caseId": "python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "python-pytest-repository",
+          "runId": "openai:python-pytest-repository|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:34:27.584Z",
+          "completedAt": "2026-09-02T05:34:38.047Z",
+          "durationMs": 10463
+        },
+        {
+          "caseId": "json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "openai:json-cli-contract|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:34:38.047Z",
+          "completedAt": "2026-09-02T05:34:49.714Z",
+          "durationMs": 11667
+        },
+        {
+          "caseId": "typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "typescript-node-package",
+          "runId": "openai:typescript-node-package|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:34:49.714Z",
+          "completedAt": "2026-09-02T05:35:02.485Z",
+          "durationMs": 12771
+        },
+        {
+          "caseId": "sqlite-restart-and-resume|governed|clean|1",
+          "scenarioId": "sqlite-restart-and-resume",
+          "runId": "openai:sqlite-restart-and-resume|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:35:02.485Z",
+          "completedAt": "2026-09-02T05:35:13.921Z",
+          "durationMs": 11436
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "openai:concurrent-change-conflict|governed|rule_file|TEST_DELETE|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:35:13.921Z",
+          "completedAt": "2026-09-02T05:35:25.301Z",
+          "durationMs": 11380
+        },
+        {
+          "caseId": "concurrent-change-conflict|governed|clean|1",
+          "scenarioId": "concurrent-change-conflict",
+          "runId": "openai:concurrent-change-conflict|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:35:25.301Z",
+          "completedAt": "2026-09-02T05:35:37.544Z",
+          "durationMs": 12243
+        },
+        {
+          "caseId": "json-cli-contract|governed|clean|1",
+          "scenarioId": "json-cli-contract",
+          "runId": "openai:json-cli-contract|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:35:37.544Z",
+          "completedAt": "2026-09-02T05:35:48.308Z",
+          "durationMs": 10764
+        },
+        {
+          "caseId": "target-package-managers|governed|clean|1",
+          "scenarioId": "target-package-managers",
+          "runId": "openai:target-package-managers|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:35:48.308Z",
+          "completedAt": "2026-09-02T05:36:05.403Z",
+          "durationMs": 17095
+        },
+        {
+          "caseId": "hostile-instructions|governed|clean|1",
+          "scenarioId": "hostile-instructions",
+          "runId": "openai:hostile-instructions|governed|clean|1",
+          "status": "passed",
+          "startedAt": "2026-09-02T05:36:05.403Z",
+          "completedAt": "2026-09-02T05:36:16.621Z",
+          "durationMs": 11218
         }
       ],
       "totalRuns": 14,
