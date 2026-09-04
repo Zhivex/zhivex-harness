@@ -13,7 +13,7 @@
     },
     {
       "name": "CLI_COMMAND_OPTION_CONTRACTS",
-      "sha256": "sha256:24b4f1884ff228de6027655bf75908e8267cfbf8852235971252bebe19581412"
+      "sha256": "sha256:aa09f2e5e3dc2061fa8171f78428b077f666776d49e78cddfbfc5d3e14ea3cf0"
     },
     {
       "name": "CLI_EVENT_SCHEMA_VERSION",
@@ -25,11 +25,11 @@
     },
     {
       "name": "CLI_OPTION_DEFINITIONS",
-      "sha256": "sha256:e9f6878dc5cf6a6d82f902fb6157db0f65932234ca69ed7f87e89f3dbb4811de"
+      "sha256": "sha256:80643d92df0424a8c5ecd67900b658a5fc67cda7bc857bdd36583f37eb33f508"
     },
     {
       "name": "CLI_OPTION_NAMES",
-      "sha256": "sha256:72f3b2f6a13b1bed6977b8d0ac43327246efb492b99ec5975a7c9e6b81196723"
+      "sha256": "sha256:ff63e6dcc9cff7b9d369457d2d5f40021e7ab05f59eb7ea8bf512cf165fafe12"
     },
     {
       "name": "DEFAULT_ALLOWED_CHECKS",
@@ -145,7 +145,7 @@
     },
     {
       "name": "cliJsonDocumentSchema",
-      "sha256": "sha256:2a18f15adcf6d11745eb8499e1a458afc6d47f17e5d9820711a3157e348acbe0"
+      "sha256": "sha256:6d6d32f289af541f437c6632f82360be9a6cae43faa16942505aedb8ca602c37"
     },
     {
       "name": "cliJsonLineDocumentSchema",
@@ -245,7 +245,7 @@
     },
     {
       "name": "parseCliJsonDocument",
-      "sha256": "sha256:fedf61cd4fc0a83eebf113af3771b3e8eb8148fb9c3961d34ddfc2386b453de4"
+      "sha256": "sha256:88171752f13fd7f031d27152eaa7c49048a78fd3f857f31565bff62a251b8537"
     },
     {
       "name": "parseCliJsonLineDocument",
@@ -289,7 +289,7 @@
     },
     {
       "name": "validateCliCommandOptions",
-      "sha256": "sha256:0db6291eaea426f120f5ee900cc0c0332007e7897587f49ac5f5b8f23cde209a"
+      "sha256": "sha256:0ecaa9569b797d3a26c23b9473b80a98e5d94925e8ecae4aef937e96be357fb8"
     },
     {
       "name": "verifyChangeEnvelope",
@@ -311,11 +311,15 @@
     },
     {
       "name": "CliCommandOptionContractKey",
-      "sha256": "sha256:ebba6d15bf9d4d4a1f556c49f82a13f60791825574662f58b228372265b82437"
+      "sha256": "sha256:e69ffd0ea0af23a143a85b6d596d710bbdf607e9474657547dfb83fa69c78cbd"
+    },
+    {
+      "name": "CliInitDocument",
+      "sha256": "sha256:bd8de48830fffc5a4479974bbba6ccf36911a84de41d858e50d2d9cee056489c"
     },
     {
       "name": "CliJsonDocument",
-      "sha256": "sha256:819decd0ff5969a9e534c0da940fd498896343b932e17f3c2712a584a7d5251d"
+      "sha256": "sha256:69d773fc769a1a3c0e4657dd18e486feb6a42c999c9b490874841e4330ddf0e5"
     },
     {
       "name": "CliJsonLineDocument",
@@ -327,7 +331,7 @@
     },
     {
       "name": "CliOptionName",
-      "sha256": "sha256:650c835c1b9dafc111608dc5214b555b2b0527442f2bdfc2d42ef74d0d306208"
+      "sha256": "sha256:6af106bfbfd758333ef524ef32e44f29429651bfc837bbaad647609a93a1e6ca"
     },
     {
       "name": "CliReviewGroupDocument",
@@ -486,5 +490,5 @@
       "sha256": "sha256:b165b5eb63b24371c7ab1ca83b95a9c553e7200aa89e94306ca4a7434eb1bb39"
     }
   ],
-  "digest": "sha256:834bf8631b3e549da9ff2641050082dd2601898a7b7a1efa7d20511b82f3dd0d"
+  "digest": "sha256:b89e3786cd87b50506c3dc75dc8cf332a7c266974dc1a76611757531d8c49840"
 }

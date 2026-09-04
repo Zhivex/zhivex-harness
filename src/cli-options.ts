@@ -30,7 +30,7 @@ const conflicts: Readonly<Record<string, readonly string[]>> = {
 };
 
 export const CLI_OPTION_NAMES = [
-  "--provider", "--model", "--route", "--workspace", "--state-dir", "--mcp-config",
+  "--provider", "--model", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
   "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
@@ -56,6 +56,7 @@ export const CLI_OPTION_DEFINITIONS: Readonly<Record<CliOptionName, CliOptionDef
 
 const locator = ["--workspace", "--state-dir", "--store", "--tenant", "--user", "--namespace"] as const;
 const provider = ["--provider", "--model"] as const;
+const profile = ["--profile"] as const;
 const project = ["--mcp-config", "--context-config", "--no-project-context"] as const;
 const execution = [
   "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
@@ -76,7 +77,7 @@ const childBudgets = [
   "--subagent-timeout-ms"
 ] as const;
 const agent = [
-  ...provider, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
+  ...provider, ...profile, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
   "--require-capability", "--subagent"
 ] as const;
 
@@ -97,14 +98,15 @@ const contract = (
 };
 
 export const CLI_COMMAND_OPTION_CONTRACTS = {
+  init: contract([...provider, ...profile, "--json"]),
   run: contract([...agent, "--idempotency-key", "--yes", "--json", "--jsonl"]),
   review: contract([
-    ...provider, "--route", ...locator, "--context-config", "--no-project-context",
+    ...provider, ...profile, "--route", ...locator, "--context-config", "--no-project-context",
     ...childBudgets, "--max-parallel-reviews", "--require-capability", "--reviewer", "--json"
   ]),
   chat: contract([...agent, "--yes", "--session", "--continue"]),
   providers: contract(["--json"]),
-  doctor: contract([...provider, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
+  doctor: contract([...provider, ...profile, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
   resume: contract([...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
   "runs:list": contract([...locator, "--status", "--limit", "--cursor", "--json"]),
   "runs:inspect": contract([...locator, "--json"]),

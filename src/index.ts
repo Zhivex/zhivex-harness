@@ -90,6 +90,7 @@ export {
   cliChangeEnvelopeVerificationDocumentSchema,
   cliDoctorDocumentSchema,
   cliErrorDocumentSchema,
+  cliInitDocumentSchema,
   cliJsonDocumentSchema,
   cliJsonLineDocumentSchema,
   cliProviderDocumentSchema,
@@ -113,6 +114,7 @@ export {
 } from "./json-contracts.js";
 export type {
   CliChangeEnvelopeVerificationDocument,
+  CliInitDocument,
   CliJsonDocument,
   CliJsonLineDocument,
   CliReviewGroupDocument,

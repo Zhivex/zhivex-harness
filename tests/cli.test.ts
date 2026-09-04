@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -7,6 +7,7 @@ import {
   CLI_EXIT_CODES,
   CLI_JSON_SCHEMA_VERSION,
   CliUsageError,
+  type DoctorReport,
   cliExitCodeForError,
   createHarnessResumeMetadata,
   createDoctorReport,
@@ -22,6 +23,7 @@ import {
 } from "../src/cli.js";
 import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
 import { parseCliJsonDocument } from "../src/json-contracts.js";
+import { SqliteDatabase } from "../src/sqlite-database.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
@@ -45,6 +47,32 @@ const runCli = async (arguments_: string[], env: Record<string, string> = {}) =>
 };
 
 describe("CLI parsing", () => {
+  test("parses explicit personal profile initialization and selection", () => {
+    expect(parseCliArgs([
+      "init",
+      "--profile",
+      "daily",
+      "--provider",
+      "qwen",
+      "--model",
+      "qwen3.8-max",
+      "--json"
+    ])).toMatchObject({
+      command: "init",
+      profile: "daily",
+      provider: "qwen",
+      model: "qwen3.8-max",
+      json: true
+    });
+    expect(parseCliArgs(["doctor", "--profile", "daily"])).toMatchObject({
+      command: "doctor",
+      profile: "daily"
+    });
+    expect(() => parseCliArgs(["resume", "run-1", "--approve", "--profile", "daily"]))
+      .toThrow("not supported by resume");
+    expect(() => parseCliArgs(["init", "--profile", "../escape"])).toThrow("Profile names");
+  });
+
   test("parses one-shot provider and workspace options", () => {
     expect(parseCliArgs([
       "run",
@@ -739,6 +767,153 @@ describe("CLI process contract", () => {
       expect(JSON.parse(result.stderr)).toMatchObject({
         kind: "error",
         error: { code: "STATE_CONFLICT", category: "state", retryable: false }
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("accepts the session-only SQLite store created by sessions list", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-session-doctor-"));
+    const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+    try {
+      const sessions = await runCli([
+        "sessions",
+        "list",
+        "--workspace",
+        workspace,
+        "--state-dir",
+        stateDirectory,
+        "--json"
+      ]);
+      expect(sessions.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(JSON.parse(sessions.stdout)).toMatchObject({
+        kind: "session-list",
+        sessions: []
+      });
+
+      const doctor = await runCli([
+        "doctor",
+        "--provider",
+        "openai",
+        "--workspace",
+        workspace,
+        "--state-dir",
+        stateDirectory,
+        "--json"
+      ], { OPENAI_API_KEY: "present" });
+      expect(doctor.exitCode).toBe(CLI_EXIT_CODES.success);
+      const report = JSON.parse(doctor.stdout) as DoctorReport;
+      expect(report.ok).toBe(true);
+      expect(report.checks.find((check) => check.id === "operations-store")).toMatchObject({
+        status: "pass",
+        details: {
+          integrity: true,
+          operationsSchema: "not-initialized",
+          sessionSchema: 1,
+          compatible: true
+        }
+      });
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+
+  test("initializes an explicit personal profile and reuses it with doctor", async () => {
+    const configDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-init-profile-"));
+    try {
+      const env = {
+        ZHIVEX_HARNESS_CONFIG_DIR: configDirectory,
+        OPENAI_API_KEY: "profile-process-secret"
+      };
+      const initialized = await runCli([
+        "init",
+        "--profile",
+        "daily",
+        "--provider",
+        "openai",
+        "--model",
+        "gpt-5.6-terra",
+        "--json"
+      ], env);
+      expect(initialized.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(initialized.stdout).not.toContain("profile-process-secret");
+      const document = parseCliJsonDocument(JSON.parse(initialized.stdout));
+      expect(document).toMatchObject({
+        kind: "init",
+        profile: {
+          name: "daily",
+          schemaVersion: 1,
+          provider: "openai",
+          model: "gpt-5.6-terra"
+        },
+        credential: { configured: true },
+        next: { doctor: "zhx doctor --profile daily" }
+      });
+      const profilePath = path.join(configDirectory, "profiles", "daily.json");
+      expect((await stat(profilePath)).mode & 0o777).toBe(0o600);
+
+      const doctor = await runCli([
+        "doctor",
+        "--profile",
+        "daily",
+        "--json"
+      ], env);
+      expect(doctor.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(doctor.stdout).not.toContain("profile-process-secret");
+      expect(JSON.parse(doctor.stdout)).toMatchObject({
+        kind: "doctor",
+        configuration: { provider: "openai", model: "gpt-5.6-terra" }
+      });
+
+      const duplicate = await runCli([
+        "init",
+        "--profile",
+        "daily",
+        "--provider",
+        "openai",
+        "--json"
+      ], env);
+      expect(duplicate.exitCode).toBe(CLI_EXIT_CODES.usageError);
+    } finally {
+      await rm(configDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects a partially initialized SQLite operations schema", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-partial-operations-doctor-"));
+    const stateDirectory = path.join(workspace, ".zhivex-harness", "runs");
+    try {
+      await mkdir(stateDirectory, { recursive: true });
+      const database = new SqliteDatabase(path.join(stateDirectory, "operations.sqlite"));
+      database.exec(`
+        CREATE TABLE zhivex_agent_runs (
+          run_id TEXT PRIMARY KEY,
+          state_json TEXT NOT NULL,
+          updated_at_ms INTEGER NOT NULL
+        )
+      `);
+      database.close();
+
+      const doctor = await runCli([
+        "doctor",
+        "--provider",
+        "openai",
+        "--workspace",
+        workspace,
+        "--state-dir",
+        stateDirectory,
+        "--json"
+      ], { OPENAI_API_KEY: "present" });
+      expect(doctor.exitCode).toBe(CLI_EXIT_CODES.doctorFailed);
+      expect((JSON.parse(doctor.stdout) as DoctorReport).checks.find(
+        (check) => check.id === "operations-store"
+      )).toMatchObject({
+        status: "fail",
+        details: {
+          operationsSchema: "unsupported",
+          compatible: false
+        }
       });
     } finally {
       await rm(workspace, { recursive: true, force: true });
