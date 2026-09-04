@@ -117,6 +117,7 @@ try {
     "package/contracts/security-controls.json",
     "package/fixtures/contracts/v1/error.json",
     "package/fixtures/contracts/v1/doctor.json",
+    "package/fixtures/contracts/v1/init.json",
     "package/fixtures/contracts/v1/observational-documents.json",
     "package/fixtures/contracts/v1/providers.json",
     "package/fixtures/contracts/v1/run-result-forward.json",
@@ -442,14 +443,77 @@ void create;
   ));
   assert(!providers.stdout.includes("package-smoke-secret"), "provider output exposed a credential");
 
-  const doctor = await run([installedCli, "doctor", "--json"], {
-    cwd: consumer,
-    env: { ...commandEnvironment, OPENAI_API_KEY: "package-smoke-secret" }
-  });
-  const doctorDocument = JSON.parse(doctor.stdout) as { kind?: string; ok?: boolean; schemaVersion?: number };
+  const profileConfigDirectory = path.join(temporaryDirectory, "profile-config");
+  const profileEnvironment = {
+    ...commandEnvironment,
+    ZHIVEX_HARNESS_CONFIG_DIR: profileConfigDirectory,
+    OPENAI_API_KEY: "package-smoke-secret"
+  };
+  const initialized = await run([
+    installedShortCli,
+    "init",
+    "--profile",
+    "package-smoke",
+    "--provider",
+    "openai",
+    "--model",
+    "gpt-5.6-terra",
+    "--json"
+  ], { cwd: consumer, env: profileEnvironment });
+  const initializedDocument = JSON.parse(initialized.stdout) as {
+    kind?: string;
+    profile?: { name?: string; provider?: string; model?: string };
+    credential?: { configured?: boolean };
+  };
   assert.deepEqual(
-    { kind: doctorDocument.kind, ok: doctorDocument.ok, schemaVersion: doctorDocument.schemaVersion },
-    { kind: "doctor", ok: true, schemaVersion: 1 }
+    {
+      kind: initializedDocument.kind,
+      profile: {
+        name: initializedDocument.profile?.name,
+        provider: initializedDocument.profile?.provider,
+        model: initializedDocument.profile?.model
+      },
+      configured: initializedDocument.credential?.configured
+    },
+    {
+      kind: "init",
+      profile: { name: "package-smoke", provider: "openai", model: "gpt-5.6-terra" },
+      configured: true
+    }
+  );
+  assert(!initialized.stdout.includes("package-smoke-secret"), "init output exposed a credential");
+  assert.equal(
+    (await stat(path.join(profileConfigDirectory, "profiles", "package-smoke.json"))).mode & 0o777,
+    0o600,
+    "installed CLI profile must use owner-only permissions"
+  );
+
+  const doctor = await run([installedCli, "doctor", "--profile", "package-smoke", "--json"], {
+    cwd: consumer,
+    env: profileEnvironment
+  });
+  const doctorDocument = JSON.parse(doctor.stdout) as {
+    kind?: string;
+    ok?: boolean;
+    schemaVersion?: number;
+    configuration?: { provider?: string; model?: string };
+  };
+  assert.deepEqual(
+    {
+      kind: doctorDocument.kind,
+      ok: doctorDocument.ok,
+      schemaVersion: doctorDocument.schemaVersion,
+      configuration: {
+        provider: doctorDocument.configuration?.provider,
+        model: doctorDocument.configuration?.model
+      }
+    },
+    {
+      kind: "doctor",
+      ok: true,
+      schemaVersion: 1,
+      configuration: { provider: "openai", model: "gpt-5.6-terra" }
+    }
   );
   assert(!doctor.stdout.includes("package-smoke-secret"), "doctor output exposed a credential");
 

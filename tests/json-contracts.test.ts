@@ -37,6 +37,10 @@ describe("public JSON and JSONL contracts", () => {
       kind: "doctor",
       configSchemaVersion: 5
     });
+    expect(parseCliJsonDocument(await fixture("init.json"))).toMatchObject({
+      kind: "init",
+      profile: { name: "daily", provider: "openai" }
+    });
     const documents = await fixture("observational-documents.json") as unknown[];
     expect(documents.map((document) => parseCliJsonDocument(document).kind)).toEqual([
       "review-group",

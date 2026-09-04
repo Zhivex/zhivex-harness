@@ -19,9 +19,10 @@ The preparation gate does not certify production readiness. It verifies that pub
 5. Preserve `1.0.0-rc.9` as an immutable failed attempt: release-bound deterministic validation exposed an environment-sensitive diagnostic test before packing, so no release tarball was created and every live, representative, and npm job was skipped.
 6. Preserve `1.0.0-rc.10` as an immutable failed attempt: its exact tarball passed artifact binding, but an OpenAI account-funding issue surfaced as retryable HTTP 500 failures in live and representative gates and Qwen resolved 13/14 representative cases; npm publication was skipped.
 7. Preserve the published `1.0.0-rc.11` evidence: OpenAI's release precheck and Qwen's complete representative precheck passed, the protected workflow's first attempt failed closed on one Qwen representative case without publishing, and its complete second attempt passed every live and representative gate before publishing the exact artifact to `next` with verified npm integrity and SLSA provenance.
-8. Treat RC.11 as immutable historical evidence rather than the final security-review target: HAR-HU-03 found and locally remediated two high-severity `git_diff` boundary defects, so the changed bytes require the separately authorized `v1.0.0-rc.12` candidate and complete protected recertification.
-9. Record a current security review with no open critical/high findings against the final passing candidate.
-10. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
-11. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
+8. Preserve the published `1.0.0-rc.12` evidence: the protected workflow passed deterministic, installed-artifact, OCI, live-provider, complete Meta/Qwen/OpenAI representative, registry-integrity, and SLSA-provenance gates for the exact annotated tag.
+9. Treat RC.12 as immutable historical evidence rather than the final security-review target: the new `init`/explicit-profile CLI contract and diagnostics correction require the separately authorized `v1.0.0-rc.13` candidate and complete protected recertification.
+10. Record a current security review with no open critical/high findings against the final passing candidate.
+11. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
+12. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
 
 Gemini is explicitly provisional and excluded from the 1.0 GA-certified cohort. The decision and its promotion criteria are recorded in [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md); partial or capacity-blocked evidence is never certification.

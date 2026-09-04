@@ -27,6 +27,7 @@ import {
   PROVIDERS,
   parseProvider,
   providerAvailability,
+  providerDescriptor,
   resolveHarnessConfig,
   type HarnessConfig,
   type HarnessConfigInput,
@@ -75,6 +76,7 @@ import {
   serializeStreamEvent,
   serializeStreamResult
 } from "./cli-stream.js";
+import type { CliInitDocument } from "./json-contracts.js";
 import {
   openCliSessionStore,
   type CliSession,
@@ -121,6 +123,11 @@ import {
   type CliCommandOptionContractKey
 } from "./cli-options.js";
 import {
+  applyCliProfile,
+  createCliProfile,
+  validateCliProfileName
+} from "./cli-profiles.js";
+import {
   exportHarnessStateBackup,
   importHarnessStateBackupFile,
   inspectHarnessState
@@ -160,7 +167,7 @@ export const terminalErrorMessage = (error: unknown) => terminalErrorRedaction.r
   error instanceof Error ? error.message : String(error)
 );
 
-export const CLI_COMMANDS = ["run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "state", "help", "version"] as const;
+export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "state", "help", "version"] as const;
 export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export"] as const;
 export const CLI_SESSIONS_COMMANDS = ["list", "inspect", "rename", "fork", "archive"] as const;
 export const CLI_CHANGES_COMMANDS = ["create", "verify"] as const;
@@ -174,6 +181,7 @@ type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 
 export interface CliOptions {
   command: Command;
+  profile?: string;
   provider?: string;
   model?: string;
   workspace?: string;
@@ -484,6 +492,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
 
     switch (argument) {
+      case "--profile":
+        try {
+          options.profile = validateCliProfileName(optionValue(argv, index, argument));
+        } catch (error) {
+          throw new CliUsageError(error instanceof Error ? error.message : String(error));
+        }
+        index += 1;
+        break;
       case "--provider":
         try {
           options.provider = parseProvider(optionValue(argv, index, argument));
@@ -949,6 +965,7 @@ export const CLI_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
 
 Usage:
   zhx                              Start the interactive console
+  zhx init [--profile <name>] [--provider <id>] [--model <id>]
   zhx run [options] "task"
   zhx review [options] "review task"
   zhx chat [options] [--continue|--session <id>]
@@ -966,6 +983,7 @@ Usage:
 The long command zhivex-harness remains supported for compatibility.
 
 Options:
+  --profile <name>                Explicit personal provider/model profile
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
   --route <role=provider[:model]> Route a subagent role; repeatable
@@ -1942,6 +1960,80 @@ export const providersDocument = (env: NodeJS.ProcessEnv = process.env) => ({
   providers: providerAvailability(env)
 });
 
+const initializeCli = async (options: CliOptions) => {
+  const profileName = options.profile ?? "default";
+  const envProvider = options.provider ?? process.env.ZHIVEX_HARNESS_PROVIDER;
+  let provider: HarnessProvider;
+  try {
+    provider = parseProvider(envProvider);
+  } catch (error) {
+    throw new CliUsageError(error instanceof Error ? error.message : String(error));
+  }
+
+  let model = options.model ?? process.env.ZHIVEX_HARNESS_MODEL ?? providerDescriptor(provider).defaultModel;
+  if (!options.json && process.stdin.isTTY && process.stdout.isTTY) {
+    const readline = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      if (!options.provider) {
+        const answer = (await readline.question(
+          `Provider (${PROVIDERS.join("/")}) [${provider}]: `
+        )).trim();
+        if (answer) {
+          try {
+            provider = parseProvider(answer);
+          } catch (error) {
+            throw new CliUsageError(error instanceof Error ? error.message : String(error));
+          }
+          if (!options.model) model = providerDescriptor(provider).defaultModel;
+        }
+      }
+      if (!options.model) {
+        const answer = (await readline.question(`Model [${model}]: `)).trim();
+        if (answer) model = answer;
+      }
+    } finally {
+      readline.close();
+    }
+  }
+
+  const created = await createCliProfile(profileName, { provider, model });
+  const availability = providerAvailability().find((candidate) => candidate.id === provider);
+  const doctorCommand = `zhx doctor --profile ${profileName}`;
+  const runCommand = `zhx --profile ${profileName} "inspect this repository"`;
+  const document: CliInitDocument = {
+    schemaVersion: CLI_JSON_SCHEMA_VERSION,
+    kind: "init",
+    profile: {
+      name: profileName,
+      path: created.path,
+      schemaVersion: created.profile.schemaVersion,
+      provider: created.profile.provider,
+      model: created.profile.model
+    },
+    credential: {
+      configured: availability?.configured ?? false,
+      names: [...(availability?.credentialNames ?? [])]
+    },
+    next: { doctor: doctorCommand, run: runCommand }
+  };
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(document, null, 2)}\n`);
+    return;
+  }
+  process.stdout.write([
+    `Created personal profile ${profileName} at ${created.path}.`,
+    `Provider: ${created.profile.provider} · Model: ${created.profile.model}`,
+    availability?.configured
+      ? "Provider credential detected; no secret value was stored or printed."
+      : `Set one provider credential in your environment: ${availability?.credentialNames.join(" or ") || "see zhx providers"}.`,
+    "Next:",
+    `  ${doctorCommand}`,
+    `  ${runCommand}`,
+    "Profiles contain provider and model only; they are never activated implicitly."
+  ].join("\n") + "\n");
+};
+
 const listProviders = (json: boolean) => {
   const document = providersDocument();
   if (json) {
@@ -2268,7 +2360,13 @@ const inspectOperationsStore = async (
         "zhivex_agent_runs_tool_journal",
         "zhivex_agent_memory"
       ];
-      const operationsCompatible = requiredOperationsTables.every((table) => tables.has(table));
+      const operationsTablesPresent = requiredOperationsTables.filter((table) => tables.has(table));
+      const operationsSchema = operationsTablesPresent.length === 0
+        ? "not-initialized"
+        : operationsTablesPresent.length === requiredOperationsTables.length
+          ? 1
+          : "unsupported";
+      const operationsCompatible = operationsSchema !== "unsupported";
       const sessionVersion = tables.has("zhivex_cli_session_schema")
         ? database.query<{ version: number }, []>(
             "SELECT version FROM zhivex_cli_session_schema WHERE singleton = 1"
@@ -2287,7 +2385,7 @@ const inspectOperationsStore = async (
           databasePath,
           safe: true,
           integrity: integrity === "ok",
-          operationsSchema: operationsCompatible ? 1 : "unsupported",
+          operationsSchema,
           sessionSchema: sessionVersion ?? "not-initialized",
           compatible
         }
@@ -2980,8 +3078,14 @@ const manageState = async (options: CliOptions) => {
 };
 
 export const main = async (argv = process.argv.slice(2)) => {
-  const options = parseCliArgs(argv);
+  const parsedOptions = parseCliArgs(argv);
+  const options = parsedOptions.command === "init"
+    ? parsedOptions
+    : await applyCliProfile(parsedOptions);
   switch (options.command) {
+    case "init":
+      await initializeCli(options);
+      return;
     case "help":
       process.stdout.write(`${CLI_HELP_TEXT}\n`);
       return;
