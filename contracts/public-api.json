@@ -105,6 +105,7 @@
     "cliChangeEnvelopeVerificationDocumentSchema",
     "cliDoctorDocumentSchema",
     "cliErrorDocumentSchema",
+    "cliInitDocumentSchema",
     "cliJsonDocumentSchema",
     "cliJsonLineDocumentSchema",
     "cliProviderDocumentSchema",
@@ -371,6 +372,7 @@
     "cliChangeEnvelopeVerificationDocumentSchema",
     "cliDoctorDocumentSchema",
     "cliErrorDocumentSchema",
+    "cliInitDocumentSchema",
     "cliProviderDocumentSchema",
     "cliReviewGroupDocumentSchema",
     "cliRunCancellationDocumentSchema",
@@ -459,6 +461,7 @@
     "CliChangeEnvelopeVerificationDocument",
     "CliCommandOptionContract",
     "CliCommandOptionContractKey",
+    "CliInitDocument",
     "CliJsonDocument",
     "CliJsonLineDocument",
     "CliOptionDefinition",
@@ -616,6 +619,7 @@
     "CliChangeEnvelopeVerificationDocument",
     "CliCommandOptionContract",
     "CliCommandOptionContractKey",
+    "CliInitDocument",
     "CliJsonDocument",
     "CliJsonLineDocument",
     "CliOptionDefinition",
@@ -787,6 +791,7 @@
   ],
   "cli": {
     "commands": [
+      "init",
       "run",
       "review",
       "chat",
@@ -836,10 +841,22 @@
       "doctorFailed": 3
     },
     "commandOptions": {
+      "init": {
+        "allowed": [
+          "--provider",
+          "--model",
+          "--profile",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
       "run": {
         "allowed": [
           "--provider",
           "--model",
+          "--profile",
           "--route",
           "--workspace",
           "--state-dir",
@@ -909,6 +926,7 @@
         "allowed": [
           "--provider",
           "--model",
+          "--profile",
           "--route",
           "--workspace",
           "--state-dir",
@@ -942,6 +960,7 @@
         "allowed": [
           "--provider",
           "--model",
+          "--profile",
           "--route",
           "--workspace",
           "--state-dir",
@@ -1018,6 +1037,7 @@
         "allowed": [
           "--provider",
           "--model",
+          "--profile",
           "--workspace",
           "--state-dir",
           "--store",

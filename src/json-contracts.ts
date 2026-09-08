@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { changeEnvelopeSchema } from "./change-envelope.js";
 import { CLI_EVENT_SCHEMA_VERSION, CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
+import { PROVIDERS } from "./config.js";
 import { HARNESS_ERROR_CODES, HARNESS_ERROR_SCHEMA_VERSION } from "./errors.js";
 
 const observationalDocument = <T extends z.ZodRawShape>(shape: T) =>
@@ -293,6 +294,26 @@ export const cliProviderDocumentSchema = observationalDocument({
   providers: z.array(providerAvailabilitySchema)
 });
 
+export const cliInitDocumentSchema = observationalDocument({
+  ...jsonBase,
+  kind: z.literal("init"),
+  profile: observationalDocument({
+    name: z.string().min(1),
+    path: z.string().min(1),
+    schemaVersion: nonnegativeInteger,
+    provider: z.enum(PROVIDERS),
+    model: z.string().min(1)
+  }),
+  credential: observationalDocument({
+    configured: z.boolean(),
+    names: z.array(z.string().min(1))
+  }),
+  next: observationalDocument({
+    doctor: z.string().min(1),
+    run: z.string().min(1)
+  })
+});
+
 export const cliDoctorDocumentSchema = observationalDocument({
   ...jsonBase,
   kind: z.literal("doctor"),
@@ -454,6 +475,7 @@ export const cliErrorDocumentSchema = observationalDocument({
  */
 export const cliJsonDocumentSchema = z.union([
   cliRunResultDocumentSchema,
+  cliInitDocumentSchema,
   cliProviderDocumentSchema,
   cliDoctorDocumentSchema,
   cliReviewGroupDocumentSchema,
@@ -574,6 +596,7 @@ export const cliJsonLineDocumentSchema = z.union([
 
 export type CliJsonDocument = z.infer<typeof cliJsonDocumentSchema>;
 export type CliJsonLineDocument = z.infer<typeof cliJsonLineDocumentSchema>;
+export type CliInitDocument = z.infer<typeof cliInitDocumentSchema>;
 export type CliRunResultDocument = z.infer<typeof cliRunResultDocumentSchema>;
 export type CliReviewGroupDocument = z.infer<typeof cliReviewGroupDocumentSchema>;
 export type CliRunListDocument = z.infer<typeof cliRunListDocumentSchema>;

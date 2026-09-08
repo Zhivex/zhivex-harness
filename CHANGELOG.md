@@ -4,6 +4,27 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.0.0-rc.13 - 2026-09-03
+
+### Added
+
+- Add `zhx init` with interactive terminal prompts and deterministic non-interactive flags, plus explicit `--profile <name>` selection for `run`, `chat`, `review`, and `doctor`.
+- Store one provider/model pair per schema-versioned personal profile outside the repository with owner-only directories/files, descriptor-bound no-follow reads, strict size/link/permission checks, and no credential or authority-bearing fields.
+- Add a versioned `init` JSON document and installed-tarball smoke coverage for initialization, profile reuse, precedence, permissions, and secret-free output.
+
+### Fixed
+
+- Treat a valid SQLite database created only by `sessions list` as an uninitialized operations store in `doctor`, while continuing to reject partially initialized or incompatible operational schemas.
+
+### Changed
+
+- Preserve the published RC.12 tag, artifact, complete Meta/Qwen/OpenAI representative matrix, npm SHA-512 integrity, and SLSA provenance as immutable historical evidence. The onboarding and diagnostics changes are authorized only for a distinct pending RC.13 artifact.
+- Keep profiles explicit rather than active-by-default. Precedence is CLI flags, selected profile, environment, then built-in defaults; `resume` never accepts a profile and continues to restore the original durable policy.
+
+### Migration from RC.12
+
+No Harness configuration, run-store, session-store, change-envelope, or execution-policy migration is required. Existing invocations behave as before unless they opt into `zhx init` and `--profile`. Profiles contain only schema version, provider, and model; API keys remain environment-owned.
+
 ## 1.0.0-rc.12 - 2026-09-02
 
 ### Fixed

@@ -20,7 +20,7 @@ The enabled no-cost public controls and the explicitly cost-gated features left 
 
 ## Scope
 
-Reports are in scope when they affect packaged runtime code, workspace or state isolation, approval enforcement, secret handling, MCP boundaries, provider communication, dependency integrity, or the build and release pipeline.
+Reports are in scope when they affect packaged runtime code, personal-profile isolation, workspace or state isolation, approval enforcement, secret handling, MCP boundaries, provider communication, dependency integrity, or the build and release pipeline.
 
 The absence of an OS sandbox is a documented product boundary rather than a vulnerability by itself. The harness does not expose generic host shell or permanent-delete model tools.
 

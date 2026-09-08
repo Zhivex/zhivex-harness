@@ -30,6 +30,7 @@ export const SECURITY_REVIEW_TRUST_BOUNDARIES = [
     id: "local-state",
     controlThreats: ["cross-scope-state-access", "crash-or-concurrent-writer"]
   },
+  { id: "personal-profile", controlThreats: ["tampered-personal-profile"] },
   { id: "github-actions", controlThreats: ["supply-chain-substitution"] },
   { id: "npm-registry", controlThreats: ["supply-chain-substitution"] },
   { id: "downstream-consumer", controlThreats: ["supply-chain-substitution"] }

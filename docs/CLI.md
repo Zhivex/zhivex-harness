@@ -1,11 +1,12 @@
 # CLI contract
 
-Zhivex Harness `0.11.x` is Node-first and exposes a durable agent console, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
+The Zhivex Harness `1.0` candidate is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands
 
 ```text
 zhx
+zhx init [--profile <name>] [--provider <id>] [--model <id>] [--json]
 zhx run --route reviewer=gemini [options] "task"
 zhx run --jsonl [options] "task"
 zhx chat [--continue|--session <sessionId>]
@@ -36,7 +37,24 @@ zhivex-harness --help
 
 Options are command-specific. The exported `CLI_COMMAND_OPTION_CONTRACTS` manifest is the machine source of truth for allowed, required, repeatable, and conflicting options. A known option used with the wrong command, a repeated scalar option, an invalid enum/range, or an unsupported option fails with `CLI_USAGE_INVALID` and exit code `2`; options are never silently ignored.
 
-The checked option inventory includes `--provider`, `--model`, `--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`, `--namespace`, `--idempotency-key`, `--max-steps`, `--timeout-ms`, `--max-tool-calls`, `--max-tool-errors`, `--max-input-tokens`, `--max-output-tokens`, `--max-total-tokens`, `--input-cost-per-million`, `--output-cost-per-million`, and `--yes`, in addition to the command-specific flags documented below. The preparation gate rejects a help or documentation inventory that omits a declared option.
+The checked option inventory includes `--provider`, `--model`, `--profile`, `--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`, `--namespace`, `--idempotency-key`, `--max-steps`, `--timeout-ms`, `--max-tool-calls`, `--max-tool-errors`, `--max-input-tokens`, `--max-output-tokens`, `--max-total-tokens`, `--input-cost-per-million`, `--output-cost-per-million`, and `--yes`, in addition to the command-specific flags documented below. The preparation gate rejects a help or documentation inventory that omits a declared option.
+
+## First-run initialization and profiles
+
+`zhx init` creates one explicit personal profile. In a terminal it asks for provider and model when they are not supplied; in scripts it uses flags, environment values, and deterministic provider defaults. The default profile name is `default`.
+
+```bash
+zhx init
+zhx init --profile daily --provider qwen --model qwen3.8-max
+zhx doctor --profile daily
+zhx --profile daily "inspect this repository"
+```
+
+Profile schema `1` contains exactly `schemaVersion`, `provider`, and `model`. It cannot contain credentials, endpoints, approval policy, workspace/state scope, MCP, checks, OCI policy, routes, or subagents. Files are stored outside the repository under the platform user configuration directory (`~/Library/Application Support/zhivex-harness/profiles` on macOS, `${XDG_CONFIG_HOME:-~/.config}/zhivex-harness/profiles` on Linux, and `%APPDATA%/zhivex-harness/profiles` on Windows). `ZHIVEX_HARNESS_CONFIG_DIR` is an explicit absolute-path override for isolated automation and tests.
+
+Profile names use 1–64 letters, digits, dots, underscores, or hyphens. Directories must not be writable by group or others; files are created with mode `0600`, read through a no-follow descriptor, limited to 16 KiB, and rejected when linked, malformed, over-permissive, or already present. Initialization never asks for or stores an API key; it reports only the accepted credential variable names and whether one is present.
+
+Profiles have no implicit active/default selection. `--profile <name>` is accepted only by `run`, `chat`, `review`, and `doctor`; it is intentionally rejected by `resume` because an existing run restores its exact persisted configuration. Precedence is `explicit CLI flag > explicitly selected profile > ZHIVEX_HARNESS_* environment > built-in default`.
 
 ## Interactive console
 
@@ -131,7 +149,7 @@ All structured documents include:
 ```json
 {
   "schemaVersion": 1,
-  "kind": "providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session | change-envelope | change-envelope-verification | state-status | state-export | state-import | error"
+  "kind": "init | providers | doctor | run-result | review-group | run-list | run-inspection | run-export | run-cancellation | run-cleanup | session-list | session | change-envelope | change-envelope-verification | state-status | state-export | state-import | error"
 }
 ```
 
@@ -152,5 +170,7 @@ The event projector allowlists safe fields. Text deltas and token usage are reta
 ## Configuration schema
 
 Resolved library configuration includes `schemaVersion: 5`, an explicit `allowedChecks` array, `storeBackend`, `scope`, parent `budget`, `compaction`, `requiredCapabilities`, project `context`, optional `mcpConfigPath`, an `orchestration` object with profiles, child budget/timeout, and review concurrency, and a discriminated `execution` policy. The check default is `test`, `typecheck`, `lint`, and `build`; `--allow-check` or `ZHIVEX_HARNESS_ALLOWED_CHECKS` replaces that set. Execution defaults to `{ backend: "none" }`; an OCI policy records the runtime, image, allowed entrypoints, shell mode, and every resource ceiling. Passing a different explicit schema version fails before a model or tool can run. During `0.x`, a minor release may add a new schema version with a documented migration; patch releases remain compatible.
+
+Personal CLI profile schema `1` is separate from resolved Harness configuration schema `5`. Selecting a profile only supplies provider/model input before normal resolution; it does not change persisted run schemas, execution fingerprints, project-context discovery, or migration guarantees.
 
 The default state directory is `<workspace>/.zhivex-harness/runs` and the default backend is scoped SQLite at `operations.sqlite`. Explicit external state directories are supported, but the workspace root, filesystem root, sensitive workspace paths, regular files, and symbolic-link targets are rejected before the run store is created. See [DURABLE_OPERATIONS.md](./DURABLE_OPERATIONS.md) for state migration and operations, and [EXTENSIBILITY.md](./EXTENSIBILITY.md) for capability, MCP, subagent, and review-group configuration.

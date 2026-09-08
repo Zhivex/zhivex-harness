@@ -56,9 +56,9 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-`@zhivex-ai/harness@1.0.0-rc.11` is published as `next` with annotated tag `v1.0.0-rc.11`, exact registry integrity, and verified SLSA provenance. The stable `latest` channel remains on `0.11.1`; publishing this candidate does not promote it to GA.
+`@zhivex-ai/harness@1.0.0-rc.12` is published as `next` with annotated tag `v1.0.0-rc.12`, exact registry integrity, and verified SLSA provenance. The stable `latest` channel remains on `0.11.1`; publishing this candidate does not promote it to GA.
 
-`v1.0.0-rc.12` is authorized as a pending corrective candidate for the HAR-HU-03 security-review remediation. It has no release-bound live, representative, registry, integrity, or provenance evidence until its exact commit is merged, tagged, and completes the protected workflow; RC.11 remains immutable and is not retagged.
+`v1.0.0-rc.13` is authorized as the pending onboarding and diagnostics candidate. It has no release-bound live, representative, registry, integrity, or provenance evidence until its exact commit is merged, tagged, and completes the protected workflow; RC.12 remains immutable and is not retagged.
 
 `@zhivex-ai/harness@0.11.1` is published as `latest` with annotated tag `v0.11.1`, exact registry integrity, and verified SLSA provenance. The same tag passed the protected base, orchestration, routing, and model-directed OCI execution matrix before npm publication. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 
@@ -67,6 +67,8 @@ The release workflow fails closed on the base, orchestration, routing, and model
 The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
 
 ## Current release-bound evidence
+
+The protected [RC.12 release workflow 33695876968](https://github.com/Zhivex/zhivex-harness/actions/runs/33695876968) completed on 2026-09-02 against annotated tag `v1.0.0-rc.12` at `eb288bd3a0ef76dfbe630939d64e679437703bcb`, exact tarball SHA-512 `sha512-Qpo7W9VmGvKmnX08Zr4NK15AWUuHRoMaYA9f0iAksGKxeQ3gGP2ntLv3xSwth1uJnknoT1XMMS7CtTFdy5i/eg==`, and pinned OCI image `sha256:83ca6283f2764b04276b866e3520bc239be90c44d96157d6da0ba1d4d9aeef74`. The exact installed artifact passed deterministic validation, OCI enforcement, base provider behavior, bounded reviewer orchestration, mixed-provider routing, and model-directed execution. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each completed 14/14 representative cases with zero failed or omitted runs. The exact artifact was published to `next` at `2026-09-02T23:54:47.041Z` with registry SHA-512 agreement and verified SLSA provenance.
 
 The protected [RC.11 release workflow 33592828351](https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351) completed on 2026-09-02 against annotated tag `v1.0.0-rc.11` at `0deb3e3f103eac5b4ccf38c585d8149b8472a356`, exact tarball SHA-512 `sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==`, and pinned OCI image `sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6`. Its first attempt failed closed when one Qwen representative case returned `EXECUTION_FAILED`; Meta and OpenAI completed 14/14, Qwen completed 13/14, no unauthorized effects were observed, and npm publication was skipped for that attempt. A complete second attempt reran every deterministic, artifact, OCI, live-provider, representative, and publication gate from scratch. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each completed 14/14 representative cases with zero failed or omitted runs, every live boundary passed, and the exact validated artifact was published to `next` with verified npm integrity and SLSA provenance.
 

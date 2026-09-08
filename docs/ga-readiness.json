@@ -229,6 +229,20 @@
     {
       "version": "1.0.0-rc.12",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
+      "status": "passed",
+      "channel": "next",
+      "tag": "v1.0.0-rc.12",
+      "contractBreakingDefects": 0,
+      "publishedAt": "2026-09-02T23:54:47.041Z",
+      "sourceCommit": "eb288bd3a0ef76dfbe630939d64e679437703bcb",
+      "artifactSha512": "sha512-Qpo7W9VmGvKmnX08Zr4NK15AWUuHRoMaYA9f0iAksGKxeQ3gGP2ntLv3xSwth1uJnknoT1XMMS7CtTFdy5i/eg==",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/33695876968",
+      "provenance": "verified",
+      "liveCertification": "passed-release-bound-run"
+    },
+    {
+      "version": "1.0.0-rc.13",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
       "status": "pending",
       "channel": null,
       "tag": null,
@@ -249,6 +263,7 @@
       "evidence": [
         "contracts/public-api.json",
         "fixtures/contracts/v1/doctor.json",
+        "fixtures/contracts/v1/init.json",
         "fixtures/contracts/v1/observational-documents.json",
         "fixtures/contracts/v1/providers.json",
         "fixtures/contracts/v1/run-result.json",

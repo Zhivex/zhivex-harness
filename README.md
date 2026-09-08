@@ -112,7 +112,7 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 Install the Node-first `0.11.1` artifact with an exact version:
 
 ```bash
-npx --yes --package=@zhivex-ai/harness@0.11.1 zhx --version
+bunx @zhivex-ai/harness@0.11.1 --version
 ```
 
 To exercise the source checkout, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
@@ -122,6 +122,16 @@ bun install --frozen-lockfile
 cp .env.example .env
 bun run dev --version
 ```
+
+The 1.0 source candidate adds a first-run setup that stores only a provider and model in an explicit personal profile:
+
+```bash
+bun run dev init --profile daily --provider openai
+bun run dev doctor --profile daily
+bun run dev --profile daily "inspect this repository"
+```
+
+Installed builds expose the same flow as `zhx init`. Profiles are private user configuration outside the repository, use owner-only permissions, contain no credentials, and are never selected implicitly. CLI flags override the selected profile; the selected profile overrides environment variables; environment variables override built-in defaults.
 
 Configure only the providers you plan to use:
 
@@ -140,6 +150,7 @@ GEMINI_API_KEY=...
 
 ```bash
 zhx doctor
+zhx doctor --profile daily
 zhx doctor --provider qwen --json
 ```
 

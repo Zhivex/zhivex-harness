@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "init",
+  "profile": {
+    "name": "daily",
+    "path": "/home/operator/.config/zhivex-harness/profiles/daily.json",
+    "schemaVersion": 1,
+    "provider": "openai",
+    "model": "gpt-5.6-terra"
+  },
+  "credential": {
+    "configured": false,
+    "names": ["OPENAI_API_KEY"]
+  },
+  "next": {
+    "doctor": "zhx doctor --profile daily",
+    "run": "zhx --profile daily \"inspect this repository\""
+  }
+}

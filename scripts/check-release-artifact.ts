@@ -106,6 +106,7 @@ const inspectArtifact = async () => {
       "package/contracts/security-controls.json",
       "package/fixtures/contracts/v1/error.json",
       "package/fixtures/contracts/v1/doctor.json",
+      "package/fixtures/contracts/v1/init.json",
       "package/fixtures/contracts/v1/observational-documents.json",
       "package/fixtures/contracts/v1/providers.json",
       "package/fixtures/contracts/v1/run-result-forward.json",
