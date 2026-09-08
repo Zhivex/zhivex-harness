@@ -24,7 +24,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ### Changed
 
-- Preserve the published RC.12 tag, artifact, complete Meta/Qwen/OpenAI representative matrix, npm SHA-512 integrity, and SLSA provenance as immutable historical evidence. The onboarding and diagnostics changes are authorized only for a distinct pending RC.13 artifact.
+- Preserve published RC.12 as immutable historical evidence. RC.13 is published to npm `next` with protected live certification, 42/42 representative cases, and independently verified SHA-512 integrity and SLSA provenance; its final human security review remains pending for GA.
 - Keep profiles explicit rather than active-by-default. Precedence is CLI flags, selected profile, environment, then built-in defaults; `resume` never accepts a profile and continues to restore the original durable policy.
 
 ### Migration from RC.12

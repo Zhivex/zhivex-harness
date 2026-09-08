@@ -58,7 +58,7 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 `@zhivex-ai/harness@1.0.0-rc.12` is published as `next` with annotated tag `v1.0.0-rc.12`, exact registry integrity, and verified SLSA provenance. The stable `latest` channel remains on `0.11.1`; publishing this candidate does not promote it to GA.
 
-`v1.0.0-rc.13` is authorized as the pending onboarding and diagnostics candidate. It has no release-bound live, representative, registry, integrity, or provenance evidence until its exact commit is merged, tagged, and completes the protected workflow; RC.12 remains immutable and is not retagged.
+`v1.0.0-rc.13` is published on `next` at `2026-09-08T18:50:18.941Z`. The protected [release workflow 34263591864](https://github.com/Zhivex/zhivex-harness/actions/runs/34263591864) passed deterministic, installed-artifact, OCI, live-provider, and representative gates at `d6e310ce12fd3ee74db5bd40451f5af70056e3ce`. Meta, Qwen, and OpenAI each passed 14/14 cases. npm integrity `sha512-EhKcjH44ZvRS1Y4POhs2xnPCmw0IFQo1trKf1gusYaFMkLthwXND0+ZEkfzG25JFCCf7kfOAZabDp35SoPnubw==` and SLSA provenance were independently verified. RC.13 is the final recorded security-review target; GA remains blocked pending its human-authored security review.
 
 `@zhivex-ai/harness@0.11.1` is published as `latest` with annotated tag `v0.11.1`, exact registry integrity, and verified SLSA provenance. The same tag passed the protected base, orchestration, routing, and model-directed OCI execution matrix before npm publication. Those evidence classes remain distinct: supply-chain verification does not by itself certify provider behavior.
 

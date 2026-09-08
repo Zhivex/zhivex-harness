@@ -12,7 +12,10 @@
   "deprecationPolicy": "docs/DEPRECATIONS.md",
   "representativeEvaluation": "evaluations/representative-matrix.json",
   "migrationGuarantee": {
-    "configSchemas": [4, 5],
+    "configSchemas": [
+      4,
+      5
+    ],
     "operationsSchema": 1,
     "sessionSchema": 1,
     "pausedApprovalPolicy": "original-artifact-only",
@@ -243,16 +246,16 @@
     {
       "version": "1.0.0-rc.13",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
-      "status": "pending",
-      "channel": null,
-      "tag": null,
-      "contractBreakingDefects": null,
-      "publishedAt": null,
-      "sourceCommit": null,
-      "artifactSha512": null,
-      "workflowUrl": null,
-      "provenance": null,
-      "liveCertification": null
+      "status": "passed",
+      "channel": "next",
+      "tag": "v1.0.0-rc.13",
+      "contractBreakingDefects": 0,
+      "publishedAt": "2026-09-08T18:50:18.941Z",
+      "sourceCommit": "d6e310ce12fd3ee74db5bd40451f5af70056e3ce",
+      "artifactSha512": "sha512-EhKcjH44ZvRS1Y4POhs2xnPCmw0IFQo1trKf1gusYaFMkLthwXND0+ZEkfzG25JFCCf7kfOAZabDp35SoPnubw==",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/34263591864",
+      "provenance": "verified",
+      "liveCertification": "passed-release-bound-run"
     }
   ],
   "blockers": [
@@ -322,7 +325,11 @@
         "evaluations/representative-matrix.json"
       ]
     },
-    { "id": "security-review", "status": "open", "issue": "https://github.com/Zhivex/zhivex-harness/issues/32" },
+    {
+      "id": "security-review",
+      "status": "open",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/32"
+    },
     {
       "id": "gemini-ga-decision",
       "status": "closed",
