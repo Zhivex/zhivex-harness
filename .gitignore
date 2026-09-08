@@ -6,6 +6,7 @@ coverage/
 release-artifacts/
 results/*
 !results/README.md
+!results/daily-workflow/
 *.tgz
 *.log
 .DS_Store

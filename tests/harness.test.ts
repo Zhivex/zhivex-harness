@@ -10,6 +10,23 @@ import { HARNESS_INSTRUCTIONS, compactHarnessMessages, createHarness, runHarness
 import { createEditProposal } from "../src/edit-contracts.js";
 
 describe("Zhivex harness", () => {
+  test("accepts explicit null cursors on first-page model tool calls", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "harness-null-cursor-"));
+    let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+    try {
+      await writeFile(path.join(root, "sample.txt"), "needle");
+      harness = await createHarness({ workspace: root, modelInstance: createMockLanguageModel({
+        streamEvents: [[
+          { type: "tool-call", toolCall: { id: "list-null", name: "list_files", input: { path: ".", cursor: null } } },
+          { type: "tool-call", toolCall: { id: "search-null", name: "search_files", input: { path: ".", query: "needle", cursor: null } } },
+          { type: "finish", finishReason: "tool-calls" }
+        ], [{ type: "text-delta", text: "Done" }, { type: "finish", finishReason: "stop" }]]
+      }) });
+      const result = await runHarness(harness, { prompt: "List and search." });
+      expect(result.status).toBe("completed");
+      expect(result.toolResults.length).toBe(2);
+    } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+  });
   test("compacts an interactive conversation without retaining sensitive tool payloads", () => {
     const messages = compactHarnessMessages([
       { role: "system", parts: [{ type: "text", text: "SYSTEM_TOKEN=system-secret-value" }] },

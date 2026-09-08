@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { TerminalMarkdown } from "./terminal-markdown.js";
+import { ConsoleInput } from "./console-input.js";
+import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console-context.js";
+import { sanitizeTerminalText } from "./terminal-ui.js";
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
 import { constants as fsConstants, realpathSync } from "node:fs";
@@ -1185,7 +1189,7 @@ const printTerminalResult = (
     return;
   }
   if (!tracker.streamedText && result.outputText) {
-    process.stdout.write(result.outputText);
+    process.stdout.write(sanitizeTerminalText(result.outputText));
   }
   if (result.outputText || tracker.streamedText) {
     process.stdout.write("\n");
@@ -1205,7 +1209,7 @@ const printTerminalResult = (
 
 const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
 ) => async (event: AgentStreamEvent) => {
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
@@ -1214,10 +1218,15 @@ const streamSink = (
   }
   if (!output.json && event.type === "text-delta") {
     tracker.streamedText = true;
-    process.stdout.write(event.textDelta);
+    if (process.stdout.isTTY) {
+      tracker.markdown ??= new TerminalMarkdown((text) => { process.stdout.write(text); },
+        terminalSupportsColor(true));
+      tracker.markdown.write(event.textDelta);
+    } else process.stdout.write(sanitizeTerminalText(event.textDelta));
     return;
   }
   if (!output.json) {
+    tracker.markdown?.flush();
     const line = formatTerminalEvent(event, {
       color: terminalSupportsColor(Boolean(process.stderr.isTTY))
     });
@@ -1500,7 +1509,23 @@ const chat = async (options: CliOptions) => {
   }
   const baseConfig = resolveHarnessConfig(options);
   const sessionStore = await openSessionStoreForConfig(baseConfig);
-  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  const readline = new ConsoleInput(process.stdin, process.stdout);
+  const attachments = new ConsoleAttachments();
+  let activeController: AbortController | undefined;
+  const interrupt = () => {
+    if (activeController && !activeController.signal.aborted) {
+      activeController.abort();
+      process.stderr.write("\nStopping the active operation; waiting for durable state and cleanup.\n");
+    }
+  };
+  readline.onInterrupt = interrupt;
+  process.on("SIGINT", interrupt);
+  const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+    const controller = new AbortController();
+    activeController = controller;
+    try { return await operation(controller.signal); }
+    finally { activeController = undefined; }
+  };
   let runtimeOptions: CliOptions = { ...options };
   let routes = resolvedRouting(options);
   const selectedSession = options.sessionId
@@ -1510,6 +1535,7 @@ const chat = async (options: CliOptions) => {
       : undefined;
   if (options.sessionId && !selectedSession) {
     sessionStore.close();
+    process.off("SIGINT", interrupt);
     readline.close();
     throw new HarnessStateConflictError(`Session ${options.sessionId} was not found.`);
   }
@@ -1545,6 +1571,7 @@ const chat = async (options: CliOptions) => {
     }
     harness = (await createConfiguredHarness(runtimeOptions, [], routes)).harness;
   } catch (error) {
+    process.off("SIGINT", interrupt);
     readline.close();
     sessionStore.close();
     throw error;
@@ -1609,6 +1636,8 @@ const chat = async (options: CliOptions) => {
     const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
     await replaceHarness(nextOptions, nextRoutes);
     session = selected;
+    attachments.clear();
+    readline.clearHistory();
     messages = state?.messages ?? [];
   };
 
@@ -1623,10 +1652,11 @@ const chat = async (options: CliOptions) => {
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
-      result = await runHarness(
+      result = await abortable((abortSignal) => runHarness(
         harness,
         {
           state,
+          abortSignal,
           approvals: approvalResponses(
             state.pendingApprovals,
             approve,
@@ -1637,7 +1667,7 @@ const chat = async (options: CliOptions) => {
           onEvent: streamSink({ json: false, jsonl: false }, tracker),
           resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
         }
-      );
+      ));
     } catch {
       const durable = await latestState(await refreshSession());
       session = await sessionStore.updateRun(session.sessionId, state.runId, {
@@ -1650,7 +1680,7 @@ const chat = async (options: CliOptions) => {
       );
       return;
     }
-    if (!tracker.streamedText && result.outputText) process.stdout.write(result.outputText);
+    if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
@@ -1683,271 +1713,325 @@ const chat = async (options: CliOptions) => {
 
   try {
     for (;;) {
-      const prompt = (await readline.question("\n> ")).trim();
-      if (!prompt) {
-        continue;
-      }
-      if (prompt === "/exit" || prompt === "/quit") {
-        break;
-      }
-      if (prompt === "/help") {
-        process.stderr.write(
-          "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
-          "/diff · /review <task> · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
-          "/new [title] · /rename <title> · /clear · /exit\n"
-        );
-        continue;
-      }
-      if (prompt === "/clear") {
-        messages = [];
-        process.stderr.write("Context cleared.\n");
-        continue;
-      }
-      if (prompt === "/status") {
-        process.stderr.write(`${await statusLine()}\n`);
-        continue;
-      }
-      if (prompt === "/diff") {
-        const diff = await harness.workspace.gitDiff();
-        const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
-        process.stdout.write(output || "No workspace changes.\n");
-        continue;
-      }
-      if (prompt === "/compact") {
-        messages = compactHarnessMessages(messages);
-        process.stderr.write(`Context compacted to ${messages.length} redacted message(s).\n`);
-        continue;
-      }
-      if (prompt === "/pending") {
-        const state = await latestState(await refreshSession());
-        if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
-          process.stderr.write("The current session has no pending approval.\n");
-        } else {
-          for (const approval of state.pendingApprovals) {
-            process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+      try {
+        let prompt = (await readline.question("\n> ", true)).trim();
+        if (!prompt) {
+          continue;
+        }
+        if (prompt === "/exit" || prompt === "/quit") {
+          break;
+        }
+        if (prompt === "/context") {
+          process.stdout.write(`${formatConsoleContext(harness.context)}\n`);
+          continue;
+        }
+        if (prompt === "/attachments") {
+          process.stdout.write(`${sanitizeTerminalText(JSON.stringify(attachments.list(), null, 2))}\n`);
+          continue;
+        }
+        if (prompt === "/detach" || prompt.startsWith("/detach ")) {
+          const file = prompt.slice(7).trim();
+          if (file) attachments.remove(file); else attachments.clear();
+          process.stderr.write("Attachment selection updated.\n");
+          continue;
+        }
+        if (prompt === "/attach" || prompt.startsWith("/attach ")) {
+          const file = prompt.slice(7).trim();
+          if (!file) { process.stderr.write("Usage: /attach <workspace-relative path>\n"); continue; }
+          const attached = await attachments.add(harness.workspace, file);
+          process.stderr.write(`Attached ${sanitizeTerminalText(attached.path)} (${attached.startLine}-${attached.endLine}/${attached.totalLines} lines${attached.truncated ? "; excerpt" : ""}). Sent with your next task.\n`);
+          continue;
+        }
+        if (prompt === "/help") {
+          process.stderr.write(
+            "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
+            "/diff · /review <task> · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
+            "/new [title] · /rename <title> · /clear · /exit\n" +
+            "/paste · /context · /attach <path> · /attachments · /detach [path]\n" +
+            "Tab completes commands; Up/Down recalls prompts; Alt+Enter inserts a newline. Ctrl+C stops the active operation or discards input.\n"
+          );
+          continue;
+        }
+        if (prompt === "/clear") {
+          messages = [];
+          attachments.clear();
+          readline.clearHistory();
+          process.stderr.write("Context cleared.\n");
+          continue;
+        }
+        if (prompt === "/status") {
+          process.stderr.write(`${await statusLine()}\n`);
+          continue;
+        }
+        if (prompt === "/diff") {
+          const diff = await harness.workspace.gitDiff();
+          const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
+          process.stdout.write(formatConsoleDiff(output, terminalSupportsColor(Boolean(process.stdout.isTTY))) || "No workspace changes.\n");
+          continue;
+        }
+        if (prompt === "/compact") {
+          messages = compactHarnessMessages(messages);
+          process.stderr.write(`Context compacted to ${messages.length} redacted message(s).\n`);
+          continue;
+        }
+        if (prompt === "/pending") {
+          const state = await latestState(await refreshSession());
+          if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
+            process.stderr.write("The current session has no pending approval.\n");
+          } else {
+            for (const approval of state.pendingApprovals) {
+              process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+            }
           }
-        }
-        continue;
-      }
-      if (prompt === "/approve" || prompt === "/deny") {
-        await continuePendingApproval(prompt === "/approve");
-        continue;
-      }
-      if (prompt === "/provider" || prompt.startsWith("/provider ")) {
-        const value = prompt.slice("/provider".length).trim();
-        if (!value) {
-          process.stderr.write(`${providerAvailability().map((provider) =>
-            `${provider.id}${provider.id === harness.config.provider ? "*" : ""}`
-          ).join(" ")}\n`);
           continue;
         }
-        const active = await hasActiveTurn();
-        if (active) {
-          process.stderr.write(`Cannot switch provider while run ${active.runId} is ${active.status}.\n`);
+        if (prompt === "/approve" || prompt === "/deny") {
+          await continuePendingApproval(prompt === "/approve");
           continue;
         }
-        const provider = parseProvider(value);
-        const model = DEFAULT_PROVIDER_REGISTRY.descriptor(provider).defaultModel;
-        const portableMessages = compactHarnessMessages(messages);
-        await replaceHarness({ ...runtimeOptions, provider, model }, routes);
-        messages = portableMessages;
-        process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
-        continue;
-      }
-      if (prompt === "/model" || prompt.startsWith("/model ")) {
-        const value = prompt.slice("/model".length).trim();
-        if (!value) {
-          process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
-          continue;
-        }
-        const active = await hasActiveTurn();
-        if (active) {
-          process.stderr.write(`Cannot switch model while run ${active.runId} is ${active.status}.\n`);
-          continue;
-        }
-        const portableMessages = compactHarnessMessages(messages);
-        await replaceHarness({ ...runtimeOptions, model: value }, routes);
-        messages = portableMessages;
-        process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
-        continue;
-      }
-      if (prompt === "/route" || prompt.startsWith("/route ")) {
-        const value = prompt.slice("/route".length).trim();
-        if (!value) {
-          process.stderr.write(`${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
-          continue;
-        }
-        const active = await hasActiveTurn();
-        if (active) {
-          process.stderr.write(`Cannot change routes while run ${active.runId} is ${active.status}.\n`);
-          continue;
-        }
-        const nextRoutes = new Map(routes);
-        if (value === "clear") {
-          nextRoutes.clear();
-        } else if (value.startsWith("clear ")) {
-          const profile = value.slice("clear ".length).trim() as HarnessSubagentProfile;
-          if (!(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(profile)) {
-            process.stderr.write(`Unknown subagent profile: ${profile}.\n`);
+        if (prompt === "/provider" || prompt.startsWith("/provider ")) {
+          const value = prompt.slice("/provider".length).trim();
+          if (!value) {
+            process.stderr.write(`${providerAvailability().map((provider) =>
+              `${provider.id}${provider.id === harness.config.provider ? "*" : ""}`
+            ).join(" ")}\n`);
             continue;
           }
-          nextRoutes.delete(profile);
-        } else {
-          const route = parseHarnessModelRoute(value);
-          nextRoutes.set(route.profile, route);
-        }
-        await replaceHarness(runtimeOptions, nextRoutes);
-        process.stderr.write(`Routes: ${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
-        continue;
-      }
-      if (prompt === "/new" || prompt.startsWith("/new ")) {
-        const active = await hasActiveTurn();
-        if (active) {
-          process.stderr.write(`Cannot leave session while run ${active.runId} is ${active.status}.\n`);
-          continue;
-        }
-        const title = prompt.slice("/new".length).trim();
-        const created = await sessionStore.create(title ? { title } : undefined);
-        await restoreSession(created);
-        process.stderr.write(`Created session ${session.sessionId}.\n`);
-        continue;
-      }
-      if (prompt === "/rename" || prompt.startsWith("/rename ")) {
-        const title = prompt.slice("/rename".length).trim();
-        if (!title) {
-          process.stderr.write("Usage: /rename <title>\n");
-          continue;
-        }
-        session = await sessionStore.rename(session.sessionId, title);
-        process.stderr.write(`Renamed session to ${session.title}.\n`);
-        continue;
-      }
-      if (prompt === "/resume" || prompt.startsWith("/resume ")) {
-        const selector = prompt.slice("/resume".length).trim() || "last";
-        const selected = selector === "last"
-          ? await sessionStore.latest({ includeArchived: true })
-          : await sessionStore.get(selector);
-        if (!selected) {
-          process.stderr.write(`Session ${selector} was not found.\n`);
-          continue;
-        }
-        await restoreSession(selected);
-        const active = await hasActiveTurn();
-        process.stderr.write(
-          active
-            ? `Session ${session.sessionId} has run ${active.runId} in ${active.status}; use /pending, /approve, or /deny here.\n`
-            : `Resumed session ${session.sessionId}.\n`
-        );
-        continue;
-      }
-      if (prompt === "/review" || prompt.startsWith("/review ")) {
-        const reviewPrompt = prompt.slice("/review".length).trim();
-        if (!reviewPrompt) {
-          process.stderr.write("Usage: /review <task>\n");
-          continue;
-        }
-        const active = await hasActiveTurn();
-        if (active) {
-          process.stderr.write(`Cannot start a review while run ${active.runId} is ${active.status}.\n`);
-          continue;
-        }
-        const review = await withTemporaryProfiles(
-          ["explorer", "reviewer"],
-          () => runHarnessReviewGroup(
-            harness,
-            { prompt: reviewPrompt, scope: harness.config.scope },
-            ["explorer", "reviewer"]
-          )
-        );
-        for (const output of review.outputs) {
-          process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
-          if (output.output?.outputText) process.stdout.write(`${output.output.outputText}\n`);
-        }
-        continue;
-      }
-
-      const active = await hasActiveTurn();
-      if (active) {
-        process.stderr.write(
-          `Run ${active.runId} is ${active.status}; use /pending, /approve, or /deny before a new turn.\n`
-        );
-        continue;
-      }
-
-      const runId = `run_${randomUUID()}`;
-      session = await sessionStore.appendRun(session.sessionId, {
-        runId,
-        provider: harness.config.provider,
-        model: harness.config.model,
-        status: "created"
-      });
-      const turn = session.runs.at(-1)!;
-
-      const tracker = { streamedText: false };
-      let markedRunning = false;
-      let result: AgentRunOutput;
-      try {
-        result = await runHarness(
-          harness,
-          messages.length === 0
-            ? {
-                runId,
-                prompt,
-                scope: harness.config.scope,
-                metadata: {
-                  ...createHarnessResumeMetadata(harness.config, routes),
-                  zhivexCliSession: {
-                    schemaVersion: 1,
-                    sessionId: session.sessionId,
-                    turnId: turn.turnId,
-                    sequence: turn.sequence
-                  }
-                }
-              }
-            : {
-                runId,
-                messages: appendUserMessage(messages, prompt),
-                scope: harness.config.scope,
-                metadata: {
-                  ...createHarnessResumeMetadata(harness.config, routes),
-                  zhivexCliSession: {
-                    schemaVersion: 1,
-                    sessionId: session.sessionId,
-                    turnId: turn.turnId,
-                    sequence: turn.sequence
-                  }
-                }
-              },
-          {
-            onEvent: async (event) => {
-              if (!markedRunning && event.type === "agent-run-start") {
-                session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
-                markedRunning = true;
-              }
-              await streamSink({ json: false, jsonl: false }, tracker)(event);
-            },
-            resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+          const active = await hasActiveTurn();
+          if (active) {
+            process.stderr.write(`Cannot switch provider while run ${active.runId} is ${active.status}.\n`);
+            continue;
           }
-        );
+          const provider = parseProvider(value);
+          const model = DEFAULT_PROVIDER_REGISTRY.descriptor(provider).defaultModel;
+          const portableMessages = compactHarnessMessages(messages);
+          await replaceHarness({ ...runtimeOptions, provider, model }, routes);
+          messages = portableMessages;
+          process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
+          continue;
+        }
+        if (prompt === "/model" || prompt.startsWith("/model ")) {
+          const value = prompt.slice("/model".length).trim();
+          if (!value) {
+            process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
+            continue;
+          }
+          const active = await hasActiveTurn();
+          if (active) {
+            process.stderr.write(`Cannot switch model while run ${active.runId} is ${active.status}.\n`);
+            continue;
+          }
+          const portableMessages = compactHarnessMessages(messages);
+          await replaceHarness({ ...runtimeOptions, model: value }, routes);
+          messages = portableMessages;
+          process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
+          continue;
+        }
+        if (prompt === "/route" || prompt.startsWith("/route ")) {
+          const value = prompt.slice("/route".length).trim();
+          if (!value) {
+            process.stderr.write(`${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
+            continue;
+          }
+          const active = await hasActiveTurn();
+          if (active) {
+            process.stderr.write(`Cannot change routes while run ${active.runId} is ${active.status}.\n`);
+            continue;
+          }
+          const nextRoutes = new Map(routes);
+          if (value === "clear") {
+            nextRoutes.clear();
+          } else if (value.startsWith("clear ")) {
+            const profile = value.slice("clear ".length).trim() as HarnessSubagentProfile;
+            if (!(HARNESS_SUBAGENT_PROFILES as readonly string[]).includes(profile)) {
+              process.stderr.write(`Unknown subagent profile: ${profile}.\n`);
+              continue;
+            }
+            nextRoutes.delete(profile);
+          } else {
+            const route = parseHarnessModelRoute(value);
+            nextRoutes.set(route.profile, route);
+          }
+          await replaceHarness(runtimeOptions, nextRoutes);
+          process.stderr.write(`Routes: ${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
+          continue;
+        }
+        if (prompt === "/new" || prompt.startsWith("/new ")) {
+          const active = await hasActiveTurn();
+          if (active) {
+            process.stderr.write(`Cannot leave session while run ${active.runId} is ${active.status}.\n`);
+            continue;
+          }
+          const title = prompt.slice("/new".length).trim();
+          const created = await sessionStore.create(title ? { title } : undefined);
+          await restoreSession(created);
+          process.stderr.write(`Created session ${session.sessionId}.\n`);
+          continue;
+        }
+        if (prompt === "/rename" || prompt.startsWith("/rename ")) {
+          const title = prompt.slice("/rename".length).trim();
+          if (!title) {
+            process.stderr.write("Usage: /rename <title>\n");
+            continue;
+          }
+          session = await sessionStore.rename(session.sessionId, title);
+          process.stderr.write(`Renamed session to ${session.title}.\n`);
+          continue;
+        }
+        if (prompt === "/resume" || prompt.startsWith("/resume ")) {
+          const selector = prompt.slice("/resume".length).trim() || "last";
+          const selected = selector === "last"
+            ? await sessionStore.latest({ includeArchived: true })
+            : await sessionStore.get(selector);
+          if (!selected) {
+            process.stderr.write(`Session ${selector} was not found.\n`);
+            continue;
+          }
+          await restoreSession(selected);
+          const active = await hasActiveTurn();
+          process.stderr.write(
+            active
+              ? `Session ${session.sessionId} has run ${active.runId} in ${active.status}; use /pending, /approve, or /deny here.\n`
+              : `Resumed session ${session.sessionId}.\n`
+          );
+          continue;
+        }
+        if (prompt === "/review" || prompt.startsWith("/review ")) {
+          const reviewPrompt = prompt.slice("/review".length).trim();
+          if (!reviewPrompt) {
+            process.stderr.write("Usage: /review <task>\n");
+            continue;
+          }
+          const active = await hasActiveTurn();
+          if (active) {
+            process.stderr.write(`Cannot start a review while run ${active.runId} is ${active.status}.\n`);
+            continue;
+          }
+          const review = await withTemporaryProfiles(
+            ["explorer", "reviewer"],
+            () => abortable((abortSignal) => runHarnessReviewGroup(
+              harness,
+              { prompt: reviewPrompt, scope: harness.config.scope, abortSignal },
+              ["explorer", "reviewer"]
+            ))
+          );
+          for (const output of review.outputs) {
+            process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
+            if (output.output?.outputText) process.stdout.write(`${sanitizeTerminalText(output.output.outputText)}\n`);
+          }
+          continue;
+        }
+
+        const active = await hasActiveTurn();
+        if (active) {
+          process.stderr.write(
+            `Run ${active.runId} is ${active.status}; use /pending, /approve, or /deny before a new turn.\n`
+          );
+          continue;
+        }
+
+        if (prompt === "/paste") {
+          prompt = await readline.multiline();
+          if (!prompt.trim()) continue;
+          process.stdout.write(`\nDraft:\n${sanitizeTerminalText(prompt)}\n`);
+          // Drain the current input event before accepting a separate send decision.
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          if ((await readline.question("Send this draft? Type send: ")).trim() !== "send") continue;
+        } else if (prompt.startsWith("/")) {
+          process.stderr.write("Unknown command. Use /help, or /paste to send literal text starting with /.\n");
+          continue;
+        }
+        readline.rememberPrompt(prompt);
+        prompt = await attachments.prompt(harness.workspace, prompt);
+        const runId = `run_${randomUUID()}`;
+        session = await sessionStore.appendRun(session.sessionId, {
+          runId,
+          provider: harness.config.provider,
+          model: harness.config.model,
+          status: "created"
+        });
+        const turn = session.runs.at(-1)!;
+
+        const tracker = { streamedText: false };
+        let markedRunning = false;
+        let result: AgentRunOutput;
+        try {
+          result = await abortable((abortSignal) => runHarness(
+            harness,
+            messages.length === 0
+              ? {
+                  runId,
+                  abortSignal,
+                  prompt,
+                  scope: harness.config.scope,
+                  metadata: {
+                    ...createHarnessResumeMetadata(harness.config, routes),
+                    zhivexCliSession: {
+                      schemaVersion: 1,
+                      sessionId: session.sessionId,
+                      turnId: turn.turnId,
+                      sequence: turn.sequence
+                    }
+                  }
+                }
+              : {
+                  runId,
+                  abortSignal,
+                  messages: appendUserMessage(messages, prompt),
+                  scope: harness.config.scope,
+                  metadata: {
+                    ...createHarnessResumeMetadata(harness.config, routes),
+                    zhivexCliSession: {
+                      schemaVersion: 1,
+                      sessionId: session.sessionId,
+                      turnId: turn.turnId,
+                      sequence: turn.sequence
+                    }
+                  }
+                },
+            {
+              onEvent: async (event) => {
+                if (!markedRunning && event.type === "agent-run-start") {
+                  session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
+                  markedRunning = true;
+                }
+                await streamSink({ json: false, jsonl: false }, tracker)(event);
+              },
+              resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+            }
+          ));
+        } catch (error) {
+          const durable = await latestState(await refreshSession());
+          session = await sessionStore.updateRun(session.sessionId, runId, {
+            status: durable ? sessionStatus(durable.status) : "failed"
+          });
+          if (durable) messages = durable.messages;
+          throw error;
+        }
+        if (!tracker.streamedText && result.outputText) {
+          process.stdout.write(sanitizeTerminalText(result.outputText));
+        }
+        process.stdout.write("\n");
+        messages = result.messages;
+        attachments.clear();
+        session = await sessionStore.updateRun(session.sessionId, runId, {
+          status: sessionStatus(result.status)
+        });
+        if (result.status === "waiting_approval") {
+          process.stderr.write(
+            `Run ${result.state.runId} is paused; use /pending, /approve, or /deny here.\n`
+          );
+        }
       } catch (error) {
-        session = await sessionStore.updateRun(session.sessionId, runId, { status: "failed" });
-        throw error;
-      }
-      if (!tracker.streamedText && result.outputText) {
-        process.stdout.write(result.outputText);
-      }
-      process.stdout.write("\n");
-      messages = result.messages;
-      session = await sessionStore.updateRun(session.sessionId, runId, {
-        status: sessionStatus(result.status)
-      });
-      if (result.status === "waiting_approval") {
-        process.stderr.write(
-          `Run ${result.state.runId} is paused; use /pending, /approve, or /deny here.\n`
-        );
+        if (readline.isClosed) break;
+        const aborted = error instanceof Error && error.name === "AbortError";
+        process.stderr.write(aborted
+          ? "\nInput interrupted. Session retained; use /pending to inspect approvals.\n"
+          : `\n${sanitizeTerminalText(terminalErrorMessage(error))}\nSession retained; use /status or /pending.\n`);
       }
     }
   } finally {
+    process.off("SIGINT", interrupt);
     readline.close();
     await harness.close();
     sessionStore.close();

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
+import { settleInterruptedRun } from "./run-interruption.js";
 
 import {
   Agent,
@@ -279,8 +280,8 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       path: z.string().min(1).default("."),
       limit: z.number().int().min(1).max(500).default(200),
       includeDigests: z.boolean().default(true),
-      cursor: z.string().min(1).max(2000).optional().describe(
-        "Omit on the first page. For a later page, pass only the exact nextCursor returned by the preceding matching list_files result."
+      cursor: z.string().min(1).max(2000).nullable().optional().describe(
+        "Use null or omit on the first page. For a later page, pass only the exact nextCursor returned by the preceding matching list_files result. Never invent a cursor."
       )
     }),
     metadata: readOnlyMetadata,
@@ -331,7 +332,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       path: z.string().min(1).default("."),
       caseSensitive: z.boolean().default(false),
       limit: z.number().int().min(1).max(500).default(100),
-      cursor: z.string().min(1).max(2000).optional()
+      cursor: z.string().min(1).max(2000).nullable().optional().describe("Use null or omit for the first page; otherwise use the exact returned nextCursor.")
     }),
     metadata: readOnlyMetadata,
     execute: async ({ query, path, caseSensitive, limit, cursor }, context) =>
@@ -1426,10 +1427,24 @@ export const runHarness = async (
         }
       }
       const streamed = harness.agent.stream(nextInput);
-      for await (const event of streamed.eventStream) {
-        await options.onEvent?.(event);
+      try {
+        for await (const event of streamed.eventStream) {
+          if (input.abortSignal?.aborted && (event.type === "error" ||
+            (event.type === "agent-run-finish" && event.status === "failed"))) continue;
+          await options.onEvent?.(event);
+        }
+      } catch (error) {
+        if (input.abortSignal?.aborted) await streamed.collect().catch(() => undefined);
+        throw error;
       }
-      const result = await streamed.collect();
+      let result = await streamed.collect();
+      if (input.abortSignal?.aborted && result.status === "failed") {
+        const cancelled = await settleInterruptedRun(harness.store, runId, result.state.scope);
+        if (cancelled) {
+          result = cancelled;
+          await options.onEvent?.({ type: "agent-run-finish", status: "cancelled", state: cancelled.state });
+        }
+      }
 
       for (const approval of result.state.pendingApprovals) {
         if (announcedApprovals.has(approval.id)) continue;
@@ -1486,6 +1501,15 @@ export const runHarness = async (
 
     throw new HarnessExecutionError("The run exceeded the limit of 50 approval rounds.");
   } catch (error) {
+    if (input.abortSignal?.aborted && !lifecycleFinished) {
+      const cancelled = await settleInterruptedRun(harness.store, runId,
+        "state" in input ? input.state.scope : input.scope);
+      if (cancelled) {
+        await options.onEvent?.({ type: "agent-run-finish", status: "cancelled", state: cancelled.state });
+        await dispatchFinished("cancelled");
+        return cancelled;
+      }
+    }
     if (!lifecycleFinished) {
       await harness.dispatchLifecycle({ type: "run-finished", runId, status: "failed" });
     }

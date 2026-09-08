@@ -802,6 +802,10 @@ console.log("INSTALLED_HARNESS_SMOKE_OK");
   assert.equal(runListDocument.kind, "run-list");
   assert.equal(runListDocument.runs?.length, 1);
 
+  await run(["python3", path.join(workspace, "scripts/console-pty-smoke.py"), installedCli], {
+    timeoutMs: 90_000
+  });
+
   succeeded = true;
   process.stdout.write(`Installed package smoke passed for ${manifest.name}@${manifest.version}.\n`);
 } finally {
