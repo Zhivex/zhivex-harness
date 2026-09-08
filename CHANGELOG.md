@@ -8,12 +8,18 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ### Added
 
+- Add console command completion, previewed multiline drafts, active project-context inspection, and bounded digest-checked file attachments for the next task.
+- Keep interactive sessions open after command/provider failures and pass Ctrl+C cancellation to active turns and review groups while preserving unresolved approval batches.
+- Render terminal-safe model text and optionally colored diffs; discard unsolicited input lines instead of replaying them into approval prompts.
 - Add `zhx init` with interactive terminal prompts and deterministic non-interactive flags, plus explicit `--profile <name>` selection for `run`, `chat`, `review`, and `doctor`.
 - Store one provider/model pair per schema-versioned personal profile outside the repository with owner-only directories/files, descriptor-bound no-follow reads, strict size/link/permission checks, and no credential or authority-bearing fields.
 - Add a versioned `init` JSON document and installed-tarball smoke coverage for initialization, profile reuse, precedence, permissions, and secret-free output.
 
 ### Fixed
 
+- Persist externally interrupted ordinary turns as cancelled after runtime cleanup, without replacing completed work, pending approvals, or genuine timeouts.
+- Accept explicit null first-page cursors for listing/search tools, keeping opaque cursor validation for subsequent pages.
+- Add bounded in-memory task history, Alt+Enter multiline input, and terminal-safe Markdown presentation.
 - Treat a valid SQLite database created only by `sessions list` as an uninitialized operations store in `doctor`, while continuing to reject partially initialized or incompatible operational schemas.
 
 ### Changed

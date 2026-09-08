@@ -168,6 +168,13 @@ zhivex-harness --version
 
 Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/pending`, `/approve`, `/deny`, `/compact`, `/new`, `/rename`, and `/exit`. Tool and step activity is rendered without tool payloads; approval cards sanitize terminal controls and keep governed edit/command payloads fully reviewable.
 
+The pending RC.13 source also adds Tab command completion, `/paste` for previewed
+multiline tasks, `/context` for active project rules/skills, and `/attach <path>` for
+bounded file excerpts. Ctrl+C interrupts active work while retaining the session;
+errors return to the prompt. See the [interactive workflow](./docs/CLI.md#interactive-daily-workflow)
+for attachment limits, approval behavior, and recovery. These source additions are
+not yet published or live-certified.
+
 Project context engineering is enabled by default. A root `AGENTS.md` plus an optional `.zhivex/harness.json` can declare bounded context files, rule files, and progressively loaded `SKILL.md` directories. Disable discovery with `--no-project-context` or select another manifest with `--context-config`.
 
 Show providers and detected configuration without printing secrets:

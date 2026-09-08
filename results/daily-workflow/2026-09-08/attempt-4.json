@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-installed-live",
+  "observedAt": "2026-09-08T16:35:46.432Z",
+  "version": "1.0.0-rc.13",
+  "moduleSha256": "0fa8cb6d75e78d468debf87effb60198712a1b9e3e0441ee434842a7c25ceac1",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "status": "passed",
+  "rows": [
+    {
+      "task": "fix-rounding-bug",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 1,
+      "approvals": 5,
+      "steps": 11,
+      "elapsedMs": 38878
+    },
+    {
+      "task": "multi-file-cart-feature",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 2,
+      "approvals": 3,
+      "steps": 8,
+      "elapsedMs": 28815
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "OpenAI only"
+  ]
+}

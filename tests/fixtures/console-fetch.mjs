@@ -1,0 +1,32 @@
+// Only loaded by the PTY smoke child. No request leaves this process.
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+let editRequested = existsSync(process.env.CONSOLE_FIXTURE_REQUESTS) &&
+  readFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, 'utf8').includes('EDIT_FIXTURE');
+let slowRequested = false;
+globalThis.fetch = async (url, options) => {
+  if (!String(url).startsWith('https://api.openai.com/v1/')) throw new Error('Unexpected fixture endpoint');
+  const body = JSON.parse(options.body);
+  appendFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, JSON.stringify(body) + '\n');
+  const slow = !slowRequested && JSON.stringify(body).includes('SLOW_FIXTURE');
+  if (slow) slowRequested = true;
+  let abort;
+  const stream = new ReadableStream({
+    start(controller) {
+      const send = (event) => controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
+      abort = () => controller.error(new DOMException('Fixture interrupted', 'AbortError'));
+      if (slow) {
+        options.signal?.addEventListener('abort', abort, { once: true });
+        if (options.signal?.aborted) abort();
+        return;
+      }
+      if (!editRequested && JSON.stringify(body).includes('EDIT_FIXTURE')) {
+        editRequested = true;
+        send({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', id: 'fc_fixture', call_id: 'call_fixture', name: 'apply_reviewed_edits', arguments: JSON.stringify({ changes: [{ path: 'result.txt', expectedDigest: null, content: 'approved fixture edit\n' }] }) } });
+      } else send({ type: 'response.output_text.delta', delta: 'Fixture done' });
+      send({ type: 'response.completed', response: { id: 'resp_fixture', status: 'completed', usage: { input_tokens: 10, output_tokens: 3, total_tokens: 13 } } });
+      controller.close();
+    },
+    cancel() { if (abort) options.signal?.removeEventListener('abort', abort); }
+  });
+  return new Response(stream, { headers: { 'content-type': 'text/event-stream' } });
+};

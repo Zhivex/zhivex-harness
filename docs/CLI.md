@@ -4,6 +4,53 @@ The Zhivex Harness `1.0` candidate is Node-first and exposes a durable agent con
 
 ## Commands
 
+### Interactive daily workflow
+
+The console completes slash-command prefixes with Tab. `/paste` captures a bounded
+multiline draft: finish with `.end` on a separate line, review the preview, then type
+`send` at the separate confirmation prompt. Slash commands inside the draft remain
+literal model input. Use this mode for multiline clipboard content. Lines arriving
+without an active question are discarded, including surplus lines after a task or
+approval answer; they are never queued as future approvals. Input history is not
+saved to disk or shared with approval questions. Up/Down recall the last 100 task
+prompts in this process (at most 256 KiB); `/clear` and session switches clear them.
+Alt+Enter inserts a newline without submitting. Drafts are limited to 64 KiB.
+
+`/context` displays the exact active project manifest, rule/context paths, digests,
+and available skills. Skills are indexed for progressive loading; the list does not
+claim every skill has already been loaded into the conversation.
+
+Use `/attach <workspace-relative path>` to select an excerpt for the next task,
+`/attachments` to inspect the selection, and `/detach [path]` to remove one or all.
+Paths may contain spaces. Attachments use the existing secret-excluding workspace
+reader, cover at most the first 400 lines per file, and are limited to eight files
+and 64 KiB of excerpt text. They are explicitly labelled untrusted file data in the
+model request. A changed digest requires reattachment before sending. Successful
+turns, `/clear`, and session switches clear the pending selection; errors retain it.
+Attachments are sent to the selected provider with the next ordinary task, not to
+`/review`. They are not new project rules or a grant of tool authority.
+
+Ctrl+C discards pending input, or signals the active model/review operation to stop
+and waits for runtime cleanup. At an approval prompt it leaves the complete batch
+pending. `/pending`, `/approve`, and `/deny` retain their durable meaning. Provider
+and command errors return to the console with the saved run status instead of
+closing the session. Interruption does not undo completed edits or replay tools;
+use `/status` and `/diff` before continuing. The runtime's persisted terminal status
+remains authoritative. An externally aborted ordinary turn that settles as failed
+is recorded as `cancelled`; completed work, timeouts, and pending approvals retain
+their status. Review groups retain the status reported by their group runtime.
+
+`/diff` colors additions, removals, and hunk headers on eligible terminals, respects
+`NO_COLOR`, and escapes untrusted terminal controls. Model text also escapes terminal
+controls and renders bounded Markdown headings, emphasis, and fenced code on a
+TTY; JSON/JSONL retain their existing data contracts.
+
+Contributor validation: `bun run smoke:package` also runs a real PTY workflow
+against the installed CLI, including approval recovery after process restart.
+This Linux/macOS test requires Python 3 and injects a process-local fetch fixture;
+it makes no provider requests. Run `python3 scripts/console-pty-smoke.py` after a
+build to exercise the source artifact directly. Python is not a CLI dependency.
+
 ```text
 zhx
 zhx init [--profile <name>] [--provider <id>] [--model <id>] [--json]
