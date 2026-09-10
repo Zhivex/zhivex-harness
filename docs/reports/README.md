@@ -20,3 +20,7 @@ The follow-up documents record implementation evidence; retain the original repo
 - [Qwen reevaluation — September 9](QWEN_REMEDIATION_COMPARISON_2026-09-09.md): results after the then-current remediation, followed by structural findings.
 
 Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-to-Safe-Fix guide](../TIME_TO_SAFE_FIX.md). Each report links its preserved baseline evidence.
+
+## Release validation
+
+- [RC14 validation and publication hold — September 10](RC14_VALIDATION_2026-09-10.md): new live cohort, frozen source identity, validation boundaries and conditions to resume publication.

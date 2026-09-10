@@ -6,7 +6,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-## 1.0.0-rc.14 - 2026-09-10
+## 1.0.0-rc.14 - Unreleased
 
 ### Full harness review remediation (2026-09-10)
 
