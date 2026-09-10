@@ -134,7 +134,7 @@ describe("governed MCP", () => {
         headerEnv: { authorization: "ZHIVEX_MCP_TEST_AUTH" }
       }]
     });
-    const requests: Array<{ body: Record<string, unknown>; headers: Headers; redirect?: RequestRedirect }> = [];
+    const requests: Array<{ body: Record<string, unknown>; headers: Headers; redirect?: RequestInit["redirect"] }> = [];
     const responses = [
       new Response(JSON.stringify({
         jsonrpc: "2.0",

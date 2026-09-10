@@ -96,7 +96,6 @@ const summarizeCommandPhases = (commands: readonly Attempt<HarnessCommandResult>
     ["hostSynchronization", "hostSynchronizationMs"],
     ["sessionCreation", "sessionCreationMs"],
     ["commandAndAttestation", "commandAndAttestationMs"],
-    ["attestationCopy", "attestationCopyMs"],
     ["workspaceExport", "workspaceExportMs"],
     ["total", "totalMs"]
   ];
@@ -203,8 +202,10 @@ try {
     let completeScenario: Attempt<unknown> = failedAttempt("Scenario did not complete successfully.");
 
     try {
+      if (config.execution.backend !== "oci") throw new Error("OCI benchmark requires OCI execution.");
+      const executionConfig = config.execution;
       environmentInitialization = await attempt(() => createHarnessOciExecutionEnvironment({
-        config: config.execution,
+        config: executionConfig,
         workspace,
         stateDirectory: config.stateDirectory
       }));
@@ -306,7 +307,7 @@ try {
         completeScenario
       };
     } finally {
-      await session?.release?.({ status: "completed" }).catch(() => undefined);
+      await Promise.resolve(session?.release?.({ status: "completed" })).catch(() => undefined);
       await environment?.runtime.cleanupOrphans().catch(() => undefined);
       await cleanupHarnessExecutionArtifacts(config.stateDirectory, Date.now() + 1_000).catch(() => undefined);
     }

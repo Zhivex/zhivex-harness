@@ -1,3 +1,4 @@
+import { missingPackageLinks } from "./package-documentation.js";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -78,7 +79,8 @@ const inspectArtifact = async () => {
       "package/contracts/",
       "package/fixtures/",
       "package/evaluations/",
-      "package/examples/"
+      "package/examples/",
+      "package/benchmarks/"
     ];
 
     for (const entry of entries) {
@@ -135,6 +137,15 @@ const inspectArtifact = async () => {
       "package/dist/verify-historical-migrations.js"
     ]) {
       assert(entries.includes(required), `release artifact is missing ${required}`);
+    }
+
+    assert(!entries.some(entry => entry.startsWith("package/evaluations/") && /\.[cm]?tsx?$/.test(entry)),
+      "release artifact includes a development audit importing unpacked source");
+    const paths = new Set(entries);
+    for (const entry of entries.filter(entry => entry.endsWith(".md"))) {
+      const markdown = (await run(["tar", "-xOzf", artifact, entry])).stdout;
+      const missing = missingPackageLinks(entry, markdown, paths);
+      assert.equal(missing.length, 0, `packed documentation ${entry} has unresolved links: ${missing.join(", ")}`);
     }
 
     const packedManifestOutput = await run(["tar", "-xOzf", artifact, "package/package.json"]);

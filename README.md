@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `0.11.1` is the current public npm release and `latest` distribution tag. Its annotated tag, exact registry integrity, SLSA provenance, and release-bound Meta/Qwen/OpenAI certification are recorded in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication remains fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. The planned 1.0 promotion is tracked by the [machine-checked readiness gate](./docs/GA_READINESS.md), [API stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md), and [threat model](./docs/THREAT_MODEL.md). See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
+Version `0.11.1` is the current public npm release on `latest`; `1.0.0-rc.13` is the published release candidate on `next`. RC.13 passed protected live certification and 42/42 representative cases, with independently verified registry integrity and SLSA provenance recorded in the [live certification evidence](./docs/LIVE_CERTIFICATION.md). GA remains blocked pending the final human security review; see the [RC.13 reviewer dossier](./docs/RC13_SECURITY_REVIEW.md). The `0.11.1` evidence remains in the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json). Publication remains fail-closed on deterministic, installed-package, real-OCI, base-provider, orchestration, routing, and model-directed execution gates. The planned 1.0 promotion is tracked by the [machine-checked readiness gate](./docs/GA_READINESS.md), [API stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md), and [threat model](./docs/THREAT_MODEL.md). See [ROADMAP.md](./ROADMAP.md), [CHANGELOG.md](./CHANGELOG.md), [public repository security](./docs/PUBLIC_SECURITY.md), the [change-envelope guide](./docs/CHANGE_ENVELOPES.md), the [CLI contract](./docs/CLI.md), the [context-engineering guide](./docs/CONTEXT_ENGINEERING.md), the [extensibility guide](./docs/EXTENSIBILITY.md), and the [durable-operations guide](./docs/DURABLE_OPERATIONS.md).
 
 ## Why Zhivex Harness
 
@@ -40,63 +40,17 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What 0.11 changes
+## What RC.13 adds
 
-- adds a dependency-free terminal presentation layer with redacted activity, complete approval cards, and durable `y`/`n`/`v`/`q` decisions;
-- lets recovered chat sessions inspect and resolve their current approval with `/pending`, `/approve`, and `/deny` after restoring the exact persisted provider, routing, context, and OCI policy;
-- loads bounded `AGENTS.md`, project context, rules, and progressively disclosed skills while binding their digests into durable compatibility;
-- adds trusted application lifecycle hooks with versioned identities, bounded events, timeouts, and redacted failures; and
-- exposes exact-script shell syntax only through explicit `--execution oci --oci-shell ask`, preserving denied network and the separate host-import approval.
+- explicit personal provider/model profiles through `zhx init` and `--profile`, stored outside the repository without credentials;
+- Tab command completion, previewed multiline tasks, bounded task history, and Alt+Enter input;
+- `/context` inspection and bounded, digest-checked `/attach` excerpts for the next task;
+- Ctrl+C cancellation with runtime cleanup and preserved pending approvals, plus recovery to the prompt after command/provider errors; and
+- terminal-safe Markdown and optional colored diffs, with unsolicited input discarded before approval prompts.
 
-## What 0.10 changed
+See the [RC.13 changelog and migration notes](./CHANGELOG.md#100-rc13---2026-09-03) and [interactive workflow guide](./docs/CLI.md#interactive-daily-workflow). No configuration or store migration from RC.12 is required.
 
-- makes Node.js `>=22.13.0` the primary public CLI and library runtime while retaining Bun-compatible imports and Bun-managed contributor workflows;
-- replaces `bun:sqlite` and `Bun.spawn` with `node:sqlite` and argv-only `node:child_process` boundaries without changing the durable SQLite file format;
-- detects npm, pnpm, Yarn, or Bun from a pinned `packageManager` field or an unambiguous lockfile, defaults to npm, and rejects implicit pre/post lifecycle hooks that were not reviewed;
-- moves the default enforced environment to `node:24-bookworm-slim`, executes its controller as Node ESM, and keeps custom Bun images available through explicit configuration; and
-- adds Node-built CLI/library and installed-artifact smokes while retaining Bun compatibility coverage.
-
-## What 0.9 changed
-
-- reuses a freshness-checked topology index across file-list and search pages while reading current file bytes for every digest;
-- adds bounded `read_files` and `search_many` tools that reduce model/tool round trips without parallelizing writes;
-- reuses an inert controller-only OCI container within an acquired run, attests command execution and the canonical workspace seal in one cycle, skips exports for unchanged seals, and reseeds after failures or host-snapshot changes without weakening the reviewed host-import boundary;
-- adds a reproducible workspace benchmark and observable index/OCI I/O counters; and
-- introduces deterministic, offline-verifiable `ChangeEnvelope v1` documents bound to exact patch bytes, base identity, runtime policy, redacted checks, expiry, and optional approval/attestation references.
-
-## What 0.8 changed
-
-- updates the coordinated Zhivex SDK batch while retaining a single Core runtime identity;
-- makes `gpt-5.6-luna` the OpenAI default, with Terra and Sol available through explicit model selection; and
-- clarifies that calling an approval-gated tool is the model's approval request, so the runtime can persist and resume it.
-
-## What 0.7 introduced
-
-- the short `zhx` command, with `zhivex-harness` retained as a compatible alias;
-- one-shot execution plus a durable interactive console with named sessions, fork/archive operations, safe resume, status, diff, review, and explicit context compaction;
-- an extensible provider registry, provider/model selection, provisional native Gemini support, and repeatable per-role routes such as `--route reviewer=gemini`;
-- redacted, sequence-numbered `--jsonl` events for automation, while `--json` keeps the final-document contract;
-- versioned configuration and JSON output contracts;
-- a local `doctor` command that diagnoses the runtime, repository package manager, workspace, Git, scripts, state, credentials, endpoints, and provider capabilities without making provider requests or exposing secret values;
-- deterministic, cursor-paginated workspace listing and search with SHA-256 content digests;
-- reviewed multi-file proposals and approved atomic application with stale-content rejection;
-- approved moves plus recoverable quarantine and restore operations;
-- an explicit, configurable allowlist of declared `package.json` checks executed through the repository's pinned or detected package manager;
-- read-only inspection of staged, unstaged, renamed, deleted, and untracked Git state;
-- per-process mutation audit evidence and a final diff summary;
-- scoped SQLite run/memory state, idempotency, approval resumption, leases, and exactly-once tool journals;
-- run list, redacted inspect/export, cancellation, and retention cleanup commands;
-- production safety policy plus step, time, tool, token, and optional operator-priced cost budgets;
-- bounded context compaction with durable records and a deterministic golden evaluation gate;
-- fail-fast model capability requirements and deterministic library-side candidate selection;
-- governed MCP over bounded HTTPS/loopback HTTP with explicit server/tool allowlists, permissions, timeouts, approvals, output limits, and environment-backed credentials;
-- named explorer, implementer, tester, and reviewer subagents with independent durable budgets and promoted approvals;
-- deterministic application-owned parallel read-only review groups with child progress, hierarchy, usage, and cost evidence;
-- optional enforced Docker/Podman execution with a warm controller-only per-run container, no container network, a read-only root filesystem, non-root execution, dropped capabilities, bounded CPU/memory/PIDs/time/output, and an ephemeral secret-free workspace snapshot;
-- argv-only allowlisted environment commands, isolated package checks, deterministic patch inspection, and a separate durable approval before importing changes into the host workspace;
-- environment/image/policy fingerprint binding, cancellation cleanup, labeled orphan cleanup, retained audit artifacts, and installed-package plus real-runtime smoke gates;
-- protection against path traversal, symlink escapes, unsafe state targets, secret-file reads, special files, concurrent non-overwrite races, and unbounded output;
-- Linux/macOS CI, installed-tarball smoke coverage, and opt-in live-provider certification.
+Earlier release changes and migrations are recorded in the [changelog](./CHANGELOG.md). Browse the [documentation index](./docs/README.md) for usage, architecture, maintenance, and historical reports.
 
 It does not include arbitrary host shell access, `stdio` MCP, permanent deletion, Git writes, a desktop UI, a remote worker, or a managed sandbox service. Without `--execution oci`, shell-class tools remain unavailable. The opt-in `--oci-shell ask` policy exposes approval-bound `sh` only inside OCI. With OCI enabled, repository tools, checks, and enabled subagents share the acquired snapshot; network MCP is rejected because it cannot truthfully satisfy the no-network execution policy.
 
@@ -109,11 +63,22 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Installation
 
-Install the Node-first `0.11.1` artifact with an exact version:
+Run the Node-first `latest` release with an exact version:
 
 ```bash
 bunx @zhivex-ai/harness@0.11.1 --version
 ```
+
+To try the published RC.13 candidate on `next`, pin its exact version:
+
+```bash
+bunx @zhivex-ai/harness@1.0.0-rc.13 --version
+bunx @zhivex-ai/harness@1.0.0-rc.13 init --profile daily --provider openai
+bunx @zhivex-ai/harness@1.0.0-rc.13 doctor --profile daily
+bunx @zhivex-ai/harness@1.0.0-rc.13 --profile daily "inspect this repository"
+```
+
+RC.13 is a prerelease; publication on `next` does not promote it to GA.
 
 To exercise the source checkout, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
 
@@ -123,7 +88,7 @@ cp .env.example .env
 bun run dev --version
 ```
 
-The 1.0 source candidate adds a first-run setup that stores only a provider and model in an explicit personal profile:
+RC.13 includes first-run setup that stores only a provider and model in an explicit personal profile. From a source checkout:
 
 ```bash
 bun run dev init --profile daily --provider openai
@@ -168,7 +133,7 @@ zhivex-harness --version
 
 Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/pending`, `/approve`, `/deny`, `/compact`, `/new`, `/rename`, and `/exit`. Tool and step activity is rendered without tool payloads; approval cards sanitize terminal controls and keep governed edit/command payloads fully reviewable.
 
-The pending RC.13 source also adds Tab command completion, `/paste` for previewed
+The published RC.13 also adds Tab command completion, `/paste` for previewed
 multiline tasks, `/context` for active project rules/skills, and `/attach <path>` for
 bounded file excerpts. Ctrl+C interrupts active work while retaining the session;
 errors return to the prompt. See the [interactive workflow](./docs/CLI.md#interactive-daily-workflow)
@@ -298,7 +263,7 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 
 ## Providers and defaults
 
-| Provider | Default model | Current support |
+| Provider | Default model | Support in `latest` (`0.11.1`) |
 | --- | --- | --- |
 | Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.11.1 release-bound base, delegation, and OCI execution certified |
 | Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.11.1 release-bound base, delegation, routing, and OCI execution certified |
@@ -308,6 +273,8 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
 The exact `v0.11.1` tag passed proposal/approval/restart, bounded delegation, OpenAI-parent/Qwen-reviewer routing, and model-directed OCI execution for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` on 2026-08-23. Luna remains the OpenAI default, while Terra and Sol remain explicit `--model` selections with older local base evidence only. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+
+For `next`, the exact `v1.0.0-rc.13` artifact passed protected live certification and all 14 representative cases for each of Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` on 2026-09-08. See the [RC.13 release evidence](./docs/LIVE_CERTIFICATION.md#current-public-status) for the workflow and artifact identity. Gemini remains provisional.
 
 ## Security boundaries
 
@@ -353,7 +320,7 @@ The workspace benchmark reports topology-only and digest-bound listing separatel
 
 The [Time-to-Safe-Fix benchmark](./docs/TIME_TO_SAFE_FIX.md) adds task-level clean/attacked matrices, `safeResolved` scoring, approval/system latency separation, Wilson rate intervals, and matched overhead against a direct profile. Its bundled deterministic smoke validates only the benchmark pipeline. Public capability or safety claims require a real external driver, exact dataset revision, matched model/runtime controls, and disclosed failures.
 
-Full generated reports remain local and Git-ignored under [`results`](./results/). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](./benchmarks/baselines/).
+Full generated reports remain local and Git-ignored under `./results/` (source checkout). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](./benchmarks/baselines/).
 
 The live gate is opt-in and billable:
 

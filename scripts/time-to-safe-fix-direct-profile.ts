@@ -273,7 +273,7 @@ const strictFailure = (
       verification: "verification",
       patch_import: "import",
       evidence: "evidence"
-    } satisfies Partial<Record<TimeToSafeFixFailureOrigin, TimeToSafeFixFailureStage>>)[origin] ?? "environment",
+    } as Partial<Record<TimeToSafeFixFailureOrigin, TimeToSafeFixFailureStage>>)[origin] ?? "environment",
     origin
   }),
   durationMs: performance.now() - startedAt,
@@ -437,6 +437,6 @@ export const runDirectProfile = async (
   } catch (error) {
     return strictFailure(startedAt, phasesMs, error, activeOrigin);
   } finally {
-    await session?.release?.({ status: releaseStatus }).catch(() => {});
+    await Promise.resolve(session?.release?.({ status: releaseStatus })).catch(() => {});
   }
 };

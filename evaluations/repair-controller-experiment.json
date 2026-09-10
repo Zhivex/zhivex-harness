@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "kind": "preregistered-repair-experiment",
+  "status": "planned-not-live-certified",
+  "primaryMetric": "independently accepted host delivery within aggregate token and wall-clock budget",
+  "diagnosticMetrics": ["correct-but-undelivered candidate", "verification coverage", "inputTokens", "outputTokens", "modelCalls", "approvalWaitMs", "ociCommandMs", "contextCharacters"],
+  "deterministicGate": "bun test tests/full-remediation.test.ts tests/terminal-verification-recovery.test.ts tests/audit-remediation.test.ts tests/orchestration.test.ts",
+  "trajectories": ["early candidate", "approval pause and resume", "denied approval", "cancelled verification", "failed check and corrected verifier", "unverified final response", "partial mutation failure", "lost stream usage", "out-of-plan batch read", "fragmented MCP events"],
+  "ablations": [
+    { "name": "controller", "change": "application scheduling of registered verifier", "control": "previous model-selected terminal tool" },
+    { "name": "projection", "change": "bounded working state injected before generation", "control": "read_task remains available without projection" },
+    { "name": "catalogue", "change": "verifier-selection tools only during closure", "control": "full catalogue with identical execution gates" },
+    { "name": "oci-session", "change": "reuse within one leased active invocation", "control": "fresh command session; identical import/digest gates" }
+  ],
+  "protocol": {
+    "oneVariableAtATime": true,
+    "pin": ["source digest", "package integrity", "provider model", "dataset digest", "image digest", "budgets", "timeouts", "approval policy"],
+    "minimumRepetitions": 3,
+    "holdout": "new tasks selected before provider runs, disjoint from the five historical development tasks; never used for verifier tuning",
+    "grader": "independent requirement checks on delivered host bytes; no self-reported success",
+    "countAllFailures": true,
+    "forbiddenShortcuts": ["weaker approvals", "reusing a paused lease", "discarding failed tasks", "grading a candidate as delivered", "calling simulated evidence live certification"]
+  }
+}

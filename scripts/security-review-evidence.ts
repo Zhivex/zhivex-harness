@@ -66,6 +66,10 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
     controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
   },
   {
+    id: "apply_reviewed_replacement",
+    controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
+  },
+  {
     id: "apply_reviewed_edits",
     controlThreats: ["malicious-repository-context", "approval-replay-or-substitution"]
   },

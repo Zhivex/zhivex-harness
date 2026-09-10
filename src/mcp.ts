@@ -357,20 +357,23 @@ const readBoundedBody = async (response: Response, limit: number) => {
   return new TextDecoder().decode(body);
 };
 
-const parseHttpPayload = (body: string, contentType: string | null): unknown => {
+const parseHttpPayload = (body: string, contentType: string | null, expectedId: unknown): unknown => {
   if (!body.trim()) return undefined;
-  if (contentType?.toLowerCase().includes("text/event-stream")) {
-    const data = body.split(/\r?\n/)
-      .filter((line) => line.startsWith("data:"))
-      .map((line) => line.slice(5).trim())
-      .filter((line) => line && line !== "[DONE]")
-      .at(-1);
-    if (!data) {
-      throw new Error("MCP HTTP server returned an empty event stream.");
-    }
-    return JSON.parse(data);
+  if (!contentType?.toLowerCase().includes("text/event-stream")) return JSON.parse(body);
+  // SSE data is joined within an event, never across unrelated notifications.
+  const events = body.replace(/\r\n?/g, "\n").split(/\n\n/);
+  const matching: unknown[] = [];
+  for (const event of events) {
+    const data = event.split("\n").filter(line => line.startsWith("data:"))
+      .map(line => line.slice(5).replace(/^ /, "")).join("\n");
+    if (!data.trim() || data.trim() === "[DONE]") continue;
+    const payload: unknown = JSON.parse(data);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) continue;
+    const record = payload as Record<string, unknown>;
+    if (record.id === expectedId && ("result" in record || "error" in record)) matching.push(payload);
   }
-  return JSON.parse(body);
+  if (matching.length !== 1) throw new Error("MCP event stream must contain exactly one matching response.");
+  return matching[0];
 };
 
 type FetchImplementation = typeof fetch;
@@ -433,7 +436,7 @@ export const createHttpMcpClient = (
     }
     const body = await readBoundedBody(response, server.maxOutputBytes);
     try {
-      return parseHttpPayload(body, response.headers.get("content-type"));
+      return parseHttpPayload(body, response.headers.get("content-type"), payload.id);
     } catch (error) {
       throw new HarnessExecutionError(`MCP server ${server.name} returned an invalid response.`, { cause: error });
     }

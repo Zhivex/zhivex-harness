@@ -1,3 +1,4 @@
+import { serializeJsonValue } from "@zhivex-ai/core";
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
@@ -243,7 +244,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     };
     const patchId = digest(JSON.stringify(patchPayload));
     const toolCall = (id: string, name: string, input: unknown) => [
-      { type: "tool-call" as const, toolCall: { id, name, input } },
+      { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
     ];
     const model = createMockLanguageModel({
@@ -271,7 +272,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       harnessRuntime: {
         ...harnessRuntime,
         createHarness(options) {
-          observedMaxOutputTokens = options.maxOutputTokens;
+          observedMaxOutputTokens = options?.maxOutputTokens;
           return harnessRuntime.createHarness(options);
         },
         runHarness(harness, input, options) {
@@ -411,7 +412,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       content: after
     };
     const toolCall = (id: string, name: string, input: unknown) => [
-      { type: "tool-call" as const, toolCall: { id, name, input } },
+      { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
     ];
     const model = createMockLanguageModel({
@@ -487,7 +488,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       profile: "optimized"
     });
     const toolCall = (id: string, name: string, input: unknown) => [
-      { type: "tool-call" as const, toolCall: { id, name, input } },
+      { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
     ];
     const model = createMockLanguageModel({
@@ -574,7 +575,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       profile: "optimized"
     });
     const toolCall = (id: string, name: string, input: unknown) => [
-      { type: "tool-call" as const, toolCall: { id, name, input } },
+      { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
     ];
     const baseModel = createMockLanguageModel({
@@ -597,7 +598,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         if (property === "stream") {
           return (input: unknown) => {
             modelCalls += 1;
-            return target.stream(input as never);
+            return target.stream!(input as never);
           };
         }
         return Reflect.get(target, property, receiver);

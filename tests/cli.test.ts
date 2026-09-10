@@ -572,7 +572,7 @@ describe("versioned JSON contracts", () => {
     });
     expect(JSON.stringify(document)).not.toContain("secret-api-value");
     expect(JSON.stringify(document)).not.toContain("secret-host");
-    expect(parseCliJsonDocument(document)).toEqual(document);
+    expect<unknown>(parseCliJsonDocument(document)).toEqual(document);
   });
 
   test("versions final run results", () => {
@@ -647,7 +647,7 @@ describe("versioned JSON contracts", () => {
       stateDirectory: "/tmp/state",
       mutations: []
     });
-    expect(parseCliJsonDocument(document)).toEqual(document);
+    expect<unknown>(parseCliJsonDocument(document)).toEqual(document);
   });
 });
 
@@ -957,7 +957,7 @@ describe("doctor", () => {
           }
         }
       });
-      expect(parseCliJsonDocument(report)).toEqual(report);
+      expect<unknown>(parseCliJsonDocument(report)).toEqual(report);
       expect(report.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
         "node",
         "workspace",

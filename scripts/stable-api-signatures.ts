@@ -234,7 +234,6 @@ export const emitWorkspaceDeclarations = async (workspace: string) => {
     incremental: false,
     noEmit: false,
     outDir: directory,
-    tsBuildInfoFile: undefined
   };
   const program = ts.createProgram({ rootNames: parsed.fileNames, options });
   const result = program.emit(undefined, undefined, undefined, true);

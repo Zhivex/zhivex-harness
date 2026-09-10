@@ -1,0 +1,1706 @@
+{
+  "schemaVersion": 1,
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "model": "qwen3.8-flash",
+  "provider": "qwen",
+  "reasoning": "none",
+  "transport": "qwen-chat-completions",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "versions": {
+    "mini-swe-agent": "2.4.6",
+    "swebench": "4.1.0"
+  },
+  "implementation": {
+    "gitCommit": "0a7b69dddaa70a54b6b5b4097691c8112d4d76eb",
+    "sources": {
+      "bun.lock": "d5436a51773d94333612c611a162a3e63765fec88d6bbde2a71879662b49b5cd",
+      "evaluations/external/requirements.lock": "42e90a08f10f821ebb958af79256f707a9fb5cf365277c4f9e2715d612028179",
+      "package.json": "ade3c3a4c0f8ee193c560637bf96f1fe2782f5bc06a42dcdbb320bd7a932a173",
+      "scripts/benchmark-swebench.ts": "ed17063e1847017ba2e72f14732b6ff8f5b1af7cd5253b91302af75f2a9e8476",
+      "scripts/swebench/common.py": "c19cfc30b85dc3ad8dbf1ba6a4165e72ce96f624eb1721b613cfa3207636f7be",
+      "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+      "scripts/swebench/model-budget.ts": "67b74d45d34235586773b7cf0db4d320306b14a6f432d53c084f80563ccdfa44",
+      "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+      "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+      "scripts/swebench/report.py": "70afcdf0d1f081014bb75d878f3ddf9195959e96b523ddf1e0ad5d3ec8273549",
+      "scripts/swebench/run.py": "b184258e7c32313c9c801b50d28d1a9419d0bd2b077a422012d8fc6bc449c916",
+      "scripts/swebench/telemetry.ts": "4c6c0d58641b91539d945f341b368a9c360b6ef89ff3abb9d2f33d3cb133c12e",
+      "scripts/swebench/test_contracts.py": "a8c1348f1dff2e563c139e6d3e83eb141b4f2a71f91a58e2c5c051ed2a431024",
+      "scripts/swebench/zhivex-driver.ts": "7f9b9903f7e80075c4b084b5009f9fc3f8915cb9276f821ab9cb883c196e0fcb",
+      "scripts/time-to-safe-fix-efficiency.ts": "dd20fd8839280332ae4ca80d6846e98e07ff15d79e200b206fa2ba6be2724d2f",
+      "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+      "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+      "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+      "src/cli-options.ts": "97781386289e3877c1318e4c94698ca7aaf2f256b89534dfcb21e966eb7d939f",
+      "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+      "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+      "src/cli.ts": "cce6f58dfbc543acdc029b188d4394cd059d940bdd361351fd877ae2d6e94880",
+      "src/compaction.ts": "0c4f95d2f49c5154c9b87b3f79feca18227e274a8aacd2445e387a857a37853f",
+      "src/config.ts": "c160faaf2d9fb637c5a08a7aff65d761a12c707ed23ebb87ab0e8519e9536bf3",
+      "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+      "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+      "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+      "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+      "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+      "src/execution-environment.ts": "8519e532dfafe4ae51bfbc81e0732267bc6aa9eec871ffde8c917aa001e358e5",
+      "src/file-security.ts": "4590b46c8e4b9d3891a75cd0d0ada14e0ae7b58e8e4bdf82f68df688a1fbb750",
+      "src/harness.ts": "00b45dfce74fd954d72e7aa5b53fe93e8983a63813f50201f4482ce3768de306",
+      "src/index.ts": "f791311f14dc27105191d97bb5454748d10beab827da9aba3ea949ffc32fce7c",
+      "src/json-contracts.ts": "0702e5b0ff16ff6304c74b4101bd31a3fa8eabdebe267d312b56d3871a7e302c",
+      "src/mcp.ts": "5f3f7a35b89063264ae18ab9273b84e2e59ac8c8e611a6b64be377ba61cc1ac5",
+      "src/operations.ts": "0775da79208c6f5d18476cc76404e84ddda610979d9d0e5dc15035aa6999613c",
+      "src/orchestration.ts": "7383da1047363819e6560f51892fd4082e5337856a3d889cdc076f021273774e",
+      "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+      "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+      "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+      "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+      "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+      "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+      "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+      "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+      "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+      "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+      "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+      "src/terminal-ui.ts": "e50025a8649d1f60efdf3af895b8639730ec2e86553fb80a61a776b11076c705",
+      "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+      "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+      "src/workspace.ts": "e9c2ed5c950d751d0f93a5512584d0698449b551d3270b3e115ccca380565222"
+    }
+  },
+  "host": {
+    "system": "Darwin",
+    "architecture": "arm64",
+    "python": "3.12.13",
+    "docker": "29.7.2"
+  },
+  "approvalPolicy": "Automated operator approves supported isolated Zhivex tools; successful approved verification and patch import is a terminal receipt. Human wait is zero. Not a human-UX comparison.",
+  "taskIds": [
+    "sympy__sympy-21930",
+    "scikit-learn__scikit-learn-10908",
+    "django__django-15554",
+    "scikit-learn__scikit-learn-14141",
+    "django__django-11265"
+  ],
+  "repetitions": 1,
+  "report": {
+    "schemaVersion": 1,
+    "kind": "swebench-comparison",
+    "manifestSha256": "fa943e995a1d4155c372bdaa66f09ffd1e64822ad13b0d4a8430e40522b16f7e",
+    "complete": true,
+    "candidates": {
+      "zhivex": {
+        "planned": 5,
+        "recorded": 5,
+        "resolved": 0,
+        "resolutionRate": 0.0,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": null
+      },
+      "mini-swe-agent": {
+        "planned": 5,
+        "recorded": 5,
+        "resolved": 2,
+        "resolutionRate": 0.4,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 37635.120082995854
+      }
+    },
+    "pairedTaskResolutionDifference": -0.4,
+    "pairedTaskBootstrap95": [
+      -0.8,
+      0.0
+    ],
+    "evidenceBoundary": "Local matched-model comparison. Missing and failed runs remain in the denominator. Small-sample intervals are exploratory. No safety superiority is inferred from SWE-bench correctness."
+  },
+  "samples": [
+    {
+      "candidate": "zhivex",
+      "instanceId": "sympy__sympy-21930",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "INPUT_TOKEN_BUDGET",
+      "phase": "agent",
+      "durationMs": 37357.267292,
+      "approvals": 1,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3237,
+          "outputTokens": 150,
+          "cachedInputTokens": 0,
+          "requestCharacters": 4987,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "1499fddd3dbad20567d77784d41c3748c1237dc11000f19e3d90c712eb06a1c6",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "search_many",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "1499fddd3dbad20567d77784d41c3748c1237dc11000f19e3d90c712eb06a1c6",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 3536,
+          "outputTokens": 51,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 1207,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 1426
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 4075,
+          "outputTokens": 88,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 1763,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 6530
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 7579,
+          "outputTokens": 89,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 6995,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5458
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 9794,
+          "outputTokens": 76,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 5900,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1494
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 10668,
+          "outputTokens": 91,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 1913,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 1733
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "waiting_approval",
+          "inputTokens": 11513,
+          "outputTokens": 170,
+          "cachedInputTokens": 10240,
+          "requestCharacters": 2177,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 758,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 3837,
+          "outputTokens": 86,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2606
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 5317,
+          "outputTokens": 89,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 10745,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3221
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 6679,
+          "outputTokens": 86,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 14407,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2830
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 8215,
+          "outputTokens": 85,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 17691,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3003
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 9805,
+          "outputTokens": 88,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 21147,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 550
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "completed",
+          "inputTokens": 10146,
+          "outputTokens": 56,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 22152,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2444
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 11089,
+          "outputTokens": 90,
+          "cachedInputTokens": 9984,
+          "requestCharacters": 24961,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 524
+            }
+          ]
+        }
+      ],
+      "inputTokens": 105490,
+      "outputTokens": 1295,
+      "cachedInputTokens": 79360,
+      "modelCalls": 14,
+      "compactions": [
+        {
+          "beforeStep": 8,
+          "estimatedTokensBefore": 6604,
+          "estimatedTokensAfter": 1839
+        },
+        {
+          "beforeStep": 15,
+          "estimatedTokensBefore": 6405,
+          "estimatedTokensAfter": 1761
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Error",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 15,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.004250032361596823,
+      "totalDurationMs": 38934.987624990754
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "sympy__sympy-21930",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "LimitsExceeded",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 51754.31341602234,
+      "approvals": 0,
+      "toolCalls": 19,
+      "inputTokens": 108948,
+      "outputTokens": 1909,
+      "cachedInputTokens": 92288,
+      "modelCalls": 17,
+      "patchSha256": "ebf965fdbb73ea4b642f262ccd66027eb540a6cf89bfdb7b8050598b21f24f2a",
+      "protectedFilesChanged": [],
+      "officialResolved": false,
+      "gradingDurationMs": 28131.56212499598,
+      "totalDurationMs": 81555.89533300372
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "scikit-learn__scikit-learn-10908",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 31608.526375028305,
+      "approvals": 0,
+      "toolCalls": 11,
+      "inputTokens": 41124,
+      "outputTokens": 1100,
+      "cachedInputTokens": 30080,
+      "modelCalls": 11,
+      "patchSha256": "855045c157aaad04feab70b0c0c8b295de7507fadd9d34a2e660b0c64cca2fee",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 18909.357790951617,
+      "totalDurationMs": 52027.547666977625
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "scikit-learn__scikit-learn-10908",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "INPUT_TOKEN_BUDGET",
+      "phase": "agent",
+      "durationMs": 33361.418958,
+      "approvals": 1,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3555,
+          "outputTokens": 153,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 6379,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 1704
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 305
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 4414,
+          "outputTokens": 86,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 2896,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 9927
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 7476,
+          "outputTokens": 86,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 10382,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1085
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 8084,
+          "outputTokens": 81,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 1556,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 7003
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 11431,
+          "outputTokens": 57,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 7447,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3140
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 12637,
+          "outputTokens": 90,
+          "cachedInputTokens": 11264,
+          "requestCharacters": 3529,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 784
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "waiting_approval",
+          "inputTokens": 13068,
+          "outputTokens": 57,
+          "cachedInputTokens": 12288,
+          "requestCharacters": 1263,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 544,
+              "exitCode": 128,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 3621,
+          "outputTokens": 85,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1085
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 4228,
+          "outputTokens": 86,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 8625,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5652
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 6135,
+          "outputTokens": 85,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 14731,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4143
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 7464,
+          "outputTokens": 100,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 19327,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1203
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 8113,
+          "outputTokens": 83,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 21030,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3387
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "completed",
+          "inputTokens": 9327,
+          "outputTokens": 88,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 24862,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2672
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 10602,
+          "outputTokens": 89,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 28007,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4980
+            }
+          ]
+        }
+      ],
+      "inputTokens": 110155,
+      "outputTokens": 1226,
+      "cachedInputTokens": 85504,
+      "modelCalls": 14,
+      "compactions": [
+        {
+          "beforeStep": 8,
+          "estimatedTokensBefore": 8610,
+          "estimatedTokensAfter": 1685
+        },
+        {
+          "beforeStep": 15,
+          "estimatedTokensBefore": 8284,
+          "estimatedTokensAfter": 2840
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Error",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 15,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.013708020560443401,
+      "totalDurationMs": 35171.34433297906
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-15554",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "INPUT_TOKEN_BUDGET",
+      "phase": "agent",
+      "durationMs": 34050.674917000004,
+      "approvals": 1,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3377,
+          "outputTokens": 132,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 5588,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 2164
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 982
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 4598,
+          "outputTokens": 56,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 3945,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7479
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 6838,
+          "outputTokens": 160,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 7854,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7054
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 8501
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 12855,
+          "outputTokens": 121,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 16412,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5845
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6564
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "waiting_approval",
+          "inputTokens": 7012,
+          "outputTokens": 87,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 18698,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 624,
+              "exitCode": 128,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 7313,
+          "outputTokens": 79,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 8627
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 11187,
+          "outputTokens": 85,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8145
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 13813,
+          "outputTokens": 83,
+          "cachedInputTokens": 10240,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 14633
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 7925,
+          "outputTokens": 119,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 8722
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 12061,
+          "outputTokens": 85,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 30572,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8865
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 14791,
+          "outputTokens": 108,
+          "cachedInputTokens": 11264,
+          "requestCharacters": 39882,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8984
+            }
+          ]
+        }
+      ],
+      "inputTokens": 101770,
+      "outputTokens": 1115,
+      "cachedInputTokens": 63744,
+      "modelCalls": 11,
+      "compactions": [
+        {
+          "beforeStep": 5,
+          "estimatedTokensBefore": 11731,
+          "estimatedTokensAfter": 4675
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 13149,
+          "estimatedTokensAfter": 5223
+        },
+        {
+          "beforeStep": 12,
+          "estimatedTokensBefore": 12272,
+          "estimatedTokensAfter": 3873
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Error",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 14,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.004208995960652828,
+      "totalDurationMs": 39430.91687496053
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-15554",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "LimitsExceeded",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 38547.2563339863,
+      "approvals": 0,
+      "toolCalls": 16,
+      "inputTokens": 101441,
+      "outputTokens": 1130,
+      "cachedInputTokens": 84608,
+      "modelCalls": 16,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.0019169528968632221,
+      "totalDurationMs": 40229.00862497045
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 16555.37924997043,
+      "approvals": 0,
+      "toolCalls": 6,
+      "inputTokens": 13484,
+      "outputTokens": 446,
+      "cachedInputTokens": 8192,
+      "modelCalls": 6,
+      "patchSha256": "b1ca3d45bf4e8d854c1921ac8f47ff519d0987ef33adc3c787e2a2c68bb2aba4",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 19777.11329201702,
+      "totalDurationMs": 37635.120082995854
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 51388.963834,
+      "approvals": 8,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3076,
+          "outputTokens": 93,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 4396,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2963
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 4606,
+          "outputTokens": 51,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 3504,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4644
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "waiting_approval",
+          "inputTokens": 6400,
+          "outputTokens": 60,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 5042,
+          "tools": []
+        },
+        {
+          "index": 4,
+          "status": "waiting_approval",
+          "inputTokens": 6644,
+          "outputTokens": 68,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 13939,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 548,
+              "exitCode": 128,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 7237,
+          "outputTokens": 66,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 16312,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 1896,
+              "exitCode": 1,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "waiting_approval",
+          "inputTokens": 9063,
+          "outputTokens": 86,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 5946,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5536
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 9358,
+          "outputTokens": 91,
+          "cachedInputTokens": 8320,
+          "requestCharacters": 23370,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 545,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "waiting_approval",
+          "inputTokens": 10368,
+          "outputTokens": 140,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 2991,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2528
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 3913,
+          "outputTokens": 80,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 8414,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 1577,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "waiting_approval",
+          "inputTokens": 5159,
+          "outputTokens": 175,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 12035,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3170
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 5640,
+          "outputTokens": 53,
+          "cachedInputTokens": 4992,
+          "requestCharacters": 13156,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 475
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "waiting_approval",
+          "inputTokens": 5965,
+          "outputTokens": 93,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 14142,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 614
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "waiting_approval",
+          "inputTokens": 6576,
+          "outputTokens": 158,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 16563,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 1893,
+              "exitCode": 1,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 7013,
+          "outputTokens": 15,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 18167,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 792,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "waiting_approval",
+          "inputTokens": 7337,
+          "outputTokens": 78,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 18987,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 499
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "status": "waiting_approval",
+          "inputTokens": 3742,
+          "outputTokens": 196,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 7400,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 511,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        }
+      ],
+      "inputTokens": 102097,
+      "outputTokens": 1503,
+      "cachedInputTokens": 82688,
+      "modelCalls": 16,
+      "compactions": [
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 7175,
+          "estimatedTokensAfter": 2021
+        },
+        {
+          "beforeStep": 16,
+          "estimatedTokensBefore": 4918,
+          "estimatedTokensAfter": 1768
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "66ed7fff90777927ab363e3304644018540ec150ca8bc326825207dcbde8f9c0",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": null,
+      "guardrails": [
+        {
+          "stage": "output",
+          "budgetLimit": "maxInputTokens"
+        }
+      ],
+      "toolCalls": 15,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.017209036741405725,
+      "totalDurationMs": 53516.46458299365
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 44562.856999999996,
+      "approvals": 1,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 4137,
+          "outputTokens": 147,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 8177,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 2793
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3487
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 6690,
+          "outputTokens": 87,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 7129,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10298
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 9898,
+          "outputTokens": 85,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 10746,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 10961
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 14898,
+          "outputTokens": 85,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 11438,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 12285
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 6847,
+          "outputTokens": 97,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 18172,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2607
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 8079,
+          "outputTokens": 116,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 3127,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 13964
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 12455,
+          "outputTokens": 99,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 14814,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 8922
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 7434,
+          "outputTokens": 56,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 15469,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7016
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 9696,
+          "outputTokens": 84,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 22859,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 5309
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "waiting_approval",
+          "inputTokens": 12140,
+          "outputTokens": 65,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 28639,
+          "tools": []
+        },
+        {
+          "index": 11,
+          "status": "waiting_approval",
+          "inputTokens": 12349,
+          "outputTokens": 361,
+          "cachedInputTokens": 11648,
+          "requestCharacters": 29493,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 370,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        }
+      ],
+      "inputTokens": 104623,
+      "outputTokens": 1282,
+      "cachedInputTokens": 68992,
+      "modelCalls": 11,
+      "compactions": [
+        {
+          "beforeStep": 5,
+          "estimatedTokensBefore": 12555,
+          "estimatedTokensAfter": 4543
+        },
+        {
+          "beforeStep": 8,
+          "estimatedTokensBefore": 11306,
+          "estimatedTokensAfter": 3785
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "3c4f7adcba3af3e73613a942da1722235ccfd8a5b8acbfda3355b871a0580967",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": null,
+      "guardrails": [
+        {
+          "stage": "output",
+          "budgetLimit": "maxInputTokens"
+        }
+      ],
+      "toolCalls": 11,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.017000013031065464,
+      "totalDurationMs": 49442.386791983154
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "LimitsExceeded",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 39764.313374995254,
+      "approvals": 0,
+      "toolCalls": 15,
+      "inputTokens": 106122,
+      "outputTokens": 1309,
+      "cachedInputTokens": 89984,
+      "modelCalls": 13,
+      "patchSha256": "71cb974cdc5631cc7b8ec9c4256eac327bf45d177ed4824fbcce2eeea00332c2",
+      "protectedFilesChanged": [],
+      "officialResolved": false,
+      "gradingDurationMs": 25527.762125013396,
+      "totalDurationMs": 66866.2051250576
+    }
+  ],
+  "limitations": [
+    "Known development cohort, one repetition.",
+    "Model, reasoning and API transport remain bundled across providers.",
+    "Both matrices executed concurrently on the same host; latency is not a controlled comparison.",
+    "Native requires verification; external keeps upstream submission.",
+    "No price rates supplied."
+  ]
+}

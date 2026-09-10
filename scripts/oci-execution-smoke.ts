@@ -39,7 +39,7 @@ try {
   const config = resolveHarnessConfig({
     workspace: root,
     executionBackend: "oci",
-    ociImage: process.env.ZHIVEX_HARNESS_OCI_IMAGE,
+    ...(process.env.ZHIVEX_HARNESS_OCI_IMAGE ? { ociImage: process.env.ZHIVEX_HARNESS_OCI_IMAGE } : {}),
     ociAllowedCommands: ["node", "npm"],
     ociShellMode: "ask",
     ociMaxProcessRuntimeMs: 30_000,

@@ -18,7 +18,7 @@ describe("command-specific CLI option contract", () => {
       for (const name of contract.allowed) {
         declared.add(name);
         expect(name in CLI_OPTION_DEFINITIONS).toBe(true);
-        expect(contract.repeatable.includes(name)).toBe(CLI_OPTION_DEFINITIONS[name].repeatable);
+        expect(contract.repeatable.includes(name)).toBe(CLI_OPTION_DEFINITIONS[name as keyof typeof CLI_OPTION_DEFINITIONS].repeatable);
       }
     }
     expect([...CLI_OPTION_NAMES].filter((name) => !declared.has(name))).toEqual([]);
@@ -48,7 +48,7 @@ describe("command-specific CLI option contract", () => {
   ] as const)("rejects irrelevant options for %s", (argv, commandLabel) => {
     expect(() => parseCliArgs([...argv])).toThrow(CliUsageError);
     expect(() => parseCliArgs([...argv])).toThrow(
-      argv.includes("--jsonl") ? "supported by run and resume" : `not supported by ${commandLabel}`
+      (argv as readonly string[]).includes("--jsonl") ? "supported by run and resume" : `not supported by ${commandLabel}`
     );
   });
 

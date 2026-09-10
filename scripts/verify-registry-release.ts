@@ -107,7 +107,7 @@ const fetchJson = async <T>(url: string, deadlineMs: number): Promise<T> => {
   return await response.json() as T;
 };
 
-const requirePropagated = (condition: unknown, message: string): asserts condition => {
+function requirePropagated(condition: unknown, message: string): asserts condition {
   if (!condition) throw new RegistryPropagationError(message);
 };
 

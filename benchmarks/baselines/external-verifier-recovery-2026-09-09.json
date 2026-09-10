@@ -1,0 +1,794 @@
+{
+  "schemaVersion": 1,
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "model": "gpt-5.6-luna",
+  "provider": "openai",
+  "reasoning": "low",
+  "transport": "openai-responses",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "versions": {
+    "mini-swe-agent": "2.4.6",
+    "swebench": "4.1.0"
+  },
+  "implementation": {
+    "gitCommit": "0a7b69dddaa70a54b6b5b4097691c8112d4d76eb",
+    "sources": {
+      "bun.lock": "d5436a51773d94333612c611a162a3e63765fec88d6bbde2a71879662b49b5cd",
+      "evaluations/external/requirements.lock": "42e90a08f10f821ebb958af79256f707a9fb5cf365277c4f9e2715d612028179",
+      "package.json": "ade3c3a4c0f8ee193c560637bf96f1fe2782f5bc06a42dcdbb320bd7a932a173",
+      "scripts/benchmark-swebench.ts": "ed17063e1847017ba2e72f14732b6ff8f5b1af7cd5253b91302af75f2a9e8476",
+      "scripts/swebench/common.py": "c19cfc30b85dc3ad8dbf1ba6a4165e72ce96f624eb1721b613cfa3207636f7be",
+      "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+      "scripts/swebench/model-budget.ts": "67b74d45d34235586773b7cf0db4d320306b14a6f432d53c084f80563ccdfa44",
+      "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+      "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+      "scripts/swebench/report.py": "70afcdf0d1f081014bb75d878f3ddf9195959e96b523ddf1e0ad5d3ec8273549",
+      "scripts/swebench/run.py": "b184258e7c32313c9c801b50d28d1a9419d0bd2b077a422012d8fc6bc449c916",
+      "scripts/swebench/telemetry.ts": "4c6c0d58641b91539d945f341b368a9c360b6ef89ff3abb9d2f33d3cb133c12e",
+      "scripts/swebench/test_contracts.py": "a8c1348f1dff2e563c139e6d3e83eb141b4f2a71f91a58e2c5c051ed2a431024",
+      "scripts/swebench/zhivex-driver.ts": "a538c1a83e3c4c0b93ab52c5e4308a6c387fbb5d45499708e12aa27cc25847ec",
+      "scripts/time-to-safe-fix-efficiency.ts": "dd20fd8839280332ae4ca80d6846e98e07ff15d79e200b206fa2ba6be2724d2f",
+      "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+      "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+      "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+      "src/cli-options.ts": "97781386289e3877c1318e4c94698ca7aaf2f256b89534dfcb21e966eb7d939f",
+      "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+      "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+      "src/cli.ts": "cce6f58dfbc543acdc029b188d4394cd059d940bdd361351fd877ae2d6e94880",
+      "src/compaction.ts": "0c4f95d2f49c5154c9b87b3f79feca18227e274a8aacd2445e387a857a37853f",
+      "src/config.ts": "c160faaf2d9fb637c5a08a7aff65d761a12c707ed23ebb87ab0e8519e9536bf3",
+      "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+      "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+      "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+      "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+      "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+      "src/execution-environment.ts": "8519e532dfafe4ae51bfbc81e0732267bc6aa9eec871ffde8c917aa001e358e5",
+      "src/file-security.ts": "4590b46c8e4b9d3891a75cd0d0ada14e0ae7b58e8e4bdf82f68df688a1fbb750",
+      "src/harness.ts": "235fa587e89f39f204c40e1031681c477f3e5db0cfc8d9e1c3325575700fa26b",
+      "src/index.ts": "f791311f14dc27105191d97bb5454748d10beab827da9aba3ea949ffc32fce7c",
+      "src/json-contracts.ts": "0702e5b0ff16ff6304c74b4101bd31a3fa8eabdebe267d312b56d3871a7e302c",
+      "src/mcp.ts": "5f3f7a35b89063264ae18ab9273b84e2e59ac8c8e611a6b64be377ba61cc1ac5",
+      "src/operations.ts": "0775da79208c6f5d18476cc76404e84ddda610979d9d0e5dc15035aa6999613c",
+      "src/orchestration.ts": "7383da1047363819e6560f51892fd4082e5337856a3d889cdc076f021273774e",
+      "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+      "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+      "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+      "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+      "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+      "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+      "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+      "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+      "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+      "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+      "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+      "src/terminal-ui.ts": "e50025a8649d1f60efdf3af895b8639730ec2e86553fb80a61a776b11076c705",
+      "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+      "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+      "src/workspace.ts": "e9c2ed5c950d751d0f93a5512584d0698449b551d3270b3e115ccca380565222"
+    }
+  },
+  "host": {
+    "system": "Darwin",
+    "architecture": "arm64",
+    "python": "3.12.13",
+    "docker": "29.7.2"
+  },
+  "approvalPolicy": "Automated operator approves supported isolated Zhivex tools; successful approved verification and patch import is a terminal receipt. Human wait is zero. Not a human-UX comparison.",
+  "taskIds": [
+    "scikit-learn__scikit-learn-14141",
+    "django__django-11265"
+  ],
+  "repetitions": 1,
+  "report": {
+    "schemaVersion": 1,
+    "kind": "swebench-comparison",
+    "manifestSha256": "bfb84c6d86b015dfb21f7fd2f3ba152687122932b5e10eec513e9ac12b414ab5",
+    "complete": true,
+    "candidates": {
+      "zhivex": {
+        "planned": 2,
+        "recorded": 2,
+        "resolved": 1,
+        "resolutionRate": 0.5,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 61794.38716697041
+      },
+      "mini-swe-agent": {
+        "planned": 2,
+        "recorded": 2,
+        "resolved": 1,
+        "resolutionRate": 0.5,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 47283.00745802699
+      }
+    },
+    "pairedTaskResolutionDifference": 0.0,
+    "pairedTaskBootstrap95": [
+      0.0,
+      0.0
+    ],
+    "evidenceBoundary": "Local matched-model comparison. Missing and failed runs remain in the denominator. Small-sample intervals are exploratory. No safety superiority is inferred from SWE-bench correctness."
+  },
+  "samples": [
+    {
+      "candidate": "zhivex",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "completed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 37294.750374999996,
+      "approvals": 7,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 1969,
+          "outputTokens": 113,
+          "cachedInputTokens": 1966,
+          "requestCharacters": 4396,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 8308
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 4135
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 5843,
+          "outputTokens": 174,
+          "cachedInputTokens": 1966,
+          "requestCharacters": 17045,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5641
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2334
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "waiting_approval",
+          "inputTokens": 8679,
+          "outputTokens": 125,
+          "cachedInputTokens": 5840,
+          "requestCharacters": 13081,
+          "tools": []
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 2721,
+          "outputTokens": 77,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 11693,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 1827,
+              "exitCode": 1,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "waiting_approval",
+          "inputTokens": 4342,
+          "outputTokens": 186,
+          "cachedInputTokens": 2718,
+          "requestCharacters": 8666,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4644
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 4744,
+          "outputTokens": 27,
+          "cachedInputTokens": 4339,
+          "requestCharacters": 26101,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 475
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 4986,
+          "outputTokens": 333,
+          "cachedInputTokens": 4741,
+          "requestCharacters": 4098,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 499
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": true,
+              "characters": 276,
+              "exitCode": 1,
+              "timedOut": false,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+                    "reason": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "waiting_approval",
+          "inputTokens": 5354,
+          "outputTokens": 137,
+          "cachedInputTokens": 4983,
+          "requestCharacters": 36680,
+          "tools": []
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 3232,
+          "outputTokens": 39,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 13206,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 2823,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "waiting_approval",
+          "inputTokens": 3486,
+          "outputTokens": 57,
+          "cachedInputTokens": 3229,
+          "requestCharacters": 4314,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 499
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "waiting_approval",
+          "inputTokens": 5246,
+          "outputTokens": 83,
+          "cachedInputTokens": 3483,
+          "requestCharacters": 29152,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 7713,
+              "exitCode": 129,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 5769,
+          "outputTokens": 296,
+          "cachedInputTokens": 5243,
+          "requestCharacters": 35250,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 1469,
+              "exitCode": 4,
+              "timedOut": false
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": false,
+              "characters": 1469,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        }
+      ],
+      "inputTokens": 56371,
+      "outputTokens": 1647,
+      "cachedInputTokens": 42260,
+      "modelCalls": 12,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 10285,
+          "estimatedTokensAfter": 2924
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 11043,
+          "estimatedTokensAfter": 3302
+        }
+      ],
+      "terminalDiagnostic": null,
+      "thrownDiagnostic": null,
+      "guardrails": [],
+      "toolCalls": 14,
+      "patchSha256": "87492f68fca7dbd335efa8c185dd242dfd3e4017089fab9dfe789a919959b5cf",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 21972.350791969802,
+      "totalDurationMs": 61794.38716697041
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 25955.564584000967,
+      "approvals": 0,
+      "toolCalls": 9,
+      "inputTokens": 38342,
+      "outputTokens": 1049,
+      "cachedInputTokens": 32148,
+      "modelCalls": 7,
+      "patchSha256": "b1ca3d45bf4e8d854c1921ac8f47ff519d0987ef33adc3c787e2a2c68bb2aba4",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 19747.161707957275,
+      "totalDurationMs": 47283.00745802699
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 33420.02133303322,
+      "approvals": 0,
+      "toolCalls": 9,
+      "inputTokens": 65632,
+      "outputTokens": 1508,
+      "cachedInputTokens": 57960,
+      "modelCalls": 9,
+      "patchSha256": "8d9bea95aa218e4dce77ebbe2227e11c3114110a04aa5517a4f9150c2780043d",
+      "protectedFilesChanged": [],
+      "officialResolved": false,
+      "gradingDurationMs": 25020.768625021446,
+      "totalDurationMs": 59974.00999994716
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "EXECUTION_FAILED",
+      "phase": "agent",
+      "durationMs": 32650.040167,
+      "approvals": 0,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3015,
+          "outputTokens": 42,
+          "cachedInputTokens": 3012,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 9866
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 5778,
+          "outputTokens": 117,
+          "cachedInputTokens": 3012,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 565
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 5001
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 7766,
+          "outputTokens": 109,
+          "cachedInputTokens": 5775,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10504
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 1755
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 5511,
+          "outputTokens": 151,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 19220,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10920
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3876
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 9840,
+          "outputTokens": 79,
+          "cachedInputTokens": 5508,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 13267
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 5635,
+          "outputTokens": 89,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 20066,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 5824
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 7538,
+          "outputTokens": 98,
+          "cachedInputTokens": 5632,
+          "requestCharacters": 2,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 18981
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 7391,
+          "outputTokens": 163,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 25956,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3412
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 361
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 8812,
+          "outputTokens": 79,
+          "cachedInputTokens": 7388,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 12016
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 5409,
+          "outputTokens": 86,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1094
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 5846,
+          "outputTokens": 58,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 24434,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10628
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 8818,
+          "outputTokens": 134,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 36081,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 9889
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "completed",
+          "inputTokens": 5101,
+          "outputTokens": 146,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3796
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2689
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 7355,
+          "outputTokens": 58,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 32299,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6030
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "completed",
+          "inputTokens": 9062,
+          "outputTokens": 119,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 39349,
+          "tools": []
+        }
+      ],
+      "inputTokens": 102877,
+      "outputTokens": 1528,
+      "cachedInputTokens": 47211,
+      "modelCalls": 15,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 10798,
+          "estimatedTokensAfter": 4805
+        },
+        {
+          "beforeStep": 6,
+          "estimatedTokensBefore": 13352,
+          "estimatedTokensAfter": 5017
+        },
+        {
+          "beforeStep": 8,
+          "estimatedTokensBefore": 12607,
+          "estimatedTokensAfter": 6489
+        },
+        {
+          "beforeStep": 10,
+          "estimatedTokensBefore": 12022,
+          "estimatedTokensAfter": 4718
+        },
+        {
+          "beforeStep": 13,
+          "estimatedTokensBefore": 12616,
+          "estimatedTokensAfter": 5123
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "62eab16f3e5ef3caebb5275363ae87ebc8e0f4b9bb23f9382c11f1fc18fef0e5",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "62eab16f3e5ef3caebb5275363ae87ebc8e0f4b9bb23f9382c11f1fc18fef0e5",
+            "reason": "budget"
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "GuardrailTriggeredError",
+            "providerHints": [],
+            "fingerprint": "62eab16f3e5ef3caebb5275363ae87ebc8e0f4b9bb23f9382c11f1fc18fef0e5",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 19,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.022833002731204033,
+      "totalDurationMs": 37479.875040997285
+    }
+  ],
+  "baseline": "external-matched-openai-2026-09-08.json",
+  "treatment": {
+    "maxTerminalVerificationRetries": 2,
+    "changedSources": [
+      "src/harness.ts",
+      "scripts/swebench/zhivex-driver.ts"
+    ]
+  },
+  "limitations": [
+    "Two deliberately selected development cases, one repetition.",
+    "Django stopped at input budget without invoking verifier; no live recovery was exercised.",
+    "Recovery is established by deterministic tests, not this live score.",
+    "No price rates supplied."
+  ]
+}

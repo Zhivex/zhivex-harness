@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
+import { TASK_SOURCE_KEY, taskSources } from "./task-memory.js";
 
 import { TerminalMarkdown } from "./terminal-markdown.js";
 import { ConsoleInput } from "./console-input.js";
@@ -218,6 +220,7 @@ export interface CliOptions {
   subagentTimeoutMs?: number;
   maxParallelReviews?: number;
   executionBackend?: string;
+  agentProfile?: string;
   ociRuntime?: string;
   ociImage?: string;
   ociAllowedCommands?: string[];
@@ -298,6 +301,7 @@ const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput => ({
   tenantId: config.scope.tenantId,
   ...(config.scope.userId ? { userId: config.scope.userId } : {}),
   ...(config.scope.namespace ? { namespace: config.scope.namespace } : {}),
+  agentProfile: config.agentProfile,
   maxSteps: config.maxSteps,
   timeoutMs: config.timeoutMs,
   maxToolCalls: config.budget.maxToolCalls,
@@ -567,6 +571,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
+      case "--agent-profile":
+        options.agentProfile = optionValue(argv, index, argument);
+        index += 1;
+        break;
       case "--execution":
         options.executionBackend = optionValue(argv, index, argument);
         index += 1;
@@ -1001,6 +1009,7 @@ Options:
   --patch <path>                 Exact patch/artifact bytes bound to a change envelope
   --preconditions <path>         Verification preconditions JSON for changes verify
   --now <ISO-8601 UTC>           Explicit millisecond verification time (default: current time)
+  --agent-profile <strict|repair> Runtime recovery and exploration policy (default: strict)
   --execution <none|oci>         Enforced execution backend (default: none)
   --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
   --oci-image <reference>        Preloaded immutable-capable OCI image
@@ -1541,6 +1550,7 @@ const chat = async (options: CliOptions) => {
   }
   let session: CliSession = selectedSession ?? await sessionStore.create();
   let messages: AgentRunOutput["messages"] = [];
+  let retainedTasks: ReturnType<typeof taskSources> = [];
 
   const latestState = async (selected: CliSession) => {
     const latest = selected.runs.at(-1);
@@ -1568,6 +1578,7 @@ const chat = async (options: CliOptions) => {
       };
       routes = readHarnessResumeRoutes(restored);
       messages = restored.messages;
+      retainedTasks = taskSources(restored.metadata);
     }
     harness = (await createConfiguredHarness(runtimeOptions, [], routes)).harness;
   } catch (error) {
@@ -1639,6 +1650,7 @@ const chat = async (options: CliOptions) => {
     attachments.clear();
     readline.clearHistory();
     messages = state?.messages ?? [];
+    retainedTasks = taskSources(state?.metadata);
   };
 
   const continuePendingApproval = async (approve: boolean) => {
@@ -1683,6 +1695,7 @@ const chat = async (options: CliOptions) => {
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
+        retainedTasks = taskSources(result.state.metadata);
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
       status: sessionStatus(result.status)
     });
@@ -1754,6 +1767,7 @@ const chat = async (options: CliOptions) => {
         }
         if (prompt === "/clear") {
           messages = [];
+          retainedTasks = [];
           attachments.clear();
           readline.clearHistory();
           process.stderr.write("Context cleared.\n");
@@ -1770,8 +1784,9 @@ const chat = async (options: CliOptions) => {
           continue;
         }
         if (prompt === "/compact") {
+          const beforeBytes = Buffer.byteLength(JSON.stringify(messages));
           messages = compactHarnessMessages(messages);
-          process.stderr.write(`Context compacted to ${messages.length} redacted message(s).\n`);
+          process.stderr.write(`Context: ${beforeBytes} -> ${Buffer.byteLength(JSON.stringify(messages))} bytes. Full task sources remain in durable memory.\n`);
           continue;
         }
         if (prompt === "/pending") {
@@ -1966,6 +1981,7 @@ const chat = async (options: CliOptions) => {
                   scope: harness.config.scope,
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
+                    [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexCliSession: {
                       schemaVersion: 1,
                       sessionId: session.sessionId,
@@ -1981,6 +1997,7 @@ const chat = async (options: CliOptions) => {
                   scope: harness.config.scope,
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
+                    [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexCliSession: {
                       schemaVersion: 1,
                       sessionId: session.sessionId,
@@ -2005,7 +2022,7 @@ const chat = async (options: CliOptions) => {
           session = await sessionStore.updateRun(session.sessionId, runId, {
             status: durable ? sessionStatus(durable.status) : "failed"
           });
-          if (durable) messages = durable.messages;
+          if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
           throw error;
         }
         if (!tracker.streamedText && result.outputText) {
@@ -2013,6 +2030,7 @@ const chat = async (options: CliOptions) => {
         }
         process.stdout.write("\n");
         messages = result.messages;
+        retainedTasks = taskSources(result.state.metadata);
         attachments.clear();
         session = await sessionStore.updateRun(session.sessionId, runId, {
           status: sessionStatus(result.status)
@@ -2155,6 +2173,7 @@ export interface DoctorReport {
     scope: ReturnType<typeof resolveHarnessConfig>["scope"];
     maxSteps: number;
     timeoutMs: number;
+    agentProfile: "strict" | "repair";
     budget: ReturnType<typeof resolveHarnessConfig>["budget"];
     costBudget?: ReturnType<typeof resolveHarnessConfig>["costBudget"];
     compaction: ReturnType<typeof resolveHarnessConfig>["compaction"];
@@ -2598,6 +2617,7 @@ export const createDoctorReport = async (
     | "userId"
     | "namespace"
     | "maxSteps"
+    | "agentProfile"
     | "timeoutMs"
     | "maxToolCalls"
     | "maxToolErrors"
@@ -2828,7 +2848,8 @@ export const createDoctorReport = async (
       stateDirectory: config.stateDirectory,
       storeBackend: config.storeBackend,
       scope: config.scope,
-      maxSteps: config.maxSteps,
+      agentProfile: config.agentProfile,
+  maxSteps: config.maxSteps,
       timeoutMs: config.timeoutMs,
       budget: config.budget,
       ...(config.costBudget ? { costBudget: config.costBudget } : {}),
@@ -2884,6 +2905,11 @@ const printRunsDocument = (document: unknown, json: boolean) => {
     const run = record.run as Record<string, unknown>;
     process.stdout.write(
       `${String(run.runId)} · ${String(run.status)} · ${String(run.provider)}/${String(run.model)} · ${String(run.steps)} steps · ${String(run.toolCalls)} tools\n`
+    );
+    const diagnostics = inspectRuntimeDiagnostics(record.runtimeDiagnostics);
+    if (diagnostics) process.stdout.write(
+      `repair: ${diagnostics.phase} · revision ${diagnostics.revision} · ${diagnostics.budget.inputTokens} input / ${diagnostics.budget.outputTokens} output tokens · ${diagnostics.budget.modelCalls} model calls` +
+      `${diagnostics.budget.usageComplete ? "" : " · usage incomplete"}${diagnostics.budget.stopReason ? ` · ${diagnostics.budget.stopReason}` : ""}\n`
     );
     return;
   }

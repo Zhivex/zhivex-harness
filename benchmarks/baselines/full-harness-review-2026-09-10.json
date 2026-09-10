@@ -1,0 +1,134 @@
+{
+  "networkCalls": 0,
+  "runtimeFilesChanged": false,
+  "collisions": [
+    {
+      "name": "read_task",
+      "accepted": true,
+      "metadata": {
+        "source": "mcp",
+        "originalName": "task",
+        "title": null,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "annotations": {
+          "readOnlyHint": true
+        },
+        "advancedRegistry": {
+          "permissions": [
+            "read"
+          ],
+          "audit": {
+            "riskLevel": "low"
+          }
+        },
+        "server": "fixture",
+        "untrustedContent": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "injected fixture result"
+          }
+        ]
+      }
+    },
+    {
+      "name": "repair_plan",
+      "accepted": true,
+      "metadata": {
+        "source": "mcp",
+        "originalName": "plan",
+        "title": null,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null,
+        "annotations": {
+          "readOnlyHint": true
+        },
+        "advancedRegistry": {
+          "permissions": [
+            "read"
+          ],
+          "audit": {
+            "riskLevel": "low"
+          }
+        },
+        "server": "fixture",
+        "untrustedContent": true
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "injected fixture result"
+          }
+        ]
+      }
+    },
+    {
+      "name": "read_file",
+      "accepted": false,
+      "error": "MCP tool read_file conflicts with a built-in workspace tool."
+    }
+  ],
+  "manualCompaction": {
+    "inputCharacters": 190271,
+    "outputCharacters": 192826,
+    "retainedFullRequests": 20
+  },
+  "sse": {
+    "accepted": false,
+    "error": "MCP server fixture returned a mismatched JSON-RPC id."
+  },
+  "kind": "full-harness-review",
+  "schemaVersion": 1,
+  "baseCommit": "0a7b69dddaa70a54b6b5b4097691c8112d4d76eb",
+  "scope": "Local working tree plus historical reports; not live certification",
+  "validation": {
+    "testsPassed": 485,
+    "testsFailed": 0,
+    "testFiles": 58,
+    "assertions": 2923,
+    "sourceTypecheck": "passed",
+    "probeTypecheck": "passed",
+    "docs": "passed",
+    "contracts": "passed-one-GA-blocker",
+    "migrations": "passed",
+    "deterministicEvaluations": "7/7",
+    "build": "passed",
+    "artifactCheck": "passed"
+  },
+  "extendedTypecheck": {
+    "diagnostics": 200,
+    "files": 37,
+    "byArea": {
+      "scripts": 114,
+      "tests": 86
+    }
+  },
+  "packaging": {
+    "auditProbeIncluded": true,
+    "probeSourceImportsIncluded": false,
+    "comparisonLinkedBaselineIncluded": false
+  },
+  "sourceSha256": {
+    "src/harness.ts": "e2be99d72763fe2be66072a70748eaa58ba783184bfb6bcadac9d769e361541a",
+    "src/model-budget.ts": "82cd70eed3927e951f8683a02b2936b9e02e15b7a999bca9a81097feacfc84e9",
+    "src/repair-progress.ts": "0fba72b12e6a59e950b3b1f52f89bb55cf2574be490633fc46620f5cfd98c363",
+    "src/mcp.ts": "5f3f7a35b89063264ae18ab9273b84e2e59ac8c8e611a6b64be377ba61cc1ac5",
+    "src/compaction.ts": "1214b92173f3fb44eb80839baae357ebc52c97e24f6b5647fb5c0e33dc1febed",
+    "src/orchestration.ts": "7383da1047363819e6560f51892fd4082e5337856a3d889cdc076f021273774e",
+    "src/task-memory.ts": "bf171cee4508fcca4793b5717e5e9ba48c77320182baa6faab867fe36b8da6df",
+    "src/workspace.ts": "0f472998a55672a326bfb32404a10073a90c9a34c24758471fede0345f582961",
+    "tsconfig.json": "e8aaf4cf79c1f522a5f0c266a05930abd582b94626db0bd487c50aac88121b06",
+    "package.json": "05c32a3c97231dbca903ab336ca9698c467c803a1890157ddec8df6a16c3cf87",
+    "evaluations/audits/full-review-2026-09-10.ts": "582a371ce21c8da947b389d66544088a3d918ad501ccfb7dd1eacc4a169e5b48"
+  }
+}

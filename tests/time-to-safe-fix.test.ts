@@ -392,7 +392,7 @@ describe("time-to-safe-fix benchmark", () => {
       });
       expect(diagnostics.failedCases.every((entry) => /^sha256:[a-f0-9]{64}$/.test(entry.caseFingerprint)))
         .toBe(true);
-      expect(diagnostics.failedCases.map((entry) => entry.failure)).toEqual([
+      expect<unknown>(diagnostics.failedCases.map((entry) => entry.failure)).toEqual([
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);

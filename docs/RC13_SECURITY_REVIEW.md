@@ -1,6 +1,6 @@
 # RC.13 security review dossier
 
-This dossier prepares the independent human review required by HAR-HU-03. It is not a completed security review and does not authorize GA. The machine-prepared [draft](../security-reviews/rc13-review-draft.json) deliberately fails the passing-review schema: reviewer, date, coverage decisions, and findings must be supplied or confirmed by the human reviewer. Copied control-map text is a review starting point, not evidence that the reviewer assessed it. An empty findings array in the draft does not mean zero findings.
+This dossier prepares the independent human review required by HAR-HU-03. It is not a completed security review and does not authorize GA. The machine-prepared `../security-reviews/rc13-review-draft.json` (source checkout) deliberately fails the passing-review schema: reviewer, date, coverage decisions, and findings must be supplied or confirmed by the human reviewer. Copied control-map text is a review starting point, not evidence that the reviewer assessed it. An empty findings array in the draft does not mean zero findings.
 
 ## Exact candidate
 

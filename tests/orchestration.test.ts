@@ -121,6 +121,10 @@ describe("bounded orchestration", () => {
       });
       const inspection = await inspectHarnessRun(store, harness.config, output.state.runId);
       expect(JSON.stringify(inspection.hierarchy)).toContain(output.state.childRuns![0]!.runId);
+      expect(inspection.effectiveRuntime).toMatchObject({ role: "primary", closureController: false });
+      const childInspection = await inspectHarnessRun(store, harness.config, output.state.childRuns![0]!.runId);
+      expect(childInspection.effectiveRuntime).toMatchObject({ role: "explorer", closureController: false });
+      expect(childInspection.effectiveRuntime?.tools).not.toContain("apply_reviewed_edits");
       await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });

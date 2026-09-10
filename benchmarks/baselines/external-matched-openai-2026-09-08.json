@@ -1,0 +1,1922 @@
+{
+  "schemaVersion": 1,
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "model": "gpt-5.6-luna",
+  "provider": "openai",
+  "reasoning": "low",
+  "transport": "openai-responses",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "versions": {
+    "mini-swe-agent": "2.4.6",
+    "swebench": "4.1.0"
+  },
+  "implementation": {
+    "gitCommit": "0a7b69dddaa70a54b6b5b4097691c8112d4d76eb",
+    "sources": {
+      "bun.lock": "d5436a51773d94333612c611a162a3e63765fec88d6bbde2a71879662b49b5cd",
+      "evaluations/external/requirements.lock": "42e90a08f10f821ebb958af79256f707a9fb5cf365277c4f9e2715d612028179",
+      "package.json": "ade3c3a4c0f8ee193c560637bf96f1fe2782f5bc06a42dcdbb320bd7a932a173",
+      "scripts/benchmark-swebench.ts": "ed17063e1847017ba2e72f14732b6ff8f5b1af7cd5253b91302af75f2a9e8476",
+      "scripts/swebench/common.py": "c19cfc30b85dc3ad8dbf1ba6a4165e72ce96f624eb1721b613cfa3207636f7be",
+      "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+      "scripts/swebench/model-budget.ts": "67b74d45d34235586773b7cf0db4d320306b14a6f432d53c084f80563ccdfa44",
+      "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+      "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+      "scripts/swebench/report.py": "70afcdf0d1f081014bb75d878f3ddf9195959e96b523ddf1e0ad5d3ec8273549",
+      "scripts/swebench/run.py": "b184258e7c32313c9c801b50d28d1a9419d0bd2b077a422012d8fc6bc449c916",
+      "scripts/swebench/telemetry.ts": "4c6c0d58641b91539d945f341b368a9c360b6ef89ff3abb9d2f33d3cb133c12e",
+      "scripts/swebench/test_contracts.py": "a8c1348f1dff2e563c139e6d3e83eb141b4f2a71f91a58e2c5c051ed2a431024",
+      "scripts/swebench/zhivex-driver.ts": "7f9b9903f7e80075c4b084b5009f9fc3f8915cb9276f821ab9cb883c196e0fcb",
+      "scripts/time-to-safe-fix-efficiency.ts": "dd20fd8839280332ae4ca80d6846e98e07ff15d79e200b206fa2ba6be2724d2f",
+      "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+      "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+      "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+      "src/cli-options.ts": "97781386289e3877c1318e4c94698ca7aaf2f256b89534dfcb21e966eb7d939f",
+      "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+      "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+      "src/cli.ts": "cce6f58dfbc543acdc029b188d4394cd059d940bdd361351fd877ae2d6e94880",
+      "src/compaction.ts": "0c4f95d2f49c5154c9b87b3f79feca18227e274a8aacd2445e387a857a37853f",
+      "src/config.ts": "c160faaf2d9fb637c5a08a7aff65d761a12c707ed23ebb87ab0e8519e9536bf3",
+      "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+      "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+      "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+      "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+      "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+      "src/execution-environment.ts": "8519e532dfafe4ae51bfbc81e0732267bc6aa9eec871ffde8c917aa001e358e5",
+      "src/file-security.ts": "4590b46c8e4b9d3891a75cd0d0ada14e0ae7b58e8e4bdf82f68df688a1fbb750",
+      "src/harness.ts": "00b45dfce74fd954d72e7aa5b53fe93e8983a63813f50201f4482ce3768de306",
+      "src/index.ts": "f791311f14dc27105191d97bb5454748d10beab827da9aba3ea949ffc32fce7c",
+      "src/json-contracts.ts": "0702e5b0ff16ff6304c74b4101bd31a3fa8eabdebe267d312b56d3871a7e302c",
+      "src/mcp.ts": "5f3f7a35b89063264ae18ab9273b84e2e59ac8c8e611a6b64be377ba61cc1ac5",
+      "src/operations.ts": "0775da79208c6f5d18476cc76404e84ddda610979d9d0e5dc15035aa6999613c",
+      "src/orchestration.ts": "7383da1047363819e6560f51892fd4082e5337856a3d889cdc076f021273774e",
+      "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+      "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+      "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+      "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+      "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+      "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+      "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+      "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+      "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+      "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+      "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+      "src/terminal-ui.ts": "e50025a8649d1f60efdf3af895b8639730ec2e86553fb80a61a776b11076c705",
+      "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+      "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+      "src/workspace.ts": "e9c2ed5c950d751d0f93a5512584d0698449b551d3270b3e115ccca380565222"
+    }
+  },
+  "host": {
+    "system": "Darwin",
+    "architecture": "arm64",
+    "python": "3.12.13",
+    "docker": "29.7.2"
+  },
+  "approvalPolicy": "Automated operator approves supported isolated Zhivex tools; successful approved verification and patch import is a terminal receipt. Human wait is zero. Not a human-UX comparison.",
+  "taskIds": [
+    "sympy__sympy-21930",
+    "scikit-learn__scikit-learn-10908",
+    "django__django-15554",
+    "scikit-learn__scikit-learn-14141",
+    "django__django-11265"
+  ],
+  "repetitions": 1,
+  "report": {
+    "schemaVersion": 1,
+    "kind": "swebench-comparison",
+    "manifestSha256": "fd7df6ab2a930020a3044aa7499fec70e2f2f9112e25dcaf8b337fc1bfbf4e25",
+    "complete": true,
+    "candidates": {
+      "zhivex": {
+        "planned": 5,
+        "recorded": 5,
+        "resolved": 1,
+        "resolutionRate": 0.2,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 50120.515374990646
+      },
+      "mini-swe-agent": {
+        "planned": 5,
+        "recorded": 5,
+        "resolved": 3,
+        "resolutionRate": 0.6,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 49544.07199996058
+      }
+    },
+    "pairedTaskResolutionDifference": -0.4,
+    "pairedTaskBootstrap95": [
+      -0.8,
+      0.0
+    ],
+    "evidenceBoundary": "Local matched-model comparison. Missing and failed runs remain in the denominator. Small-sample intervals are exploratory. No safety superiority is inferred from SWE-bench correctness."
+  },
+  "samples": [
+    {
+      "candidate": "zhivex",
+      "instanceId": "sympy__sympy-21930",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 57819.109291999994,
+      "approvals": 2,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 2118,
+          "outputTokens": 42,
+          "cachedInputTokens": 0,
+          "requestCharacters": 4987,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 9171
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 4639,
+          "outputTokens": 136,
+          "cachedInputTokens": 2115,
+          "requestCharacters": 12853,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "a87c40321e1fd293d142705e8a9217f9bec109ee1ea24e3db6656dc63d680733",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "search_many",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "a87c40321e1fd293d142705e8a9217f9bec109ee1ea24e3db6656dc63d680733",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 4911,
+          "outputTokens": 144,
+          "cachedInputTokens": 4636,
+          "requestCharacters": 2333,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 8359
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2075
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 8966,
+          "outputTokens": 60,
+          "cachedInputTokens": 4908,
+          "requestCharacters": 15289,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8392
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 5097,
+          "outputTokens": 139,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 14882,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1952
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1158
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 6414,
+          "outputTokens": 103,
+          "cachedInputTokens": 5094,
+          "requestCharacters": 7951,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6162
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "waiting_approval",
+          "inputTokens": 8622,
+          "outputTokens": 103,
+          "cachedInputTokens": 6411,
+          "requestCharacters": 7484,
+          "tools": []
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 8899,
+          "outputTokens": 575,
+          "cachedInputTokens": 8619,
+          "requestCharacters": 34983,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 516,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 2965,
+          "outputTokens": 62,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 15136,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 158
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 5576,
+          "outputTokens": 70,
+          "cachedInputTokens": 2962,
+          "requestCharacters": 8265,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6906
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 6321,
+          "outputTokens": 84,
+          "cachedInputTokens": 2962,
+          "requestCharacters": 29053,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1751
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "waiting_approval",
+          "inputTokens": 6283,
+          "outputTokens": 459,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 17815,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10358
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "completed",
+          "inputTokens": 8822,
+          "outputTokens": 600,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 31145,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 4745
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 3576,
+          "outputTokens": 70,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 20187,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 629,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "completed",
+          "inputTokens": 5190,
+          "outputTokens": 72,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 28769,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 1392
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "status": "completed",
+          "inputTokens": 5941,
+          "outputTokens": 39,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 34470,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4713
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "status": "waiting_approval",
+          "inputTokens": 6804,
+          "outputTokens": 576,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 37889,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1767
+            }
+          ]
+        }
+      ],
+      "inputTokens": 101144,
+      "outputTokens": 3334,
+      "cachedInputTokens": 52715,
+      "modelCalls": 17,
+      "compactions": [
+        {
+          "beforeStep": 5,
+          "estimatedTokensBefore": 11214,
+          "estimatedTokensAfter": 3721
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 11063,
+          "estimatedTokensAfter": 3784
+        },
+        {
+          "beforeStep": 12,
+          "estimatedTokensBefore": 10066,
+          "estimatedTokensAfter": 4371
+        },
+        {
+          "beforeStep": 14,
+          "estimatedTokensBefore": 11154,
+          "estimatedTokensAfter": 4964
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "6c7a82b0f4227d81c01585ae4248d76fae29580997f1dc26de456f88007e8d64",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": null,
+      "guardrails": [
+        {
+          "stage": "output",
+          "budgetLimit": "maxInputTokens"
+        }
+      ],
+      "toolCalls": 20,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.004417030140757561,
+      "totalDurationMs": 59490.325499966275
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "sympy__sympy-21930",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 27481.117416988127,
+      "approvals": 0,
+      "toolCalls": 8,
+      "inputTokens": 38824,
+      "outputTokens": 1324,
+      "cachedInputTokens": 32250,
+      "modelCalls": 8,
+      "patchSha256": "ca1e662809a4a64f31e79e420c92d3917640414e13da8f99b3d8dbfe1e255654",
+      "protectedFilesChanged": [],
+      "officialResolved": false,
+      "gradingDurationMs": 29068.920582998544,
+      "totalDurationMs": 57864.55337499501
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "scikit-learn__scikit-learn-10908",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 28751.316917012446,
+      "approvals": 0,
+      "toolCalls": 8,
+      "inputTokens": 44557,
+      "outputTokens": 1721,
+      "cachedInputTokens": 37060,
+      "modelCalls": 8,
+      "patchSha256": "e5f2d5a54427ce867ca72aa5fbbd62212057a967c3aea36883c58ff3bd1cd1f5",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 19235.442832985427,
+      "totalDurationMs": 49544.07199996058
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "scikit-learn__scikit-learn-10908",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "EXECUTION_FAILED",
+      "phase": "agent",
+      "durationMs": 36976.69708300001,
+      "approvals": 1,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 2441,
+          "outputTokens": 106,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 6379,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 8370
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1129
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 5182,
+          "outputTokens": 130,
+          "cachedInputTokens": 2438,
+          "requestCharacters": 14045,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7890
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 6464
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 9725,
+          "outputTokens": 83,
+          "cachedInputTokens": 5179,
+          "requestCharacters": 16290,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6776
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 4136,
+          "outputTokens": 83,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 16224,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 628
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 4438,
+          "outputTokens": 84,
+          "cachedInputTokens": 4133,
+          "requestCharacters": 4721,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7122
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 6403,
+          "outputTokens": 65,
+          "cachedInputTokens": 4435,
+          "requestCharacters": 8334,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 280
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 6577,
+          "outputTokens": 39,
+          "cachedInputTokens": 6400,
+          "requestCharacters": 4197,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 1740
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 7096,
+          "outputTokens": 136,
+          "cachedInputTokens": 6574,
+          "requestCharacters": 2614,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1493
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 2985,
+          "outputTokens": 156,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 12226,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8283
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1914
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 6113,
+          "outputTokens": 166,
+          "cachedInputTokens": 2982,
+          "requestCharacters": 12343,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7569
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 8347,
+          "outputTokens": 214,
+          "cachedInputTokens": 6110,
+          "requestCharacters": 13000,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4372
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 3765,
+          "outputTokens": 157,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 16444,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1466
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3993
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "completed",
+          "inputTokens": 5883,
+          "outputTokens": 107,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 26923,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7753
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "waiting_approval",
+          "inputTokens": 8194,
+          "outputTokens": 181,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 36075,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 1837,
+              "exitCode": 1,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "completed",
+          "inputTokens": 3009,
+          "outputTokens": 128,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 332,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 553
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3563
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "status": "completed",
+          "inputTokens": 4224,
+          "outputTokens": 61,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 22311,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4622
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "status": "completed",
+          "inputTokens": 5519,
+          "outputTokens": 55,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 27968,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2237
+            }
+          ]
+        },
+        {
+          "index": 18,
+          "status": "completed",
+          "inputTokens": 6170,
+          "outputTokens": 97,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 34025,
+          "tools": []
+        }
+      ],
+      "inputTokens": 100207,
+      "outputTokens": 2048,
+      "cachedInputTokens": 57011,
+      "modelCalls": 18,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 11895,
+          "estimatedTokensAfter": 4056
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 10638,
+          "estimatedTokensAfter": 3057
+        },
+        {
+          "beforeStep": 12,
+          "estimatedTokensBefore": 11888,
+          "estimatedTokensAfter": 4029
+        },
+        {
+          "beforeStep": 15,
+          "estimatedTokensBefore": 10770,
+          "estimatedTokensAfter": 3278
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "1601f70c872784f1534f6e77340fc7dcc69d544894cd5ed276085d829dfead99",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "1601f70c872784f1534f6e77340fc7dcc69d544894cd5ed276085d829dfead99",
+            "reason": "budget"
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "GuardrailTriggeredError",
+            "providerHints": [],
+            "fingerprint": "1601f70c872784f1534f6e77340fc7dcc69d544894cd5ed276085d829dfead99",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 22,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.006542017217725515,
+      "totalDurationMs": 38645.234249997884
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-15554",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 40658.824833000006,
+      "approvals": 3,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 2250,
+          "outputTokens": 42,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 5588,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 9769
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 4993,
+          "outputTokens": 100,
+          "cachedInputTokens": 2247,
+          "requestCharacters": 13451,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 7079
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 4049
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 8818,
+          "outputTokens": 78,
+          "cachedInputTokens": 4990,
+          "requestCharacters": 12903,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 16919
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 6532,
+          "outputTokens": 135,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 23312,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 6742
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1297
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 9400,
+          "outputTokens": 191,
+          "cachedInputTokens": 6529,
+          "requestCharacters": 12924,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 12132
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 6697
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4203
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 8419,
+          "outputTokens": 137,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 34411,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 4446
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 8776
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 6128,
+          "outputTokens": 87,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 23798,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 6792
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 8551,
+          "outputTokens": 152,
+          "cachedInputTokens": 6125,
+          "requestCharacters": 11131,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5196
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 3869,
+          "outputTokens": 133,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 16503,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2144
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 1471
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 5267,
+          "outputTokens": 120,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 25016,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2468
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "waiting_approval",
+          "inputTokens": 6138,
+          "outputTokens": 176,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 32143,
+          "tools": []
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 6537,
+          "outputTokens": 49,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 37617,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 482
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "waiting_approval",
+          "inputTokens": 2612,
+          "outputTokens": 57,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 10600,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 506
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 4376,
+          "outputTokens": 73,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 22207,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 7721,
+              "exitCode": 129,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "waiting_approval",
+          "inputTokens": 6715,
+          "outputTokens": 69,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 26103,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 15955
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "status": "completed",
+          "inputTokens": 8491,
+          "outputTokens": 37,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 37966,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 7722,
+              "exitCode": 129,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "status": "waiting_approval",
+          "inputTokens": 2674,
+          "outputTokens": 66,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 10632,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 506
+            }
+          ]
+        }
+      ],
+      "inputTokens": 101770,
+      "outputTokens": 1702,
+      "cachedInputTokens": 44279,
+      "modelCalls": 17,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 12507,
+          "estimatedTokensAfter": 5828
+        },
+        {
+          "beforeStep": 6,
+          "estimatedTokensBefore": 16248,
+          "estimatedTokensAfter": 8603
+        },
+        {
+          "beforeStep": 7,
+          "estimatedTokensBefore": 13110,
+          "estimatedTokensAfter": 5950
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 11338,
+          "estimatedTokensAfter": 4043
+        },
+        {
+          "beforeStep": 13,
+          "estimatedTokensBefore": 10444,
+          "estimatedTokensAfter": 2568
+        },
+        {
+          "beforeStep": 15,
+          "estimatedTokensBefore": 10442,
+          "estimatedTokensAfter": 6443
+        },
+        {
+          "beforeStep": 17,
+          "estimatedTokensBefore": 10479,
+          "estimatedTokensAfter": 2576
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "935aacd8aece83e1eb107b640975d286be450511ec553570d6f92dd58e530a8e",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": null,
+      "guardrails": [
+        {
+          "stage": "output",
+          "budgetLimit": "maxInputTokens"
+        }
+      ],
+      "toolCalls": 22,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.004957953933626413,
+      "totalDurationMs": 46169.12958305329
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-15554",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "LimitsExceeded",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 47066.43274996895,
+      "approvals": 0,
+      "toolCalls": 15,
+      "inputTokens": 104851,
+      "outputTokens": 2694,
+      "cachedInputTokens": 90795,
+      "modelCalls": 12,
+      "patchSha256": "58f62aee676376ea81a6be1e71db825ff6d11d6d020be888c685499beb6bdd47",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 21248.140792013146,
+      "totalDurationMs": 69625.50312501844
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 26261.815750040114,
+      "approvals": 0,
+      "toolCalls": 10,
+      "inputTokens": 48589,
+      "outputTokens": 1201,
+      "cachedInputTokens": 40735,
+      "modelCalls": 8,
+      "patchSha256": "b1ca3d45bf4e8d854c1921ac8f47ff519d0987ef33adc3c787e2a2c68bb2aba4",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 19471.646833000705,
+      "totalDurationMs": 47461.90262498567
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "scikit-learn__scikit-learn-14141",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "completed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 28447.768166,
+      "approvals": 3,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 1969,
+          "outputTokens": 112,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 4396,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 8308
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3581
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 5674,
+          "outputTokens": 146,
+          "cachedInputTokens": 1966,
+          "requestCharacters": 16497,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7000
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 4076
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "waiting_approval",
+          "inputTokens": 9581,
+          "outputTokens": 97,
+          "cachedInputTokens": 5671,
+          "requestCharacters": 15894,
+          "tools": []
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 2602,
+          "outputTokens": 114,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 11000,
+          "tools": [
+            {
+              "name": "run_environment_command",
+              "isError": false,
+              "characters": 1468,
+              "exitCode": 4,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "waiting_approval",
+          "inputTokens": 4956,
+          "outputTokens": 1233,
+          "cachedInputTokens": 2599,
+          "requestCharacters": 11144,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 7000
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 6546,
+          "outputTokens": 88,
+          "cachedInputTokens": 4953,
+          "requestCharacters": 35403,
+          "tools": [
+            {
+              "name": "apply_reviewed_edits",
+              "isError": false,
+              "characters": 809
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 2642,
+          "outputTokens": 125,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 10841,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 795
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 4336,
+          "outputTokens": 258,
+          "cachedInputTokens": 2639,
+          "requestCharacters": 9498,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4708
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": false,
+              "characters": 1923,
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        }
+      ],
+      "inputTokens": 38306,
+      "outputTokens": 2173,
+      "cachedInputTokens": 23456,
+      "modelCalls": 8,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 10682,
+          "estimatedTokensAfter": 2750
+        },
+        {
+          "beforeStep": 7,
+          "estimatedTokensBefore": 10173,
+          "estimatedTokensAfter": 2711
+        }
+      ],
+      "terminalDiagnostic": null,
+      "thrownDiagnostic": null,
+      "guardrails": [],
+      "toolCalls": 10,
+      "patchSha256": "8b36b9fa1e044e8b4e96818ea536ce5857b0c88300240a81b7d85dd3eebc45d8",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "gradingDurationMs": 19524.50391597813,
+      "totalDurationMs": 50120.515374990646
+    },
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "EXECUTION_FAILED",
+      "phase": "agent",
+      "durationMs": 40638.598416,
+      "approvals": 2,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "inputTokens": 3015,
+          "outputTokens": 104,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 8177,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 9866
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2437
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "inputTokens": 6660,
+          "outputTokens": 144,
+          "cachedInputTokens": 3012,
+          "requestCharacters": 16829,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "13895450eb1bb4ab910ce8b317c76876f9d77e744b6aae1a32cf6cac9b8ce0fc",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 3077
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "inputTokens": 7872,
+          "outputTokens": 93,
+          "cachedInputTokens": 6657,
+          "requestCharacters": 5302,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 11280
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "inputTokens": 5309,
+          "outputTokens": 130,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 20754,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 5832
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "inputTokens": 7242,
+          "outputTokens": 137,
+          "cachedInputTokens": 5306,
+          "requestCharacters": 10667,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 9775
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "inputTokens": 4955,
+          "outputTokens": 69,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 20081,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2261
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "inputTokens": 5740,
+          "outputTokens": 58,
+          "cachedInputTokens": 4952,
+          "requestCharacters": 6184,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5619
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "inputTokens": 7273,
+          "outputTokens": 290,
+          "cachedInputTokens": 5737,
+          "requestCharacters": 6637,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "13895450eb1bb4ab910ce8b317c76876f9d77e744b6aae1a32cf6cac9b8ce0fc",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "inputTokens": 2629,
+          "outputTokens": 41,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 13144,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 2285
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "inputTokens": 3414,
+          "outputTokens": 57,
+          "cachedInputTokens": 2626,
+          "requestCharacters": 6256,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": false,
+              "characters": 2261
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "inputTokens": 4187,
+          "outputTokens": 79,
+          "cachedInputTokens": 2626,
+          "requestCharacters": 22722,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10423
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "inputTokens": 6899,
+          "outputTokens": 70,
+          "cachedInputTokens": 2626,
+          "requestCharacters": 34316,
+          "tools": [
+            {
+              "name": "search_many",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "13895450eb1bb4ab910ce8b317c76876f9d77e744b6aae1a32cf6cac9b8ce0fc",
+                    "reason": "enoent"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "waiting_approval",
+          "inputTokens": 7034,
+          "outputTokens": 169,
+          "cachedInputTokens": 2626,
+          "requestCharacters": 38535,
+          "tools": []
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "inputTokens": 2723,
+          "outputTokens": 31,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 11436,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 473
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "waiting_approval",
+          "inputTokens": 2957,
+          "outputTokens": 139,
+          "cachedInputTokens": 1876,
+          "requestCharacters": 15623,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 501
+            }
+          ]
+        }
+      ],
+      "inputTokens": 77909,
+      "outputTokens": 1611,
+      "cachedInputTokens": 47424,
+      "modelCalls": 15,
+      "compactions": [
+        {
+          "beforeStep": 4,
+          "estimatedTokensBefore": 11417,
+          "estimatedTokensAfter": 5189
+        },
+        {
+          "beforeStep": 6,
+          "estimatedTokensBefore": 11465,
+          "estimatedTokensAfter": 5021
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 10086,
+          "estimatedTokensAfter": 3286
+        },
+        {
+          "beforeStep": 14,
+          "estimatedTokensBefore": 10877,
+          "estimatedTokensAfter": 2777
+        }
+      ],
+      "terminalDiagnostic": null,
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": true,
+        "chain": [
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+            "reason": null
+          },
+          {
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Error",
+            "providerHints": [],
+            "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+            "reason": null
+          }
+        ]
+      },
+      "guardrails": [],
+      "toolCalls": 17,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "gradingDurationMs": 0.009540992323309183,
+      "totalDurationMs": 46495.10850000661
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-11265",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 34745.771916990634,
+      "approvals": 0,
+      "toolCalls": 11,
+      "inputTokens": 72453,
+      "outputTokens": 1506,
+      "cachedInputTokens": 63536,
+      "modelCalls": 11,
+      "patchSha256": "aaae308219e306f0a8dd0bf39885c107892a3504374f9d93c902cffab3c0e912",
+      "protectedFilesChanged": [],
+      "officialResolved": false,
+      "gradingDurationMs": 25158.800750039518,
+      "totalDurationMs": 61418.21620799601
+    }
+  ],
+  "limitations": [
+    "Known development cohort, one repetition.",
+    "Model, reasoning and API transport remain bundled across providers.",
+    "Both matrices executed concurrently on the same host; latency is not a controlled comparison.",
+    "Native requires verification; external keeps upstream submission.",
+    "No price rates supplied."
+  ]
+}
