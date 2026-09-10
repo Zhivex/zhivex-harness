@@ -82,7 +82,7 @@ describe("package manager resolution", () => {
           "node --test",
           ["test"]
         );
-        expect(resolved.command).toEqual(expected);
+        expect<readonly string[]>(resolved.command).toEqual(expected);
       }
 
       await expect(resolvePackageCheckCommand(

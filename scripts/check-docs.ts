@@ -8,6 +8,7 @@ import { parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
 const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
   version: string;
+  description?: string;
   private?: boolean;
   publishConfig?: unknown;
   files?: string[];
@@ -20,6 +21,16 @@ const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"),
   packageManager?: string;
 };
 
+const collectMarkdown = async (directory: string): Promise<string[]> => {
+  const files: string[] = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await collectMarkdown(target));
+    else if (entry.isFile() && entry.name.endsWith(".md")) files.push(target);
+  }
+  return files;
+};
+
 const markdownFiles = [
   path.join(workspace, "README.md"),
   path.join(workspace, "ROADMAP.md"),
@@ -29,9 +40,7 @@ const markdownFiles = [
   path.join(workspace, "SUPPORT.md"),
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
-  ...(await readdir(path.join(workspace, "docs"), { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-    .map((entry) => path.join(workspace, "docs", entry.name))
+  ...await collectMarkdown(path.join(workspace, "docs"))
 ].sort();
 
 const failures: string[] = [];
@@ -97,6 +106,9 @@ for (const candidate of gaReadiness.releaseCandidates ?? []) {
   if (!new RegExp(`${escapedLabel}[^\\n]*published to npm \`next\``).test(roadmap)) {
     failures.push(`ROADMAP.md must identify passed ${candidate.version} as published to npm next.`);
   }
+  if (roadmap.includes(`${rcLabel} remains pending`) || roadmap.includes(`${rcLabel} is the distinct pending candidate`)) {
+    failures.push(`ROADMAP.md still describes passed candidate ${candidate.version} as pending.`);
+  }
   if (roadmap.includes(`Complete ${rcLabel} `)) {
     failures.push(`ROADMAP.md still instructs maintainers to complete passed candidate ${candidate.version}.`);
   }
@@ -106,12 +118,12 @@ const providerConfig = `${await readFile(path.join(workspace, "src", "config.ts"
 }`;
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
-  "@zhivex-ai/agents": "1.3.0",
-  "@zhivex-ai/core": "1.11.0",
+  "@zhivex-ai/agents": "1.4.0",
+  "@zhivex-ai/core": "1.14.0",
   "@zhivex-ai/gemini": "0.11.0",
   "@zhivex-ai/meta": "0.2.2",
-  "@zhivex-ai/openai": "0.10.0",
-  "@zhivex-ai/qwen": "0.11.1"
+  "@zhivex-ai/openai": "0.11.2",
+  "@zhivex-ai/qwen": "0.11.4"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {
@@ -737,7 +749,7 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
     timeToSafeFixBaseline.schemaVersion !== 1 ||
     timeToSafeFixBaseline.kind !== "time-to-safe-fix-baseline" ||
     timeToSafeFixBaseline.profiles?.length !== 3 ||
-    !timeToSafeFixBaseline.profiles?.every((profile: { efficiency?: unknown }) => profile.efficiency) ||
+    !timeToSafeFixBaseline.profiles?.every((profile) => !!profile && typeof profile === "object" && "efficiency" in profile && !!profile.efficiency) ||
     !timeToSafeFixBaseline.evidenceBoundary?.length ||
     ["host", "command", "worktree", "samples", "reportPath"].some((key) =>
       serializedBaseline.includes(`\"${key}\":`)
@@ -751,7 +763,7 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
     expandedTimeToSafeFixBaseline.dataset?.tasks !== 12 ||
     expandedTimeToSafeFixBaseline.matrix?.completedRuns !== 216 ||
     expandedTimeToSafeFixBaseline.profiles?.length !== 3 ||
-    !expandedTimeToSafeFixBaseline.profiles?.every((profile: { efficiency?: unknown }) => profile.efficiency) ||
+    !expandedTimeToSafeFixBaseline.profiles?.every((profile) => !!profile && typeof profile === "object" && "efficiency" in profile && !!profile.efficiency) ||
     !expandedTimeToSafeFixBaseline.evidenceBoundary?.length ||
     ["host", "command", "worktree", "samples", "reportPath"].some((key) =>
       serializedExpandedBaseline.includes(`\"${key}\":`)

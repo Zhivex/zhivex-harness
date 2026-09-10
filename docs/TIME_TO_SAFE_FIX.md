@@ -12,7 +12,7 @@ The bundled two-task smoke executes clean and `rule_file`-attacked variants acro
 
 ## Reproducible OCI image
 
-The external benchmark image uses [a benchmark-specific Dockerfile](../docker/time-to-safe-fix.Dockerfile) with Node 24 Bookworm Slim fixed by manifest digest, a dated Debian snapshot, Python 3.11, and pytest plus all transitive Python dependencies fixed by version and wheel hash. Validate the locked inputs without Docker or network access:
+The external benchmark image uses `../docker/time-to-safe-fix.Dockerfile` (source checkout) with Node 24 Bookworm Slim fixed by manifest digest, a dated Debian snapshot, Python 3.11, and pytest plus all transitive Python dependencies fixed by version and wheel hash. Validate the locked inputs without Docker or network access:
 
 ```bash
 bun run benchmark:safe-fix:image:check
@@ -117,7 +117,7 @@ Add `--summary` for compact CI output. A simultaneous `--out` still writes the c
 
 ## Result retention
 
-Complete reports and metadata sidecars belong under [`results`](../results/) and are ignored by Git because they may contain raw redacted samples, host details, worktree paths, and the exact invocation command. Keep them locally or in access-controlled CI artifacts.
+Complete reports and metadata sidecars belong under `../results/` (source checkout) and are ignored by Git because they may contain raw redacted samples, host details, worktree paths, and the exact invocation command. Keep them locally or in access-controlled CI artifacts.
 
 To commit comparable evidence, verify the report-sidecar digest binding and generate a compact snapshot:
 

@@ -221,3 +221,22 @@ Resolved library configuration includes `schemaVersion: 5`, an explicit `allowed
 Personal CLI profile schema `1` is separate from resolved Harness configuration schema `5`. Selecting a profile only supplies provider/model input before normal resolution; it does not change persisted run schemas, execution fingerprints, project-context discovery, or migration guarantees.
 
 The default state directory is `<workspace>/.zhivex-harness/runs` and the default backend is scoped SQLite at `operations.sqlite`. Explicit external state directories are supported, but the workspace root, filesystem root, sensitive workspace paths, regular files, and symbolic-link targets are rejected before the run store is created. See [DURABLE_OPERATIONS.md](./DURABLE_OPERATIONS.md) for state migration and operations, and [EXTENSIBILITY.md](./EXTENSIBILITY.md) for capability, MCP, subagent, and review-group configuration.
+
+### Runtime repair policy
+
+`--agent-profile <strict|repair>` selects the runtime policy (default `strict`;
+`ZHIVEX_HARNESS_AGENT_PROFILE` provides the environment default). `repair` enables
+bounded schema/tool recovery, cumulative model accounting, exploration controls,
+and up to two retries of recoverable approved verifier failures. A successful
+approved verification/import can finish from its durable receipt. It does not
+auto-approve tools, bypass checks, or recover cancellations/integrity violations.
+The selected profile is persisted in resume configuration and the harness binding.
+
+```sh
+bun run src/cli.ts run "Fix the regression and verify it" --agent-profile repair --execution oci
+```
+
+Library callers select `agentProfile: "repair"` in `createHarness` and can observe
+bounded timings/accounting with `runHarness(..., { onDiagnostics })`. Telemetry
+observer exceptions do not alter the execution result. A stricter caller can
+explicitly override tool-error behavior or terminal receipt settings.

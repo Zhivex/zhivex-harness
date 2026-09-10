@@ -76,7 +76,7 @@ describe("representative evidence assembler", () => {
     const evidence = assembleRepresentativeEvidence("v1.0.0-rc.1", matrix(), rows());
 
     expect(evidence.expectedCases).toEqual(expectedCases);
-    expect(evidence.expectedModels).toEqual([matrix().expectedModels[0]]);
+    expect(evidence.expectedModels).toEqual([matrix().expectedModels[0]!]);
     expect(evidence.results.map((entry) => entry.provider)).toEqual([...REPRESENTATIVE_EVIDENCE_PROVIDERS]);
     expect(JSON.stringify(evidence)).not.toContain("prompt");
   });
@@ -86,7 +86,7 @@ describe("representative evidence assembler", () => {
     const evidence = assembleRepresentativeEvidence("v1.0.0", matrix(), stableRows);
 
     expect(evidence.releaseTags).toEqual(["v1.0.0"]);
-    expect(evidence.expectedModels).toEqual([matrix().expectedModels[2]]);
+    expect(evidence.expectedModels).toEqual([matrix().expectedModels[2]!]);
   });
 
   test("rejects missing and extra provider rows before assembly", () => {

@@ -385,6 +385,7 @@ export type {
 export type {
   CreateHarnessOptions,
   HarnessRunOptions,
+  HarnessRunDiagnostics,
   ZhivexHarness
 } from "./harness.js";
 

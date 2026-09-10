@@ -1,3 +1,4 @@
+import { boundedBatches } from "./bounded-reads.js";
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { constants as fsConstants, type Stats } from "node:fs";
@@ -60,6 +61,8 @@ const EXECUTION_ARTIFACT_DIRECTORY_PATTERN = /^[a-f0-9]{24}$/;
 const STAGED_EXECUTION_ARTIFACT_DIRECTORY_PATTERN =
   /^\.cleanup-([a-f0-9]{24})-[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
 const BUILT_IN_TOOL_NAMES = new Set([
+  "read_task",
+  "repair_plan",
   "list_files",
   "read_file",
   "read_files",
@@ -69,6 +72,7 @@ const BUILT_IN_TOOL_NAMES = new Set([
   "propose_edits",
   "apply_patch",
   "apply_reviewed_edits",
+  "apply_reviewed_replacement",
   "move_file",
   "quarantine_file",
   "restore_file",
@@ -1142,32 +1146,33 @@ const COPY_ON_WRITE_UNSUPPORTED_CODES = new Set(["EINVAL", "ENOSYS", "ENOTSUP", 
 
 const collectSnapshotInventory = async (
   workspace: Workspace,
+  maxWorkspaceBytes: number,
   metrics?: HarnessExecutionIoMetrics
 ): Promise<Map<string, SnapshotFileMetadata>> => {
   const files = new Map<string, SnapshotFileMetadata>();
   if (metrics) metrics.inventoryPasses += 1;
+  let totalBytes = 0;
   let cursor: string | undefined;
   do {
     const page = await workspace.listFiles(".", {
       limit: SNAPSHOT_INVENTORY_PAGE_SIZE,
+      includeDigests: false,
       ...(cursor ? { cursor } : {})
     });
     if (metrics) metrics.inventoryPages += 1;
     for (const file of page.files) {
       const absolute = path.join(workspace.root, ...file.path.split("/"));
       if (!isInside(workspace.root, absolute)) throw new Error(`Snapshot file escaped its workspace: ${file.path}.`);
-      const entry = await lstat(absolute);
-      if (entry.isSymbolicLink() || !entry.isFile()) {
-        throw new Error(`Snapshot source is not a regular file: ${file.path}.`);
-      }
-      if (entry.size !== file.size) {
-        throw new Error(`Snapshot source changed while inventorying: ${file.path}.`);
-      }
+      if (await realpath(absolute) !== absolute) throw new Error("Snapshot inventory path traverses a symbolic link.");
+      const stable = await readRegularFileNoFollow(absolute, {
+        label: "Snapshot inventory file", maxBytes: Math.max(0, maxWorkspaceBytes - totalBytes)
+      });
+      totalBytes += stable.contents.byteLength;
       files.set(file.path, {
         path: file.path,
-        digest: file.digest,
-        mode: entry.mode & 0o777,
-        bytes: file.size
+        digest: digest(stable.contents),
+        mode: stable.stat.mode & 0o777,
+        bytes: stable.contents.byteLength
       });
     }
     cursor = page.nextCursor;
@@ -1186,6 +1191,7 @@ const readSnapshotFile = async (
   if (!isInside(workspace.root, absolute)) {
     throw new Error(`Snapshot file escaped its workspace: ${expected.path}.`);
   }
+  if (await realpath(absolute) !== absolute) throw new Error("Snapshot source path traverses a symbolic link.");
   const file = await readRegularFileNoFollow(absolute, {
     label: `Snapshot source ${expected.path}`,
     maxBytes: expected.bytes
@@ -1229,7 +1235,7 @@ const copyWorkspaceSnapshot = async (
   maxWorkspaceBytes: number,
   metrics?: HarnessExecutionIoMetrics
 ) => {
-  const files = await collectSnapshotInventory(source, metrics);
+  const files = await collectSnapshotInventory(source, maxWorkspaceBytes, metrics);
   const totalBytes = [...files.values()].reduce((total, file) => total + file.bytes, 0);
   if (totalBytes > maxWorkspaceBytes) {
     throw new Error(`Workspace snapshot exceeds the ${maxWorkspaceBytes}-byte OCI limit.`);
@@ -1238,7 +1244,7 @@ const copyWorkspaceSnapshot = async (
     await rm(root, { recursive: true, force: true });
     await privateDirectory(root);
   }
-  for (const expected of files.values()) {
+  for await (const _batch of boundedBatches([...files.values()], async (expected) => {
     const file = await readSnapshotFile(source, expected, metrics);
     const baseTarget = path.join(baseRoot, ...file.path.split("/"));
     const snapshotTarget = path.join(snapshotRoot, ...file.path.split("/"));
@@ -1252,7 +1258,7 @@ const copyWorkspaceSnapshot = async (
     // makes the mutable workspace's starting copy COW when the filesystem allows it.
     await copySnapshotFile(baseTarget, snapshotTarget, metrics);
     await chmod(snapshotTarget, file.mode);
-  }
+  }, 4)) { /* Each batch is drained before publication or cleanup. */ }
   if (metrics) {
     metrics.snapshotFiles += files.size;
     metrics.snapshotBytes += totalBytes;
@@ -1324,11 +1330,12 @@ const createEnvironmentPatch = async (
   base: Workspace,
   current: Workspace,
   maxFileWriteBytes: number,
+  maxWorkspaceBytes: number,
   metrics?: HarnessExecutionIoMetrics
 ) => {
   const [before, after] = await Promise.all([
-    collectSnapshotInventory(base, metrics),
-    collectSnapshotInventory(current, metrics)
+    collectSnapshotInventory(base, maxWorkspaceBytes, metrics),
+    collectSnapshotInventory(current, maxWorkspaceBytes, metrics)
   ]);
   const paths = [...new Set([...before.keys(), ...after.keys()])].sort();
   const entries: EnvironmentPatchEntry[] = [];
@@ -1396,9 +1403,12 @@ const importPatch = async (
   base: Workspace,
   current: Workspace,
   maxFileWriteBytes: number,
-  metrics?: HarnessExecutionIoMetrics
+  maxWorkspaceBytes: number,
+  metrics?: HarnessExecutionIoMetrics,
+  assertActive?: () => Promise<void>
 ): Promise<EnvironmentPatchImportResult> => {
-  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, metrics);
+  await assertActive?.();
+  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, maxWorkspaceBytes, metrics);
   if (patch.patchId !== expectedPatchId) {
     throw new Error("Environment patch changed after review; inspect it again before import.");
   }
@@ -1420,16 +1430,17 @@ const importPatch = async (
       ...(entry.beforeMode !== undefined ? { beforeMode: entry.beforeMode } : {}),
       afterMode: entry.afterMode!
     }]));
-    const result = await host.applyPatchWithModes({ proposalId: proposal.proposalId, changes }, modes);
+    const result = await host.applyPatchWithModes({ proposalId: proposal.proposalId, changes }, modes, assertActive);
     audits.push(...result.changes);
   }
   const quarantined: Array<{ quarantineId: string; path: string; digest: FileDigest }> = [];
   try {
     for (const entry of deletes) {
-      const result = await host.quarantineFile({ path: entry.path, expectedDigest: entry.beforeDigest! });
+      const result = await host.quarantineFile({ path: entry.path, expectedDigest: entry.beforeDigest! }, assertActive);
       quarantined.push(result);
       audits.push(result.audit);
     }
+    await assertActive?.();
   } catch (error) {
     const rollbackErrors: unknown[] = [];
     for (const item of [...quarantined].reverse()) {
@@ -1515,7 +1526,7 @@ export interface HarnessExecutionSession extends AgentExecutionEnvironmentSessio
   runShell(script: string, context?: ToolExecutionContext): Promise<HarnessCommandResult>;
   runCheck(check: string, expectedScript: string, allowedChecks: readonly string[], context?: ToolExecutionContext): Promise<HarnessCommandResult>;
   inspectPatch(): Promise<EnvironmentPatchInspection>;
-  importPatch(host: Workspace, patchId: FileDigest): Promise<EnvironmentPatchImportResult>;
+  importPatch(host: Workspace, patchId: FileDigest, assertActive?: () => Promise<void>): Promise<EnvironmentPatchImportResult>;
 }
 
 export const harnessExecutionSession = (
@@ -1526,6 +1537,7 @@ export const harnessExecutionSession = (
 };
 
 export interface HarnessOciExecutionEnvironment extends AgentExecutionEnvironment {
+  acquire(request: AgentExecutionEnvironmentAcquireRequest): Promise<HarnessExecutionSession>;
   readonly image: OciImageInspection;
   readonly runtime: HarnessOciRuntimeAdapter;
 }
@@ -1664,7 +1676,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
       delete metadata.releasedAt;
       delete metadata.status;
       await atomicJson(metadataPath, metadata);
-      const workspace = await Workspace.open(snapshotRoot);
+      const workspace = await Workspace.open(snapshotRoot, { auditPath: path.join(directory, "mutation-audit.json") });
       const base = await Workspace.open(baseRoot);
       const dependencyPath = path.join(options.workspace.root, "node_modules");
       let dependencyRoot: string | undefined;
@@ -1869,6 +1881,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             base,
             workspace,
             options.config.maxFileWriteBytes,
+            options.config.maxWorkspaceBytes,
             ioMetrics
           );
           return {
@@ -1920,6 +1933,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             base,
             workspace,
             options.config.maxFileWriteBytes,
+            options.config.maxWorkspaceBytes,
             ioMetrics
           );
           const payload = patchPayload(request.runId, patch.entries);
@@ -1929,7 +1943,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             totalBytes: patch.totalBytes
           };
         },
-        importPatch(host, patchId) {
+        importPatch(host, patchId, assertActive) {
           return importPatch(
             request.runId,
             patchId,
@@ -1937,7 +1951,9 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             base,
             workspace,
             options.config.maxFileWriteBytes,
-            ioMetrics
+            options.config.maxWorkspaceBytes,
+            ioMetrics,
+            assertActive
           );
         },
         async release(result) {
@@ -1962,7 +1978,7 @@ const executionBoundaryError = (error: unknown, message: string): never => {
   });
 };
 
-const typedExecutionSession = (session: AgentExecutionEnvironmentSession) => new Proxy(session, {
+const typedExecutionSession = (session: HarnessExecutionSession) => new Proxy(session, {
   get(target, property, receiver) {
     const value = Reflect.get(target, property, receiver);
     if (typeof value !== "function") return value;
@@ -1974,7 +1990,7 @@ const typedExecutionSession = (session: AgentExecutionEnvironmentSession) => new
       }
     };
   }
-}) as AgentExecutionEnvironmentSession;
+}) as HarnessExecutionSession;
 
 export const createHarnessOciExecutionEnvironment = async (
   options: CreateHarnessOciEnvironmentOptions

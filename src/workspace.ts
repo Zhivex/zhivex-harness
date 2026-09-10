@@ -1,9 +1,12 @@
+import { replacementEditSchema, type ReplacementEdit } from "./replacement-edits.js";
+import { boundedBatches } from "./bounded-reads.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { Stats } from "node:fs";
 import { link, lstat, mkdir, open, readdir, realpath, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  mutationAuditEntrySchema,
   createEditProposal,
   moveFileInputSchema,
   quarantineFileInputSchema,
@@ -23,7 +26,7 @@ import {
 import {
   readRegularFileNoFollow,
   statRegularFileNoFollow,
-  UnsafeFileTypeError
+  UnsafeFileTypeError, FileSizeLimitError
 } from "./file-security.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { runPortableProcess } from "./process-runtime.js";
@@ -38,6 +41,13 @@ const MAX_READ_BATCH_FILES = 20;
 const MAX_READ_BATCH_BYTES = 2 * MAX_FILE_BYTES;
 const MAX_SEARCH_MANY_QUERIES = 10;
 const MAX_SEARCH_MANY_MATCHES = 500;
+const MAX_SEARCH_CHARACTERS = 28_000;
+const searchCoverage = () => ({ inspectedFiles: 0, skippedFiles: 0, incomplete: false,
+  skippedReasons: { tooLarge: 0, unsafe: 0, unreadable: 0 } });
+const skipSearchFile = (coverage: ReturnType<typeof searchCoverage>, error: unknown) => {
+  coverage.skippedFiles++; coverage.incomplete = true;
+  coverage.skippedReasons[error instanceof FileSizeLimitError ? "tooLarge" : error instanceof UnsafeFileTypeError ? "unsafe" : "unreadable"]++;
+};
 const MAX_GIT_DISCOVERY_OUTPUT = 1_000_000;
 const MAX_GIT_DIFF_PATHS = 2_048;
 const MAX_GIT_DIFF_ARGV_CHARACTERS = 128_000;
@@ -444,17 +454,26 @@ export class Workspace {
   private indexBuild: { revision: number; promise: Promise<WorkspaceIndex> } | undefined;
   private readonly indexMetrics = { builds: 0, reuses: 0, stableFileReads: 0 };
 
-  private constructor(root: string) {
+  private constructor(root: string, private readonly auditPath?: string) {
     this.root = root;
   }
 
-  static async open(root: string): Promise<Workspace> {
+  static async open(root: string, options: { auditPath?: string } = {}): Promise<Workspace> {
     try {
       const resolved = await realpath(path.resolve(root));
       if (!(await stat(resolved)).isDirectory()) {
         throw new HarnessWorkspaceError(`The workspace is not a directory: ${root}`);
       }
-      return new Workspace(resolved);
+      const workspace = new Workspace(resolved, options.auditPath);
+      if (options.auditPath) {
+        try {
+          const data = await readRegularFileNoFollow(options.auditPath, { label: "Mutation audit", maxBytes: 8 * 1024 * 1024 });
+          const entries: unknown = JSON.parse(data.contents.toString("utf8"));
+          if (!Array.isArray(entries) || entries.length > 10000) throw new Error("Invalid mutation audit.");
+          workspace.auditEntries.push(...entries.map(entry => mutationAuditEntrySchema.parse(entry)));
+        } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+      }
+      return workspace;
     } catch (error) {
       if (error instanceof HarnessWorkspaceError) throw error;
       throw new HarnessWorkspaceError(`The workspace could not be opened safely: ${root}`, { cause: error });
@@ -600,26 +619,23 @@ export class Workspace {
 
   private async isWorkspaceIndexFresh(index: WorkspaceIndex) {
     try {
-      for (const fingerprint of index.directories) {
+      for await (const batch of boundedBatches(index.directories, async (fingerprint) => {
         const absolute = fingerprint.path === "." ? this.root : path.join(this.root, fingerprint.path);
         const entry = await lstat(absolute);
-        if (entry.isSymbolicLink() || !entry.isDirectory() || !this.sameFingerprint(entry, fingerprint)) return false;
-      }
-      for (const fingerprint of index.ignoreFiles) {
+        return !entry.isSymbolicLink() && entry.isDirectory() && this.sameFingerprint(entry, fingerprint);
+      })) if (batch.some((fresh) => !fresh)) return false;
+      for await (const batch of boundedBatches(index.ignoreFiles, async (fingerprint) => {
         const absolute = path.join(this.root, fingerprint.path);
         if (fingerprint.digest) {
           const file = await readRegularFileNoFollow(absolute, {
             label: "The ignore file",
             maxBytes: MAX_FILE_BYTES
           });
-          if (!this.sameFingerprint(file.stat, fingerprint) || digestBytes(file.contents) !== fingerprint.digest) {
-            return false;
-          }
-        } else {
-          const inspected = await statRegularFileNoFollow(absolute, { label: "The ignore file" });
-          if (!this.sameFingerprint(inspected, fingerprint)) return false;
+          return this.sameFingerprint(file.stat, fingerprint) && digestBytes(file.contents) === fingerprint.digest;
         }
-      }
+        const inspected = await statRegularFileNoFollow(absolute, { label: "The ignore file" });
+        return this.sameFingerprint(inspected, fingerprint);
+      })) if (batch.some((fresh) => !fresh)) return false;
       return true;
     } catch {
       return false;
@@ -743,10 +759,10 @@ export class Workspace {
     if (truncated) selected.pop();
     const files: Array<WorkspaceFile | WorkspaceTopologyFile> = [];
     if (includeDigests) {
-      for (const candidate of selected) {
+      for await (const batch of boundedBatches(selected, async (candidate) => {
         const file = await this.readStableFile(candidate.path);
-        files.push({ path: file.path, size: file.contents.byteLength, digest: file.digest });
-      }
+        return { path: file.path, size: file.contents.byteLength, digest: file.digest };
+      })) files.push(...batch);
     } else {
       files.push(...selected.map(({ path: candidatePath }) => ({ path: candidatePath })));
     }
@@ -768,21 +784,34 @@ export class Workspace {
     };
   }
 
-  private renderReadFile(file: StableFile, startLine = 1, endLine?: number) {
+  private renderReadFile(file: StableFile, startLine = 1, endLine?: number, maxCharacters = 16_000) {
     if (!Number.isSafeInteger(startLine) || startLine < 1) throw new HarnessWorkspaceError("startLine must be a positive integer.");
     if (endLine !== undefined && (!Number.isSafeInteger(endLine) || endLine < startLine)) {
       throw new HarnessWorkspaceError("endLine must be greater than or equal to startLine.");
     }
     const lines = file.contents.toString("utf8").split(/\r?\n/);
-    const boundedEnd = Math.min(endLine ?? startLine + 399, startLine + 1999, lines.length);
+    const boundedEnd = Math.min(endLine ?? startLine + 119, startLine + 1999, lines.length);
+    const rendered: string[] = [];
+    let characters = 0;
+    let clippedLine = false;
+    for (let index = startLine - 1; index < boundedEnd; index++) {
+      const line = `${index + 1}: ${lines[index]}`;
+      const remaining = maxCharacters - characters - (rendered.length ? 1 : 0);
+      if (line.length > remaining && rendered.length) break;
+      rendered.push(line.slice(0, remaining));
+      characters += Math.min(line.length, remaining) + (rendered.length > 1 ? 1 : 0);
+      if (line.length > remaining) { clippedLine = true; break; }
+    }
+    const returnedEnd = rendered.length ? startLine + rendered.length - 1 : boundedEnd;
     return {
       path: file.path,
       digest: file.digest,
       startLine,
-      endLine: boundedEnd,
+      endLine: returnedEnd,
       totalLines: lines.length,
-      content: lines.slice(startLine - 1, boundedEnd).map((line, index) => `${startLine + index}: ${line}`).join("\n"),
-      truncated: boundedEnd < lines.length
+      content: rendered.join("\n"),
+      clippedLine,
+      truncated: clippedLine || returnedEnd < lines.length
     };
   }
 
@@ -800,26 +829,31 @@ export class Workspace {
     })).sort((a, b) =>
       (a.path < b.path ? -1 : a.path > b.path ? 1 : 0) ||
       (a.startLine ?? 1) - (b.startLine ?? 1) || (a.endLine ?? 0) - (b.endLine ?? 0));
-    const stableFiles = new Map<string, StableFile>();
-    let totalBytes = 0;
+    // Validate the complete request before starting I/O. Deduplicate before batching.
     for (const request of ordered) {
       if (!Number.isSafeInteger(request.startLine ?? 1) || (request.startLine ?? 1) < 1 ||
         (request.endLine !== undefined && (!Number.isSafeInteger(request.endLine) || request.endLine < (request.startLine ?? 1)))) {
         throw new HarnessWorkspaceError(`Invalid line range for ${request.path}.`);
       }
-      if (stableFiles.has(request.path)) continue;
-      const file = await this.readStableFile(request.path, false);
-      totalBytes += file.contents.byteLength;
-      if (totalBytes > MAX_READ_BATCH_BYTES) {
-        throw new HarnessWorkspaceError(`readFiles exceeds the aggregate ${MAX_READ_BATCH_BYTES}-byte source limit.`);
+    }
+    const stableFiles = new Map<string, StableFile>();
+    let totalBytes = 0;
+    for await (const batch of boundedBatches([...new Set(ordered.map((request) => request.path))],
+      (filePath) => this.readStableFile(filePath, false), 4)) {
+      for (const file of batch) {
+        totalBytes += file.contents.byteLength;
+        if (totalBytes > MAX_READ_BATCH_BYTES) {
+          throw new HarnessWorkspaceError(`readFiles exceeds the aggregate ${MAX_READ_BATCH_BYTES}-byte source limit.`);
+        }
+        stableFiles.set(file.path, file);
       }
-      stableFiles.set(request.path, file);
     }
     return {
       files: ordered.map((request) => this.renderReadFile(
         stableFiles.get(request.path) as StableFile,
         request.startLine ?? 1,
-        request.endLine
+        request.endLine,
+        Math.min(16_000, Math.floor(32_000 / ordered.length))
       )),
       sourceBytes: totalBytes
     };
@@ -838,7 +872,7 @@ export class Workspace {
   async searchFiles(query: string, relativePath = ".", options: SearchFilesOptions = {}) {
     if (!query || query.length > 200) throw new HarnessWorkspaceError("The search query must be between 1 and 200 characters.");
     const start = await this.safePath(relativePath);
-    if (!(await lstat(start.path)).isDirectory()) throw new HarnessWorkspaceError("search_files requires a directory.");
+    const isDirectory = (await lstat(start.path)).isDirectory();
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const limit = options.limit ?? options.maxMatches ?? 100;
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new HarnessWorkspaceError("limit must be between 1 and 500.");
@@ -857,7 +891,8 @@ export class Workspace {
       afterLine = parsed.afterLine as number;
       cursorIndexVersion = parsed.indexVersion;
     }
-    const index = await this.getWorkspaceIndex();
+    const directFile = isDirectory ? undefined : await this.readStableFile(relativePath, false);
+    const index = isDirectory ? await this.getWorkspaceIndex() : { version: directFile!.digest, files: [{ path: requestPath }] };
     if (cursorIndexVersion && cursorIndexVersion !== index.version) {
       throw new HarnessWorkspaceError("The pagination cursor is stale because the workspace changed.");
     }
@@ -865,37 +900,47 @@ export class Workspace {
     const needle = caseSensitive ? query : query.toLocaleLowerCase();
     const matches: SearchMatch[] = [];
     let hasMore = false;
-    let candidateIndex = afterPath
+    let characters = 0;
+    const coverage = searchCoverage();
+    const candidateIndex = afterPath
       ? firstPathAtLeast(index.files, afterPath)
       : requestPath === "."
         ? 0
         : firstPathAtLeast(index.files, prefix);
-    for (; candidateIndex < index.files.length; candidateIndex += 1) {
-      const candidate = index.files[candidateIndex];
-      if (!candidate || (requestPath !== "." && !candidate.path.startsWith(prefix))) break;
-      let file: StableFile;
-      try {
-        file = await this.readStableFile(candidate.path, false);
-      } catch {
-        continue;
+    // '0' immediately follows '/' in UTF-16 ordering, bounding every descendant.
+    for await (const batch of boundedBatches(
+      isDirectory ? index.files.slice(candidateIndex, requestPath === "." ? undefined : firstPathAtLeast(index.files, `${requestPath}0`)) : [{ path: requestPath }],
+      async (candidate) => {
+        try { const file = directFile ?? await this.readStableFile(candidate.path, false); coverage.inspectedFiles++; return file; }
+        catch (error) { skipSearchFile(coverage, error); return undefined; }
       }
-      const lines = file.contents.toString("utf8").split(/\r?\n/);
-      for (let index = 0; index < lines.length; index += 1) {
-        const lineNumber = index + 1;
-        if (candidate.path === afterPath && lineNumber <= afterLine) continue;
-        const line = lines[index] ?? "";
-        if (!(caseSensitive ? line : line.toLocaleLowerCase()).includes(needle)) continue;
-        if (matches.length >= limit) {
-          hasMore = true;
-          break;
+    )) {
+      for (const file of batch) {
+        if (!file) continue;
+        const candidate = file;
+        const lines = file.contents.toString("utf8").split(/\r?\n/);
+        for (let index = 0; index < lines.length; index += 1) {
+          const lineNumber = index + 1;
+          if (candidate.path === afterPath && lineNumber <= afterLine) continue;
+          const line = lines[index] ?? "";
+          if (!(caseSensitive ? line : line.toLocaleLowerCase()).includes(needle)) continue;
+          const match = { path: candidate.path, line: lineNumber, text: truncate(line, 500), digest: file.digest };
+          const size = JSON.stringify(match).length + 1;
+          if (matches.length >= limit || characters + size > MAX_SEARCH_CHARACTERS) {
+            hasMore = true;
+            break;
+          }
+          matches.push(match); characters += size;
         }
-        matches.push({ path: candidate.path, line: lineNumber, text: truncate(line, 500), digest: file.digest });
+        if (hasMore) break;
       }
       if (hasMore) break;
     }
-    const last = matches.at(-1);
-    return {
+    const render = () => {
+      const last = matches.at(-1);
+      return {
       matches,
+      coverage: { ...coverage, incomplete: coverage.incomplete || hasMore },
       truncated: hasMore,
       ...(hasMore && last ? {
         nextCursor: cursorEncode({
@@ -910,7 +955,13 @@ export class Workspace {
           indexVersion: index.version
         })
       } : {})
+      };
     };
+    while (JSON.stringify(render()).length > 32_000) {
+      if (!matches.length) throw new HarnessWorkspaceError("Search metadata exceeds the output limit; narrow the request.");
+      matches.pop(); hasMore = true;
+    }
+    return render();
   }
 
   async searchMany(queries: readonly SearchManyQuery[], relativePath = ".", options: SearchManyOptions = {}) {
@@ -922,6 +973,9 @@ export class Workspace {
       limitPerQuery * queries.length > MAX_SEARCH_MANY_MATCHES) {
       throw new HarnessWorkspaceError(`searchMany allows at most ${MAX_SEARCH_MANY_MATCHES} aggregate matches.`);
     }
+    const coverage = searchCoverage();
+    let characters = 0;
+    let outputFull = false;
     const seen = new Set<string>();
     const states = queries.map((input) => {
       if (!input.query || input.query.length > 200) throw new HarnessWorkspaceError("Each search query must be between 1 and 200 characters.");
@@ -938,48 +992,86 @@ export class Workspace {
       };
     });
     const start = await this.safePath(relativePath);
-    if (!(await lstat(start.path)).isDirectory()) throw new HarnessWorkspaceError("searchMany requires a directory.");
+    const isDirectory = (await lstat(start.path)).isDirectory();
     const requestPath = wirePath(path.relative(this.root, start.path)) || ".";
     const prefix = requestPath === "." ? "" : `${requestPath}/`;
-    const index = await this.getWorkspaceIndex();
-    let candidateIndex = requestPath === "." ? 0 : firstPathAtLeast(index.files, prefix);
-    for (; candidateIndex < index.files.length; candidateIndex += 1) {
-      const candidate = index.files[candidateIndex];
-      if (!candidate || (requestPath !== "." && !candidate.path.startsWith(prefix))) break;
-      let file: StableFile;
-      try {
-        file = await this.readStableFile(candidate.path, false);
-      } catch {
-        continue;
+    const index = isDirectory ? await this.getWorkspaceIndex() : undefined;
+    const candidateIndex = requestPath === "." ? 0 : firstPathAtLeast(index?.files ?? [], prefix);
+    // Exact-file reads use the same descriptor-bound protections as readFile.
+    const candidates = index ? index.files.slice(candidateIndex, requestPath === "." ? undefined : firstPathAtLeast(index.files, `${requestPath}0`)) : [{ path: requestPath }];
+    for await (const batch of boundedBatches(
+      candidates,
+      async (candidate) => {
+        try { const file = await this.readStableFile(candidate.path, false); coverage.inspectedFiles++; return file; }
+        catch (error) { if (!isDirectory) throw error; skipSearchFile(coverage, error); return undefined; }
       }
-      const lines = file.contents.toString("utf8").split(/\r?\n/);
-      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-        const line = lines[lineIndex] ?? "";
-        const foldedLine = line.toLocaleLowerCase();
-        for (const state of states) {
-          if (state.truncated || !(state.caseSensitive ? line : foldedLine).includes(state.needle)) continue;
-          if (state.matches.length >= limitPerQuery) {
-            state.truncated = true;
-            continue;
+    )) {
+      for (const file of batch) {
+        if (!file) continue;
+        const candidate = file;
+        const lines = file.contents.toString("utf8").split(/\r?\n/);
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+          const line = lines[lineIndex] ?? "";
+          const foldedLine = line.toLocaleLowerCase();
+          for (const state of states) {
+            if (state.truncated || !(state.caseSensitive ? line : foldedLine).includes(state.needle)) continue;
+            if (state.matches.length >= limitPerQuery) {
+              state.truncated = true;
+              continue;
+            }
+            const match = {
+              path: candidate.path,
+              line: lineIndex + 1,
+              text: truncate(line, 500),
+              digest: file.digest
+            };
+            const size = JSON.stringify(match).length + 1;
+            if (characters + size > MAX_SEARCH_CHARACTERS) { outputFull = true; break; }
+            state.matches.push(match); characters += size;
           }
-          state.matches.push({
-            path: candidate.path,
-            line: lineIndex + 1,
-            text: truncate(line, 500),
-            digest: file.digest
-          });
+          if (outputFull) break;
         }
+        if (outputFull || states.every((state) => state.truncated)) break;
       }
-      if (states.every((state) => state.truncated)) break;
+      if (outputFull || states.every((state) => state.truncated)) break;
     }
-    return {
-      results: states.map(({ needle: _needle, ...state }) => state)
-    };
+    const render = () => ({
+      coverage: { ...coverage, incomplete: coverage.incomplete || outputFull || states.some(state => state.truncated) },
+      outputTruncated: outputFull,
+      continuation: "For a truncated query, use search_files with that query and its nextCursor, or narrow to the returned file/line locations.",
+      results: states.map(({ needle: _needle, ...state }) => {
+        const last = state.matches.at(-1);
+        const truncated = state.truncated || outputFull;
+        return { ...state, truncated, ...(truncated && last ? { nextCursor: cursorEncode({ v: 2, kind: "search", path: requestPath,
+          query: state.query, caseSensitive: state.caseSensitive, limit: limitPerQuery, afterPath: last.path, afterLine: last.line,
+          indexVersion: index?.version ?? last.digest }) } : {}) };
+      })
+    });
+    // Cursors repeat path/query metadata. Include that overhead in the actual
+    // serialized response ceiling, including a ten-query batch with long paths.
+    while (JSON.stringify(render()).length > 32_000) {
+      const largest = states.filter(state => state.matches.length).sort((a, b) =>
+        JSON.stringify(b.matches).length - JSON.stringify(a.matches).length)[0];
+      if (!largest) throw new HarnessWorkspaceError("Search metadata exceeds the output limit; narrow the request.");
+      largest.matches.pop(); largest.truncated = true; outputFull = true;
+    }
+    return render();
   }
 
-  private audit(entry: Omit<MutationAuditEntry, "id" | "timestamp">): MutationAuditEntry {
+  private checkAuditCapacity(count = 1) {
+    if (this.auditPath && this.auditEntries.length + count > 10000) throw new HarnessWorkspaceError("Mutation audit capacity exceeded; retain evidence and start a new run.");
+  }
+
+  private async audit(entry: Omit<MutationAuditEntry, "id" | "timestamp">): Promise<MutationAuditEntry> {
     const record = { id: randomUUID(), timestamp: new Date().toISOString(), ...entry } as MutationAuditEntry;
     this.auditEntries.push(record);
+    if (this.auditPath) {
+      const temporary = `${this.auditPath}.${randomUUID()}.tmp`;
+      const handle = await open(temporary, "wx", 0o600);
+      try { await handle.writeFile(JSON.stringify(this.auditEntries)); await handle.sync(); }
+      finally { await handle.close(); }
+      try { await rename(temporary, this.auditPath); } finally { await unlink(temporary).catch(() => {}); }
+    }
     return record;
   }
 
@@ -1035,15 +1127,34 @@ export class Workspace {
     return temporary;
   }
 
+  async applyReplacement(input: ReplacementEdit): Promise<ApplyPatchResult> {
+    const edit = replacementEditSchema.parse(input);
+    const file = await this.readStableFile(edit.path, false);
+    if (file.digest !== edit.expectedDigest) throw new HarnessWorkspaceError(`Stale patch rejected for ${edit.path}.`);
+    let text: string;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(file.contents); }
+    catch { throw new HarnessWorkspaceError("Replacement requires valid UTF-8 text."); }
+    const position = text.indexOf(edit.oldText);
+    if (position < 0 || text.indexOf(edit.oldText, position + 1) >= 0) {
+      throw new HarnessWorkspaceError("Replacement requires exactly one literal match; include more surrounding context.");
+    }
+    const content = text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length);
+    // applyPatch rechecks the digest at its existing atomic publication boundary.
+    const changes = [{ path: edit.path, expectedDigest: edit.expectedDigest, content }];
+    return this.applyPatch({ proposalId: createEditProposal({ changes }).proposalId, changes });
+  }
+
   async applyPatch(input: ApplyEditProposalInput): Promise<ApplyPatchResult> {
     return this.applyPatchWithModes(input, new Map());
   }
 
   async applyPatchWithModes(
     input: ApplyEditProposalInput,
-    modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>
+    modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>,
+    assertActive?: () => Promise<void>
   ): Promise<ApplyPatchResult> {
     const proposal = validateEditProposal(input);
+    this.checkAuditCapacity(proposal.changes.length);
     const targetPaths = new Set(proposal.changes.map((change) => change.path));
     for (const [targetPath, binding] of modes) {
       if (!targetPaths.has(targetPath)) {
@@ -1117,9 +1228,11 @@ export class Workspace {
           if (item.modeBinding?.beforeMode !== undefined && current.mode !== item.modeBinding.beforeMode) {
             throw new HarnessWorkspaceError(`Stale patch mode rejected for ${item.change.path}.`);
           }
+          await assertActive?.();
           await rename(item.temporary, item.target);
         } else {
           try {
+            await assertActive?.();
             await link(item.temporary, item.target);
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code === "EEXIST") {
@@ -1130,6 +1243,7 @@ export class Workspace {
           await unlink(item.temporary);
         }
         committed.push(item);
+        await assertActive?.();
       }
     } catch (error) {
       const rollbackErrors: unknown[] = [];
@@ -1150,7 +1264,8 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const changes = prepared.map((item) => this.audit({
+    const changes: MutationAuditEntry[] = [];
+    for (const item of prepared) changes.push(await this.audit({
       operation: item.before ? "update" : "create",
       path: item.change.path,
       ...(item.before ? { beforeDigest: item.before.digest } : {}),
@@ -1186,6 +1301,7 @@ export class Workspace {
 
   async moveFile(input: MoveFileInput): Promise<MoveFileResult> {
     const parsed = moveFileInputSchema.parse(input);
+    this.checkAuditCapacity();
     const source = await this.readStableFile(parsed.source);
     if (source.digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale move rejected for ${parsed.source}.`);
     const destination = await this.safePath(parsed.destination, { allowMissing: true });
@@ -1208,7 +1324,7 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = this.audit({ operation: "move", path: parsed.source, destination: parsed.destination, beforeDigest: source.digest, afterDigest: source.digest });
+    const audit = await this.audit({ operation: "move", path: parsed.source, destination: parsed.destination, beforeDigest: source.digest, afterDigest: source.digest });
     return { source: parsed.source, destination: parsed.destination, digest: source.digest, audit };
   }
 
@@ -1254,8 +1370,9 @@ export class Workspace {
     return await readRegularFileNoFollow(target, { label, maxBytes });
   }
 
-  async quarantineFile(input: QuarantineFileInput): Promise<QuarantineFileResult> {
+  async quarantineFile(input: QuarantineFileInput, assertActive?: () => Promise<void>): Promise<QuarantineFileResult> {
     const parsed = quarantineFileInputSchema.parse(input);
+    this.checkAuditCapacity();
     const source = await this.readStableFile(parsed.path);
     if (source.digest !== parsed.expectedDigest) throw new HarnessWorkspaceError(`Stale quarantine rejected for ${parsed.path}.`);
     const quarantineId = `${Date.now()}-${randomUUID()}`;
@@ -1278,6 +1395,7 @@ export class Workspace {
     };
     try {
       await this.writeManifest(manifest);
+      await assertActive?.();
       await unlink(source.absolutePath);
     } catch (error) {
       await unlink(dataPath).catch(() => {});
@@ -1285,12 +1403,13 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = this.audit({ operation: "quarantine", path: parsed.path, beforeDigest: source.digest, quarantineId });
+    const audit = await this.audit({ operation: "quarantine", path: parsed.path, beforeDigest: source.digest, quarantineId });
     return { quarantineId, path: parsed.path, digest: source.digest, audit };
   }
 
   async restoreQuarantined(input: RestoreFileInput): Promise<RestoreFileResult> {
     const parsed = restoreFileInputSchema.parse(input);
+    this.checkAuditCapacity();
     const directory = await this.secureQuarantineDirectory(false);
     let manifest: QuarantineManifest;
     try {
@@ -1362,7 +1481,7 @@ export class Workspace {
         : error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = this.audit({ operation: "restore", path: destinationPath, afterDigest: digest, quarantineId: parsed.quarantineId });
+    const audit = await this.audit({ operation: "restore", path: destinationPath, afterDigest: digest, quarantineId: parsed.quarantineId });
     return { quarantineId: parsed.quarantineId, path: destinationPath, digest, audit };
   }
 

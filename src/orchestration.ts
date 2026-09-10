@@ -1,9 +1,8 @@
+import { childRuntimeSafety, runtimeManifest } from "./runtime-policy.js";
 import { createHash, randomUUID } from "node:crypto";
 
 import {
   applySafetyPolicyToAgent,
-  createBudgetGuard,
-  createProductionSafetyPolicy,
   runAgentGroup,
   type AgentDefinition,
   type AgentHarnessBinding,
@@ -100,20 +99,6 @@ const childHarnessBinding = (
   algorithm: "sha256"
 });
 
-const providerCompatibleChildBudget = (config: HarnessConfig) => {
-  const durable = createBudgetGuard(config.orchestration.childBudget);
-  const transport = createBudgetGuard({
-    maxSteps: config.orchestration.childBudget.maxSteps,
-    maxToolCalls: config.orchestration.childBudget.maxToolCalls,
-    maxToolErrors: config.orchestration.childBudget.maxToolErrors,
-    includeChildRuns: false
-  });
-  return {
-    ...transport,
-    inputGuardrail: durable.inputGuardrail,
-    outputGuardrail: durable.outputGuardrail
-  };
-};
 
 export const createHarnessSubagents = (options: {
   config: HarnessConfig;
@@ -125,6 +110,7 @@ export const createHarnessSubagents = (options: {
   memory?: AgentMemoryStore;
   onTelemetryEvent?: AgentTelemetryObserver;
   contextInstructions?: string;
+  executionEnvironment?: AgentDefinition<LanguageModel>["executionEnvironment"];
 }): HarnessSubagentRuntime => {
   const definitions: AgentSubAgentDefinition<LanguageModel>[] = [];
   const agents = new Map<HarnessSubagentProfile, AgentDefinition<LanguageModel>>();
@@ -147,11 +133,13 @@ export const createHarnessSubagents = (options: {
         leaseMode: "required"
       },
       metadata: {
+        effectiveRuntime: runtimeManifest(options.config, selectedToolNames, profileId),
         harnessVersion: options.parentBinding.version,
         role: profileId,
         orchestration: "bounded-subagent"
       },
       store: options.store,
+      ...(options.executionEnvironment ? { executionEnvironment: options.executionEnvironment } : {}),
       ...(options.memory ? { memory: options.memory } : {}),
       ...(options.onTelemetryEvent ? { onTelemetryEvent: options.onTelemetryEvent } : {}),
       hookFailurePolicy: {
@@ -159,10 +147,7 @@ export const createHarnessSubagents = (options: {
         memory: "ignore"
       }
     };
-    const agent = applySafetyPolicyToAgent(baseAgent, createProductionSafetyPolicy({
-      budget: providerCompatibleChildBudget(options.config),
-      toolExecution: { parallel: false, stopOnError: true }
-    }));
+    const agent = applySafetyPolicyToAgent(baseAgent, childRuntimeSafety(options.config));
     agents.set(profileId, agent);
     definitions.push({
       name: descriptor.toolName,

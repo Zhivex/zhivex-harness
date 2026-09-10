@@ -371,7 +371,7 @@ describe("WAL-safe logical state backup", () => {
       stateDirectory: source.stateDirectory,
       tenantId: source.scope.tenantId,
       userId: "*",
-      namespace: source.scope.namespace
+      ...(source.scope.namespace ? { namespace: source.scope.namespace } : {})
     })).toThrow('reserved "*"');
   });
 

@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-efficiency-observation",
+  "date": "2026-09-08",
+  "baseCommit": "0a7b69dddaa70a54b6b5b4097691c8112d4d76eb",
+  "evidenceBoundary": "Uncommitted development measurements; three repetitions, non-flushed host cache, Bun runtime. Sequential before/after observations, not randomized paired trials or public agent capability results. No paid model calls.",
+  "comparisons": [
+    {
+      "name": "workspace",
+      "boundary": "Unmodified checkout versus bounded reads and freshness checks.",
+      "before": {
+        "reportSha256": "171c5583f40caa60cc2f8c82bc548625538c816b9903c6695725a0ed8ebac77e",
+        "fixture": {
+          "files": 10000,
+          "pageSize": 100
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "workspaceIndexState": "cold-first-page-then-reused-within-repetition",
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "digestBoundAllPages": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 932.76,
+            "p50Ms": 970.63,
+            "maxMs": 1184.52
+          },
+          "threeIndependentSearches": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 1058.3,
+            "p50Ms": 1136.79,
+            "maxMs": 1195.78
+          },
+          "searchMany": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 910.8,
+            "p50Ms": 941.46,
+            "maxMs": 979.75
+          }
+        }
+      },
+      "after": {
+        "reportSha256": "c70bae665e81ed6870d4369d122a955fb140fac1dd760f612f8604d27eeef9b9",
+        "fixture": {
+          "files": 10000,
+          "pageSize": 100,
+          "directories": 1,
+          "minimumFileBytes": 0
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "workspaceIndexState": "cold-first-page-then-reused-within-repetition",
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "digestBoundAllPages": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 242.82,
+            "p50Ms": 245.74,
+            "maxMs": 396.97
+          },
+          "threeIndependentSearches": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 474.12,
+            "p50Ms": 492.41,
+            "maxMs": 526.95
+          },
+          "searchMany": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 218.22,
+            "p50Ms": 232.24,
+            "maxMs": 237.24
+          }
+        }
+      }
+    },
+    {
+      "name": "nested-freshness",
+      "boundary": "Both sides use bounded content reads; after also batches index freshness checks.",
+      "before": {
+        "reportSha256": "4a7132678700753bdf6005770c6420c7d3e0fd483b5c70f10e5080687c55ed68",
+        "fixture": {
+          "files": 1000,
+          "pageSize": 100,
+          "directories": 100,
+          "minimumFileBytes": 4096
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "workspaceIndexState": "cold-first-page-then-reused-within-repetition",
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "topologyAllPages": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 27.57,
+            "p50Ms": 27.61,
+            "maxMs": 33.75
+          }
+        }
+      },
+      "after": {
+        "reportSha256": "20bff97fb983a56e0729ec183b32764af093489911a84a4b99979b8c40e21036",
+        "fixture": {
+          "files": 1000,
+          "pageSize": 100,
+          "directories": 100,
+          "minimumFileBytes": 4096
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "workspaceIndexState": "cold-first-page-then-reused-within-repetition",
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "topologyAllPages": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 10.13,
+            "p50Ms": 10.32,
+            "maxMs": 11.51
+          }
+        }
+      }
+    },
+    {
+      "name": "oci-snapshot",
+      "boundary": "Before already uses bounded content reads; after additionally batches snapshot construction and index freshness.",
+      "before": {
+        "reportSha256": "6db33e8a52442485111cca2ec96c6b304b61d639559c96873a53c38411398a8a",
+        "fixture": {
+          "files": 1001,
+          "commands": 1,
+          "commandsPerRepetition": 1,
+          "reusedNoOpCommandsPerRepetition": 0,
+          "batchCommandsPerRepetition": 1
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "sessionAcquire": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 383.97,
+            "p50Ms": 417.04,
+            "maxMs": 567.24
+          },
+          "completeScenario": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 2196.8,
+            "p50Ms": 2555.25,
+            "maxMs": 4134.44
+          }
+        },
+        "runtime": {
+          "name": "docker",
+          "version": "29.7.2",
+          "imageDigest": "sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03"
+        }
+      },
+      "after": {
+        "reportSha256": "7267ae148ec503c2bb3029833e6e77119443709474344eb3126cd511faa4288d",
+        "fixture": {
+          "files": 1001,
+          "commands": 1,
+          "commandsPerRepetition": 1,
+          "reusedNoOpCommandsPerRepetition": 0,
+          "batchCommandsPerRepetition": 1
+        },
+        "methodology": {
+          "repetitions": 3,
+          "warmups": 0,
+          "hostFilesystemCache": "not-flushed",
+          "resultValidation": true
+        },
+        "statistics": {
+          "sessionAcquire": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 183.55,
+            "p50Ms": 193.16,
+            "maxMs": 195.77
+          },
+          "completeScenario": {
+            "samples": 3,
+            "successes": 3,
+            "failures": 0,
+            "minMs": 1770.2,
+            "p50Ms": 1844.69,
+            "maxMs": 2144.49
+          }
+        },
+        "runtime": {
+          "name": "docker",
+          "version": "29.7.2",
+          "imageDigest": "sha256:3638d9a6fe4030bd716be989438248074489337ba3275657f93595428be4fc03"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "kind": "repair-architecture-audit",
+  "date": "2026-09-09",
+  "newProviderCalls": 0,
+  "scope": "Current checkout static inspection, offline probes and existing 20-attempt live cohort; not a new security certification or paid evaluation.",
+  "sourceSha256": {
+    "src/harness.ts": "e2be99d72763fe2be66072a70748eaa58ba783184bfb6bcadac9d769e361541a",
+    "src/repair-progress.ts": "0fba72b12e6a59e950b3b1f52f89bb55cf2574be490633fc46620f5cfd98c363",
+    "src/compaction.ts": "1214b92173f3fb44eb80839baae357ebc52c97e24f6b5647fb5c0e33dc1febed",
+    "src/task-memory.ts": "bf171cee4508fcca4793b5717e5e9ba48c77320182baa6faab867fe36b8da6df",
+    "src/model-budget.ts": "82cd70eed3927e951f8683a02b2936b9e02e15b7a999bca9a81097feacfc84e9",
+    "src/execution-environment.ts": "ff683e9c48fe15aee6decad54ce3aa489c9a70edf72c421bf583922ca42eae3f",
+    "src/workspace.ts": "0f472998a55672a326bfb32404a10073a90c9a34c24758471fede0345f582961",
+    "src/config.ts": "a31e9f91c0eb59b4d77496431639aa4b47b149e1968c6e0a002a508de4919c35",
+    "scripts/swebench/zhivex-driver.ts": "e33ed929256133fb29be67e3feb282f0d0fd52086576a668021852c151ff35d1",
+    "scripts/evaluate.ts": "25157dc5aac0df1142d0a6d9d2245d1e51e24d0fe2c7b63b72927bb0a010a76f",
+    "evaluations/audits/repair-architecture-2026-09-09.ts": "0d8d0d5e1cd33ccc2bdd50cc43b3c0dc4c3a071be13ecb83ced3a1199f133504"
+  },
+  "offlineProbes": {
+    "networkCalls": 0,
+    "productionFilesChanged": false,
+    "scope": {
+      "singleReadBlocked": true,
+      "batchReadOutsidePlanReturnedFiles": 1,
+      "phaseWithoutReproductionOrEdit": "repair"
+    },
+    "reservation": {
+      "acceptedRequests": 3,
+      "inputTokens": 100000,
+      "nextRequestBlocked": true,
+      "verificationReserveTokens": 0
+    },
+    "compaction": {
+      "retainsExitCode": true,
+      "retainsCheckAssertion": false
+    },
+    "estimator": {
+      "messagesOnlyTokens": 1,
+      "acceptsToolCatalogArgument": false
+    }
+  },
+  "focusedTests": {
+    "passed": 46,
+    "failed": 0,
+    "files": 5
+  },
+  "existingLiveEvidence": {
+    "samplesSha256": "e22b8d5ffd58c8ffd035a2a6431ddfcba5df5d1dbd65e5ead14268e714126c7a",
+    "nativeAttempts": 10,
+    "nativeDelivered": 0,
+    "nativeCandidatesCorrect": 3,
+    "nativeToolCalls": {
+      "repair_plan": 5,
+      "run_environment_shell": 9,
+      "search_files": 27,
+      "read_files": 52,
+      "search_many": 7,
+      "run_environment_command": 8,
+      "apply_reviewed_replacement": 5,
+      "list_files": 5,
+      "read_task": 1,
+      "inspect_environment_patch": 2
+    },
+    "compactions": 14,
+    "readTaskRequested": 1,
+    "commandPhaseMs": {
+      "commandAndAttestationMs": 44413.79174799999,
+      "workspaceExportMs": 12346.614415,
+      "totalMs": 68844.70400199998,
+      "sessionCreationMs": 11597.802459000004
+    },
+    "caveat": "Tool timers measure executions; turn tool-call lists are requests. Counts and timing spans must not be conflated."
+  }
+}

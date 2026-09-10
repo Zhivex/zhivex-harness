@@ -138,7 +138,8 @@ for (const requiredFile of [
   "SUPPORT.md",
   "contracts",
   "docs",
-  "evaluations",
+  "evaluations/*.json",
+  "evaluations/*.jsonl",
   "examples"
 ]) {
   if (!manifest.files?.includes(requiredFile)) {

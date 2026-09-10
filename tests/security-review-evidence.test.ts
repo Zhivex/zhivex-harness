@@ -189,12 +189,12 @@ describe("strict security review evidence", () => {
   test("keeps the authority inventory synchronized with every model-facing tool class", () => {
     const actualTools = [
       ...Object.keys(createWorkspaceTools({} as never, [])),
-      ...Object.keys(createExecutionEnvironmentTools({} as never, { shellMode: "ask" } as never)),
+      ...Object.keys(createExecutionEnvironmentTools({} as never, { shellMode: "ask", allowedCommands: ["bun"] } as never)),
       "load_skill",
       ...HARNESS_SUBAGENT_PROFILE_DESCRIPTORS.map((profile) => profile.toolName),
       "mcp-network-tool"
     ];
-    expect([...new Set(SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS.map((tool) => tool.id))].sort())
+    expect<string[]>([...new Set(SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS.map((tool) => tool.id))].sort())
       .toEqual([...new Set(actualTools)].sort());
   });
 

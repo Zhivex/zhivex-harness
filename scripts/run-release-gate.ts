@@ -57,6 +57,12 @@ const parsedJson = (source: string) => {
   }
 };
 
+const compactOperationalError = (input: unknown) => {
+  const { status, diagnosticCode, ...required } = parseSanitizedOperationalError(input);
+  return { ...required, ...(status === undefined ? {} : { status }),
+    ...(diagnosticCode === undefined ? {} : { diagnosticCode }) };
+};
+
 interface ProviderOutcome {
   provider?: string;
   status: "passed" | "failed";
@@ -80,7 +86,7 @@ const collectProviderOutcomes = (value: unknown, outcomes: Map<string, ProviderO
     } else {
       let error: ReturnType<typeof sanitizeOperationalError>;
       try {
-        error = parseSanitizedOperationalError(record.error);
+        error = compactOperationalError(record.error);
       } catch {
         error = sanitizeOperationalError(new Error("Provider gate failed without a valid diagnostic."));
       }
@@ -102,7 +108,7 @@ const firstSanitizedFailure = (value: unknown): ReturnType<typeof sanitizeOperat
   const record = value as Record<string, unknown>;
   if (record.error !== undefined) {
     try {
-      return parseSanitizedOperationalError(record.error);
+      return compactOperationalError(record.error);
     } catch {
       // Only the strict sanitized operational-error projection is accepted.
     }

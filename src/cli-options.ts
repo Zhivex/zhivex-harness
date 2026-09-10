@@ -32,7 +32,7 @@ const conflicts: Readonly<Record<string, readonly string[]>> = {
 export const CLI_OPTION_NAMES = [
   "--provider", "--model", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
-  "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
+  "--agent-profile", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb", "--store", "--tenant", "--user", "--namespace", "--idempotency-key",
@@ -59,7 +59,7 @@ const provider = ["--provider", "--model"] as const;
 const profile = ["--profile"] as const;
 const project = ["--mcp-config", "--context-config", "--no-project-context"] as const;
 const execution = [
-  "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
+  "--agent-profile", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb"

@@ -10,3 +10,7 @@ results/*
 *.tgz
 *.log
 .DS_Store
+
+# Python benchmark helpers
+scripts/swebench/__pycache__/
+evaluations/external/.venv/

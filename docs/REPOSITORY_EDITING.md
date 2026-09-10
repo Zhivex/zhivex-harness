@@ -122,3 +122,50 @@ The new quarantine and audit state is harness-owned and must remain excluded fro
 - Ignore evaluation and filesystem behavior can differ by platform; Linux and macOS fixtures are required release gates.
 - Quarantine does not replace version control or an external backup.
 - With the default `execution=none`, checks use the narrow host check runner and generic shell remains unavailable. With `execution=oci`, repository tools and checks operate on a secret-free snapshot and only a separately approved digest-bound environment patch may change the host workspace.
+
+## Small exact replacements
+
+`apply_reviewed_replacement` accepts `path`, the inspected `expectedDigest`,
+`oldText`, and `newText`. Its approval binds those complete arguments. The old
+text must occur exactly once, including whitespace; there is no regular expression
+or ambiguous global replacement. The runtime reconstructs the full content and
+reuses the atomic patch path, rechecking the digest before publication. A stale
+approval cannot overwrite intervening changes. UTF-8 validity, BOM, CRLF, unrelated
+bytes, filesystem policy and mutation auditing remain enforced. OCI edits still
+require an independently approved patch import.
+
+Prefer this tool for a small repair in a large file, so the model need not emit the
+whole file. `apply_reviewed_edits` remains available for new files and complete
+replacements. Default file reads now return up to 120 lines; request an explicit
+range for more. `search_many` defaults to 10 matches per query; narrow the path or
+request a higher limit when the response is truncated.
+
+## Audit remediation: search, filesystem and execution continuity
+
+`search_files` accepts an exact file or directory. Both search tools cap match
+payloads; `search_many` additionally includes cursor/metadata overhead in its
+32000-character response ceiling. Truncated groups provide `nextCursor` for
+`search_files` with the same query, path, case sensitivity and per-query limit;
+a group without a cursor can be restarted individually. Exact-file cursors bind
+to the file digest. `coverage` reports inspected/omitted eligible files and
+`tooLarge`, `unsafe`, or `unreadable` counts. `incomplete=true` means zero matches
+cannot establish absence. Normal repository exclusion rules still apply.
+
+Safe regular-file reads now reject symlinks in every ancestor: macOS uses
+`O_NOFOLLOW_ANY`, Linux walks through held directory descriptors using `/proc`.
+Unsupported platforms fail closed. This closes the reproduced ancestor-swap
+read race; it is not a claim of descriptor-relative publication for every write.
+
+Governed OCI filesystem edit receipts persist in a private per-run audit across
+session reacquisition. `mutation_audit` covers those direct edits; command
+results and `inspect_environment_patch` provide command/aggregate evidence.
+The bounded audit is not an atomic database transaction with filesystem effects;
+an I/O failure must be treated as a failed operation and inspected, never assumed
+to mean all effects rolled back.
+
+Terminal verified imports own and renew a run lease, propagate the invocation
+signal/deadline and revalidate revision/lease before publication. Cancellation
+at publication checkpoints rolls back already published writes. Interrupting
+an approval wait leaves its durable pending approval available for inspection;
+it never authorizes later import. A concurrent filesystem actor or rollback I/O
+failure can still cause a reported rollback failure; it is never a success.

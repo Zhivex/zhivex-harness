@@ -17,6 +17,8 @@ const integerOption = (name: string, fallback: number, maximum: number, minimum 
 
 const fileCount = integerOption("--files", 5_000, 50_000);
 const pageSize = integerOption("--page-size", 200, 5_000);
+const directoryCount = integerOption("--directories", 1, 5_000);
+const fileBytes = integerOption("--file-bytes", 0, 1024 * 1024, 0);
 const repetitions = integerOption("--repetitions", 5, 100);
 const warmups = integerOption("--warmups", 1, 20, 0);
 
@@ -71,15 +73,19 @@ const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "zhivex-workspace-ben
 try {
   const sourceRoot = path.join(temporaryRoot, "src");
   await mkdir(sourceRoot, { recursive: true });
+  const directories = Array.from({ length: directoryCount }, (_, index) => directoryCount === 1
+    ? sourceRoot : path.join(sourceRoot, `group-${index}`, "nested"));
+  for (const directory of directories) await mkdir(directory, { recursive: true });
   const batchSize = 250;
   for (let offset = 0; offset < fileCount; offset += batchSize) {
     await Promise.all(Array.from(
       { length: Math.min(batchSize, fileCount - offset) },
       (_, batchIndex) => {
         const index = offset + batchIndex;
+        const header = `export const fixture${index} = ${index};\n// common-token group-${index % 10}\n`;
         return writeFile(
-          path.join(sourceRoot, `file-${String(index).padStart(6, "0")}.ts`),
-          `export const fixture${index} = ${index};\n// common-token group-${index % 10}\n`,
+          path.join(directories[index % directoryCount]!, `file-${String(index).padStart(6, "0")}.ts`),
+          header.padEnd(Math.max(header.length, fileBytes), " "),
           "utf8"
         );
       }
@@ -167,10 +173,13 @@ try {
     });
     // Alternate the paired-search order so residual filesystem caching does not
     // consistently favor the second implementation.
-    const orderedSearches = iteration % 2 === 0
-      ? [await runIndependentSearches(), await runBatchSearch()]
-      : [await runBatchSearch(), await runIndependentSearches()].reverse();
-    const [independentSearches, batchSearch] = orderedSearches;
+    let independentSearches: Awaited<ReturnType<typeof runIndependentSearches>>;
+    let batchSearch: Awaited<ReturnType<typeof runBatchSearch>>;
+    if (iteration % 2 === 0) {
+      independentSearches = await runIndependentSearches(); batchSearch = await runBatchSearch();
+    } else {
+      batchSearch = await runBatchSearch(); independentSearches = await runIndependentSearches();
+    }
 
     diagnostics = digestWorkspace.workspaceIndexDiagnostics();
     if (!record) {
@@ -235,7 +244,7 @@ try {
       nodeVersion: process.version,
       bunVersion: process.versions.bun ?? null
     },
-    fixture: { files: fileCount, pageSize },
+    fixture: { files: fileCount, pageSize, directories: directoryCount, minimumFileBytes: fileBytes },
     measurements: {
       // These scalar fields retain the v1 shape and now represent digest-bound p50.
       firstPageMs: digestFirstPage.p50Ms,

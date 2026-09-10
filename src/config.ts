@@ -165,6 +165,7 @@ export interface HarnessConfig {
   scope: AgentStoreScope;
   maxSteps: number;
   timeoutMs: number;
+  agentProfile: "strict" | "repair";
   budget: HarnessBudget;
   costBudget?: HarnessCostBudget;
   compaction: HarnessCompactionConfig;
@@ -188,6 +189,7 @@ export interface HarnessConfigInput {
   namespace?: string;
   maxSteps?: number;
   timeoutMs?: number;
+  agentProfile?: string;
   maxToolCalls?: number;
   maxToolErrors?: number;
   maxInputTokens?: number;
@@ -708,6 +710,7 @@ export const resolveHarnessConfig = (
     },
     maxSteps,
     timeoutMs,
+    agentProfile: (() => { const value = input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict"; if (value !== "strict" && value !== "repair") throw new HarnessConfigError("agentProfile must be strict or repair."); return value; })(),
     budget,
     ...(maxCostUsd === undefined
       ? {}

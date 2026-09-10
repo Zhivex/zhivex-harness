@@ -217,7 +217,7 @@ const deniedApproval = async () => {
       steps: persisted.steps,
       toolResults: persisted.toolResults,
       state: persisted,
-      usage: persisted.usage,
+      ...(persisted.usage ? { usage: persisted.usage } : {}),
       error: { message: error instanceof Error ? error.message : String(error) }
     };
   }

@@ -253,7 +253,8 @@ const verifyCurrentMigration = async (
       .map((run) => ({ ...run, scope: config.scope }));
     const parent = terminal.find((run) => run.runId === "published-parent")!;
     const child = terminal.find((run) => run.runId === "published-child")!;
-    const claim = await persistence.store.claimIdempotencyKey?.(parent);
+    assert(parent.idempotencyKey, "Historical parent requires an idempotency key");
+    const claim = await persistence.store.claimIdempotencyKey?.({ ...parent, idempotencyKey: parent.idempotencyKey });
     assert.equal(claim?.claimed, true);
     await persistence.store.save(child);
     const journal = fixture.toolJournal[0]!;
@@ -265,7 +266,7 @@ const verifyCurrentMigration = async (
     assert.equal((await reopened.store.load(parent.runId, config.scope))?.runId, parent.runId);
     assert.equal((await reopened.store.load(child.runId, config.scope))?.parentRunId, parent.runId);
     assert.equal((await reopened.store.listToolCalls?.(child.runId, config.scope))?.length, 1);
-    const duplicate = await reopened.store.claimIdempotencyKey?.({ ...parent, runId: "duplicate" });
+    const duplicate = await reopened.store.claimIdempotencyKey?.({ ...parent, idempotencyKey: parent.idempotencyKey, runId: "duplicate" });
     assert.equal(duplicate?.claimed, false);
     assert.equal(duplicate?.state.runId, parent.runId);
     const inspection = await inspectHarnessRun(reopened.store, config, child.runId);
