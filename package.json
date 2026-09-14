@@ -109,7 +109,7 @@
     "@zhivex-ai/meta": "0.2.2",
     "@zhivex-ai/openai": "0.10.0",
     "@zhivex-ai/qwen": "0.11.1",
-    "zod": "4.4.3"
+    "zod": "4.6.2"
   },
   "overrides": {
     "@zhivex-ai/core": "1.11.0"
