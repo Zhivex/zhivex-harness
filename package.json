@@ -103,7 +103,7 @@
     "release:verify": "bun run scripts/verify-registry-release.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.3.0",
+    "@zhivex-ai/agents": "1.4.1",
     "@zhivex-ai/core": "1.11.0",
     "@zhivex-ai/gemini": "0.11.0",
     "@zhivex-ai/meta": "0.2.2",
