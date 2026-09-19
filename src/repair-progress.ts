@@ -21,7 +21,7 @@ const hash = (value: unknown) => createHash("sha256").update(canonical(value)).d
 
 /** One controller per run. Stores only bounded hashes, never source or arguments.
  * Changes execution strategy, not permission/approval policy or token ceilings. */
-export const createRepairProgress = (usage: () => { inputTokens: number; outputTokens: number },
+export const createRepairProgress = (usage: () => { inputTokens: number; outputTokens: number; predictedInputTokens?: number },
   limits: { inputTokens: number; outputTokens: number }, metadata?: Record<string, unknown>) => {
   const restored = metadata?.[REPAIR_PROGRESS_KEY] === undefined ? undefined : savedProgress.parse(metadata[REPAIR_PROGRESS_KEY]);
   let closureReads = restored?.closureReads ?? 0, closureCommands = restored?.closureCommands ?? 0;
@@ -33,7 +33,7 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
   const snapshot = () => ({ closureReads, closureCommands, enteredClosure: stats.enteredClosure, plannedPaths: [...plannedPaths], seen: [...seen], lines: [...linesSeen] });
   const closing = () => {
     const used = usage();
-    stats.enteredClosure ||= used.inputTokens >= limits.inputTokens * 0.7 || used.outputTokens >= limits.outputTokens * 0.7;
+    stats.enteredClosure ||= used.inputTokens + (used.predictedInputTokens ?? 0) >= limits.inputTokens * 0.7 || used.outputTokens >= limits.outputTokens * 0.7;
     return stats.enteredClosure;
   };
   const wrapTools = (tools: ToolSet): ToolSet => Object.fromEntries(Object.entries(tools).map(([name, definition]) => {

@@ -38,10 +38,10 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
     usageComplete: stats.usageComplete, inFlight: stats.inFlight });
   const before = (input: ModelGenerateInput, provider: string) => {
     input.abortSignal?.throwIfAborted();
+    stats.predictedInputTokens = estimateRequestTokens(input);
     const closure = options.closure?.() ?? false;
     const inputCeiling = limits.inputTokens - (closure ? 0 : stats.reservedInputTokens);
     const outputCeiling = limits.outputTokens - (closure ? 0 : stats.reservedOutputTokens);
-    stats.predictedInputTokens = estimateRequestTokens(input);
     stats.stopReason = !stats.usageComplete ? "USAGE_UNAVAILABLE" :
       stats.inputTokens + stats.predictedInputTokens > inputCeiling ? (closure ? "INPUT_TOKEN_BUDGET" : "WORK_TOKEN_BUDGET") :
       stats.outputTokens >= outputCeiling ? (closure ? "OUTPUT_TOKEN_BUDGET" : "WORK_TOKEN_BUDGET") : null;

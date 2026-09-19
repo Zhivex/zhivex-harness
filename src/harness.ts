@@ -1,5 +1,5 @@
 import { assembleHarnessTools } from "./tool-registry.js";
-import { createRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
+import { createCheckpointTokenCap, createRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
 import { createRepairController } from "./repair-controller.js";
 import { runtimeCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
 import { MODEL_BUDGET_KEY, createModelBudget } from "./model-budget.js";
@@ -776,8 +776,7 @@ const createCostGuardrails = (config: HarnessConfig) => {
   };
 };
 
-const createProviderCompatibleBudget = (config: HarnessConfig) => createRuntimeBudget(config.budget,
-  config.provider !== "qwen" && config.orchestration.profiles.length === 0);
+const createProviderCompatibleBudget = (config: HarnessConfig) => createRuntimeBudget(config.budget, false);
 
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options, options.providerRegistry);
@@ -1420,6 +1419,16 @@ export const runHarness = async (
     input = { ...input, metadata: { ...input.metadata, [TASK_SOURCE_KEY]: sources } };
   }
   const runId = "state" in input ? input.state.runId : input.runId ?? `run_${randomUUID()}`;
+  if (harness.config.provider !== "qwen" && harness.config.orchestration.profiles.length === 0) {
+    const store = harness.store;
+    const fallbackUsage = "state" in input ? input.state.usage : undefined;
+    const tokenCap = createCheckpointTokenCap(harness.config.budget, async () =>
+      (await store.load(runId, harness.config.scope))?.usage ?? fallbackUsage);
+    harness = { ...harness, agent: new Agent({
+      ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
+      model: wrapLanguageModel(harness.agent.model, [tokenCap])
+    }) };
+  }
   let policyController: ReturnType<typeof createRepairController> | undefined;
   let policyBudget: ReturnType<typeof createModelBudget> | undefined;
   let policyProgress: ReturnType<typeof createRepairProgress> | undefined;
@@ -1433,7 +1442,7 @@ export const runHarness = async (
       cachedInputTokens: input.state.usage?.cachedInputTokens ?? 0, modelCalls: input.state.steps.length,
       usageComplete: false, inFlight: false
     } : undefined);
-    policyBudget = createModelBudget(limits, { ...(savedBudget === undefined ? {} : { saved: savedBudget }), closure: policyController.closure, diagnostics: metadata[RUNTIME_DIAGNOSTICS_KEY] });
+    policyBudget = createModelBudget(limits, { ...(savedBudget === undefined ? {} : { saved: savedBudget }), closure: () => policyController!.closure() || (policyController!.state.verifier !== null && (policyProgress?.closing() ?? false)), diagnostics: metadata[RUNTIME_DIAGNOSTICS_KEY] });
     // A process may have died after a billed request but before the SDK saved
     // its result. Running checkpoints cannot certify complete accounting.
     if ("state" in input && input.state.status === "running") policyBudget.stats.usageComplete = false;
@@ -1478,7 +1487,7 @@ export const runHarness = async (
     lifecycleFinished = true;
     await harness.dispatchLifecycle({ type: "run-finished", runId, status });
   };
-  const continuationOptions: Partial<AgentRunInput<LanguageModel>> = {
+  const continuationOptions = {
     ...(input.maxSteps !== undefined ? { maxSteps: input.maxSteps } : {}),
     ...(input.context !== undefined ? { context: input.context } : {}),
     ...(input.tools !== undefined ? { tools: input.tools } : {}),
@@ -1496,7 +1505,7 @@ export const runHarness = async (
     ...(input.timeoutMs !== undefined ? { timeoutMs: input.timeoutMs } : {}),
     ...(input.maxRetries !== undefined ? { maxRetries: input.maxRetries } : {}),
     ...(input.retryBackoffMs !== undefined ? { retryBackoffMs: input.retryBackoffMs } : {})
-  };
+  } satisfies Partial<AgentRunInput<LanguageModel>>;
 
   await harness.dispatchLifecycle({
     type: "run-started",

@@ -147,7 +147,7 @@ test("a failed mutation remains an explicit verification obligation", async () =
   await expect(execute(tools, "apply_reviewed_edits", {})).rejects.toThrow("after a partial write");
   expect(effects).toBe(1);
   expect(controller.pending()).toBe(true);
-  expect(controller.snapshot()).toMatchObject({ phase: "recover", verificationFailures: 1 });
+  expect(controller.snapshot()).toMatchObject({ phase: "recover", verificationFailures: 0 });
   const resumed = createRepairController({ [REPAIR_CONTROLLER_KEY]: controller.snapshot() }, false);
   expect(resumed.pending()).toBe(true);
   resumed.markIncomplete();
@@ -269,4 +269,90 @@ test("combined edit transaction recovers into a freshly approved candidate verif
     expect(result.toolResults.find(r => r.isError)?.output).toMatchObject({ kind: "terminal-verification-failure", verification: { exitCode: 4 } });
     expect(result.state.metadata?.[REPAIR_CONTROLLER_KEY]).toMatchObject({ phase: "delivered", verificationFailures: 1 });
   } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("diagnostic failures during recovery do not consume verification retries", async () => {
+  const controller = createRepairController({}, false);
+  let checks = 0;
+  const tools = controller.wrapTools({
+    apply_reviewed_edits: tool({ name: "apply_reviewed_edits", schema: z.object({}), execute: async () => ({ edited: true }) }),
+    run_check: tool({ name: "run_check", schema: z.object({}), execute: async () => ({ exitCode: ++checks === 1 ? 1 : 0 }) }),
+    run_environment_command: tool({ name: "run_environment_command", schema: z.object({}), execute: async () => ({ exitCode: 1 }) })
+  });
+  await execute(tools, "apply_reviewed_edits", {});
+  await execute(tools, "run_check", {});
+  for (let index = 0; index < 3; index++) await execute(tools, "run_environment_command", {});
+  expect(controller.snapshot()).toMatchObject({ phase: "recover", verificationFailures: 1 });
+  await controller.middleware.wrapGenerate!({ model: createMockLanguageModel(), input: { messages: [] } }, async () => ({}));
+  await execute(tools, "run_check", {});
+  expect(controller.snapshot()).toMatchObject({ phase: "delivered", verificationFailures: 1 });
+});
+
+test("three actual failed verifications still exhaust the repair retry limit", async () => {
+  const controller = createRepairController({}, false);
+  const tools = controller.wrapTools({
+    apply_reviewed_edits: tool({ name: "apply_reviewed_edits", schema: z.object({}), execute: async () => ({ edited: true }) }),
+    run_check: tool({ name: "run_check", schema: z.object({}), execute: async () => ({ exitCode: 1 }) })
+  });
+  await execute(tools, "apply_reviewed_edits", {});
+  for (let index = 0; index < 3; index++) await execute(tools, "run_check", {});
+  expect(controller.snapshot().verificationFailures).toBe(3);
+  await expect(controller.middleware.wrapGenerate!({ model: createMockLanguageModel(), input: { messages: [] } }, async () => ({}))).rejects.toThrow("REPAIR_VERIFICATION_RETRIES_EXHAUSTED");
+});
+
+test("OCI repairs require a concrete verifier before the first mutation", async () => {
+  const controller = createRepairController({}, true);
+  let writes = 0;
+  const tools = controller.wrapTools({
+    repair_plan: tool({ name: "repair_plan", schema: z.any(), execute: async input => input }),
+    apply_reviewed_edits: tool({ name: "apply_reviewed_edits", schema: z.object({}), execute: async () => { writes++; return { edited: true }; } })
+  });
+  await expect(execute(tools, "apply_reviewed_edits", {})).rejects.toThrow("REPAIR_PLAN_REQUIRED");
+  expect(writes).toBe(0);
+  expect(controller.pending()).toBe(false);
+  await execute(tools, "repair_plan", { verifier: { command: "node", args: ["verify.mjs"], purpose: "Assert requested behavior" } });
+  await execute(tools, "apply_reviewed_edits", {});
+  expect(writes).toBe(1);
+  expect(controller.pending()).toBe(true);
+});
+
+test("projected next-request cost activates focused closure before the work budget rejects it", async () => {
+  const limits = { inputTokens: 1000, outputTokens: 1000 };
+  let progress: ReturnType<typeof createRepairProgress>;
+  const budget = createModelBudget(limits, {
+    saved: { inputTokens: 550, outputTokens: 10, cachedInputTokens: 0, modelCalls: 2, usageComplete: true, inFlight: false },
+    closure: () => progress.closing()
+  });
+  progress = createRepairProgress(() => budget.stats, limits);
+  let calls = 0;
+  await budget.middleware.wrapGenerate!({ model: createMockLanguageModel(), input: {
+    messages: [{ role: "user", parts: [{ type: "text", text: "x".repeat(600) }] }]
+  } }, async () => { calls++; return { text: "candidate", usage: { inputTokens: 220, outputTokens: 2 } }; });
+  expect(calls).toBe(1);
+  expect(progress.stats.enteredClosure).toBe(true);
+  let broadReads = 0;
+  const tools = progress.wrapTools({ list_files: tool({ name: "list_files", schema: z.object({}),
+    execute: async () => { broadReads++; return []; } }) });
+  await expect(execute(tools, "list_files", {})).rejects.toThrow("REPAIR_CLOSURE");
+  expect(broadReads).toBe(0);
+  expect(budget.stats.inputTokens).toBeLessThan(limits.inputTokens);
+  await expect(budget.middleware.wrapGenerate!({ model: createMockLanguageModel(), input: {
+    messages: [{ role: "user", parts: [{ type: "text", text: "x".repeat(600) }] }]
+  } }, async () => { calls++; return {}; })).rejects.toThrow("INPUT_TOKEN_BUDGET");
+  expect(calls).toBe(1);
+});
+
+test("recovery requests a tool action instead of accepting a final answer with an unverified candidate", async () => {
+  const controller = createRepairController({}, false);
+  const tools = controller.wrapTools({
+    apply_reviewed_edits: tool({ name: "apply_reviewed_edits", schema: z.object({}), execute: async () => ({ edited: true }) }),
+    run_check: tool({ name: "run_check", schema: z.object({}), execute: async () => ({ exitCode: 1 }) })
+  });
+  await execute(tools, "apply_reviewed_edits", {});
+  await execute(tools, "run_check", {});
+  const input: import("@zhivex-ai/core").ModelGenerateInput = { messages: [], tools, reasoning: { effort: "none" }, providerOptions: { enable_thinking: false } };
+  await controller.middleware.wrapGenerate!({ model: createMockLanguageModel({ provider: "qwen" }), input }, async () => ({}));
+  expect(input.toolChoice).toBe("required");
+  expect(controller.pending()).toBe(true);
+  expect(controller.snapshot().verificationFailures).toBe(1);
 });

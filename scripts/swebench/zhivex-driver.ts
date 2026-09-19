@@ -36,7 +36,8 @@ export async function runDriver(raw: unknown, preflight = false) {
   let diagnostics: HarnessRunDiagnostics | undefined;
   let candidate: Awaited<ReturnType<typeof captureCandidate>> | undefined;
   let candidateCaptureFailure: ReturnType<typeof sanitizeOperationalError> | undefined;
-  const state = await mkdtemp(path.join(os.tmpdir(), "zhivex-swebench-state-"));
+  const managedState = process.env.ZHIVEX_SWEBENCH_STATE_DIRECTORY;
+  const state = managedState ?? await mkdtemp(path.join(os.tmpdir(), "zhivex-swebench-state-"));
   let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
   let output: AgentRunOutput | undefined;
   let lastState: AgentRunState | undefined;
@@ -82,7 +83,7 @@ export async function runDriver(raw: unknown, preflight = false) {
     harness.agent.instructions += "\nSWE-bench evaluation: source is in /workspace. Use python -m pytest or project tests for your own checks. The independent evaluator runs after you finish. Do not alter tests or project configuration. Inspect the patch, then use verify_and_apply_environment_patch with a focused verifier that asserts the reported behavior and related variants. Successful verification is required for import. No hidden evaluator tests are available.";
     if (preflight) {
       phase = "preflight";
-      const session = await harness.executionEnvironment!.acquire({ runId: `swebench-${input.runToken}` });
+      const session = await harness.executionEnvironment!.acquire({ runId: `swebench-${input.runToken}`, scope: harness.config.scope });
       try {
         if ((session as Partial<HarnessExecutionSession>).kind !== "zhivex-oci") throw new Error("Unexpected execution backend");
         const result = await (session as HarnessExecutionSession).runCommand("python", ["-c", "import sys; assert sys.version_info.major == 3"]);
@@ -120,11 +121,11 @@ export async function runDriver(raw: unknown, preflight = false) {
     failure = typeof (error as { code?: unknown })?.code === "string"
       ? String((error as { code: string }).code).replace(/[^A-Z0-9_]/g, "").slice(0, 64) : "DRIVER_ERROR";
   } finally {
-    if (harness && !lastState) lastState = await Promise.resolve(harness.store.load(`swebench-${input.runToken}`)).catch(() => undefined) ?? undefined;
+    if (harness && !lastState) lastState = await Promise.resolve(harness.store.load(`swebench-${input.runToken}`, harness.config.scope)).catch(() => undefined) ?? undefined;
     if (harness?.executionEnvironment && !preflight && lastState) {
       let session: HarnessExecutionSession | undefined;
       try {
-        session = await harness.executionEnvironment.acquire({ runId: `swebench-${input.runToken}` }) as HarnessExecutionSession;
+        session = await harness.executionEnvironment.acquire({ runId: `swebench-${input.runToken}`, scope: harness.config.scope }) as HarnessExecutionSession;
         candidate = await captureCandidate(session);
       } catch (error) { candidateCaptureFailure = sanitizeOperationalError(error); }
       finally {
@@ -133,7 +134,7 @@ export async function runDriver(raw: unknown, preflight = false) {
       }
     }
     await harness?.close().catch(error => { thrownDiagnostic ??= sanitizeOperationalError(error); failure ??= "CLEANUP_FAILED"; });
-    await rm(state, { recursive: true, force: true }).catch(error => { thrownDiagnostic ??= sanitizeOperationalError(error); failure ??= "CLEANUP_FAILED"; });
+    if (!managedState) await rm(state, { recursive: true, force: true }).catch(error => { thrownDiagnostic ??= sanitizeOperationalError(error); failure ??= "CLEANUP_FAILED"; });
   }
   const telemetry = projectState(output?.state ?? lastState, observed);
   const modelBudget = diagnostics?.budget ?? { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, modelCalls: 0, usageComplete: false, stopReason: null };

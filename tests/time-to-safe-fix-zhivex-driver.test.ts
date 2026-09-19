@@ -226,23 +226,6 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       expectedDigest: digest(before),
       content: after
     };
-    const mode = (await stat(path.join(workspace, "src", "value.ts"))).mode & 0o777;
-    const runId = `safe-fix-${createHash("sha256").update(request.caseId).digest("hex").slice(0, 24)}`;
-    const patchPayload = {
-      schemaVersion: 1,
-      kind: "environment-patch",
-      runId,
-      entries: [{
-        path: "src/value.ts",
-        operation: "update",
-        beforeDigest: digest(before),
-        beforeMode: mode,
-        afterDigest: digest(after),
-        afterMode: mode,
-        bytes: Buffer.byteLength(after)
-      }]
-    };
-    const patchId = digest(JSON.stringify(patchPayload));
     const toolCall = (id: string, name: string, input: unknown) => [
       { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
@@ -254,10 +237,22 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         toolCall("read", "read_files", { files: [{ path: "src/value.ts", startLine: 1 }] }),
         toolCall("apply", "apply_reviewed_edits", { changes: [change] }),
         toolCall("verify", "run_environment_command", { command: "node", args: ["verify.mjs"] }),
-        toolCall("inspect", "inspect_environment_patch", {}),
-        toolCall("import", "apply_environment_patch", { patchId })
+        toolCall("inspect", "inspect_environment_patch", {})
       ]
     });
+    const originalStream = model.stream!;
+    model.stream = async input => {
+      const inspection = input.messages.flatMap(message => message.parts).findLast(part =>
+        part.type === "tool-result" && part.toolResult.toolName === "inspect_environment_patch");
+      if (inspection?.type === "tool-result") {
+        const output = inspection.toolResult.output as { patchId: string };
+        expect(output.patchId).toMatch(/^sha256:[a-f0-9]{64}$/);
+        return (async function* () {
+          yield* toolCall("import", "apply_environment_patch", { patchId: output.patchId });
+        })();
+      }
+      return originalStream(input);
+    };
     const runtime = new FakeOciRuntime();
     let observedMaxOutputTokens: number | undefined;
     let observedPolicy: { leaseTtlMs?: number; heartbeatMs?: number } | undefined;

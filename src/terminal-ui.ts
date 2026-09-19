@@ -9,6 +9,7 @@ export const DEFAULT_APPROVAL_SUMMARY_CHARACTERS = 1_200;
 const EXACT_REVIEW_TOOLS = new Set([
   "apply_patch",
   "apply_reviewed_edits",
+  "apply_reviewed_replacement",
   "verify_and_apply_reviewed_edits",
   "move_file",
   "quarantine_file",

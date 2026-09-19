@@ -1,3 +1,4 @@
+import { withWorkspaceMutation } from "./workspace-mutation-lock.js";
 import { replacementEditSchema, type ReplacementEdit } from "./replacement-edits.js";
 import { boundedBatches } from "./bounded-reads.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -1153,6 +1154,14 @@ export class Workspace {
     modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>,
     assertActive?: () => Promise<void>
   ): Promise<ApplyPatchResult> {
+    return withWorkspaceMutation(this.root, () => this.applyPatchWithModesLocked(input, modes, assertActive));
+  }
+
+  private async applyPatchWithModesLocked(
+    input: ApplyEditProposalInput,
+    modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>,
+    assertActive?: () => Promise<void>
+  ): Promise<ApplyPatchResult> {
     const proposal = validateEditProposal(input);
     this.checkAuditCapacity(proposal.changes.length);
     const targetPaths = new Set(proposal.changes.map((change) => change.path));
@@ -1300,6 +1309,10 @@ export class Workspace {
   }
 
   async moveFile(input: MoveFileInput): Promise<MoveFileResult> {
+    return withWorkspaceMutation(this.root, () => this.moveFileLocked(input));
+  }
+
+  private async moveFileLocked(input: MoveFileInput): Promise<MoveFileResult> {
     const parsed = moveFileInputSchema.parse(input);
     this.checkAuditCapacity();
     const source = await this.readStableFile(parsed.source);
@@ -1371,6 +1384,10 @@ export class Workspace {
   }
 
   async quarantineFile(input: QuarantineFileInput, assertActive?: () => Promise<void>): Promise<QuarantineFileResult> {
+    return withWorkspaceMutation(this.root, () => this.quarantineFileLocked(input, assertActive));
+  }
+
+  private async quarantineFileLocked(input: QuarantineFileInput, assertActive?: () => Promise<void>): Promise<QuarantineFileResult> {
     const parsed = quarantineFileInputSchema.parse(input);
     this.checkAuditCapacity();
     const source = await this.readStableFile(parsed.path);
@@ -1408,6 +1425,10 @@ export class Workspace {
   }
 
   async restoreQuarantined(input: RestoreFileInput): Promise<RestoreFileResult> {
+    return withWorkspaceMutation(this.root, () => this.restoreQuarantinedLocked(input));
+  }
+
+  private async restoreQuarantinedLocked(input: RestoreFileInput): Promise<RestoreFileResult> {
     const parsed = restoreFileInputSchema.parse(input);
     this.checkAuditCapacity();
     const directory = await this.secureQuarantineDirectory(false);

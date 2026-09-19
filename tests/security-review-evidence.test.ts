@@ -12,6 +12,7 @@ import {
 } from "../scripts/security-review-evidence.js";
 import { createExecutionEnvironmentTools, createWorkspaceTools } from "../src/harness.js";
 import { HARNESS_SUBAGENT_PROFILE_DESCRIPTORS } from "../src/orchestration.js";
+import { createTaskTools } from "../src/task-memory.js";
 
 const binding = {
   releaseTag: "v1.0.0-rc.1",
@@ -188,6 +189,7 @@ const workflowFetcher = (
 describe("strict security review evidence", () => {
   test("keeps the authority inventory synchronized with every model-facing tool class", () => {
     const actualTools = [
+      ...Object.keys(createTaskTools()),
       ...Object.keys(createWorkspaceTools({} as never, [])),
       ...Object.keys(createExecutionEnvironmentTools({} as never, { shellMode: "ask", allowedCommands: ["bun"] } as never)),
       "load_skill",

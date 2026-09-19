@@ -223,7 +223,7 @@ export const runHarnessReviewGroup = async (
     schemaVersion: 1,
     kind: "review-group",
     groupId,
-    status: result.status,
+    status: result.status === "completed" ? "completed" : "failed",
     profiles: uniqueProfiles,
     outputs: result.outputs
   };

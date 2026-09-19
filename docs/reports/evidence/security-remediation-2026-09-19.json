@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-security-remediation-validation",
+  "date": "2026-09-19",
+  "reviewer": "Codex automated technical reviewer",
+  "baseCommit": "28723ff3350b7572d5bd68f2d40b6feef1e0e6b4",
+  "candidate": "uncommitted working tree; not a release attestation",
+  "fileSha256": {
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe",
+    "contracts/stable-api-signatures.json": "d863eda985db5779b8477593b3bc0771915d2f4b92c0ac83ab54efd7593bc13b",
+    "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1",
+    "scripts/check-docs.ts": "57ee9878b72961a53a7e4baaf9790dba230edef172df641030b04dfff0fbc5ee",
+    "scripts/security-review-evidence.ts": "8ed57fda8704c9162f7a3f74d1a71b362b2581247e84fb24844f11778e835dde",
+    "scripts/stable-api-signatures.ts": "8c6d12b27ed75fa327614fe6f7a6d12cd1104ae7c254ce284cad30a9b687d5e5",
+    "scripts/validate-ga-budget.ts": "5a4125a8e6d0ac4f8d9063091dca7546cca3d8963a2f248f029fe9ee6ec3bbc6",
+    "scripts/validate-security-review.ts": "956d8d332ce59c39d6b2fd763be2a0f162e51760f4d63cd1e5c9bdbe48b778f3",
+    "src/cli.ts": "5a4acb4695a968a58fbeac05c4bb89848a9653d6189590f0ff90e430ffa98d14",
+    "src/config.ts": "b1d3991e84add58603fb85b2a604b9b3eb56ae879d0fa30b0cb40545fa44edc1",
+    "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+    "src/harness.ts": "6562180a95f2bbd8c387bd8925cf511a22f155de9a67d384cb6d933f436c2c46",
+    "src/orchestration.ts": "b56c8c7d526a99b745cc17769e0a1b7b500b25920e77f34aa0dd01c9758de319",
+    "src/terminal-ui.ts": "4da1878a76ba608a2517bf5d5c992a9a88702aba3fd800a9980129ba93e157bc",
+    "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+    "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302",
+    "tests/execution-environment.test.ts": "4f9a96170662b9bba07754f09df6183fd18dead5ad0cb7c395f4f34c9f65af03",
+    "tests/security-review-evidence.test.ts": "2fd505004d8cf9f8e94c54c5e72eb6b2e6053ae03fe936ff7f3bd2c6886e7b9d",
+    "tests/terminal-ui.test.ts": "2275e91dd0a265d6f249bf1ef33ef2b4aba0f64ceec891c8fb216dbd9d53bc76",
+    "tests/time-to-safe-fix-zhivex-driver.test.ts": "3cc07cabe41114f693b8557b7c26b0242f61c3f659454e68ce27ac575f960501",
+    "tests/workspace-concurrency.test.ts": "6f616fa87c4a190a40dee32dcfe19e86b22f582d6aa80b323aee114db8dc8a0e"
+  },
+  "securityProbes": [
+    {
+      "id": "SEC-01",
+      "passed": true,
+      "acceptedConflictingWrites": 1,
+      "finalContent": "first"
+    },
+    {
+      "id": "CONTROL-sequential-stale-digest",
+      "passed": true,
+      "rejectedStale": true
+    },
+    {
+      "id": "SEC-02",
+      "passed": true,
+      "replacementVisibleByDefault": true,
+      "omissionNoticeVisible": false,
+      "fullViewAvailable": true
+    },
+    {
+      "id": "SEC-03",
+      "passed": true,
+      "missingTools": []
+    },
+    {
+      "id": "SEC-04",
+      "passed": true,
+      "throughPublicRunHarness": true,
+      "status": "completed",
+      "differentTenantUserNamespace": true,
+      "otherTenantCandidateInToolOutput": false
+    }
+  ],
+  "checks": {
+    "suite": {
+      "passed": 519,
+      "failed": 0,
+      "files": 60
+    },
+    "additionalOciConcurrencyAndWorkspaceTests": {
+      "passed": 30,
+      "failed": 0
+    },
+    "signatureTests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "docs": "pass",
+    "types": "pass",
+    "toolingTypes": "pass",
+    "preparationContract": "pass; GA blockers remain",
+    "migrations": "pass",
+    "evaluations": "pass",
+    "benchmarks": "pass",
+    "mcp": "pass",
+    "officialMcp": "pass",
+    "realDocker": "pass",
+    "installedPackage": "pass after compiler emission correction",
+    "dependencyAudit": "pass; 35 packages, no vulnerabilities reported"
+  },
+  "openGaBlockers": [
+    "GA-01: Meta/OpenAI default token preflight rejects second turn",
+    "Fresh live certification and representative holdout required",
+    "Protected release, immutable published artifact and provenance evidence required",
+    "Review final candidate and resolve formal GA readiness requirements"
+  ]
+}

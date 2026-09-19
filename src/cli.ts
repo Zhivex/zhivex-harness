@@ -2953,7 +2953,7 @@ const manageRuns = async (options: CliOptions) => {
         });
         document = {
           ...(document as Record<string, unknown>),
-          executionArtifacts: await cleanupHarnessExecutionArtifacts(config.stateDirectory, options.before!),
+          executionArtifacts: await cleanupHarnessExecutionArtifacts(config.stateDirectory, options.before!, { workspace: config.workspace, scope: config.scope }),
           ...(config.execution.backend === "oci"
             ? {
                 orphanContainersRemoved: await new CliOciRuntimeAdapter(

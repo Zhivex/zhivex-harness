@@ -37,7 +37,7 @@ export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
 export const HARNESS_EXECUTION_BACKENDS = ["none", "oci"] as const;
 export const HARNESS_OCI_RUNTIMES = ["docker", "podman"] as const;
 export const HARNESS_OCI_SHELL_MODES = ["deny", "ask"] as const;
-export const HARNESS_EXECUTION_POLICY_VERSION = "2026-08-21-v4" as const;
+export const HARNESS_EXECUTION_POLICY_VERSION = "2026-09-19-v5-scoped-oci" as const;
 
 export const DEFAULT_OCI_EXECUTION = {
   runtime: "docker",

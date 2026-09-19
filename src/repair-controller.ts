@@ -34,12 +34,17 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
   const pending = () => state.candidate !== null && state.phase !== "delivered";
   const closure = () => pending() || state.phase === "recover";
   const markIncomplete = () => { if (pending()) state.phase = "incomplete"; };
-  const verificationFailed = () => { state.verificationFailures++; state.phase = "recover"; state.verifier = null; state.verifierRequests = 0; };
+  const verificationFailed = (attemptedVerification = true) => { if (attemptedVerification) state.verificationFailures++; state.phase = "recover"; state.verifier = null; state.verifierRequests = 0; };
   const wrapTools = (tools: ToolSet): ToolSet => Object.fromEntries(Object.entries(tools).map(([name, tool]) => {
     if (!("execute" in tool)) return [name, tool];
     return [name, { ...tool, async execute(input, context) {
       let executed = false;
       try {
+        // Make the documented plan-before-edit contract executable. A concrete
+        // verifier is still model-authored and requires its own approval later.
+        if (oci && mutations.has(name) && !state.verifier) {
+          throw new Error("REPAIR_PLAN_REQUIRED: call repair_plan with exact verifier command, args and purpose before editing. No edit was executed. The verifier must assert the requested behavior; recording it is not approval.");
+        }
         // Narrowing the transport catalogue alone is not an execution policy.
         if (pending() && state.phase !== "recover" && !terminal.has(name) &&
           !["repair_plan", "read_task", "inspect_environment_patch", "environment_status", "mutation_audit", "run_check"].includes(name)) {
@@ -82,7 +87,7 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
             verified: passed && (terminal.has(name) || (!oci && name === "run_check" && pending())) });
           if (state.receipts.length > 8) state.receipts.shift();
           if (passed && (terminal.has(name) || (!oci && name === "run_check" && pending()))) state.phase = "delivered";
-          else if (!passed && pending()) verificationFailed();
+          else if (!passed && pending()) verificationFailed(terminal.has(name) || (!oci && name === "run_check"));
         }
         return value;
       } catch (error) {
@@ -103,7 +108,7 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
                   argvDigest: sha(input), candidate, exitCode: failure.exitCode as number, verified: false });
                 if (state.receipts.length > 8) state.receipts.shift();
               }
-              verificationFailed();
+              verificationFailed(terminal.has(name));
             }
           } catch {
             state.candidate ??= sha({ uninspectedEffect: name, call: context?.toolCall?.id });
@@ -131,6 +136,13 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
       state.phase = "verify";
       return { id: `controller_${randomUUID()}`, name: "verify_and_apply_environment_patch",
         input: { patchId: state.candidate, command: state.verifier.command, args: state.verifier.args } };
+    }
+    if (state.phase === "recover") {
+      // A final answer cannot discharge an outstanding verification obligation.
+      // Ask for a diagnostic/repair action while ordinary tool and token limits
+      // still bound recovery. Providers with thinking restrictions retain auto.
+      const requiredChoiceSupported = provider !== "qwen" || input.reasoning?.effort === "none" || input.providerOptions?.enable_thinking === false;
+      input.toolChoice = requiredChoiceSupported ? "required" : "auto";
     }
     if (state.phase !== "recover") {
       if (++state.verifierRequests > 2) throw new Error("REPAIR_VERIFIER_MISSING: candidate retained without verification.");

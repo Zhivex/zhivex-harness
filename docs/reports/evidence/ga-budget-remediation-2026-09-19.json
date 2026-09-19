@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "kind": "ga-budget-remediation",
+  "date": "2026-09-19",
+  "baseCommit": "28723ff3350b7572d5bd68f2d40b6feef1e0e6b4",
+  "candidate": "local working tree, not published release",
+  "fileSha256": {
+    "src/harness.ts": "6168cfd53557b8fc07261fef1a4f5a6d5e689a169256c0e03c5abce0dfc228d0",
+    "src/runtime-policy.ts": "8356acf0102f0e73839b81ed628a5c0d9a89d9c21b0ca416efedde8f1b3414e2",
+    "tests/runtime-token-budget.test.ts": "de19f63504e6ea3e4f4eaf6b380ff55f3ae6b9ad92a377308526f9a9510b68f4",
+    "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1",
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe"
+  },
+  "regressions": {
+    "passed": 7,
+    "failed": 0,
+    "covers": [
+      "two-turn cap decreases",
+      "exact exhaustion stops further requests",
+      "explicit per-call caps",
+      "approval resume retains usage",
+      "over-budget model response cannot execute tool"
+    ]
+  },
+  "fullCheck": {
+    "exitCode": 0,
+    "testsPassed": 527,
+    "testsFailed": 0,
+    "realDocker": true,
+    "installedPackage": true
+  },
+  "liveApprovalRestart": {
+    "ok": true,
+    "gate": "live-provider-smoke",
+    "certifiedAt": "2026-09-19T18:08:12.938Z",
+    "providers": [
+      {
+        "ok": true,
+        "provider": "meta",
+        "model": "muse-spark-1.2",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      },
+      {
+        "ok": true,
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      },
+      {
+        "ok": true,
+        "provider": "qwen",
+        "model": "qwen3.8-max",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      }
+    ]
+  },
+  "liveOci": {
+    "ok": true,
+    "gate": "live-execution-smoke",
+    "certifiedAt": "2026-09-19T18:10:22.986Z",
+    "providers": [
+      {
+        "ok": true,
+        "provider": "meta",
+        "model": "muse-spark-1.2",
+        "runId": "run_4f6a112a-a01f-49d5-979d-fd614f048255",
+        "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+        "approvals": [
+          "run_environment_command",
+          "apply_environment_patch"
+        ],
+        "toolSequence": [
+          "run_environment_command",
+          "inspect_environment_patch",
+          "apply_environment_patch"
+        ],
+        "hostImportVerified": true,
+        "environmentBound": true
+      },
+      {
+        "ok": true,
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "runId": "run_5528c26d-f672-4945-ba66-804daab7c8b2",
+        "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+        "approvals": [
+          "run_environment_command",
+          "apply_environment_patch"
+        ],
+        "toolSequence": [
+          "run_environment_command",
+          "inspect_environment_patch",
+          "apply_environment_patch"
+        ],
+        "hostImportVerified": true,
+        "environmentBound": true
+      },
+      {
+        "ok": true,
+        "provider": "qwen",
+        "model": "qwen3.8-max",
+        "runId": "run_9c7026af-d6fc-4101-84f4-79dfe4d9e901",
+        "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+        "approvals": [
+          "run_environment_command",
+          "apply_environment_patch"
+        ],
+        "toolSequence": [
+          "run_environment_command",
+          "inspect_environment_patch",
+          "apply_environment_patch"
+        ],
+        "hostImportVerified": true,
+        "environmentBound": true
+      }
+    ]
+  },
+  "limitations": [
+    "Approval restart live preceded final observed-usage accounting refinement; final OCI live and tests cover that refinement",
+    "Final missing-totalTokens fallback normalized after full suite start; focused tests and types repeated; package built afterward",
+    "No protected release identity or provenance",
+    "Holdout delivery and representative release matrix remain pending"
+  ]
+}

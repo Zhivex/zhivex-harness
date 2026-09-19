@@ -47,6 +47,14 @@ describe("terminal text safety", () => {
 });
 
 describe("approval cards", () => {
+  test("shows the replacement after long oldText without requiring a second view", () => {
+    const card = formatApproval(approval("apply_reviewed_replacement", JSON.stringify({
+      path: "src/index.ts", expectedDigest: `sha256:${"a".repeat(64)}`,
+      oldText: "x".repeat(2000), newText: "COMPLETE_NEW_TEXT"
+    })));
+    expect(card).toContain("COMPLETE_NEW_TEXT");
+    expect(card).not.toContain("characters omitted");
+  });
   test("shows complete payloads for every reviewed edit transaction", () => {
     const tail = "TAIL_OF_REVIEWED_CHANGE";
     const argumentsText = JSON.stringify({

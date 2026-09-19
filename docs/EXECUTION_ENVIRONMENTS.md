@@ -131,6 +131,27 @@ Version `0.11.x` advances the execution policy to `2026-08-21-v4` and configurat
 
 Complete or deny paused `0.10.x` environment approvals with their original artifact. The new shell tool, context binding, and policy fingerprint intentionally prevent silent resume under a different authority surface; durable SQLite state remains readable without conversion.
 
+## Migration to scoped OCI identities
+
+The GA candidate advances execution policy to `2026-09-19-v5-scoped-oci`.
+Snapshot directories, runtime resources, and patch IDs bind the canonical workspace,
+canonical state directory, run ID, and complete tenant/user/namespace scope.
+Custom runtime adapters receive this opaque execution identity in `request.runId`;
+the public Harness session retains the caller's run ID.
+
+Legacy snapshots without scope are rejected. Complete or deny paused approvals
+using their original artifact, or start a new run; do not rename old directories
+or manufacture new metadata to resume them. CLI cleanup selects the configured
+workspace and scope. Calling `cleanupHarnessExecutionArtifacts` without its
+optional selection remains an administrative operation over the entire state root.
+
+Harness workspace writers serialize digest validation, publication, and import
+rollback across local processes using an owner-only SQLite lock outside the
+repository. Linux and macOS are supported; an unavailable lock fails closed.
+Process death releases ownership automatically. This coordinates cooperating
+Harness writers, not arbitrary programs running as the same host user, and does
+not make multi-file edits atomic across power loss.
+
 ## Certification
 
 The deterministic tests use an injected runtime to cover acquisition, secret exclusion, snapshot-only mutation, patch binding/import, separate and combined approvals, failed-verifier non-import, image-fingerprint resume rejection, release, and safe artifact cleanup. The installed-package smoke imports the public OCI API and proves that a consumer can perform the same snapshot/import flow.
