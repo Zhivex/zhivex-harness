@@ -15,6 +15,7 @@ import {
   Agent,
   applySafetyPolicyToAgent,
   createBudgetGuard,
+  createRedactionPolicy,
   createProductionSafetyPolicy,
   getAgentBudgetStatus,
   tool,
@@ -263,8 +264,22 @@ export interface HarnessRunOptions {
   maxTerminalVerificationRetries?: number;
 }
 
+const verifierDiagnosticRedaction = createRedactionPolicy({ includeEmails: true });
+const verifierFailureDetails = (result: { exitCode: number; timedOut: boolean; stdout: string; stderr: string }) => {
+  const redact = (text: string) => verifierDiagnosticRedaction.redactText(text)
+    .replace(/\bBearer\s+\S+/gi, "Bearer [REDACTED]")
+    .replace(/\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD)|api[_-]?key|access[_-]?token|password)\s*([=:])\s*(?:"[^\"]*"|'[^']*'|\S+)/gi, "$1$2[REDACTED]");
+  const stdout = redact(result.stdout), stderr = redact(result.stderr);
+  const bounded = (text: string) => text.length <= 2048 ? text : `${text.slice(0, 1000)}\n[truncated]\n${text.slice(-1000)}`;
+  return { exitCode: result.exitCode, timedOut: result.timedOut, diagnostics: {
+    source: "untrusted-verifier-output" as const,
+    stdout: bounded(stdout), stderr: bounded(stderr),
+    truncated: stdout.length > 2048 || stderr.length > 2048
+  } };
+};
+
 class TerminalVerificationFailure extends HarnessExecutionError {
-  constructor(readonly verification: { exitCode: number; timedOut: boolean }, readonly recoverable: boolean) {
+  constructor(readonly verification: ReturnType<typeof verifierFailureDetails>, readonly recoverable: boolean) {
     super(`The approved verifier failed with exit code ${verification.exitCode}; the host workspace was not changed.`);
   }
 }
@@ -648,7 +663,7 @@ export const createExecutionEnvironmentTools = (
         const verification = await session.runCommand(command, args, context);
         if (verification.exitCode !== 0) {
           throw new TerminalVerificationFailure(
-            { exitCode: verification.exitCode, timedOut: verification.timedOut },
+            verifierFailureDetails(verification),
             // OCI maps timeout/output-limit/cancellation to 124/125/130.
             // Conservatively exclude all reserved/signal exits from recovery.
             Number.isSafeInteger(verification.exitCode) && verification.exitCode > 0 &&
@@ -697,7 +712,7 @@ export const createExecutionEnvironmentTools = (
         const verification = await session.runCommand(command, args, context);
         if (verification.exitCode !== 0) {
           throw new TerminalVerificationFailure(
-            { exitCode: verification.exitCode, timedOut: verification.timedOut },
+            verifierFailureDetails(verification),
             Number.isSafeInteger(verification.exitCode) && verification.exitCode > 0 &&
               verification.exitCode < 124 && !verification.timedOut
           );
@@ -1451,7 +1466,7 @@ export const runHarness = async (
     const store = runtimeCheckpointStore(harness.store, runId, policyBudget, policyProgress, policyController);
     harness = { ...harness, store, agent: new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), tools, store,
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
-      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A candidate creates a mandatory verification obligation. Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them." }) };
+      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them." }) };
     input = { ...input, toolExecution: { parallel: false, stopOnError: false, validationErrorMode: "tool-result", ...input.toolExecution } };
   }
   const reportDiagnostics = () => { try { options.onDiagnostics?.({ profile: harness.config.agentProfile, approvalTimings,
@@ -1538,7 +1553,7 @@ export const runHarness = async (
         for await (const event of streamed.eventStream) {
           if (input.abortSignal?.aborted && (event.type === "error" ||
             (event.type === "agent-run-finish" && event.status === "failed"))) continue;
-          if (event.type === "agent-run-finish" && event.status === "completed" && policyController?.pending()) {
+          if (event.type === "agent-run-finish" && event.status === "completed" && policyController?.completionPending()) {
             const checkpoint = await harness.store.load(runId, event.state.scope);
             await options.onEvent?.({ ...event, status: "failed", state: checkpoint ?? {
               ...event.state, status: "failed", outputText: "Repair incomplete: the candidate has not been verified and delivered.",
@@ -1592,7 +1607,7 @@ export const runHarness = async (
       }
       input.abortSignal?.throwIfAborted();
       await dispatchResolvedApprovals(approvals, result.state.pendingApprovals);
-      if (policyController?.pending() && approvals.some(response => !response.approve)) policyController.markIncomplete();
+      if (policyController?.completionPending() && approvals.some(response => !response.approve)) policyController.markIncomplete();
 
       const terminalTools = new Set(options.terminalReceiptTools ?? (harness.config.agentProfile === "repair"
         ? ["verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"] : []));

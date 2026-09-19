@@ -1,0 +1,232 @@
+--- a/packages/openai/src/index.ts
++++ b/packages/openai/src/index.ts
+@@ -2050,6 +2050,17 @@
+   return normalizeFinishReason(status);
+ };
+ 
++const attachTerminalUsage = (error: ProviderToolCallError, raw: unknown) => new ProviderToolCallError({
++  provider: error.provider,
++  transport: error.transport,
++  diagnosticCode: error.diagnosticCode,
++  reason: error.reason,
++  retryable: error.retryable,
++  effectsPossible: error.effectsPossible,
++  cause: error.cause,
++  usage: mapResponsesUsage(raw)
++});
++
+ const mapResponsesUsage = (usage: any) =>
+   usage
+     ? {
+@@ -2129,6 +2140,7 @@
+   let sawToolCalls = false;
+   let sawRefusal = false;
+   let sawTerminalResponse = false;
++  let deferredToolError: ProviderToolCallError | undefined;
+   let nextToolOrder = 0;
+ 
+   const recordHostedImageBytes = (image: GeneratedMedia) => {
+@@ -2315,6 +2327,12 @@
+       throw error;
+     }
+     const type = json.type as string | undefined;
++    if (deferredToolError) {
++      if (type === "response.completed" || type === "response.failed" || type === "response.incomplete") {
++        throw attachTerminalUsage(deferredToolError, json.response?.usage);
++      }
++      continue;
++    }
+ 
+     if (sawTerminalResponse) {
+       continue;
+@@ -2388,10 +2406,11 @@
+         typeof item.status === "string" &&
+         item.status !== "completed"
+       ) {
+-        throw openAIResponsesToolCallError(
++        deferredToolError = openAIResponsesToolCallError(
+           item.status === "failed" ? "response_failed" : "incomplete_arguments",
+           sawToolCalls
+         );
++        continue;
+       }
+ 
+       if (item?.type === "image_generation_call" && type === "response.output_item.done") {
+@@ -2534,9 +2553,13 @@
+       sawTerminalResponse = true;
+ 
+       if (responseStatus === "completed") {
+-        for (const toolCallEvent of materializeToolCalls()) {
+-          yield toolCallEvent;
++        let materialized: StreamEvent[];
++        try { materialized = materializeToolCalls(); }
++        catch (error) {
++          if (error instanceof ProviderToolCallError) throw attachTerminalUsage(error, responseData.usage);
++          throw error;
+         }
++        for (const toolCallEvent of materialized) yield toolCallEvent;
+         if (pendingExecutableEvents.length > 0) {
+           sawToolCalls = true;
+           for (const toolCallEvent of pendingExecutableEvents) {
+@@ -2550,10 +2573,10 @@
+         (responseStatus === "failed" || responseStatus === "incomplete") &&
+         (toolBuffers.size > 0 || pendingExecutableEvents.length > 0 || sawToolCalls)
+       ) {
+-        throw openAIResponsesToolCallError(
++        throw attachTerminalUsage(openAIResponsesToolCallError(
+           responseStatus === "failed" ? "response_failed" : "response_incomplete",
+           sawToolCalls
+-        );
++        ), responseData.usage);
+       }
+ 
+       if (typeof responseData.id === "string") {
+@@ -2575,7 +2598,7 @@
+ 
+   if (
+     !sawTerminalResponse &&
+-    (toolBuffers.size > 0 || pendingExecutableEvents.length > 0 || sawToolCalls)
++    (deferredToolError || toolBuffers.size > 0 || pendingExecutableEvents.length > 0 || sawToolCalls)
+   ) {
+     throw openAIResponsesToolCallError("stream_truncated", sawToolCalls);
+   }
+--- a/packages/core/src/errors.ts
++++ b/packages/core/src/errors.ts
+@@ -90,6 +90,8 @@
+   readonly reason: ProviderToolCallErrorReason;
+   readonly retryable: boolean;
+   readonly effectsPossible: boolean;
++  /** Validated terminal accounting, independent of whether the tool call was safe. */
++  readonly usage?: Readonly<TokenUsage>;
+ 
+   constructor(options: {
+     provider: string;
+@@ -98,6 +100,7 @@
+     reason: ProviderToolCallErrorReason;
+     retryable?: boolean;
+     effectsPossible?: boolean;
++    usage?: TokenUsage;
+     cause?: unknown;
+   }) {
+     super("Provider tool call could not be materialized safely.", { cause: options.cause });
+@@ -107,6 +110,20 @@
+     this.reason = options.reason;
+     this.effectsPossible = options.effectsPossible ?? false;
+     this.retryable = this.effectsPossible ? false : (options.retryable ?? false);
++    const supplied = options.usage;
++    if (supplied && [supplied.inputTokens, supplied.outputTokens].every(
++      count => typeof count === "number" && Number.isSafeInteger(count) && count >= 0
++    )) {
++      const copy: TokenUsage = {};
++      let valid = true;
++      for (const key of ["inputTokens", "outputTokens", "cachedInputTokens", "cacheWriteTokens", "reasoningTokens", "totalTokens"] as const) {
++        const count = supplied[key];
++        if (count === undefined) continue;
++        if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) { valid = false; break; }
++        copy[key] = count;
++      }
++      if (valid) this.usage = Object.freeze(copy);
++    }
+   }
+ }
+ 
+--- /dev/null
++++ b/packages/openai/tests/terminal-usage-regression.test.ts
+@@ -0,0 +1,40 @@
++import {test, expect} from 'vitest';
++import {createOpenAI} from '../src/index.js';
++const item=(status: string, args='{"value":1}')=>({type:'response.output_item.done', output_index:0,item:{type:'function_call',id:'item',call_id:'call',name:'fixture',arguments:args,status}});
++const terminal=(status: string, usage: unknown={input_tokens:12,output_tokens:8})=>({type:`response.${status}`,response:{id:'response',status,usage,output:[]}});
++async function run(events: unknown[]) {
++ const model=createOpenAI({apiKey:'fixture',fetch:(async()=>new Response(events.map((e:any)=>`event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}})) as unknown as typeof fetch})('gpt-5.6-luna');
++ const emitted: any[]=[]; let error:any;
++ try {for await(const event of await model.stream!({messages:[{role:'user',parts:[{type:'text',text:'fixture'}]}],providerOptions:{apiMode:'responses'}})) emitted.push(event);}catch(e){error=e;}
++ return {emitted,error};
++}
++for(const status of ['incomplete','failed']) test(`rejects ${status} call with exact terminal accounting`,async()=>{
++ const result=await run([item(status),terminal(status)]);
++ expect(result.error.usage).toEqual({inputTokens:12,outputTokens:8});
++ expect(result.emitted).toEqual([]);
++ expect(result.error.effectsPossible).toBe(false);
++ expect(JSON.stringify(result.error)).not.toContain('"value"');
++});
++test('rejects a deferred error even if terminal claims completion',async()=>{
++ const r=await run([item('incomplete'),item('completed'),terminal('completed')]);
++ expect(r.error.reason).toBe('incomplete_arguments'); expect(r.emitted).toEqual([]);
++});
++test('missing terminal does not invent usage',async()=>{
++ const r=await run([item('incomplete')]); expect(r.error).toBeDefined(); expect(r.error.usage).toBeUndefined(); expect(r.emitted).toEqual([]);
++});
++for(const usage of [undefined,{input_tokens:-1,output_tokens:8},{input_tokens:12.5,output_tokens:8},{input_tokens:12,output_tokens:'8'}]) test('invalid terminal accounting stays unknown',async()=>{
++ const r=await run([item('incomplete'),{type:'response.incomplete',response:{status:'incomplete',usage}}]); expect(r.error.usage).toBeUndefined(); expect(r.emitted).toEqual([]);
++});
++test('valid completed call is emitted once with usage',async()=>{
++ const r=await run([item('completed'),terminal('completed')]); expect(r.error).toBeUndefined();
++ expect(r.emitted.filter(e=>e.type==='tool-call')).toHaveLength(1); expect(r.emitted.find(e=>e.type==='finish').usage.inputTokens).toBe(12);
++});
++test('invalid JSON on completed terminal has usage and no executable call',async()=>{
++ const r=await run([item('completed','{"value":'),terminal('completed')]); expect(r.error.reason).toBe('invalid_json'); expect(r.error.usage).toEqual({inputTokens:12,outputTokens:8}); expect(r.emitted).toEqual([]);
++});
++
++test('preserves optional numeric accounting without arbitrary payloads',async()=>{
++ const r=await run([item('incomplete'),terminal('incomplete',{input_tokens:12,output_tokens:8,total_tokens:20,input_tokens_details:{cached_tokens:4},output_tokens_details:{reasoning_tokens:2},secret:'must-not-copy'})]);
++ expect(r.error.usage).toEqual({inputTokens:12,outputTokens:8,totalTokens:20,cachedInputTokens:4,reasoningTokens:2});
++ expect(JSON.stringify(r.error)).not.toContain('must-not-copy');
++});
+--- /dev/null
++++ b/packages/core/tests/provider-tool-call-usage.test.ts
+@@ -0,0 +1,10 @@
++import {test,expect} from 'vitest';
++import {ProviderToolCallError} from '../src/errors.js';
++const make=(usage:any)=>new ProviderToolCallError({provider:'openai',diagnosticCode:'FIXTURE',reason:'incomplete_arguments',usage});
++test('copies and freezes only numeric usage fields',()=>{
++ const usage={inputTokens:12,outputTokens:8,totalTokens:20,secret:'discard'};
++ const error=make(usage); usage.inputTokens=999;
++ expect(error.usage).toEqual({inputTokens:12,outputTokens:8,totalTokens:20});expect(Object.isFrozen(error.usage)).toBe(true);
++ expect(JSON.stringify(error)).not.toContain('discard');expect(error.retryable).toBe(false);
++});
++for(const usage of [{inputTokens:12},{inputTokens:NaN,outputTokens:8},{inputTokens:12,outputTokens:Infinity},{inputTokens:12,outputTokens:8,cachedInputTokens:-1},{inputTokens:12,outputTokens:8,reasoningTokens:'2'}]) test('rejects invalid or incomplete usage',()=>expect(make(usage).usage).toBeUndefined());
+--- /dev/null
++++ b/packages/sdk/tests/provider-tool-call-usage.test.ts
+@@ -0,0 +1,8 @@
++import { expect, test } from "vitest";
++import { ProviderToolCallError } from "../src/index.js";
++test("SDK exposes validated terminal accounting on provider tool errors", () => {
++  const error = new ProviderToolCallError({ provider: "openai", diagnosticCode: "FIXTURE", reason: "incomplete_arguments", usage: { inputTokens: 12, outputTokens: 8 } });
++  expect(error.usage).toEqual({ inputTokens: 12, outputTokens: 8 });
++  expect(error.retryable).toBe(false);
++  expect(Object.isFrozen(error.usage)).toBe(true);
++});
+--- a/packages/core/tests/fixtures/api-type-snapshots/core.json
++++ b/packages/core/tests/fixtures/api-type-snapshots/core.json
+@@ -45,7 +45,7 @@
+   "catalog.d.ts": "c7b824484e828785ce64ddf693eb5f222745ecf157c0cbea42e6f1542c4903b1",
+   "contracts.d.ts": "866e31dc6141de0b7494b1fff4cf0319192ce422dea0ade4e6f63eb8e96066c3",
+   "embed.d.ts": "70f92bcf66097448cf2b2a29533be5c3fd9c86c8a5132a61d35a99f197ac57b5",
+-  "errors.d.ts": "f7d44e8bf26852b9a48a9a1f87609b81cb177901c5d3e31cc6b9b66d5bb18732",
++  "errors.d.ts": "329b8d6704d6a9a3e16ca659fcc17e64bd3b17e8568611de1b6dd04b6c4a946b",
+   "fetch.d.ts": "ae781ed35c5ac1ca01c4083f09ff53d3c1e7b034eb2d270110ad23d8f0710e07",
+   "generate-cache-file.d.ts": "273def95c472dc2dc406de04e19701f7b994eff9e9f76325651b643fe9d18924",
+   "generate-object.d.ts": "07cdaa2381b501af6bb25a7f946f109a881f9f256b59d53e54ef5846d7462667",
+--- a/README.md
++++ b/README.md
+@@ -355,6 +355,9 @@
+ 
+ Object generation preserves tool approval policies and lifecycle hooks. Provider stream error events terminate the operation and reject `collect()` before pending tools execute. OpenAI, Anthropic, Gemini and Qwen language-model routes validate HTTP status inside their retry boundary; DeepSeek also cancels retry waits when its timeout expires.
+ 
++`ProviderToolCallError.usage` optionally carries validated terminal token counts when a rejected OpenAI Responses tool call still has terminal accounting. Incomplete calls remain rejected and are never emitted for execution. Missing or invalid terminal usage stays absent; applications must not estimate billed usage or assume retry safety from the presence of counters. The numeric record is copied, frozen, and excludes provider payloads.
++
++
+ The recommended package, `@zhivex-ai/sdk`, re-exports the high-level primitives from `core`, including:
+ 
+ - `generateText`, `streamText`
+--- /dev/null
++++ b/.changeset/openai-terminal-tool-usage.md
+@@ -0,0 +1,7 @@
++---
++"@zhivex-ai/core": minor
++"@zhivex-ai/sdk": minor
++"@zhivex-ai/openai": patch
++---
++
++Preserve validated terminal usage on rejected Responses tool calls without emitting unsafe calls.

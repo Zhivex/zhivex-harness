@@ -1,4 +1,5 @@
 import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from "@zhivex-ai/core";
+import { ProviderToolCallError } from "@zhivex-ai/core/provider";
 import { z } from "zod";
 import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
 import { measureContext } from "./context-metrics.js";
@@ -64,12 +65,20 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
     stats.inputTokens += usage.inputTokens; stats.outputTokens += usage.outputTokens;
     stats.cachedInputTokens += usage.cachedInputTokens ?? 0;
   };
+  const recordFailure = (error: unknown, provider: string) => {
+    // Older adapters have no terminal usage on this error. Never infer it from
+    // messages or accept an arbitrary thrown object's accounting. The optional
+    // property is consumed structurally until the typed SDK update is published.
+    const usage: unknown = error instanceof ProviderToolCallError && error.provider === provider
+      ? Reflect.get(error, "usage") : undefined;
+    record(usage && typeof usage === "object" ? usage as TokenUsage : undefined);
+  };
   const middleware: LanguageModelMiddleware = {
     name: "harness-transport-budget-v2",
     async wrapGenerate(context, next) {
       before(context.input, context.model.provider); const started = performance.now(); let completed = false;
       try { const result = await next(); record(result.usage); completed = true; return result; }
-      catch (error) { stats.usageComplete = false; stats.inFlight = false; throw error; }
+      catch (error) { recordFailure(error, context.model.provider); throw error; }
       finally { if (modelTimings.length < 128) modelTimings.push({ durationMs: performance.now() - started, firstTokenMs: null, completed }); }
     },
     async wrapStream(context, next) {
@@ -77,15 +86,18 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
       try {
         const stream = await next();
         return (async function* () {
-          let finished = false;
+          let finished = false, failureAccounted = false;
           try { for await (const event of stream) {
             if (firstTokenMs === null && (event.type === "text-delta" || event.type === "tool-call")) firstTokenMs = performance.now() - started;
             if (event.type === "finish" && !finished) { record(event.usage); finished = true; }
             yield event;
-          } } finally { if (!finished) stats.usageComplete = false; stats.inFlight = false;
+          } } catch (error) {
+            if (!finished) { recordFailure(error, context.model.provider); failureAccounted = true; }
+            throw error;
+          } finally { if (!finished && !failureAccounted) stats.usageComplete = false; stats.inFlight = false;
             if (modelTimings.length < 128) modelTimings.push({ durationMs: performance.now() - started, firstTokenMs, completed: finished }); }
         })();
-      } catch (error) { stats.usageComplete = false; stats.inFlight = false;
+      } catch (error) { recordFailure(error, context.model.provider);
         if (modelTimings.length < 128) modelTimings.push({ durationMs: performance.now() - started, firstTokenMs, completed: false });
         throw error; }
     }

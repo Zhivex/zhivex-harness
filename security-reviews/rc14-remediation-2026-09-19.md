@@ -40,11 +40,24 @@ deliberadamente con la nueva política.
 
 Pendientes para GA:
 
-1. Corregir GA-01: Meta/OpenAI aún rechazan el segundo turno con el presupuesto
-   predeterminado (30.000 reservados frente a 29.998 restantes). Qwen pasa.
+1. Demostrar entrega fiable tras los cambios de recuperación. GA-01 ya tiene
+   corrección y regresión de dos turnos para los tres proveedores, documentadas
+   en [la remediación de presupuesto](../docs/reports/GA_BUDGET_REMEDIATION_2026-09-19.md).
+   La serie de desarrollo v3 resolvió 1/3 casos con OpenAI y 0/3 con Qwen, frente
+   a 3/3 por proveedor en el control. No satisface la aceptación de GA.
 2. Repetir certificación live y la cohorte representativa/holdout sobre el candidato
    corregido; los resultados históricos no certifican estos cambios.
 3. Obtener CI y release protegidos, artefacto inmutable, publicación y provenance;
    revisar ese candidato final y satisfacer el gate formal de GA.
 
 No se publicó, etiquetó ni declaró GA este checkout.
+
+Actualización local: las correcciones anteriores quedaron en el commit
+`41bd1cb4ab8481a7413f096a0817f612fe9806fe`. La revisión posterior del diagnóstico
+de verificadores y sus tests está todavía en el working tree. Las cuatro pruebas
+adversariales y el control de digest obsoleto vuelven a pasar; la suite completa
+actual tiene 533 tests correctos. El diagnóstico se entrega sólo como resultado
+no confiable de herramienta, redactado y limitado a 2048 caracteres por canal;
+el error genérico y la proyección de telemetría siguen omitiéndolo. La redacción
+por patrones no garantiza eliminar cualquier dato de negocio que un comando
+aprobado imprima. No equivale a aceptación live ni revisión de artefacto final.

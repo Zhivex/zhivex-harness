@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-plan-completion-validation",
+  "baseCommit": "41bd1cb4ab8481a7413f096a0817f612fe9806fe",
+  "candidate": "uncommitted working tree, no release attestation",
+  "sourceSha256": {
+    "src/harness.ts": "866115b64d90c0b2ffa3e07da6a015210afae0babe46052912d0cc288e23bc4b",
+    "src/repair-controller.ts": "280aa4d33918ab5b38b170059603eb1368a28e910f2ec2a39afa854af8082cc8",
+    "src/runtime-checkpoints.ts": "e3b75a0b86fb5d21992b1a126b35446110ba5fcaf4317ed5005b1a44555118dc",
+    "tests/full-remediation.test.ts": "587bd801afeaa7ff7425ab5b406126c4bba96016e90fc7fa69e714ed98a72af9",
+    "tests/terminal-verification-recovery.test.ts": "93653288eceb58901dc3003a79ef700dcc84f9141c8b07dc0564e662f7f3d3d7",
+    "scripts/validate-openai-stream-usage.ts": "76f5cd2c3ca055196a73c002fca78924db0c0d631157aab1b50e3daedaa791ea",
+    "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1",
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe"
+  },
+  "suite": {
+    "passed": 534,
+    "failed": 0,
+    "files": 61
+  },
+  "checks": {
+    "runtimeTypes": "passed",
+    "toolingTypes": "passed",
+    "docs": "passed",
+    "preparationContract": "passed",
+    "installedPackage": "passed"
+  },
+  "openaiAccountingProbe": {
+    "status": "failed",
+    "network": "mock-only",
+    "expectedInputTokens": 12,
+    "expectedOutputTokens": 8,
+    "usageObserved": false,
+    "incompleteToolCallRejected": true,
+    "emittedToolCalls": 0
+  },
+  "liveAcceptance": "not yet measured for plan completion change",
+  "ga": "not ready"
+}

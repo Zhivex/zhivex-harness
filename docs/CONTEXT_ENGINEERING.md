@@ -162,6 +162,16 @@ the argv digest and purpose to the candidate revision, but a zero exit code does
 not independently establish that the chosen check covers the user's requirement.
 Host-mode edits require an approved `run_check` before completion.
 
+A concrete repair plan also prevents completion before a candidate exists. If
+the provider returns a normal final answer with a pending obligation and known
+usage, the controller may schedule one read-only `read_task` reminder through the
+ordinary tool gates. Its durable counter survives resume; it cannot extend the
+verifier-selection limit or repeat indefinitely. The next model request still
+uses the original token, step and tool budgets. The original response's usage
+is preserved. Unknown usage, errors, cancellation and output-limit finishes do
+not trigger this reminder. A second premature final answer remains a failed
+repair, not a delivered result.
+
 Work/closure usage, phase, candidate, receipts and bounded measurements persist in
 the SDK's own checkpoint writes, without separate competing revision updates.
 An abandoned `running` checkpoint is treated as uncertain accounting on resume:

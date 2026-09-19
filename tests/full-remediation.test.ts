@@ -1,3 +1,4 @@
+import { projectState } from "../scripts/swebench/telemetry.js";
 import { test, expect } from "bun:test";
 import { mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -36,6 +37,29 @@ test("manual compaction bounds long requests while run metadata retains full req
   } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
 });
 
+test("a repair plan with a verifier cannot complete before producing a candidate", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "zhx-unfulfilled-plan-"));
+  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  const model = createMockLanguageModel({ streamEvents: [
+    [{ type: "tool-call", toolCall: { id: "plan", name: "repair_plan", input: {
+      hypothesis: "Fix the reported behavior", expectedBehavior: "Correct result", paths: ["value.txt"], nextCheck: "assert the fix",
+      verifier: { command: "node", args: ["verify.mjs"], purpose: "assert the fix" }
+    } } }, { type: "finish", finishReason: "tool-calls", usage: { inputTokens: 10, outputTokens: 2 } }],
+    [{ type: "text-delta", textDelta: "Done" }, { type: "finish", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 2 } }],
+    [{ type: "finish", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 2 } }]
+  ] });
+  try {
+    harness = await createHarness({ workspace: root, agentProfile: "repair", modelInstance: model,
+      store: createInMemoryAgentRunStore(), maxSteps: 4 });
+    const result = await runHarness(harness, { prompt: "Fix value.txt and verify the result." });
+    expect(result.status).toBe("failed");
+    expect(result.state.error?.message).toBe("REPAIR_INCOMPLETE");
+    const saved = await harness.store.load(result.state.runId, result.state.scope);
+    expect(saved?.status).toBe("failed");
+    expect(result.toolResults.filter(r => r.toolName === "read_task")).toHaveLength(1);
+  } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+});
+
 test("work cannot spend the closure reserve and snapshots retain complete accounting", async () => {
   let closing = false;
   const budget = createModelBudget({ inputTokens: 1000, outputTokens: 1000 }, { closure: () => closing });
@@ -51,30 +75,35 @@ test("work cannot spend the closure reserve and snapshots retain complete accoun
   await expect(unknown.middleware.wrapGenerate!(context, async () => ({}))).rejects.toThrow("USAGE_UNAVAILABLE");
 });
 
-for (const scenario of ["approve", "deny", "resume", "failed-recovered", "cancelled"] as const) {
+for (const scenario of ["approve", "early-final", "deny", "resume", "failed-recovered", "failed-recovered-qwen", "cancelled"] as const) {
   test(`controller delivers an early candidate without another provider decision: ${scenario}`, async () => {
     const root = await mkdtemp(path.join(tmpdir(), "zhx-controller-"));
     const store = createInMemoryAgentRunStore();
     let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
     let calls = 0, commands = 0;
+    const recovering = scenario.startsWith("failed-recovered");
+    const qwenRecovery = scenario === "failed-recovered-qwen";
+    const choices: unknown[] = [];
     const runtime: HarnessOciRuntimeAdapter = {
       async inspectImage(imageReference) { return { runtime: "docker", runtimeVersion: "fixture", imageReference,
         imageId: `sha256:${"a".repeat(64)}`, imageDigest: `sha256:${"a".repeat(64)}` }; },
-      async run(request) { commands++; return { command: request.command, exitCode: scenario === "cancelled" ? 130 : scenario === "failed-recovered" && commands === 1 ? 4 : 0, stdout: "", stderr: "", timedOut: false, cancelled: scenario === "cancelled", outputLimitExceeded: false }; },
+      async run(request) { commands++; return { command: request.command, exitCode: scenario === "cancelled" ? 130 : recovering && commands === 1 ? 4 : 0, stdout: "", stderr: "", timedOut: false, cancelled: scenario === "cancelled", outputLimitExceeded: false }; },
       async removeRunContainers() { return 0; }, async cleanupOrphans() { return 0; }
     };
     const finish = { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 10, outputTokens: 2 } };
     const call = (name: string, input: JsonValue) => ({ type: "tool-call" as const, toolCall: { id: name, name, input } });
-    const model = createMockLanguageModel({ streamEvents: [
+    const mockModel = createMockLanguageModel({ ...(qwenRecovery ? { provider: "qwen" } : {}), streamEvents: [
       [call("repair_plan", { hypothesis: "Create the required file", expectedBehavior: "file contains after", paths: ["value.txt"], nextCheck: "check the fixture", verifier: { command: "node", args: ["verify.mjs"], purpose: "assert file content" } }), finish],
+      ...(scenario === "early-final" ? [[{ ...finish, finishReason: "stop" as const }]] : []),
       [call("apply_reviewed_edits", { changes: [{ path: "value.txt", expectedDigest: null, content: "after\n" }] }), finish],
       [call("repair_plan", { hypothesis: "Correct verifier after the failed check", expectedBehavior: "file contains after", paths: ["value.txt"], nextCheck: "corrected assertion", verifier: { command: "node", args: ["verify-corrected.mjs"], purpose: "assert required file content" } }), finish]
     ] });
-    const stream = model.stream!; model.stream = input => { calls++; return stream(input); };
+    const model = qwenRecovery ? { ...mockModel, capabilities: { ...mockModel.capabilities, reasoning: true } } : mockModel;
+    const stream = model.stream!; model.stream = input => { calls++; choices.push(input.toolChoice); return stream(input); };
     try {
       harness = await createHarness({ workspace: root, executionBackend: "oci", agentProfile: "repair", modelInstance: model,
-        store, ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 8 });
-      const result = await runHarness(harness, { runId: "controller", scope: harness.config.scope, prompt: "Create value.txt with after and verify it." }, {
+        store, ...(qwenRecovery ? { provider: "qwen" as const } : {}), ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 8 });
+      const result = await runHarness(harness, { runId: "controller", scope: harness.config.scope, prompt: "Create value.txt with after and verify it.", ...(qwenRecovery ? { reasoning: { effort: "none" as const }, providerOptions: { apiMode: "chat", enable_thinking: false } } : {}) }, {
         resolveApprovals: async pending => pending[0]?.name.startsWith("verify_") && scenario === "resume" ? undefined : pending.map(a => ({ provider: a.provider,
           approvalRequestId: a.id, approve: scenario !== "deny" || !a.name.startsWith("verify_") }))
       }).catch(error => { if (scenario !== "deny" && scenario !== "cancelled") throw error; return undefined; });
@@ -89,7 +118,9 @@ for (const scenario of ["approve", "deny", "resume", "failed-recovered", "cancel
         }) : result;
         expect(completed.status).toBe("completed");
         expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("after\n");
-        expect(commands).toBe(scenario === "failed-recovered" ? 2 : 1); expect(calls).toBe(scenario === "failed-recovered" ? 3 : 2);
+        expect(commands).toBe(recovering ? 2 : 1); expect(calls).toBe(recovering || scenario === "early-final" ? 3 : 2);
+        if (scenario === "early-final") expect(completed.toolResults.filter(r => r.toolName === "read_task")).toHaveLength(1);
+        if (qwenRecovery) expect(choices.at(-1)).toBe("required");
         const saved = await store.load("controller", harness.config.scope);
         expect(saved?.metadata?.[MODEL_BUDGET_KEY]).toMatchObject({ inputTokens: calls * 10, modelCalls: calls, usageComplete: true });
         expect(saved?.metadata?.[REPAIR_CONTROLLER_KEY]).toMatchObject({ phase: "delivered", revision: 1 });
@@ -248,7 +279,7 @@ test("combined edit transaction recovers into a freshly approved candidate verif
   let commands = 0;
   const runtime: HarnessOciRuntimeAdapter = {
     async inspectImage(imageReference) { return { runtime: "docker", runtimeVersion: "fixture", imageReference, imageId: `sha256:${"a".repeat(64)}`, imageDigest: `sha256:${"a".repeat(64)}` }; },
-    async run(request) { commands++; return { command: request.command, exitCode: commands === 1 ? 4 : 0, stdout: "", stderr: "", timedOut: false, cancelled: false, outputLimitExceeded: false }; },
+    async run(request) { commands++; return { command: request.command, exitCode: commands === 1 ? 4 : 0, stdout: "", stderr: commands === 1 ? "AssertionError: expected corrected content\nOPENAI_API_KEY=sk-" + "A".repeat(48) + "\n" + "x".repeat(6000) : "", timedOut: false, cancelled: false, outputLimitExceeded: false }; },
     async removeRunContainers() { return 0; }, async cleanupOrphans() { return 0; }
   };
   const finish = { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 10, outputTokens: 2 } };
@@ -256,6 +287,9 @@ test("combined edit transaction recovers into a freshly approved candidate verif
     [{ type: "tool-call", toolCall: { id: "combined", name: "verify_and_apply_reviewed_edits", input: { changes: [{ path: "value.txt", expectedDigest: null, content: "after\n" }], command: "node", args: ["verify.mjs"] } } }, finish],
     [{ type: "tool-call", toolCall: { id: "corrected", name: "repair_plan", input: { hypothesis: "Correct fixture verifier", expectedBehavior: "required content", paths: ["value.txt"], nextCheck: "verify again", verifier: { command: "node", args: ["verify-corrected.mjs"], purpose: "assert required content" } } } }, finish]
   ] });
+  let recoveryMessages = "";
+  const originalStream = model.stream!;
+  model.stream = input => { recoveryMessages = JSON.stringify(input.messages); return originalStream(input); };
   const approvalIds: string[] = [];
   try {
     harness = await createHarness({ workspace: root, executionBackend: "oci", agentProfile: "repair", modelInstance: model,
@@ -267,6 +301,13 @@ test("combined edit transaction recovers into a freshly approved candidate verif
     expect(commands).toBe(2); expect(new Set(approvalIds).size).toBe(2);
     expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("after\n");
     expect(result.toolResults.find(r => r.isError)?.output).toMatchObject({ kind: "terminal-verification-failure", verification: { exitCode: 4 } });
+    const failureOutput = result.toolResults.find(r => r.isError)?.output as { verification: { diagnostics: { stderr: string; truncated: boolean } } };
+    expect(failureOutput.verification.diagnostics.stderr).toContain("AssertionError: expected corrected content");
+    expect(failureOutput.verification.diagnostics.stderr.length).toBeLessThanOrEqual(2048);
+    expect(failureOutput.verification.diagnostics.truncated).toBe(true);
+    expect(recoveryMessages).toContain("AssertionError: expected corrected content");
+    expect(recoveryMessages).not.toContain("sk-" + "A".repeat(48));
+    expect(JSON.stringify(projectState(result.state, new Map()))).not.toContain("AssertionError: expected corrected content");
     expect(result.state.metadata?.[REPAIR_CONTROLLER_KEY]).toMatchObject({ phase: "delivered", verificationFailures: 1 });
   } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
 });

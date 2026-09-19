@@ -6,6 +6,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness, runHarness } from "../src/harness.js";
 import { createEditProposal } from "../src/edit-contracts.js";
+import { projectState } from "../scripts/swebench/telemetry.js";
 import type { HarnessOciRuntimeAdapter, OciRunRequest, HarnessExecutionSession } from "../src/execution-environment.js";
 
 // Exercise the real approval, journal, snapshot and terminal-receipt paths.
@@ -66,7 +67,13 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
         expect(new Set(approvals).size).toBe(2);
         const failed = completed.toolResults.find((r) => r.isError);
         expect(failed?.output).toMatchObject({ kind: "terminal-verification-failure", verification: { exitCode: 4 } });
-        expect(JSON.stringify(failed)).not.toContain("private fixture failure");
+        // Approved command output is bounded feedback for the repair model;
+        // exception messages and external telemetry must still omit its text.
+        expect(failed?.output).toMatchObject({ verification: { diagnostics: {
+          source: "untrusted-verifier-output", stderr: "private fixture failure", truncated: false
+        } } });
+        expect(JSON.stringify(failed?.error)).not.toContain("private fixture failure");
+        expect(JSON.stringify(projectState(completed.state, new Map()))).not.toContain("private fixture failure");
         expect(completed.usage?.inputTokens).toBe(20);
       } else if (scenario === "resumed-exhausted") {
         const pending = await result;

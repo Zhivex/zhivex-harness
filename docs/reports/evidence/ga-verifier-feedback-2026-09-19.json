@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-verifier-feedback-validation",
+  "reviewer": "Codex automated technical reviewer",
+  "baseCommit": "41bd1cb4ab8481a7413f096a0817f612fe9806fe",
+  "candidate": "working tree, not a release attestation",
+  "fileSha256": {
+    "src/harness.ts": "420694110f2e205322bdcf06f3571e289809c96df92ad8bbda042d218b0692e1",
+    "tests/full-remediation.test.ts": "5e5b5d5d4aedc11be7c8e86a4ece69af9bd6b4cf5aeb0e1a5f153664ffbf9aaf",
+    "tests/terminal-verification-recovery.test.ts": "93653288eceb58901dc3003a79ef700dcc84f9141c8b07dc0564e662f7f3d3d7",
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe",
+    "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1"
+  },
+  "suite": {
+    "passed": 533,
+    "failed": 0,
+    "files": 61
+  },
+  "checks": {
+    "runtimeTypes": "passed",
+    "toolingTypes": "passed",
+    "preparationContract": "passed",
+    "docs": "passed",
+    "installedPackage": "passed"
+  },
+  "securityProbes": [
+    {
+      "id": "SEC-01",
+      "passed": true,
+      "acceptedConflictingWrites": 1,
+      "finalContent": "first"
+    },
+    {
+      "id": "CONTROL-sequential-stale-digest",
+      "passed": true,
+      "rejectedStale": true
+    },
+    {
+      "id": "SEC-02",
+      "passed": true,
+      "replacementVisibleByDefault": true,
+      "omissionNoticeVisible": false,
+      "fullViewAvailable": true
+    },
+    {
+      "id": "SEC-03",
+      "passed": true,
+      "missingTools": []
+    },
+    {
+      "id": "SEC-04",
+      "passed": true,
+      "throughPublicRunHarness": true,
+      "status": "completed",
+      "differentTenantUserNamespace": true,
+      "otherTenantCandidateInToolOutput": false
+    }
+  ],
+  "limitations": [
+    "No live acceptance yet for verifier feedback change",
+    "Pattern redaction cannot guarantee removal of arbitrary business data",
+    "No protected final artifact or GA attestation",
+    "Push authorization pending"
+  ]
+}

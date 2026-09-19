@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "bounded-completion-reminder-validation",
+  "baseCommit": "41bd1cb4ab8481a7413f096a0817f612fe9806fe",
+  "candidate": "working tree; not a release attestation",
+  "sources": {
+    "src/repair-controller.ts": "cc242f03700a9f0fe5d5dd1db3e670aba47ac2d8940910ebc93a6dbbe23265c1",
+    "src/model-budget.ts": "97c00019d7e737fc7acdd04cdac0811dca8d85c3e858de519ebba91888cf1ee7",
+    "src/runtime-checkpoints.ts": "e3b75a0b86fb5d21992b1a126b35446110ba5fcaf4317ed5005b1a44555118dc",
+    "src/harness.ts": "866115b64d90c0b2ffa3e07da6a015210afae0babe46052912d0cc288e23bc4b",
+    "tests/repair-completion-reminder.test.ts": "a3b762a0c2dd4ad06d73e0420590fbf095d0c164c6ad0f1a282b3dcb1ce6d503",
+    "tests/full-remediation.test.ts": "50d34584bab0df97381b2fdd609bda5613fb8ee034d037fafe356ce417bd6de9",
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe"
+  },
+  "suite": {
+    "passed": 551,
+    "failed": 0
+  },
+  "types": "passed",
+  "preparationContract": "passed",
+  "liveBoundary": "Qwen v6 failed work budget before exercising reminder; no live efficacy claim"
+}
