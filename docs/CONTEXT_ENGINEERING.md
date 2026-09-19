@@ -172,6 +172,21 @@ is preserved. Unknown usage, errors, cancellation and output-limit finishes do
 not trigger this reminder. A second premature final answer remains a failed
 repair, not a delivered result.
 
+An OCI edit attempted without a concrete verifier is rejected before execution
+and records a durable planning obligation. The next provider requests expose
+only `repair_plan` and `read_task`, for at most two planning attempts; supported
+modes explicitly request `repair_plan`. Execution checks also block unrelated
+tools until a valid verifier is recorded. Resuming does not reset this limit.
+Recording the verifier restores the ordinary catalogue, but never supplies
+approval for the edit or check and does not increase the token budget.
+
+The working-state message sent with each model request includes the normalized
+planned file paths and remaining closure read/command allowances. This view
+comes directly from the enforcing progress controller, including after restore;
+it does not depend on keeping an old `repair_plan` tool result in compacted
+history. These counters describe the existing closure limits, not extra budget
+or approval. Displaying them does not itself activate closure.
+
 Work/closure usage, phase, candidate, receipts and bounded measurements persist in
 the SDK's own checkpoint writes, without separate competing revision updates.
 An abandoned `running` checkpoint is treated as uncertain accounting on resume:

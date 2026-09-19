@@ -75,7 +75,7 @@ test("work cannot spend the closure reserve and snapshots retain complete accoun
   await expect(unknown.middleware.wrapGenerate!(context, async () => ({}))).rejects.toThrow("USAGE_UNAVAILABLE");
 });
 
-for (const scenario of ["approve", "early-final", "deny", "resume", "failed-recovered", "failed-recovered-qwen", "cancelled"] as const) {
+for (const scenario of ["approve", "early-final", "plan-recovered", "deny", "resume", "failed-recovered", "failed-recovered-qwen", "cancelled"] as const) {
   test(`controller delivers an early candidate without another provider decision: ${scenario}`, async () => {
     const root = await mkdtemp(path.join(tmpdir(), "zhx-controller-"));
     const store = createInMemoryAgentRunStore();
@@ -93,13 +93,21 @@ for (const scenario of ["approve", "early-final", "deny", "resume", "failed-reco
     const finish = { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 10, outputTokens: 2 } };
     const call = (name: string, input: JsonValue) => ({ type: "tool-call" as const, toolCall: { id: name, name, input } });
     const mockModel = createMockLanguageModel({ ...(qwenRecovery ? { provider: "qwen" } : {}), streamEvents: [
+      ...(scenario === "plan-recovered" ? [[{ type: "tool-call" as const, toolCall: { id: "premature-edit", name: "apply_reviewed_edits", input: { changes: [{ path: "value.txt", expectedDigest: null, content: "after\n" }] } } }, finish]] : []),
       [call("repair_plan", { hypothesis: "Create the required file", expectedBehavior: "file contains after", paths: ["value.txt"], nextCheck: "check the fixture", verifier: { command: "node", args: ["verify.mjs"], purpose: "assert file content" } }), finish],
       ...(scenario === "early-final" ? [[{ ...finish, finishReason: "stop" as const }]] : []),
       [call("apply_reviewed_edits", { changes: [{ path: "value.txt", expectedDigest: null, content: "after\n" }] }), finish],
       [call("repair_plan", { hypothesis: "Correct verifier after the failed check", expectedBehavior: "file contains after", paths: ["value.txt"], nextCheck: "corrected assertion", verifier: { command: "node", args: ["verify-corrected.mjs"], purpose: "assert required file content" } }), finish]
     ] });
     const model = qwenRecovery ? { ...mockModel, capabilities: { ...mockModel.capabilities, reasoning: true } } : mockModel;
-    const stream = model.stream!; model.stream = input => { calls++; choices.push(input.toolChoice); return stream(input); };
+    const stream = model.stream!; model.stream = input => {
+      calls++; choices.push(input.toolChoice);
+      if (calls > (scenario === "plan-recovered" ? 2 : 1)) {
+        expect(input.messages.some(message => message.parts.some(part =>
+          part.type === "text" && part.text.includes('"plannedPaths":["value.txt"]')))).toBe(true);
+      }
+      return stream(input);
+    };
     try {
       harness = await createHarness({ workspace: root, executionBackend: "oci", agentProfile: "repair", modelInstance: model,
         store, ...(qwenRecovery ? { provider: "qwen" as const } : {}), ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 8 });
@@ -118,8 +126,13 @@ for (const scenario of ["approve", "early-final", "deny", "resume", "failed-reco
         }) : result;
         expect(completed.status).toBe("completed");
         expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("after\n");
-        expect(commands).toBe(recovering ? 2 : 1); expect(calls).toBe(recovering || scenario === "early-final" ? 3 : 2);
+        expect(commands).toBe(recovering ? 2 : 1); expect(calls).toBe(recovering || scenario === "early-final" || scenario === "plan-recovered" ? 3 : 2);
         if (scenario === "early-final") expect(completed.toolResults.filter(r => r.toolName === "read_task")).toHaveLength(1);
+        if (scenario === "plan-recovered") {
+          expect(choices[1]).toEqual({ type: "tool", toolName: "repair_plan" });
+          expect(completed.toolResults.filter(r => r.isError)).toHaveLength(1);
+          expect(completed.state.metadata?.[REPAIR_CONTROLLER_KEY]).toMatchObject({ planRequired: false });
+        }
         if (qwenRecovery) expect(choices.at(-1)).toBe("required");
         const saved = await store.load("controller", harness.config.scope);
         expect(saved?.metadata?.[MODEL_BUDGET_KEY]).toMatchObject({ inputTokens: calls * 10, modelCalls: calls, usageComplete: true });

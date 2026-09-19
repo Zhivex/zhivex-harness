@@ -263,3 +263,58 @@ recordatorio ante finalización prematura. Se conserva íntegro como fallo.
 [regresiones del recordatorio](evidence/ga-completion-reminder-2026-09-19.json).
 La próxima frontera es la transición desde REPAIR_PLAN_REQUIRED hacia un plan
 válido, manteniendo presupuestos y la prohibición de editar sin verificador.
+
+## Transición desde edición sin plan
+
+La regresión falló antes y pasó después: rechazar una edición sin verificador
+ahora persiste `planRequired`. Los dos siguientes intentos como máximo ofrecen
+`repair_plan` y `read_task`; un guard de ejecución impide saltarse el catálogo
+restringido. El límite persiste al reanudar y no abre la reserva de cierre ni
+incrementa los presupuestos. Sólo un verificador válido retira la obligación;
+la edición y su verificación mantienen sus aprobaciones normales.
+
+Una prueba integrada reproduce rechazo, planificación, edición y verificación
+aprobada hasta entrega. La serie v7 mide esta variante en la misma tarea Qwen de
+desarrollo, con una repetición y control, manteniendo los límites y grader.
+
+La serie v7 terminó con Harness 0/1 y control 1/1, sin faltantes ni fallos del
+grader, y accounting completo. El Harness consumió 94.008 tokens de entrada en
+13 llamadas y el siguiente preflight alcanzó INPUT_TOKEN_BUDGET. Registró un
+plan en el turno 9; los tres siguientes intentos fueron rechazados por
+REPAIR_PLAN_SCOPE y después hubo repetición de exploración. Los códigos se
+identifican comparando el fingerprint con los mensajes constantes del runtime.
+No hubo intento de edición: esta muestra no ejercita la transición nueva y no
+permite atribuirle eficacia live. [Evidencia v7](evidence/ga-recovery-v7-2026-09-19.json).
+
+La validación local de esta variante pasó 554 tests, tipos, contratos, docs y
+paquete instalado. [Hashes y frontera de evidencia](evidence/ga-plan-transition-2026-09-19.json).
+El parche SDK quedó además en la rama local `feat/ga-terminal-usage`, commit
+`989ba33`, con historial normal desde el commit base y sin modificar el checkout
+concurrente. Sus ocho archivos coinciden byte a byte con la copia validada.
+No se hizo push ni publicación; continúa pendiente la autorización de exportación.
+
+## Contexto persistente del alcance del plan
+
+Una regresión independiente encontró que la proyección de trabajo del modelo
+omitía las rutas que el controlador de progreso sí persistía y restringía. Tras
+restaurar un estado con historial compactado, esa proyección no recuperaba los
+archivos permitidos. Ahora obtiene directamente del controlador las rutas
+normalizadas y los cupos restantes de lectura/comandos de cierre. Consultar esta
+vista no activa cierre ni modifica los límites; las rutas fuera del plan siguen
+rechazadas. La integración del Harness también verifica que las rutas llegan a
+los siguientes turnos reales del modelo simulado.
+
+Pasan 555 tests, tipos, contratos y paquete instalado. Se revisó y regeneró el
+snapshot: cambiaron los hashes transitivos de `runHarness` y `HarnessRunOptions`
+porque su diagnóstico referencia el tipo del controlador; los campos públicos
+de estadísticas siguen iguales. La serie v8 mide una repetición Qwen y control
+con el mismo presupuesto y grader. No se atribuye causalidad a la omisión para
+los fallos live anteriores sin evidencia adicional.
+
+La serie v8 terminó con Harness 0/1 por WORK_TOKEN_BUDGET y control 1/1.
+Accounting y grading completos; no se descarta el fallo ni se acredita eficacia
+live a partir de las regresiones. [Evidencia v8](evidence/ga-recovery-v8-2026-09-19.json)
+y [validación local por hash](evidence/ga-working-context-2026-09-19.json).
+El siguiente diagnóstico debe aislar el efecto del catálogo/contexto antes de
+añadir reglas nuevas. Una variante diagnóstica no sustituirá el perfil del
+producto ni se contará como aceptación GA.

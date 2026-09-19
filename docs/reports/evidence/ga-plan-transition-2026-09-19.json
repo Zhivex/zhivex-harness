@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-plan-transition-validation",
+  "baseCommit": "50f255d7d48ac8ed99627d80ad5c0339fa0936a3",
+  "candidate": "working tree, not a release attestation",
+  "fileSha256": {
+    "src/repair-controller.ts": "063ee52351d70bd99e53a28d2009694ff4ead2236a2b227844ae8980b4bc03ea",
+    "tests/repair-plan-transition.test.ts": "052a65328e5866f0dcdb86d7fbd8b554e904176e72c120f81f386227d34bafb8",
+    "tests/full-remediation.test.ts": "d109108c5b4ad2eb5cf7f11c97a521e45d9f84eba3cee182a0931bc9d59aeeec"
+  },
+  "suite": {
+    "passed": 554,
+    "failed": 0
+  },
+  "types": "passed",
+  "preparationContract": "passed",
+  "installedPackage": "passed",
+  "live": "v7 failed before exercising missing-plan transition"
+}

@@ -273,7 +273,7 @@
     },
     {
       "name": "runHarness",
-      "sha256": "sha256:9ad3b87e3b6134ef044bc5d0c1690a8d588d078f38c5948e5b63b66aac7690b7"
+      "sha256": "sha256:4b793745f20c1d5ce57722ded0d5b699a8ec932c65e1d04b72a7ac7f58037434"
     },
     {
       "name": "serializeStreamEvent",
@@ -451,7 +451,7 @@
     },
     {
       "name": "HarnessRunOptions",
-      "sha256": "sha256:5d99c803226533085f16c159106652fea061853fe9f304c323a37fbf5716cf6c"
+      "sha256": "sha256:0767514608dc8b02e2cbc8488cc1535683059d03d766a20e2e6dd3a546c13b25"
     },
     {
       "name": "HarnessStateBackupBundle",
@@ -490,5 +490,5 @@
       "sha256": "sha256:234763c5686d910a7d4729e7c576469f8044421144384c7acde0eed83e830622"
     }
   ],
-  "digest": "sha256:ae0cbe28caf6a04ee60c03e43d24a5012a43583649a1a0d36ac28d948e9cda07"
+  "digest": "sha256:eef9b98fb8388b7e20b177c49c876952828fdd1820298cfc43efab0aa6c2c0c7"
 }

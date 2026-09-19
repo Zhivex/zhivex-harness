@@ -93,5 +93,11 @@
       "openai": "sha512:+pRMA44fmS4dUVu4Ku+Eb2D/3Wx9Y5zphFDhcwNjaFc5gEa7BNZNWOP9nurw6hU4r7q1jlU0mDozpG2Imwpa7Q==",
       "harness": "sha512:u6qY0ym8cexxFWdav0uD4vZcLSDnDI6OJIDjvoJuTMsetQyAoPhC3Y6LeJS2B0Mwr4sjBW5KX7SgQ9kzCghTVQ=="
     }
+  },
+  "reviewBranch": {
+    "branch": "feat/ga-terminal-usage",
+    "commit": "989ba33505f03aea5196aa23c5859464eebfc7e0",
+    "source": "all eight patch files byte-identical to validated isolated copy",
+    "pushed": false
   }
 }

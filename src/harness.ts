@@ -1451,7 +1451,9 @@ export const runHarness = async (
   if (harness.config.agentProfile === "repair") {
     const limits = { inputTokens: harness.config.budget.maxInputTokens, outputTokens: harness.config.budget.maxOutputTokens };
     const metadata = ("state" in input ? input.state.metadata : input.metadata) ?? {};
-    policyController = createRepairController(metadata, harness.config.execution.backend === "oci");
+    policyController = createRepairController(metadata, harness.config.execution.backend === "oci", {
+      progressContext: () => policyProgress!.workingContext()
+    });
     const savedBudget = metadata[MODEL_BUDGET_KEY] ?? ("state" in input ? {
       inputTokens: input.state.usage?.inputTokens ?? 0, outputTokens: input.state.usage?.outputTokens ?? 0,
       cachedInputTokens: input.state.usage?.cachedInputTokens ?? 0, modelCalls: input.state.steps.length,
