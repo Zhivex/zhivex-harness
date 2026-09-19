@@ -111,7 +111,7 @@
     "typecheck:tooling": "tsc -p tsconfig.tooling.json"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.4.0",
+    "@zhivex-ai/agents": "1.6.0",
     "@zhivex-ai/core": "1.14.0",
     "@zhivex-ai/gemini": "0.11.0",
     "@zhivex-ai/meta": "0.2.2",

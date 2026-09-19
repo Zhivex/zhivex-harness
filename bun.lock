@@ -5,7 +5,7 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.4.0",
+        "@zhivex-ai/agents": "1.6.0",
         "@zhivex-ai/core": "1.14.0",
         "@zhivex-ai/gemini": "0.11.0",
         "@zhivex-ai/meta": "0.2.2",
@@ -33,7 +33,7 @@
 
     "@types/node": ["@types/node@26.4.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.4.0", "", { "dependencies": { "@zhivex-ai/core": "^1.14.0" } }, "sha512-rkcoDOKurRUTrPCIwfeAuafQur60fYXgzaQksYl2RLh+rcJR0khvn4H37FJ6yyTP4ZdKOPF8eSh0iJB6XtDu+A=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.6.0", "", { "dependencies": { "@zhivex-ai/core": "^1.17.0" } }, "sha512-UFj8H/eKWDObo1hDhyGytvTCq+F/Wbvp4V4p5DonozjJQkPjqN3LpvwiXAnhwwaqCqz1TjXwKYoJF5iAoZyuDA=="],
 
     "@zhivex-ai/core": ["@zhivex-ai/core@1.14.0", "", { "dependencies": { "zod": "^4.4.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-qwmtU2N9kK9VAwZtfjtqurKDGJDcwjSo4aXoJnTca5xzMYFcB2mAryK5CcN3Y67kPgsn9Z/IrLcEpEJf5CcUPg=="],
 
