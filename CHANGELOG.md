@@ -4,6 +4,74 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+## 1.0.0-rc.14 - Unreleased
+
+### Full harness review remediation (2026-09-10)
+
+- Reserve local tool names before MCP assembly, including disabled builtins;
+  correlate complete SSE events by JSON-RPC request ID.
+- Add a durable repair controller with automatic approved verification, bounded
+  verifier recovery, candidate receipts and fail-closed incomplete delivery.
+- Predict full request context, protect closure allowance and retain transport
+  accounting across approval resumes; refuse unknown crash/interruption usage.
+- Project bounded working memory; keep full tasks outside manual compacted
+  prompts; check every batched read against normalized repair scope.
+- Expose sanitized durable runtime diagnostics and effective role manifests.
+- Require strict typechecking of source, scripts and tests in CI. Publish public
+  baselines, exclude development audit programs, and validate internal Markdown
+  links against the immutable packed artifact.
+- Refine OCI `acquire` return declarations to `HarnessExecutionSession` and add
+  optional inspection fields. Refresh reviewed Stable signatures; existing
+  exports and JSON readers remain supported. Runtime policy fingerprint changes
+  require older paused approvals to use their original artifact.
+
+### Audit remediation (2026-09-09)
+
+- Guard terminal imports with cancellation, deadlines and renewed run leases;
+  preserve caller step limits and interrupt approval waits.
+- Reject ancestor symlinks during descriptor-bound reads on macOS/Linux.
+- Preserve full redacted task sources through compaction and expose `read_task`
+  and bounded `repair_plan` working memory.
+- Bound search output with explicit coverage and exact-file continuation; persist
+  governed OCI mutation receipts across reacquisition.
+- Share the opt-in `repair` profile across library, CLI and benchmark, including
+  durable exploration controls and bounded verifier/schema recovery.
+- Capture and independently grade private candidate patches; retain sanitized
+  model/tool/approval/OCI timings, attempted tools and typed failure evidence.
+- Compaction/profile binding changes intentionally reject older paused approvals;
+  retain the original artifact to finish or deny those runs.
+
+### Changed
+
+- Upgrade published Core to 1.14.0 and Agents to 1.4.0. Enable SDK schema-error recovery in the native SWE-bench driver and preserve structured validation diagnostics; consumer tests cover correction, error limits and approval continuation.
+
+- Add per-run native evaluation controls for repeated unchanged exploration and a closure phase at 70% of token allowance, plus sanitized per-component context character metrics. Preserve actual token ceilings and tool approvals.
+
+- Preserve bounded file/digest/line references from batched search and read results through repeated compaction; deduplicate references and discard prior file locations when a new digest is observed. Advance the compaction binding to bounded-evidence-v3.
+
+- Add opt-in bounded recovery from typed terminal OCI verifier failures, preserving fresh approvals, durable retry counts and strict handling of forced exits; validate OpenAI and Qwen against one frozen harness implementation.
+
+- Support exact-file batched searches with descriptor-safe reads; cap rendered reads at 16,000 characters per slice and 32,000 aggregate characters per batch, flagging clipped long lines.
+- Require verified patch import in the external evaluation, retain typed verifier outcomes, expose remaining model budget after half is consumed, and support matched Qwen Chat Completions evaluation.
+- Upgrade Qwen to 0.11.4 to consume the upstream trailing streamed-usage fix; stop interrupted external runs without continuing into another case.
+
+- Upgrade to published Core 1.13.0, Agents 1.3.1 and OpenAI 0.11.2; remove local compaction usage/history workarounds and verify the upstream fixes through installed-package consumer regressions.
+
+- Publish configured OCI executables in command schemas and preserve recent user corrections through repeated compaction within the same summary budget.
+
+- Correct duplicate streamed token accounting after compaction when complete step usage is available, retaining real budget enforcement and conservative handling of missing usage.
+- Preserve large unchanged fixture files in bounded OCI snapshots and reject linked inventory paths; project synthetic summaries into valid Responses context.
+
+- Add approval-gated exact replacements bound to file digests; preserve UTF-8 bytes and reject ambiguous or stale edits.
+- Reduce default read slices to 120 lines and batched search results to 10 matches per query; preserve the original objective across SDK-formatted repeated compaction.
+- Add a pinned external SWE-bench comparison, explicit pilot exclusions and partial sanitized failure telemetry.
+
+- Preserve bounded conversation objectives, recent excerpts and typed check evidence during compaction; bind the new compaction strategy into durable harness identity. Resume older paused runs with their matching artifact.
+- Batch independent workspace reads, searches, index freshness checks and initial OCI snapshot file copies while keeping tool execution, approvals and publication serialized.
+- Add nested/file-size workspace benchmarks, continuity regressions and local efficiency observations. These are not competitive model evaluations.
+
 ## 1.0.0-rc.13 - 2026-09-03
 
 ### Added

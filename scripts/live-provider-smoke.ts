@@ -313,7 +313,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     });
     throwTransientRunFailure(result);
 
-    assert.equal(result.status, "completed", result.outputText || result.error?.message);
+    assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
     assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
     const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
     assert.equal(writeResults.length, 1);

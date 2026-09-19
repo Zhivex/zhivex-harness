@@ -7,6 +7,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
 import { HARNESS_INSTRUCTIONS, compactHarnessMessages, createHarness, runHarness } from "../src/harness.js";
+import { Workspace } from "../src/workspace.js";
 import { createEditProposal } from "../src/edit-contracts.js";
 
 describe("Zhivex harness", () => {
@@ -20,7 +21,7 @@ describe("Zhivex harness", () => {
           { type: "tool-call", toolCall: { id: "list-null", name: "list_files", input: { path: ".", cursor: null } } },
           { type: "tool-call", toolCall: { id: "search-null", name: "search_files", input: { path: ".", query: "needle", cursor: null } } },
           { type: "finish", finishReason: "tool-calls" }
-        ], [{ type: "text-delta", text: "Done" }, { type: "finish", finishReason: "stop" }]]
+        ], [{ type: "text-delta", textDelta: "Done" }, { type: "finish", finishReason: "stop" }]]
       }) });
       const result = await runHarness(harness, { prompt: "List and search." });
       expect(result.status).toBe("completed");
@@ -359,7 +360,7 @@ describe("Zhivex harness", () => {
           if (property === "stream") {
             return (input: { providerOptions?: unknown }) => {
               seen.push(input.providerOptions);
-              return target.stream(input as never);
+              return target.stream!(input as never);
             };
           }
           return Reflect.get(target, property, receiver);
@@ -519,14 +520,14 @@ describe("Zhivex harness", () => {
         store: createInMemoryAgentRunStore(),
         compactionMaxMessages: 4,
         compactionKeepRecentMessages: 2,
-        compactionMaxEstimatedInputTokens: 1_000
+        compactionMaxEstimatedInputTokens: 2_000
       });
       const result = await runHarness(harness, { prompt: "Inspect twice" });
       expect(result.status).toBe("completed");
       expect(result.state.compactions).toHaveLength(1);
       expect(result.state.compactions?.[0]).toMatchObject({
         reasons: expect.arrayContaining(["message-count"]),
-        metadata: { strategy: "deterministic-redacted-transcript" }
+        metadata: { strategy: "bounded-evidence-v4" }
       });
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -617,4 +618,49 @@ describe("Zhivex harness", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+});
+
+test("exact replacement waits for approval and rejects drift before resume", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "zhx-replacement-approval-"));
+  try {
+    await writeFile(path.join(root, "a.txt"), "before\n");
+    const store = createInMemoryAgentRunStore();
+    const workspace = await Workspace.open(root);
+    const file = await workspace.readFile("a.txt");
+    const model = createMockLanguageModel({ streamEvents: [[
+      { type: "tool-call", toolCall: { id: "replace-1", name: "apply_reviewed_replacement", input: {
+        path: "a.txt", expectedDigest: file.digest, oldText: "before", newText: "after"
+      } } }, { type: "finish", finishReason: "tool-calls" }
+    ], [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }]] });
+    const harness = await createHarness({ provider: "openai", workspace: root, modelInstance: model, store });
+    try {
+      const pending = await runHarness(harness, { prompt: "Repair the file" });
+      expect(pending.status).toBe("waiting_approval");
+      expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("before\n");
+      await writeFile(path.join(root, "a.txt"), "concurrent\n");
+      await expect(runHarness(harness, { state: pending.state, approvals: pending.state.pendingApprovals.map((a) => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) })).rejects.toThrow("Stale patch");
+      expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("concurrent\n");
+    } finally { await harness.close(); }
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("compacted streamed runs count each response once and still enforce the input budget", async () => {
+  for (const calls of [3, 4]) {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhx-compacted-usage-"));
+    const model = createMockLanguageModel({ streamEvents: Array.from({ length: calls }, (_, i) => i + 1 === calls ? [
+      { type: "text-delta" as const, textDelta: "done" },
+      { type: "finish" as const, finishReason: "stop" as const, usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 } }
+    ] : [
+      { type: "tool-call" as const, toolCall: { id: `read-${i}`, name: "list_files", input: { path: "." } } },
+      { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 } }
+    ]) });
+    const harness = await createHarness({ workspace: root, modelInstance: model, store: createInMemoryAgentRunStore(),
+      maxInputTokens: 350, compactionMaxMessages: 4, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 2000 });
+    try {
+      const output = await runHarness(harness, { prompt: "Inspect before finishing" });
+      expect(output.usage?.inputTokens).toBe(calls * 100);
+      expect(output.status).toBe(calls === 3 ? "completed" : "failed");
+      expect(output.state.compactions!.length).toBeGreaterThan(0);
+    } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+  }
 });

@@ -68,7 +68,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
         scope: harness.config.scope,
         idempotencyKey: `live-routing-${parentProvider}-${reviewerProvider}`
       });
-      assert.equal(result.status, "completed", result.outputText || result.error?.message);
+      assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
       assert.equal(result.state.provider, parentProvider);
       const delegations = result.toolResults.filter((entry) => entry.toolName === "delegate_reviewer");
       assert.equal(delegations.length, 1);

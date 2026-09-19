@@ -1,0 +1,94 @@
+{
+  "kind": "deterministic-navigation-retention",
+  "before": [
+    {
+      "round": 1,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 2,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 3,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 4,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 5,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 6,
+      "locationCount": 0,
+      "summaryCharacters": 225,
+      "containsSource": false,
+      "containsQuery": false
+    }
+  ],
+  "after": [
+    {
+      "round": 1,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 2,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 3,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 4,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 5,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    },
+    {
+      "round": 6,
+      "locationCount": 2,
+      "summaryCharacters": 553,
+      "containsSource": false,
+      "containsQuery": false
+    }
+  ],
+  "budgetCharacters": 4000,
+  "evidenceBoundary": "Synthetic retention control, not model coding performance or measured token savings.",
+  "sourceSha256": "02321d91d8f00690636e00e3d7b08a9e1e16ae00b2b465e37af686b746d1b55e"
+}

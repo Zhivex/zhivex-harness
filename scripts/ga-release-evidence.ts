@@ -131,7 +131,7 @@ const object = (input: unknown): Record<string, unknown> => {
 
 export const parseGaReleaseCandidateEvidence = (input: unknown): GaReleaseCandidateEvidence => {
   const candidate = object(input);
-  assert.equal(typeof candidate.version, "string", "release candidate version is required");
+  assert(typeof candidate.version === "string", "release candidate version is required");
   const release = assertHarnessReleaseChannel(candidate.version, String(candidate.channel));
   assert(release.prerelease, `${candidate.version} must be a release candidate`);
   assert.equal(candidate.status, "passed", `${candidate.version} status must be passed`);
@@ -160,7 +160,7 @@ export const parseGaReleaseCandidateEvidence = (input: unknown): GaReleaseCandid
 
 export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedReleaseCandidateEvidence => {
   const candidate = object(input);
-  assert.equal(typeof candidate.version, "string", "failed release candidate version is required");
+  assert(typeof candidate.version === "string", "failed release candidate version is required");
   const release = assertHarnessReleaseChannel(candidate.version, String(candidate.channel));
   assert(release.prerelease, `${candidate.version} must be a release candidate`);
   assert.equal(candidate.status, "failed-gates", `${candidate.version} status must be failed-gates`);
@@ -223,7 +223,7 @@ export const parseGaFailedReleaseCandidateEvidence = (input: unknown): GaFailedR
 
 export const parseGaPendingReleaseCandidateEvidence = (input: unknown): GaPendingReleaseCandidateEvidence => {
   const candidate = object(input);
-  assert.equal(typeof candidate.version, "string", "pending release candidate version is required");
+  assert(typeof candidate.version === "string", "pending release candidate version is required");
   const release = assertHarnessReleaseChannel(candidate.version, "next");
   assert(release.prerelease, `${candidate.version} must be a release candidate`);
   assert.equal(candidate.status, "pending", `${candidate.version} status must be pending`);
@@ -254,7 +254,7 @@ export const parseGaReleaseCandidateRecord = (input: unknown): GaReleaseCandidat
 };
 
 export const parseGaSecurityReviewEvidencePath = (input: unknown): string => {
-  assert.equal(typeof input, "string", "security review evidence must be a workspace-relative path");
+  assert(typeof input === "string", "security review evidence must be a workspace-relative path");
   assert.match(
     input,
     /^security-reviews\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/,

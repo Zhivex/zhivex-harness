@@ -561,6 +561,7 @@ const summaryCell = (diagnostic: ReleaseGateDiagnostic | undefined) => {
 
 const commonIdentity = (diagnostic: ReleaseGateDiagnostic) => {
   const binding = diagnostic.binding;
+  if (!binding) throw new Error("Release diagnostic binding is missing.");
   return {
     releaseTag: binding.releaseTag,
     sourceCommit: binding.sourceCommit,
@@ -568,7 +569,7 @@ const commonIdentity = (diagnostic: ReleaseGateDiagnostic) => {
     workflowRunUrl: binding.workflowRunUrl,
     workflowRunAttempt: binding.workflowRunAttempt,
     ...(diagnostic.kind === "time-to-safe-fix-diagnostics"
-      ? { driverCommit: binding.driverCommit, ociImageDigest: binding.ociImageDigest }
+      ? { driverCommit: diagnostic.binding?.driverCommit, ociImageDigest: diagnostic.binding?.ociImageDigest }
       : {})
   };
 };
@@ -578,7 +579,7 @@ const sameWorkflowIdentity = (
   expected: ReleaseWorkflowDiagnosticBinding
 ) => {
   const actual = diagnostic.binding;
-  return actual.releaseTag === expected.releaseTag &&
+  return !!actual && actual.releaseTag === expected.releaseTag &&
     actual.sourceCommit === expected.sourceCommit &&
     actual.artifactSha512 === expected.artifactSha512 &&
     actual.workflowRunUrl === expected.workflowRunUrl &&
@@ -642,13 +643,14 @@ export const summarizeReleaseGates = async (input: {
 if (import.meta.main) {
   try {
     const options = parseArguments(process.argv.slice(2));
+    const expectedBinding = options.diagnosticsDirectory ? releaseWorkflowDiagnosticBindingFromEnv(process.env) : undefined;
     const result = await summarizeReleaseGates({
       title: options.title,
       gates: options.gates,
       ...(options.diagnosticsDirectory ? { diagnosticsDirectory: options.diagnosticsDirectory } : {}),
       ...(process.env.GITHUB_STEP_SUMMARY ? { summaryPath: process.env.GITHUB_STEP_SUMMARY } : {}),
-      ...(options.diagnosticsDirectory
-        ? { expectedBinding: releaseWorkflowDiagnosticBindingFromEnv(process.env) }
+      ...(expectedBinding
+        ? { expectedBinding }
         : {})
     });
     if (!result.ok) process.exitCode = 1;

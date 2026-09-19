@@ -104,7 +104,7 @@ const certifyProvider = async (
       })
     });
 
-    assert.equal(result.status, "completed", result.outputText || result.error?.message);
+    assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
     assert.ok(result.outputText.includes(completionToken(provider)), result.outputText);
     assert.deepEqual(approvals.map((approval) => approval.name), [
       "run_environment_command",

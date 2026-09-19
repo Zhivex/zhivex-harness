@@ -1,7 +1,8 @@
+import { z } from "zod";
 import { afterEach, describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -21,7 +22,7 @@ import {
   type OciRunBatchRequest,
   type OciRunRequest
 } from "../src/execution-environment.js";
-import { createExecutionEnvironmentTools, createHarness, runHarness } from "../src/harness.js";
+import { createExecutionEnvironmentTools, createWorkspaceTools, createHarness, runHarness } from "../src/harness.js";
 import { HarnessExecutionError } from "../src/errors.js";
 import { Workspace } from "../src/workspace.js";
 
@@ -43,8 +44,8 @@ class FakeOciRuntime implements HarnessOciRuntimeAdapter {
   readonly requests: OciRunRequest[] = [];
   readonly removedRuns: string[] = [];
   readonly image: OciImageInspection;
-  readonly onRun?: (request: OciRunRequest) => void | Promise<void>;
-  readonly outcome?: Partial<OciCommandResult>;
+  readonly onRun: ((request: OciRunRequest) => void | Promise<void>) | undefined;
+  readonly outcome: Partial<OciCommandResult> | undefined;
 
   constructor(
     imageDigest = `sha256:${"a".repeat(64)}`,
@@ -139,6 +140,27 @@ describe("enforced OCI execution environment", () => {
       stateDirectory: config.stateDirectory,
       runtime
     })).rejects.toThrow(HarnessExecutionError);
+  });
+
+  test("publishes the configured executable enum on every OCI command surface", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci", ociAllowedCommands: ["python3", "bun"] });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI config.");
+    const tools = createExecutionEnvironmentTools(workspace, config.execution);
+    for (const name of ["run_environment_command", "run_environment_batch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"] as const) {
+      const definition = tools[name];
+      expect(definition.description).toContain("Allowed executables: python3, bun");
+      expect(definition.description).toContain('args ["-m", "pytest", ...]');
+      const schema = z.toJSONSchema(definition.schema as z.ZodType);
+      const command = { enum: ["python3", "bun"] };
+      expect(schema).toMatchObject(name === "run_environment_batch"
+        ? { properties: { commands: { items: { properties: { command } } } } }
+        : { properties: { command } });
+      expect(definition.requiresApproval).toBe(true);
+    }
+    expect(tools.run_environment_command.schema.safeParse({ command: "pytest", args: [] }).success).toBe(false);
+    expect(tools.run_environment_command.schema.safeParse({ command: "python3", args: ["-m", "pytest"] }).success).toBe(true);
+    expect(createExecutionEnvironmentTools(workspace).run_environment_command.description).toContain("environment_status");
   });
 
   test("exposes an approval-gated shell only when explicitly enabled", async () => {
@@ -723,7 +745,7 @@ describe("enforced OCI execution environment", () => {
       runtime: new FakeOciRuntime()
     });
     const session = await environment.acquire({ runId: "single-inventory-run" });
-    for (const name of ["read_files", "search_many"]) {
+    for (const name of Object.keys(createWorkspaceTools(workspace, []))) {
       await expect(session.authorize({
         tool: { name },
         phase: "execute"
@@ -928,4 +950,41 @@ describe("enforced OCI execution environment", () => {
     expect((await session.inspectPatch()).entries).toEqual([]);
     await session.release?.({ status: "completed" });
   });
+});
+
+test("OCI inventory preserves large fixture files without expanding model read limits", async () => {
+  const { root, workspace } = await workspaceFixture();
+  const bytes = Buffer.alloc(1024 * 1024 + 128, 65);
+  await writeFile(path.join(root, "large-fixture.bin"), bytes);
+  const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci", ociMaxWorkspaceBytes: 4 * 1024 * 1024 });
+  if (config.execution.backend !== "oci") throw new Error("Expected OCI");
+  const environment = await createHarnessOciExecutionEnvironment({ config: config.execution, workspace, stateDirectory: config.stateDirectory, runtime: new FakeOciRuntime() });
+  const session = await environment.acquire({ runId: "large-fixture" });
+  expect(await readFile(path.join(session.workspace.root, "large-fixture.bin"))).toEqual(bytes);
+  await expect(workspace.readFile("large-fixture.bin")).rejects.toThrow("byte limit");
+  expect((await session.inspectPatch()).entries).toHaveLength(0);
+  await session.release?.({ status: "completed" });
+});
+
+test("snapshot inventory rejects an ancestor replaced by an external symlink after listing", async () => {
+  const { root, workspace } = await workspaceFixture();
+  const outside = await temporaryDirectory("zhx-outside-inventory-");
+  await mkdir(path.join(root, "swap"));
+  await writeFile(path.join(root, "swap", "fixture.txt"), "inside");
+  await writeFile(path.join(outside, "fixture.txt"), "secret");
+  const original = workspace.listFiles.bind(workspace);
+  let swapped = false;
+  workspace.listFiles = (async (...args: Parameters<typeof original>) => {
+    const page = await original(...args);
+    if (!swapped) {
+      swapped = true;
+      await rename(path.join(root, "swap"), path.join(root, "previous"));
+      await symlink(outside, path.join(root, "swap"));
+    }
+    return page;
+  }) as typeof workspace.listFiles;
+  const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+  if (config.execution.backend !== "oci") throw new Error("Expected OCI");
+  const environment = await createHarnessOciExecutionEnvironment({ config: config.execution, workspace, stateDirectory: config.stateDirectory, runtime: new FakeOciRuntime() });
+  await expect(environment.acquire({ runId: "ancestor-swap" })).rejects.toThrow("symbolic link");
 });

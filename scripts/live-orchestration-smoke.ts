@@ -93,7 +93,7 @@ const certifyProvider = async (
       scope: first.config.scope,
       idempotencyKey: `live-orchestration-${provider}`
     });
-    assert.equal(result.status, "completed", result.outputText || result.error?.message);
+    assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
     assert.ok(result.outputText.includes(parentToken(provider)), result.outputText);
     const delegations = result.toolResults.filter((entry) => entry.toolName === "delegate_reviewer");
     assert.equal(delegations.length, 1);

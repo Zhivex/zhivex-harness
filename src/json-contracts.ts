@@ -231,6 +231,7 @@ const doctorCheckSchema = observationalDocument({
   ]))
 });
 const doctorConfigurationSchema = observationalDocument({
+  agentProfile: z.enum(["strict", "repair"]).optional(),
   provider: z.string().min(1),
   model: z.string().min(1),
   workspace: z.string().min(1),

@@ -112,7 +112,7 @@ describe("trusted repository editing fixture", () => {
       "src/index.ts",
       "src/restore-me.ts"
     ]);
-    expect(firstListing.every((file) => /^sha256:[a-f0-9]{64}$/.test(file.digest))).toBe(true);
+    expect(firstListing.every((file) => "digest" in file && /^sha256:[a-f0-9]{64}$/.test(file.digest))).toBe(true);
     expect(firstListing.map((file) => file.path)).not.toContain("ignored/generated.ts");
     expect(firstListing.map((file) => file.path)).not.toContain("private-notes/local.md");
     expect(firstListing.map((file) => file.path)).not.toContain("src/nested-ignored.ts");

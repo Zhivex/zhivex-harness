@@ -23,6 +23,35 @@ afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
+test("searchMany accepts exact files without including siblings and retains path protections", async () => {
+  const { root, workspace } = await fixture();
+  await writeFile(path.join(root, "src", "other.ts"), "export const other = 2;");
+  const result = await workspace.searchMany([{ query: "export" }], "src/index.ts");
+  expect(result.results[0]?.matches).toHaveLength(1);
+  expect(result.results[0]?.matches[0]?.path).toBe("src/index.ts");
+  expect(result.results[0]?.matches[0]?.digest).toBe((await workspace.readFile("src/index.ts")).digest);
+  await symlink(path.join(root, "src", "index.ts"), path.join(root, "linked.ts"));
+  await expect(workspace.searchMany([{ query: "export" }], "linked.ts")).rejects.toThrow();
+  await expect(workspace.searchMany([{ query: "export" }], "../outside.ts")).rejects.toThrow();
+  await expect(workspace.searchMany([{ query: "key" }], ".env")).rejects.toThrow();
+});
+
+test("reads cap returned text and preserve ranges and full-file digests", async () => {
+  const { root, workspace } = await fixture();
+  await writeFile(path.join(root, "large.txt"), Array.from({ length: 100 }, () => "x".repeat(500)).join("\n"));
+  const first = await workspace.readFile("large.txt", 1, 100);
+  expect(first.content.length).toBeLessThanOrEqual(16_000);
+  expect(first.truncated).toBe(true);
+  expect(first.clippedLine).toBe(false);
+  const next = await workspace.readFile("large.txt", first.endLine + 1, 100);
+  expect(next.startLine).toBe(first.endLine + 1);
+  expect(next.digest).toBe(first.digest);
+  const batch = await workspace.readFiles(Array.from({ length: 10 }, (_, i) => ({ path: "large.txt", startLine: i + 1, endLine: 100 })));
+  expect(batch.files.reduce((n, file) => n + file.content.length, 0)).toBeLessThanOrEqual(32_000);
+  await writeFile(path.join(root, "long.txt"), "x".repeat(20_000));
+  expect((await workspace.readFile("long.txt")).clippedLine).toBe(true);
+});
+
 describe("portable host processes", () => {
   test("preserves argv boundaries and bounds captured output", async () => {
     const argument = "literal; echo must-not-run";
@@ -88,7 +117,7 @@ describe("Workspace", () => {
 
     const read = await workspace.readFile("src/index.ts");
     expect(read.content).toContain("1: export const value = 1;");
-    expect(read.digest).toBe(listed.files[0]?.digest);
+    expect(read.digest).toBe(listed.files[0]!.digest);
 
     const searched = await workspace.searchFiles("VALUE");
     expect(searched.matches).toEqual([{
@@ -175,7 +204,7 @@ describe("Workspace", () => {
     const firstList = await workspace.listFiles("src", { limit: 2 });
     expect(firstList.truncated).toBe(true);
     expect(firstList.nextCursor).toBeString();
-    const secondList = await workspace.listFiles("src", { limit: 2, cursor: firstList.nextCursor });
+    const secondList = await workspace.listFiles("src", { limit: 2, cursor: firstList.nextCursor! });
     expect(secondList.truncated).toBe(false);
     expect([...firstList.files, ...secondList.files].map((file) => file.path)).toEqual([
       "src/a.ts",
@@ -183,13 +212,13 @@ describe("Workspace", () => {
       "src/c.ts",
       "src/index.ts"
     ]);
-    await expect(workspace.listFiles("src", { limit: 3, cursor: firstList.nextCursor })).rejects.toThrow("cursor");
+    await expect(workspace.listFiles("src", { limit: 3, cursor: firstList.nextCursor! })).rejects.toThrow("cursor");
 
     const firstSearch = await workspace.searchFiles("needle", "src", { limit: 2 });
     expect(firstSearch.matches.map((match) => `${match.path}:${match.line}`)).toEqual(["src/a.ts:1", "src/a.ts:2"]);
-    const secondSearch = await workspace.searchFiles("needle", "src", { limit: 2, cursor: firstSearch.nextCursor });
+    const secondSearch = await workspace.searchFiles("needle", "src", { limit: 2, cursor: firstSearch.nextCursor! });
     expect(secondSearch.matches.map((match) => `${match.path}:${match.line}`)).toEqual(["src/b.ts:1", "src/c.ts:1"]);
-    await expect(workspace.searchFiles("different", "src", { limit: 2, cursor: firstSearch.nextCursor })).rejects.toThrow("cursor");
+    await expect(workspace.searchFiles("different", "src", { limit: 2, cursor: firstSearch.nextCursor! })).rejects.toThrow("cursor");
   });
 
   test("lists topology without stable content reads while keeping digest-bound listing as the default", async () => {
@@ -221,17 +250,17 @@ describe("Workspace", () => {
     const second = await workspace.listFiles("src", {
       limit: 1,
       includeDigests: false,
-      cursor: first.nextCursor
+      cursor: first.nextCursor!
     });
     expect(second.files).toEqual([{ path: "src/b.ts" }]);
     expect(workspace.workspaceIndexDiagnostics().stableFileReads).toBe(before);
-    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor })).rejects.toThrow("cursor");
+    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor! })).rejects.toThrow("cursor");
 
     await writeFile(path.join(root, "src", "c.ts"), "c\n", "utf8");
     await expect(workspace.listFiles("src", {
       limit: 1,
       includeDigests: false,
-      cursor: first.nextCursor
+      cursor: first.nextCursor!
     })).rejects.toThrow(/cursor|stale/);
   });
 
@@ -262,7 +291,7 @@ describe("Workspace", () => {
 
     const stalePage = await workspace.listFiles("bulk", { limit: 5 });
     await writeFile(path.join(root, "bulk", "999.txt"), "added later\n", "utf8");
-    await expect(workspace.listFiles("bulk", { limit: 5, cursor: stalePage.nextCursor })).rejects.toThrow(/cursor|stale/);
+    await expect(workspace.listFiles("bulk", { limit: 5, cursor: stalePage.nextCursor! })).rejects.toThrow(/cursor|stale/);
     expect(workspace.workspaceIndexDiagnostics().builds).toBe(2);
     expect((await workspace.listFiles("bulk", { limit: 500 })).files.at(-1)?.path).toBe("bulk/999.txt");
   });
@@ -298,7 +327,7 @@ describe("Workspace", () => {
 
     await workspace.writeFile("src/c.ts", "c\n");
     expect(workspace.workspaceIndexDiagnostics().version).toBeUndefined();
-    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor })).rejects.toThrow(/cursor|stale/);
+    await expect(workspace.listFiles("src", { limit: 1, cursor: first.nextCursor! })).rejects.toThrow(/cursor|stale/);
     expect((await workspace.listFiles("src", { limit: 20 })).files.map((file) => file.path)).toContain("src/c.ts");
   });
 
@@ -446,4 +475,71 @@ describe("Workspace", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("FAST_OK");
   });
+});
+
+test("prefetched searches preserve pagination, Unicode subtrees and content freshness", async () => {
+  const { root, workspace } = await fixture();
+  await mkdir(path.join(root, "src0"));
+  await writeFile(path.join(root, "src0", "outside.ts"), "needle");
+  const names = [...Array.from({ length: 19 }, (_, index) => `file-${String(index).padStart(2, "0")}.ts`), "漢-last.ts"];
+  await Promise.all(names.map((name) => writeFile(path.join(root, "src", name), "needle\nneedle\n")));
+  const matches: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await workspace.searchFiles("needle", "src", { limit: 3, ...(cursor ? { cursor } : {}) });
+    matches.push(...page.matches.map((match) => `${match.path}:${match.line}`));
+    cursor = page.nextCursor;
+  } while (cursor);
+  expect(matches).toEqual(names.flatMap((name) => [`src/${name}:1`, `src/${name}:2`]));
+  await writeFile(path.join(root, "src", names[0]!), "fresh\n");
+  const batch = await workspace.searchMany([{ query: "fresh" }, { query: "needle" }], "src");
+  expect(batch.results[0]?.matches.map((match) => match.path)).toEqual([`src/${names[0]}`]);
+  expect(batch.results[1]?.matches.some((match) => match.path.startsWith("src0/"))).toBe(false);
+});
+
+test("bounded read batches deduplicate slices and reject aggregate overflow and symlinks", async () => {
+  const { root, workspace } = await fixture();
+  const before = workspace.workspaceIndexDiagnostics().stableFileReads;
+  const read = await workspace.readFiles([{ path: "src/index.ts" }, { path: "src/index.ts", startLine: 1, endLine: 1 }]);
+  expect(read.files).toHaveLength(2);
+  expect(workspace.workspaceIndexDiagnostics().stableFileReads - before).toBe(1);
+  await Promise.all(["a", "b", "c"].map((name) => writeFile(path.join(root, name), "x".repeat(800_000))));
+  await expect(workspace.readFiles(["a", "b", "c"].map((name) => ({ path: name })))).rejects.toThrow("aggregate");
+  await symlink(path.join(root, "a"), path.join(root, "link"));
+  await expect(workspace.readFiles([{ path: "a" }, { path: "link" }])).rejects.toThrow();
+});
+
+test("exact replacements preserve unrelated bytes and reject stale or ambiguous matches", async () => {
+  const { root, workspace } = await fixture();
+  const before = await workspace.readFile("src/index.ts");
+  await workspace.applyReplacement({ path: "src/index.ts", expectedDigest: before.digest, oldText: "value = 1", newText: "value = 2" });
+  expect(await readFile(path.join(root, "src/index.ts"), "utf8")).toBe("export const value = 2;\n");
+  await expect(workspace.applyReplacement({ path: "src/index.ts", expectedDigest: before.digest, oldText: "2", newText: "3" })).rejects.toThrow("Stale patch");
+  const current = await workspace.readFile("src/index.ts");
+  await expect(workspace.applyReplacement({ path: "src/index.ts", expectedDigest: current.digest, oldText: " ", newText: "_" })).rejects.toThrow("exactly one");
+  await expect(workspace.applyReplacement({ path: "src/index.ts", expectedDigest: current.digest, oldText: "missing", newText: "_" })).rejects.toThrow("exactly one");
+  expect(await readFile(path.join(root, "src/index.ts"), "utf8")).toBe("export const value = 2;\n");
+});
+
+test("exact replacement preserves BOM and CRLF and rejects malformed UTF-8", async () => {
+  const { root, workspace } = await fixture();
+  await writeFile(path.join(root, "source.txt"), "\ufeffbefore\r\nuntouched\r\n");
+  const file = await workspace.readFile("source.txt");
+  await workspace.applyReplacement({ path: "source.txt", expectedDigest: file.digest, oldText: "before", newText: "after" });
+  expect(await readFile(path.join(root, "source.txt"), "utf8")).toBe("\ufeffafter\r\nuntouched\r\n");
+  await writeFile(path.join(root, "invalid.txt"), Buffer.from([0xff, 65]));
+  const invalid = await workspace.readFile("invalid.txt");
+  await expect(workspace.applyReplacement({ path: "invalid.txt", expectedDigest: invalid.digest, oldText: "A", newText: "B" })).rejects.toThrow("UTF-8");
+  expect(await readFile(path.join(root, "invalid.txt"))).toEqual(Buffer.from([0xff, 65]));
+});
+
+test("default reads are small and explicit ranges can retrieve the remaining lines", async () => {
+  const { root, workspace } = await fixture();
+  await writeFile(path.join(root, "large.txt"), Array.from({ length: 300 }, (_, i) => `line ${i + 1}`).join("\n"));
+  const first = await workspace.readFile("large.txt");
+  expect(first.endLine).toBe(120);
+  expect(first.truncated).toBe(true);
+  const rest = await workspace.readFile("large.txt", 121, 300);
+  expect(rest.endLine).toBe(300);
+  expect(rest.digest).toBe(first.digest);
 });
