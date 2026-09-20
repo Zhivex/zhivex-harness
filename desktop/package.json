@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "package": "bun run build && bun run scripts/package.ts",
     "smoke": "bun run scripts/smoke.ts",
-    "smoke:packaged": "bun run scripts/smoke.ts --packaged"
+    "smoke:packaged": "bun run scripts/smoke.ts --packaged",
+    "smoke:restart": "bun run scripts/smoke-restart.ts",
+    "smoke:restart:packaged": "bun run scripts/smoke-restart.ts --packaged"
   },
   "dependencies": {
     "react": "^19.2.0",

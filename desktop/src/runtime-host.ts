@@ -31,7 +31,7 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
       const timer=setTimeout(()=>{worker.off("message",listener);reject(new Error("FIXTURE_CLOCK_TIMEOUT"));},2000);
       worker.on("message",listener);worker.postMessage({kind:"fixture-clock",offset,requestId});
     });
-   },dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
+   },fixtureCredentialsPath(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");return ready.credentialsPath;},dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
    async review(sessionId:unknown,runId:unknown){
     if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
     const envelope=harnessClientRequestSchema.parse({protocolVersion:1,requestId:`review_${randomUUID()}`,connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId,runId,includeReview:true}});

@@ -80,6 +80,22 @@ preserves prior messages, tool receipts and file effects; it does not roll back
 changes or certify an interrupted tool's outcome. Descendants receive cancellation
 requests while retaining their own leases; completed descendants remain completed.
 
+If the renderer process dies, a native dialog offers “Recargar conversación” or
+“Cerrar aplicación”. Reload only reconnects and reads existing state. Closing a
+window with an approval pending exits the application and worker; recent projects,
+sessions and approval identities persist. Main-process review receipts do not
+survive application restart, so the user must review again before approving.
+Closing during active work currently drains accepted commands without a deadline;
+see the prioritized alpha issues in
+`../docs/reports/HAR_DESKTOP_ALPHA_BETA_ENTRY_2026-09-20.md`.
+
+Run `bun run build` from the repository root, then `bun run --cwd desktop build`
+and `bun run --cwd desktop smoke:restart` to exercise three complete app launches,
+renderer termination, window closure and CLI/desktop session coherence. For the
+unsigned package, use `bun run --cwd desktop package` followed by
+`bun run --cwd desktop smoke:restart:packaged`. The native reload choice is selected
+by a host-only fixture; no renderer IPC is added and no provider API is contacted.
+
 Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
 that exits 7. It verifies failed-check display, duplicate-submit protection, a lost
 response after accepted work, temporary transport unavailability, renderer reload

@@ -1,4 +1,5 @@
 import {verifyDesktopOciSmoke} from "./smoke-oci-verification.js";
+import {verifyDesktopRestartSmoke} from "./smoke-restart-verification.js";
 import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -34,6 +35,17 @@ void app.whenReady().then(async()=>{
  const index=path.join(buildDirectory,"index.html"),url=pathToFileURL(index).href;
  const window=new BrowserWindow({width:1120,height:760,minWidth:720,minHeight:520,show:false,backgroundColor:"#101315",title:"Zhivex Harness",webPreferences:{preload:path.join(buildDirectory,"preload.cjs"),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,webviewTag:false}});
  mainWindow=window;
+ let recoveringRenderer=false;
+ window.webContents.on("render-process-gone",()=>{
+  if(closing||recoveringRenderer||window.isDestroyed())return;
+  recoveringRenderer=true;
+  void (async()=>{
+   // Fixture selection is host-only; the production action is a native dialog.
+   const response=fixture?0:(await dialog.showMessageBox(window,{type:"error",title:"La conversación dejó de responder",message:"La ventana de la conversación se cerró inesperadamente.",detail:"El servicio puede seguir trabajando. Recargar recupera el estado guardado y no vuelve a enviar tu tarea.",buttons:["Recargar conversación","Cerrar aplicación"],defaultId:0,cancelId:1,noLink:true})).response;
+   if(closing||window.isDestroyed())return;
+   if(response===0)window.webContents.reload();else app.quit();
+  })().catch(()=>app.quit()).finally(()=>{recoveringRenderer=false;});
+ });
  const validateSender=(event:Electron.IpcMainInvokeEvent)=>{if(closing||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==url)throw new Error("UNTRUSTED_SENDER");};
  session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));session.defaultSession.setPermissionCheckHandler(()=>false);
  window.webContents.setWindowOpenHandler(()=>({action:"deny"}));window.webContents.on("will-navigate",event=>event.preventDefault());window.webContents.on("will-attach-webview",event=>event.preventDefault());
@@ -69,6 +81,6 @@ void app.whenReady().then(async()=>{
   const value=payload as {projectKey:unknown;sessionId:unknown;after:unknown};return(await runtime(value.projectKey)).events({sessionId:value.sessionId,after:value.after});
  });
  window.once("ready-to-show",()=>window.show());await window.loadFile(index);
- if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}
+ if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});const restartPhase=argument("--fixture-restart-phase");if(restartPhase)await verifyDesktopRestartSmoke(window,runtimes,reportDirectory,restartPhase,argument("--fixture-cli"));else{await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}}
 }).catch(async(error)=>{if(fixture)console.error(error);if(reportDirectory)await writeFile(path.join(reportDirectory,"failure.json"),JSON.stringify({code:"DESKTOP_VERIFICATION_FAILED"})).catch(()=>{});process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n");app.exit(1);});
 app.on("window-all-closed",()=>app.quit());

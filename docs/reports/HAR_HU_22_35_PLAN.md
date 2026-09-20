@@ -89,10 +89,10 @@ Evidence: HAR_HU_29_CLOSURE_2026-09-20.md; 654 tests pass and both packaged flow
 Source: https://app.notion.com/p/3e1777b104f68109bd14c4b4b0640a70?pvs=204
 
 - [ ] Un paquete de prueba permite abrir repositorio, pedir cambio, aprobar, verificar y revisar el diff final.
-- [ ] Se ensayan caída de renderer, desconexión, reinicio del servicio y cierre de ventana con una aprobación pendiente; se documenta cuándo continúa o pausa el trabajo.
-- [ ] La misma sesión es coherente en CLI y escritorio; se publica una lista priorizada de fallos y el criterio de entrada a beta.
+- [x] Se ensayan caída de renderer, desconexión, reinicio del servicio y cierre de ventana con una aprobación pendiente; se documenta cuándo continúa o pausa el trabajo.
+- [x] La misma sesión es coherente en CLI y escritorio; se publica una lista priorizada de fallos y el criterio de entrada a beta.
 
-Evidence: pending.
+Evidence: HAR_HU_30_APP_RESTART_2026-09-20.md and HAR_DESKTOP_ALPHA_BETA_ENTRY_2026-09-20.md, plus prior packaged service/transport recovery reports. HU30 remains in progress; final diff and listed alpha issues remain open.
 
 ## HAR-HU-31 — Aislar tareas en worktrees administrados
 

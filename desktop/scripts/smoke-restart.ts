@@ -1,0 +1,28 @@
+import { spawn, execFileSync } from "node:child_process";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import assert from "node:assert/strict";
+
+const root=path.resolve(import.meta.dir,".."),packaged=process.argv.includes("--packaged");
+const output=await mkdtemp("/tmp/har-restart-"),workspace=path.join(output,"repo"),report=path.join(output,"report");
+await mkdir(workspace);await mkdir(report);
+execFileSync("git",["init","-q",workspace],{env:{PATH:process.env.PATH!,HOME:output}});
+await writeFile(path.join(workspace,"review.txt"),"context\r\nbefore\r\nlast");
+const executable=packaged?path.join(root,"out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/MacOS/Zhivex Harness"):path.join(root,"node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
+const phases:Array<{phase:string;appPid:number;runtimePid:number;sessionId:string;runId:string;packaged:boolean;windowCloseRequested:boolean}>=[];
+for(const phase of ["prepare","approve","history"]){
+ const child=spawn(executable,[...(packaged?[]:[root]),...(phase==="prepare"?["--workspace",workspace]:[]),"--smoke-test","--fixture-restart-phase",phase,"--fixture-cli",path.join(root,"../dist/cli.js"),"--report-directory",report],{cwd:output,env:{PATH:process.env.PATH!,HOME:output},stdio:["ignore","pipe","pipe"]});
+ let stderr="";child.stderr.on("data",chunk=>stderr+=chunk);child.stdout.resume();
+ const timer=setTimeout(()=>child.kill("SIGKILL"),30000);
+ try{
+  const code=await new Promise<number|null>((resolve,reject)=>{child.once("exit",resolve);child.once("error",reject);});assert.equal(code,0,`${phase}: ${stderr}`);
+  const evidence=JSON.parse(await readFile(path.join(report,`${phase}-report.json`),"utf8"));assert.equal(evidence.phase,phase);assert.equal(evidence.packaged,packaged);assert(evidence.windowCloseRequested);assert.equal(evidence.appPid,child.pid);
+  if(phase!=="prepare")assert(evidence.cliSessionMatched);if(phase==="history")assert(evidence.cliRenameVisible);
+  if(phase==="prepare")assert(evidence.rendererCrashRecovered);
+  for(const pid of [evidence.appPid,evidence.runtimePid])assert.throws(()=>process.kill(pid,0),(error:unknown)=>(error as NodeJS.ErrnoException).code==="ESRCH",`${phase} left process ${pid} alive`);
+  phases.push(evidence);
+ }finally{clearTimeout(timer);if(child.exitCode===null&&child.signalCode===null)child.kill("SIGKILL");}
+}
+assert.equal(new Set(phases.map(phase=>phase.appPid)).size,3);assert.equal(new Set(phases.map(phase=>phase.runtimePid)).size,3);assert.equal(new Set(phases.map(phase=>phase.sessionId)).size,1);assert.equal(new Set(phases.map(phase=>phase.runId)).size,1);
+const evidence={schemaVersion:1,packaged,platform:process.platform,arch:process.arch,fixture:true,rendererCrashRecovered:true,wholeAppRestart:true,nativeWindowClose:true,workersExited:true,recentProjectRestored:true,pendingApprovalPreserved:true,oldReviewReceiptRejected:true,freshExplicitApproval:true,singleAppliedDecisionAfterRestart:true,cliPendingAndCompletedSessionMatched:true,cliRenameVisibleInDesktop:true,phases};
+await writeFile(path.join(report,"report.json"),JSON.stringify(evidence,null,2));console.log(JSON.stringify({...evidence,evidenceDirectory:report}));

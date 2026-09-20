@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "packaged": true,
+  "platform": "darwin",
+  "arch": "arm64",
+  "fixture": true,
+  "rendererCrashRecovered": true,
+  "wholeAppRestart": true,
+  "nativeWindowClose": true,
+  "workersExited": true,
+  "recentProjectRestored": true,
+  "pendingApprovalPreserved": true,
+  "oldReviewReceiptRejected": true,
+  "freshExplicitApproval": true,
+  "singleAppliedDecisionAfterRestart": true,
+  "cliPendingAndCompletedSessionMatched": true,
+  "cliRenameVisibleInDesktop": true,
+  "phases": [
+    {
+      "schemaVersion": 1,
+      "phase": "prepare",
+      "packaged": true,
+      "appPid": 5068,
+      "runtimePid": 5134,
+      "sessionId": "ses_c2c77254-cf81-43b1-ac5d-5a241c543bbf",
+      "runId": "run_949d87ac-6402-4b72-9750-8bb7b5c2fa95",
+      "rendererCrashRecovered": true,
+      "rendererExitReason": "killed",
+      "cliSessionMatched": false,
+      "cliRenameVisible": false,
+      "windowCloseRequested": true,
+      "fixture": true
+    },
+    {
+      "schemaVersion": 1,
+      "phase": "approve",
+      "packaged": true,
+      "appPid": 5196,
+      "runtimePid": 5226,
+      "sessionId": "ses_c2c77254-cf81-43b1-ac5d-5a241c543bbf",
+      "runId": "run_949d87ac-6402-4b72-9750-8bb7b5c2fa95",
+      "rendererCrashRecovered": false,
+      "cliSessionMatched": true,
+      "cliRenameVisible": false,
+      "windowCloseRequested": true,
+      "fixture": true
+    },
+    {
+      "schemaVersion": 1,
+      "phase": "history",
+      "packaged": true,
+      "appPid": 5228,
+      "runtimePid": 5258,
+      "sessionId": "ses_c2c77254-cf81-43b1-ac5d-5a241c543bbf",
+      "runId": "run_949d87ac-6402-4b72-9750-8bb7b5c2fa95",
+      "rendererCrashRecovered": false,
+      "cliSessionMatched": true,
+      "cliRenameVisible": true,
+      "windowCloseRequested": true,
+      "fixture": true
+    }
+  ]
+}
