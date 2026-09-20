@@ -119,6 +119,27 @@ This historical view remains unchanged by later repository edits. Older decision
 incomplete previews or exhausted archive capacity show “Diff final no disponible”.
 The renderer displays literal text and identifies content altered by redaction.
 
+## Managed task worktrees (HU31, in progress)
+
+The host-side manager in `src/task-worktrees.ts` creates a new `feat/` branch and
+worktree from the selected repository's committed HEAD. It stores task identity,
+source project, initial commit/ref, branch, checkout and separate state-directory
+paths in a private atomic index. It does not copy staged, unstaged or untracked
+source changes. Creation checkpoints survive restart; interrupted creation becomes
+`needs-attention` without rerunning Git or deleting files.
+
+Removal requires a fresh one-use review. Dirty and ignored files, unintegrated
+commits and Git worktree locks block removal. The host rechecks the review and uses
+Git's normal removal checks without `--force`; it never deletes the branch or task
+state directory. Hooks, fsmonitor and configured clean/smudge/process filters are
+disabled for manager operations, including status and removal. These worktrees use
+committed file content; dependency installation and LFS/filter execution are not
+implicit creation steps.
+
+This increment is not yet connected to renderer controls or sessions. The next work
+is task creation/selection UI, per-worktree runtime state outside the checkout,
+visible inspection/removal review and packaged concurrent-task/restart verification.
+
 Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
 that exits 7. It verifies failed-check display, duplicate-submit protection, a lost
 response after accepted work, temporary transport unavailability, renderer reload
