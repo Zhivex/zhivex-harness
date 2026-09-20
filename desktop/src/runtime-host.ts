@@ -24,7 +24,7 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
   const tickets=new ReviewTickets();
   let fixtureOffline=false,fixtureDropResponse=false;
-  return {async setFixtureApprovalClock(offset:number){
+  return {async crashFixture(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");if(!exited)worker.kill();await stopped;},async setFixtureApprovalClock(offset:number){
     if(!options.fixture)throw new Error("FIXTURE_DISABLED");
     const requestId=randomUUID();await new Promise<void>((resolve,reject)=>{
       const listener=(message:{kind?:string;requestId?:string})=>{if(message.kind==="fixture-clock-ack"&&message.requestId===requestId){clearTimeout(timer);worker.off("message",listener);resolve();}};

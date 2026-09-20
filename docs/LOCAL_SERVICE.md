@@ -129,3 +129,16 @@ raw engine output, the rich CLI result and approval arguments before returning a
 run to the renderer, and redacts known host credential values and common token forms.
 This is a renderer/activity boundary; it does not claim that all historical engine
 state or the separate operator-facing rich CLI contract is a sanitized export.
+
+Dead-owner recovery serializes through the workspace operations database's write
+lock. The lock is acquired before reading transport ownership and released after
+stale files are removed, with the owner lock file removed last. A concurrent
+recoverer either fails with contention or rereads current ownership; it cannot act
+on an old owner snapshot after another service starts. Database/session contents
+are preserved, and the operating system releases the SQLite lock on process exit.
+
+Recovery uses `busyTimeoutMs: 0` while opening the session index and zero SQLite
+busy timeout for its ownership transaction. Contention fails immediately rather
+than blocking the event loop while another recovery awaits filesystem I/O.
+`OpenSessionStoreOptions.busyTimeoutMs` accepts 0–5000 ms and preserves the prior
+5000 ms default for other callers. The additive signature snapshot is reviewed.

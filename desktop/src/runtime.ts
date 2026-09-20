@@ -40,7 +40,7 @@ async function boot() {
  let fixtureClockOffset=0;
  const harness=await createHarness({workspace:config.workspace,provider:"openai",...(config.fixture?{modelInstance:mock}:{}),subagentProfiles:[],...(config.fixture&&config.fixtureOci?{executionBackend:"oci",ociAllowedCommands:["node","bun"],ociRuntimeAdapter:fixtureOciRuntime()}:{})});
  try {
-  if(config.recover)await recoverHarnessLocalService(harness,config.directory);
+  if(config.recover)try{await recoverHarnessLocalService(harness,config.directory);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
   const service=await startHarnessLocalService(harness,{directory:config.directory,sensitiveValues:hostSensitiveValues(process.env),...(config.fixture?{maxEvents:8,approvalNow:()=>Date.now()+fixtureClockOffset}:{})});
   parent.postMessage({kind:"ready",credentialsPath:service.credentialsPath,pid:process.pid,node:process.versions.node,stateDirectory:harness.config.stateDirectory});
   let closing=false;parent.on("message",event=>{if(config.fixture&&event.data&&typeof event.data==="object"&&"kind" in event.data&&event.data.kind==="fixture-clock"){const value=event.data as {offset:number;requestId:string};if(Number.isSafeInteger(value.offset)&&value.offset>=0&&value.offset<=3600000){fixtureClockOffset=value.offset;parent.postMessage({kind:"fixture-clock-ack",requestId:value.requestId});}return;}if(event.data==="close"&&!closing){closing=true;void service.close().then(()=>process.exit(0),()=>process.exit(1));}});

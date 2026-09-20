@@ -34,10 +34,11 @@ source files and credentials are not copied. A separate Node installation is not
 required. Docker/OCI remains optional and external; verify it using
 `bun --no-env-file run scripts/oci-execution-smoke.ts` from the repository root.
 
-For a dead prior owner, explicit `--recover` confirms its PID is dead before removing
-transport files. It preserves databases and refuses a live owner. The default
+When opening/reopening a project, recovery confirms the prior PID is dead before
+removing stale transport. It preserves databases and refuses a live owner. The default
 service directory is `/tmp/zhx-desktop-<uid>` and must be canonical for this desktop
-launcher. SIGTERM/normal quit drains accepted work; pending approvals are durable.
+launcher. Normal quit drains accepted work; forced process termination can interrupt
+an invocation. Pending approvals remain durable.
 Do not forcibly remove ownership files to bypass a live service.
 
 Architecture, threats and acceptance limits: [DESKTOP_ARCHITECTURE.md](../docs/DESKTOP_ARCHITECTURE.md).
@@ -129,3 +130,17 @@ Test clock control is confined to the main/utility process fixture path; the
 renderer bridge cannot change time, environment configuration or runtime adapters.
 The service constructor accepts a trusted approval clock for deterministic tests.
 Normal launches use the system clock. Fixture flags require explicit process args.
+
+## Recovery work in progress (HU30)
+
+“Reabrir proyecto” reconnects the selected project. When the old auxiliary process
+is gone, the new runtime automatically invokes dead-owner transport recovery;
+missing transport is normal for a first launch. Live owners and unsafe transport
+files are rejected. Recovery holds the workspace SQLite write lock while proving
+ownership and deleting stale transport, preventing concurrent recoverers from
+removing a newly started service's files. No separate stale marker survives a crash.
+
+The pending-approval recovery smoke kills the auxiliary process, reopens through
+the UI, verifies a new PID and the same undecided run, then rejects/applies through
+the normal flow. This does not yet prove recovery during an active tool effect or
+closing/reopening the entire app with a pending approval. HU30 remains in progress.

@@ -123,6 +123,7 @@ export interface OpenSessionStoreOptions {
   maxRunsPerSession?: number;
   maxMetadataBytes?: number;
   maxIndexBytes?: number;
+  busyTimeoutMs?: number;
   now?: () => number;
 }
 
@@ -346,6 +347,8 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
   const maxRuns = boundedInteger("maxRunsPerSession", options.maxRunsPerSession, DEFAULT_MAX_RUNS, 1);
   const maxMetadataBytes = boundedInteger("maxMetadataBytes", options.maxMetadataBytes, DEFAULT_MAX_METADATA_BYTES, 32);
   const maxIndexBytes = boundedInteger("maxIndexBytes", options.maxIndexBytes, DEFAULT_MAX_INDEX_BYTES, 1_024);
+  const busyTimeoutMs=boundedInteger("busyTimeoutMs",options.busyTimeoutMs,5000,0);
+  if(busyTimeoutMs>5000)throw new HarnessConfigError("busyTimeoutMs cannot exceed 5000.");
   const now = options.now ?? Date.now;
   const { databasePath, databaseEntry } = await ensurePrivateDatabase(workspace, options.stateDirectory);
   const database = new SqliteDatabase(databasePath, { create: false, strict: true });
@@ -510,8 +513,8 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
     ) {
       throw new HarnessWorkspaceError(`The session SQLite path changed while it was being opened: ${databasePath}.`);
     }
+    database.exec(`PRAGMA busy_timeout = ${busyTimeoutMs}`);
     database.exec("PRAGMA journal_mode = WAL");
-    database.exec("PRAGMA busy_timeout = 5000");
     database.exec("PRAGMA foreign_keys = ON");
     database.exec(`
       CREATE TABLE IF NOT EXISTS zhivex_cli_session_schema (

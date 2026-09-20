@@ -57,10 +57,12 @@ HU27 adds the native project picker, private recent-project catalog, per-project
 runtimes and conversation navigation. Selection queries state without starting runs.
 Responses are scoped to the selected view to prevent cross-project races. One app
 instance owns the catalog; duplicate launch focuses the existing window. Runtime
-startup failures fail closed; dead-owner recovery is explicit.
+startup failures fail closed; project reopening recovers transport only after
+proving the previous owner is dead. Recovery is serialized without a blocking wait.
 Closing the app drains accepted work; this may take until the configured timeout.
-Renderer reload during a running stream is verified in HU28; process-crash recovery
-and the full approval journey belong to HU30. A missing
+Renderer reload during a running stream is verified in HU28; pending-approval
+process-crash recovery is verified in HU30. Active-effect crash recovery and full
+app close/reopen remain HU30 work. A missing
 provider key produces a runtime error; secure credential UI is HU33. Production
 configuration and OCI onboarding must not silently assume Docker is present.
 

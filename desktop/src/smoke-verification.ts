@@ -13,7 +13,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  const emptyStartup=!(await js('window.harness.projects()')).length;
  if(emptyStartup){assert(await js('document.body.innerText.includes("Abrí un repositorio")'));await click('[data-action="open-project"]');await wait('Boolean(document.querySelector("main").dataset.projectKey) && document.querySelector("[data-action=new-session]").disabled === false');}
  const projects=await js('window.harness.projects()');assert.equal(projects.length,1);const firstKey=projects[0].key;
- const first=await runtimes.get(firstKey)!;assert(first.context.runtimePid!==process.pid);
+ let first=await runtimes.get(firstKey)!;assert(first.context.runtimePid!==process.pid);
  const duplicate=spawn(process.execPath,[...(app.isPackaged?[]:[app.getAppPath()]),"--smoke-test","--report-directory",reportDirectory],{stdio:"ignore"});
  const duplicateTimer=setTimeout(()=>duplicate.kill("SIGKILL"),10000);
  try{assert.equal(await new Promise<number|null>((resolve,reject)=>{duplicate.once("exit",resolve);duplicate.once("error",reject);}),0);}finally{clearTimeout(duplicateTimer);}
@@ -96,7 +96,15 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  for(const approve of [false,true]){
   await js(`{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"file-review-probe");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
   await wait('document.querySelector("[data-action=start]").disabled === false');await click('[data-action="start"]');
-  await wait('document.querySelector("[data-action=review]") !== null');await click('[data-action="review"]');
+  await wait('document.querySelector("[data-action=review]") !== null');
+  if(!approve){
+   const prior=await first.command({method:"session.get",sessionId});assert(prior.ok&&prior.data.kind==="session");const pendingId=prior.data.session.runs.at(-1)!.runId;
+   const previousPid=first.context.runtimePid;await first.crashFixture();await wait('document.body.innerText.includes("Conexión interrumpida")');
+   await click('[data-action="reconnect-project"]');await wait('document.querySelector("[data-session]")?.disabled === false');first=await runtimes.get(firstKey)!;assert.notEqual(first.context.runtimePid,previousPid);
+   await click(`[data-session="${sessionId}"]`);await wait('document.querySelector("[data-action=review]") !== null');
+   const recovered=await first.command({method:"run.get",sessionId,runId:pendingId});assert(recovered.ok&&recovered.data.kind==="run");assert.equal(recovered.data.run.status,"waiting_approval");assert.equal(recovered.data.run.decisionTotal,0);
+  }
+  await click('[data-action="review"]');
   await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
   assert.equal(await js('document.querySelector(".review-file .removed").textContent'),"context\r\nbefore\r\nlast");
   assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));
@@ -120,5 +128,5 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  await writeFile(path.join(reportDirectory,"screenshot-decisions.png"),(await window.webContents.capturePage()).toPNG());
  const database=await stat(path.join(first.stateDirectory,"operations.sqlite"));
  await writeFile(path.join(reportDirectory,"screenshot.png"),(await window.webContents.capturePage()).toPNG());
- await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,decisionHistoryReload:true,expiredApprovalRejected:true,staleApprovalRejected:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
+ await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,decisionHistoryReload:true,serviceCrashRecovered:true,expiredApprovalRejected:true,staleApprovalRejected:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
 }

@@ -237,7 +237,7 @@
     },
     {
       "name": "openCliSessionStore",
-      "sha256": "sha256:e9de578c8f26190f01bc13b5076d848ce8b69faa930cbdf77ce744318f1827b3"
+      "sha256": "sha256:6d2195438f3b197d19539d1df089eb041660675b3d1b76b79526cb077a5d8129"
     },
     {
       "name": "openHarnessPersistence",
@@ -490,5 +490,5 @@
       "sha256": "sha256:984c1171cdd88a8138de73523aca11f384d6bcedefdd9c688b346e60c56ee7fb"
     }
   ],
-  "digest": "sha256:8ba085a5db0789062d55e69d844e873fc3d448f65c49364a511935871b868491"
+  "digest": "sha256:9a4abc106a3713d3295e440c42f5a3a75f40719c630d2800317e1e9e30ca5ece"
 }

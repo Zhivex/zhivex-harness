@@ -1,3 +1,5 @@
+import {SqliteDatabase} from "./sqlite-database.js";
+import {openCliSessionStore} from "./sessions.js";
 /** User-private Unix transport for the shared Harness client contract. */
 import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
@@ -171,6 +173,12 @@ export const recoverHarnessLocalService = async (harness: ZhivexHarness, directo
   const root = await realpath(directory);
   const identity = createHash("sha256").update(JSON.stringify([harness.config.workspace, harness.config.scope])).digest("hex").slice(0, 20);
   const lockPath = path.join(root, `${identity}.lock`);
+  const index=await openCliSessionStore({workspace:harness.config.workspace,stateDirectory:harness.config.stateDirectory,scope:harness.config.scope,busyTimeoutMs:0});
+  const databasePath=index.databasePath;index.close();const db=new SqliteDatabase(databasePath);
+  // The database lock is released by the OS on crash; no stale recovery-marker file.
+  let locked=false;
+  try {
+  db.exec("PRAGMA busy_timeout = 0");db.exec("BEGIN IMMEDIATE");locked=true;
   const { constants } = await import("node:fs");
   const handle = await open(lockPath, constants.O_RDONLY | constants.O_NOFOLLOW);
   let owner: { schemaVersion: 1; pid: number };
@@ -188,4 +196,6 @@ export const recoverHarnessLocalService = async (harness: ZhivexHarness, directo
   }
   for (const extension of ["sock", "json"]) await unlink(path.join(root, `${identity}.${extension}`)).catch(e=>{if(e.code!=="ENOENT")throw e;});
   await unlink(lockPath);
+  db.exec("COMMIT");locked=false;
+  } finally {try{if(locked)db.exec("ROLLBACK");}finally{db.close();}}
 };

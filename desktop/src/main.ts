@@ -27,7 +27,7 @@ void app.whenReady().then(async()=>{
   if(project.key!==key)throw new Error("PROJECT_IDENTITY_CHANGED");
   let pending=runtimes.get(key);
   if(pending&&!((await pending).isAlive())){runtimes.delete(key);pending=undefined;}
-  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,fixtureOci:fixture&&process.argv.includes("--fixture-oci"),recover:process.argv.includes("--recover")});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
+  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,fixtureOci:fixture&&process.argv.includes("--fixture-oci"),recover:true});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
   return (await pending).context;
  };
  const runtime=async(key:unknown)=>{if(typeof key!=="string"||!runtimes.has(key))throw new Error("PROJECT_NOT_OPEN");return runtimes.get(key)!;};

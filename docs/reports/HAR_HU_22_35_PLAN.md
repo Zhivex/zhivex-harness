@@ -186,3 +186,8 @@ Fifth HU29 increment: read-only OCI content/mode previews and verified import
 history bound to patch/run/argv. 654 full-suite tests pass; OCI integration uses a
 fixture runtime. Packaged local-flow regression and installed CLI/SDK smoke pass.
 Evidence and explicit remaining demonstration: HAR_HU_29_OCI_2026-09-20.md.
+
+HU30 in progress: pending-approval runtime crash recovery now works through
+“Reabrir proyecto”; dead-owner cleanup is serialized without blocking contention.
+655 tests and packaged recovery smoke pass. Evidence and remaining acceptance:
+HAR_HU_30_RECOVERY_2026-09-20.md. No HU30 checkbox is closed by this increment.
