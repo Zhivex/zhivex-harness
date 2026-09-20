@@ -1,0 +1,559 @@
+{
+  "schemaVersion": 1,
+  "kind": "corrected-image-verified-delivery",
+  "classification": "Single known development diagnostic, not holdout or GA acceptance",
+  "result": {
+    "candidateCaptureFailure": null,
+    "modelTimings": [
+      {
+        "durationMs": 3608.6125829999996,
+        "firstTokenMs": 3608.2372499999997,
+        "completed": true
+      },
+      {
+        "durationMs": 2005.5725419999999,
+        "firstTokenMs": 2005.4179999999997,
+        "completed": true
+      },
+      {
+        "durationMs": 2233.2373750000006,
+        "firstTokenMs": 2233.012917,
+        "completed": true
+      },
+      {
+        "durationMs": 2664.5729170000013,
+        "firstTokenMs": 2663.945167,
+        "completed": true
+      },
+      {
+        "durationMs": 7502.284083000002,
+        "firstTokenMs": 7501.927,
+        "completed": true
+      },
+      {
+        "durationMs": 30397.212916000004,
+        "firstTokenMs": 30396.758041,
+        "completed": true
+      }
+    ],
+    "modelCatalog": {
+      "records": [
+        {
+          "call": 1,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "search_files",
+              "offered": true,
+              "registered": true
+            },
+            {
+              "name": "list_files",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        },
+        {
+          "call": 2,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "read_files",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        },
+        {
+          "call": 3,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "read_files",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        },
+        {
+          "call": 4,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "search_files",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        },
+        {
+          "call": 5,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "repair_plan",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        },
+        {
+          "call": 6,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "apply_reviewed_replacement",
+              "offered": true,
+              "registered": true
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        }
+      ],
+      "omittedCalls": 0
+    },
+    "stageTimings": [
+      {
+        "event": "edit-requested",
+        "elapsedMs": 53170.93125
+      },
+      {
+        "event": "verification-requested",
+        "elapsedMs": 55683.3165
+      },
+      {
+        "event": "governed-edit-completed",
+        "elapsedMs": 55689.149709
+      },
+      {
+        "event": "verified-import-completed",
+        "elapsedMs": 73038.63445900001
+      }
+    ],
+    "approvalTimings": [
+      {
+        "durationMs": 0.16820799999550218,
+        "resolved": true
+      },
+      {
+        "durationMs": 0.026583999999274965,
+        "resolved": true
+      }
+    ],
+    "toolTimings": [
+      {
+        "name": "search_files",
+        "calls": 2,
+        "errors": 0,
+        "totalMs": 1259.881583999998,
+        "maxMs": 871.3713749999988
+      },
+      {
+        "name": "list_files",
+        "calls": 1,
+        "errors": 0,
+        "totalMs": 19.485791999999492,
+        "maxMs": 19.485791999999492
+      },
+      {
+        "name": "read_files",
+        "calls": 2,
+        "errors": 0,
+        "totalMs": 3.180249000000913,
+        "maxMs": 2.609291000000667
+      },
+      {
+        "name": "repair_plan",
+        "calls": 1,
+        "errors": 0,
+        "totalMs": 0.11391699999876437,
+        "maxMs": 0.11391699999876437
+      },
+      {
+        "name": "apply_reviewed_replacement",
+        "calls": 1,
+        "errors": 0,
+        "totalMs": 11.653957999995328,
+        "maxMs": 11.653957999995328
+      },
+      {
+        "name": "verify_and_apply_environment_patch",
+        "calls": 1,
+        "errors": 0,
+        "totalMs": 17082.548167,
+        "maxMs": 17082.548167
+      }
+    ],
+    "schemaVersion": 1,
+    "candidate": "zhivex",
+    "instanceId": "django__django-15851",
+    "status": "completed",
+    "failure": null,
+    "phase": "agent",
+    "durationMs": 74568.26725,
+    "approvals": 2,
+    "turns": [
+      {
+        "index": 1,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "search_files",
+          "list_files"
+        ],
+        "inputTokens": 4652,
+        "outputTokens": 122,
+        "cachedInputTokens": 4096,
+        "requestCharacters": 7658,
+        "tools": [
+          {
+            "name": "search_files",
+            "isError": false,
+            "characters": 346
+          },
+          {
+            "name": "list_files",
+            "isError": false,
+            "characters": 1213
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "read_files"
+        ],
+        "inputTokens": 5612,
+        "outputTokens": 61,
+        "cachedInputTokens": 4096,
+        "requestCharacters": 9939,
+        "tools": [
+          {
+            "name": "read_files",
+            "isError": false,
+            "characters": 7433
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "read_files"
+        ],
+        "inputTokens": 7977,
+        "outputTokens": 52,
+        "cachedInputTokens": 5120,
+        "requestCharacters": 17796,
+        "tools": [
+          {
+            "name": "read_files",
+            "isError": false,
+            "characters": 3399
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "search_files"
+        ],
+        "inputTokens": 9135,
+        "outputTokens": 58,
+        "cachedInputTokens": 7168,
+        "requestCharacters": 21570,
+        "tools": [
+          {
+            "name": "search_files",
+            "isError": false,
+            "characters": 1241
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "repair_plan"
+        ],
+        "inputTokens": 9751,
+        "outputTokens": 403,
+        "cachedInputTokens": 8320,
+        "requestCharacters": 23205,
+        "tools": [
+          {
+            "name": "repair_plan",
+            "isError": false,
+            "characters": 1379
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "status": "waiting_approval",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "apply_reviewed_replacement"
+        ],
+        "inputTokens": 10612,
+        "outputTokens": 164,
+        "cachedInputTokens": 9216,
+        "requestCharacters": 26638,
+        "tools": []
+      },
+      {
+        "index": 7,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "verify_and_apply_environment_patch"
+        ],
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cachedInputTokens": 0,
+        "requestCharacters": 27845,
+        "tools": [
+          {
+            "name": "apply_reviewed_replacement",
+            "isError": false,
+            "characters": 483
+          },
+          {
+            "name": "verify_and_apply_environment_patch",
+            "isError": false,
+            "characters": 1523,
+            "phaseLatencies": {
+              "commandAndAttestationMs": 2911.652083,
+              "workspaceExportMs": 7508.893542,
+              "totalMs": 12796.734666,
+              "sessionCreationMs": 2374.661416
+            },
+            "exitCode": 0,
+            "timedOut": false,
+            "verificationOutcome": "passed"
+          }
+        ]
+      }
+    ],
+    "inputTokens": 47739,
+    "outputTokens": 860,
+    "cachedInputTokens": 38016,
+    "modelCalls": 6,
+    "usageComplete": true,
+    "compactions": [],
+    "terminalDiagnostic": null,
+    "thrownDiagnostic": null,
+    "guardrails": [],
+    "repairProgress": {
+      "repeatedResults": 0,
+      "suppressedResults": 0,
+      "blockedBroadCalls": 0,
+      "enteredClosure": false,
+      "phase": "verify",
+      "blockedPhaseCalls": 0,
+      "planRecorded": true
+    },
+    "contextMetrics": [
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 0,
+        "toolResultCharacters": 0,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      },
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 401,
+        "toolResultCharacters": 1877,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      },
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 665,
+        "toolResultCharacters": 9468,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      },
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 880,
+        "toolResultCharacters": 13025,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      },
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 1112,
+        "toolResultCharacters": 14426,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      },
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 3002,
+        "assistantCharacters": 2584,
+        "toolResultCharacters": 15964,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      }
+    ],
+    "omittedContextMeasurements": 0,
+    "toolCalls": 8
+  },
+  "importedPatchSha256": "15989da845ac1f766848c5c2e153296d7eef926a752ec658548702ac0e028bc7",
+  "importedPaths": [
+    "django/db/backends/postgresql/client.py"
+  ],
+  "protectedFilesChanged": [],
+  "candidatePresent": true,
+  "grading": {
+    "gradingStatus": "completed",
+    "resolved": true
+  },
+  "model": "qwen3.8-flash",
+  "image": "sha256:4c8b7a320988313b8881a96f334a189bfd0d6fda47cc0219d648867ffe765b80",
+  "evaluatorImage": "sha256:aa80884e053cf1a238df7c4ceec43e4e07929547f658278bd3c3154f0ef8bc90",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "newModelRequestsDuringGrading": 0,
+  "sourcePlan": "docs/reports/evidence/ga-tool-selection-live-plan-2026-09-19.json"
+}
