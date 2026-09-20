@@ -28,12 +28,13 @@ export async function openRemoteDelivery(directory:string,transport:RemoteTransp
  await mkdir(directory,{recursive:true,mode:0o700});const info=await lstat(directory);if(!info.isDirectory()||info.isSymbolicLink()||info.uid!==process.getuid?.()||(info.mode&0o077)!==0)throw new Error("REMOTE_STATE_UNSAFE");const root=await realpath(directory);
  const policy=createRedactionPolicy({includeEmails:false});
  const sensitive=(value:string)=>policy.redactText(value)!==value||/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/i.test(value)||sensitiveValues.some(secret=>secret.length>0&&value.includes(secret));
+ const containsSensitive=(value:unknown):boolean=>typeof value==="string"?sensitive(value):Array.isArray(value)?value.some(containsSensitive):value!==null&&typeof value==="object"?Object.values(value).some(containsSensitive):false;
  const inspect=async(destination:PushDestination)=>{
   const state=snapshotSchema.parse(await transport.inspect(destination));if(JSON.stringify(state.destination)!==JSON.stringify(destination))throw new Error("REMOTE_DESTINATION_CHANGED");
   if(!state.fastForward)throw new Error("REMOTE_DIVERGED");if(state.stagedPaths.length)throw new Error("REMOTE_STAGED_CHANGES");if(state.remoteHead===state.head)throw new Error("REMOTE_ALREADY_CURRENT");
   if(state.commits.at(-1)?.id!==state.head||new Set(state.commits.map(commit=>commit.id)).size!==state.commits.length)throw new Error("REMOTE_HISTORY_INCOMPLETE");
   if(Buffer.byteLength(JSON.stringify(state))>2*1024*1024)throw new Error("REMOTE_REVIEW_TOO_LARGE");
-  if(sensitive(JSON.stringify(state)))throw new Error("REMOTE_SECRET_DETECTED");
+  if(containsSensitive(state))throw new Error("REMOTE_SECRET_DETECTED");
   for(const commit of state.commits)for(const file of commit.files)if(file.path.split("/").some(part=>!part||part===".."||part==="."||part===".git"||part===".zhivex-harness")||/[\x00-\x1f\x7f\\]/.test(file.path)||/(^|\/)(?:\.env(?:\..*)?|credentials(?:\..*)?|id_(?:rsa|ed25519)|.*\.(?:pem|p12|pfx|key))$/i.test(file.path))throw new Error("REMOTE_PATH_BLOCKED");
   return state;
  };

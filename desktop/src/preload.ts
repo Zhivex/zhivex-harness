@@ -1,6 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "./bridge.js";
 const bridge:DesktopBridge=Object.freeze({
+ remoteTargets:(projectKey:string)=>ipcRenderer.invoke("harness:remote-targets",{projectKey}),
+ reviewPush:(projectKey:string,destination:unknown)=>ipcRenderer.invoke("harness:review-push",{projectKey,destination}),
+ push:(projectKey:string,ticketId:string)=>ipcRenderer.invoke("harness:push",{projectKey,ticketId}),
+ reconcilePush:(projectKey:string,operationId:string)=>ipcRenderer.invoke("harness:reconcile-push",{projectKey,operationId}),
  gitChanges:(projectKey:string)=>ipcRenderer.invoke("harness:git-changes",{projectKey}),
  gitStage:(projectKey:string,paths:string[])=>ipcRenderer.invoke("harness:git-stage",{projectKey,paths}),
  gitReviewCommit:(projectKey:string,input:unknown)=>ipcRenderer.invoke("harness:git-review-commit",{projectKey,input}),

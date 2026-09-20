@@ -129,7 +129,9 @@ reconciliation are exercised in the unsigned package. Push/PR destinations and
 remote failure recovery remain; all three criteria stay open.
 Host push admission and GitHub HTTPS adapter: HAR_HU_32_PUSH_MANAGER_2026-09-20.md.
 Six local tests (50 assertions) verify exact refspec, no force/replay, divergent
-remote preservation and credential configuration isolation. Not yet exposed in UI.
+remote preservation and credential configuration isolation.
+Push UI integration: HAR_HU_32_PUSH_UI_2026-09-20.md. Explicit destination selection,
+review, push and response-loss reconciliation are exposed; PR flow remains pending.
 
 ## HAR-HU-33 — Guardar credenciales en el almacén seguro del sistema
 

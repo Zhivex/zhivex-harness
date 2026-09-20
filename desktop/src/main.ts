@@ -1,3 +1,5 @@
+import {openGitHubGitTransport} from "./github-git-transport.js";
+import {openRemoteDelivery} from "./remote-delivery.js";
 import {openGitDelivery} from "./git-delivery.js";
 import {hostSensitiveValues} from "./redaction.js";
 import {verifyDesktopWorktreesSmoke} from "./smoke-worktrees-verification.js";
@@ -65,7 +67,7 @@ void app.whenReady().then(async()=>{
     const response=fixture?(fixtureCloseChoices.shift()==="cancel"?1:0):(await dialog.showMessageBox(window,{type:"question",title:"Hay trabajo en curso",message:"Hay operaciones activas en tus proyectos.",detail:"Podés volver a la app o solicitar su cancelación antes de salir. Cancelar no revierte los cambios ya realizados. Si no se detienen, la ventana permanecerá abierta.",buttons:["Volver a la app","Cancelar trabajos y salir"],defaultId:0,cancelId:0,noLink:true})).response;
     return response===1?"cancel":"stay";
    });
-   if(approved){runtimes.clear();exitApproved=true;app.quit();}
+   if(approved){await Promise.allSettled([...remoteManagers.values()].map(async pending=>(await pending).transport.close()));remoteManagers.clear();runtimes.clear();exitApproved=true;app.quit();}
   })().catch(async()=>{if(!fixture&&!window.isDestroyed())await dialog.showMessageBox(window,{type:"warning",title:"La aplicación sigue abierta",message:"No se confirmó que todo el trabajo haya terminado.",detail:"Revisá el estado de tus proyectos antes de volver a salir. No se forzó el cierre ni se repitieron las operaciones.",buttons:["Volver a la app"]});}).finally(()=>{if(!exitApproved)closing=false;});
  };
  window.on("close",event=>{if(!exitApproved){event.preventDefault();requestExit();}});
@@ -83,6 +85,9 @@ void app.whenReady().then(async()=>{
  const validateSender=(event:Electron.IpcMainInvokeEvent)=>{if(closing||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==url)throw new Error("UNTRUSTED_SENDER");};
  session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));session.defaultSession.setPermissionCheckHandler(()=>false);
  window.webContents.setWindowOpenHandler(()=>({action:"deny"}));window.webContents.on("will-navigate",event=>event.preventDefault());window.webContents.on("will-attach-webview",event=>event.preventDefault());
+ const remoteManagers=new Map<string,Promise<{transport:Awaited<ReturnType<typeof openGitHubGitTransport>>;manager:Awaited<ReturnType<typeof openRemoteDelivery>>}>>();
+ const remoteDelivery=async(key:string)=>{if(closing)throw new Error("APPLICATION_CLOSING");const project=registry.get(key);if(removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");const task=tasks.list().find(task=>task.workspace===project.workspace);if(task)await tasks.inspect(task.id);let pending=remoteManagers.get(key);if(!pending){pending=(async()=>{const transport=await openGitHubGitTransport(project.workspace);try{return{transport,manager:await openRemoteDelivery(path.join(app.getPath("userData"),"remote-delivery",key),transport,hostSensitiveValues(process.env))};}catch(error){await transport.close();throw error;}})();remoteManagers.set(key,pending);void pending.catch(()=>remoteManagers.delete(key));}return pending;};
+ let fixturePushResponseDropped=false;
  let fixtureGitResponseDropped=false;
  const deliveryManagers=new Map<string,Promise<Awaited<ReturnType<typeof openGitDelivery>>>>(),deliveryBusy=new Set<string>();
  const delivery=async(key:string)=>{const project=registry.get(key);if(removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");const task=tasks.list().find(task=>task.workspace===project.workspace);if(task)await tasks.inspect(task.id);let manager=deliveryManagers.get(key);if(!manager){manager=openGitDelivery(project.workspace,path.join(app.getPath("userData"),"git-delivery",key),hostSensitiveValues(process.env));deliveryManagers.set(key,manager);void manager.catch(()=>deliveryManagers.delete(key));}return manager;};
@@ -96,6 +101,10 @@ void app.whenReady().then(async()=>{
  ipcMain.handle("harness:git-review-commit",async(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","input"]);return(await delivery(payload.projectKey)).reviewCommit(payload.input);});
  ipcMain.handle("harness:git-commit",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","ticketId"]);if(typeof payload.ticketId!=="string")throw new Error("INVALID_GIT_REQUEST");const ticketId=payload.ticketId;return trackTask(gitMutation(payload.projectKey,async manager=>{const result=await manager.commit(ticketId);if(fixture&&process.argv.includes("--fixture-drop-git-response")&&!fixtureGitResponseDropped){fixtureGitResponseDropped=true;throw new Error("GIT_RESPONSE_LOST");}return result;}));});
  ipcMain.handle("harness:git-reconcile",async(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","operationId"]);if(typeof payload.operationId!=="string")throw new Error("INVALID_GIT_REQUEST");return(await delivery(payload.projectKey)).reconcile(payload.operationId);});
+ ipcMain.handle("harness:remote-targets",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey"]);return trackTask((async()=>(await remoteDelivery(payload.projectKey)).transport.targets())());});
+ ipcMain.handle("harness:review-push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","destination"]);return trackTask((async()=>(await remoteDelivery(payload.projectKey)).manager.reviewPush(payload.destination))());});
+ ipcMain.handle("harness:push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","ticketId"]);if(typeof payload.ticketId!=="string")throw new Error("INVALID_PUSH_REQUEST");const id=payload.ticketId;return trackTask(gitMutation(payload.projectKey,async()=>{const result=await(await remoteDelivery(payload.projectKey)).manager.push(id);if(fixture&&process.argv.includes("--fixture-drop-push-response")&&!fixturePushResponseDropped){fixturePushResponseDropped=true;throw new Error("PUSH_RESPONSE_LOST");}return result;}));});
+ ipcMain.handle("harness:reconcile-push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","operationId"]);if(typeof payload.operationId!=="string")throw new Error("INVALID_PUSH_REQUEST");const id=payload.operationId;return trackTask((async()=>(await remoteDelivery(payload.projectKey)).manager.reconcile(id))());});
  ipcMain.handle("harness:projects",event=>{validateSender(event);const managed=new Set(tasks.list().map(task=>task.workspace));return registry.list().filter(project=>!managed.has(project.workspace));});
  ipcMain.handle("harness:tasks",(event,key:unknown)=>{validateSender(event);if(typeof key!=="string")throw new Error("INVALID_PROJECT");return tasks.list(sourceProject(key).key).map(taskView);});
  ipcMain.handle("harness:create-task",(event,value:unknown)=>{

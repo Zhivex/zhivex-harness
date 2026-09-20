@@ -5,6 +5,10 @@ export interface DesktopTask {id:string;sourceProjectKey:string;title:string;bra
 export interface DesktopTaskRemoval {ticketId:string;task:DesktopTask;head:string;integrationCommit:string;changedPaths:string[];unmergedCommits:number;locked:boolean;canRemove:boolean;expiresAt:number}
 export interface DesktopContext {project:DesktopProject;projectId:string;runtimePid:number;runtimeNode:string;fixture:boolean;task?:DesktopTask}
 export interface DesktopBridge {
+ remoteTargets(projectKey:string):Promise<import("./github-git-transport.js").RemoteTargets>;
+ reviewPush(projectKey:string,destination:import("./remote-delivery.js").PushDestination):Promise<import("./remote-delivery.js").PushReview>;
+ push(projectKey:string,ticketId:string):Promise<import("./remote-delivery.js").PushOperation>;
+ reconcilePush(projectKey:string,operationId:string):Promise<import("./remote-delivery.js").PushOperation|{id:string;status:"not-accepted"}>;
  gitChanges(projectKey:string):Promise<import("./git-delivery.js").DeliveryChanges>;
  gitStage(projectKey:string,paths:string[]):Promise<import("./git-delivery.js").DeliveryChanges>;
  gitReviewCommit(projectKey:string,input:{paths:string[];message:string}):Promise<import("./git-delivery.js").CommitReview>;

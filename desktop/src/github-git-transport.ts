@@ -4,10 +4,11 @@ import {realpath,mkdtemp,writeFile,rm} from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import {pushDestinationSchema,type PushDestination,type PushSnapshot,type RemoteTransport} from "./remote-delivery.js";
+export interface RemoteTargets {branch:string;remotes:Array<{remote:string;url:string}>;unsupported:number}
 const execute=promisify(execFile),object=/^[a-f0-9]{40,64}$/;
 
 /** GitHub HTTPS transport. Auth stays in Git/gh, never in snapshots or IPC. */
-export async function openGitHubGitTransport(workspace:string):Promise<RemoteTransport&{close():Promise<void>}>{
+export async function openGitHubGitTransport(workspace:string):Promise<RemoteTransport&{close():Promise<void>;targets():Promise<RemoteTargets>}>{
  const root=await realpath(workspace);
  const env={PATH:process.env.PATH,HOME:process.env.HOME,GIT_CONFIG_GLOBAL:"/dev/null",GIT_CONFIG_NOSYSTEM:"1",GIT_TERMINAL_PROMPT:"0",GIT_OPTIONAL_LOCKS:"0",GH_PROMPT_DISABLED:"1"};
  const protections=["-c","core.hooksPath=/dev/null","-c","core.fsmonitor=false","-c","protocol.allow=never","-c","protocol.https.allow=always","-c","http.followRedirects=false","-c","http.sslVerify=true","-c","http.extraHeader=","-c","http.proxy=","-c","credential.helper=","-c","credential.helper=!gh auth git-credential","-c","push.followTags=false","-c","push.recurseSubmodules=no","-c","remote.pushDefault="];
@@ -26,6 +27,7 @@ export async function openGitHubGitTransport(workspace:string):Promise<RemoteTra
  const obtain=async(destination:PushDestination,id:string)=>{if(!object.test(id))throw new Error("REMOTE_REF_INVALID");try{await network(["cat-file","-e",`${id}^{commit}`]);}catch{await network(["fetch","--no-tags","--no-write-fetch-head","--no-recurse-submodules",destination.url,id]);}};
  return{
   close:()=>rm(networkRoot,{recursive:true,force:true}),
+  async targets(){const branch=await text(["symbolic-ref","HEAD"]),names=(await text(["remote"])).split("\n").filter(Boolean),remotes:RemoteTargets["remotes"]=[];let unsupported=0;if(names.length>100)throw new Error("REMOTE_LIMIT");for(const name of names){try{const urls=(await text(["remote","get-url","--push","--all",name])).split("\n");if(urls.length!==1)throw new Error("REMOTE_MULTIPLE_URLS");const target=pushDestinationSchema.parse({remote:name,url:urls[0],ref:branch,baseRef:"refs/heads/main"});remotes.push({remote:target.remote,url:target.url});}catch{unsupported++;}}return{branch,remotes,unsupported};},
   async readHead(input){const destination=await validate(input);return remoteHead(destination);},
   async inspect(input){
    const destination=await validate(input),head=await text(["rev-parse","HEAD"]),branch=await text(["symbolic-ref","HEAD"]);if(!object.test(head))throw new Error("REMOTE_HEAD_INVALID");

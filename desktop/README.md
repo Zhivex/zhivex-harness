@@ -242,8 +242,7 @@ Select every staged file intended for the commit, enter its message, then choose
 parent commit, author/committer and local destination. “Autorizar commit local”
 creates an unsigned commit only from that reviewed tree. Changed snapshots require
 another review. Active runtime work blocks staging/commit; application exit waits
-for accepted Git operations before draining workers. No push or PR control is
-exposed by this increment.
+for accepted Git operations before draining workers. Reviewed push is described below; PR controls remain pending.
 
 If a commit response is lost, the UI retains only its operation ID in browser local
 storage and offers “Consultar resultado”, including after reload. It never blindly
@@ -255,3 +254,32 @@ The worktree smoke now also stages and reviews a fixture file, refuses a Git wri
 while a run is active, creates a local commit, deliberately drops its response via
 a host-only fixture flag, reloads the renderer and confirms the same operation.
 Remote authorization, push/PR handling and their failure cases remain HU32 work.
+
+### Reviewed push (HU32, in progress)
+
+“Enviar commits a GitHub” lists compatible configured remotes and requires explicit
+selection of the destination ref and an existing remote base ref. The default base
+field is `refs/heads/main`; change it when the repository uses a different branch.
+“Revisar push” reads the remote and shows the exact local SHA, remote/base state,
+new commits, messages and complete per-parent file previews. Only the separate
+“Autorizar push al destino revisado” control sends the reviewed SHA to that ref.
+Divergence or changed review state requires another review; no force push is used.
+
+This adapter supports a single GitHub HTTPS push URL per remote and existing host
+`gh` authentication. Git and gh must be available on the host PATH. SSH, enterprise
+hosts and custom proxies are not declared supported. No credentials are entered in
+this renderer. Source repository configuration cannot redirect network credentials:
+network commands use a private temporary bare object store, removed on normal app
+shutdown. Accepted remote work is awaited before that cleanup.
+
+A lost response retains only the operation ID in browser local storage. Reload and
+“Consultar resultado del push” read the durable operation record without replaying
+the push. Unknown outcomes remain pending; a confirmed missing operation permits a
+new review. Success describes the accepted operation, not a guarantee that another
+client has not subsequently changed the branch. PR creation remains separate work.
+
+The worktree smoke supplies a host-only Git executable shim routing GitHub-shaped
+fixture URLs exclusively to its temporary local bare repository. It verifies one
+reviewed push, lost response, renderer reload/reconciliation, exact remote SHA and
+normal-shutdown cleanup of network stores. This is offline integration evidence,
+not live GitHub authentication or publication of the implementation branch.
