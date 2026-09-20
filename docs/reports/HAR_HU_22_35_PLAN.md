@@ -131,7 +131,9 @@ Host push admission and GitHub HTTPS adapter: HAR_HU_32_PUSH_MANAGER_2026-09-20.
 Six local tests (50 assertions) verify exact refspec, no force/replay, divergent
 remote preservation and credential configuration isolation.
 Push UI integration: HAR_HU_32_PUSH_UI_2026-09-20.md. Explicit destination selection,
-review, push and response-loss reconciliation are exposed; PR flow remains pending.
+review, push and response-loss reconciliation are exposed.
+PR host manager/REST adapter: HAR_HU_32_PR_MANAGER_2026-09-20.md; 14 focused tests
+with 106 assertions pass. PR UI and packaged recovery journey remain pending.
 
 ## HAR-HU-33 — Guardar credenciales en el almacén seguro del sistema
 

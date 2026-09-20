@@ -8,8 +8,8 @@ const oid=z.string().regex(/^[a-f0-9]{40,64}$/);
 const branch=z.string().regex(/^refs\/heads\/[A-Za-z0-9][A-Za-z0-9._/-]{0,180}$/).refine(value=>!value.includes("..")&&!value.endsWith("/")&&!value.endsWith(".lock"));
 export const pushDestinationSchema=z.object({remote:z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/),url:z.string().regex(/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/).refine(value=>new URL(value).href===value),ref:branch,baseRef:branch}).strict();
 const fileSchema=z.object({path:z.string().min(1).max(512),before:z.string().max(256*1024),after:z.string().max(256*1024),beforeMode:z.enum(["000000","100644","100755"]),afterMode:z.enum(["000000","100644","100755"]),parent:oid}).strict();
-const snapshotSchema=z.object({branch,head:oid,destination:pushDestinationSchema,remoteHead:oid.nullable(),baseHead:oid,fastForward:z.boolean(),stagedPaths:z.array(z.string()).max(100),commits:z.array(z.object({id:oid,message:z.string().max(16000),files:z.array(fileSchema).max(100)}).strict()).max(100)}).strict();
-export type PushSnapshot=z.infer<typeof snapshotSchema>;
+export const pushSnapshotSchema=z.object({branch,head:oid,destination:pushDestinationSchema,remoteHead:oid.nullable(),baseHead:oid,fastForward:z.boolean(),stagedPaths:z.array(z.string()).max(100),commits:z.array(z.object({id:oid,message:z.string().max(16000),files:z.array(fileSchema).max(100)}).strict()).max(100)}).strict();
+export type PushSnapshot=z.infer<typeof pushSnapshotSchema>;
 export type PushDestination=z.infer<typeof pushDestinationSchema>;
 export interface PushReview extends PushSnapshot {ticketId:string;expiresAt:number}
 const operationSchema=z.object({id:z.string().uuid(),head:oid,destination:pushDestinationSchema,previousHead:oid.nullable(),status:z.enum(["prepared","completed"])}).strict();
@@ -30,7 +30,7 @@ export async function openRemoteDelivery(directory:string,transport:RemoteTransp
  const sensitive=(value:string)=>policy.redactText(value)!==value||/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/i.test(value)||sensitiveValues.some(secret=>secret.length>0&&value.includes(secret));
  const containsSensitive=(value:unknown):boolean=>typeof value==="string"?sensitive(value):Array.isArray(value)?value.some(containsSensitive):value!==null&&typeof value==="object"?Object.values(value).some(containsSensitive):false;
  const inspect=async(destination:PushDestination)=>{
-  const state=snapshotSchema.parse(await transport.inspect(destination));if(JSON.stringify(state.destination)!==JSON.stringify(destination))throw new Error("REMOTE_DESTINATION_CHANGED");
+  const state=pushSnapshotSchema.parse(await transport.inspect(destination));if(JSON.stringify(state.destination)!==JSON.stringify(destination))throw new Error("REMOTE_DESTINATION_CHANGED");
   if(!state.fastForward)throw new Error("REMOTE_DIVERGED");if(state.stagedPaths.length)throw new Error("REMOTE_STAGED_CHANGES");if(state.remoteHead===state.head)throw new Error("REMOTE_ALREADY_CURRENT");
   if(state.commits.at(-1)?.id!==state.head||new Set(state.commits.map(commit=>commit.id)).size!==state.commits.length)throw new Error("REMOTE_HISTORY_INCOMPLETE");
   if(Buffer.byteLength(JSON.stringify(state))>2*1024*1024)throw new Error("REMOTE_REVIEW_TOO_LARGE");

@@ -8,7 +8,7 @@ export interface RemoteTargets {branch:string;remotes:Array<{remote:string;url:s
 const execute=promisify(execFile),object=/^[a-f0-9]{40,64}$/;
 
 /** GitHub HTTPS transport. Auth stays in Git/gh, never in snapshots or IPC. */
-export async function openGitHubGitTransport(workspace:string):Promise<RemoteTransport&{close():Promise<void>;targets():Promise<RemoteTargets>}>{
+export async function openGitHubGitTransport(workspace:string):Promise<RemoteTransport&{close():Promise<void>;targets():Promise<RemoteTargets>;inspectPullRequest(destination:PushDestination):Promise<PushSnapshot>}>{
  const root=await realpath(workspace);
  const env={PATH:process.env.PATH,HOME:process.env.HOME,GIT_CONFIG_GLOBAL:"/dev/null",GIT_CONFIG_NOSYSTEM:"1",GIT_TERMINAL_PROMPT:"0",GIT_OPTIONAL_LOCKS:"0",GH_PROMPT_DISABLED:"1"};
  const protections=["-c","core.hooksPath=/dev/null","-c","core.fsmonitor=false","-c","protocol.allow=never","-c","protocol.https.allow=always","-c","http.followRedirects=false","-c","http.sslVerify=true","-c","http.extraHeader=","-c","http.proxy=","-c","credential.helper=","-c","credential.helper=!gh auth git-credential","-c","push.followTags=false","-c","push.recurseSubmodules=no","-c","remote.pushDefault="];
@@ -25,14 +25,10 @@ export async function openGitHubGitTransport(workspace:string):Promise<RemoteTra
  const validate=async(input:PushDestination)=>{const destination=pushDestinationSchema.parse(input);const urls=(await text(["remote","get-url","--push","--all",destination.remote])).split("\n");if(urls.length!==1||urls[0]!==destination.url)throw new Error("REMOTE_DESTINATION_CHANGED");return destination;};
  const remoteHead=async(destination:PushDestination,ref=destination.ref)=>{const output=await networkText(["ls-remote","--refs",destination.url,ref]);if(!output)return null;const lines=output.split("\n");if(lines.length!==1)throw new Error("REMOTE_REF_AMBIGUOUS");const [id,name]=lines[0]!.split("\t");if(!id||!object.test(id)||name!==ref)throw new Error("REMOTE_REF_INVALID");return id;};
  const obtain=async(destination:PushDestination,id:string)=>{if(!object.test(id))throw new Error("REMOTE_REF_INVALID");try{await network(["cat-file","-e",`${id}^{commit}`]);}catch{await network(["fetch","--no-tags","--no-write-fetch-head","--no-recurse-submodules",destination.url,id]);}};
- return{
-  close:()=>rm(networkRoot,{recursive:true,force:true}),
-  async targets(){const branch=await text(["symbolic-ref","HEAD"]),names=(await text(["remote"])).split("\n").filter(Boolean),remotes:RemoteTargets["remotes"]=[];let unsupported=0;if(names.length>100)throw new Error("REMOTE_LIMIT");for(const name of names){try{const urls=(await text(["remote","get-url","--push","--all",name])).split("\n");if(urls.length!==1)throw new Error("REMOTE_MULTIPLE_URLS");const target=pushDestinationSchema.parse({remote:name,url:urls[0],ref:branch,baseRef:"refs/heads/main"});remotes.push({remote:target.remote,url:target.url});}catch{unsupported++;}}return{branch,remotes,unsupported};},
-  async readHead(input){const destination=await validate(input);return remoteHead(destination);},
-  async inspect(input){
+ const inspect=async(input:PushDestination,forPullRequest=false):Promise<PushSnapshot>=>{
    const destination=await validate(input),head=await text(["rev-parse","HEAD"]),branch=await text(["symbolic-ref","HEAD"]);if(!object.test(head))throw new Error("REMOTE_HEAD_INVALID");
    const remote=await remoteHead(destination),base=await remoteHead(destination,destination.baseRef);if(!base)throw new Error("REMOTE_BASE_MISSING");await obtain(destination,base);if(remote)await obtain(destination,remote);
-   const ancestor=remote??base;let fastForward=true;try{await network(["merge-base","--is-ancestor",ancestor,head]);}catch{fastForward=false;}
+   const ancestor=forPullRequest?base:(remote??base);let fastForward=true;try{await network(["merge-base","--is-ancestor",ancestor,head]);}catch{fastForward=false;}
    const staged=new TextDecoder("utf-8",{fatal:true}).decode(await git(["diff","--cached","--name-only","-z","--no-ext-diff","--no-textconv"])).split("\0").filter(Boolean);
    if(!fastForward)return{branch,head,destination,remoteHead:remote,baseHead:base,fastForward,stagedPaths:staged,commits:[]};
    const ids=(await networkText(["rev-list","--reverse",`${ancestor}..${head}`])).split("\n").filter(Boolean);if(ids.length>100)throw new Error("REMOTE_HISTORY_TOO_LARGE");
@@ -49,7 +45,13 @@ export async function openGitHubGitTransport(workspace:string):Promise<RemoteTra
     commits.push({id,message,files});
    }
    return{branch,head,destination,remoteHead:remote,baseHead:base,fastForward,stagedPaths:staged,commits};
-  },
+  };
+ return{
+  close:()=>rm(networkRoot,{recursive:true,force:true}),
+  async targets(){const branch=await text(["symbolic-ref","HEAD"]),names=(await text(["remote"])).split("\n").filter(Boolean),remotes:RemoteTargets["remotes"]=[];let unsupported=0;if(names.length>100)throw new Error("REMOTE_LIMIT");for(const name of names){try{const urls=(await text(["remote","get-url","--push","--all",name])).split("\n");if(urls.length!==1)throw new Error("REMOTE_MULTIPLE_URLS");const target=pushDestinationSchema.parse({remote:name,url:urls[0],ref:branch,baseRef:"refs/heads/main"});remotes.push({remote:target.remote,url:target.url});}catch{unsupported++;}}return{branch,remotes,unsupported};},
+  async readHead(input){const destination=await validate(input);return remoteHead(destination);},
+  inspect:input=>inspect(input),
+  inspectPullRequest:input=>inspect(input,true),
   async push(head,input){const destination=await validate(input);if(!object.test(head))throw new Error("REMOTE_HEAD_INVALID");
    // Exact SHA and one explicit ref; ordinary Git rejects non-fast-forward races.
    // Never add force, mirror, all, tags or a repository-defined refspec.
