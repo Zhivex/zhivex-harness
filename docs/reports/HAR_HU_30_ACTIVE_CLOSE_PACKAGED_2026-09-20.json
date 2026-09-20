@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "packaged": true,
+  "platform": "darwin",
+  "arch": "arm64",
+  "fixture": true,
+  "activeClose": true,
+  "stayPreservedActiveRun": true,
+  "quitCancellationCompleted": true,
+  "cancelledRunRecovered": true,
+  "noReplay": true,
+  "wholeAppRestart": true,
+  "nativeWindowClose": true,
+  "workersExited": true,
+  "recentProjectRestored": true,
+  "phases": [
+    {
+      "schemaVersion": 1,
+      "phase": "active-close",
+      "packaged": true,
+      "appPid": 8678,
+      "runtimePid": 8742,
+      "sessionId": "ses_1926ce70-00f5-4093-b032-1dbb8c9f5d4a",
+      "runId": "run_e79d35e0-5174-4490-89b2-22d03080eb2a",
+      "windowCloseRequested": true,
+      "stayPreservedActiveRun": true,
+      "quitCancellationRequested": true,
+      "fixture": true
+    },
+    {
+      "schemaVersion": 1,
+      "phase": "cancelled-history",
+      "packaged": true,
+      "appPid": 8755,
+      "runtimePid": 8785,
+      "sessionId": "ses_1926ce70-00f5-4093-b032-1dbb8c9f5d4a",
+      "runId": "run_e79d35e0-5174-4490-89b2-22d03080eb2a",
+      "windowCloseRequested": true,
+      "cancelledRunRecovered": true,
+      "cliSessionMatched": true,
+      "noReplay": true,
+      "fixture": true
+    }
+  ]
+}

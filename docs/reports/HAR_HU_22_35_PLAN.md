@@ -94,6 +94,11 @@ Source: https://app.notion.com/p/3e1777b104f68109bd14c4b4b0640a70?pvs=204
 
 Evidence: HAR_HU_30_APP_RESTART_2026-09-20.md and HAR_DESKTOP_ALPHA_BETA_ENTRY_2026-09-20.md, plus prior packaged service/transport recovery reports. HU30 remains in progress; final diff and listed alpha issues remain open.
 
+Active-close P1 resolved: all-project admission pause, explicit stay/cancel choice,
+visible window until work stops, no forced close or replay. Packaged active-close
+and pending-approval regression pass; 662 tests, 3764 assertions. Evidence:
+HAR_HU_30_ACTIVE_CLOSE_2026-09-20.md. Final diff and effect-boundary recovery remain.
+
 ## HAR-HU-31 — Aislar tareas en worktrees administrados
 
 Source: https://app.notion.com/p/3e1777b104f681319a9ac8db519c9caf?pvs=204

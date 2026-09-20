@@ -65,6 +65,8 @@ export interface HarnessClientAdapterOptions {
 export interface HarnessClientAdapter {
   negotiate(versions: readonly number[]): HarnessClientNegotiation;
   dispatch(request: unknown): Promise<HarnessClientResponse>;
+  /** Trusted host shutdown control; requests cancellation without finalizing effects. */
+  cancelActive(): Promise<void>;
   /** Closes this connection and its session index, not the host-owned harness. */
   close(): void;
 }
@@ -233,6 +235,12 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     return { kind: "run", session: sessionDocument(s), run: await documentRun(state) };
   };
   return {
+    async cancelActive() {
+      const current = active;
+      if (!current) return;
+      await cancelHarnessRun(harness.store, harness.config, current.runId, { cascade: true });
+      current.controller.abort();
+    },
     negotiate(versions) {
       if (closed) return { ok: false, error: { code: "CONNECTION_EXPIRED" } };
       if (!versions.includes(1)) return { ok: false, error: { code: "VERSION_UNSUPPORTED" } };

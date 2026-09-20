@@ -60,6 +60,15 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
     if(!parsed.success)throw new Error("INVALID_CURSOR");
     return redact.redact(await requestHarnessLocalService(credentials,"events",{projectId:hello.projectId,...parsed.data})) as Awaited<ReturnType<typeof requestHarnessLocalService<"events">>>;
    },
+   async controlClose(operation:"pause"|"resume"|"cancel"):Promise<boolean>{
+    if(exited)return false;
+    const requestId=randomUUID();
+    return new Promise((resolve,reject)=>{
+     const listener=(message:{kind?:string;requestId?:string;ok?:boolean;busy?:boolean})=>{if(message.kind!=="close-control-ack"||message.requestId!==requestId)return;clearTimeout(timer);worker.off("message",listener);if(message.ok)resolve(message.busy===true);else reject(new Error("CLOSE_CONTROL_FAILED"));};
+     const timer=setTimeout(()=>{worker.off("message",listener);reject(new Error("CLOSE_CONTROL_TIMEOUT"));},5000);
+     worker.on("message",listener);worker.postMessage({kind:"close-control",requestId,operation});
+    });
+   },
    async close(){if(!exited){worker.postMessage("close");await stopped;}}
   };
  }catch(error){if(!exited)worker.kill();await stopped;throw error;}

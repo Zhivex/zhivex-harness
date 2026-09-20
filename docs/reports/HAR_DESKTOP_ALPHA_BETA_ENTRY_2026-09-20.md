@@ -6,7 +6,6 @@ This is the local alpha assessment for HU30. No beta release is certified.
 | --- | --- | --- |
 | P1 | Applied decisions retain effect digests, but do not offer a durable complete final diff. | DecisionHistory renders path/digests; HU30 acceptance 1 stays open until the exact applied change can be inspected after restart without attributing unrelated repository changes to the run. |
 | P1 | Forced interruption during a file effect lacks a packaged reconciliation demonstration. | Active-run recovery currently kills an offline waiting model. Inject a failure at the effect/journal boundary and prove that recovery distinguishes applied, failed and unknown effects without replaying the tool. |
-| P1 | Closing during indefinitely running work can leave application shutdown waiting indefinitely. | Code inspection: main closes the window and waits for runtime.close; local-service.close drains all admitted commands without a deadline. Reproduce with wait-for-cancel and provide a visible choice before closing, preserving accepted work and allowing explicit cancellation. This scenario is not covered by the pending-approval window-close test. |
 | P2 | An active run recovered after a worker crash may require waiting for lease expiry. | Packaged recovery proves immediate BUSY and explicit successful cancellation after 31 seconds. The UI explains the wait. Beta documentation must retain the distinction between cancellation and rollback; independently leased descendants must not be falsely finalized. |
 | P2 | Signing, notarization and external distribution remain unavailable. | User authorized unsigned packaging first. HU34 remains open until Developer ID, notarization, artifact verification and clean-machine installation evidence are available. |
 
@@ -38,9 +37,16 @@ This is the local alpha assessment for HU30. No beta release is certified.
 | Service dies at pending approval | Reopen project replaces only a dead owner and reads the same undecided run. | HU30_RECOVERY packaged report. |
 | Service dies during a waiting run | No automatic resumption; explicit cancellation waits for lease availability and preserves recorded effects. | HU30_ACTIVE_RECOVERY packaged report. |
 | Window closes at pending approval | Application drains admitted requests and both main/worker exit. Reopening from recent projects restores the session. Old main-process review receipts are invalid; the user reviews again before deciding. | Three-process restart smoke, including pending and completed CLI inspection and title mutation visible in desktop. |
-| Window closes during unbounded active work | Shutdown drains; completion time is unbounded. | Code-inspection issue P1 above; do not treat pending-approval closure as coverage. |
+| Window closes during unbounded active work | Main keeps the window visible and pauses new mutations. Stay resumes admission; cancel requests cancellation once per host. Unconfirmed cancellation leaves the app open. Both window close and application quit use the same path. | HAR_HU_30_ACTIVE_CLOSE report: packaged wait-for-cancel, stay, explicit cancel/quit, worker exit and same cancelled run after restart. Unit tests cover an unresponsive operation and unavailable host without forced close. |
 
 The same session remains readable through the CLI's `--service` connection. The
 restart test compares the full session document before approval and after completion,
 then renames it through CLI and checks the desktop navigation. Both clients share
 the host's authoritative state; neither starts an independent model for this test.
+
+Resolved alpha issue: the earlier P1 for indefinitely waiting shutdown was reproduced
+with a real active fixture and repaired. Service admission is paused atomically after
+request parsing; a body sent before pausing cannot admit a mutation afterward. The
+window remains available if work cannot be confirmed stopped. Evidence and limits:
+HAR_HU_30_ACTIVE_CLOSE_2026-09-20.md. Native dialog appearance is not automated;
+host-only fixture responses drive the production decision path.

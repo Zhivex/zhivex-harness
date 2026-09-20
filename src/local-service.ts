@@ -6,13 +6,18 @@ import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { mkdir, lstat, realpath, open, unlink, chmod } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { createHarnessClientAdapter, type HarnessClientAdapter, type HarnessClientResponse, type HarnessClientNegotiation } from "./client-contract.js";
+import { createHarnessClientAdapter, harnessClientRequestSchema, type HarnessClientAdapter, type HarnessClientResponse, type HarnessClientNegotiation } from "./client-contract.js";
 import { openHarnessActivityStore, type HarnessActivityStore, type HarnessActivityPage } from "./service-events.js";
 import type { ZhivexHarness } from "./harness.js";
 
 export interface HarnessLocalService {
   readonly socketPath: string;
   readonly credentialsPath: string;
+  /** Atomically blocks new mutations, preserving reads and explicit cancellation. Returns whether mutations are still active. */
+  pauseAdmission(): boolean;
+  resumeAdmission(): void;
+  /** Requests cancellation of this host's active invocation; never force-finalizes it. */
+  cancelActive(): Promise<void>;
   /** Stops admission, drains accepted commands, closes adapter and host runtime. */
   close(): Promise<void>;
 }
@@ -62,7 +67,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
   let adapter: HarnessClientAdapter | undefined;
   let activity: HarnessActivityStore | undefined;
   const pending = new Set<Promise<void>>();
-  let closing = false, closePromise: Promise<void> | undefined;
+  let closing = false, paused = false, activeMutations = 0, closePromise: Promise<void> | undefined;
   const server = createServer((req, res) => {
     const operation = (async () => {
       const actual = Buffer.from(req.headers.authorization ?? "");
@@ -76,6 +81,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       if (req.headers["content-type"] !== "application/json") return send(res, 415, fault("CONTENT_TYPE_REQUIRED"));
       let value: unknown;
       try { value = await body(req); } catch { return send(res, 400, fault("INVALID_REQUEST")); }
+      if (closing) return send(res, 503, fault("SERVICE_CLOSING"));
       if (req.url === "/hello") {
         const parsed = z.object({ versions: z.array(z.number().int()).min(1).max(16) }).strict().safeParse(value);
         return send(res, 200, parsed.success ? adapter!.negotiate(parsed.data.versions) : fault("INVALID_REQUEST"));
@@ -88,7 +94,13 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
         try{return send(res,200,activity!.replay(parsed.data.sessionId,parsed.data.after));}
         catch{return send(res,400,fault("INVALID_CURSOR"));}
       }
-      return send(res, 200, await adapter!.dispatch(value));
+      const parsed=harnessClientRequestSchema.safeParse(value);
+      const method=parsed.success?parsed.data.command.method:undefined;
+      const mutation=method!==undefined&&!["project.get","session.list","session.get","run.get"].includes(method);
+      if(paused&&mutation&&method!=="run.cancel")return send(res,503,fault("SERVICE_PAUSED"));
+      if(mutation)activeMutations++;
+      try{return send(res, 200, await adapter!.dispatch(value));}
+      finally{if(mutation)activeMutations--;}
     })().catch(() => { if (!res.headersSent) send(res, 500, fault("EXECUTION_FAILED")); else res.destroy(); });
     pending.add(operation); void operation.finally(() => pending.delete(operation));
   });
@@ -116,7 +128,11 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
     ownsSocket = true;
     await chmod(socketPath, 0o600);
     await privateFile(credentialsPath, JSON.stringify({ schemaVersion: 1, socketPath, token })); ownsCredentials = true;
-    return { socketPath, credentialsPath, close() {
+    return { socketPath, credentialsPath,
+      pauseAdmission(){if(closing)throw new Error("SERVICE_CLOSING");paused=true;return activeMutations>0;},
+      resumeAdmission(){if(closing)throw new Error("SERVICE_CLOSING");paused=false;},
+      cancelActive(){return adapter!.cancelActive();},
+      close() {
       closePromise ??= (async () => {
         closing = true;
         const stopped = new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve()));

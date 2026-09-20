@@ -14,13 +14,13 @@ interface RestartCheckpoint {
 
 /** Host-only, offline fixture. Each phase runs in a fresh application process. */
 export async function verifyDesktopRestartSmoke(window:BrowserWindow,runtimes:Map<string,Promise<ProjectRuntime>>,directory:string,phase:string,cliPath:string|undefined){
- assert(["prepare","approve","history"].includes(phase));
+ assert(["prepare","approve","history","active-close","cancelled-history"].includes(phase));
  assert(cliPath&&path.isAbsolute(cliPath));
  const js=(source:string)=>window.webContents.executeJavaScript(source);
  const wait=async(source:string)=>{for(let i=0;i<200;i++){if(await js(source))return;await new Promise(resolve=>setTimeout(resolve,50));}await writeFile(path.join(directory,`${phase}-failure-view.txt`),await js("document.body.innerText"));throw new Error(`RESTART_SMOKE_TIMEOUT: ${source}`);};
  const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  await wait('document.querySelector("[data-ready=true]") !== null');
- if(phase!=="prepare"){
+ if(!["prepare","active-close"].includes(phase)){
   assert.equal(await js('document.querySelectorAll("[data-project]").length'),1);
   await click('[data-project]');
  }
@@ -33,6 +33,31 @@ export async function verifyDesktopRestartSmoke(window:BrowserWindow,runtimes:Ma
  };
  const file=path.join(runtime.context.project.workspace,"review.txt"),checkpointFile=path.join(directory,"restart-checkpoint.json");
  const before="context\r\nbefore\r\nlast",after="context\r\nafter <img onerror=alert(1)>\r\nlast";
+ if(phase==="active-close"){
+  await click('[data-action="new-session"]');await wait('Boolean(document.querySelector("main").dataset.sessionId)');
+  const sessionId:string=await js('document.querySelector("main").dataset.sessionId');
+  await click('[data-action="wait"]');await wait('document.querySelector("[data-action=cancel]").disabled === false');
+  const session=await runtime.command({method:"session.get",sessionId});assert(session.ok&&session.data.kind==="session");assert.equal(session.data.session.runs.length,1);const runId=session.data.session.runs[0]!.runId;
+  const running=await runtime.command({method:"run.get",sessionId,runId});assert(running.ok&&running.data.kind==="run");assert.equal(running.data.run.status,"running");
+  window.close(); // First fixture choice is stay; preserve the visible window/run.
+  await wait(`window.harness.command(${JSON.stringify(projectKey)},{method:"project.get"}).then(result=>result.ok,()=>false)`);
+  assert(!window.isDestroyed());assert(runtime.isAlive());
+  const retained=await runtime.command({method:"run.get",sessionId,runId});assert(retained.ok&&retained.data.kind==="run");assert.equal(retained.data.run.status,"running");
+  await writeFile(checkpointFile,JSON.stringify({projectKey,sessionId,runId,revision:retained.data.run.revision,approvals:[],ticketId:"none"}));
+  await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({schemaVersion:1,phase,packaged:app.isPackaged,appPid:process.pid,runtimePid:runtime.context.runtimePid,sessionId,runId,windowCloseRequested:true,stayPreservedActiveRun:true,quitCancellationRequested:true,fixture:true}));
+  app.quit(); // Second fixture choice cancels; also exercises menu/application quit.
+  return;
+ }
+ if(phase==="cancelled-history"){
+  const saved:RestartCheckpoint=JSON.parse(await readFile(checkpointFile,"utf8"));assert.equal(projectKey,saved.projectKey);
+  await wait('document.querySelector("[data-session]")?.disabled === false');await click(`[data-session="${saved.sessionId}"]`);
+  await wait('document.body.innerText.includes("cancelled")');
+  const session=await runtime.command({method:"session.get",sessionId:saved.sessionId});assert(session.ok&&session.data.kind==="session");assert.deepEqual(session.data.session.runs.map(run=>run.runId),[saved.runId]);assert.equal(session.data.session.runs[0]!.status,"cancelled");
+  const inspected=await cli(["sessions","inspect",saved.sessionId]);assert.deepEqual(inspected.session,session.data.session);
+  assert.equal(await readFile(file,"utf8"),before);
+  await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({schemaVersion:1,phase,packaged:app.isPackaged,appPid:process.pid,runtimePid:runtime.context.runtimePid,sessionId:saved.sessionId,runId:saved.runId,windowCloseRequested:true,cancelledRunRecovered:true,cliSessionMatched:true,noReplay:true,fixture:true}));
+  window.close();return;
+ }
  let checkpoint:RestartCheckpoint;
  let rendererExitReason:string|undefined;
  if(phase==="prepare"){

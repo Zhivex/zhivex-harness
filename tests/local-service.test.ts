@@ -20,6 +20,30 @@ const setup = async (modelInstance?: LanguageModel) => {
 const raw=(socketPath:string,headers:Record<string,string>={},method="GET",url="/health",body="")=>new Promise<number>((resolve,reject)=>{
   const req=request({socketPath,path:url,method,headers},res=>{res.resume();res.on("end",()=>resolve(res.statusCode!));});req.on("error",reject);req.end(body);
 });
+test("host pauses new mutations while preserving reads, explicit cancellation and resumption",async()=>{
+ let begin!:()=>void;const started=new Promise<void>(resolve=>{begin=resolve;});
+ const mock=createMockLanguageModel();const model:LanguageModel={...mock,async stream(input){return(async function*(){begin();await new Promise<void>(resolve=>{if(input.abortSignal?.aborted)resolve();else input.abortSignal?.addEventListener("abort",()=>resolve(),{once:true});});yield{type:"finish" as const,finishReason:"stop" as const};})();}};
+ const f=await setup(model);try{
+  const session=await f.call({method:"session.create",idempotencyKey:"prepare"});if(!session.ok||session.data.kind!=="session")throw new Error();
+  const work=f.call({method:"run.start",sessionId:session.data.session.sessionId,expectedRevision:session.data.session.revision,idempotencyKey:"wait",prompt:"wait"});await started;
+  expect(f.service.pauseAdmission()).toBe(true);
+  await expect(f.call({method:"session.create",idempotencyKey:"blocked"})).rejects.toThrow("HTTP_503");
+  expect(await f.call({method:"session.list"})).toMatchObject({ok:true,data:{kind:"sessions"}});
+  await f.service.cancelActive();await work;
+  expect(f.service.pauseAdmission()).toBe(false);
+  expect(await f.call({method:"session.get",sessionId:session.data.session.sessionId})).toMatchObject({ok:true,data:{session:{runs:[{status:"cancelled"}]}}});
+  f.service.resumeAdmission();expect((await f.call({method:"session.create",idempotencyKey:"after-resume"})).ok).toBe(true);
+ }finally{await f.service.cancelActive();await f.close();}
+});
+test("a body started before host pause cannot admit a mutation after it",async()=>{
+ const f=await setup();try{
+  const payload=JSON.stringify({protocolVersion:1,requestId:"slow",connectionId:f.hello.connectionId,command:{projectId:f.hello.projectId,method:"session.create",idempotencyKey:"slow-body"}});
+  const req=request({socketPath:f.service.socketPath,path:"/command",method:"POST",headers:{authorization:`Bearer ${f.credentials.token}`,"content-type":"application/json"}});
+  const result=new Promise<number>((resolve,reject)=>{req.on("response",res=>{res.resume();res.on("end",()=>resolve(res.statusCode!));});req.on("error",reject);});
+  req.write(payload.slice(0,10));await new Promise(resolve=>setTimeout(resolve,20));expect(f.service.pauseAdmission()).toBe(false);req.end(payload.slice(10));expect(await result).toBe(503);
+  f.service.resumeAdmission();expect(await f.call({method:"session.list"})).toMatchObject({ok:true,data:{sessions:[]}});
+ }finally{await f.close();}
+});
 test("private service authenticates, negotiates and dispatches the real runtime",async()=>{
  const f=await setup();try{
   expect((await lstat(f.service.socketPath)).mode&0o777).toBe(0o600);

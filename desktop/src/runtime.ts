@@ -43,6 +43,18 @@ async function boot() {
   if(config.recover)try{await recoverHarnessLocalService(harness,config.directory);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
   const service=await startHarnessLocalService(harness,{directory:config.directory,sensitiveValues:hostSensitiveValues(process.env),...(config.fixture?{maxEvents:8,approvalNow:()=>Date.now()+fixtureClockOffset}:{})});
   parent.postMessage({kind:"ready",credentialsPath:service.credentialsPath,pid:process.pid,node:process.versions.node,stateDirectory:harness.config.stateDirectory});
+  parent.on("message",event=>{
+   if(!event.data||typeof event.data!=="object"||event.data.kind!=="close-control")return;
+   const {requestId,operation}=event.data as {requestId:unknown;operation:unknown};
+   if(typeof requestId!=="string"||requestId.length>128||!["pause","resume","cancel"].includes(String(operation)))return;
+   void(async()=>{
+    let busy=false;
+    if(operation==="pause")busy=service.pauseAdmission();
+    else if(operation==="resume")service.resumeAdmission();
+    else await service.cancelActive();
+    parent.postMessage({kind:"close-control-ack",requestId,ok:true,busy});
+   })().catch(()=>parent.postMessage({kind:"close-control-ack",requestId,ok:false}));
+  });
   let closing=false;parent.on("message",event=>{if(config.fixture&&event.data&&typeof event.data==="object"&&"kind" in event.data&&event.data.kind==="fixture-clock"){const value=event.data as {offset:number;requestId:string};if(Number.isSafeInteger(value.offset)&&value.offset>=0&&value.offset<=3600000){fixtureClockOffset=value.offset;parent.postMessage({kind:"fixture-clock-ack",requestId:value.requestId});}return;}if(event.data==="close"&&!closing){closing=true;void service.close().then(()=>process.exit(0),()=>process.exit(1));}});
  }catch(error){await harness.close();throw error;}
 }

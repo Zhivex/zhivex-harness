@@ -1,5 +1,6 @@
 import {verifyDesktopOciSmoke} from "./smoke-oci-verification.js";
 import {verifyDesktopRestartSmoke} from "./smoke-restart-verification.js";
+import {prepareDesktopShutdown} from "./shutdown.js";
 import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,7 +17,9 @@ if(!app.requestSingleInstanceLock())app.exit(0);
 let mainWindow:BrowserWindow|undefined;
 app.on("second-instance",()=>{if(mainWindow&&!mainWindow.isDestroyed()){if(mainWindow.isMinimized())mainWindow.restore();mainWindow.show();mainWindow.focus();}});
 const runtimes=new Map<string,Promise<ProjectRuntime>>();let closing=false;
-app.on("before-quit",event=>{if(runtimes.size&&!closing){event.preventDefault();closing=true;void Promise.allSettled([...runtimes.values()].map(async pending=>(await pending).close())).then(()=>{runtimes.clear();app.quit();});}});
+let exitApproved=false;
+let requestExit=()=>{exitApproved=true;app.quit();};
+app.on("before-quit",event=>{if(!exitApproved){event.preventDefault();requestExit();}});
 void app.whenReady().then(async()=>{
  const registry=await openProjectRegistry(path.join(app.getPath("userData"),"projects"));
  const directory=fixture&&reportDirectory?path.join(reportDirectory,"socket"):`/tmp/zhx-desktop-${process.getuid?.()}`;
@@ -35,6 +38,20 @@ void app.whenReady().then(async()=>{
  const index=path.join(buildDirectory,"index.html"),url=pathToFileURL(index).href;
  const window=new BrowserWindow({width:1120,height:760,minWidth:720,minHeight:520,show:false,backgroundColor:"#101315",title:"Zhivex Harness",webPreferences:{preload:path.join(buildDirectory,"preload.cjs"),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,webviewTag:false}});
  mainWindow=window;
+ const fixtureCloseChoices=fixture?(argument("--fixture-close-choices")??"").split(","):[];
+ requestExit=()=>{
+  if(closing||exitApproved)return;closing=true;
+  void(async()=>{
+   const hosts=await Promise.allSettled([...runtimes.values()]);
+   const ready=hosts.flatMap(host=>host.status==="fulfilled"?[host.value]:[]);
+   const approved=await prepareDesktopShutdown(ready,async()=>{
+    const response=fixture?(fixtureCloseChoices.shift()==="cancel"?1:0):(await dialog.showMessageBox(window,{type:"question",title:"Hay trabajo en curso",message:"Hay operaciones activas en tus proyectos.",detail:"Podés volver a la app o solicitar su cancelación antes de salir. Cancelar no revierte los cambios ya realizados. Si no se detienen, la ventana permanecerá abierta.",buttons:["Volver a la app","Cancelar trabajos y salir"],defaultId:0,cancelId:0,noLink:true})).response;
+    return response===1?"cancel":"stay";
+   });
+   if(approved){runtimes.clear();exitApproved=true;app.quit();}
+  })().catch(async()=>{if(!fixture&&!window.isDestroyed())await dialog.showMessageBox(window,{type:"warning",title:"La aplicación sigue abierta",message:"No se confirmó que todo el trabajo haya terminado.",detail:"Revisá el estado de tus proyectos antes de volver a salir. No se forzó el cierre ni se repitieron las operaciones.",buttons:["Volver a la app"]});}).finally(()=>{if(!exitApproved)closing=false;});
+ };
+ window.on("close",event=>{if(!exitApproved){event.preventDefault();requestExit();}});
  let recoveringRenderer=false;
  window.webContents.on("render-process-gone",()=>{
   if(closing||recoveringRenderer||window.isDestroyed())return;
