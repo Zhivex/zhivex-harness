@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { checkOnboardingDocument, checkStableRoadmap } from "./onboarding-docs.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 import { parseHarnessReleaseVersion } from "./release-policy.js";
 import { parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
@@ -40,7 +41,8 @@ const markdownFiles = [
   path.join(workspace, "SUPPORT.md"),
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
-  ...await collectMarkdown(path.join(workspace, "docs"))
+  ...await collectMarkdown(path.join(workspace, "docs")),
+  ...await collectMarkdown(path.join(workspace, "examples"))
 ].sort();
 
 const failures: string[] = [];
@@ -68,6 +70,20 @@ const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
 const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
+// Stable onboarding is distinct from archived release and migration evidence.
+if (/^1\.\d+\.\d+$/.test(manifest.version)) {
+  for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/CLI.md", "docs/SUPPORT_MATRIX.md",
+    ...markdownFiles.filter((file) => file.startsWith(path.join(workspace, "examples") + path.sep))
+      .map((file) => path.relative(workspace, file))]) {
+    failures.push(...checkOnboardingDocument(file, await readFile(path.join(workspace, file), "utf8"), manifest.version));
+  }
+  failures.push(...checkStableRoadmap(roadmap, manifest.version));
+  for (const command of ["--version", "--help", "doctor"]) {
+    if (!readme.includes(`bunx @zhivex-ai/harness@${manifest.version} ${command}`)) {
+      failures.push(`README.md: missing stable Bun onboarding command ${command}`);
+    }
+  }
+}
 const security = await readFile(path.join(workspace, "SECURITY.md"), "utf8");
 const releaseDocumentation = await readFile(path.join(workspace, "docs", "RELEASE.md"), "utf8");
 const publicSecurity = await readFile(path.join(workspace, "docs", "PUBLIC_SECURITY.md"), "utf8");

@@ -1,6 +1,6 @@
 # Documentation
 
-Start with the [project README](../README.md) for installation and a first run. These guides describe the source checkout; published certification applies only to the exact artifacts recorded in the release evidence.
+Start with the [project README](../README.md) for stable 1.0 installation and a first run, or the [isolated Bun installation example](../examples/README.md). These guides describe the source checkout; published certification applies only to the exact artifacts recorded in the release evidence.
 
 ## Usage and integration
 
@@ -25,9 +25,11 @@ Start with the [project README](../README.md) for installation and a first run. 
 - [Contributing](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md), [roadmap](../ROADMAP.md) and [changelog](../CHANGELOG.md).
 - [Release procedure](RELEASE.md) and [rollback](ROLLBACK.md).
 - [Live certification](LIVE_CERTIFICATION.md): artifact-bound provider evidence.
-- [GA readiness](GA_READINESS.md), [security review requirements](SECURITY_REVIEW_EVIDENCE.md) and [RC.13 reviewer dossier](RC13_SECURITY_REVIEW.md).
+- [GA readiness](GA_READINESS.md), [security review requirements](SECURITY_REVIEW_EVIDENCE.md).
 
 ## Evaluation and historical reports
+
+- [RC.13 reviewer dossier](RC13_SECURITY_REVIEW.md) and [RC.14 reviewer dossier](RC14_SECURITY_REVIEW.md): prerelease assessments retained as history.
 
 - [Benchmark guide](../benchmarks/README.md) and [Time-to-Safe-Fix protocol](TIME_TO_SAFE_FIX.md).
 - [Report index](reports/README.md): dated audits, remediation evidence and model comparisons. Historical findings and scores do not describe later code automatically.
