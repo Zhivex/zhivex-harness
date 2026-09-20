@@ -1,0 +1,40 @@
+{
+  "kind": "diagnostic-tool-catalog-ablation",
+  "baseCommit": "c2b2bb917d0471e61afc5f731a61c00b44fa3731",
+  "baseline": "ga-recovery-graded-v8-qwen",
+  "classification": "known development task; not GA acceptance",
+  "model": "qwen3.8-flash",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "tools": [
+    "read_task",
+    "repair_plan",
+    "run_environment_shell",
+    "inspect_environment_patch",
+    "verify_and_apply_environment_patch"
+  ],
+  "changed": [
+    "driver catalog",
+    "instructions rendered from catalog"
+  ],
+  "unchanged": [
+    "runtime source",
+    "OCI policy",
+    "approval policy",
+    "verification/import gate",
+    "model",
+    "budgets",
+    "official grader"
+  ],
+  "driverSha256": "8d68286b42979a603dcded8860133e134d351f25aedb5dd98ed2ef6f810cbd74",
+  "acceptance": "retain every sample and grading result; do not replace product profile or count this variant as GA"
+}

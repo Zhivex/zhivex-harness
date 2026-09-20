@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "bounded-unknown-tool-selection-recovery",
+  "sources": {
+    "src/harness.ts": "f506b8833167255c2bb9df270d8ab9bba540cf9bfeade56152ab1188074d6882",
+    "tests/repair-tool-selection.test.ts": "ffc9612908c4077c8319dc757ce384746405fb0cb4d91229b4e8e3251e333fde"
+  },
+  "validation": {
+    "focusedTests": 5,
+    "fullSuite": {
+      "passed": 577,
+      "failed": 0,
+      "files": 72
+    },
+    "runtimeTypecheck": "passed",
+    "toolingTypecheck": "passed",
+    "documentation": "passed",
+    "preparationContract": "passed; one GA blocker open"
+  },
+  "boundaries": [
+    "Repair profile only; explicit caller overrides retained.",
+    "Unregistered tools are never resolved or executed.",
+    "Tool error, step and token limits remain unchanged.",
+    "Subsequent mutations still require approval.",
+    "No live effectiveness claim; the observed failure remains unchanged."
+  ]
+}

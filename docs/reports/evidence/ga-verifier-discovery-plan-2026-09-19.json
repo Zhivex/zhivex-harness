@@ -1,0 +1,29 @@
+{
+  "kind": "verifier-discovery-development-validation",
+  "classification": "known development case; not holdout or GA acceptance",
+  "baseline": "ga-verifier-hints",
+  "qwenVersion": "0.14.4",
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "change": "Discover available verifier rather than recommending pytest; capture candidate in actual run scope",
+  "sources": {
+    "src/config.ts": "67ed44b55505ff8dd94f60ba89c33c217759cd7c79de45ccda369f248309cdff",
+    "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+    "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+    "scripts/swebench/zhivex-driver.ts": "52268790d1f20c73b340a68c6d13ea8d3250a04eca362f0ace983ced5c7e6035",
+    "scripts/swebench/candidate.ts": "5767ae241c4a58bd731456abe2c3d92f7a57bba764c80e0f0d00748a0f47d02b",
+    "scripts/swebench/telemetry.ts": "2c0b4828db3a108184df6d47276d7d3dbb6cf291126b40fc38d33f4b29101bc2",
+    "scripts/swebench/verifier-observer.ts": "a90544437473218a83477a1cffb59ee9f645c12abdf8960b787f3e21606035bf",
+    "bun.lock": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4"
+  },
+  "stopRule": "One matched pair only; no retry after completion"
+}

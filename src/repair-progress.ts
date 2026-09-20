@@ -4,6 +4,8 @@ import type { ToolSet, ToolExecutionContext } from "@zhivex-ai/core";
 import { z } from "zod";
 
 export const REPAIR_PROGRESS_KEY = "zhivexRepairProgress";
+const CLOSURE_READ_LIMIT = 4;
+const CLOSURE_COMMAND_LIMIT = 3;
 const savedProgress = z.object({ closureReads: z.number().int().min(0), closureCommands: z.number().int().min(0),
   enteredClosure: z.boolean(), plannedPaths: z.array(z.string().max(240)).max(8),
   seen: z.array(z.tuple([z.string().max(128), z.object({ output: z.string().length(64), count: z.number().int().min(1) })])).max(128),
@@ -19,9 +21,9 @@ const canonical = (value: unknown): string => {
 };
 const hash = (value: unknown) => createHash("sha256").update(canonical(value)).digest("hex");
 
-/** One controller per run. Stores only bounded hashes, never source or arguments.
+/** One controller per run. Stores bounded plan paths and evidence hashes, never source content.
  * Changes execution strategy, not permission/approval policy or token ceilings. */
-export const createRepairProgress = (usage: () => { inputTokens: number; outputTokens: number },
+export const createRepairProgress = (usage: () => { inputTokens: number; outputTokens: number; predictedInputTokens?: number },
   limits: { inputTokens: number; outputTokens: number }, metadata?: Record<string, unknown>) => {
   const restored = metadata?.[REPAIR_PROGRESS_KEY] === undefined ? undefined : savedProgress.parse(metadata[REPAIR_PROGRESS_KEY]);
   let closureReads = restored?.closureReads ?? 0, closureCommands = restored?.closureCommands ?? 0;
@@ -31,9 +33,12 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
   const linesSeen = new Map<string, number>(restored?.lines);
   const stats = { repeatedResults: 0, suppressedResults: 0, blockedBroadCalls: 0, enteredClosure: restored?.enteredClosure ?? false, phase: plannedPaths.length ? "repair" : "explore", blockedPhaseCalls: 0, planRecorded: !!plannedPaths.length };
   const snapshot = () => ({ closureReads, closureCommands, enteredClosure: stats.enteredClosure, plannedPaths: [...plannedPaths], seen: [...seen], lines: [...linesSeen] });
+  const workingContext = () => ({ plannedPaths: plannedPaths.map(value => posix.normalize(value)),
+    closureReadsRemaining: Math.max(0, CLOSURE_READ_LIMIT - closureReads),
+    closureCommandsRemaining: Math.max(0, CLOSURE_COMMAND_LIMIT - closureCommands) });
   const closing = () => {
     const used = usage();
-    stats.enteredClosure ||= used.inputTokens >= limits.inputTokens * 0.7 || used.outputTokens >= limits.outputTokens * 0.7;
+    stats.enteredClosure ||= used.inputTokens + (used.predictedInputTokens ?? 0) >= limits.inputTokens * 0.7 || used.outputTokens >= limits.outputTokens * 0.7;
     return stats.enteredClosure;
   };
   const wrapTools = (tools: ToolSet): ToolSet => Object.fromEntries(Object.entries(tools).map(([name, definition]) => {
@@ -48,7 +53,7 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
       if (observations.has(name)) return definition.execute(input, context);
       if (name.startsWith("verify_")) stats.phase = "verify";
       if (!reads.has(name)) {
-        if (closing() && name.startsWith("run_environment") && ++closureCommands > 3) {
+        if (closing() && name.startsWith("run_environment") && ++closureCommands > CLOSURE_COMMAND_LIMIT) {
           stats.blockedPhaseCalls++;
           throw new Error("REPAIR_PHASE_BUDGET: the closure command allowance is exhausted. Use an inspected patch and the approved verifier, or report the incomplete repair.");
         }
@@ -70,7 +75,7 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
         stats.blockedBroadCalls++;
         throw new Error("REPAIR_CLOSURE: broad discovery is paused to preserve the remaining budget. Use known file paths for focused reads/searches, reproduce the issue, repair and verify. If context is insufficient, report the limitation; do not guess a patch.");
       }
-      if (closing() && ++closureReads > 4) {
+      if (closing() && ++closureReads > CLOSURE_READ_LIMIT) {
         stats.blockedPhaseCalls++;
         throw new Error("REPAIR_PHASE_BUDGET: the closure read allowance is exhausted. Recover task constraints with read_task, repair known files, and verify or report the limitation.");
       }
@@ -113,5 +118,5 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
       }
     } }];
   }));
-  return { stats, closing, wrapTools, snapshot };
+  return { stats, closing, wrapTools, snapshot, workingContext };
 };

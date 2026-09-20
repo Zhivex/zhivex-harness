@@ -1,9 +1,10 @@
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as ts from "typescript";
+import * as ts from "typescript-compiler-api";
 
 export const STABLE_API_SIGNATURE_SCHEMA_VERSION = 1 as const;
 export const STABLE_API_SIGNATURE_FORMAT = "typescript-declaration-ast-v1" as const;
@@ -221,30 +222,18 @@ export const assertStableApiSignatureSnapshot = (
 
 export const emitWorkspaceDeclarations = async (workspace: string) => {
   const configPath = path.join(workspace, "tsconfig.json");
-  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (configFile.error) throw new Error(ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n"));
-  const parsed = ts.parseJsonConfigFileContent(configFile.config, ts.sys, workspace);
   const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-declarations-"));
-  const options: ts.CompilerOptions = {
-    ...parsed.options,
-    declaration: true,
-    declarationMap: false,
-    declarationDir: directory,
-    emitDeclarationOnly: true,
-    incremental: false,
-    noEmit: false,
-    outDir: directory,
-  };
-  const program = ts.createProgram({ rootNames: parsed.fileNames, options });
-  const result = program.emit(undefined, undefined, undefined, true);
-  const diagnostics = [...ts.getPreEmitDiagnostics(program), ...result.diagnostics];
-  if (diagnostics.length > 0 || result.emitSkipped) {
+  // Emit with the same compiler as the published build. The compatibility API
+  // parses declarations, but its older emitter must not define another ABI.
+  const result = spawnSync(process.execPath, [
+    path.join(workspace, "node_modules", "typescript", "bin", "tsc"),
+    "--project", configPath, "--emitDeclarationOnly", "--declaration",
+    "--declarationMap", "false", "--declarationDir", directory,
+    "--incremental", "false", "--noEmit", "false", "--outDir", directory
+  ], { cwd: workspace, encoding: "utf8" });
+  if (result.error || result.status !== 0) {
     await rm(directory, { recursive: true, force: true });
-    throw new Error(ts.formatDiagnostics(diagnostics, {
-      getCanonicalFileName: (fileName) => fileName,
-      getCurrentDirectory: () => workspace,
-      getNewLine: () => "\n"
-    }));
+    throw new Error(`Declaration compiler failed: ${result.error?.message ?? result.stderr + result.stdout}`);
   }
   return {
     directory,

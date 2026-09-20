@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-working-context-validation",
+  "candidate": "working tree, no release attestation",
+  "baseCommit": "50f255d7d48ac8ed99627d80ad5c0339fa0936a3",
+  "sourceSha256": {
+    "src/harness.ts": "195983cfbacb6097a5c8c2a106e59c3fae2437f053299da1c0170dd914879c8d",
+    "src/repair-controller.ts": "2c05370e93978a5bf106b2cee293478a77b47920cec7470f536b31757198f41c",
+    "src/repair-progress.ts": "cf30117ab69564f2b36ff8f0e86dcb876e6c031647340a7b1bef648d1e0366b9",
+    "tests/repair-working-context.test.ts": "015a1c1f6110e81b9b204409f29e1c564cec0ba51919ff7754070dda29c22917",
+    "tests/full-remediation.test.ts": "c2961a6e7706500fd65de7303b25109a91f37b68807b926418f6fa105fe2c683",
+    "contracts/stable-api-signatures.json": "9b3763adfd1523331074429cb92ed917b48211db4cb95e6067c558b7f2d0b578"
+  },
+  "suite": {
+    "passed": 555,
+    "failed": 0
+  },
+  "types": "passed",
+  "preparationContract": "passed",
+  "installedPackage": "passed",
+  "liveAcceptance": "not demonstrated; Qwen v8 WORK_TOKEN_BUDGET"
+}

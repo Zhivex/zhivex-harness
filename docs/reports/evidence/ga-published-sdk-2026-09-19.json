@@ -1,0 +1,35 @@
+{
+  "kind": "registry-sdk-integration-acceptance",
+  "versions": {
+    "core": "1.22.0",
+    "openai": "0.13.3",
+    "qwen": "0.14.3"
+  },
+  "network": "mock-only for acceptance; dependencies downloaded from registry",
+  "integration": {
+    "passed": true,
+    "runFailed": true,
+    "toolExecutions": 0,
+    "inputTokens": 12,
+    "outputTokens": 8,
+    "usageComplete": true
+  },
+  "validation": {
+    "focusedTests": 10,
+    "failed": 0,
+    "toolingTypes": "passed",
+    "priorFullSuite": 559,
+    "installedPackageSmoke": "passed"
+  },
+  "limits": [
+    "Harness integration uses workspace source and registry-installed provider",
+    "Not live provider evidence or SDK provenance verification"
+  ],
+  "hashes": {
+    "package.json": "5379cb4dcfab000eb5a9b8f4cdf11c26cc09aa12622cfc91a06504c69cf7b875",
+    "bun.lock": "c213d497a98bfbea1379bd60850d0ec8ede02560df9a63bf3b737d35648c4909",
+    "scripts/validate-openai-stream-usage.ts": "76f5cd2c3ca055196a73c002fca78924db0c0d631157aab1b50e3daedaa791ea",
+    "scripts/validate-openai-harness-usage.mjs": "ff05810248ced9944aa98ea148634d8b6cc9d9bd2c335df9342b5544eac01a6e",
+    "tests/model-budget-error-usage.test.ts": "33ff7b350428212544c670d47ad49b4a71435a1bc35a07eaf2089ec8b16bc753"
+  }
+}

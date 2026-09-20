@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "kind": "python-origin-delivery-diagnostic",
+  "classification": "Single known development diagnostic; not acceptance",
+  "result": {
+    "candidateCaptureFailure": null,
+    "modelTimings": [
+      {
+        "durationMs": 3389.3995830000003,
+        "firstTokenMs": 3388.229375,
+        "completed": true
+      }
+    ],
+    "modelCatalog": {
+      "records": [
+        {
+          "call": 1,
+          "offered": [
+            "apply_reviewed_edits",
+            "apply_reviewed_replacement",
+            "inspect_environment_patch",
+            "list_files",
+            "mutation_audit",
+            "read_files",
+            "read_task",
+            "repair_plan",
+            "run_environment_command",
+            "run_environment_shell",
+            "search_files",
+            "search_many",
+            "verify_and_apply_environment_patch"
+          ],
+          "unknownOffered": 0,
+          "systemMessages": 1,
+          "choice": "required",
+          "returned": [
+            {
+              "name": "other-tool",
+              "offered": false,
+              "registered": false
+            },
+            {
+              "name": "other-tool",
+              "offered": false,
+              "registered": false
+            }
+          ],
+          "omittedReturned": 0,
+          "completed": true
+        }
+      ],
+      "omittedCalls": 0
+    },
+    "stageTimings": [],
+    "approvalTimings": [],
+    "toolTimings": [],
+    "schemaVersion": 1,
+    "candidate": "zhivex",
+    "instanceId": "django__django-15851",
+    "status": "failed",
+    "failure": "EXECUTION_FAILED",
+    "phase": "agent",
+    "durationMs": 8190.240667000001,
+    "approvals": 0,
+    "turns": [
+      {
+        "index": 1,
+        "status": "failed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "other-tool",
+          "other-tool"
+        ],
+        "inputTokens": 4652,
+        "outputTokens": 97,
+        "cachedInputTokens": 0,
+        "requestCharacters": 1617,
+        "tools": [
+          {
+            "name": "other-tool",
+            "isError": true,
+            "characters": 4,
+            "diagnostic": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "failureType": "execution",
+              "retryable": false,
+              "chain": [
+                {
+                  "validationCode": null,
+                  "verifierExitCode": null,
+                  "providerReason": null,
+                  "validationIssues": [],
+                  "status": null,
+                  "errorClass": "Object",
+                  "providerHints": [],
+                  "fingerprint": "6d0579d910635f92f565c11d29a0704f48dc1b126b5cff8674e01de04ef58a64",
+                  "reason": "not registered"
+                }
+              ]
+            }
+          },
+          {
+            "name": "other-tool",
+            "isError": true,
+            "characters": 4,
+            "diagnostic": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "failureType": "execution",
+              "retryable": false,
+              "chain": [
+                {
+                  "validationCode": null,
+                  "verifierExitCode": null,
+                  "providerReason": null,
+                  "validationIssues": [],
+                  "status": null,
+                  "errorClass": "Object",
+                  "providerHints": [],
+                  "fingerprint": "6d0579d910635f92f565c11d29a0704f48dc1b126b5cff8674e01de04ef58a64",
+                  "reason": "not registered"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "inputTokens": 4652,
+    "outputTokens": 97,
+    "cachedInputTokens": 0,
+    "modelCalls": 1,
+    "usageComplete": true,
+    "compactions": [],
+    "terminalDiagnostic": {
+      "code": "EXECUTION_FAILED",
+      "category": "execution",
+      "failureType": "execution",
+      "retryable": false,
+      "chain": [
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": "Object",
+          "providerHints": [],
+          "fingerprint": "9dd570a51f860b7027516142d035799294d0eb7efe13ef7da34365d3dda367df",
+          "reason": "not registered"
+        }
+      ]
+    },
+    "thrownDiagnostic": {
+      "code": "EXECUTION_FAILED",
+      "category": "execution",
+      "failureType": "execution",
+      "retryable": false,
+      "chain": [
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": "HarnessExecutionError",
+          "providerHints": [],
+          "fingerprint": "9dd570a51f860b7027516142d035799294d0eb7efe13ef7da34365d3dda367df",
+          "reason": "not registered"
+        },
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": null,
+          "providerHints": [],
+          "fingerprint": "9dd570a51f860b7027516142d035799294d0eb7efe13ef7da34365d3dda367df",
+          "reason": "not registered"
+        }
+      ]
+    },
+    "guardrails": [],
+    "repairProgress": {
+      "repeatedResults": 0,
+      "suppressedResults": 0,
+      "blockedBroadCalls": 0,
+      "enteredClosure": false,
+      "phase": "explore",
+      "blockedPhaseCalls": 0,
+      "planRecorded": false
+    },
+    "contextMetrics": [
+      {
+        "systemCharacters": 5073,
+        "userCharacters": 2581,
+        "assistantCharacters": 0,
+        "toolResultCharacters": 0,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 9375,
+        "unmeasuredToolDefinitions": 0
+      }
+    ],
+    "omittedContextMeasurements": 0,
+    "toolCalls": 0
+  },
+  "conclusion": "Failed on the first model turn: two unregistered tools, no tool execution or approval, no verifier. Does not test corrected-image delivery.",
+  "nextCorrection": "Enable existing Core unknownToolMode tool-result in repair profile only, retaining stopOnError override and tool-error budgets."
+}

@@ -52,6 +52,34 @@ test("verification telemetry retains typed outcomes without exposing command out
   expect(JSON.stringify(result)).not.toContain("private");
 });
 
+test("message-only verifier failures retain the exit code without accepting arbitrary output", () => {
+  const message = (exit: string) => `The approved verifier failed with exit code ${exit}; the host workspace was not changed.`;
+  const diagnostic = sanitizeOperationalError({ message: message("1"), stdout: "PRIVATE", stderr: "PRIVATE" });
+  expect(diagnostic.chain[0]?.verifierExitCode).toBe(1);
+  expect(diagnostic.chain[0]?.fingerprint).toBe("d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941");
+  expect(JSON.stringify(diagnostic)).not.toContain("PRIVATE");
+  for (const text of [message("0"), message("256"), message("-1"), message("01"), message("1") + " PRIVATE", "PRIVATE " + message("1")]) {
+    expect(sanitizeOperationalError({ message: text }).chain[0]?.verifierExitCode).toBeNull();
+  }
+  expect(sanitizeOperationalError(new Error("wrapper", { cause: { message: message("124") } })).chain[1]?.verifierExitCode).toBe(124);
+});
+
+test("verifier output hints are bounded fixed markers, never raw diagnoses", () => {
+  const project = (toolName: string, verification: unknown) => projectStep({ index: 1, status: "completed", request: { messages: [] },
+    toolResults: [{ toolName, isError: true, output: { verification } }] } as never);
+  const result = project("verify_and_apply_environment_patch", { exitCode: 1, diagnostics: {
+    stderr: "Traceback PRIVATE_PATH\nModuleNotFoundError: No module named PRIVATE_MODULE\nAssertionError: PRIVATE_ASSERTION", stdout: "" } });
+  expect(result.tools[0]?.verificationHints).toEqual(["ModuleNotFoundError", "AssertionError"]);
+  expect(JSON.stringify(result)).not.toContain("PRIVATE");
+  const unrelated = project("read_file", { stderr: "AssertionError: PRIVATE" });
+  expect(unrelated.tools[0]?.verificationHints).toBeUndefined();
+  const embedded = project("verify_and_apply_environment_patch", { stderr: "print('AssertionError: PRIVATE')" });
+  expect(embedded.tools[0]?.verificationHints).toBeUndefined();
+  const huge = project("verify_and_apply_environment_patch", { stderr: "x".repeat(5000) + "\nNameError: PRIVATE\n" + "x".repeat(5000) + "\nSyntaxError: PRIVATE" });
+  expect(huge.tools[0]?.verificationHints).toEqual(["SyntaxError"]);
+  expect(JSON.stringify(huge)).not.toContain("PRIVATE");
+});
+
 test("budget prediction leaves the durable message array unchanged", async () => {
   const budget = createModelBudget({ inputTokens: 1000, outputTokens: 100 });
   budget.stats.inputTokens = 60;

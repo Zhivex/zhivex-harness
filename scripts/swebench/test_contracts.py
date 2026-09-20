@@ -1,7 +1,28 @@
 import unittest
-from common import compare_source_entries, CANDIDATES, public_task, select_tasks, summarize
+import tempfile
+import json
+import hashlib
+from pathlib import Path
+from common import scoped_runtime_labels, compare_source_entries, CANDIDATES, public_task, select_tasks, summarize
 
 class ComparisonTests(unittest.TestCase):
+    def test_cleanup_uses_scoped_metadata_not_public_run_hash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            identity = "sha256:" + "a" * 64
+            label = hashlib.sha256(identity.encode()).hexdigest()[:24]
+            folder = root / "environments" / label
+            folder.mkdir(parents=True)
+            metadata = {"runId": "run-one", "stateDirectory": str(root), "executionIdentity": identity}
+            (folder / "environment.json").write_text(json.dumps(metadata))
+            self.assertEqual(scoped_runtime_labels(root, "run-one"), ["com.zhivex.harness.run=" + label])
+            with self.assertRaises(ValueError):
+                scoped_runtime_labels(root, "another-run")
+            metadata["executionIdentity"] = "sha256:" + "b" * 64
+            (folder / "environment.json").write_text(json.dumps(metadata))
+            with self.assertRaises(ValueError):
+                scoped_runtime_labels(root, "run-one")
+
     def manifest(self):
         return {"tasks": [{"instance_id": "one"}, {"instance_id": "two"}], "repetitions": 2, "seed": 42}
 

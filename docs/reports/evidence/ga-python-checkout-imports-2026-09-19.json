@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "kind": "python-checkout-import-binding",
+  "oldImage": "sha256:d53dbd1313ddea4f813b0a8328cd740e978ce6ebb05d4d3c88c4e8f66f79bca1",
+  "newImage": "sha256:4c8b7a320988313b8881a96f334a189bfd0d6fda47cc0219d648867ffe765b80",
+  "candidateRunner": {
+    "exitCode": 1,
+    "checkoutOriginConfirmed": true,
+    "reportedTests": 26,
+    "reportedSkipped": 5,
+    "outputSha256": "4c65332fe5222b2ef3a0077004298e07fa4f5b798cc3de121fb98fcc0b275780"
+  },
+  "controlOriginConfirmed": true,
+  "newModelCalls": 0,
+  "classification": "Offline development environment validation; no delivery or GA acceptance claim",
+  "requirementVerifier": {
+    "sha256": "91ebcf3d8e6038e8b3ca4e4ca889f756a3bcb278e1417fda3add6b5cb849da05",
+    "basis": "Public issue description and four argument-order variants; no evaluator tests used",
+    "runs": [
+      {
+        "kind": "original-image-candidate",
+        "exitCode": 1,
+        "sourceOriginRejected": true,
+        "requirementRejected": false,
+        "assertionsPassed": false
+      },
+      {
+        "kind": "corrected-image-baseline",
+        "exitCode": 1,
+        "sourceOriginRejected": false,
+        "requirementRejected": true,
+        "assertionsPassed": false
+      },
+      {
+        "kind": "corrected-image-candidate",
+        "exitCode": 0,
+        "sourceOriginRejected": false,
+        "requirementRejected": false,
+        "assertionsPassed": true
+      }
+    ]
+  },
+  "nativePreflight": {
+    "manifestSha256": "8eca749bc33963a90c8c89ab585c2e11f6a062a1f67c2a7c1fe63667d75cca00",
+    "driverSha256": "67cee044060e78afea9fa663af8a686220aeafdb0db9ec318ef846f31aa9985d",
+    "results": [
+      {
+        "candidateSnapshot": null,
+        "candidateCaptureFailure": null,
+        "modelTimings": [],
+        "modelCatalog": {
+          "records": [],
+          "omittedCalls": 0
+        },
+        "stageTimings": [],
+        "approvalTimings": [],
+        "toolTimings": [],
+        "schemaVersion": 1,
+        "candidate": "zhivex",
+        "instanceId": "django__django-15851",
+        "status": "preflight-passed",
+        "failure": null,
+        "phase": "preflight",
+        "durationMs": 15219.306999999999,
+        "approvals": 0,
+        "turns": [],
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cachedInputTokens": 0,
+        "modelCalls": 0,
+        "usageComplete": true,
+        "compactions": [],
+        "terminalDiagnostic": null,
+        "thrownDiagnostic": null,
+        "guardrails": [],
+        "repairProgress": null,
+        "contextMetrics": [],
+        "omittedContextMeasurements": 0,
+        "toolCalls": 0
+      }
+    ]
+  },
+  "validation": {
+    "focusedTests": 12,
+    "failures": 0,
+    "toolingTypecheck": "passed",
+    "pythonCompile": "passed"
+  },
+  "sources": {
+    "scripts/swebench/prepare.py": "5785a924596c208679710f1ccaa9493437f0a9317d1ec69f8ec2acede8538908",
+    "scripts/swebench/python-environment.ts": "b83440b5ea095c6eded67745ba009b82e4d3d2c40f9ee3d53bd5b53766a375f8",
+    "scripts/swebench/zhivex-driver.ts": "67cee044060e78afea9fa663af8a686220aeafdb0db9ec318ef846f31aa9985d"
+  },
+  "interpretation": "Old-image public runner passed against /testbed, not the candidate. Corrected-image public suite detects one historical expectation for old argument ordering; a four-case verifier derived only from the public issue fails on the baseline and passes on the candidate. No existing tests changed."
+}

@@ -242,7 +242,13 @@ selection and exclude all development/pilot tasks from the confirmatory holdout.
 
 Preparation freezes the dataset revision, selected full-task digest, model, limits,
 package versions, original evaluator image IDs and derived candidate image IDs.
-The candidate image adds Node 22 to the official per-task image. Both agents use
+The candidate image adds Node 22 to the official per-task image and sets Python's
+search path to `/workspace:/workspace/src:/testbed:/testbed/src`. This prioritizes
+the Harness snapshot while preserving the control's `/testbed` checkout. Preflight
+checks top-level checkout package origins with the script-directory shortcut
+excluded; an editable installation pointing to the original image must not silently
+replace the candidate under test. Older prepared images without this binding must
+be rebuilt before another comparison. Both agents use
 that identical derived image; grading uses the pinned original image in a fresh
 container. The run manifest records source hashes as well as the Git commit, so
 uncommitted implementations are distinguishable.

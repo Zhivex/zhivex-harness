@@ -1,0 +1,24 @@
+{
+  "kind": "development-plan-reserve-validation",
+  "classification": "known development task, not holdout or GA acceptance",
+  "baseline": "ga-catalog-observed-qwen",
+  "change": "bounded missing-plan recovery may consume existing closure reserve; policy fingerprint updated",
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "model": "qwen3.8-flash",
+  "sources": {
+    "src/harness.ts": "e9b85f5d83634ac7ec79d8052addb35e765d04fc46883d1e38612269bcf12609",
+    "src/repair-controller.ts": "df19e273be815b2e37ace12e03a02793fe13c13853fcb70b8d2c9d217a68bc87",
+    "package.json": "5379cb4dcfab000eb5a9b8f4cdf11c26cc09aa12622cfc91a06504c69cf7b875",
+    "bun.lock": "c213d497a98bfbea1379bd60850d0ec8ede02560df9a63bf3b737d35648c4909"
+  }
+}

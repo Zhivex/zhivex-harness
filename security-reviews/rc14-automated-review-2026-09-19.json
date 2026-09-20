@@ -1,0 +1,1024 @@
+{
+  "schemaVersion": 1,
+  "kind": "harness-automated-source-security-review",
+  "reviewer": {
+    "name": "Codex",
+    "type": "automated",
+    "authorization": "User explicitly delegated security assessment on 2026-09-19; no human identity impersonated."
+  },
+  "observedAt": "2026-09-19T17:45:54.768085+00:00",
+  "status": "review-complete-with-open-findings",
+  "decision": "reject-ga",
+  "sourceCommit": "28723ff3350b7572d5bd68f2d40b6feef1e0e6b4",
+  "packageVersion": "1.0.0-rc.14",
+  "scope": "Directed review of all declared controls/trust boundaries and model-facing tool classes, including RC14 additions. Not a line-by-line audit of all transitive dependencies.",
+  "artifact": {
+    "kind": "local unpublished tarball",
+    "sha512": "sha512-05q23Vh3ddOjbMay9H9Q1g5iOEV2RDzfH53eptQ5J8FxQT7iKY9Gq3/19T6dF1PNf8PYfGTWVgBuk0mVsJClog==",
+    "contentInspection": "passed",
+    "installedConsumer": "passed"
+  },
+  "releaseBinding": {
+    "tag": null,
+    "publishedArtifact": false,
+    "protectedReleaseVerified": false,
+    "reason": "RC14 remains unpublished and release certification incomplete."
+  },
+  "findingCounts": {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "note": "Counts of identified findings, not a guarantee of absent undiscovered defects."
+  },
+  "findings": [
+    {
+      "id": "SEC-04",
+      "severity": "high",
+      "status": "open",
+      "title": "OCI snapshots ignore tenant/user/namespace identity",
+      "source": "src/execution-environment.ts:1633",
+      "preconditions": "Shared host workspace/stateDirectory and equal runId across different scopes; caller can supply runId. No compromised daemon, raw state-file access or provider is needed.",
+      "observed": "runHarness for tenant B completed and returned tenant A private unimported candidate through read_file.",
+      "impact": "Confidentiality and integrity isolation between scoped runs is not enforced for OCI artifacts. Import/cancellation collateral effects require additional tests; no host escape claimed.",
+      "recommendation": "Bind artifact directory, metadata, patch identity, runtime resources and cleanup to canonical workspace + full scope + run identity. Reject or explicitly migrate legacy unscoped artifacts; test cross-scope resume/import/cleanup.",
+      "acceptance": "Different scopes with identical runId cannot inspect, modify, import or clean each other artifacts; same-scope resume remains functional."
+    },
+    {
+      "id": "SEC-01",
+      "severity": "medium",
+      "status": "open",
+      "title": "Concurrent approved writes both pass the same digest precondition",
+      "source": "src/workspace.ts:1226",
+      "preconditions": "Two writers publish different approved changes to the same existing file from the same baseline.",
+      "observed": "Both writes succeeded with a deterministic checkpoint barrier; an earlier non-instrumented 20-trial probe accepted both in 18 trials. Sequential stale writes were rejected.",
+      "impact": "Lost update and inaccurate assumption that both approved baseline transitions were valid; no approval bypass or filesystem escape demonstrated.",
+      "recommendation": "Serialize host mutation transactions across runs/processes with bounded crash-safe ownership and recheck preconditions inside publication protection. Keep rollback ownership-aware.",
+      "acceptance": "Exactly one conflicting update succeeds; other fails stale/conflict, including concurrent OCI imports and rollback."
+    },
+    {
+      "id": "SEC-02",
+      "severity": "medium",
+      "status": "open",
+      "title": "Replacement approval hides replacement text in its default card",
+      "source": "src/terminal-ui.ts:9",
+      "preconditions": "apply_reviewed_replacement oldText exceeds the default summary length.",
+      "observed": "newText fixture marker absent from summary. Omission notice and explicit full view are present.",
+      "impact": "A built-in mutation can be approved without its replacement text being shown by default. This is review visibility failure, not silent execution.",
+      "recommendation": "Include replacement in exact-review tools and cover all authority-bearing mutation tools in rendering tests.",
+      "acceptance": "Default built-in replacement card shows full approved oldText/newText and digest, with terminal controls escaped."
+    },
+    {
+      "id": "SEC-03",
+      "severity": "low",
+      "status": "open",
+      "title": "Formal authority inventory omits read_task and repair_plan",
+      "source": "scripts/security-review-evidence.ts:41",
+      "preconditions": "RC14 task tools are enabled.",
+      "observed": "Inventory lacks both tools; its existing parity test constructs the catalog without createTaskTools, so it passes.",
+      "impact": "Review coverage gate cannot detect these new model-facing capabilities; no runtime privilege escalation demonstrated.",
+      "recommendation": "Derive/check complete catalog including task tools, update coverage and reviewer dossier.",
+      "acceptance": "Inventory comparison against the actual full tool set passes and fails if any class is removed."
+    }
+  ],
+  "coverage": {
+    "controls": [
+      {
+        "id": "malicious-repository-context",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "Descriptor-bound reads, strict relative edit paths, digest-bound proposals and bounded context/skill loading inspected. Task source inventory needs correction.",
+        "sourceEvidence": [
+          "src/file-security.ts",
+          "src/workspace.ts",
+          "src/context-engineering.ts",
+          "src/task-memory.ts"
+        ],
+        "regressionEvidence": [
+          "tests/context-engineering.test.ts",
+          "tests/edit-contracts.test.ts",
+          "tests/mcp.test.ts"
+        ],
+        "residualRisk": "Trusted project instructions may influence model behavior within granted tool authority.",
+        "findings": [
+          "SEC-01",
+          "SEC-03"
+        ]
+      },
+      {
+        "id": "compromised-model-or-provider",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "Mutating tools retain interrupt approvals; reserved MCP names cannot replace local tools. Model-authored repair state schedules tools through approval. Replacement card has a visibility defect.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/tool-registry.ts",
+          "src/repair-controller.ts",
+          "src/terminal-ui.ts"
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/cli-stream.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Provider receives prompts and may return adversarial content; operators must scope data and review approvals.",
+        "findings": [
+          "SEC-02",
+          "SEC-03"
+        ]
+      },
+      {
+        "id": "hostile-mcp-server",
+        "reviewStatus": "reviewed-with-limitations",
+        "assessment": "HTTP URL/header policy, redirect rejection, bounded bodies, RPC IDs and permission-derived approvals inspected. Injection regex is a heuristic, not a security boundary.",
+        "sourceEvidence": [
+          "src/mcp.ts",
+          "src/tool-registry.ts"
+        ],
+        "regressionEvidence": [
+          "tests/mcp.test.ts",
+          "scripts/mcp-interoperability-smoke.ts"
+        ],
+        "residualRisk": "An approved remote MCP service can observe the inputs explicitly sent to it.",
+        "findings": []
+      },
+      {
+        "id": "approval-replay-or-substitution",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "Canonical input digest, tool/environment version, approval identity, optional signer and journal claim inspected. File publication is not atomic with its precondition; replacement review is truncated.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/edit-contracts.ts",
+          "src/workspace.ts",
+          "src/terminal-ui.ts"
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/edit-contracts.test.ts"
+        ],
+        "residualRisk": "Paused approvals require the original artifact and cannot be rebound across incompatible policy versions.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ]
+      },
+      {
+        "id": "cross-scope-state-access",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "Run/session queries bind scope, but OCI artifact identity omits it. Cross-scope candidate disclosure reproduced through runHarness.",
+        "sourceEvidence": [
+          "src/operations.ts",
+          "src/sessions.ts",
+          "src/execution-environment.ts"
+        ],
+        "regressionEvidence": [
+          "tests/operations.test.ts",
+          "tests/sessions.test.ts"
+        ],
+        "residualRisk": "A process with direct filesystem access to the local state directory remains inside the trust boundary.",
+        "findings": [
+          "SEC-04"
+        ]
+      },
+      {
+        "id": "tampered-personal-profile",
+        "reviewStatus": "reviewed-with-limitations",
+        "assessment": "Strict provider/model schema, owner-only file permissions, single-link and no-follow reads inspected. Profile data cannot set tools or execution permissions.",
+        "sourceEvidence": [
+          "src/cli-profiles.ts",
+          "src/file-security.ts"
+        ],
+        "regressionEvidence": [
+          "tests/cli-profiles.test.ts",
+          "tests/cli.test.ts",
+          "scripts/package-smoke.ts"
+        ],
+        "residualRisk": "A compromised operator account or host filesystem can still replace the selected provider/model configuration.",
+        "findings": []
+      },
+      {
+        "id": "hostile-subprocess",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "OCI uses network none, read-only root, dropped capabilities, resource bounds, no inherited environment and separate import. Snapshot scope collision remains open.",
+        "sourceEvidence": [
+          "src/execution-environment.ts",
+          "src/package-manager.ts",
+          "src/process-runtime.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "scripts/oci-execution-smoke.ts"
+        ],
+        "residualRisk": "Containers are not VMs; the host kernel and OCI daemon are trusted.",
+        "findings": [
+          "SEC-04"
+        ]
+      },
+      {
+        "id": "crash-or-concurrent-writer",
+        "reviewStatus": "reviewed-with-findings",
+        "assessment": "SQLite WAL, scoped leases/revisions and backup transaction checks inspected. Per-run ownership does not serialize distinct runs publishing into the same host file.",
+        "sourceEvidence": [
+          "src/operations.ts",
+          "src/sessions.ts",
+          "src/state-backup.ts",
+          "src/workspace.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/operations.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Power loss and external filesystem corruption still require operator backup and recovery.",
+        "findings": [
+          "SEC-01",
+          "SEC-04"
+        ]
+      },
+      {
+        "id": "supply-chain-substitution",
+        "reviewStatus": "reviewed-with-limitations",
+        "assessment": "Pinned actions, immutable transfer checks and source/workflow/digest provenance checks inspected. Final RC14 protected release and current advisory audit remain unavailable.",
+        "sourceEvidence": [
+          ".github/workflows/release.yml",
+          ".github/workflows/ci.yml",
+          ".github/workflows/codeql.yml",
+          "scripts/release-provenance.ts"
+        ],
+        "regressionEvidence": [
+          "tests/release-workflow.test.ts",
+          "scripts/check-release-artifact.ts",
+          "scripts/release-provenance.ts"
+        ],
+        "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies.",
+        "findings": []
+      },
+      {
+        "id": "compromised-host-kernel-or-daemon",
+        "reviewStatus": "reviewed-with-limitations",
+        "assessment": "Explicit trust assumption retained. This review does not establish VM isolation or protection from the host/daemon operator.",
+        "sourceEvidence": [
+          "docs/THREAT_MODEL.md",
+          "contracts/security-controls.json"
+        ],
+        "regressionEvidence": [
+          "docs/EXECUTION_ENVIRONMENTS.md",
+          "SECURITY.md"
+        ],
+        "residualRisk": "The harness cannot protect against an already compromised host, kernel, container daemon, or maintainer account.",
+        "findings": []
+      }
+    ],
+    "trustBoundaries": [
+      {
+        "id": "operator-approval",
+        "assessment": "Reviewed terminal rendering, durable approvals and input/environment binding. Full replacement payload is not shown by default.",
+        "sourceEvidence": [
+          "src/terminal-ui.ts",
+          "src/harness.ts"
+        ],
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "model-provider",
+        "assessment": "Providers cannot authorize local mutations. Prompt disclosure to configured providers and heuristic redaction remain operator risks.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/task-memory.ts",
+          "src/repair-controller.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "repository-context",
+        "assessment": "Repository/attachment text is bounded and untrusted. No-follow reads and path restrictions were inspected; prompt injection cannot be eliminated by filtering.",
+        "sourceEvidence": [
+          "src/context-engineering.ts",
+          "src/console-context.ts",
+          "src/file-security.ts"
+        ],
+        "findings": [
+          "SEC-03"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "mcp-server",
+        "assessment": "HTTPS/loopback policy and explicit credential headers; redirects rejected. Configured service identity and custom client remain trusted integration choices.",
+        "sourceEvidence": [
+          "src/mcp.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "target-subprocess",
+        "assessment": "Host checks remain trusted host execution; OCI commands use explicit argv/shell approval. An allowed interpreter can run arbitrary code within that authority.",
+        "sourceEvidence": [
+          "src/package-manager.ts",
+          "src/process-runtime.ts",
+          "src/execution-environment.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "oci-runtime",
+        "assessment": "Reviewed daemon policy, snapshot validation and import. Artifact scope isolation fails when run IDs coincide.",
+        "sourceEvidence": [
+          "src/execution-environment.ts"
+        ],
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "local-state",
+        "assessment": "Private SQLite files, scoped stores and durable ownership inspected. OCI filesystem artifacts bypass scoped identity; host file updates race.",
+        "sourceEvidence": [
+          "src/operations.ts",
+          "src/sessions.ts",
+          "src/state-backup.ts",
+          "src/workspace.ts"
+        ],
+        "findings": [
+          "SEC-01",
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "personal-profile",
+        "assessment": "Strict schema, explicit selection, safe file read and private permissions. A compromised operator account remains trusted.",
+        "sourceEvidence": [
+          "src/cli-profiles.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "github-actions",
+        "assessment": "Least-privilege workflow declarations, pinned actions, protected publish/live environments and no persisted checkout credentials inspected. Repository settings not re-audited.",
+        "sourceEvidence": [
+          ".github/workflows/release.yml",
+          ".github/workflows/ci.yml",
+          ".github/workflows/codeql.yml"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "npm-registry",
+        "assessment": "Digest/source/workflow provenance checks inspected. Registry trust and final published RC14 provenance are not replaced by the local tarball.",
+        "sourceEvidence": [
+          "scripts/release-provenance.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "downstream-consumer",
+        "assessment": "Exact local tarball installed in prior same-session validation. Final signed/published artifact remains unverified and dependency advisories returned 503.",
+        "sourceEvidence": [
+          "scripts/package-smoke.ts",
+          "scripts/check-release-artifact.ts"
+        ],
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      }
+    ],
+    "authorityBearingTools": [
+      {
+        "id": "list_files",
+        "assessment": "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/file-security.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Allowed repository content is sent to the provider; OCI scope collision exposes another run candidate.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "read_file",
+        "assessment": "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/file-security.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Allowed repository content is sent to the provider; OCI scope collision exposes another run candidate.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "read_files",
+        "assessment": "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/file-security.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Allowed repository content is sent to the provider; OCI scope collision exposes another run candidate.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "search_files",
+        "assessment": "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/file-security.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Allowed repository content is sent to the provider; OCI scope collision exposes another run candidate.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "search_many",
+        "assessment": "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/file-security.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Allowed repository content is sent to the provider; OCI scope collision exposes another run candidate.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "propose_edits",
+        "assessment": "Computes a proposal digest; execution approval is separately required.",
+        "sourceEvidence": [
+          "src/edit-contracts.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts"
+        ],
+        "residualRisk": "A proposal is not proof of correctness or authorization.",
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "apply_patch",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "apply_reviewed_edits",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "apply_reviewed_replacement",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "move_file",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "quarantine_file",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "restore_file",
+        "assessment": "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/workspace.ts",
+          "src/replacement-edits.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Concurrent publication is not fully serialized; replacement card hides a bounded suffix by default.",
+        "findings": [
+          "SEC-01",
+          "SEC-02"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "run_check",
+        "assessment": "Approval binds expected script; pre/post lifecycle scripts rejected; environment filtered.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/package-manager.ts",
+          "src/process-runtime.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Approved host execution trusts repository code; use OCI for untrusted projects.",
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "mutation_audit",
+        "assessment": "Audit receipts and Git diff filtered for protected paths; external diff/textconv/fsmonitor disabled.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Diff/code may contain unknown secrets; audit is not a cross-process filesystem transaction.",
+        "findings": [
+          "SEC-01"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "git_diff",
+        "assessment": "Audit receipts and Git diff filtered for protected paths; external diff/textconv/fsmonitor disabled.",
+        "sourceEvidence": [
+          "src/workspace.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Diff/code may contain unknown secrets; audit is not a cross-process filesystem transaction.",
+        "findings": [
+          "SEC-01"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "run_environment_command",
+        "assessment": "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Host kernel/daemon/image trusted; same-ID OCI state collides across scopes.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "run_environment_batch",
+        "assessment": "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Host kernel/daemon/image trusted; same-ID OCI state collides across scopes.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "run_environment_shell",
+        "assessment": "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Host kernel/daemon/image trusted; same-ID OCI state collides across scopes.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "environment_status",
+        "assessment": "Read-only environment binding and content/mode-bound candidate summary.",
+        "sourceEvidence": [
+          "src/execution-environment.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Snapshot namespace does not currently include scope.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "inspect_environment_patch",
+        "assessment": "Read-only environment binding and content/mode-bound candidate summary.",
+        "sourceEvidence": [
+          "src/execution-environment.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Snapshot namespace does not currently include scope.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "apply_environment_patch",
+        "assessment": "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts",
+          "src/workspace.ts"
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Verifier coverage is operator-defined; concurrent host publication and snapshot scope remain defective.",
+        "findings": [
+          "SEC-01",
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "verify_and_apply_environment_patch",
+        "assessment": "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts",
+          "src/workspace.ts"
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Verifier coverage is operator-defined; concurrent host publication and snapshot scope remain defective.",
+        "findings": [
+          "SEC-01",
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "verify_and_apply_reviewed_edits",
+        "assessment": "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+        "sourceEvidence": [
+          "src/harness.ts",
+          "src/execution-environment.ts",
+          "src/workspace.ts"
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Verifier coverage is operator-defined; concurrent host publication and snapshot scope remain defective.",
+        "findings": [
+          "SEC-01",
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "load_skill",
+        "assessment": "Load only discovered bounded skill, with revalidated digest.",
+        "sourceEvidence": [
+          "src/context-engineering.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/context-engineering.test.ts"
+        ],
+        "residualRisk": "Skill prose may influence the model but is not approval.",
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "delegate_explorer",
+        "assessment": "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+        "sourceEvidence": [
+          "src/orchestration.ts",
+          "src/runtime-policy.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts"
+        ],
+        "residualRisk": "Tester can request approved code execution; implementer has broader tools; inherited OCI scope defect applies.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "delegate_reviewer",
+        "assessment": "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+        "sourceEvidence": [
+          "src/orchestration.ts",
+          "src/runtime-policy.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts"
+        ],
+        "residualRisk": "Tester can request approved code execution; implementer has broader tools; inherited OCI scope defect applies.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "delegate_tester",
+        "assessment": "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+        "sourceEvidence": [
+          "src/orchestration.ts",
+          "src/runtime-policy.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts"
+        ],
+        "residualRisk": "Tester can request approved code execution; implementer has broader tools; inherited OCI scope defect applies.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "delegate_implementer",
+        "assessment": "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+        "sourceEvidence": [
+          "src/orchestration.ts",
+          "src/runtime-policy.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts"
+        ],
+        "residualRisk": "Tester can request approved code execution; implementer has broader tools; inherited OCI scope defect applies.",
+        "findings": [
+          "SEC-04"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "mcp-network-tool",
+        "assessment": "Permission-derived approval cannot be removed by server annotations; reserved-name collision rejected.",
+        "sourceEvidence": [
+          "src/mcp.ts",
+          "src/tool-registry.ts"
+        ],
+        "regressionEvidence": [
+          "tests/mcp.test.ts",
+          "tests/full-remediation.test.ts"
+        ],
+        "residualRisk": "Explicitly approved service observes sent data; custom injected clients are trusted application code.",
+        "findings": [],
+        "reviewStatus": "reviewed-with-limitations"
+      },
+      {
+        "id": "read_task",
+        "assessment": "Slices redacted original request from current run metadata; no arbitrary run lookup.",
+        "sourceEvidence": [
+          "src/task-memory.ts"
+        ],
+        "regressionEvidence": [
+          "tests/full-remediation.test.ts"
+        ],
+        "residualRisk": "Unknown secret formats can remain; omitted from formal inventory.",
+        "findings": [
+          "SEC-03"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      },
+      {
+        "id": "repair_plan",
+        "assessment": "Model-authored verifier/plan enters durable metadata; synthetic verification still uses normal approval and execution gates.",
+        "sourceEvidence": [
+          "src/task-memory.ts",
+          "src/repair-controller.ts",
+          "src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/full-remediation.test.ts"
+        ],
+        "residualRisk": "Chosen verifier can be irrelevant; operator must review argv and intended coverage; omitted from formal inventory.",
+        "findings": [
+          "SEC-03"
+        ],
+        "reviewStatus": "reviewed-with-findings"
+      }
+    ]
+  },
+  "tests": {
+    "existingSecurityFocused": {
+      "passed": 152,
+      "failed": 0,
+      "files": 14
+    },
+    "supplemental": {
+      "passed": 51,
+      "failed": 0,
+      "files": 6
+    },
+    "acceptanceCommand": "bun run scripts/validate-security-review.ts",
+    "acceptanceExitCode": 1,
+    "acceptanceResults": [
+      {
+        "id": "SEC-01",
+        "passed": false,
+        "acceptedConflictingWrites": 2,
+        "finalContent": "first"
+      },
+      {
+        "id": "CONTROL-sequential-stale-digest",
+        "passed": true,
+        "rejectedStale": true
+      },
+      {
+        "id": "SEC-02",
+        "passed": false,
+        "replacementVisibleByDefault": false,
+        "omissionNoticeVisible": true,
+        "fullViewAvailable": true
+      },
+      {
+        "id": "SEC-03",
+        "passed": false,
+        "missingTools": [
+          "read_task",
+          "repair_plan"
+        ]
+      },
+      {
+        "id": "SEC-04",
+        "passed": false,
+        "throughPublicRunHarness": true,
+        "status": "completed",
+        "differentTenantUserNamespace": true,
+        "otherTenantCandidateInToolOutput": true
+      }
+    ],
+    "toolingTypecheck": "passed",
+    "priorSameSessionFullSuite": {
+      "passed": 512,
+      "failed": 0
+    },
+    "realOCI": "Passed in prior same-session GA validation; scope probe simulates only image discovery and makes no container calls."
+  },
+  "limitations": [
+    "No runtime fixes applied as part of this review.",
+    "Concurrent package.json/bun.lock changes in original checkout excluded; audited immutable baseline installed in isolated directory.",
+    "Advisory service HTTP 503 prevents a current clean dependency-audit statement.",
+    "No RC14 npm provenance or protected live/representative release certification exists in this evidence.",
+    "Host account/kernel/daemon compromise remains out of scope.",
+    "New candidate after remediation requires revalidation and exact artifact binding; this document is not passing release evidence."
+  ],
+  "sourceFileSha256": {
+    ".github/workflows/ci.yml": "51c5cc7c6246ada698e83a6605a2f0c1fb9d469e16e6621eb8ccd4df0168a6fb",
+    ".github/workflows/codeql.yml": "bcf5455d1ca2156a1c98ac93f1d61da3d1fdc65b9c91d6e517439de543b73ed5",
+    ".github/workflows/release.yml": "2d932704d6a488f9de5547eb4e6ecd30af1ba5e1e8bd57d97b7a432b1940beda",
+    "contracts/security-controls.json": "e37f2e624e54de01fcd4e13b71d9507c026693b0a6321685d3c5311e87df2032",
+    "docs/THREAT_MODEL.md": "aad7ba70374cb20e96f70431a10fe4270a55ee268fa29f58418c82aef16b8fad",
+    "scripts/check-release-artifact.ts": "33b498a6e37b5b78d8b91e0c091c8603763d713b7414eb5bfacf24d0017f51ab",
+    "scripts/package-smoke.ts": "f52c33b517157026cf1b50b6546ead09481e6f15e683550e41383b0a93f9a209",
+    "scripts/release-provenance.ts": "384d0b2e70367c820edce359473dd78b3d7a8863b4feeb8a8184f8474a2056e5",
+    "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+    "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+    "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+    "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+    "src/execution-environment.ts": "980ec7cb0aa74f5dbfead7dedc4ca221a27b997de2bc2d463d7073813fe83bbc",
+    "src/file-security.ts": "b8c9f4988c4339c73a60ab4fa8d394b3eecc19117a0c61a8d19ab6483ca253df",
+    "src/harness.ts": "62ab0f6f2a428ce23f3f3f8847402c75ffe7180c939a0236af87612c04fae1ba",
+    "src/mcp.ts": "7722de031921c620ec03b9e42a6596ef8415aa8e4bb5f93ea84d2427c466e554",
+    "src/operations.ts": "bcccaf4d1d0ec117c2ed35df92185564d33399e5fdc5c12225ac61f14fd0b4b1",
+    "src/orchestration.ts": "332264f91fc9630e8d5d32e4ca2aebdf063fdb87acc457c4854c711c725d6e26",
+    "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+    "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+    "src/repair-controller.ts": "ce12b1c9fb9a5fa5d370b2eda5c1233cc8c33706477ef66302b52bf7e8c40e09",
+    "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+    "src/runtime-policy.ts": "bed4efad0010aa63d7e083b0c8014cb36a915626ede00b8a40e1664310972f3c",
+    "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+    "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+    "src/task-memory.ts": "5b62c863be5a23c33608633cd7aac0464f5536d01cba930aca58b11870170731",
+    "src/terminal-ui.ts": "e50025a8649d1f60efdf3af895b8639730ec2e86553fb80a61a776b11076c705",
+    "src/tool-registry.ts": "7e90fff11940e525883c9ec0d2adbea2e6616f8bd9bc4ec77e1b7277e4217f2c",
+    "src/workspace.ts": "0f472998a55672a326bfb32404a10073a90c9a34c24758471fede0345f582961"
+  }
+}

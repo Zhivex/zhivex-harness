@@ -101,3 +101,23 @@ def compare_source_entries(actual, expected):
             raise ValueError("Source content or file type differs")
         changes += mode != expected_mode
     return changes
+
+
+def scoped_runtime_labels(state_directory, run_id):
+    """Read only parent-owned OCI metadata; never infer labels from public run IDs."""
+    state = Path(state_directory).resolve()
+    labels = []
+    for metadata_path in (state / "environments").glob("*/environment.json"):
+        if metadata_path.is_symlink() or metadata_path.parent.is_symlink():
+            raise ValueError("Unsafe runtime metadata")
+        metadata = json.loads(metadata_path.read_text())
+        if metadata.get("runId") != run_id or metadata.get("stateDirectory") != str(state):
+            raise ValueError("Runtime cleanup identity mismatch")
+        identity = metadata.get("executionIdentity", "")
+        if not identity.startswith("sha256:") or len(identity) != 71 or any(c not in "0123456789abcdef" for c in identity[7:]):
+            raise ValueError("Missing scoped runtime identity")
+        label = hashlib.sha256(identity.encode()).hexdigest()[:24]
+        if metadata_path.parent.name != label:
+            raise ValueError("Runtime directory identity mismatch")
+        labels.append("com.zhivex.harness.run=" + label)
+    return labels

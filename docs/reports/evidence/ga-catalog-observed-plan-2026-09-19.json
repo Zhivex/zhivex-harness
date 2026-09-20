@@ -1,0 +1,28 @@
+{
+  "kind": "development-catalog-observation",
+  "classification": "known task; not holdout or GA acceptance",
+  "baseline": "ga-recovery-graded-v8-qwen",
+  "model": "qwen3.8-flash",
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "catalog": "full 13-tool product benchmark catalog",
+  "changes": "adapter-boundary observation plus registry dependency updates; no Harness runtime or policy change",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "driverSha256": "24830996fb91c8ad34928a4b7d5da62ea1ab8f8792a77ac675cc9638d750ff2b",
+  "observerSha256": "eb79e7333f4f5804f96da87d1952382f620e7165a95b60489fcc2588debe64d8",
+  "versions": {
+    "core": "1.22.0",
+    "openai": "0.13.3",
+    "qwen": "0.14.3"
+  },
+  "lockSha256": "c213d497a98bfbea1379bd60850d0ec8ede02560df9a63bf3b737d35648c4909",
+  "authorization": "User explicitly authorized Qwen trial after registry integration"
+}

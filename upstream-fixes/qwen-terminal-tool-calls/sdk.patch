@@ -1,0 +1,212 @@
+diff --git a/.changeset/qwen-terminal-tool-calls.md b/.changeset/qwen-terminal-tool-calls.md
+new file mode 100644
+index 0000000..65a5ab0
+--- /dev/null
++++ b/.changeset/qwen-terminal-tool-calls.md
+@@ -0,0 +1,5 @@
++---
++"@zhivex-ai/qwen": patch
++---
++
++Preserve complete Chat tool calls when named tool selection ends with `stop`. Validate the entire buffered batch before emission, reject incomplete or invalid calls and late explicit provider errors, and retain reported usage on typed failures. Require Core 1.22.0 for failure usage accounting.
+diff --git a/packages/qwen/README.md b/packages/qwen/README.md
+index 50e0cae..e3701d0 100644
+--- a/packages/qwen/README.md
++++ b/packages/qwen/README.md
+@@ -488,3 +488,11 @@ A bounded smoke sends a synthetic red PNG through Chat generation and streaming
+ ```bash
+ QWEN_IMAGE_INTEGRATION=1 bun --env-file=.env run test:integration packages/qwen/tests/image-input.integration.test.ts
+ ```
++
++### Chat terminal tool calls
++
++Named tool choices may return complete `tool_calls` fragments with a `stop`
++finish reason. The adapter validates the complete batch at normal stream end
++and emits those calls with normalized `tool-calls`, retaining the original
++provider finish reason. Truncated or invalid batches, including explicit provider errors before stream completion, never emit tool calls;
++`ProviderToolCallError` retains terminal token usage when supplied by Qwen.
+diff --git a/packages/qwen/package.json b/packages/qwen/package.json
+index 3007c20..0dbda76 100644
+--- a/packages/qwen/package.json
++++ b/packages/qwen/package.json
+@@ -41,7 +41,7 @@
+     "access": "public"
+   },
+   "dependencies": {
+-    "@zhivex-ai/core": "^1.21.0",
++    "@zhivex-ai/core": "^1.22.0",
+     "zod": "^4.6.3"
+   }
+ }
+diff --git a/packages/qwen/src/index.ts b/packages/qwen/src/index.ts
+index 17d0346..4373241 100644
+--- a/packages/qwen/src/index.ts
++++ b/packages/qwen/src/index.ts
+@@ -16,6 +16,7 @@ import {
+   ConfigurationError,
+   decodeBase64WithLimit,
+   ProviderHTTPError,
++  ProviderToolCallError,
+   ValidationError,
+   assertTrustedEndpoint,
+   readBodyWithLimit,
+@@ -1872,13 +1873,15 @@ class QwenLanguageModel implements LanguageModel<QwenLanguageModelOptions> {
+           fallbackId: string;
+           name: string;
+           args: string;
+-          emitted: boolean;
+         }>();
+         const seenIds = existingToolCallIds(input.messages);
+         const fallbackGeneration = nextFallbackToolCallGeneration("chat", input, seenIds);
+ 
+         let lastFinishReason: string | undefined;
+         let lastUsage: any;
++        const failure = (reason: "stream_truncated" | "incomplete_arguments" | "invalid_json" | "inconsistent_metadata" | "response_failed") =>
++          new ProviderToolCallError({ provider: "qwen", transport: "chat", diagnosticCode: "QWEN_CHAT_TOOL_CALL_INVALID",
++            reason, usage: mapChatUsage(lastUsage) });
+ 
+         for await (const event of streamSSE(response)) {
+           if (event.data === "[DONE]") {
+@@ -1886,6 +1889,10 @@ class QwenLanguageModel implements LanguageModel<QwenLanguageModelOptions> {
+           }
+ 
+           const json = JSON.parse(event.data);
++          if (json.error) {
++            if (json.usage) lastUsage = json.usage;
++            throw failure("response_failed");
++          }
+           const choice = json.choices?.[0];
+           const delta = choice?.delta;
+ 
+@@ -1910,8 +1917,7 @@ class QwenLanguageModel implements LanguageModel<QwenLanguageModelOptions> {
+               id: stableToolCallId(toolCall.id),
+               fallbackId: fallbackToolCallId("chat", fallbackGeneration, index),
+               name: toolCall.function?.name ?? "",
+-              args: "",
+-              emitted: false
++              args: ""
+             };
+             existing.id = stableToolCallId(toolCall.id) ?? existing.id;
+             existing.name ||= toolCall.function?.name ?? "";
+@@ -1919,34 +1925,31 @@ class QwenLanguageModel implements LanguageModel<QwenLanguageModelOptions> {
+             toolBuffers.set(index, existing);
+           }
+ 
+-          if (choice?.finish_reason) {
+-            if (choice.finish_reason === "tool_calls") {
+-              for (const toolCall of toolBuffers.values()) {
+-                if (toolCall.emitted) {
+-                  continue;
+-                }
+-                toolCall.emitted = true;
+-                yield {
+-                  type: "tool-call",
+-                  toolCall: {
+-                    id: resolveToolCallId([toolCall.id], toolCall.fallbackId, seenIds),
+-                    name: toolCall.name,
+-                    input: JSON.parse(toolCall.args || "{}")
+-                  }
+-                } satisfies StreamEvent;
+-              }
+-            }
+-            lastFinishReason = choice.finish_reason;
+-          }
++          if (choice?.finish_reason) lastFinishReason = choice.finish_reason;
+           if (json.usage) {
+             lastUsage = json.usage;
+           }
+         }
+ 
++        // Named Qwen Chat tool choices can finish with "stop". Wait until the
++        // stream ends and validate the whole batch before exposing any effects.
++        const materialized = [];
++        if (toolBuffers.size) {
++          if (!lastFinishReason) throw failure("stream_truncated");
++          if (lastFinishReason !== "stop" && lastFinishReason !== "tool_calls") throw failure("incomplete_arguments");
++          for (const call of toolBuffers.values()) {
++            if (!call.name.trim()) throw failure("inconsistent_metadata");
++            let args: unknown;
++            try { args = JSON.parse(call.args); } catch { throw failure("invalid_json"); }
++            if (!args || typeof args !== "object" || Array.isArray(args)) throw failure("invalid_json");
++            materialized.push({ id: resolveToolCallId([call.id], call.fallbackId, seenIds), name: call.name, input: args as Record<string, JsonValue> });
++          }
++          for (const toolCall of materialized) yield { type: "tool-call", toolCall } satisfies StreamEvent;
++        }
+         if (lastFinishReason || lastUsage) {
+           yield {
+             type: "finish",
+-            finishReason: normalizeFinishReason(lastFinishReason),
++            finishReason: materialized.length ? "tool-calls" : normalizeFinishReason(lastFinishReason),
+             providerFinishReason: lastFinishReason,
+             usage: mapChatUsage(lastUsage)
+           } satisfies StreamEvent;
+diff --git a/packages/qwen/tests/terminal-tool-calls.test.ts b/packages/qwen/tests/terminal-tool-calls.test.ts
+new file mode 100644
+index 0000000..73bd044
+--- /dev/null
++++ b/packages/qwen/tests/terminal-tool-calls.test.ts
+@@ -0,0 +1,42 @@
++import { expect, it } from "vitest";
++import { createTextMessage, type StreamEvent } from "@zhivex-ai/core";
++import { createQwen } from "../src/index.js";
++
++const call = (index = 0, args = '{"value":1}') => ({ index, id: `call-${index}`, type: "function", function: { name: "fixture", arguments: args } });
++const collect = async (finish: string | null, calls = [call()], after: unknown[] = []) => {
++  const chunks = [{ choices: [{ delta: { tool_calls: calls }, finish_reason: null }] },
++    ...(finish ? [{ choices: [{ delta: {}, finish_reason: finish }] }] : []),
++    { choices: [], usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }, ...after];
++  const provider = createQwen({ apiKey: "fixture", fetch: async () => new Response(chunks.map(c => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n", { headers: { "content-type": "text/event-stream" } }) });
++  const events: StreamEvent[] = []; let error: unknown;
++  try { for await (const event of await provider("qwen3.8-flash").stream({ messages: [createTextMessage("user", "fixture")], providerOptions: { apiMode: "chat", enable_thinking: false } })) events.push(event); }
++  catch (e) { error = e; }
++  return { events, error };
++};
++it.each(["stop", "tool_calls"])("materializes complete calls on %s with terminal usage", async finish => {
++  const { events, error } = await collect(finish);
++  expect(error).toBeUndefined();
++  expect(events.filter(e => e.type === "tool-call")).toEqual([{ type: "tool-call", toolCall: { id: "call-0", name: "fixture", input: { value: 1 } } }]);
++  expect(events.at(-1)).toMatchObject({ type: "finish", finishReason: "tool-calls", providerFinishReason: finish, usage: { inputTokens: 12, outputTokens: 8 } });
++});
++it.each(["length", "content_filter", null])("never emits calls on unsuccessful terminal %s", async finish => {
++  const { events, error } = await collect(finish);
++  expect(events.some(e => e.type === "tool-call")).toBe(false);
++  expect(error).toMatchObject({ provider: "qwen", usage: { inputTokens: 12, outputTokens: 8 } });
++});
++it.each(['{"value":', 'null', '[]'])("validates the entire call batch before emission: %s", async args => {
++  const { events, error } = await collect("stop", [call(), call(1, args)]);
++  expect(events.some(e => e.type === "tool-call")).toBe(false);
++  expect(error).toMatchObject({ provider: "qwen", reason: "invalid_json", usage: { inputTokens: 12, outputTokens: 8 } });
++});
++it("does not emit a previously finished call when late fragments invalidate its JSON", async () => {
++  const { events, error } = await collect("tool_calls", [call()], [{ choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: 'bad' } }] } }] }]);
++  expect(events.some(e => e.type === "tool-call")).toBe(false);
++  expect(error).toBeDefined();
++});
++it("does not emit calls when a provider error arrives after terminal tool fragments", async () => {
++  const { events, error } = await collect("stop", [call()], [{ error: { code: "fixture_error", message: "PRIVATE_PROVIDER_DETAIL" } }]);
++  expect(events.some(e => e.type === "tool-call")).toBe(false);
++  expect(error).toMatchObject({ provider: "qwen", reason: "response_failed", usage: { inputTokens: 12, outputTokens: 8 } });
++  expect(String(error)).not.toContain("PRIVATE_PROVIDER_DETAIL");
++});
+diff --git a/scripts/internal-core-ranges.test.ts b/scripts/internal-core-ranges.test.ts
+index dabe4ce..b990694 100644
+--- a/scripts/internal-core-ranges.test.ts
++++ b/scripts/internal-core-ranges.test.ts
+@@ -13,7 +13,7 @@ const readManifest = async (packageName: string) => JSON.parse(
+ // additionally require imageInputToDataUrl from 1.20.0; xAI follows OpenAI.
+ // Anthropic browser toolsets and Vertex/Qwen's shared realtime transport
+ // require the contracts and provider helpers introduced in 1.21.0.
+-// OpenAI's rejected-tool accounting requires ProviderToolCallError.usage in 1.22.0.
++// OpenAI and Qwen rejected-tool accounting requires ProviderToolCallError.usage in 1.22.0.
+ const reviewedProviderCoreRanges = {
+   anthropic: "^1.21.0",
+   "azure-openai": "^1.20.0",
+@@ -25,7 +25,7 @@ const reviewedProviderCoreRanges = {
+   ollama: "^1.19.0",
+   openai: "^1.22.0",
+   openrouter: "^1.20.0",
+-  qwen: "^1.21.0",
++  qwen: "^1.22.0",
+   vertex: "^1.21.0",
+   xai: "^1.20.0",
+   zai: "^1.19.0"

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-node-consumer-matrix",
+  "observedAt": "2026-09-19T18:46:04.607256+00:00",
+  "sourceCommit": "41bd1cb4ab8481a7413f096a0817f612fe9806fe",
+  "artifactSha512": "87fc85f2a219624b8da4de33c28d14ca774a1f70a6aa5ad83ac3ffc85b44c46d0b29c3071b5a9aff6c80c46ad17626a6398d1fdbb9b87c59097fe4ba1eaccb47",
+  "packageVersion": "1.0.0-rc.14",
+  "consumers": [
+    {
+      "node": "22.13.0",
+      "platform": "darwin-arm64",
+      "archiveSource": "https://nodejs.org/dist/v22.13.0/node-v22.13.0-darwin-arm64.tar.gz",
+      "archiveSha256": "bc1e374e7393e2f4b20e5bbc157d02e9b1fb2c634b2f992136b38fb8ca2023b7",
+      "officialChecksumMatched": true,
+      "installedConsumer": "passed",
+      "exitCode": 0,
+      "logSha256": "b514c0029f5e87c141acb9993719a7921bd7e451e5d979be9baf4518a14b09b5"
+    },
+    {
+      "node": "24.0.0",
+      "platform": "darwin-arm64",
+      "archiveSource": "https://nodejs.org/dist/v24.0.0/node-v24.0.0-darwin-arm64.tar.gz",
+      "archiveSha256": "194e2f3dd3ec8c2adcaa713ed40f44c5ca38467880e160974ceac1659be60121",
+      "officialChecksumMatched": true,
+      "installedConsumer": "passed",
+      "exitCode": 0,
+      "logSha256": "b514c0029f5e87c141acb9993719a7921bd7e451e5d979be9baf4518a14b09b5"
+    }
+  ],
+  "boundary": "Same local tarball installed independently; does not replace required remote CI, Linux coverage, release-bound certification or provenance."
+}

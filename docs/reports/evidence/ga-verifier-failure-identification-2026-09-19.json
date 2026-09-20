@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "offline-verifier-failure-identification",
+  "source": "docs/reports/evidence/ga-required-delivery-live-2026-09-19.json",
+  "sourceSha256": "83da54947a85c93e667b3e117fb120ffd76ed8e8dca43cff2565466106e73952",
+  "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+  "matchedTemplate": "The approved verifier failed with exit code 1; the host workspace was not changed.",
+  "exitCode": 1,
+  "method": "Exact SHA-256 match against the fixed TerminalVerificationFailure template in src/harness.ts for exit codes 0..255. No raw verifier output read or exported.",
+  "limits": [
+    "Identifies verifier command failure, not the reason for that command failure.",
+    "Does not establish whether repair, verifier, or test environment was incorrect.",
+    "No new live request; does not change the failed development sample or GA status."
+  ],
+  "existingStructuredEvidence": {
+    "turn": 9,
+    "exitCode": 1,
+    "timedOut": false,
+    "verificationOutcome": "failed",
+    "outputCharacters": 436
+  },
+  "interpretation": "The existing turn already records failure and bounded output. Later null output projections do not prove that feedback was absent at the model boundary.",
+  "validation": {
+    "focusedTests": 18,
+    "failures": 0,
+    "modelBoundaryRegression": "Strict and repair recovery pass bounded verifier output to the next model request. External projection excludes the fixture output.",
+    "runtimeTypecheck": "passed",
+    "toolingTypecheck": "passed"
+  }
+}

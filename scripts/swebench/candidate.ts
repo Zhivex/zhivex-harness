@@ -1,7 +1,16 @@
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { readRegularFileNoFollow } from "../../src/file-security.js";
-import type { HarnessExecutionSession } from "../../src/execution-environment.js";
+import type { HarnessExecutionSession, HarnessOciExecutionEnvironment } from "../../src/execution-environment.js";
+import type { AgentRunState } from "@zhivex-ai/agents";
+
+/** Capture the run's actual scope, including an explicitly unscoped run.
+ * Configuration defaults may identify a different isolated snapshot. */
+export async function captureRunCandidate(environment: HarnessOciExecutionEnvironment, state: Pick<AgentRunState, "runId" | "scope">) {
+  const session = await environment.acquire({ runId: state.runId, ...(state.scope ? { scope: state.scope } : {}) }) as HarnessExecutionSession;
+  try { return await captureCandidate(session); }
+  finally { await session.release?.({ status: "completed" }); }
+}
 
 /** Private evaluator data, never a tool result or part of the sanitized samples. */
 export async function captureCandidate(session: HarnessExecutionSession) {

@@ -12,7 +12,7 @@ export const runtimeCheckpointStore = (store: AgentRunStore, runId: string,
     if (key === "save") return async (...args: Parameters<AgentRunStore["save"]>) => {
       const [state] = args;
       if (state.runId === runId) {
-        if (state.status === "completed" && controller.pending()) {
+        if (state.status === "completed" && controller.completionPending()) {
           controller.markIncomplete(); state.status = "failed";
           state.outputText = "Repair incomplete: the candidate has not been verified and delivered.";
           state.error = { message: "REPAIR_INCOMPLETE" };

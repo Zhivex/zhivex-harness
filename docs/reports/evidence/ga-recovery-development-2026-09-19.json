@@ -1,0 +1,1066 @@
+{
+  "schemaVersion": 1,
+  "kind": "development-recovery-diagnostic",
+  "date": "2026-09-19",
+  "instanceId": "django__django-15851",
+  "classification": "development data, not fresh holdout",
+  "grading": "not run; no correctness claim",
+  "sourceHashes": {
+    "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+    "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+    "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+    "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+    "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+    "src/context-metrics.ts": "3eb30f9db808f918ed8d73d4f8ac19a13acb09ed5c1ee70fdae05201714b9198",
+    "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+    "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302",
+    "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+    "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+    "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+    "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+    "src/tool-registry.ts": "7e90fff11940e525883c9ec0d2adbea2e6616f8bd9bc4ec77e1b7277e4217f2c",
+    "src/compaction.ts": "9e06a0abeeef155377f40c160b21c56256bca95ec18c5ee897681a5fc73db169",
+    "src/runtime-diagnostics.ts": "e1e5a3a558fa2aaeb477335dc336551f022c1234fe5e742eefc6599c8803e364",
+    "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+    "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+    "src/mcp.ts": "7722de031921c620ec03b9e42a6596ef8415aa8e4bb5f93ea84d2427c466e554",
+    "src/cli-options.ts": "f48d9be132fed38f2ddbcfecbd8222c664a0df2f20edc28ce8d1b9b1a1900863",
+    "src/cli.ts": "5a4acb4695a968a58fbeac05c4bb89848a9653d6189590f0ff90e430ffa98d14",
+    "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+    "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+    "src/runtime-checkpoints.ts": "a9b555d4c6b5f369f86a3d79ec1a3aab45886282cc7d0ef211aa084ee17e3897",
+    "src/operations.ts": "bcccaf4d1d0ec117c2ed35df92185564d33399e5fdc5c12225ac61f14fd0b4b1",
+    "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+    "src/orchestration.ts": "b56c8c7d526a99b745cc17769e0a1b7b500b25920e77f34aa0dd01c9758de319",
+    "src/runtime-policy.ts": "8356acf0102f0e73839b81ed628a5c0d9a89d9c21b0ca416efedde8f1b3414e2",
+    "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+    "src/repair-controller.ts": "4a96ef124e635902b7a05ada2d54636c75a9cb054e0f5ae39131e74b7a068123",
+    "src/model-budget.ts": "e5a5d3dd8c97df7f18f36ce0a82ed250e4a0c7d49b12580a7393db6ff2183a55",
+    "src/file-security.ts": "b8c9f4988c4339c73a60ab4fa8d394b3eecc19117a0c61a8d19ab6483ca253df",
+    "src/repair-verifier.ts": "b70fb11feee8cdc7933947ccac0b78f8bb5c0eaccc3b29ad527197d77f40ffc9",
+    "src/json-contracts.ts": "0780145636b47829a1aa6087c574d5654eb31b7534ea7d9c38c188d648c90272",
+    "src/task-memory.ts": "5b62c863be5a23c33608633cd7aac0464f5536d01cba930aca58b11870170731",
+    "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+    "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+    "src/repair-progress.ts": "38270f07c4e1d81d745aa3a01837cea4420b7caf310df59c7447e56b1a3e0440",
+    "src/terminal-ui.ts": "4da1878a76ba608a2517bf5d5c992a9a88702aba3fd800a9980129ba93e157bc",
+    "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+    "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+    "src/index.ts": "4bbfcd11376d48c4f1c1ec17d6b5c9f51baa9331fa999432be178bae94530a5e",
+    "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+    "src/config.ts": "b1d3991e84add58603fb85b2a604b9b3eb56ae879d0fa30b0cb40545fa44edc1",
+    "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+    "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+    "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+    "src/harness.ts": "6168cfd53557b8fc07261fef1a4f5a6d5e689a169256c0e03c5abce0dfc228d0",
+    "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+    "scripts/swebench/test_contracts.py": "902e966d0fbf8501dbb15e011849f160331c033cd2a5480f9920d0f365a08d03",
+    "scripts/swebench/run.py": "94dccd55dfe6f70d8f8f2da70331700ec85eddd958547e0c3afe3dc416c9802c",
+    "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+    "scripts/swebench/test_candidate.py": "e77d16379b748baa2daf184a45ea62587d938b6a7d48dcf9f6061f8af21fafd9",
+    "scripts/swebench/common.py": "ad790227dac3bec1f592c458c993efff4f9d3de8f0df39b33e3238b58b3f0b3b",
+    "scripts/swebench/candidate.py": "f5e3410b91b950acfbe50fc7511891816a8fb1c223082397e2c6300cf1e866cf",
+    "scripts/swebench/report.py": "d0b8d45f32c48e0ba2cb977f50838065a497a0ecaf3b4243ed94139393ce4d6b",
+    "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+    "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+    "scripts/swebench/context-metrics.ts": "7b84da6789413aa634d997c5963ee6796584e06c3eafe5f68f424fb7e27815e9",
+    "scripts/swebench/candidate.ts": "bf102becfcce0c9a3f0df0a8f1ce0e5aaea7db2d252f6d9454a8370c24e53982",
+    "scripts/swebench/zhivex-driver.ts": "b17e937484a28cf7fc7728595b51900efa5015dfa37cf6c1d4f9322051fe1ece",
+    "scripts/swebench/model-budget.ts": "e46dd406ee5d58a051a15c7d7133513666292303d8c6534f861a6db0e711f47c",
+    "scripts/swebench/telemetry.ts": "743c9baf273e9240d704d098b6bd5eea9e76ef3e49ae636aaafa9bfd7a85b45b",
+    "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1",
+    "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe"
+  },
+  "providers": {
+    "openai": {
+      "candidateCaptureFailure": null,
+      "modelTimings": [
+        {
+          "durationMs": 1694.21675,
+          "firstTokenMs": 1626.191542,
+          "completed": true
+        },
+        {
+          "durationMs": 1213.0072499999997,
+          "firstTokenMs": 1153.6537499999995,
+          "completed": true
+        },
+        {
+          "durationMs": 1750.9982499999996,
+          "firstTokenMs": 1750.848,
+          "completed": true
+        },
+        {
+          "durationMs": 1541.7446249999994,
+          "firstTokenMs": 1541.5949579999997,
+          "completed": true
+        },
+        {
+          "durationMs": 2785.028790999999,
+          "firstTokenMs": 2720.0970829999987,
+          "completed": true
+        },
+        {
+          "durationMs": 1908.1368330000005,
+          "firstTokenMs": 1907.9334579999995,
+          "completed": true
+        },
+        {
+          "durationMs": 1862.1345839999994,
+          "firstTokenMs": 1831.7312920000004,
+          "completed": true
+        },
+        {
+          "durationMs": 1421.7271660000006,
+          "firstTokenMs": 1421.511208,
+          "completed": true
+        },
+        {
+          "durationMs": 3761.4291669999984,
+          "firstTokenMs": 3716.446458999999,
+          "completed": true
+        }
+      ],
+      "stageTimings": [
+        {
+          "event": "edit-requested",
+          "elapsedMs": 14519.995958000001
+        },
+        {
+          "event": "verification-requested",
+          "elapsedMs": 17819.032874999997
+        },
+        {
+          "event": "governed-edit-completed",
+          "elapsedMs": 17827.189790999997
+        },
+        {
+          "event": "verified-import-completed",
+          "elapsedMs": 51975.507790999996
+        }
+      ],
+      "approvalTimings": [
+        {
+          "durationMs": 0.15337499999986903,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.025582999998732703,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.044834000000264496,
+          "resolved": true
+        }
+      ],
+      "toolTimings": [
+        {
+          "name": "read_task",
+          "calls": 2,
+          "errors": 0,
+          "totalMs": 0.09087399999771151,
+          "maxMs": 0.05366599999979371
+        },
+        {
+          "name": "list_files",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 399.5387500000006,
+          "maxMs": 399.5387500000006
+        },
+        {
+          "name": "search_files",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 324.53466600000047,
+          "maxMs": 275.0492919999997
+        },
+        {
+          "name": "read_files",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 2.0175820000004023,
+          "maxMs": 1.108791000000565
+        },
+        {
+          "name": "repair_plan",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 0.11841699999968114,
+          "maxMs": 0.11841699999968114
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 24.68987500000003,
+          "maxMs": 24.68987500000003
+        },
+        {
+          "name": "verify_and_apply_environment_patch",
+          "calls": 2,
+          "errors": 1,
+          "totalMs": 23735.340750000007,
+          "maxMs": 18985.528667000006
+        },
+        {
+          "name": "inspect_environment_patch",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 1803.4754580000008,
+          "maxMs": 1803.4754580000008
+        }
+      ],
+      "schemaVersion": 1,
+      "candidate": "zhivex",
+      "instanceId": "django__django-15851",
+      "status": "completed",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 56913.243083,
+      "approvals": 3,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_task"
+          ],
+          "inputTokens": 3015,
+          "outputTokens": 71,
+          "cachedInputTokens": 0,
+          "requestCharacters": 7131,
+          "tools": [
+            {
+              "name": "read_task",
+              "isError": false,
+              "characters": 1147
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "list_files"
+          ],
+          "inputTokens": 3420,
+          "outputTokens": 32,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 12012,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 9769
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "search_files",
+            "search_files",
+            "search_files"
+          ],
+          "inputTokens": 6154,
+          "outputTokens": 135,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 22602,
+          "tools": [
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 1110
+            },
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 383
+            },
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 1679
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files",
+            "read_files"
+          ],
+          "inputTokens": 7432,
+          "outputTokens": 130,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 30997,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10073
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4834
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "repair_plan"
+          ],
+          "inputTokens": 7946,
+          "outputTokens": 278,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 25963,
+          "tools": [
+            {
+              "name": "repair_plan",
+              "isError": false,
+              "characters": 1023
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "apply_reviewed_replacement"
+          ],
+          "inputTokens": 8531,
+          "outputTokens": 179,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 33815,
+          "tools": []
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "verify_and_apply_environment_patch"
+          ],
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedInputTokens": 0,
+          "requestCharacters": 39370,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 483
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": true,
+              "characters": 276,
+              "exitCode": 1,
+              "timedOut": false,
+              "verificationOutcome": "failed",
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "failureType": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "validationCode": null,
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+                    "reason": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_task"
+          ],
+          "inputTokens": 9220,
+          "outputTokens": 102,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 40696,
+          "tools": [
+            {
+              "name": "read_task",
+              "isError": false,
+              "characters": 1147
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "inspect_environment_patch",
+            "read_files"
+          ],
+          "inputTokens": 4619,
+          "outputTokens": 103,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 16584,
+          "tools": [
+            {
+              "name": "inspect_environment_patch",
+              "isError": false,
+              "characters": 507
+            },
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 10466
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "verify_and_apply_environment_patch"
+          ],
+          "inputTokens": 7812,
+          "outputTokens": 432,
+          "cachedInputTokens": 2476,
+          "requestCharacters": 32116,
+          "tools": [
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": false,
+              "characters": 1787,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 4019.052417,
+                "workspaceExportMs": 7616.949417,
+                "totalMs": 14444.463709,
+                "sessionCreationMs": 2808.327792
+              },
+              "exitCode": 0,
+              "timedOut": false,
+              "verificationOutcome": "passed"
+            }
+          ]
+        }
+      ],
+      "inputTokens": 58149,
+      "outputTokens": 1462,
+      "cachedInputTokens": 19808,
+      "modelCalls": 9,
+      "usageComplete": true,
+      "compactions": [
+        {
+          "beforeStep": 5,
+          "estimatedTokensBefore": 11592,
+          "estimatedTokensAfter": 6132
+        },
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 10909,
+          "estimatedTokensAfter": 3552
+        }
+      ],
+      "terminalDiagnostic": null,
+      "thrownDiagnostic": null,
+      "guardrails": [],
+      "repairProgress": {
+        "repeatedResults": 0,
+        "suppressedResults": 0,
+        "blockedBroadCalls": 0,
+        "enteredClosure": false,
+        "phase": "verify",
+        "blockedPhaseCalls": 0,
+        "planRecorded": true
+      },
+      "contextMetrics": [
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 0,
+          "toolResultCharacters": 0,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 3575,
+          "toolResultCharacters": 1304,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 4236,
+          "toolResultCharacters": 11231,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 8975,
+          "toolResultCharacters": 14883,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 1437,
+          "assistantCharacters": 4572,
+          "toolResultCharacters": 15223,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 1892,
+          "assistantCharacters": 10785,
+          "toolResultCharacters": 16405,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2375,
+          "assistantCharacters": 15942,
+          "toolResultCharacters": 17642,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2375,
+          "assistantCharacters": 8175,
+          "toolResultCharacters": 1304,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2375,
+          "assistantCharacters": 12400,
+          "toolResultCharacters": 12608,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        }
+      ],
+      "omittedContextMeasurements": 0,
+      "toolCalls": 14,
+      "candidateCaptured": true,
+      "candidateSnapshotSha256": "7b73a54c7f1de9751764a7c76dd95bb9780870efb11371263dba09f006c51f7f",
+      "hostPatchPresent": true,
+      "hostPatchSha256": "15989da845ac1f766848c5c2e153296d7eef926a752ec658548702ac0e028bc7",
+      "officialGrading": "not-run-development-diagnostic",
+      "image": "sha256:d53dbd1313ddea4f813b0a8328cd740e978ce6ebb05d4d3c88c4e8f66f79bca1",
+      "sourceUnchanged": true
+    },
+    "qwen": {
+      "candidateCaptureFailure": null,
+      "modelTimings": [
+        {
+          "durationMs": 4669.506625000001,
+          "firstTokenMs": 3030.0122500000007,
+          "completed": true
+        },
+        {
+          "durationMs": 1550.2249170000014,
+          "firstTokenMs": 1549.9655000000002,
+          "completed": true
+        },
+        {
+          "durationMs": 2512.478416,
+          "firstTokenMs": 2511.766291,
+          "completed": true
+        },
+        {
+          "durationMs": 1629.6619580000006,
+          "firstTokenMs": 1629.2935830000024,
+          "completed": true
+        },
+        {
+          "durationMs": 2149.242916000003,
+          "firstTokenMs": 2148.9316250000047,
+          "completed": true
+        },
+        {
+          "durationMs": 1961.3507079999981,
+          "firstTokenMs": 1961.106832999998,
+          "completed": true
+        },
+        {
+          "durationMs": 1474.1218330000047,
+          "firstTokenMs": 1473.9599579999995,
+          "completed": true
+        },
+        {
+          "durationMs": 2448.6876249999987,
+          "firstTokenMs": 2448.555416999996,
+          "completed": true
+        },
+        {
+          "durationMs": 3076.1148750000066,
+          "firstTokenMs": 3075.796000000002,
+          "completed": true
+        },
+        {
+          "durationMs": 3457.7758749999994,
+          "firstTokenMs": null,
+          "completed": true
+        }
+      ],
+      "stageTimings": [
+        {
+          "event": "command-requested",
+          "elapsedMs": 14358.152209
+        },
+        {
+          "event": "edit-requested",
+          "elapsedMs": 61086.997624999996
+        }
+      ],
+      "approvalTimings": [
+        {
+          "durationMs": 0.16791599999851314,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.05995799999800511,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.09004100000311155,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.026334000001952518,
+          "resolved": true
+        }
+      ],
+      "toolTimings": [
+        {
+          "name": "search_files",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 399.02649999999994,
+          "maxMs": 399.02649999999994
+        },
+        {
+          "name": "list_files",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 13.041500000001179,
+          "maxMs": 13.041500000001179
+        },
+        {
+          "name": "read_files",
+          "calls": 4,
+          "errors": 0,
+          "totalMs": 6.766374999991967,
+          "maxMs": 3.3717089999991003
+        },
+        {
+          "name": "run_environment_shell",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 24922.433041,
+          "maxMs": 16110.076166000003
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 10.772875000002387,
+          "maxMs": 10.772875000002387
+        }
+      ],
+      "schemaVersion": 1,
+      "candidate": "zhivex",
+      "instanceId": "django__django-15851",
+      "status": "failed",
+      "failure": "AGENT_FAILED",
+      "phase": "agent",
+      "durationMs": 72556.604917,
+      "approvals": 4,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "search_files",
+            "list_files"
+          ],
+          "inputTokens": 4558,
+          "outputTokens": 136,
+          "cachedInputTokens": 0,
+          "requestCharacters": 7131,
+          "tools": [
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 158
+            },
+            {
+              "name": "list_files",
+              "isError": false,
+              "characters": 452
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 4872,
+          "outputTokens": 39,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 8550,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2673
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 5793,
+          "outputTokens": 75,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 11575,
+          "tools": []
+        },
+        {
+          "index": 4,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 6185,
+          "outputTokens": 48,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 12923,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 583,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 528.0705,
+                "totalMs": 4089.634209,
+                "sessionCreationMs": 3394.376666
+              },
+              "exitCode": 1,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 6582,
+          "outputTokens": 38,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 14212,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 629,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2513.009791,
+                "workspaceExportMs": 11329.500291,
+                "totalMs": 16109.781459,
+                "sessionCreationMs": 2267.125834
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 7087,
+          "outputTokens": 71,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 16104,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 1545
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 7373,
+          "outputTokens": 38,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 17162,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 590,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 690.992916,
+                "totalMs": 4720.557125,
+                "sessionCreationMs": 3863.418625
+              },
+              "exitCode": 2,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 6672,
+          "outputTokens": 83,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 14291,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4790
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "apply_reviewed_replacement"
+          ],
+          "inputTokens": 8659,
+          "outputTokens": 173,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 20593,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 5849
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "completed",
+          "finishReason": "stop",
+          "requestedTools": [],
+          "inputTokens": 6856,
+          "outputTokens": 189,
+          "cachedInputTokens": 0,
+          "requestCharacters": 21831,
+          "tools": []
+        }
+      ],
+      "inputTokens": 64637,
+      "outputTokens": 890,
+      "cachedInputTokens": 38144,
+      "modelCalls": 10,
+      "usageComplete": true,
+      "compactions": [
+        {
+          "beforeStep": 8,
+          "estimatedTokensBefore": 5082,
+          "estimatedTokensAfter": 3080
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "failureType": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "validationCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "df4ad18f75f381d4abf1c3a9a9cb1ce99246204330b132a8d70938de039a0be4",
+            "reason": null
+          }
+        ]
+      },
+      "thrownDiagnostic": null,
+      "guardrails": [],
+      "repairProgress": {
+        "repeatedResults": 0,
+        "suppressedResults": 0,
+        "blockedBroadCalls": 0,
+        "enteredClosure": false,
+        "phase": "explore",
+        "blockedPhaseCalls": 0,
+        "planRecorded": false
+      },
+      "contextMetrics": [
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 0,
+          "toolResultCharacters": 0,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 488,
+          "toolResultCharacters": 928,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2403,
+          "assistantCharacters": 680,
+          "toolResultCharacters": 3759,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2670,
+          "assistantCharacters": 1007,
+          "toolResultCharacters": 4511,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2936,
+          "assistantCharacters": 1230,
+          "toolResultCharacters": 5309,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2936,
+          "assistantCharacters": 1417,
+          "toolResultCharacters": 7012,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2936,
+          "assistantCharacters": 1714,
+          "toolResultCharacters": 7771,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 1970,
+          "assistantCharacters": 2643,
+          "toolResultCharacters": 4948,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 1970,
+          "assistantCharacters": 2936,
+          "toolResultCharacters": 10955,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4724,
+          "userCharacters": 2041,
+          "assistantCharacters": 3444,
+          "toolResultCharacters": 11612,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 1635,
+          "unmeasuredToolDefinitions": 0
+        }
+      ],
+      "omittedContextMeasurements": 0,
+      "toolCalls": 10,
+      "candidateCaptured": true,
+      "candidateSnapshotSha256": "878bd4a22204aa089e77d000ba4e25600861030fcbdb832dc2852da77eb2d73c",
+      "hostPatchPresent": false,
+      "hostPatchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "officialGrading": "not-run-development-diagnostic",
+      "image": "sha256:d53dbd1313ddea4f813b0a8328cd740e978ce6ebb05d4d3c88c4e8f66f79bca1",
+      "sourceUnchanged": true
+    }
+  }
+}

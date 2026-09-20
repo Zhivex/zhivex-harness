@@ -28,6 +28,45 @@ import { Workspace } from "../src/workspace.js";
 
 const temporaryDirectories: string[] = [];
 
+for (const differing of ["tenantId", "userId", "namespace"] as const) {
+  test(`OCI isolates same-ID runs by ${differing}, including patch, resume and cleanup`, async () => {
+    const root = await temporaryDirectory("oci-scope-regression-");
+    const workspace = await Workspace.open(root);
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI");
+    const runtime = new FakeOciRuntime();
+    const environment = await createHarnessOciExecutionEnvironment({ config: config.execution,
+      workspace, stateDirectory: config.stateDirectory, runtime });
+    const scopeA = { tenantId: "tenant", userId: "user", namespace: "space" };
+    const scopeB = { ...scopeA, [differing]: "other" };
+    const a = await environment.acquire({ runId: "same-id", scope: scopeA });
+    await writeFile(path.join(a.workspace.root, "candidate.txt"), "private candidate");
+    const patchA = await a.inspectPatch();
+    await a.runCommand("node", ["-e", "0"]);
+    await a.release?.({ status: "waiting_approval" });
+    const b = await environment.acquire({ runId: "same-id", scope: scopeB });
+    expect(b.workspace.root).not.toBe(a.workspace.root);
+    await expect(b.workspace.readFile("candidate.txt")).rejects.toThrow();
+    await writeFile(path.join(b.workspace.root, "candidate.txt"), "private candidate");
+    const patchB = await b.inspectPatch();
+    expect(patchB.patchId).not.toBe(patchA.patchId);
+    await expect(b.importPatch(workspace, patchA.patchId)).rejects.toThrow("changed after review");
+    await b.runCommand("node", ["-e", "0"]);
+    expect(runtime.requests[0]!.runId).not.toBe(runtime.requests[1]!.runId);
+    await b.release?.({ status: "completed" });
+    const resumedA = await environment.acquire({ runId: "same-id", scope: scopeA });
+    expect((await resumedA.inspectPatch()).patchId).toBe(patchA.patchId);
+    await resumedA.release?.({ status: "completed" });
+    const cleaned = await cleanupHarnessExecutionArtifacts(config.stateDirectory, Date.now() + 1000,
+      { workspace: root, scope: scopeA });
+    expect(cleaned.deleted).toBe(1);
+    expect(cleaned.skipped).toBe(1);
+    expect(await readFile(path.join(b.workspace.root, "candidate.txt"), "utf8")).toBe("private candidate");
+    expect(runtime.removedRuns).toContain(runtime.requests[0]!.runId);
+    expect(runtime.removedRuns).toContain(runtime.requests[1]!.runId);
+  });
+}
+
 const temporaryDirectory = async (prefix: string) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), prefix));
   temporaryDirectories.push(directory);
@@ -379,6 +418,29 @@ describe("enforced OCI execution environment", () => {
     await session.release?.({ status: "failed" });
   });
 
+  test("concurrent OCI imports accept only one update of the same host baseline", async () => {
+    const { root, workspace } = await workspaceFixture();
+    const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
+    if (config.execution.backend !== "oci") throw new Error("Expected OCI");
+    const environment = await createHarnessOciExecutionEnvironment({ config: config.execution,
+      workspace, stateDirectory: config.stateDirectory, runtime: new FakeOciRuntime() });
+    const sessions = await Promise.all(["one", "two"].map(runId => environment.acquire({ runId })));
+    try {
+      const patches = await Promise.all(sessions.map(async (session, index) => {
+        await writeFile(path.join(session.workspace.root, "src", "update.ts"), `export const value = ${index + 2};\n`);
+        return session.inspectPatch();
+      }));
+      const results = await Promise.allSettled(sessions.map((session, index) =>
+        session.importPatch(workspace, patches[index]!.patchId)));
+      expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter(result => result.status === "rejected")).toHaveLength(1);
+      const winner = results.findIndex(result => result.status === "fulfilled");
+      expect(await readFile(path.join(root, "src", "update.ts"), "utf8")).toBe(`export const value = ${winner + 2};\n`);
+    } finally {
+      await Promise.all(sessions.map(session => session.release?.({ status: "completed" })));
+    }
+  });
+
   test("runs only against a secret-free snapshot and imports a reviewed content-bound patch", async () => {
     const { root, workspace } = await workspaceFixture();
     const runtime = new FakeOciRuntime(undefined, async (request) => {
@@ -439,7 +501,7 @@ describe("enforced OCI execution environment", () => {
     await session.release?.({ status: "completed" });
     const cleanup = await cleanupHarnessExecutionArtifacts(config.stateDirectory, Date.now() + 1_000);
     expect(cleanup.deleted).toBe(1);
-    expect(runtime.removedRuns).toContain("snapshot-import-run");
+    expect(runtime.removedRuns).toContain(runtime.requests[0]!.runId);
   });
 
   test("runs declared package checks through npm inside the Node OCI boundary", async () => {
@@ -884,7 +946,8 @@ describe("enforced OCI execution environment", () => {
     const child = completed.state.childRuns?.[0];
     expect(child?.status).toBe("completed");
     expect(runtime.requests).toHaveLength(1);
-    expect(runtime.requests[0]?.runId).toBe(child?.runId);
+    expect(runtime.requests[0]?.runId).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(runtime.requests[0]?.runId).not.toBe(child?.runId);
     const childState = child ? await store.load(child.runId, harness.config.scope) : undefined;
     expect(childState?.executionEnvironment).toEqual(completed.state.executionEnvironment);
     await expect(readFile(path.join(root, "child-generated.txt"), "utf8")).rejects.toThrow();
@@ -925,7 +988,7 @@ describe("enforced OCI execution environment", () => {
     expect(discoveries).toBe(0);
   });
 
-  test("discards a partial crash snapshot before first acquisition", async () => {
+  test("rejects legacy unscoped crash snapshots rather than assigning a new scope", async () => {
     const { root, workspace } = await workspaceFixture();
     const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });
     if (config.execution.backend !== "oci") throw new Error("Expected OCI execution config.");
@@ -945,10 +1008,8 @@ describe("enforced OCI execution environment", () => {
       stateDirectory: config.stateDirectory,
       runtime: new FakeOciRuntime()
     });
-    const session = await environment.acquire({ runId });
-    await expect(session.workspace.readFile("stale.txt")).rejects.toThrow();
-    expect((await session.inspectPatch()).entries).toEqual([]);
-    await session.release?.({ status: "completed" });
+    await expect(environment.acquire({ runId })).rejects.toThrow("Unscoped legacy OCI artifact");
+    expect(await readFile(path.join(runDirectory, "workspace", "stale.txt"), "utf8")).toBe("stale crash data\n");
   });
 });
 

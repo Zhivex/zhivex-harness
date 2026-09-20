@@ -1,0 +1,1369 @@
+{
+  "schemaVersion": 1,
+  "kind": "verifier-discovery-development-validation",
+  "classification": "Known development case; not holdout or GA acceptance",
+  "manifest": {
+    "schemaVersion": 1,
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "selectedTasksSha256": "913d7eb61726ca064eeaba236909f071ab1070aa5b603b17523799229afb259c",
+    "excludedTaskIds": [
+      "astropy__astropy-14995",
+      "django__django-11265",
+      "django__django-12262",
+      "django__django-13410",
+      "django__django-14915",
+      "django__django-15554",
+      "django__django-15569",
+      "pydata__xarray-4695",
+      "pydata__xarray-6721",
+      "pytest-dev__pytest-8399",
+      "scikit-learn__scikit-learn-10908",
+      "scikit-learn__scikit-learn-14141",
+      "sympy__sympy-15809",
+      "sympy__sympy-20438",
+      "sympy__sympy-21930"
+    ],
+    "excludedManifestSha256": [
+      "44a893b60eb4b495490f687648234223f6eb5b3b92a0ee348ceb7f981e9b74c7"
+    ],
+    "seed": 20260910,
+    "repetitions": 1,
+    "model": "qwen3.8-flash",
+    "provider": "qwen",
+    "reasoning": "none",
+    "transport": "qwen-chat-completions",
+    "limits": {
+      "steps": 24,
+      "outputPerTurn": 2048,
+      "inputTokens": 100000,
+      "outputTokens": 16000,
+      "timeoutSeconds": 300,
+      "memoryMb": 2048,
+      "cpus": 2
+    },
+    "versions": {
+      "mini-swe-agent": "2.4.6",
+      "swebench": "4.1.0"
+    },
+    "tasks": [
+      {
+        "instance_id": "django__django-15851",
+        "repo": "django/django",
+        "base_commit": "b4817d20b9e55df30be0b1b2ca8c8bb6d61aab07",
+        "problem_statement": "dbshell additional parameters should be passed before dbname on PostgreSQL.\nDescription\n\t\npsql expects all options to proceed the database name, if provided. So, if doing something like `./manage.py dbshell -- -c \"select * from some_table;\" one will get this:\n$ ./manage.py dbshell -- -c \"select * from some_table;\"\npsql: warning: extra command-line argument \"-c\" ignored\npsql: warning: extra command-line argument \"select * from some_table;\" ignored\npsql (10.21)\nType \"help\" for help.\nsome_database=>\nIt appears the args list just need to be constructed in the proper order, leaving the database name for the end of the args list.\n",
+        "evalImage": "swebench/sweb.eval.x86_64.django_1776_django-15851:zhx-aa80884e053cf1a2",
+        "evalImageId": "sha256:aa80884e053cf1a238df7c4ceec43e4e07929547f658278bd3c3154f0ef8bc90",
+        "evalTag": "zhx-aa80884e053cf1a2",
+        "image": "sha256:d53dbd1313ddea4f813b0a8328cd740e978ce6ebb05d4d3c88c4e8f66f79bca1",
+        "checkoutHead": "ec9331c1d76135610cbfd45a0d08e3388993253a",
+        "baseTree": "80258ef9c833e0b2aa85dd884757717adb3b5416",
+        "upstreamTree": "e9a3c8b5c5eaf505427370dc2a61c5568be221c9",
+        "imageModeDifferences": 6636
+      }
+    ],
+    "environmentDifferences": [
+      "Zhivex native OCI: read-only root and writable /workspace snapshot, operator auto-approval; mini: writable /testbed. Both deny container network and use the same derived image and CPU/memory limits.",
+      "Zhivex tool-call limit is steps times eight; mini counts model steps and executes each response's actions. Tool counts are reported, not claimed equivalent.",
+      "Input/output token ceilings are checked between model requests and can overshoot by one response; outputPerTurn is sent to both APIs."
+    ],
+    "prepared": true,
+    "nodeImage": "sha256:5736e7ef1f3f2109be7ef8aea0cbdf931804aee9a18c6760507b8ded078b25a9",
+    "implementation": {
+      "gitCommit": "c2b2bb917d0471e61afc5f731a61c00b44fa3731",
+      "sources": {
+        "bun.lock": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4",
+        "evaluations/external/requirements.lock": "42e90a08f10f821ebb958af79256f707a9fb5cf365277c4f9e2715d612028179",
+        "package.json": "78989c243298fa78066ce1670439277c689a5a538d973b91f7ea7061281dd82a",
+        "scripts/benchmark-swebench.ts": "ed17063e1847017ba2e72f14732b6ff8f5b1af7cd5253b91302af75f2a9e8476",
+        "scripts/swebench/candidate.py": "f5e3410b91b950acfbe50fc7511891816a8fb1c223082397e2c6300cf1e866cf",
+        "scripts/swebench/candidate.ts": "5767ae241c4a58bd731456abe2c3d92f7a57bba764c80e0f0d00748a0f47d02b",
+        "scripts/swebench/common.py": "ad790227dac3bec1f592c458c993efff4f9d3de8f0df39b33e3238b58b3f0b3b",
+        "scripts/swebench/context-metrics.ts": "7b84da6789413aa634d997c5963ee6796584e06c3eafe5f68f424fb7e27815e9",
+        "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+        "scripts/swebench/model-budget.ts": "e46dd406ee5d58a051a15c7d7133513666292303d8c6534f861a6db0e711f47c",
+        "scripts/swebench/model-catalog.ts": "eb79e7333f4f5804f96da87d1952382f620e7165a95b60489fcc2588debe64d8",
+        "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+        "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+        "scripts/swebench/report.py": "d0b8d45f32c48e0ba2cb977f50838065a497a0ecaf3b4243ed94139393ce4d6b",
+        "scripts/swebench/run.py": "94dccd55dfe6f70d8f8f2da70331700ec85eddd958547e0c3afe3dc416c9802c",
+        "scripts/swebench/telemetry.ts": "2c0b4828db3a108184df6d47276d7d3dbb6cf291126b40fc38d33f4b29101bc2",
+        "scripts/swebench/test_candidate.py": "e77d16379b748baa2daf184a45ea62587d938b6a7d48dcf9f6061f8af21fafd9",
+        "scripts/swebench/test_contracts.py": "902e966d0fbf8501dbb15e011849f160331c033cd2a5480f9920d0f365a08d03",
+        "scripts/swebench/verifier-observer.ts": "a90544437473218a83477a1cffb59ee9f645c12abdf8960b787f3e21606035bf",
+        "scripts/swebench/zhivex-driver.ts": "52268790d1f20c73b340a68c6d13ea8d3250a04eca362f0ace983ced5c7e6035",
+        "scripts/time-to-safe-fix-efficiency.ts": "dd20fd8839280332ae4ca80d6846e98e07ff15d79e200b206fa2ba6be2724d2f",
+        "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+        "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+        "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+        "src/cli-options.ts": "f48d9be132fed38f2ddbcfecbd8222c664a0df2f20edc28ce8d1b9b1a1900863",
+        "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+        "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+        "src/cli.ts": "5a4acb4695a968a58fbeac05c4bb89848a9653d6189590f0ff90e430ffa98d14",
+        "src/compaction.ts": "9e06a0abeeef155377f40c160b21c56256bca95ec18c5ee897681a5fc73db169",
+        "src/config.ts": "67ed44b55505ff8dd94f60ba89c33c217759cd7c79de45ccda369f248309cdff",
+        "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+        "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+        "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+        "src/context-metrics.ts": "3eb30f9db808f918ed8d73d4f8ac19a13acb09ed5c1ee70fdae05201714b9198",
+        "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+        "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+        "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+        "src/file-security.ts": "b8c9f4988c4339c73a60ab4fa8d394b3eecc19117a0c61a8d19ab6483ca253df",
+        "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+        "src/index.ts": "4bbfcd11376d48c4f1c1ec17d6b5c9f51baa9331fa999432be178bae94530a5e",
+        "src/json-contracts.ts": "0780145636b47829a1aa6087c574d5654eb31b7534ea7d9c38c188d648c90272",
+        "src/mcp.ts": "7722de031921c620ec03b9e42a6596ef8415aa8e4bb5f93ea84d2427c466e554",
+        "src/model-budget.ts": "97c00019d7e737fc7acdd04cdac0811dca8d85c3e858de519ebba91888cf1ee7",
+        "src/operations.ts": "bcccaf4d1d0ec117c2ed35df92185564d33399e5fdc5c12225ac61f14fd0b4b1",
+        "src/orchestration.ts": "b56c8c7d526a99b745cc17769e0a1b7b500b25920e77f34aa0dd01c9758de319",
+        "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+        "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+        "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+        "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+        "src/repair-progress.ts": "cf30117ab69564f2b36ff8f0e86dcb876e6c031647340a7b1bef648d1e0366b9",
+        "src/repair-verifier.ts": "b70fb11feee8cdc7933947ccac0b78f8bb5c0eaccc3b29ad527197d77f40ffc9",
+        "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+        "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+        "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+        "src/runtime-checkpoints.ts": "e3b75a0b86fb5d21992b1a126b35446110ba5fcaf4317ed5005b1a44555118dc",
+        "src/runtime-diagnostics.ts": "e1e5a3a558fa2aaeb477335dc336551f022c1234fe5e742eefc6599c8803e364",
+        "src/runtime-policy.ts": "8356acf0102f0e73839b81ed628a5c0d9a89d9c21b0ca416efedde8f1b3414e2",
+        "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+        "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+        "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+        "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+        "src/task-memory.ts": "5b62c863be5a23c33608633cd7aac0464f5536d01cba930aca58b11870170731",
+        "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+        "src/terminal-ui.ts": "4da1878a76ba608a2517bf5d5c992a9a88702aba3fd800a9980129ba93e157bc",
+        "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+        "src/tool-registry.ts": "7e90fff11940e525883c9ec0d2adbea2e6616f8bd9bc4ec77e1b7277e4217f2c",
+        "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+        "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+        "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302"
+      }
+    },
+    "host": {
+      "system": "Darwin",
+      "architecture": "arm64",
+      "python": "3.12.13",
+      "docker": "29.8.0"
+    },
+    "pricingUsdPerMillion": null,
+    "approvalPolicy": "Automated operator approves supported isolated Zhivex tools; successful approved verification and patch import is a terminal receipt. Human wait is zero. Not a human-UX comparison."
+  },
+  "samples": [
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-15851",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "candidateCaptureFailure": null,
+      "modelTimings": [
+        {
+          "durationMs": 3315.1819170000003,
+          "firstTokenMs": 3314.4135840000004,
+          "completed": true
+        },
+        {
+          "durationMs": 1455.2151669999994,
+          "firstTokenMs": 1455.0647500000005,
+          "completed": true
+        },
+        {
+          "durationMs": 2136.093666999999,
+          "firstTokenMs": 2135.8274999999994,
+          "completed": true
+        },
+        {
+          "durationMs": 1896.959832999999,
+          "firstTokenMs": 1896.7155829999992,
+          "completed": true
+        },
+        {
+          "durationMs": 1926.1423750000013,
+          "firstTokenMs": 1926.0177089999997,
+          "completed": true
+        },
+        {
+          "durationMs": 1986.674916,
+          "firstTokenMs": 1986.4686249999977,
+          "completed": true
+        },
+        {
+          "durationMs": 5250.132916999999,
+          "firstTokenMs": 5249.963416999999,
+          "completed": true
+        },
+        {
+          "durationMs": 3030.0514999999978,
+          "firstTokenMs": 3029.913166999999,
+          "completed": true
+        },
+        {
+          "durationMs": 1911.8876669999954,
+          "firstTokenMs": 1911.6447499999995,
+          "completed": true
+        },
+        {
+          "durationMs": 5536.965166999995,
+          "firstTokenMs": 5536.646124999999,
+          "completed": true
+        },
+        {
+          "durationMs": 1598.489791,
+          "firstTokenMs": 1598.2655000000013,
+          "completed": true
+        },
+        {
+          "durationMs": 1635.8450830000074,
+          "firstTokenMs": 1635.7173750000075,
+          "completed": true
+        },
+        {
+          "durationMs": 1785.924291999996,
+          "firstTokenMs": 1785.8526249999995,
+          "completed": true
+        }
+      ],
+      "modelCatalog": {
+        "records": [
+          {
+            "call": 1,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "search_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 2,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "read_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 3,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "search_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 4,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "search_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 5,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "read_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 6,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "read_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 7,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "repair_plan",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 8,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "apply_reviewed_replacement",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 9,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "run_environment_shell",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 10,
+            "offered": [
+              "read_task",
+              "repair_plan"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "named",
+            "returned": [
+              {
+                "name": "repair_plan",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 11,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "run_environment_shell",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 12,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "list_files",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          },
+          {
+            "call": 13,
+            "offered": [
+              "apply_reviewed_edits",
+              "apply_reviewed_replacement",
+              "inspect_environment_patch",
+              "list_files",
+              "mutation_audit",
+              "read_files",
+              "read_task",
+              "repair_plan",
+              "run_environment_command",
+              "run_environment_shell",
+              "search_files",
+              "search_many",
+              "verify_and_apply_environment_patch"
+            ],
+            "unknownOffered": 0,
+            "systemMessages": 1,
+            "choice": "required",
+            "returned": [
+              {
+                "name": "run_environment_shell",
+                "offered": true,
+                "registered": true
+              }
+            ],
+            "omittedReturned": 0,
+            "completed": true
+          }
+        ],
+        "omittedCalls": 0
+      },
+      "stageTimings": [
+        {
+          "event": "edit-requested",
+          "elapsedMs": 25012.462042
+        },
+        {
+          "event": "verification-requested",
+          "elapsedMs": 26891.442375
+        },
+        {
+          "event": "governed-edit-completed",
+          "elapsedMs": 26898.649209
+        },
+        {
+          "event": "command-requested",
+          "elapsedMs": 34440.264917
+        }
+      ],
+      "approvalTimings": [
+        {
+          "durationMs": 0.21370800000295276,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.018040999999357155,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.033290999999735504,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.03329200000007404,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.023915999998280313,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.03429100000357721,
+          "resolved": true
+        }
+      ],
+      "toolTimings": [
+        {
+          "name": "search_files",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 770.7560420000018,
+          "maxMs": 550.4601670000002
+        },
+        {
+          "name": "read_files",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 3.022541000000274,
+          "maxMs": 1.6277909999989788
+        },
+        {
+          "name": "repair_plan",
+          "calls": 2,
+          "errors": 0,
+          "totalMs": 0.15924999999333522,
+          "maxMs": 0.10574999999880674
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 8.72650000000067,
+          "maxMs": 8.72650000000067
+        },
+        {
+          "name": "verify_and_apply_environment_patch",
+          "calls": 2,
+          "errors": 2,
+          "totalMs": 8934.487166000006,
+          "maxMs": 4495.965541000005
+        },
+        {
+          "name": "run_environment_shell",
+          "calls": 3,
+          "errors": 0,
+          "totalMs": 30546.374374000014,
+          "maxMs": 15256.078500000003
+        }
+      ],
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "INPUT_TOKEN_BUDGET",
+      "phase": "agent",
+      "durationMs": 88393.40016700001,
+      "approvals": 6,
+      "turns": [
+        {
+          "index": 1,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "search_files"
+          ],
+          "inputTokens": 4652,
+          "outputTokens": 65,
+          "cachedInputTokens": 0,
+          "requestCharacters": 7658,
+          "tools": [
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 346
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 4883,
+          "outputTokens": 36,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 8394,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 2673
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "search_files"
+          ],
+          "inputTokens": 5804,
+          "outputTokens": 60,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 11419,
+          "tools": [
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 164
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "search_files"
+          ],
+          "inputTokens": 5940,
+          "outputTokens": 64,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 11957,
+          "tools": [
+            {
+              "name": "search_files",
+              "isError": false,
+              "characters": 4521
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 8166,
+          "outputTokens": 35,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 16864,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 4790
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "read_files"
+          ],
+          "inputTokens": 9653,
+          "outputTokens": 52,
+          "cachedInputTokens": 7168,
+          "requestCharacters": 21999,
+          "tools": [
+            {
+              "name": "read_files",
+              "isError": false,
+              "characters": 3399
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "repair_plan"
+          ],
+          "inputTokens": 10811,
+          "outputTokens": 263,
+          "cachedInputTokens": 9216,
+          "requestCharacters": 25773,
+          "tools": [
+            {
+              "name": "repair_plan",
+              "isError": false,
+              "characters": 1002
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "apply_reviewed_replacement"
+          ],
+          "inputTokens": 11383,
+          "outputTokens": 164,
+          "cachedInputTokens": 10240,
+          "requestCharacters": 28386,
+          "tools": []
+        },
+        {
+          "index": 9,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "verify_and_apply_environment_patch"
+          ],
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedInputTokens": 0,
+          "requestCharacters": 12176,
+          "tools": [
+            {
+              "name": "apply_reviewed_replacement",
+              "isError": false,
+              "characters": 483
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": true,
+              "characters": 436,
+              "exitCode": 1,
+              "timedOut": false,
+              "verificationOutcome": "failed",
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "failureType": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "validationCode": null,
+                    "verifierExitCode": 1,
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941",
+                    "reason": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 6509,
+          "outputTokens": 55,
+          "cachedInputTokens": 3072,
+          "requestCharacters": 13661,
+          "tools": []
+        },
+        {
+          "index": 11,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "repair_plan"
+          ],
+          "inputTokens": 4595,
+          "outputTokens": 261,
+          "cachedInputTokens": 0,
+          "requestCharacters": 14944,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 475,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2755.772083,
+                "workspaceExportMs": 7273.672125,
+                "totalMs": 12429.716625,
+                "sessionCreationMs": 2400.124042
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "verify_and_apply_environment_patch"
+          ],
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedInputTokens": 0,
+          "requestCharacters": 17236,
+          "tools": [
+            {
+              "name": "repair_plan",
+              "isError": false,
+              "characters": 988
+            },
+            {
+              "name": "verify_and_apply_environment_patch",
+              "isError": true,
+              "characters": 465,
+              "exitCode": 2,
+              "timedOut": false,
+              "verificationOutcome": "failed",
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "failureType": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "validationCode": null,
+                    "verifierExitCode": 2,
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "4ff86268eac7f800eb2c27715a6c688c0ec016b7f588f60e55561e25acc71aba",
+                    "reason": null
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 7626,
+          "outputTokens": 56,
+          "cachedInputTokens": 5120,
+          "requestCharacters": 18386,
+          "tools": []
+        },
+        {
+          "index": 14,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "list_files"
+          ],
+          "inputTokens": 7872,
+          "outputTokens": 48,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 19353,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 574,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 539.834334,
+                "totalMs": 2860.220541,
+                "sessionCreationMs": 2210.532292
+              },
+              "exitCode": 2,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 7994,
+          "outputTokens": 82,
+          "cachedInputTokens": 6656,
+          "requestCharacters": 19942,
+          "tools": [
+            {
+              "name": "list_files",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "failureType": "budget",
+                "retryable": false,
+                "chain": [
+                  {
+                    "validationCode": null,
+                    "verifierExitCode": null,
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "f0b8f211b295b6091f99106b1308508d1d6377969ce64e95bb2da008f681224e",
+                    "reason": "budget"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 845,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 3144.983958,
+                "workspaceExportMs": 8103.587583,
+                "totalMs": 15255.812625,
+                "sessionCreationMs": 4006.959792
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        }
+      ],
+      "inputTokens": 95888,
+      "outputTokens": 1241,
+      "cachedInputTokens": 66048,
+      "modelCalls": 13,
+      "compactions": [
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 6888,
+          "estimatedTokensAfter": 2533
+        },
+        {
+          "beforeStep": 16,
+          "estimatedTokensBefore": 4597,
+          "estimatedTokensAfter": 2682
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "failureType": "budget",
+        "retryable": false,
+        "chain": [
+          {
+            "validationCode": null,
+            "verifierExitCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "failureType": "budget",
+        "retryable": false,
+        "chain": [
+          {
+            "validationCode": null,
+            "verifierExitCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          },
+          {
+            "validationCode": null,
+            "verifierExitCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Error",
+            "providerHints": [],
+            "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+            "reason": "budget"
+          }
+        ]
+      },
+      "guardrails": [],
+      "repairProgress": {
+        "repeatedResults": 0,
+        "suppressedResults": 0,
+        "blockedBroadCalls": 1,
+        "enteredClosure": true,
+        "phase": "verify",
+        "blockedPhaseCalls": 0,
+        "planRecorded": true
+      },
+      "contextMetrics": [
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 0,
+          "toolResultCharacters": 0,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 228,
+          "toolResultCharacters": 506,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 420,
+          "toolResultCharacters": 3337,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 632,
+          "toolResultCharacters": 3661,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 856,
+          "toolResultCharacters": 8342,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 1041,
+          "toolResultCharacters": 13290,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2581,
+          "assistantCharacters": 1256,
+          "toolResultCharacters": 16847,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2936,
+          "assistantCharacters": 2351,
+          "toolResultCharacters": 18008,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2460,
+          "assistantCharacters": 4723,
+          "toolResultCharacters": 1397,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2856,
+          "assistantCharacters": 4964,
+          "toolResultCharacters": 2041,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 1635,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2957,
+          "assistantCharacters": 6385,
+          "toolResultCharacters": 3957,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2900,
+          "assistantCharacters": 6664,
+          "toolResultCharacters": 4700,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 5073,
+          "userCharacters": 2900,
+          "assistantCharacters": 6844,
+          "toolResultCharacters": 5107,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 9375,
+          "unmeasuredToolDefinitions": 0
+        }
+      ],
+      "omittedContextMeasurements": 0,
+      "toolCalls": 14,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "candidateCaptured": true,
+      "candidatePatchSha256": "15989da845ac1f766848c5c2e153296d7eef926a752ec658548702ac0e028bc7",
+      "candidateGradingStatus": "completed",
+      "candidateResolved": true,
+      "repairStages": {
+        "candidatePresent": true,
+        "importedPatchPresent": false,
+        "verificationAttempted": true
+      },
+      "gradingDurationMs": 25452.03741703881,
+      "totalDurationMs": 128156.90558298957
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-15851",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 29804.76358399028,
+      "approvals": 0,
+      "toolCalls": 11,
+      "inputTokens": 32788,
+      "outputTokens": 886,
+      "cachedInputTokens": 24064,
+      "modelCalls": 11,
+      "patchSha256": "873ee0e2d09108303f5ebe1fa4d0aec08ee9e4ce52b93941c70b4c8c91c21db4",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "candidateCaptured": true,
+      "candidatePatchSha256": "873ee0e2d09108303f5ebe1fa4d0aec08ee9e4ce52b93941c70b4c8c91c21db4",
+      "candidateGradingStatus": "completed",
+      "candidateResolved": true,
+      "repairStages": {
+        "candidatePresent": true,
+        "importedPatchPresent": null,
+        "verificationAttempted": null
+      },
+      "gradingDurationMs": 22976.258167007472,
+      "totalDurationMs": 54962.95591699891
+    }
+  ],
+  "report": {
+    "schemaVersion": 1,
+    "kind": "swebench-comparison",
+    "manifestSha256": "bc1cfdc98246a8fc09b52d43fbf648e15f377fd2839878ead8c81278ce689df5",
+    "complete": true,
+    "candidates": {
+      "zhivex": {
+        "planned": 1,
+        "recorded": 1,
+        "resolved": 0,
+        "candidateCaptured": 1,
+        "candidateResolved": 1,
+        "candidateGraded": 1,
+        "resolutionRate": 0.0,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": null
+      },
+      "mini-swe-agent": {
+        "planned": 1,
+        "recorded": 1,
+        "resolved": 1,
+        "candidateCaptured": 1,
+        "candidateResolved": 1,
+        "candidateGraded": 1,
+        "resolutionRate": 1.0,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 54962.95591699891
+      }
+    },
+    "pairedTaskResolutionDifference": -1.0,
+    "pairedTaskBootstrap95": null,
+    "evidenceBoundary": "Local matched-model comparison. Missing and failed runs remain in the denominator. Small-sample intervals are exploratory. No safety superiority is inferred from SWE-bench correctness."
+  },
+  "conclusion": "Candidate passes official grading, but verified import fails after verifier exits 1 and 2 and input budget exhaustion. Candidate capture now reports the actual patch. Prompt change alone did not resolve delivery."
+}

@@ -162,6 +162,42 @@ the argv digest and purpose to the candidate revision, but a zero exit code does
 not independently establish that the chosen check covers the user's requirement.
 Host-mode edits require an approved `run_check` before completion.
 
+Applications that require an actual repair can set `requireVerifiedDelivery: true`
+when creating a Harness with `agentProfile: "repair"`. This creates a durable
+completion obligation before exploration starts; a final answer without a
+verified delivery is failed in both the result and saved checkpoint. The option
+is bound to the run fingerprint and cannot be removed by restoring the controller
+with defaults. It does not itself open the closure reserve or grant permission
+for tools. Inspection-only callers leave it false. The SWE-bench driver enables
+it because its task explicitly requires a verified repair and import.
+
+A concrete repair plan also prevents completion before a candidate exists. If
+the provider returns a normal final answer with a pending obligation and known
+usage, the controller may schedule one read-only `read_task` reminder through the
+ordinary tool gates. Its durable counter survives resume; it cannot extend the
+verifier-selection limit or repeat indefinitely. The next model request still
+uses the original token, step and tool budgets. The original response's usage
+is preserved. Unknown usage, errors, cancellation and output-limit finishes do
+not trigger this reminder. A second premature final answer remains a failed
+repair, not a delivered result.
+
+An OCI edit attempted without a concrete verifier is rejected before execution
+and records a durable planning obligation. The next provider requests expose
+only `repair_plan` and `read_task`, for at most two planning attempts; supported
+modes explicitly request `repair_plan`. Execution checks also block unrelated
+tools until a valid verifier is recorded. These restricted planning turns can
+use the existing closure reserve after ordinary work reaches its ceiling;
+they cannot exceed the total input/output budget. Resuming does not reset this limit.
+Recording the verifier restores the ordinary catalogue, but never supplies
+approval for the edit or check and does not increase the token budget.
+
+The working-state message sent with each model request includes the normalized
+planned file paths and remaining closure read/command allowances. This view
+comes directly from the enforcing progress controller, including after restore;
+it does not depend on keeping an old `repair_plan` tool result in compacted
+history. These counters describe the existing closure limits, not extra budget
+or approval. Displaying them does not itself activate closure.
+
 Work/closure usage, phase, candidate, receipts and bounded measurements persist in
 the SDK's own checkpoint writes, without separate competing revision updates.
 An abandoned `running` checkpoint is treated as uncertain accounting on resume:
@@ -193,3 +229,9 @@ limited to 32000 serialized characters per model step in this profile.
 Changing the compaction strategy or runtime profile changes the harness binding.
 Paused runs from an older binding must be completed/denied with their original
 artifact; these changes deliberately do not reinterpret an old approval.
+
+Repair mode returns an unknown tool selection to the model as `TOOL_NOT_REGISTERED`, just as invalid arguments receive structured feedback. It never resolves aliases or executes an unregistered tool. Existing tool-error, step and token limits bound recovery; callers can override `unknownToolMode` to `throw` or use `stopOnError`. Strict mode retains its fail-fast behavior, and subsequent mutations still require approval.
+
+For required-delivery OCI runs, reaching the predicted work-budget boundary without a verifier transitions into the same durable two-attempt planning path before rejecting another exploration request. That request exposes only `repair_plan` and `read_task`. The estimate includes the working-state message and current tool catalogue; the budget gate recalculates after narrowing. This spends only the existing closure reserve, keeps total input/output ceilings, and neither executes nor approves a repair. Optional inspection runs do not gain access to the reserve.
+
+Closure-reserve eligibility from this boundary is durable across checkpoints and remains active after recording the verifier, so planning can lead to an edit. A repair with an existing verifier can enter the same reserve. This does not replenish tokens, grant tool approval, or establish that a candidate satisfies the task.

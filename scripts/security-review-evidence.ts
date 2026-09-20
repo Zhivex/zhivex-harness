@@ -38,6 +38,14 @@ export const SECURITY_REVIEW_TRUST_BOUNDARIES = [
 
 export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
   {
+    id: "read_task",
+    controlThreats: ["compromised-model-or-provider", "cross-scope-state-access"]
+  },
+  {
+    id: "repair_plan",
+    controlThreats: ["compromised-model-or-provider", "approval-replay-or-substitution"]
+  },
+  {
     id: "list_files",
     controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
   },

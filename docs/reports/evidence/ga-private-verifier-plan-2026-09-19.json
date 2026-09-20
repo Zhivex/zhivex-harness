@@ -1,0 +1,24 @@
+{
+  "kind": "private-verifier-diagnosis",
+  "repetitions": 1,
+  "control": null,
+  "classification": "Debugging only; not comparative acceptance or holdout",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "sources": {
+    "scripts/swebench/verifier-observer.ts": "a90544437473218a83477a1cffb59ee9f645c12abdf8960b787f3e21606035bf",
+    "scripts/swebench/zhivex-driver.ts": "53fbd6c51659f40d169c71b7450416724693641be2c237425f1924277b0fd496",
+    "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+    "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+    "bun.lock": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4"
+  },
+  "retention": "Local mode-0700 temporary directory, bounded verifier details only; no raw diagnostic in public reports",
+  "stopRule": "One execution; no automatic retry"
+}

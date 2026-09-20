@@ -1,3 +1,4 @@
+import { withWorkspaceMutation } from "./workspace-mutation-lock.js";
 import { boundedBatches } from "./bounded-reads.js";
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -91,6 +92,21 @@ const BUILT_IN_TOOL_NAMES = new Set([
 
 const digest = (value: string | Uint8Array): FileDigest =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
+
+const executionScopeKey = (scope: AgentExecutionEnvironmentAcquireRequest["scope"]) => {
+  if (scope) {
+    for (const value of [scope.tenantId, scope.userId, scope.namespace]) {
+      if (value !== undefined && (typeof value !== "string" || !value || value.includes("\0"))) {
+        throw new Error("Invalid OCI execution scope.");
+      }
+    }
+    if (!scope.tenantId) throw new Error("OCI execution scope requires tenantId.");
+  }
+  return JSON.stringify([scope?.tenantId ?? null, scope?.userId ?? null, scope?.namespace ?? null]);
+};
+
+const executionIdentity = (workspace: string, stateDirectory: string, runId: string, scopeKey: string) =>
+  digest(JSON.stringify(["scoped-oci-v2", workspace, stateDirectory, scopeKey, runId]));
 
 const runHash = (runId: string) => createHash("sha256").update(runId).digest("hex").slice(0, 24);
 
@@ -1270,6 +1286,9 @@ interface EnvironmentMetadata {
   schemaVersion: typeof HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION;
   runId: string;
   hostWorkspace: string;
+  stateDirectory: string;
+  scopeKey: string;
+  executionIdentity: string;
   binding: AgentExecutionEnvironmentBinding;
   image: OciImageInspection;
   createdAt: string;
@@ -1331,7 +1350,8 @@ const createEnvironmentPatch = async (
   current: Workspace,
   maxFileWriteBytes: number,
   maxWorkspaceBytes: number,
-  metrics?: HarnessExecutionIoMetrics
+  metrics?: HarnessExecutionIoMetrics,
+  identity?: string
 ) => {
   const [before, after] = await Promise.all([
     collectSnapshotInventory(base, maxWorkspaceBytes, metrics),
@@ -1372,7 +1392,7 @@ const createEnvironmentPatch = async (
     throw new Error(`Environment patch exceeds the ${MAX_EDIT_PROPOSAL_BYTES}-byte import limit.`);
   }
   const payload = patchPayload(runId, entries);
-  return { entries, totalBytes, patchId: digest(JSON.stringify(payload)) };
+  return { entries, totalBytes, patchId: digest(JSON.stringify({ ...payload, executionIdentity: identity ?? null })) };
 };
 
 const inspectHostPrecondition = async (
@@ -1405,10 +1425,11 @@ const importPatch = async (
   maxFileWriteBytes: number,
   maxWorkspaceBytes: number,
   metrics?: HarnessExecutionIoMetrics,
-  assertActive?: () => Promise<void>
-): Promise<EnvironmentPatchImportResult> => {
+  assertActive?: () => Promise<void>,
+  identity?: string
+): Promise<EnvironmentPatchImportResult> => withWorkspaceMutation(host.root, async () => {
   await assertActive?.();
-  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, maxWorkspaceBytes, metrics);
+  const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, maxWorkspaceBytes, metrics, identity);
   if (patch.patchId !== expectedPatchId) {
     throw new Error("Environment patch changed after review; inspect it again before import.");
   }
@@ -1487,7 +1508,7 @@ const importPatch = async (
     runId,
     changes: audits
   };
-};
+});
 
 export interface HarnessEnvironmentStatus {
   schemaVersion: typeof HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION;
@@ -1630,7 +1651,10 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
         workspaceExports: 0
       };
       await privateDirectory(environmentRoot);
-      const directory = path.join(environmentRoot, runHash(request.runId));
+      const stateDirectory = await realpath(options.stateDirectory);
+      const scopeKey = executionScopeKey(request.scope);
+      const identity = executionIdentity(options.workspace.root, stateDirectory, request.runId, scopeKey);
+      const directory = path.join(environmentRoot, runHash(identity));
       await privateDirectory(directory);
       const metadataPath = path.join(directory, "environment.json");
       const baseRoot = path.join(directory, "base");
@@ -1645,6 +1669,9 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
         if (
           metadata.schemaVersion !== HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION ||
           metadata.runId !== request.runId ||
+          metadata.scopeKey !== scopeKey ||
+          metadata.stateDirectory !== stateDirectory ||
+          metadata.executionIdentity !== identity ||
           metadata.hostWorkspace !== options.workspace.root ||
           metadata.binding.fingerprint !== binding.fingerprint ||
           metadata.binding.workspaceId !== binding.workspaceId
@@ -1653,6 +1680,13 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        // Legacy artifacts cannot be assigned to a scope after the fact.
+        try {
+          await lstat(path.join(environmentRoot, runHash(request.runId)));
+          throw new Error("Unscoped legacy OCI artifact requires its original runtime; start a new run.");
+        } catch (legacyError) {
+          if ((legacyError as NodeJS.ErrnoException).code !== "ENOENT") throw legacyError;
+        }
         const snapshot = await copyWorkspaceSnapshot(
           options.workspace,
           baseRoot,
@@ -1665,6 +1699,9 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
           schemaVersion: HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION,
           runId: request.runId,
           hostWorkspace: options.workspace.root,
+          stateDirectory,
+          scopeKey,
+          executionIdentity: identity,
           binding,
           image,
           createdAt: now,
@@ -1701,7 +1738,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
         return [command, ...args] as string[];
       };
       const sharedRunRequest = (context?: ToolExecutionContext) => ({
-          runId: request.runId,
+          runId: identity,
           snapshotRoot,
           ...(dependencyRoot ? { dependencyRoot } : {}),
           imageId: image.imageId,
@@ -1882,7 +1919,8 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             workspace,
             options.config.maxFileWriteBytes,
             options.config.maxWorkspaceBytes,
-            ioMetrics
+            ioMetrics,
+            identity
           );
           return {
             schemaVersion: HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION,
@@ -1934,7 +1972,8 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             workspace,
             options.config.maxFileWriteBytes,
             options.config.maxWorkspaceBytes,
-            ioMetrics
+            ioMetrics,
+            identity
           );
           const payload = patchPayload(request.runId, patch.entries);
           return {
@@ -1953,11 +1992,12 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             options.config.maxFileWriteBytes,
             options.config.maxWorkspaceBytes,
             ioMetrics,
-            assertActive
+            assertActive,
+            identity
           );
         },
         async release(result) {
-          await runtime.removeRunContainers(request.runId);
+          await runtime.removeRunContainers(identity);
           metadata.releasedAt = new Date().toISOString();
           metadata.status = result.status;
           await atomicJson(metadataPath, metadata);
@@ -2020,7 +2060,8 @@ export interface ExecutionArtifactCleanupResult {
 
 export const cleanupHarnessExecutionArtifacts = async (
   stateDirectory: string,
-  before: number
+  before: number,
+  selection?: { workspace: string; scope: AgentExecutionEnvironmentAcquireRequest["scope"] }
 ): Promise<ExecutionArtifactCleanupResult> => {
   const root = path.join(stateDirectory, "environments");
   const result = { scanned: 0, deleted: 0, skipped: 0 };
@@ -2055,6 +2096,17 @@ export const cleanupHarnessExecutionArtifacts = async (
         maxBytes: 1024 * 1024
       });
       const metadata = JSON.parse(metadataFile.contents.toString("utf8")) as EnvironmentMetadata;
+      if (selection && (metadata.hostWorkspace !== await realpath(selection.workspace) ||
+        metadata.scopeKey !== executionScopeKey(selection.scope))) {
+        result.skipped += 1;
+        continue;
+      }
+      if (metadata.executionIdentity && (metadata.stateDirectory !== await realpath(stateDirectory) ||
+        metadata.executionIdentity !== executionIdentity(metadata.hostWorkspace, metadata.stateDirectory,
+          metadata.runId, metadata.scopeKey) || runHash(metadata.executionIdentity) !== artifactName)) {
+        result.skipped += 1;
+        continue;
+      }
       const releasedAt = metadata.releasedAt ? Date.parse(metadata.releasedAt) : Number.NaN;
       if (!metadata.status || !TERMINAL_STATUSES.has(metadata.status) || !Number.isFinite(releasedAt) || releasedAt >= before) {
         result.skipped += 1;

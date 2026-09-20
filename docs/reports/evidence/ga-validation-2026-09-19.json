@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "reviewer": "Codex automated external-validator role; not a human attestation",
+  "observedAt": "2026-09-19T17:35:14.601764+00:00",
+  "verdict": "no-go",
+  "sourceCommit": "28723ff3350b7572d5bd68f2d40b6feef1e0e6b4",
+  "version": "1.0.0-rc.14",
+  "sourceIsolation": "git archive of exact commit; frozen lockfile; original checkout changed concurrently",
+  "runtime": {
+    "bun": "1.4.0",
+    "node": "22.21.0",
+    "docker": "29.8.0",
+    "platform": "macOS arm64"
+  },
+  "artifact": {
+    "kind": "local unpublished tarball",
+    "sha512": "sha512-05q23Vh3ddOjbMay9H9Q1g5iOEV2RDzfH53eptQ5J8FxQT7iKY9Gq3/19T6dF1PNf8PYfGTWVgBuk0mVsJClog==",
+    "contentInspection": "passed",
+    "installedConsumer": "passed"
+  },
+  "deterministic": {
+    "command": "ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run check",
+    "exitCode": 0,
+    "testsPassed": 512,
+    "testsFailed": 0,
+    "testFiles": 59,
+    "evaluationsPassed": 7,
+    "docs": "passed",
+    "contracts": "preparation passed; security blocker open",
+    "sourceTypes": "passed",
+    "toolingTypes": "passed",
+    "historicalMigrations": "passed",
+    "workspaceBenchmark": "passed",
+    "safeFixScriptedBenchmark": "passed",
+    "mcpInteroperability": "passed",
+    "mcpOfficialSdk": "passed",
+    "oci": "passed",
+    "packageSmoke": "passed"
+  },
+  "audit": {
+    "status": "blocked",
+    "reason": "npm advisory endpoint HTTP 503 on two local attempts and current CI",
+    "untrustedLifecycleScripts": 0
+  },
+  "live": {
+    "live": {
+      "ok": false,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-19T17:31:06.885Z",
+      "providers": [
+        {
+          "ok": false,
+          "provider": "meta",
+          "model": "muse-spark-1.2",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "fingerprint": "sha256:a44b10c561da559de80b00f8623aff9e3b3aee5b61ef0172887a64fab4fa6ce4"
+          }
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": false,
+          "provider": "openai",
+          "model": "gpt-5.6-luna",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "fingerprint": "sha256:a44b10c561da559de80b00f8623aff9e3b3aee5b61ef0172887a64fab4fa6ce4"
+          }
+        }
+      ]
+    },
+    "orchestration": {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-19T17:32:03.639Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "meta",
+          "model": "muse-spark-1.2",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 15280
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 13953
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-5.6-luna",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 8460
+        }
+      ]
+    },
+    "routing": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-5.6-luna"
+      },
+      "reviewer": {
+        "provider": "qwen",
+        "model": "qwen3.8-max"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    },
+    "execution": {
+      "ok": false,
+      "gate": "live-execution-smoke",
+      "certifiedAt": "2026-09-19T17:31:38.479Z",
+      "providers": [
+        {
+          "ok": false,
+          "provider": "meta",
+          "model": "muse-spark-1.2",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "fingerprint": "sha256:a44b10c561da559de80b00f8623aff9e3b3aee5b61ef0172887a64fab4fa6ce4"
+          }
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": false,
+          "provider": "openai",
+          "model": "gpt-5.6-luna",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "fingerprint": "sha256:a44b10c561da559de80b00f8623aff9e3b3aee5b61ef0172887a64fab4fa6ce4"
+          }
+        }
+      ]
+    }
+  },
+  "budgetAcceptance": [
+    {
+      "provider": "meta",
+      "passed": false,
+      "status": "failed",
+      "code": "EXECUTION_FAILED",
+      "cause": "GuardrailTriggeredError",
+      "stage": "input",
+      "budgetLimit": "maxOutputTokens",
+      "limit": 30000,
+      "actual": 2,
+      "required": 30000,
+      "remaining": 29998
+    },
+    {
+      "provider": "openai",
+      "passed": false,
+      "status": "failed",
+      "code": "EXECUTION_FAILED",
+      "cause": "GuardrailTriggeredError",
+      "stage": "input",
+      "budgetLimit": "maxOutputTokens",
+      "limit": 30000,
+      "actual": 2,
+      "required": 30000,
+      "remaining": 29998
+    },
+    {
+      "provider": "qwen",
+      "passed": true,
+      "status": "completed",
+      "outputTokens": 4
+    }
+  ],
+  "ci": {
+    "url": "https://github.com/Zhivex/zhivex-harness/actions/runs/35458111045",
+    "conclusion": "failure",
+    "failedStep": "Audit dependencies HTTP 503",
+    "installedNode22And24Jobs": "passed"
+  },
+  "codeql": {
+    "url": "https://github.com/Zhivex/zhivex-harness/actions/runs/35458110958",
+    "conclusion": "success"
+  },
+  "notCompleted": [
+    "RC14 repair-delivery hold remediation and fresh acceptance cohort",
+    "RC14 protected tag-bound live and 42-case representative certification",
+    "RC14 publication integrity and SLSA provenance",
+    "complete human security assessment of final passing candidate",
+    "formal 1.0.0 promotion gate"
+  ]
+}

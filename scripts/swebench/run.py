@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 from candidate import candidate_patch
-from common import CANDIDATES, digest, public_task, summarize, write_json
+from common import CANDIDATES, digest, public_task, scoped_runtime_labels, summarize, write_json
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
@@ -41,9 +41,17 @@ def cancel_benchmark(_signum, _frame):
 
 
 def call_driver(candidate, request, root):
+    # The parent owns state lifetime so it can clean the exact scoped runtime
+    # resources even when the driver dies before its finally block.
+    with tempfile.TemporaryDirectory(prefix="zhivex-swebench-owned-state-") as state:
+        return _call_driver(candidate, request, root, Path(state))
+
+
+def _call_driver(candidate, request, root, state):
     argv = [os.environ.get("BUN_EXECUTABLE", "bun"), "--no-env-file", "run", str(HERE / "zhivex-driver.ts")] if candidate == "zhivex" else [sys.executable, str(HERE / "mini_driver.py")]
     allowed = ["PATH", "OPENAI_API_KEY", "OPENAI_BASE_URL", "DASHSCOPE_API_KEY", "QWEN_API_KEY", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG"]
     env = {key: os.environ[key] for key in allowed if key in os.environ}
+    env["ZHIVEX_SWEBENCH_STATE_DIRECTORY"] = str(state)
     env.update(MSWEA_GLOBAL_CONFIG_DIR=str(root / "mini-config"), MSWEA_SILENT_STARTUP="1",
                MSWEA_MODEL_RETRY_STOP_AFTER_ATTEMPT="1", LITELLM_LOG="ERROR")
     process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -68,13 +76,14 @@ def call_driver(candidate, request, root):
         # Clean only resources belonging to this exact driver process. No global prune.
         import docker
         client = docker.from_env()
-        label = (f"com.zhivex.harness.run={digest(('swebench-' + request['runToken']).encode())[:24]}"
-                 if candidate == "zhivex" else f"com.zhivex.benchmark.run={request['runToken']}")
-        for container in client.containers.list(all=True, filters={"label": label}):
-            container.remove(force=True)
-        if candidate == "zhivex":
-            for volume in client.volumes.list(filters={"label": label}):
-                volume.remove()
+        labels = scoped_runtime_labels(state, "swebench-" + request["runToken"]) if candidate == "zhivex" else [f"com.zhivex.benchmark.run={request['runToken']}"]
+        for label in labels:
+            for container in client.containers.list(all=True, filters={"label": label}):
+                container.remove(force=True)
+            if candidate == "zhivex":
+                for volume in client.volumes.list(filters={"label": label}):
+                    volume.remove()
+
 
 
 

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-validation-followup",
+  "gitCommit": "c2b2bb917d0471e61afc5f731a61c00b44fa3731",
+  "sources": {
+    "package.json": "78989c243298fa78066ce1670439277c689a5a538d973b91f7ea7061281dd82a",
+    "bun.lock": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4",
+    "src/config.ts": "67ed44b55505ff8dd94f60ba89c33c217759cd7c79de45ccda369f248309cdff",
+    "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+    "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+    "scripts/swebench/telemetry.ts": "2c0b4828db3a108184df6d47276d7d3dbb6cf291126b40fc38d33f4b29101bc2",
+    "tests/swebench.test.ts": "1f5004b779046282ec4ff18f2de76e315e189fa5d1f2c2e0a97472fbc2c0df8c",
+    "tests/terminal-verification-recovery.test.ts": "5773a41422d8c9f0988af607e1965feee32970ba273263b325ad1f507f8b1e25"
+  },
+  "validation": {
+    "fullSuiteBeforeOutputHints": {
+      "passed": 568,
+      "failed": 0,
+      "files": 68
+    },
+    "focusedSuiteAfterOutputHints": {
+      "passed": 19,
+      "failed": 0
+    },
+    "typecheckToolingAfterOutputHints": "passed",
+    "docsCheck": "passed",
+    "preparationContract": "passed; one GA blocker open",
+    "securityProbes": [
+      {
+        "id": "SEC-01",
+        "passed": true,
+        "acceptedConflictingWrites": 1,
+        "finalContent": "second"
+      },
+      {
+        "id": "CONTROL-sequential-stale-digest",
+        "passed": true,
+        "rejectedStale": true
+      },
+      {
+        "id": "SEC-02",
+        "passed": true,
+        "replacementVisibleByDefault": true,
+        "omissionNoticeVisible": false,
+        "fullViewAvailable": true
+      },
+      {
+        "id": "SEC-03",
+        "passed": true,
+        "missingTools": []
+      },
+      {
+        "id": "SEC-04",
+        "passed": true,
+        "throughPublicRunHarness": true,
+        "status": "completed",
+        "differentTenantUserNamespace": true,
+        "otherTenantCandidateInToolOutput": false
+      }
+    ]
+  },
+  "limitations": [
+    "Full suite preceded the telemetry output-marker change; focused tests and tooling typecheck cover that change.",
+    "Local validation does not certify live repair reliability, representative evaluation, fresh holdout or release provenance."
+  ]
+}

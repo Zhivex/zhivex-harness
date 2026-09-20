@@ -37,7 +37,7 @@ export const HARNESS_STORE_BACKENDS = ["sqlite", "file"] as const;
 export const HARNESS_EXECUTION_BACKENDS = ["none", "oci"] as const;
 export const HARNESS_OCI_RUNTIMES = ["docker", "podman"] as const;
 export const HARNESS_OCI_SHELL_MODES = ["deny", "ask"] as const;
-export const HARNESS_EXECUTION_POLICY_VERSION = "2026-08-21-v4" as const;
+export const HARNESS_EXECUTION_POLICY_VERSION = "2026-09-19-v5-scoped-oci" as const;
 
 export const DEFAULT_OCI_EXECUTION = {
   runtime: "docker",
@@ -166,6 +166,7 @@ export interface HarnessConfig {
   maxSteps: number;
   timeoutMs: number;
   agentProfile: "strict" | "repair";
+  requireVerifiedDelivery: boolean;
   budget: HarnessBudget;
   costBudget?: HarnessCostBudget;
   compaction: HarnessCompactionConfig;
@@ -190,6 +191,8 @@ export interface HarnessConfigInput {
   maxSteps?: number;
   timeoutMs?: number;
   agentProfile?: string;
+  /** Require an actual verified repair; only available with agentProfile repair. */
+  requireVerifiedDelivery?: boolean;
   maxToolCalls?: number;
   maxToolErrors?: number;
   maxInputTokens?: number;
@@ -695,6 +698,8 @@ export const resolveHarnessConfig = (
     input.contextConfigPath ?? process.env.ZHIVEX_HARNESS_CONTEXT_CONFIG ?? ".zhivex/harness.json"
   );
   const execution = resolveExecutionConfig(input);
+  if (input.requireVerifiedDelivery !== undefined && typeof input.requireVerifiedDelivery !== "boolean") throw new HarnessConfigError("requireVerifiedDelivery must be boolean.");
+  if (input.requireVerifiedDelivery && (input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict") !== "repair") throw new HarnessConfigError("requireVerifiedDelivery requires agentProfile repair.");
 
   return {
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -711,6 +716,7 @@ export const resolveHarnessConfig = (
     maxSteps,
     timeoutMs,
     agentProfile: (() => { const value = input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict"; if (value !== "strict" && value !== "repair") throw new HarnessConfigError("agentProfile must be strict or repair."); return value; })(),
+    requireVerifiedDelivery: input.requireVerifiedDelivery ?? false,
     budget,
     ...(maxCostUsd === undefined
       ? {}

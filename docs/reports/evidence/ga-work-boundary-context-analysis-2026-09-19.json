@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "kind": "work-boundary-context-analysis",
+  "sourceResultSha256": "3ffb87536f05a72ddc594cf8b7e2fcdccec0ccb87c5518489a27a37903300c1f",
+  "instanceId": "django__django-10914",
+  "calls": [
+    {
+      "call": 1,
+      "inputTokens": 4782,
+      "cumulativeInputTokens": 4782,
+      "toolResultCharacters": 0,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "search_files"
+      ]
+    },
+    {
+      "call": 2,
+      "inputTokens": 7268,
+      "cumulativeInputTokens": 12050,
+      "toolResultCharacters": 5330,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "read_files"
+      ]
+    },
+    {
+      "call": 3,
+      "inputTokens": 9722,
+      "cumulativeInputTokens": 21772,
+      "toolResultCharacters": 12775,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "read_files"
+      ]
+    },
+    {
+      "call": 4,
+      "inputTokens": 12742,
+      "cumulativeInputTokens": 34514,
+      "toolResultCharacters": 21896,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "run_environment_shell"
+      ]
+    },
+    {
+      "call": 5,
+      "inputTokens": 13711,
+      "cumulativeInputTokens": 48225,
+      "toolResultCharacters": 24378,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "run_environment_shell"
+      ]
+    },
+    {
+      "call": 6,
+      "inputTokens": 14162,
+      "cumulativeInputTokens": 62387,
+      "toolResultCharacters": 25201,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "repair_plan"
+      ]
+    },
+    {
+      "call": 7,
+      "inputTokens": 15033,
+      "cumulativeInputTokens": 77420,
+      "toolResultCharacters": 26875,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "run_environment_shell"
+      ]
+    },
+    {
+      "call": 8,
+      "inputTokens": 6948,
+      "cumulativeInputTokens": 84368,
+      "toolResultCharacters": 2719,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "run_environment_shell"
+      ]
+    },
+    {
+      "call": 9,
+      "inputTokens": 9154,
+      "cumulativeInputTokens": 93522,
+      "toolResultCharacters": 11583,
+      "toolDefinitionCharacters": 9375,
+      "requestedTools": [
+        "inspect_environment_patch"
+      ]
+    }
+  ],
+  "compactions": [
+    {
+      "beforeStep": 8,
+      "estimatedTokensBefore": 10044,
+      "estimatedTokensAfter": 3142
+    }
+  ],
+  "observations": [
+    "First recorded plan request occurred at call 6 after cumulative 62387 input tokens.",
+    "Only recorded compaction occurred before step 8, reducing SDK estimated message tokens from 10044 to 3142.",
+    "Tool definitions contributed 9375 characters on each of the nine measured calls.",
+    "No imported or retained candidate entries were present."
+  ],
+  "interpretation": "Context repetition is measurable, but this single failed run does not prove a different compaction threshold improves correctness.",
+  "nextValidation": "Run the complete local check required for release preparation; preserve failed development evidence without revising formal acceptance criteria."
+}

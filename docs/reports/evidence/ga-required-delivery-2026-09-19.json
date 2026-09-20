@@ -1,0 +1,25 @@
+{
+  "kind": "explicit-verified-delivery-contract",
+  "option": "requireVerifiedDelivery",
+  "default": false,
+  "allowedProfile": "repair",
+  "benchmarkEnabled": true,
+  "validation": {
+    "fullSuitePassed": 566,
+    "additionalBindingTest": "passed",
+    "focusedTestsPassed": 4,
+    "types": "passed",
+    "docs": "passed",
+    "contract": "passed; GA blocker open",
+    "installedPackage": "passed"
+  },
+  "liveEvidence": false,
+  "hashes": {
+    "src/config.ts": "67ed44b55505ff8dd94f60ba89c33c217759cd7c79de45ccda369f248309cdff",
+    "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+    "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+    "scripts/swebench/zhivex-driver.ts": "3d1c143b4c2a1438a1249db8cc10c70a80cbd1c9e3ed44317230795b7a9be2b4",
+    "tests/required-repair-delivery.test.ts": "917b9196bfd1c5515af7e4da7d0c97ea94fae3f0501a913ec34f07b8a7c8c198",
+    "contracts/stable-api-signatures.json": "80df6ea03251111072985e12d8f7736d3333a79e53b787c78ef5d4cbbb6aaa42"
+  }
+}

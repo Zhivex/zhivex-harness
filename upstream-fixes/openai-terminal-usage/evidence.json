@@ -1,0 +1,103 @@
+{
+  "status": "isolated candidate, not applied or published",
+  "sdkSourceSha256": "f0494e551c441fe8fa866f80196bc62099af2e01b9e82d9748819a1d7b2ebd72",
+  "patchedSourceSha256": "841c4e81a2c16deb9a00ce5c994c341d4ad3f57bb0c8316b39455b891ef75333",
+  "offlineTests": {
+    "passed": 17,
+    "failed": 0
+  },
+  "installedHarnessAdapter": "unchanged @zhivex-ai/openai 0.13.2",
+  "remaining": [
+    "protected CI and approval",
+    "review and publish dependency",
+    "update Harness to published version",
+    "repeat protected artifact and live validation"
+  ],
+  "isolatedTypecheck": "passed with TypeScript 7, Node types and installed dependencies; not the SDK full gate",
+  "sdkBaseCommit": "d1df46e67dff0882fb485c9f7054495749017d47",
+  "coreOriginalSha256": "472f9f33ee65fa1d63b16122818c762d39dcbb4fcc6c5f5104eb5f28dd699990",
+  "coreCorrectedSha256": "504f448de75d22e4c334dbfc9ad4fa6bcaea8dc64a1cf9314d1ed6d835e47388",
+  "harnessBudgetRegressions": {
+    "passed": 9,
+    "failed": 0,
+    "boundary": "synthetic typed error usage, installed adapter still lacks terminal usage",
+    "fullSuite": {
+      "passed": 543,
+      "failed": 0
+    }
+  },
+  "files": {
+    "packages/openai/src/index.ts": {
+      "before": "f0494e551c441fe8fa866f80196bc62099af2e01b9e82d9748819a1d7b2ebd72",
+      "after": "841c4e81a2c16deb9a00ce5c994c341d4ad3f57bb0c8316b39455b891ef75333"
+    },
+    "packages/core/src/errors.ts": {
+      "before": "472f9f33ee65fa1d63b16122818c762d39dcbb4fcc6c5f5104eb5f28dd699990",
+      "after": "504f448de75d22e4c334dbfc9ad4fa6bcaea8dc64a1cf9314d1ed6d835e47388"
+    },
+    "packages/openai/tests/terminal-usage-regression.test.ts": {
+      "before": null,
+      "after": "3cca2c3ff3fa78766e8b7412c20eb659f8722def3621d394d2758aa04e7c67da"
+    },
+    "packages/core/tests/provider-tool-call-usage.test.ts": {
+      "before": null,
+      "after": "0e773672587aeb388254ca4e2c6f8fd226a8c4be2d2d2399e914eae73e117d5b"
+    },
+    "packages/sdk/tests/provider-tool-call-usage.test.ts": {
+      "before": null,
+      "after": "fd18975c29cd7748696603e6fff3df364af70eec6b161494d508d00ac8084c3f"
+    },
+    "packages/core/tests/fixtures/api-type-snapshots/core.json": {
+      "before": "d433c1a99c3fbcc45666db167eef4c1a5d2857e84055261fddbd9ac1f84e5bc3",
+      "after": "7bbb54504cd07a8816327cafcd2a4ccba16d7f35a310f651c55be2a0eff845a9"
+    },
+    "README.md": {
+      "before": "34e4d9351e6afc2ad505700c23575097dc269ac06d12f29251379f67638c73ea",
+      "after": "62d3aa64a01d44b8c6294d461d57aa4a8d9b743151eebce930e27bcbbdb45f85"
+    },
+    ".changeset/openai-terminal-tool-usage.md": {
+      "before": null,
+      "after": "0f6fa5ad22ce9c6020479cadb5703a623381d13e6011373ff7ca229c877ef651"
+    }
+  },
+  "sdkValidation": {
+    "typecheckAndExamples": "passed",
+    "build": "passed",
+    "docsAndExamples": "passed",
+    "testFiles": 150,
+    "testsPassed": 2078,
+    "testsFailed": 0,
+    "toolingBun": "1.4.2",
+    "publicSignatureChanges": [
+      "core/errors.d.ts"
+    ],
+    "installedConsumers": "passed, 51 entrypoints plus provider/realtime/golden path smokes"
+  },
+  "patchApplication": {
+    "frozenBase": "passed",
+    "concurrentCheckout": "conflict in already modified core API snapshot; not applied"
+  },
+  "isolatedCandidateCommit": "342452a1e7fa924114aad7e852631bc7c0173e48",
+  "integratedInstalledProbe": {
+    "passed": true,
+    "failed": true,
+    "toolExecutions": 0,
+    "inputTokens": 12,
+    "outputTokens": 8,
+    "usageComplete": true,
+    "network": "mock-only",
+    "packages": "installed local tarballs",
+    "node": "v22.21.0",
+    "artifactSha512": {
+      "core": "sha512:/3VvXxm+qTlMdJ8XSZUU6Hsh04GDnBuVZsErzfOAIKrnLgUn4sfzF4QsckD7bBRlAmghP+Dxl2omremoCeC16A==",
+      "openai": "sha512:+pRMA44fmS4dUVu4Ku+Eb2D/3Wx9Y5zphFDhcwNjaFc5gEa7BNZNWOP9nurw6hU4r7q1jlU0mDozpG2Imwpa7Q==",
+      "harness": "sha512:u6qY0ym8cexxFWdav0uD4vZcLSDnDI6OJIDjvoJuTMsetQyAoPhC3Y6LeJS2B0Mwr4sjBW5KX7SgQ9kzCghTVQ=="
+    }
+  },
+  "reviewBranch": {
+    "branch": "feat/ga-terminal-usage",
+    "commit": "989ba33505f03aea5196aa23c5859464eebfc7e0",
+    "source": "all eight patch files byte-identical to validated isolated copy",
+    "pushed": false
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "local-package-repair-validation",
+  "classification": "known development case; not registry or GA acceptance",
+  "sdkCommit": "35e2bb49340acb68af125fc03df4389cab785c28",
+  "qwenTarballSha256": "b1568426c2a10322fcb61388da87f5d889c6dc721e79eb25a0078730fb673359",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "baseline": "ga-plan-reserve-qwen"
+}
