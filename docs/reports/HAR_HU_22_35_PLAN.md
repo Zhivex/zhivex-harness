@@ -123,7 +123,9 @@ Source: https://app.notion.com/p/3e1777b104f6810f8471e3c472071aa5?pvs=204
 - [ ] La integración no incluye archivos ajenos ni secretos y usa credenciales existentes sin exponerlas al modelo.
 - [ ] Conflictos, remoto desactualizado y fallo de red conservan estado recuperable; reintentar no duplica commits o PRs y no habilita force-push implícito.
 
-Evidence: pending.
+Host commit manager in progress: HAR_HU_32_COMMIT_MANAGER_2026-09-20.md.
+Five real-Git tests (28 assertions) and desktop types pass. UI, staging, push/PR
+flows and packaged verification remain; all criteria stay open.
 
 ## HAR-HU-33 — Guardar credenciales en el almacén seguro del sistema
 
