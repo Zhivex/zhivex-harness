@@ -197,6 +197,12 @@ test("applied decision and journal evidence are recovered by a newly opened harn
   const hello=adapter.negotiate([1]);if(!hello.ok)throw new Error();
   const loaded=data(await adapter.dispatch({protocolVersion:1,requestId:"history-restart",connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId:p.session.sessionId,runId:p.run.runId}}),"run");
   expect(loaded.run.decisions).toEqual(done.run.decisions);expect(loaded.run.decisions?.[0]?.status).toBe("applied");
+  expect(loaded.run.decisions?.[0]?.finalDiff).toBeUndefined();
+  await writeFile(f.workspace+"/a.txt","later unrelated edit\n");
+  const diff=data(await adapter.dispatch({protocolVersion:1,requestId:"diff-restart",connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId:p.session.sessionId,runId:p.run.runId,includeDiff:true}}),"run");
+  expect(diff.run.decisions?.[0]?.finalDiff).toMatchObject({status:"complete",files:[{path:"a.txt",before:"before\n",after:"after\n"}]});
+  expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("later unrelated edit\n");
+  await writeFile(f.workspace+"/a.txt","after\n");
   expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("after\n");
  }finally{adapter?.close();await second?.close();await f.close();}
 });

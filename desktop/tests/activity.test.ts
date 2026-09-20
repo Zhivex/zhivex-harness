@@ -19,3 +19,10 @@ test("renderer boundary drops rich CLI and approval payloads and redacts known c
  const result=redact.response(raw);expect(JSON.stringify(result)).not.toContain(secret);expect(JSON.stringify(result)).not.toContain("cliResult");expect(JSON.stringify(result)).not.toContain("signature");expect(JSON.stringify(result)).not.toContain("arguments");
  expect(JSON.stringify(raw)).toContain(secret);expect(redact.text("sk-secret-token <script>bad()</script>")).toBe("[REDACTED] <script>bad()</script>");
 });
+test("saved final diffs redact secrets and disclose that displayed content was redacted",()=>{
+ const secret="private-final-diff-secret";
+ const raw={protocolVersion:1,requestId:"diff",ok:true,data:{kind:"run",session:{},run:{output:"",approvals:[],decisions:[{finalDiff:{status:"complete",files:[{path:"a.txt",before:secret,after:"safe"}]}}]}}} as unknown as HarnessClientResponse;
+ const result=desktopRedactor([secret]).response(raw);expect(JSON.stringify(result)).not.toContain(secret);
+ expect(result).toMatchObject({data:{run:{decisions:[{finalDiff:{redacted:true,files:[{before:"[REDACTED]",after:"safe"}]}}]}}});
+ expect(JSON.stringify(raw)).toContain(secret);
+});

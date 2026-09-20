@@ -20,6 +20,7 @@ for(const phase of activeClose?["active-close","cancelled-history"]:["prepare","
   const evidence=JSON.parse(await readFile(path.join(report,`${phase}-report.json`),"utf8"));assert.equal(evidence.phase,phase);assert.equal(evidence.packaged,packaged);assert(evidence.windowCloseRequested);assert.equal(evidence.appPid,child.pid);
   if(["approve","history","cancelled-history"].includes(phase))assert(evidence.cliSessionMatched);if(phase==="history")assert(evidence.cliRenameVisible);
   if(phase==="prepare")assert(evidence.rendererCrashRecovered);
+  if(phase==="history")assert(evidence.persistedFinalDiff&&evidence.laterChangesExcluded);
   if(phase==="active-close")assert(evidence.stayPreservedActiveRun&&evidence.quitCancellationRequested);
   if(phase==="cancelled-history")assert(evidence.cancelledRunRecovered&&evidence.noReplay);
   for(const pid of [evidence.appPid,evidence.runtimePid])assert.throws(()=>process.kill(pid,0),(error:unknown)=>(error as NodeJS.ErrnoException).code==="ESRCH",`${phase} left process ${pid} alive`);

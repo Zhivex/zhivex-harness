@@ -111,11 +111,16 @@ export async function verifyDesktopRestartSmoke(window:BrowserWindow,runtimes:Ma
    const renamed=await cli(["sessions","rename",sessionId,title]);assert.equal(renamed.session.title,title);
    await click(`[data-session="${sessionId}"]`);await wait(`document.querySelector('[data-session="${sessionId}"]').innerText.includes(${JSON.stringify(title)})`);
    const listed=await cli(["sessions","list"]);assert.equal(listed.sessions.length,1);assert.deepEqual(listed.sessions[0],renamed.session);
+   // Later repository edits must not become the final diff of the earlier run.
+   await writeFile(file,"unrelated later edit\n");
+   await click(`[data-run="${runId}"] [data-action="decision-history"]`);await wait('document.querySelector(".final-diff") !== null');
+   await click('.final-diff summary');assert.equal(await js('document.querySelector(".final-diff .removed").textContent'),before);assert.equal(await js('document.querySelector(".final-diff .added").textContent'),after);
+   assert.equal(await js('document.querySelectorAll(".final-diff img").length'),0);assert.equal(await readFile(file,"utf8"),"unrelated later edit\n");
    await writeFile(path.join(directory,"restart-history.png"),(await window.webContents.capturePage()).toPNG());
   }
  }
  await writeFile(checkpointFile,JSON.stringify(checkpoint,null,2));
- await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({schemaVersion:1,phase,packaged:app.isPackaged,appPid:process.pid,runtimePid:runtime.context.runtimePid,sessionId:checkpoint.sessionId,runId:checkpoint.runId,rendererCrashRecovered:phase==="prepare",rendererExitReason,cliSessionMatched:phase!=="prepare",cliRenameVisible:phase==="history",windowCloseRequested:true,fixture:true},null,2));
+ await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({schemaVersion:1,phase,packaged:app.isPackaged,appPid:process.pid,runtimePid:runtime.context.runtimePid,sessionId:checkpoint.sessionId,runId:checkpoint.runId,rendererCrashRecovered:phase==="prepare",rendererExitReason,cliSessionMatched:phase!=="prepare",cliRenameVisible:phase==="history",persistedFinalDiff:phase==="history",laterChangesExcluded:phase==="history",windowCloseRequested:true,fixture:true},null,2));
  // Exercise the user's window-close path, including main's service-drain handler.
  window.close();
 }

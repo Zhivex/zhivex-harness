@@ -4,7 +4,6 @@ This is the local alpha assessment for HU30. No beta release is certified.
 
 | Priority | Open issue or verification gap | Evidence and required exit |
 | --- | --- | --- |
-| P1 | Applied decisions retain effect digests, but do not offer a durable complete final diff. | DecisionHistory renders path/digests; HU30 acceptance 1 stays open until the exact applied change can be inspected after restart without attributing unrelated repository changes to the run. |
 | P1 | Forced interruption during a file effect lacks a packaged reconciliation demonstration. | Active-run recovery currently kills an offline waiting model. Inject a failure at the effect/journal boundary and prove that recovery distinguishes applied, failed and unknown effects without replaying the tool. |
 | P2 | An active run recovered after a worker crash may require waiting for lease expiry. | Packaged recovery proves immediate BUSY and explicit successful cancellation after 31 seconds. The UI explains the wait. Beta documentation must retain the distinction between cancellation and rollback; independently leased descendants must not be falsely finalized. |
 | P2 | Signing, notarization and external distribution remain unavailable. | User authorized unsigned packaging first. HU34 remains open until Developer ID, notarization, artifact verification and clean-machine installation evidence are available. |
@@ -50,3 +49,10 @@ request parsing; a body sent before pausing cannot admit a mutation afterward. T
 window remains available if work cannot be confirmed stopped. Evidence and limits:
 HAR_HU_30_ACTIVE_CLOSE_2026-09-20.md. Native dialog appearance is not automated;
 host-only fixture responses drive the production decision path.
+
+Resolved alpha issue: final diff is now captured before decision execution and
+projected on demand only when the applied receipt matches its proposal, paths and
+content digests. Packaged restart verifies the original content after a later edit;
+the OCI fixture verifies the final diff alongside the exact patch/check receipt.
+Older or bounded-out archives show an explicit unavailable state. Evidence:
+HAR_HU_30_FINAL_DIFF_2026-09-20.md. Effect-boundary crash reconciliation remains P1.

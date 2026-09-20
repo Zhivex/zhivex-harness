@@ -2,6 +2,7 @@ import {createEditProposal,editChangesSchema} from "./edit-contracts.js";
 import {createHash} from "node:crypto";
 import {z} from "zod";
 import type {AgentRunState,AgentToolCallJournalEntry} from "@zhivex-ai/core";
+import type {AppliedDiff} from "./approval-diff.js";
 export const APPROVAL_HISTORY_KEY="clientApprovalDecisionsV1";
 const canonical=(value:unknown):string=>Array.isArray(value)?`[${value.map(canonical).join(",")}]`:value&&typeof value==="object"?`{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`:JSON.stringify(value)??"null";
 export const approvalInputDigest=(value:unknown)=>createHash("sha256").update(canonical(value)).digest("hex");
@@ -9,7 +10,8 @@ const rowSchema=z.object({approvalId:z.string().max(256),digest:z.string().regex
 export type ApprovalDecisionRecord=z.infer<typeof rowSchema>;
 export interface ApprovalDecisionView extends ApprovalDecisionRecord {
  status:"rejected"|"approved"|"applied"|"succeeded"|"failed"|"unknown";
- evidence?:{journalRevision:number;completedAt?:number;exitCode?:number;timedOut?:boolean;proposalId?:string;verifiedPatchId?:string;command?:string[];effects?:Array<{path:string;beforeDigest:string|null;afterDigest:string|null}>};
+ finalDiff?:AppliedDiff;
+ evidence?:{journalRevision:number;completedAt?:number;exitCode?:number;timedOut?:boolean;proposalId?:string;reviewedProposalId?:string;verifiedPatchId?:string;command?:string[];effects?:Array<{path:string;beforeDigest:string|null;afterDigest:string|null}>};
 }
 export function readApprovalDecisions(state:AgentRunState):ApprovalDecisionRecord[]{
  const value=state.metadata?.[APPROVAL_HISTORY_KEY];if(value===undefined)return [];
@@ -42,6 +44,7 @@ export function approvalDecisionViews(state:AgentRunState,journal:readonly Agent
     if(row.name==="verify_and_apply_reviewed_edits"){
      const changes=editChangesSchema.safeParse(args.changes);
      if(!changes.success||proof.data.kind!=="verified-reviewed-edit-import"||createEditProposal({changes:changes.data}).proposalId!==proof.data.proposalId)return {...row,status:"unknown",evidence};
+     evidence.reviewedProposalId=proof.data.proposalId;
     }else if(proof.data.kind!=="verified-environment-patch-import"||args.patchId!==proof.data.patchId)return {...row,status:"unknown",evidence};
     evidence.verifiedPatchId=proof.data.patchId;evidence.command=proof.data.verification.command;evidence.exitCode=0;evidence.timedOut=false;
    }else if(args.patchId!==imported.data.patchId)return {...row,status:"unknown",evidence};

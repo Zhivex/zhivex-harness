@@ -10,6 +10,7 @@ export function desktopRedactor(secrets:readonly string[]){
   if(safe.ok&&safe.data.kind==="run"){
    // Rich CLI documents and engine output never enter the renderer. It reads redacted activity.
    safe.data.run.output="";delete safe.data.run.cliResult;
+   for(const decision of safe.data.run.decisions??[]){const diff=decision.finalDiff;if(diff?.status==="complete"&&JSON.stringify(redact(diff.files))!==JSON.stringify(diff.files))diff.redacted=true;}
    for(const approval of safe.data.run.approvals){const action=approval.action as {name?:unknown};approval.action={name:typeof action?.name==="string"?text(action.name):"tool"};}
   }
   return redact(safe) as HarnessClientResponse;

@@ -103,6 +103,15 @@ by a host-only fixture; no renderer IPC is added and no provider API is contacte
 Append `--active-close` to either restart smoke to verify staying with an active run,
 explicit cancellation on quit, worker exit and recovery of that same cancelled run.
 
+Applied decisions now offer “Ver cambio aplicado” in their history. Complete
+before/after previews are stored with decision admission before execution, bounded
+to 2 MiB across a run (individual review projections retain the 256 KiB limit).
+The service returns them only on `run.get` with `includeDiff: true`, after matching
+the decision, proposal, exact paths and content digests to completed journal effects.
+This historical view remains unchanged by later repository edits. Older decisions,
+incomplete previews or exhausted archive capacity show “Diff final no disponible”.
+The renderer displays literal text and identifies content altered by redaction.
+
 Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
 that exits 7. It verifies failed-check display, duplicate-submit protection, a lost
 response after accepted work, temporary transport unavailability, renderer reload
