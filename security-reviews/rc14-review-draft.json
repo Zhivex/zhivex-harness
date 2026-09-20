@@ -900,7 +900,7 @@
           "approval-replay-or-substitution"
         ],
         "mitigations": [
-          "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+          "Separate import approval binds patch identity; host digests, active lease/cancellation and recoverable quarantine are checked at import (src/harness.ts; src/execution-environment.ts).",
           "Source: src/harness.ts",
           "Source: src/execution-environment.ts",
           "Source: src/workspace.ts",
@@ -913,7 +913,7 @@
           "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
           "tests/workspace-concurrency.test.ts"
         ],
-        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "residualRisk": "This import tool does not run a verifier. The operator must assess correctness separately. Writers outside the Harness lock protocol and a compromised host account remain trusted.",
         "status": "pending"
       },
       {
@@ -923,7 +923,7 @@
           "approval-replay-or-substitution"
         ],
         "mitigations": [
-          "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+          "One interrupt approval binds an inspected patch and exact verifier argv. Import requires exit code zero, unchanged patch identity before/after verification and an active lease (src/harness.ts).",
           "Source: src/harness.ts",
           "Source: src/execution-environment.ts",
           "Source: src/workspace.ts",
@@ -947,7 +947,7 @@
           "approval-replay-or-substitution"
         ],
         "mitigations": [
-          "Separate import approval, before/after patch binding, verifier exit status, lease/cancellation checks and quarantine deletes.",
+          "One interrupt approval binds full digest-bound edits and exact verifier argv. A clean OCI snapshot, matching approved paths, exit code zero, unchanged reviewed patch and active lease are required before import (src/harness.ts).",
           "Source: src/harness.ts",
           "Source: src/execution-environment.ts",
           "Source: src/workspace.ts",
