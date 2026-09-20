@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "kind": "complete-local-ga-preparation-check",
+  "implementationCommit": "a6d581a04eea01f7c430fe9ff1eea61caa86ecdb",
+  "command": "bun run check",
+  "exitCode": 0,
+  "logSha256": "602f0fc9c810234ecef53a5f7a8e0f889b482c26750d326b4c40fd9ba99c1a6e",
+  "tests": {
+    "passed": 584,
+    "failed": 0
+  },
+  "checks": [
+    "documentation",
+    "preparation-contract",
+    "runtime-types",
+    "tooling-types",
+    "unit-and-integration-tests",
+    "historical-migrations",
+    "deterministic-evaluation",
+    "workspace-benchmark",
+    "safe-fix-image-contract",
+    "safe-fix-benchmark",
+    "mcp-interoperability",
+    "official-mcp-sdk",
+    "oci-execution",
+    "installed-package"
+  ],
+  "dependencyAudit": {
+    "checkedPackages": 35,
+    "vulnerabilities": 0,
+    "untrustedDependenciesWithScripts": 0
+  },
+  "releaseReadiness": {
+    "passed": false,
+    "observedFailures": [
+      "RC14 changelog lacks an ISO-dated release heading",
+      "RC14 is marked Unreleased",
+      "Evidence additions make worktree dirty at check time",
+      "Checks are running on a feature branch rather than main"
+    ]
+  },
+  "limits": [
+    "Local preparation is not protected release certification.",
+    "Final representative, publication/provenance and artifact-bound security evidence remain pending.",
+    "SWE-bench fresh holdout remains 0/5 and known development rerun remains failed."
+  ]
+}

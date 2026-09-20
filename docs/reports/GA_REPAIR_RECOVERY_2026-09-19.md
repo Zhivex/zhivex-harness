@@ -690,3 +690,11 @@ The predeclared single rerun selected django__django-10914, the first previous w
 This supports the narrow observation that the run could record a plan and continue beyond the prior work-budget stop, not that the change improves correctness. Subsequent calls requested environment shells and patch inspection; no deliverable was established. A local postprocessing helper initially rejected the empty patch, so grading was resumed from the stored terminal result without another model call. The failed attempt remains the sole attempt.
 
 The fresh 0/5 holdout remains unchanged. Further investigation should examine whether the remaining context and tool sequence allow the planned repair and verification to finish inside the fixed total budget; another indiscriminate retry is not justified. Evidence: evidence/ga-work-boundary-live-plan-2026-09-19.json and evidence/ga-work-boundary-live-2026-09-19.json.
+
+### Complete local release preparation check
+
+At implementation a6d581a, bun run check completed with exit 0: 584 tests, both typechecks, documentation, preparation contract, historical migrations, deterministic evaluation, workspace/safe-fix benchmark checks, both MCP interoperability smokes, native OCI smoke and installed-package smoke. bun audit found no vulnerabilities among 35 packages; bun pm untrusted reported no untrusted dependencies with scripts. This is local evidence, not a protected release result.
+
+The release-readiness script remains red: RC14 is intentionally Unreleased without a dated release heading, the check ran on the feature branch, and the evidence additions were uncommitted when checked. Do not date a release or mark these gates passing before the corresponding release action. The formal GA ledger additionally requires final representative evaluation, immutable publication/provenance and named artifact-bound human security review. Context analysis of the latest failed development run is retained separately; it does not justify changing acceptance criteria or an unmeasured runtime tuning.
+
+Evidence: evidence/ga-complete-local-check-2026-09-19.json and evidence/ga-work-boundary-context-analysis-2026-09-19.json.
