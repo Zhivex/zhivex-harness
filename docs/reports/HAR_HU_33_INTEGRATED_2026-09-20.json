@@ -1,0 +1,25 @@
+{
+  "packagedRuntime": true,
+  "nativeTemporaryKeychain": true,
+  "hostAdapter": true,
+  "privateBootstrapVerified": true,
+  "noSecretArgvOrEnvironment": true,
+  "rendererRunCompleted": true,
+  "restartedWithDifferentKey": true,
+  "conversationRecovered": true,
+  "rendererAndStorageClean": true,
+  "stateFilesClean": true,
+  "noProviderNetwork": true,
+  "artifacts": [
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/app.asar",
+      "sha256": "96fc9a2d741f40e253c92c9fa6946f0e214de54538750eaf753f2ddaeb5d3e4d"
+    },
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/credential-store",
+      "sha256": "089d7ac304f644f8f823a2f3061d6cda4aa092e8940d97bf4c83babc82b30c7e"
+    }
+  ],
+  "signed": false,
+  "notarized": false
+}

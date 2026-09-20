@@ -75,7 +75,7 @@ func prompt(fixture: (value: String, cancel: Bool)? = nil) throws -> Data {
 }
 func emit(_ status: String) { print("{\"status\":\"\(status)\"}") }
 // This test creates its own temporary keychain; it never opens or changes login.keychain.
-func selfTest(nativeUI: Bool = false) throws {
+func selfTest(nativeUI: Bool = false, deliverRead: Bool = false) throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent("har-keychain-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -101,13 +101,17 @@ func selfTest(nativeUI: Bool = false) throws {
     do { _ = try read(keychain); throw VaultError.invalid } catch VaultError.status(let status) { guard status == errSecInteractionNotAllowed else { throw VaultError.status(status) } }
     try password.withCString { bytes in try check(SecKeychainUnlock(keychain, UInt32(password.utf8.count), bytes, true)) }
     guard try read(keychain) == second else { throw VaultError.invalid }
+    let delivered = try read(keychain)
     try remove(keychain); try remove(keychain); guard try !present(keychain) else { throw VaultError.invalid }
-    emit(nativeUI ? "native-ui-test-passed" : "self-test-passed")
+    if deliverRead {
+        guard let delivered = delivered else { throw VaultError.invalid }
+        FileHandle.standardOutput.write(try JSONSerialization.data(withJSONObject: ["status": "present", "secret": String(data: delivered, encoding: .utf8)!]))
+    } else { emit(nativeUI ? "native-ui-test-passed" : "self-test-passed") }
 }
 do {
     guard CommandLine.arguments.count == 2 else { throw VaultError.invalid }
     let command = CommandLine.arguments[1]
-    if command == "self-test" || command == "self-test-ui" { try selfTest(nativeUI: command == "self-test-ui") } else {
+    if ["self-test", "self-test-ui", "self-test-read"].contains(command) { try selfTest(nativeUI: command == "self-test-ui", deliverRead: command == "self-test-read") } else {
         guard ["status", "configure", "read", "delete"].contains(command) else { throw VaultError.invalid }
         var result: SecKeychain?; try check(SecKeychainCopyDefault(&result))
         guard let keychain = result else { throw VaultError.invalid }

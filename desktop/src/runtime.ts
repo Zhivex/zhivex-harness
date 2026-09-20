@@ -60,7 +60,7 @@ async function boot() {
     return complete(entry,options);
    };
   }
-  parent.postMessage({kind:"ready",credentialsPath:service.credentialsPath,pid:process.pid,node:process.versions.node,stateDirectory:harness.config.stateDirectory});
+  parent.postMessage({kind:"ready",...(config.fixture&&bootstrap.secret?{credentialProof:{digest:createHash("sha256").update(bootstrap.secret).digest("hex"),argvClean:!process.argv.some(value=>value.includes(bootstrap.secret!)),envClean:!Object.values(process.env).some(value=>value?.includes(bootstrap.secret!))}}:{}),credentialsPath:service.credentialsPath,pid:process.pid,node:process.versions.node,stateDirectory:harness.config.stateDirectory});
   parent.on("message",event=>{
    if(!event.data||typeof event.data!=="object"||event.data.kind!=="close-control")return;
    const {requestId,operation}=event.data as {requestId:unknown;operation:unknown};

@@ -138,22 +138,17 @@ HAR_HU_32_PUSH_UI_2026-09-20.md and HAR_HU_32_PR_MANAGER_2026-09-20.md.
 
 Source: https://app.notion.com/p/3e1777b104f681459966fbb71f9f5c78?pvs=204
 
-- [ ] La aplicación almacena y elimina claves mediante el almacén seguro de macOS; no aparecen en SQLite, logs, renderer ni exportaciones.
-- [ ] La configuración muestra presencia y prueba acotada de conexión sin revelar el secreto.
-- [ ] Bloqueo del almacén, rotación y credencial inválida ofrecen recuperación; otros sistemas quedan sin soporte hasta validar su backend.
+- [x] La aplicación almacena y elimina claves mediante el almacén seguro de macOS; no aparecen en SQLite, logs, renderer ni exportaciones.
+- [x] La configuración muestra presencia y prueba acotada de conexión sin revelar el secreto.
+- [x] Bloqueo del almacén, rotación y credencial inválida ofrecen recuperación; otros sistemas quedan sin soporte hasta validar su backend.
 
-Host increment: HAR_HU_33_KEYCHAIN_HOST_2026-09-20.md. Native temporary
-Keychain self-test and four host tests (52 assertions) pass. UI/runtime/package
-integration and persistence-leak evidence remain; all criteria stay open.
-Settings/private-bootstrap increment: HAR_HU_33_CREDENTIAL_INTEGRATION_2026-09-20.md;
-eight host/coordinator tests (68 assertions) pass. Full secret persistence and
-native configuration journeys remain unverified.
-Persistence boundary: HAR_HU_33_PERSISTENCE_BOUNDARY_2026-09-20.md; separate model
-credential environment and SQLite rejection protect known literal/JSON-escaped
-keys. Four focused tests prove rejected echoes and a later successful safe run.
-Native dialog/recovery/export coverage: HAR_HU_33_NATIVE_RECOVERY_2026-09-20.md.
-708 tests pass; packaged dialog and renderer recovery checks pass independently.
-One combined native-Keychain/host/runtime fixture journey remains.
+Implemented and verified locally; pending publication. Closure and criterion audit:
+HAR_HU_33_CLOSURE_2026-09-20.md. Integrated packaged native-Keychain/host/runtime
+journey passed with private-bootstrap proof, clean renderer/state scans and
+conversation recovery after restarting with another key. Native dialog, locked/
+invalid/rotation recovery, Git redaction and inspection/backup checks are covered.
+OpenAI desktop/macOS only; live authentication and signed update identity are not
+certified. No push. Earlier increment reports retain their historical status.
 
 ## HAR-HU-34 — Distribuir un instalador macOS firmado y verificable
 

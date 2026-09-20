@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {openCredentialStore} from "./credential-store.js";
 import { utilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
@@ -9,8 +10,8 @@ import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
-export async function launchProjectRuntime(project:DesktopProject,options:{credentialHelper?:string;buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;stateDirectory?:string;recover:boolean}){
- const stored=options.fixture?undefined:await openCredentialStore(options.credentialHelper??path.join(options.buildDirectory,"credential-store")).read();
+export async function launchProjectRuntime(project:DesktopProject,options:{credentialHelper?:string;fixtureCredentialHelper?:string;buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;stateDirectory?:string;recover:boolean}){
+ const stored=options.fixture&&!options.fixtureCredentialHelper?undefined:await openCredentialStore((options.fixture?options.fixtureCredentialHelper:options.credentialHelper)??path.join(options.buildDirectory,"credential-store")).read();
  if(stored&&!['present','missing'].includes(stored.status))throw new Error("CREDENTIAL_STORE_UNAVAILABLE");
  const secret=stored?.secret;
  const workerEnv:NodeJS.ProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>options.fixture||!/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)));
@@ -18,7 +19,7 @@ export async function launchProjectRuntime(project:DesktopProject,options:{crede
  if(options.fixture)worker.stderr?.on("data",chunk=>process.stderr.write(chunk));
  let exited=false;const stopped=new Promise<void>(resolve=>worker.once("exit",()=>{exited=true;resolve();}));
  try{
-  const ready=await new Promise<{credentialsPath:string;pid:number;node:string;stateDirectory:string}>((resolve,reject)=>{
+  const ready=await new Promise<{credentialProof?:{digest:string;argvClean:boolean;envClean:boolean};credentialsPath:string;pid:number;node:string;stateDirectory:string}>((resolve,reject)=>{
    const timer=setTimeout(()=>reject(new Error("RUNTIME_START_TIMEOUT")),15000);
    worker.once("message",message=>{clearTimeout(timer);if(message?.kind==="ready")resolve(message);else reject(new Error("RUNTIME_START_FAILED"));});
    worker.once("exit",()=>{clearTimeout(timer);reject(new Error("RUNTIME_EXITED"));});
@@ -30,7 +31,8 @@ export async function launchProjectRuntime(project:DesktopProject,options:{crede
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
   const tickets=new ReviewTickets();
   let fixtureOffline=false,fixtureDropResponse=false;
-  return {async crashFixture(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");if(!exited)worker.kill();await stopped;},async setFixtureApprovalClock(offset:number){
+  return {
+ fixtureCredentialProof(){if(!options.fixture||!secret)throw new Error("FIXTURE_DISABLED");return {verified:ready.credentialProof?.digest===createHash("sha256").update(secret).digest("hex"),argvClean:ready.credentialProof?.argvClean===true,envClean:ready.credentialProof?.envClean===true};},async crashFixture(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");if(!exited)worker.kill();await stopped;},async setFixtureApprovalClock(offset:number){
     if(!options.fixture)throw new Error("FIXTURE_DISABLED");
     const requestId=randomUUID();await new Promise<void>((resolve,reject)=>{
       const listener=(message:{kind?:string;requestId?:string})=>{if(message.kind==="fixture-clock-ack"&&message.requestId===requestId){clearTimeout(timer);worker.off("message",listener);resolve();}};

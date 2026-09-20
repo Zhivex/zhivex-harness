@@ -312,7 +312,7 @@ bare remote. It loses both the API response and the renderer response, then chec
 one POST, one PR, recovery after reload and app restart, and verified link routing.
 It does not create a real GitHub PR or certify live authentication.
 
-### macOS provider credentials (HU33, integration in progress)
+### macOS provider credentials (HU33)
 
 “Credenciales de OpenAI” exposes presence, a bounded connection check, native
 configuration and deletion. The key is entered only in an AppKit secure field;
@@ -325,9 +325,8 @@ The helper resides outside ASAR in packaged Resources and uses macOS Keychain.
 The host sends the saved key to the runtime through private utility-process IPC,
 not argv or process environment. The provider receives an explicit credential
 environment object; a project environment file is not the desktop credential store.
-Known values are included in client activity/renderer redaction. A complete audit
-of core persistence, file-derived secret echoes and exports remains outstanding;
-HU33 is not yet closed. Non-macOS backends are unsupported. Fixture mode does not
+Known values are included in client activity/renderer redaction. Known-key SQLite rejection, provider-echo and export tests protect persistence;
+see `docs/reports/HAR_HU_33_CLOSURE_2026-09-20.md` for the acceptance evidence. Non-macOS backends are unsupported. Fixture mode does not
 access personal Keychain data or invoke credential configuration.
 
 Layout regression: after building, run `bun run desktop/scripts/smoke-layout.ts`
@@ -340,4 +339,8 @@ bound values reach disk, including JSON-escaped strings and blobs. The runtime
 constructs the provider with a separate key-only environment; MCP receives the
 empty general environment. Rejection fails the operation without substituting
 altered authoritative state. This does not scrub historical data or claim arbitrary
-encoding detection; native credential and export journeys remain under verification.
+encoding detection; native credential and export journeys are covered by local fixtures. Live account
+authentication is not certified.
+
+Integrated Keychain/host/packaged-runtime check: `bun run desktop/scripts/smoke-native-credentials.ts`.
+It uses temporary native keychains and a mock model, never personal credentials.
