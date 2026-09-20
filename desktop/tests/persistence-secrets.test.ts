@@ -23,6 +23,9 @@ test("a provider echo cannot enter durable run state and a later safe run still 
  try{harness=await createHarness({workspace:dir,stateDirectory,storeBackend:"sqlite",projectContext:false,subagentProfiles:[],modelInstance:createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:secret},{type:"finish",finishReason:"stop"}],[{type:"text-delta",textDelta:"safe answer"},{type:"finish",finishReason:"stop"}]]})});
   let rejected=false;try{await runHarness(harness,{prompt:"Reply with a diagnostic"});}catch(error){rejected=true;expect(String(error)).not.toContain(secret);}expect(rejected).toBe(true);
   const safe=await runHarness(harness,{prompt:"Reply safely"});expect(safe.status).toBe("completed");
+  const {inspectHarnessRun}=await import("../../src/operations.js");const exported=await inspectHarnessRun(harness.store,harness.config,safe.state.runId);expect(JSON.stringify(exported)).not.toContain(secret);
+  const {cancelHarnessRun}=await import("../../src/operations.js");const page=await harness.store.list!({},harness.config.scope);for(const run of page.items)if(!["completed","failed","cancelled","timed_out"].includes(run.status))await cancelHarnessRun(harness.store,harness.config,run.runId,{final:true});
+  const {exportHarnessStateBackup}=await import("../../src/state-backup.js");const backup=path.join(dir,"backup.json");await exportHarnessStateBackup(harness.config,backup);expect((await readFile(backup)).includes(Buffer.from(secret))).toBe(false);
   const scan=async(directory:string):Promise<void>=>{for(const entry of await readdir(directory,{withFileTypes:true})){const filename=path.join(directory,entry.name);if(entry.isDirectory())await scan(filename);else if(entry.isFile())expect((await readFile(filename)).includes(Buffer.from(secret))).toBe(false);}};await scan(stateDirectory);
  }finally{await harness?.close();await rm(dir,{recursive:true,force:true});}
 });

@@ -1,9 +1,11 @@
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { HarnessClientResponse } from "../../src/client-contract.js";
-export const hostSensitiveValues=(env:NodeJS.ProcessEnv)=>Object.entries(env).filter(([key,value])=>/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)&&Boolean(value)).map(([,value])=>value!);
+const knownSensitiveValues:string[]=[];
+export const rememberSensitiveValue=(value:string)=>{if(value&&!knownSensitiveValues.includes(value))knownSensitiveValues.push(value);};
+export const hostSensitiveValues=(env:NodeJS.ProcessEnv)=>{for(const [key,value] of Object.entries(env))if(/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)&&value)rememberSensitiveValue(value);return knownSensitiveValues;};
 export function desktopRedactor(secrets:readonly string[]){
  const policy=createRedactionPolicy({includeEmails:true});
- const text=(value:string)=>{let output=value;for(const secret of secrets)if(secret)output=output.split(secret).join("[REDACTED]");return policy.redactText(output).replace(/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/gi,"[REDACTED]");};
+ const text=(value:string)=>{let output=value;for (const secret of [...secrets,...knownSensitiveValues])if(secret)output=output.split(secret).join("[REDACTED]");return policy.redactText(output).replace(/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/gi,"[REDACTED]");};
  const redact=(value:unknown):unknown=>typeof value==="string"?text(value):Array.isArray(value)?value.map(redact):value&&typeof value==="object"?Object.fromEntries(Object.entries(value).map(([key,item])=>[key,redact(item)])):value;
  return {text,redact,response(response:HarnessClientResponse):HarnessClientResponse{
   const safe=structuredClone(response);

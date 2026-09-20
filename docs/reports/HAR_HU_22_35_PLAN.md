@@ -151,6 +151,9 @@ native configuration journeys remain unverified.
 Persistence boundary: HAR_HU_33_PERSISTENCE_BOUNDARY_2026-09-20.md; separate model
 credential environment and SQLite rejection protect known literal/JSON-escaped
 keys. Four focused tests prove rejected echoes and a later successful safe run.
+Native dialog/recovery/export coverage: HAR_HU_33_NATIVE_RECOVERY_2026-09-20.md.
+708 tests pass; packaged dialog and renderer recovery checks pass independently.
+One combined native-Keychain/host/runtime fixture journey remains.
 
 ## HAR-HU-34 — Distribuir un instalador macOS firmado y verificable
 

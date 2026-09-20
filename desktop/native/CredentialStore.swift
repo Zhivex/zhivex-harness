@@ -56,19 +56,26 @@ func remove(_ keychain: SecKeychain) throws {
     let status = SecItemDelete(query(keychain) as CFDictionary)
     if status != errSecItemNotFound { try check(status) }
 }
-func prompt() throws -> Data {
+func prompt(fixture: (value: String, cancel: Bool)? = nil) throws -> Data {
     let app = NSApplication.shared; app.setActivationPolicy(.accessory); app.activate(ignoringOtherApps: true)
     let alert = NSAlert(); alert.messageText = "Clave de OpenAI"
     alert.informativeText = "Se guardará en el llavero de macOS. Reemplaza la clave anterior."
     alert.addButton(withTitle: "Guardar en el llavero"); alert.addButton(withTitle: "Cancelar")
     let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
     field.placeholderString = "API key"; alert.accessoryView = field; alert.window.initialFirstResponder = field
+    if let fixture = fixture {
+        guard field.cell is NSSecureTextFieldCell else { throw VaultError.invalid }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            field.stringValue = fixture.value
+            alert.buttons[fixture.cancel ? 1 : 0].performClick(nil)
+        }
+    }
     guard alert.runModal() == .alertFirstButtonReturn else { field.stringValue = ""; throw VaultError.cancelled }
     let data = Data(field.stringValue.utf8); field.stringValue = ""; return data
 }
 func emit(_ status: String) { print("{\"status\":\"\(status)\"}") }
 // This test creates its own temporary keychain; it never opens or changes login.keychain.
-func selfTest() throws {
+func selfTest(nativeUI: Bool = false) throws {
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent("har-keychain-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
     defer { try? FileManager.default.removeItem(at: directory) }
@@ -80,18 +87,27 @@ func selfTest() throws {
     let first = Data(UUID().uuidString.utf8), second = Data(UUID().uuidString.utf8)
     guard try !present(keychain) else { throw VaultError.invalid }
     try save(keychain, first); guard try read(keychain) == first else { throw VaultError.invalid }
-    try save(keychain, second); guard try read(keychain) == second else { throw VaultError.invalid }
+    if nativeUI {
+        do { try save(keychain, prompt(fixture: ("cancelled-value", true))); throw VaultError.invalid }
+        catch VaultError.cancelled { }
+        guard try read(keychain) == first else { throw VaultError.invalid }
+        do { try save(keychain, prompt(fixture: ("invalid value", false))); throw VaultError.cancelled }
+        catch VaultError.invalid { }
+        guard try read(keychain) == first else { throw VaultError.invalid }
+        try save(keychain, prompt(fixture: (String(data: second, encoding: .utf8)!, false)))
+    } else { try save(keychain, second) }
+    guard try read(keychain) == second else { throw VaultError.invalid }
     try check(SecKeychainLock(keychain))
     do { _ = try read(keychain); throw VaultError.invalid } catch VaultError.status(let status) { guard status == errSecInteractionNotAllowed else { throw VaultError.status(status) } }
     try password.withCString { bytes in try check(SecKeychainUnlock(keychain, UInt32(password.utf8.count), bytes, true)) }
     guard try read(keychain) == second else { throw VaultError.invalid }
     try remove(keychain); try remove(keychain); guard try !present(keychain) else { throw VaultError.invalid }
-    emit("self-test-passed")
+    emit(nativeUI ? "native-ui-test-passed" : "self-test-passed")
 }
 do {
     guard CommandLine.arguments.count == 2 else { throw VaultError.invalid }
     let command = CommandLine.arguments[1]
-    if command == "self-test" { try selfTest() } else {
+    if command == "self-test" || command == "self-test-ui" { try selfTest(nativeUI: command == "self-test-ui") } else {
         guard ["status", "configure", "read", "delete"].contains(command) else { throw VaultError.invalid }
         var result: SecKeychain?; try check(SecKeychainCopyDefault(&result))
         guard let keychain = result else { throw VaultError.invalid }

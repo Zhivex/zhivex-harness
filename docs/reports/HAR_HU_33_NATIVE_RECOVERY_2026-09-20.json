@@ -1,0 +1,80 @@
+{
+  "packagedRenderer": true,
+  "fixtureBackend": true,
+  "nativeKeychain": false,
+  "missing": true,
+  "cancelPreserves": true,
+  "saveAndRotate": true,
+  "invalidCredentialRecovery": true,
+  "lockedRecovery": true,
+  "delete": true,
+  "noSecretInputOrReadBridge": true,
+  "noRendererStorage": true,
+  "layoutChecks": [
+    {
+      "width": 1120,
+      "open": false,
+      "children": 2,
+      "insideSidebar": true,
+      "sidebarX": 0,
+      "sidebarY": 0,
+      "contentX": 252,
+      "contentY": 0,
+      "contentRight": 1120,
+      "viewport": 1120,
+      "pass": true
+    },
+    {
+      "width": 1120,
+      "open": true,
+      "children": 2,
+      "insideSidebar": true,
+      "sidebarX": 0,
+      "sidebarY": 0,
+      "contentX": 252,
+      "contentY": 0,
+      "contentRight": 1120,
+      "viewport": 1120,
+      "pass": true
+    },
+    {
+      "width": 720,
+      "open": false,
+      "children": 2,
+      "insideSidebar": true,
+      "sidebarX": 0,
+      "sidebarY": 0,
+      "contentX": 190,
+      "contentY": 0,
+      "contentRight": 720,
+      "viewport": 720,
+      "pass": true
+    },
+    {
+      "width": 720,
+      "open": true,
+      "children": 2,
+      "insideSidebar": true,
+      "sidebarX": 0,
+      "sidebarY": 0,
+      "contentX": 190,
+      "contentY": 0,
+      "contentRight": 720,
+      "viewport": 720,
+      "pass": true
+    }
+  ],
+  "nativeDialogSelfTest": "passed_temporary_keychain",
+  "artifacts": [
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/app.asar",
+      "sha256": "ebced3497030cd2b1ab592cdd6f6150305e99ff54de3c9e2e6793f45d4735591"
+    },
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/credential-store",
+      "sha256": "f081bffe928169c20909fc1dfcdac1f9f85c85deadfe645f688babb6367ec262"
+    }
+  ],
+  "signed": false,
+  "notarized": false
+}

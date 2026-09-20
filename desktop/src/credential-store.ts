@@ -1,3 +1,4 @@
+import {rememberSensitiveValue} from "./redaction.js";
 import {spawn} from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -22,12 +23,12 @@ export function openCredentialStore(helper:string,options:{platform?:string;requ
    const timer=setTimeout(()=>{child.kill("SIGKILL");finish({status:"unavailable"});},options.timeoutMs??(action==="configure"?120000:10000));
    child.stdout?.on("data",(chunk:Buffer)=>{bytes+=chunk.length;if(bytes>16384){child.kill("SIGKILL");finish({status:"unavailable"});}else chunks.push(chunk);});
    child.once("error",()=>finish({status:"unavailable"}));
-   child.once("close",code=>{if(done)return;try{if(code!==0)throw new Error();const value=responseSchema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")));if((action!=="read"&&value.secret!==undefined)||(action==="read"&&(value.status==="present")!==(value.secret!==undefined)))throw new Error();finish(value);}catch{finish({status:"unavailable"});}});
+   child.once("close",code=>{if(done)return;try{if(code!==0)throw new Error();const value=responseSchema.parse(JSON.parse(Buffer.concat(chunks).toString("utf8")));if((action!=="read"&&value.secret!==undefined)||(action==="read"&&(value.status==="present")!==(value.secret!==undefined)))throw new Error();if(value.secret)rememberSensitiveValue(value.secret);finish(value);}catch{finish({status:"unavailable"});}});
   });
  };
  return {
   status:()=>serial(async()=>(await invoke("status")).status),
-  configure:()=>serial(async()=>(await invoke("configure")).status),
+  configure:()=>serial(async()=>{const result=await invoke("configure");if(result.status==="saved")await invoke("read");return result.status;}),
   delete:()=>serial(async()=>(await invoke("delete")).status),
   read:()=>serial(()=>invoke("read")),
   probe:():Promise<CredentialProbe>=>serial(async()=>{
