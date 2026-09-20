@@ -9,7 +9,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  const wait=async(expression:string)=>{for(let i=0;i<200;i++){if(await js(expression))return;await new Promise(r=>setTimeout(r,50));}await writeFile(path.join(reportDirectory,"failure-view.txt"),await js("document.body.innerText"));throw new Error(`RENDERER_TIMEOUT: ${expression}`);};
  const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  await wait('document.querySelector("[data-ready=true]") !== null');
- const isolated=await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "chooseProject,command,events,initialProject,openProject,projects,review"');assert(isolated);
+ const isolated=await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "chooseProject,command,events,initialProject,openProject,projects,resolveReview,review"');assert(isolated);
  const emptyStartup=!(await js('window.harness.projects()')).length;
  if(emptyStartup){assert(await js('document.body.innerText.includes("Abrí un repositorio")'));await click('[data-action="open-project"]');await wait('Boolean(document.querySelector("main").dataset.projectKey) && document.querySelector("[data-action=new-session]").disabled === false');}
  const projects=await js('window.harness.projects()');assert.equal(projects.length,1);const firstKey=projects[0].key;
@@ -58,7 +58,8 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  await click('[data-action="review"]');await wait('document.querySelector("[data-review-item]") !== null');
  assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
  const reviewed=await first.review(sessionId,probeId);assert.equal(reviewed.revision,pending.data.run.revision);assert.equal(reviewed.items[0]?.digest,pending.data.run.approvals[0]?.digest);
- const resumed=first.command({method:"approval.resolve",sessionId,runId:probeId,expectedRevision:pending.data.run.revision,idempotencyKey:"fixture-probe-approve",decisions:pending.data.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))});
+ assert(await js(`window.harness.command(${JSON.stringify(firstKey)},{method:"approval.resolve"}).then(()=>false,()=>true)`));
+ const resumed=first.resolveReview(reviewed.ticketId,true);
  first.setFixtureOffline(true);
  await wait('document.body.innerText.includes("Conexión interrumpida")');
  first.setFixtureOffline(false);

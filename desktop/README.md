@@ -88,6 +88,12 @@ labeled as fragments; full-content edits do not invent an unseen preimage. Redac
 invalid or oversized payloads are marked incomplete. The raw approval wrapper and
 host signatures remain private.
 
-This first increment is read-only. Approval/rejection controls, complete patch-bound
-before/after inspection and durable decision/effect history are still required before
-HU29 can close. Existing engine authorization remains authoritative.
+The main process now issues bounded, single-use review receipts. Decisions carry
+only the opaque receipt and an explicit boolean; the host supplies the captured run
+revision and approval digests. Direct approval.resolve from the renderer is rejected.
+Expired receipts fail locally and competing clients remain subject to engine revision
+checks. Lost responses require reconciliation and a new review, never blind replay.
+Approval is currently enabled only for complete run_check reviews; rejection can
+cover incomplete proposals. File and OCI approvals remain disabled until protected
+full before/after previews exist. Durable decision/effect history and packaged UI
+approval/rejection verification are still required before HU29 can close.

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 import { readHarnessLocalCredentials, requestHarnessLocalService } from "../../src/local-service.js";
+import { ReviewTickets } from "./review-tickets.js";
 import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
@@ -21,6 +22,7 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
   const hello=await requestHarnessLocalService(credentials,"hello",{versions:[1]});if(!hello.ok)throw new Error("PROTOCOL_UNSUPPORTED");
   const redact=desktopRedactor([...hostSensitiveValues(process.env),credentials.token]);
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
+  const tickets=new ReviewTickets();
   let fixtureOffline=false,fixtureDropResponse=false;
   return {dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
    async review(sessionId:unknown,runId:unknown){
@@ -28,7 +30,13 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
     const envelope=harnessClientRequestSchema.parse({protocolVersion:1,requestId:`review_${randomUUID()}`,connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId,runId}});
     const response=await requestHarnessLocalService(credentials,"command",envelope);
     if(!response.ok||response.data.kind!=="run")throw new Error("REVIEW_UNAVAILABLE");
-    return projectApprovalReview(response.data.run,redact.text);
+    return tickets.issue(sessionId as string,projectApprovalReview(response.data.run,redact.text));
+   },
+   async resolveReview(ticketId:unknown,approve:unknown){
+    if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
+    const command=tickets.consume(ticketId,approve);
+    const envelope=harnessClientRequestSchema.parse({protocolVersion:1,requestId:`decision_${randomUUID()}`,connectionId:hello.connectionId,command:{...command,projectId:hello.projectId}});
+    return redact.response(await requestHarnessLocalService(credentials,"command",envelope));
    },
    async command(command:unknown){
     if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");

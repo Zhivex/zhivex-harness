@@ -13,7 +13,7 @@ new windows, webviews and permission requests are denied. Repository text is ren
 as text; there is no HTML interpreter, shell bridge or arbitrary filesystem API.
 
 The isolated preload exposes projects(), chooseProject(), openProject(),
-initialProject(), command(), events() and review(). Project paths originate in the native
+initialProject(), command(), events(), review() and resolveReview(). Project paths originate in the native
 picker or a trusted launcher argument; renderer commands use registered project
 keys and cannot supply arbitrary paths. Main checks
 the exact local page URL, WebContents identity and main frame on every request. It

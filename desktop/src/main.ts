@@ -53,11 +53,15 @@ void app.whenReady().then(async()=>{
  });
  ipcMain.handle("harness:command",async(event,payload:unknown)=>{
   validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="command,projectKey")throw new Error("INVALID_COMMAND");
-  const value=payload as {projectKey:unknown;command:unknown};return(await runtime(value.projectKey)).command(value.command);
+  const value=payload as {projectKey:unknown;command:unknown};if(value.command&&typeof value.command==="object"&&"method" in value.command&&value.command.method==="approval.resolve")throw new Error("REVIEW_REQUIRED");return(await runtime(value.projectKey)).command(value.command);
  });
  ipcMain.handle("harness:review",async(event,payload:unknown)=>{
   validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="projectKey,runId,sessionId")throw new Error("INVALID_REVIEW");
   const value=payload as {projectKey:unknown;sessionId:unknown;runId:unknown};return(await runtime(value.projectKey)).review(value.sessionId,value.runId);
+ });
+ ipcMain.handle("harness:resolve-review",async(event,payload:unknown)=>{
+  validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="approve,projectKey,ticketId")throw new Error("INVALID_DECISION");
+  const value=payload as {projectKey:unknown;ticketId:unknown;approve:unknown};return(await runtime(value.projectKey)).resolveReview(value.ticketId,value.approve);
  });
  ipcMain.handle("harness:events",async(event,payload:unknown)=>{
   validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="after,projectKey,sessionId")throw new Error("INVALID_CURSOR");

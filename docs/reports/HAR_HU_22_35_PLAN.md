@@ -162,3 +162,12 @@ real pending run_check approval and verified the review revision/digest. Still o
 positive/negative decision flow, full patch-bound before/after and check evidence,
 and durable distinction between denied, failed and applied operations. No HU29
 acceptance box is closed by this partial increment.
+
+Second HU29 increment: host-held one-use review receipts, strict decision shape,
+captured revision/digests, expiry checks, 128-receipt bound and blocked renderer
+approval.resolve bypass. UI offers scoped approve/reject; positive file/OCI decisions
+remain disabled pending complete previews. Six targeted tests (22 assertions),
+desktop typecheck/build and development Electron smoke passed; smoke resolved the
+real pending check through a receipt and rejected the generic renderer bypass.
+Evidence: /tmp/har-electron-NsAkBU/report. This does not certify the buttons end to
+end, persistent decision history, stale-client scenarios or the installed package.

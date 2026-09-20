@@ -3,7 +3,8 @@ import type { HarnessActivityPage } from "../../src/service-events.js";
 export interface DesktopProject {key:string;workspace:string;name:string;lastOpenedAt:number}
 export interface DesktopContext {project:DesktopProject;projectId:string;runtimePid:number;runtimeNode:string;fixture:boolean}
 export interface DesktopBridge {
- review(projectKey:string,sessionId:string,runId:string):Promise<import("./approval-review.js").ApprovalReview>;
+ resolveReview(projectKey:string,ticketId:string,approve:boolean):Promise<HarnessClientResponse>;
+ review(projectKey:string,sessionId:string,runId:string):Promise<import("./review-tickets.js").TicketedApprovalReview>;
  projects():Promise<DesktopProject[]>;
  chooseProject():Promise<DesktopContext|null>;
  openProject(projectKey:string):Promise<DesktopContext>;
