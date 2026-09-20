@@ -14,7 +14,7 @@ export interface HarnessLocalService {
   /** Stops admission, drains accepted commands, closes adapter and host runtime. */
   close(): Promise<void>;
 }
-export interface HarnessLocalServiceOptions { directory: string; sensitiveValues?: readonly string[]; maxEvents?: number; retentionMs?: number }
+export interface HarnessLocalServiceOptions { directory: string; approvalNow?: () => number; sensitiveValues?: readonly string[]; maxEvents?: number; retentionMs?: number }
 export const harnessLocalCredentialsSchema = z.object({ schemaVersion: z.literal(1), socketPath: z.string().min(1), token: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export type HarnessLocalCredentials = z.infer<typeof harnessLocalCredentialsSchema>;
 
@@ -105,6 +105,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       ...(options.maxEvents===undefined?{}:{maxEvents:options.maxEvents}), ...(options.retentionMs===undefined?{}:{retentionMs:options.retentionMs})
     });
     adapter = await createHarnessClientAdapter(harness, {
+      ...(options.approvalNow?{now:options.approvalNow}:{}),
       onPrompt: (sessionId,runId,prompt) => activity!.prompt(sessionId,runId,prompt),
       onEvent: (sessionId,runId,event) => activity!.append(sessionId,runId,event),
       onCheckpoint: (sessionId,runId,status) => activity!.checkpoint(sessionId,runId,status)

@@ -1,12 +1,12 @@
 import {useEffect,useState} from "react";
 import type {TicketedApprovalReview} from "./review-tickets.js";
 export function ReviewPanel({projectKey,sessionId,runId,revision}:{projectKey:string;sessionId:string;runId:string;revision:number}){
- const [review,setReview]=useState<TicketedApprovalReview>(),[error,setError]=useState(false),[loading,setLoading]=useState(false);
- useEffect(()=>{setReview(undefined);setError(false);},[projectKey,sessionId,runId,revision]);
- async function decide(approve:boolean){if(!review||loading)return;setLoading(true);setError(false);try{const result=await window.harness.resolveReview(projectKey,review.ticketId,approve);setReview(undefined);if(!result.ok)setError(true);}catch{setReview(undefined);setError(true);}finally{setLoading(false);}}
- async function load(){setLoading(true);setError(false);try{setReview(await window.harness.review(projectKey,sessionId,runId));}catch{setError(true);}finally{setLoading(false);}}
+ const [review,setReview]=useState<TicketedApprovalReview>(),[error,setError]=useState(""),[loading,setLoading]=useState(false);
+ useEffect(()=>{setReview(undefined);setError("");},[projectKey,sessionId,runId,revision]);
+ async function decide(approve:boolean){if(!review||loading)return;setLoading(true);setError("");try{const result=await window.harness.resolveReview(projectKey,review.ticketId,approve);setReview(undefined);if(!result.ok)setError(["REVISION_CONFLICT","APPROVAL_MISMATCH"].includes(result.error.code)?"La aprobación venció, cambió o ya fue resuelta. Actualizá la revisión.":"No se pudo confirmar el resultado. Actualizá la conversación antes de reintentar.");}catch{setReview(undefined);setError("No se pudo recuperar la revisión. Actualizá la conversación antes de reintentar.");}finally{setLoading(false);}}
+ async function load(){setLoading(true);setError("");try{setReview(await window.harness.review(projectKey,sessionId,runId));}catch{setError("No se pudo recuperar la revisión. Actualizá la conversación antes de reintentar.");}finally{setLoading(false);}}
  return <section className="review-panel" aria-label="Revisión de solicitud"><button type="button" className="secondary" data-action="review" disabled={loading} onClick={()=>void load()}>{loading?"Cargando revisión…":"Revisar solicitud"}</button>
- {error?<p role="alert">No se pudo recuperar la revisión. Actualizá la conversación antes de reintentar.</p>:null}
+ {error?<p role="alert">{error}</p>:null}
  {review?<><p className="status">Run {review.runId} · revisión {review.revision}</p>{review.items.map(item=><article key={item.approvalId} data-review-item={item.approvalId}>
  <h3>{item.name}</h3><p>{item.consequence}</p><p className="status">Aprobación {item.approvalId} · vence {new Date(item.expiresAt).toLocaleString()}</p>
  {!item.complete?<p role="alert">Revisión incompleta ({item.restriction}). No aprobar desde esta vista.</p>:null}

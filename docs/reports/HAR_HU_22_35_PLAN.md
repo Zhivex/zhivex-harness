@@ -78,11 +78,11 @@ Evidence: docs/reports/HAR_HU_28_2026-09-20.md; 633 tests, installed CLI/SDK smo
 
 Source: https://app.notion.com/p/3e1777b104f681fb9c57eb4e53ca5c9e?pvs=204
 
-- [ ] Un visor presenta archivos, diff, comandos y evidencia de checks ligados al run y parche concretos.
-- [ ] Aprobar y rechazar muestran consecuencias y alcance; el servicio rechaza decisiones caducadas o conflictos con otro cliente.
+- [x] Un visor presenta archivos, diff, comandos y evidencia de checks ligados al run y parche concretos.
+- [x] Aprobar y rechazar muestran consecuencias y alcance; el servicio rechaza decisiones caducadas o conflictos con otro cliente.
 - [x] Los estados pendiente, rechazado, fallido y aplicado son distinguibles; contenido de repositorio no puede accionar controles de aprobación.
 
-Evidence: pending.
+Evidence: HAR_HU_29_CLOSURE_2026-09-20.md; 654 tests pass and both packaged flows pass. Implemented, pending publication.
 
 ## HAR-HU-30 — Completar el flujo alpha y recuperar trabajo tras reinicio
 

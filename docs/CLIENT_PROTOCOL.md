@@ -205,3 +205,8 @@ not certified against a specific patch. All fields remain subject to host redact
 The environment preview method is additive on the Beta environment interface;
 factory return signatures were reviewed and their snapshot updated. Existing
 execution and import methods retain their contracts and mutation-time checks.
+
+The local-service constructor optionally accepts a trusted `approvalNow` clock.
+It is not a client command or IPC capability. Desktop expiry tests advance only
+the service clock to prove server-side rejection while the review receipt remains
+unexpired in the main process.

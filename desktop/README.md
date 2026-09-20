@@ -114,3 +114,18 @@ digests and check exit codes. Pages load explicitly. This does not yet bind a pl
 run_check receipt to the exact bytes of a preceding patch. Verified OCI import
 receipts instead expose the exact patchId, verifier argv and successful exit code.
 The history rejects mismatched run/patch/argv receipts instead of showing verified.
+
+
+HU29 closure demonstrations:
+
+- `bun run --cwd desktop smoke:packaged --empty-start` verifies file review,
+  rejection/application, history after reload, service-side expiry and stale
+  decisions after another client resolves the request.
+- `bun run --cwd desktop smoke:packaged --oci-review` verifies complete OCI
+  reviewed-edit contents, explicit approval, exact host bytes and patch-bound
+  verifier evidence in the UI. The runtime boundary is a fixture, not Docker.
+
+Test clock control is confined to the main/utility process fixture path; the
+renderer bridge cannot change time, environment configuration or runtime adapters.
+The service constructor accepts a trusted approval clock for deterministic tests.
+Normal launches use the system clock. Fixture flags require explicit process args.

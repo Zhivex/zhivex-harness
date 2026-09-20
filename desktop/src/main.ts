@@ -1,3 +1,4 @@
+import {verifyDesktopOciSmoke} from "./smoke-oci-verification.js";
 import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -26,7 +27,7 @@ void app.whenReady().then(async()=>{
   if(project.key!==key)throw new Error("PROJECT_IDENTITY_CHANGED");
   let pending=runtimes.get(key);
   if(pending&&!((await pending).isAlive())){runtimes.delete(key);pending=undefined;}
-  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,recover:process.argv.includes("--recover")});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
+  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,fixtureOci:fixture&&process.argv.includes("--fixture-oci"),recover:process.argv.includes("--recover")});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
   return (await pending).context;
  };
  const runtime=async(key:unknown)=>{if(typeof key!=="string"||!runtimes.has(key))throw new Error("PROJECT_NOT_OPEN");return runtimes.get(key)!;};
@@ -68,6 +69,6 @@ void app.whenReady().then(async()=>{
   const value=payload as {projectKey:unknown;sessionId:unknown;after:unknown};return(await runtime(value.projectKey)).events({sessionId:value.sessionId,after:value.after});
  });
  window.once("ready-to-show",()=>window.show());await window.loadFile(index);
- if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});await verifyDesktopSmoke(window,runtimes,reportDirectory);app.quit();}
+ if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}
 }).catch(async(error)=>{if(fixture)console.error(error);if(reportDirectory)await writeFile(path.join(reportDirectory,"failure.json"),JSON.stringify({code:"DESKTOP_VERIFICATION_FAILED"})).catch(()=>{});process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n");app.exit(1);});
 app.on("window-all-closed",()=>app.quit());

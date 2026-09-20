@@ -57,6 +57,11 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  const pending=await first.command({method:"run.get",sessionId,runId:probeId});assert(pending.ok&&pending.data.kind==="run");assert.equal(pending.data.run.status,"waiting_approval");
  await click('[data-action="review"]');await wait('document.querySelector("[data-review-item]") !== null');
  assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
+ await first.setFixtureApprovalClock(3600000);
+ await click('[data-action="approve-review"]');await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("venció")');
+ const expiredDecision=await first.command({method:"run.get",sessionId,runId:probeId});assert(expiredDecision.ok&&expiredDecision.data.kind==="run");assert.equal(expiredDecision.data.run.status,"waiting_approval");assert.equal(expiredDecision.data.run.decisions?.length,0);
+ await first.setFixtureApprovalClock(0);await click('[data-action="review"]');await wait('document.querySelector("[data-review-item]") !== null');
+ const staleReview=await first.review(sessionId,probeId);
  const reviewed=await first.review(sessionId,probeId);assert.equal(reviewed.revision,pending.data.run.revision);assert.equal(reviewed.items[0]?.digest,pending.data.run.approvals[0]?.digest);
  assert(await js(`window.harness.command(${JSON.stringify(firstKey)},{method:"approval.resolve"}).then(()=>false,()=>true)`));
  const resumed=first.resolveReview(reviewed.ticketId,true);
@@ -67,6 +72,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  if(emptyStartup)await click(`[data-project="${firstKey}"]`);
  await wait('document.querySelector("[data-session]")?.disabled === false');await click(`[data-session="${sessionId}"]`);
  const finished=await resumed;assert(finished.ok&&finished.data.kind==="run");assert.equal(finished.data.run.status,"completed");
+ const staleDecision=await js(`window.harness.resolveReview(${JSON.stringify(firstKey)},${JSON.stringify(staleReview.ticketId)},true)`);assert.equal(staleDecision.ok,false);assert.equal(staleDecision.error.code,"REVISION_CONFLICT");assert.equal(finished.data.run.decisionTotal,1);
  await wait(`document.querySelector('[data-run="${probeId}"] [data-tool="run_check"][data-tool-status="failed"]') !== null && document.body.innerText.includes("parte-39")`);
  assert(await js('document.body.innerText.includes("exit 7") && document.body.innerText.includes("<img src=x onerror=alert(1)>") && !document.querySelector(".timeline img")'));
  const secret=process.env.ZHIVEX_HARNESS_DESKTOP_FIXTURE_SECRET!;
@@ -114,5 +120,5 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  await writeFile(path.join(reportDirectory,"screenshot-decisions.png"),(await window.webContents.capturePage()).toPNG());
  const database=await stat(path.join(first.stateDirectory,"operations.sqlite"));
  await writeFile(path.join(reportDirectory,"screenshot.png"),(await window.webContents.capturePage()).toPNG());
- await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,decisionHistoryReload:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
+ await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,decisionHistoryReload:true,expiredApprovalRejected:true,staleApprovalRejected:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
 }

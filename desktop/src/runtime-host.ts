@@ -8,8 +8,8 @@ import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
-export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;recover:boolean}){
- const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,directory:options.directory,fixture:options.fixture,recover:options.recover})],{serviceName:`Harness · ${project.name}`,stdio:"pipe"});
+export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;recover:boolean}){
+ const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,directory:options.directory,fixture:options.fixture,fixtureOci:options.fixture&&options.fixtureOci===true,recover:options.recover})],{serviceName:`Harness · ${project.name}`,stdio:"pipe"});
  if(options.fixture)worker.stderr?.on("data",chunk=>process.stderr.write(chunk));
  let exited=false;const stopped=new Promise<void>(resolve=>worker.once("exit",()=>{exited=true;resolve();}));
  try{
@@ -24,7 +24,14 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
   const tickets=new ReviewTickets();
   let fixtureOffline=false,fixtureDropResponse=false;
-  return {dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
+  return {async setFixtureApprovalClock(offset:number){
+    if(!options.fixture)throw new Error("FIXTURE_DISABLED");
+    const requestId=randomUUID();await new Promise<void>((resolve,reject)=>{
+      const listener=(message:{kind?:string;requestId?:string})=>{if(message.kind==="fixture-clock-ack"&&message.requestId===requestId){clearTimeout(timer);worker.off("message",listener);resolve();}};
+      const timer=setTimeout(()=>{worker.off("message",listener);reject(new Error("FIXTURE_CLOCK_TIMEOUT"));},2000);
+      worker.on("message",listener);worker.postMessage({kind:"fixture-clock",offset,requestId});
+    });
+   },dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
    async review(sessionId:unknown,runId:unknown){
     if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
     const envelope=harnessClientRequestSchema.parse({protocolVersion:1,requestId:`review_${randomUUID()}`,connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId,runId,includeReview:true}});

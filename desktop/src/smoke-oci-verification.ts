@@ -1,0 +1,31 @@
+import {app,type BrowserWindow} from "electron";
+import {readFile,writeFile} from "node:fs/promises";
+import path from "node:path";
+import assert from "node:assert/strict";
+import type {ProjectRuntime} from "./runtime-host.js";
+export async function verifyDesktopOciSmoke(window:BrowserWindow,runtimes:Map<string,Promise<ProjectRuntime>>,reportDirectory:string){
+ const js=(source:string)=>window.webContents.executeJavaScript(source);
+ const wait=async(source:string)=>{for(let i=0;i<200;i++){if(await js(source))return;await new Promise(r=>setTimeout(r,50));}await writeFile(path.join(reportDirectory,"failure-view.txt"),await js("document.body.innerText"));throw new Error(`OCI_SMOKE_TIMEOUT: ${source}`);};
+ const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+ await wait('document.querySelector("[data-ready=true]") && document.querySelector("[data-action=new-session]")?.disabled === false');
+ const key=await js('document.querySelector("main").dataset.projectKey'),runtime=await runtimes.get(key)!;
+ await click('[data-action="new-session"]');await wait('Boolean(document.querySelector("main").dataset.sessionId)');
+ const sessionId=await js('document.querySelector("main").dataset.sessionId');
+ await js('{const input=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(input,"oci-review-probe");input.dispatchEvent(new Event("input",{bubbles:true}));}');
+ await wait('document.querySelector("[data-action=start]").disabled === false');await click('[data-action="start"]');
+ await wait('document.querySelector("[data-action=review]") !== null');await click('[data-action="review"]');
+ await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+ assert.equal(await js('document.querySelector(".review-file .removed").textContent'),"before\n");
+ assert.equal(await js('document.querySelector(".review-file .added").textContent'),"verified after\n");
+ assert((await js('document.querySelector("[aria-label=\\"Comando revisado\\"]").textContent')).includes("process.exit(0)"));
+ assert.equal(await readFile(path.join(runtime.context.project.workspace,"review.txt"),"utf8"),"before\n");
+ await click('[data-action="approve-review"]');await wait('document.querySelector("[data-action=review]") === null && document.body.innerText.includes("completed")');
+ assert.equal(await readFile(path.join(runtime.context.project.workspace,"review.txt"),"utf8"),"verified after\n");
+ const session=await runtime.command({method:"session.get",sessionId});assert(session.ok&&session.data.kind==="session");const runId=session.data.session.runs.at(-1)!.runId;
+ await click(`[data-run="${runId}"] [data-action="decision-history"]`);await wait('document.querySelector("[data-decision-status=applied]") !== null');
+ assert(await js('document.body.innerText.includes("Verificado para el parche sha256:") && document.body.innerText.includes("Check · exit 0")'));
+ const run=await runtime.command({method:"run.get",sessionId,runId});assert(run.ok&&run.data.kind==="run");assert.equal(run.data.run.decisionTotal,1);assert.equal(run.data.run.decisions?.[0]?.evidence?.verifiedPatchId,run.data.run.decisions?.[0]?.evidence?.proposalId);
+ await js('document.querySelector(".decision-history").scrollIntoView({block:"center"})');await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+ await writeFile(path.join(reportDirectory,"screenshot-oci.png"),(await window.webContents.capturePage()).toPNG());
+ await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,packaged:app.isPackaged,platform:process.platform,arch:process.arch,fixtureRuntime:true,realDocker:false,completePreview:true,explicitApproval:true,hostBytesVerified:true,patchBoundEvidence:true,verifiedPatchId:run.data.run.decisions?.[0]?.evidence?.verifiedPatchId},null,2));
+}
