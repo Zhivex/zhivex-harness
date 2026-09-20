@@ -2,6 +2,8 @@
 
 This dossier prepares the independent human review required by HAR-HU-03. It is not a completed security review and does not authorize GA. The machine-prepared `../security-reviews/rc14-review-draft.json` (source checkout) deliberately fails the passing-review schema: reviewer, date, coverage decisions, and findings must be supplied or confirmed by the human reviewer. Copied control-map text is a review starting point, not evidence that the reviewer assessed it. The draft includes all four known findings with their technically verified remediation; the reviewer must confirm dispositions, supply owners, and add any further findings. Their presence does not establish a completed human review.
 
+The draft now includes machine-prepared source and regression references for all 10 controls, 11 trust boundaries and 31 authority-bearing tools. Technical notes incorporate the published RC14 remediation evidence; they do not carry forward the original pre-remediation findings as current defects. Residual-risk statements are proposed review inputs, not accepted risks. Every coverage decision remains pending, and reviewer identity, timestamp and finding owners remain unset. Source paths refer to the exact candidate commit below; the original automated review remains historical evidence.
+
 ## Exact candidate
 
 - Tag: `v1.0.0-rc.14`
