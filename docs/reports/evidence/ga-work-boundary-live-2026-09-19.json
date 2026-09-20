@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 1,
+  "kind": "known-task-work-boundary-development-validation",
+  "classification": "One predeclared development rerun; not fresh holdout or GA certification",
+  "implementationCommit": "a6d6540acada0dc57aeae82fac7852f2b7cb0246",
+  "instanceId": "django__django-10914",
+  "preflight": "passed",
+  "sourcesUnchanged": true,
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "grading": {
+    "gradingStatus": "completed",
+    "resolved": false,
+    "gradingMethod": "empty-patch-no-solution"
+  },
+  "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "changedPaths": [],
+  "result": {
+    "status": "failed",
+    "failure": "INPUT_TOKEN_BUDGET",
+    "phase": "agent",
+    "inputTokens": 93522,
+    "outputTokens": 1275,
+    "usageComplete": true,
+    "modelCalls": 9,
+    "toolCalls": 9,
+    "approvals": 4,
+    "repairProgress": {
+      "repeatedResults": 0,
+      "suppressedResults": 0,
+      "blockedBroadCalls": 0,
+      "enteredClosure": true,
+      "phase": "explore",
+      "blockedPhaseCalls": 0,
+      "planRecorded": true
+    },
+    "terminalDiagnostic": {
+      "code": "EXECUTION_FAILED",
+      "category": "execution",
+      "failureType": "budget",
+      "retryable": false,
+      "chain": [
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": "Object",
+          "providerHints": [],
+          "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+          "reason": "budget"
+        }
+      ]
+    },
+    "thrownDiagnostic": {
+      "code": "EXECUTION_FAILED",
+      "category": "execution",
+      "failureType": "budget",
+      "retryable": false,
+      "chain": [
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": "HarnessExecutionError",
+          "providerHints": [],
+          "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+          "reason": "budget"
+        },
+        {
+          "validationCode": null,
+          "verifierExitCode": null,
+          "providerReason": null,
+          "validationIssues": [],
+          "status": null,
+          "errorClass": "Error",
+          "providerHints": [],
+          "fingerprint": "064591d1d6249f6eadfb2800eddbdfe8576a334f23f5e1215117dc19107f21f4",
+          "reason": "budget"
+        }
+      ]
+    },
+    "turns": [
+      {
+        "index": 1,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "search_files"
+        ],
+        "inputTokens": 4782,
+        "outputTokens": 61,
+        "cachedInputTokens": 0,
+        "requestCharacters": 8416,
+        "tools": [
+          {
+            "name": "search_files",
+            "isError": false,
+            "characters": 5170
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "read_files"
+        ],
+        "inputTokens": 7268,
+        "outputTokens": 107,
+        "cachedInputTokens": 4096,
+        "requestCharacters": 13958,
+        "tools": [
+          {
+            "name": "read_files",
+            "isError": false,
+            "characters": 7287
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "read_files"
+        ],
+        "inputTokens": 9722,
+        "outputTokens": 138,
+        "cachedInputTokens": 6144,
+        "requestCharacters": 21753,
+        "tools": [
+          {
+            "name": "read_files",
+            "isError": false,
+            "characters": 8963
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "status": "waiting_approval",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "run_environment_shell"
+        ],
+        "inputTokens": 12742,
+        "outputTokens": 168,
+        "cachedInputTokens": 9216,
+        "requestCharacters": 31305,
+        "tools": []
+      },
+      {
+        "index": 5,
+        "status": "waiting_approval",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "run_environment_shell"
+        ],
+        "inputTokens": 13711,
+        "outputTokens": 79,
+        "cachedInputTokens": 11648,
+        "requestCharacters": 34726,
+        "tools": [
+          {
+            "name": "run_environment_shell",
+            "isError": false,
+            "characters": 2313,
+            "phaseLatencies": {
+              "commandAndAttestationMs": 2194.504708,
+              "workspaceExportMs": 5862.171,
+              "totalMs": 9878.8425,
+              "sessionCreationMs": 1821.721209
+            },
+            "exitCode": 0,
+            "timedOut": false
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "repair_plan"
+        ],
+        "inputTokens": 14162,
+        "outputTokens": 373,
+        "cachedInputTokens": 12288,
+        "requestCharacters": 36135,
+        "tools": [
+          {
+            "name": "run_environment_shell",
+            "isError": false,
+            "characters": 654,
+            "phaseLatencies": {
+              "commandAndAttestationMs": 414.635292,
+              "totalMs": 2310.597208,
+              "sessionCreationMs": 1790.499709
+            },
+            "exitCode": 2,
+            "timedOut": false
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "status": "waiting_approval",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "run_environment_shell"
+        ],
+        "inputTokens": 15033,
+        "outputTokens": 146,
+        "cachedInputTokens": 13312,
+        "requestCharacters": 40289,
+        "tools": [
+          {
+            "name": "repair_plan",
+            "isError": false,
+            "characters": 1515
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "status": "waiting_approval",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "run_environment_shell"
+        ],
+        "inputTokens": 6948,
+        "outputTokens": 191,
+        "cachedInputTokens": 3328,
+        "requestCharacters": 16013,
+        "tools": [
+          {
+            "name": "run_environment_shell",
+            "isError": false,
+            "characters": 2550,
+            "phaseLatencies": {
+              "commandAndAttestationMs": 2091.037125,
+              "workspaceExportMs": 5824.962375,
+              "totalMs": 9777.678042,
+              "sessionCreationMs": 1861.627292
+            },
+            "exitCode": 0,
+            "timedOut": false
+          },
+          {
+            "name": "run_environment_shell",
+            "isError": false,
+            "characters": 8695,
+            "phaseLatencies": {
+              "commandAndAttestationMs": 461.195083,
+              "totalMs": 2606.546167,
+              "sessionCreationMs": 2026.411041
+            },
+            "exitCode": 1,
+            "timedOut": false
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "status": "completed",
+        "finishReason": "tool-calls",
+        "requestedTools": [
+          "inspect_environment_patch"
+        ],
+        "inputTokens": 9154,
+        "outputTokens": 12,
+        "cachedInputTokens": 5120,
+        "requestCharacters": 3490,
+        "tools": [
+          {
+            "name": "inspect_environment_patch",
+            "isError": false,
+            "characters": 210
+          }
+        ]
+      }
+    ]
+  },
+  "notes": [
+    "Exactly one model attempt; no retry after failure.",
+    "Postprocessing initially rejected an empty patch in changed_paths; grading was resumed from the stored terminal result without model calls.",
+    "Plan recorded and closure entered are observed; no successful delivery or fresh-holdout improvement is claimed."
+  ]
+}
