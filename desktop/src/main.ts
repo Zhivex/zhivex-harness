@@ -1,3 +1,4 @@
+import {registerPullRequestIpc} from "./pr-ipc.js";
 import {openGitHubGitTransport} from "./github-git-transport.js";
 import {openRemoteDelivery} from "./remote-delivery.js";
 import {openGitDelivery} from "./git-delivery.js";
@@ -105,6 +106,7 @@ void app.whenReady().then(async()=>{
  ipcMain.handle("harness:review-push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","destination"]);return trackTask((async()=>(await remoteDelivery(payload.projectKey)).manager.reviewPush(payload.destination))());});
  ipcMain.handle("harness:push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","ticketId"]);if(typeof payload.ticketId!=="string")throw new Error("INVALID_PUSH_REQUEST");const id=payload.ticketId;return trackTask(gitMutation(payload.projectKey,async()=>{const result=await(await remoteDelivery(payload.projectKey)).manager.push(id);if(fixture&&process.argv.includes("--fixture-drop-push-response")&&!fixturePushResponseDropped){fixturePushResponseDropped=true;throw new Error("PUSH_RESPONSE_LOST");}return result;}));});
  ipcMain.handle("harness:reconcile-push",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","operationId"]);if(typeof payload.operationId!=="string")throw new Error("INVALID_PUSH_REQUEST");const id=payload.operationId;return trackTask((async()=>(await remoteDelivery(payload.projectKey)).manager.reconcile(id))());});
+    registerPullRequestIpc({payload:gitPayload,remote:remoteDelivery,mutate:(key,operation)=>gitMutation(key,operation),track:trackTask,directory:path.join(app.getPath("userData"),"pull-requests"),dropResponse:fixture&&process.argv.includes("--fixture-drop-pr-response"),...(fixture&&reportDirectory?{fixtureDirectory:reportDirectory}:{})});
  ipcMain.handle("harness:projects",event=>{validateSender(event);const managed=new Set(tasks.list().map(task=>task.workspace));return registry.list().filter(project=>!managed.has(project.workspace));});
  ipcMain.handle("harness:tasks",(event,key:unknown)=>{validateSender(event);if(typeof key!=="string")throw new Error("INVALID_PROJECT");return tasks.list(sourceProject(key).key).map(taskView);});
  ipcMain.handle("harness:create-task",(event,value:unknown)=>{

@@ -229,7 +229,7 @@ the UI, verifies a new PID and the same undecided run, then rejects/applies thro
 the normal flow. This does not yet prove recovery during an active tool effect or
 closing/reopening the entire app with a pending approval. HU30 remains in progress.
 
-## Local Git delivery (HU32, in progress)
+## Local Git delivery (HU32)
 
 Open “Entrega Git” and refresh the file list. Select unstaged files explicitly,
 then choose “Preparar seleccionados”. Staging uses complete literal file bytes,
@@ -242,7 +242,7 @@ Select every staged file intended for the commit, enter its message, then choose
 parent commit, author/committer and local destination. “Autorizar commit local”
 creates an unsigned commit only from that reviewed tree. Changed snapshots require
 another review. Active runtime work blocks staging/commit; application exit waits
-for accepted Git operations before draining workers. Reviewed push is described below; PR controls remain pending.
+for accepted Git operations before draining workers. Reviewed push and PR controls are described below.
 
 If a commit response is lost, the UI retains only its operation ID in browser local
 storage and offers “Consultar resultado”, including after reload. It never blindly
@@ -253,9 +253,9 @@ pending. File previews and messages are not stored in browser local storage.
 The worktree smoke now also stages and reviews a fixture file, refuses a Git write
 while a run is active, creates a local commit, deliberately drops its response via
 a host-only fixture flag, reloads the renderer and confirms the same operation.
-Remote authorization, push/PR handling and their failure cases remain HU32 work.
+The same journey continues through separately reviewed push and PR creation.
 
-### Reviewed push (HU32, in progress)
+### Reviewed push
 
 “Enviar commits a GitHub” lists compatible configured remotes and requires explicit
 selection of the destination ref and an existing remote base ref. The default base
@@ -276,10 +276,38 @@ A lost response retains only the operation ID in browser local storage. Reload a
 “Consultar resultado del push” read the durable operation record without replaying
 the push. Unknown outcomes remain pending; a confirmed missing operation permits a
 new review. Success describes the accepted operation, not a guarantee that another
-client has not subsequently changed the branch. PR creation remains separate work.
+client has not subsequently changed the branch.
 
 The worktree smoke supplies a host-only Git executable shim routing GitHub-shaped
 fixture URLs exclusively to its temporary local bare repository. It verifies one
 reviewed push, lost response, renderer reload/reconciliation, exact remote SHA and
 normal-shutdown cleanup of network stores. This is offline integration evidence,
 not live GitHub authentication or publication of the implementation branch.
+
+
+### Reviewed pull requests
+
+“Crear pull request” requires an explicit repository, published head ref, base,
+title, description and draft choice. “Revisar PR” shows those exact values, both
+SHAs and the complete commit/file history against the remote base. Only
+“Autorizar creación de PR” submits the reviewed proposal. An unpublished head,
+existing open PR, changed snapshot, staged changes or unsafe previews block creation.
+The main process applies the same runtime admission and shutdown coordination as push.
+
+Existing host `gh` credentials authenticate the fixed GitHub REST endpoints. The
+proposal is sent as literal JSON on stdin. Credentials never enter the renderer or
+model. A durable private operation record stores proposal hashes rather than the
+PR title/body. Secret/path detection is bounded, not proof against arbitrary secrets.
+
+A lost response leaves the operation ID pending. “Consultar resultado del PR”
+reconciles without another POST, even after reload. “Recuperar último PR” restores
+a confirmed result after an app restart. Unknown outcomes remain pending; a
+definitive rejection permits a new review after correction. If head/base moved
+during creation, the result shows expected and observed SHAs and requires review.
+“Abrir PR verificado” sends only the operation ID to main, which validates the
+stored repository/number/URL before opening the browser.
+
+The packaged worktree smoke uses a fake host `gh`, local PR records and a local
+bare remote. It loses both the API response and the renderer response, then checks
+one POST, one PR, recovery after reload and app restart, and verified link routing.
+It does not create a real GitHub PR or certify live authentication.

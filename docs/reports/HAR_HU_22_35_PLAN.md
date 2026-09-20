@@ -119,21 +119,20 @@ and offline OCI review regressions also pass on this candidate.
 
 Source: https://app.notion.com/p/3e1777b104f6810f8471e3c472071aa5?pvs=204
 
-- [ ] El usuario revisa archivos staged, mensaje, rama y destino antes de autorizar commit, push o creación de PR.
-- [ ] La integración no incluye archivos ajenos ni secretos y usa credenciales existentes sin exponerlas al modelo.
-- [ ] Conflictos, remoto desactualizado y fallo de red conservan estado recuperable; reintentar no duplica commits o PRs y no habilita force-push implícito.
+- [x] El usuario revisa archivos staged, mensaje, rama y destino antes de autorizar commit, push o creación de PR.
+- [x] La integración no incluye archivos ajenos ni secretos y usa credenciales existentes sin exponerlas al modelo.
+- [x] Conflictos, remoto desactualizado y fallo de red conservan estado recuperable; reintentar no duplica commits o PRs y no habilita force-push implícito.
 
-Local commit UI implemented: HAR_HU_32_COMMIT_UI_2026-09-20.md.
-681 tests pass; explicit staging, full review, local commit and lost-response
-reconciliation are exercised in the unsigned package. Push/PR destinations and
-remote failure recovery remain; all three criteria stay open.
-Host push admission and GitHub HTTPS adapter: HAR_HU_32_PUSH_MANAGER_2026-09-20.md.
-Six local tests (50 assertions) verify exact refspec, no force/replay, divergent
-remote preservation and credential configuration isolation.
-Push UI integration: HAR_HU_32_PUSH_UI_2026-09-20.md. Explicit destination selection,
-review, push and response-loss reconciliation are exposed.
-PR host manager/REST adapter: HAR_HU_32_PR_MANAGER_2026-09-20.md; 14 focused tests
-with 106 assertions pass. PR UI and packaged recovery journey remain pending.
+Implemented and verified locally; publication remains pending by user instruction.
+Closure: HAR_HU_32_PR_UI_2026-09-20.md. Commit/staging, reviewed push and PR
+creation use separate host-authorized snapshots and durable reconciliation.
+695 tests pass (3985 assertions); packaged worktree journey verifies exactly one
+commit/push/PR, lost-response recovery, whole-app restart and verified PR routing.
+GitHub requests are simulated and pushes target a local bare fixture. Live GitHub
+authentication is not certified. Secret detection is bounded. The candidate remains
+unsigned and unnotarized; no implementation-branch push or real PR was performed.
+Earlier increments: HAR_HU_32_COMMIT_UI_2026-09-20.md,
+HAR_HU_32_PUSH_UI_2026-09-20.md and HAR_HU_32_PR_MANAGER_2026-09-20.md.
 
 ## HAR-HU-33 — Guardar credenciales en el almacén seguro del sistema
 

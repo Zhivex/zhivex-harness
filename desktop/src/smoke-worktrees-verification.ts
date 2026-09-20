@@ -1,5 +1,5 @@
 import {app,type BrowserWindow} from "electron";
-import {readFile,writeFile,access} from "node:fs/promises";
+import {readFile,writeFile,access,unlink} from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
 import type {ProjectRuntime} from "./runtime-host.js";
@@ -11,6 +11,7 @@ export async function verifyDesktopWorktreesSmoke(window:BrowserWindow,runtimes:
  const js=(source:string)=>window.webContents.executeJavaScript(source);
  const wait=async(source:string)=>{for(let i=0;i<240;i++){if(await js(source))return;await new Promise(resolve=>setTimeout(resolve,50));}await writeFile(path.join(directory,`${phase}-failure.txt`),await js("document.body.innerText"));throw new Error(`TASK_SMOKE_TIMEOUT: ${source}`);};
  const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+ const openVerifiedPr=async()=>{const filename=path.join(directory,"opened-pr.json");await unlink(filename).catch(error=>{if(error.code!=="ENOENT")throw error;});await click('[data-action="open-pr"]');for(let attempt=0;attempt<100;attempt++){try{assert.equal(JSON.parse(await readFile(filename,"utf8")).url,"https://github.com/fixture/repository/pull/1");return;}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}await new Promise(resolve=>setTimeout(resolve,50));}throw new Error("PR_OPEN_TIMEOUT");};
  const key=()=>js('document.querySelector("main").dataset.projectKey') as Promise<string>;
  await wait('document.querySelector("[data-ready=true]") !== null');
  if(phase==="tasks-reopen"){await click('[data-project]');}
@@ -54,6 +55,14 @@ export async function verifyDesktopWorktreesSmoke(window:BrowserWindow,runtimes:
   await click('[aria-label="Revisión del push"] > details > summary');await click('[aria-label="Revisión del push"] details details summary');assert(await js('document.body.innerText.includes("task one only") && document.body.innerText.includes("https://github.com/fixture/repository.git")'));
   await click('[data-action="authorize-push"]');await wait('document.querySelector("[data-action=reconcile-push]")?.disabled === false && document.querySelector(".push-panel [role=alert]") !== null');
   const pushReload=new Promise<void>(resolve=>window.webContents.once("did-finish-load",()=>resolve()));window.webContents.reload();await pushReload;await wait('document.querySelector("[data-action=new-session]")?.disabled === false');await wait(`document.querySelector('[data-task="${first.task.id}"] [data-action="open-task"]') !== null`);await click(`[data-task="${first.task.id}"] [data-action="open-task"]`);await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(first.projectKey)} && document.querySelector("[data-action=reconcile-push]")?.disabled === false`);await click('.git-panel summary');await click('.push-panel summary');await click('[data-action="reconcile-push"]');await wait('document.body.innerText.includes("Push confirmado:")');
+
+        await click('.pr-panel summary');await wait('document.querySelector("[data-action=pr-targets]").disabled === false');await click('[data-action="pr-targets"]');await wait(`document.querySelector('[data-field="pr-remote"] option[value="origin"]') !== null`);
+        await js(`{const field=document.querySelector('[data-field="pr-remote"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(field,"origin");field.dispatchEvent(new Event("change",{bubbles:true}));}`);
+        await js(`{const field=document.querySelector('[data-field="pr-title"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(field,"PR revisado desde escritorio");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
+        await js(`{const field=document.querySelector('[data-field="pr-body"]');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"Descripción literal <img onerror=alert(1)>");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
+        await wait('document.querySelector("[data-action=review-pr]").disabled === false');await click('[data-action="review-pr"]');await wait('document.querySelector("[data-action=create-pr]")?.disabled === false');await click('[aria-label="Revisión del PR"] > details > summary');await click('[aria-label="Revisión del PR"] details details summary');assert(await js(`document.querySelector('[aria-label="Revisión del PR"]').innerText.includes("task one only")`));assert.equal(await js('document.querySelectorAll(".pr-panel img").length'),0);
+        await click('[data-action="create-pr"]');await wait('document.querySelector("[data-action=reconcile-pr]")?.disabled === false && document.querySelector(".pr-panel [role=alert]") !== null');
+        const prReload=new Promise<void>(resolve=>window.webContents.once("did-finish-load",()=>resolve()));window.webContents.reload();await prReload;await wait('document.querySelector("[data-action=new-session]")?.disabled === false');await wait(`document.querySelector('[data-task="${first.task.id}"] [data-action="open-task"]') !== null`);await click(`[data-task="${first.task.id}"] [data-action="open-task"]`);await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(first.projectKey)} && document.querySelector("[data-action=reconcile-pr]")?.disabled === false`);await click('.git-panel summary');await click('.pr-panel summary');await click('[data-action="reconcile-pr"]');await wait('document.querySelector("[data-action=open-pr]")?.disabled === false');await openVerifiedPr();
   await writeFile(file,JSON.stringify(saved));
  }else{
   saved=JSON.parse(await readFile(file,"utf8"));
@@ -68,5 +77,9 @@ export async function verifyDesktopWorktreesSmoke(window:BrowserWindow,runtimes:
   await access(saved[1]!.task.workspace).then(()=>assert.fail("Checkout still exists"),()=>{});await access(path.join(path.dirname(saved[1]!.task.workspace),"state","operations.sqlite"));
   assert.equal(await readFile(path.join(saved[0]!.task.workspace,"review.txt"),"utf8"),"task one only\n");
  }
- await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({phase,packaged:app.isPackaged,appPid:process.pid,runtimePids:workers.map(worker=>worker.context.runtimePid),tasks:saved.map(item=>item.task.id),concurrentRuns:phase==="tasks-create",restartIsolation:phase==="tasks-reopen",reviewedCleanup:phase==="tasks-reopen",pushUI:phase==="tasks-create",lostPushResponseReconciledAfterReload:phase==="tasks-create",gitCommitUI:phase==="tasks-create",lostCommitResponseReconciledAfterReload:phase==="tasks-create",runtimeGitMutationBlocked:phase==="tasks-create",fixture:true}));window.close();
+
+    if(phase==="tasks-reopen"){
+      const item=saved[0]!;await click(`[data-task="${item.task.id}"] [data-action="open-task"]`);await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(item.projectKey)} && document.querySelector("[data-action=restore-pr]")?.disabled === false`);await click('.git-panel summary');await click('.pr-panel summary');await click('[data-action="restore-pr"]');await wait('document.querySelector("[data-action=open-pr]")?.disabled === false');await openVerifiedPr();
+    }
+ await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({phase,packaged:app.isPackaged,appPid:process.pid,runtimePids:workers.map(worker=>worker.context.runtimePid),tasks:saved.map(item=>item.task.id),concurrentRuns:phase==="tasks-create",restartIsolation:phase==="tasks-reopen",reviewedCleanup:phase==="tasks-reopen",prUI:phase==="tasks-create",prResponseLossRecovered:phase==="tasks-create",prRecoveredAfterAppRestart:phase==="tasks-reopen",pushUI:phase==="tasks-create",lostPushResponseReconciledAfterReload:phase==="tasks-create",gitCommitUI:phase==="tasks-create",lostCommitResponseReconciledAfterReload:phase==="tasks-create",runtimeGitMutationBlocked:phase==="tasks-create",fixture:true}));window.close();
 }
