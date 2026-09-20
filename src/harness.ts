@@ -135,7 +135,7 @@ const createHarnessBinding = (
   fingerprint: `sha256:${createHash("sha256")
     .update(JSON.stringify({
       agentProfile: config.agentProfile,
-      runtimePolicy: "repair-v4-explicit-delivery",
+      runtimePolicy: "repair-v5-bounded-tool-selection-recovery",
       requireVerifiedDelivery: config.requireVerifiedDelivery,
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
@@ -1471,7 +1471,7 @@ export const runHarness = async (
     harness = { ...harness, store, agent: new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), tools, store,
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
       instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them." }) };
-    input = { ...input, toolExecution: { parallel: false, stopOnError: false, validationErrorMode: "tool-result", ...input.toolExecution } };
+    input = { ...input, toolExecution: { parallel: false, stopOnError: false, validationErrorMode: "tool-result", unknownToolMode: "tool-result", ...input.toolExecution } };
   }
   const reportDiagnostics = () => { try { options.onDiagnostics?.({ profile: harness.config.agentProfile, approvalTimings,
     ...(policyBudget ? { budget: policyBudget.stats, modelTimings: policyBudget.modelTimings, contextMetrics: policyBudget.contextMetrics } : {}),

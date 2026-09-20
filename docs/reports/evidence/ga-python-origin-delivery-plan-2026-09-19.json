@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "python-origin-delivery-diagnostic",
+  "classification": "Known development task; not comparison, fresh holdout or GA acceptance",
+  "repetitions": 1,
+  "model": "qwen3.8-flash",
+  "image": "sha256:4c8b7a320988313b8881a96f334a189bfd0d6fda47cc0219d648867ffe765b80",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "change": "Only pinned image import policy changed from previous private diagnostic; current verifier discovery instruction retained",
+  "sourceHashes": {
+    "scripts/swebench/zhivex-driver.ts": "67cee044060e78afea9fa663af8a686220aeafdb0db9ec318ef846f31aa9985d",
+    "scripts/swebench/python-environment.ts": "b83440b5ea095c6eded67745ba009b82e4d3d2c40f9ee3d53bd5b53766a375f8",
+    "scripts/swebench/verifier-observer.ts": "a90544437473218a83477a1cffb59ee9f645c12abdf8960b787f3e21606035bf",
+    "src/harness.ts": "1d305078e3c56c24bb659c34aac37c96bf11a4e60af6607bb4b9d65964e84791",
+    "src/repair-controller.ts": "41f1f09032131306f3284edbf105930577504af0bf764ba98a105c4eee70a1e7",
+    "bun.lock": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4"
+  },
+  "stopRule": "One model run; retain bounded private verifier failures; no retry"
+}

@@ -229,3 +229,5 @@ limited to 32000 serialized characters per model step in this profile.
 Changing the compaction strategy or runtime profile changes the harness binding.
 Paused runs from an older binding must be completed/denied with their original
 artifact; these changes deliberately do not reinterpret an old approval.
+
+Repair mode returns an unknown tool selection to the model as `TOOL_NOT_REGISTERED`, just as invalid arguments receive structured feedback. It never resolves aliases or executes an unregistered tool. Existing tool-error, step and token limits bound recovery; callers can override `unknownToolMode` to `throw` or use `stopOnError`. Strict mode retains its fail-fast behavior, and subsequent mutations still require approval.
