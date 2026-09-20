@@ -20,9 +20,10 @@ The preparation gate does not certify production readiness. It verifies that pub
 6. Preserve `1.0.0-rc.10` as an immutable failed attempt: its exact tarball passed artifact binding, but an OpenAI account-funding issue surfaced as retryable HTTP 500 failures in live and representative gates and Qwen resolved 13/14 representative cases; npm publication was skipped.
 7. Preserve the published `1.0.0-rc.11` evidence: OpenAI's release precheck and Qwen's complete representative precheck passed, the protected workflow's first attempt failed closed on one Qwen representative case without publishing, and its complete second attempt passed every live and representative gate before publishing the exact artifact to `next` with verified npm integrity and SLSA provenance.
 8. Preserve the published `1.0.0-rc.12` evidence: the protected workflow passed deterministic, installed-artifact, OCI, live-provider, complete Meta/Qwen/OpenAI representative, registry-integrity, and SLSA-provenance gates for the exact annotated tag.
-9. Preserve published RC.13, including onboarding, daily console workflow, cancellation, and diagnostics: protected workflow `34263591864` passed all live gates and 42/42 representative cases, then published `next` with independently verified integrity and SLSA provenance. Review this final recorded candidate using [the RC.13 reviewer dossier](./RC13_SECURITY_REVIEW.md).
-10. Record a current security review with no open critical/high findings against the final passing candidate.
-11. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
-12. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
+9. Preserve published RC.13, including onboarding, daily console workflow, cancellation, and diagnostics: protected workflow `34263591864` passed all live gates and 42/42 representative cases, then published `next` with independently verified integrity and SLSA provenance. Retain [the RC.13 reviewer dossier](./RC13_SECURITY_REVIEW.md) as historical context.
+10. Record published RC.14: protected workflow `35510484383` passed all live gates and 42/42 representative cases, and independent verification matched the published `next` artifact integrity and SLSA provenance. The final candidate is now RC.14; use [its reviewer dossier](./RC14_SECURITY_REVIEW.md).
+11. Record a current security review with no open critical/high findings against the final passing candidate.
+12. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
+13. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
 
 Gemini is explicitly provisional and excluded from the 1.0 GA-certified cohort. The decision and its promotion criteria are recorded in [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md); partial or capacity-blocked evidence is never certification.
