@@ -228,3 +228,30 @@ The pending-approval recovery smoke kills the auxiliary process, reopens through
 the UI, verifies a new PID and the same undecided run, then rejects/applies through
 the normal flow. This does not yet prove recovery during an active tool effect or
 closing/reopening the entire app with a pending approval. HU30 remains in progress.
+
+## Local Git delivery (HU32, in progress)
+
+Open “Entrega Git” and refresh the file list. Select unstaged files explicitly,
+then choose “Preparar seleccionados”. Staging uses complete literal file bytes,
+without repository filters. It preserves existing staged entries and refuses to
+overwrite a file that already has staged content. Protected filenames are omitted;
+selected files with detected secrets or incomplete previews are rejected atomically.
+
+Select every staged file intended for the commit, enter its message, then choose
+“Revisar commit”. The review shows full staged before/after text, modes, branch,
+parent commit, author/committer and local destination. “Autorizar commit local”
+creates an unsigned commit only from that reviewed tree. Changed snapshots require
+another review. Active runtime work blocks staging/commit; application exit waits
+for accepted Git operations before draining workers. No push or PR control is
+exposed by this increment.
+
+If a commit response is lost, the UI retains only its operation ID in browser local
+storage and offers “Consultar resultado”, including after reload. It never blindly
+resubmits a commit. The host reconciles its private durable operation record; if no
+operation was accepted, the user may prepare a fresh review. Unknown results remain
+pending. File previews and messages are not stored in browser local storage.
+
+The worktree smoke now also stages and reviews a fixture file, refuses a Git write
+while a run is active, creates a local commit, deliberately drops its response via
+a host-only fixture flag, reloads the renderer and confirms the same operation.
+Remote authorization, push/PR handling and their failure cases remain HU32 work.

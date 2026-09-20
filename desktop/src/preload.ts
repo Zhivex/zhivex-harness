@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "./bridge.js";
 const bridge:DesktopBridge=Object.freeze({
+ gitChanges:(projectKey:string)=>ipcRenderer.invoke("harness:git-changes",{projectKey}),
+ gitStage:(projectKey:string,paths:string[])=>ipcRenderer.invoke("harness:git-stage",{projectKey,paths}),
+ gitReviewCommit:(projectKey:string,input:unknown)=>ipcRenderer.invoke("harness:git-review-commit",{projectKey,input}),
+ gitCommit:(projectKey:string,ticketId:string)=>ipcRenderer.invoke("harness:git-commit",{projectKey,ticketId}),
+ gitReconcile:(projectKey:string,operationId:string)=>ipcRenderer.invoke("harness:git-reconcile",{projectKey,operationId}),
  tasks:(projectKey:string)=>ipcRenderer.invoke("harness:tasks",projectKey),
  createTask:(projectKey:string,input:unknown)=>ipcRenderer.invoke("harness:create-task",{projectKey,input}),
  openTask:(taskId:string)=>ipcRenderer.invoke("harness:open-task",taskId),

@@ -1,3 +1,5 @@
+import {openGitDelivery} from "./git-delivery.js";
+import {hostSensitiveValues} from "./redaction.js";
 import {verifyDesktopWorktreesSmoke} from "./smoke-worktrees-verification.js";
 import {verifyDesktopOciSmoke} from "./smoke-oci-verification.js";
 import {verifyDesktopRestartSmoke} from "./smoke-restart-verification.js";
@@ -81,6 +83,19 @@ void app.whenReady().then(async()=>{
  const validateSender=(event:Electron.IpcMainInvokeEvent)=>{if(closing||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==url)throw new Error("UNTRUSTED_SENDER");};
  session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));session.defaultSession.setPermissionCheckHandler(()=>false);
  window.webContents.setWindowOpenHandler(()=>({action:"deny"}));window.webContents.on("will-navigate",event=>event.preventDefault());window.webContents.on("will-attach-webview",event=>event.preventDefault());
+ let fixtureGitResponseDropped=false;
+ const deliveryManagers=new Map<string,Promise<Awaited<ReturnType<typeof openGitDelivery>>>>(),deliveryBusy=new Set<string>();
+ const delivery=async(key:string)=>{const project=registry.get(key);if(removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");const task=tasks.list().find(task=>task.workspace===project.workspace);if(task)await tasks.inspect(task.id);let manager=deliveryManagers.get(key);if(!manager){manager=openGitDelivery(project.workspace,path.join(app.getPath("userData"),"git-delivery",key),hostSensitiveValues(process.env));deliveryManagers.set(key,manager);void manager.catch(()=>deliveryManagers.delete(key));}return manager;};
+ const gitPayload=(event:Electron.IpcMainInvokeEvent,value:unknown,fields:string[])=>{validateSender(event);if(!value||typeof value!=="object"||Array.isArray(value)||Object.keys(value).sort().join(",")!==fields.sort().join(","))throw new Error("INVALID_GIT_REQUEST");const payload=value as Record<string,unknown>;if(typeof payload.projectKey!=="string")throw new Error("INVALID_PROJECT");registry.get(payload.projectKey);return payload as Record<string,unknown>&{projectKey:string};};
+ const gitMutation=async<T>(key:string,operation:(manager:Awaited<ReturnType<typeof openGitDelivery>>)=>Promise<T>)=>{
+  if(deliveryBusy.has(key))throw new Error("GIT_DELIVERY_BUSY");deliveryBusy.add(key);let host:ProjectRuntime|undefined;
+  try{host=await runtime(key);if(await host.controlClose("pause"))throw new Error("GIT_RUNTIME_BUSY");return await operation(await delivery(key));}finally{if(host?.isAlive()&&!closing)await host.controlClose("resume").catch(()=>{});deliveryBusy.delete(key);}
+ };
+ ipcMain.handle("harness:git-changes",async(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey"]);return(await delivery(payload.projectKey)).changes();});
+ ipcMain.handle("harness:git-stage",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","paths"]);return trackTask(gitMutation(payload.projectKey,manager=>manager.stage(payload.paths)));});
+ ipcMain.handle("harness:git-review-commit",async(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","input"]);return(await delivery(payload.projectKey)).reviewCommit(payload.input);});
+ ipcMain.handle("harness:git-commit",(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","ticketId"]);if(typeof payload.ticketId!=="string")throw new Error("INVALID_GIT_REQUEST");const ticketId=payload.ticketId;return trackTask(gitMutation(payload.projectKey,async manager=>{const result=await manager.commit(ticketId);if(fixture&&process.argv.includes("--fixture-drop-git-response")&&!fixtureGitResponseDropped){fixtureGitResponseDropped=true;throw new Error("GIT_RESPONSE_LOST");}return result;}));});
+ ipcMain.handle("harness:git-reconcile",async(event,value:unknown)=>{const payload=gitPayload(event,value,["projectKey","operationId"]);if(typeof payload.operationId!=="string")throw new Error("INVALID_GIT_REQUEST");return(await delivery(payload.projectKey)).reconcile(payload.operationId);});
  ipcMain.handle("harness:projects",event=>{validateSender(event);const managed=new Set(tasks.list().map(task=>task.workspace));return registry.list().filter(project=>!managed.has(project.workspace));});
  ipcMain.handle("harness:tasks",(event,key:unknown)=>{validateSender(event);if(typeof key!=="string")throw new Error("INVALID_PROJECT");return tasks.list(sourceProject(key).key).map(taskView);});
  ipcMain.handle("harness:create-task",(event,value:unknown)=>{
@@ -94,7 +109,7 @@ void app.whenReady().then(async()=>{
  ipcMain.handle("harness:remove-task",(event,ticketId:unknown)=>{
   validateSender(event);if(typeof ticketId!=="string"||!removalTickets.has(ticketId))throw new Error("TASK_REVIEW_REQUIRED");const id=removalTickets.get(ticketId)!;removalTickets.delete(ticketId);
   return trackTask((async()=>{
-   const task=tasks.get(id);if(removing.has(task.workspace))throw new Error("TASK_BUSY");removing.add(task.workspace);
+   const task=tasks.get(id);if(removing.has(task.workspace)||[...deliveryBusy].some(key=>registry.get(key).workspace===task.workspace))throw new Error("TASK_BUSY");removing.add(task.workspace);
    const project=registry.list().find(project=>project.workspace===task.workspace);const pending=project?runtimes.get(project.key):undefined;let host:ProjectRuntime|undefined;
    try{
     if(pending){host=await pending;if(await host.controlClose("pause"))throw new Error("TASK_BUSY");await host.close();runtimes.delete(project!.key);}

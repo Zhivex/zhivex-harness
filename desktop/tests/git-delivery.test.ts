@@ -32,3 +32,15 @@ test("old review cannot survive restart or authorize a changed branch head",asyn
  await writeFile(f.repo+"/a.txt","staged\n");git(f.repo,["add","a.txt"]);const old=await f.manager.reviewCommit({paths:["a.txt"],message:"review"});const reopened=await openGitDelivery(f.repo,f.root+"/delivery");await expect(reopened.commit(old.ticketId)).rejects.toThrow("GIT_REVIEW_REQUIRED");
  git(f.repo,["commit","--allow-empty","-qm","other client"]);await expect(f.manager.commit(old.ticketId)).rejects.toThrow();expect(git(f.repo,["rev-list","--count","HEAD"])).toBe("2");
  }finally{await f.close();}});
+test("explicit staging preserves existing staged content and skips protected files",async()=>{const f=await fixture();try{
+ await writeFile(f.repo+"/a.txt","staged first\n");git(f.repo,["add","a.txt"]);await writeFile(f.repo+"/a.txt","later unstaged\n");await writeFile(f.repo+"/b.txt","selected\n");await writeFile(f.repo+"/foreign.txt","do not stage\n");await writeFile(f.repo+"/.env","secret\n");
+ const listing=await f.manager.changes();expect(listing.blocked).toBe(1);expect(listing.files.some(file=>file.path===".env")).toBe(false);
+ await expect(f.manager.stage(["a.txt"])).rejects.toThrow("GIT_STAGED_CONTENT_PRESERVED");await f.manager.stage(["b.txt"]);expect(git(f.repo,["show",":a.txt"])).toBe("staged first");expect(git(f.repo,["show",":b.txt"])).toBe("selected");expect(git(f.repo,["diff","--cached","--name-only"])).toBe("a.txt\nb.txt");expect(await readFile(f.repo+"/a.txt","utf8")).toBe("later unstaged\n");
+ }finally{await f.close();}});
+test("staging reads literal bytes without clean filters and atomically rejects unsafe selection",async()=>{const f=await fixture();try{
+ const marker=f.root+"/executed";await writeFile(f.repo+"/.gitattributes","*.txt filter=hostile\n");git(f.repo,["config","filter.hostile.clean",`sh -c 'echo bad > ${marker}; cat'`]);git(f.repo,["config","filter.hostile.required","true"]);await writeFile(f.repo+"/a.txt","literal\n");await writeFile(f.repo+"/b.txt",Buffer.from([0,1]));const index=await readFile(f.repo+"/.git/index");
+ await expect(f.manager.stage(["a.txt","b.txt"])).rejects.toThrow("GIT_PREVIEW_INCOMPLETE");expect(await readFile(f.repo+"/.git/index")).toEqual(index);await f.manager.stage(["a.txt"]);expect(git(f.repo,["show",":a.txt"])).toBe("literal");await expect(readFile(marker)).rejects.toThrow();
+ }finally{await f.close();}});
+test("staging deleted files only removes the selected index entry",async()=>{const f=await fixture();try{
+ await rm(f.repo+"/a.txt");await f.manager.stage(["a.txt"]);expect(git(f.repo,["diff","--cached","--name-status"])).toBe("D\ta.txt");const review=await f.manager.reviewCommit({paths:["a.txt"],message:"Remove reviewed file"});expect(review.files[0]!.after).toBe("");expect((await f.manager.commit(review.ticketId)).status).toBe("completed");
+ }finally{await f.close();}});

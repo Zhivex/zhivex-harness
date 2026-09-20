@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "artifact": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/app.asar",
+  "sha256": "b8d3e47012d02643c363dd5d6531ae699a290ed17bcd44dda9b8317b18bb602f",
+  "bytes": 3617185,
+  "signed": false,
+  "notarized": false,
+  "platform": "darwin",
+  "arch": "arm64",
+  "fixture": true
+}
