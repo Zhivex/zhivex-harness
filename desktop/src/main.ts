@@ -1,6 +1,9 @@
+import {verifyDesktopWorktreesSmoke} from "./smoke-worktrees-verification.js";
 import {verifyDesktopOciSmoke} from "./smoke-oci-verification.js";
 import {verifyDesktopRestartSmoke} from "./smoke-restart-verification.js";
 import {verifyDesktopEffectCrashSmoke} from "./smoke-effect-crash-verification.js";
+import {openTaskWorktrees,type ManagedTask} from "./task-worktrees.js";
+import type {DesktopTask} from "./bridge.js";
 import {prepareDesktopShutdown} from "./shutdown.js";
 import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -23,6 +26,11 @@ let requestExit=()=>{exitApproved=true;app.quit();};
 app.on("before-quit",event=>{if(!exitApproved){event.preventDefault();requestExit();}});
 void app.whenReady().then(async()=>{
  const registry=await openProjectRegistry(path.join(app.getPath("userData"),"projects"));
+ const tasks=await openTaskWorktrees(path.join(app.getPath("userData"),"tasks"));
+ const taskView=(task:ManagedTask):DesktopTask=>({id:task.id,sourceProjectKey:task.sourceProjectKey,title:task.title,branch:task.branch,baseCommit:task.baseCommit,workspace:task.workspace,status:task.status});
+ const taskOperations=new Set<Promise<unknown>>(),removing=new Set<string>();
+ const trackTask=async<T>(operation:Promise<T>)=>{taskOperations.add(operation);try{return await operation;}finally{taskOperations.delete(operation);}};
+ const sourceProject=(key:string)=>{const project=registry.get(key),task=tasks.list().find(task=>task.workspace===project.workspace);return task?registry.get(task.sourceProjectKey):project;};
  const directory=fixture&&reportDirectory?path.join(reportDirectory,"socket"):`/tmp/zhx-desktop-${process.getuid?.()}`;
  const buildDirectory=path.join(app.getAppPath(),"build");
  const connect=async(key:string)=>{
@@ -30,10 +38,15 @@ void app.whenReady().then(async()=>{
   const known=registry.get(key);
   const project=await registry.select(known.workspace);
   if(project.key!==key)throw new Error("PROJECT_IDENTITY_CHANGED");
+  if(closing||removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");
+  const task=tasks.list().find(task=>task.workspace===project.workspace);
+  if(task)await tasks.inspect(task.id);
+  if(closing||removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");
   let pending=runtimes.get(key);
   if(pending&&!((await pending).isAlive())){runtimes.delete(key);pending=undefined;}
-  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,fixtureOci:fixture&&process.argv.includes("--fixture-oci"),fixtureEffectCrash:fixture&&process.argv.includes("--fixture-effect-crash"),recover:true});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
-  return (await pending).context;
+  if(closing||removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");
+  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,...(task?{stateDirectory:task.stateDirectory}:{}),fixtureOci:fixture&&process.argv.includes("--fixture-oci"),fixtureEffectCrash:fixture&&process.argv.includes("--fixture-effect-crash"),recover:true});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
+  return {...(await pending).context,...(task?{task:taskView(task)}:{})};
  };
  const runtime=async(key:unknown)=>{if(typeof key!=="string"||!runtimes.has(key))throw new Error("PROJECT_NOT_OPEN");return runtimes.get(key)!;};
  const index=path.join(buildDirectory,"index.html"),url=pathToFileURL(index).href;
@@ -43,6 +56,7 @@ void app.whenReady().then(async()=>{
  requestExit=()=>{
   if(closing||exitApproved)return;closing=true;
   void(async()=>{
+   await Promise.allSettled([...taskOperations]);
    const hosts=await Promise.allSettled([...runtimes.values()]);
    const ready=hosts.flatMap(host=>host.status==="fulfilled"?[host.value]:[]);
    const approved=await prepareDesktopShutdown(ready,async()=>{
@@ -67,7 +81,27 @@ void app.whenReady().then(async()=>{
  const validateSender=(event:Electron.IpcMainInvokeEvent)=>{if(closing||event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame||event.senderFrame.url!==url)throw new Error("UNTRUSTED_SENDER");};
  session.defaultSession.setPermissionRequestHandler((_webContents,_permission,callback)=>callback(false));session.defaultSession.setPermissionCheckHandler(()=>false);
  window.webContents.setWindowOpenHandler(()=>({action:"deny"}));window.webContents.on("will-navigate",event=>event.preventDefault());window.webContents.on("will-attach-webview",event=>event.preventDefault());
- ipcMain.handle("harness:projects",event=>{validateSender(event);return registry.list();});
+ ipcMain.handle("harness:projects",event=>{validateSender(event);const managed=new Set(tasks.list().map(task=>task.workspace));return registry.list().filter(project=>!managed.has(project.workspace));});
+ ipcMain.handle("harness:tasks",(event,key:unknown)=>{validateSender(event);if(typeof key!=="string")throw new Error("INVALID_PROJECT");return tasks.list(sourceProject(key).key).map(taskView);});
+ ipcMain.handle("harness:create-task",(event,value:unknown)=>{
+  validateSender(event);if(!value||typeof value!=="object"||Array.isArray(value)||Object.keys(value).sort().join(",")!=="input,projectKey")throw new Error("INVALID_TASK");
+  const payload=value as {projectKey:unknown;input:unknown};if(typeof payload.projectKey!=="string")throw new Error("INVALID_PROJECT");
+  return trackTask(tasks.create(sourceProject(payload.projectKey),payload.input).then(taskView));
+ });
+ ipcMain.handle("harness:open-task",async(event,id:unknown)=>{validateSender(event);if(typeof id!=="string")throw new Error("INVALID_TASK");const task=tasks.get(id);if(task.status!=="ready"||removing.has(task.workspace))throw new Error("TASK_NOT_READY");const project=await registry.select(task.workspace);return connect(project.key);});
+ const removalTickets=new Map<string,string>();
+ ipcMain.handle("harness:review-task-removal",async(event,id:unknown)=>{validateSender(event);if(typeof id!=="string")throw new Error("INVALID_TASK");const review=await tasks.reviewRemoval(id);removalTickets.set(review.ticketId,id);while(removalTickets.size>128)removalTickets.delete(removalTickets.keys().next().value!);return{...review,task:taskView(review.task)};});
+ ipcMain.handle("harness:remove-task",(event,ticketId:unknown)=>{
+  validateSender(event);if(typeof ticketId!=="string"||!removalTickets.has(ticketId))throw new Error("TASK_REVIEW_REQUIRED");const id=removalTickets.get(ticketId)!;removalTickets.delete(ticketId);
+  return trackTask((async()=>{
+   const task=tasks.get(id);if(removing.has(task.workspace))throw new Error("TASK_BUSY");removing.add(task.workspace);
+   const project=registry.list().find(project=>project.workspace===task.workspace);const pending=project?runtimes.get(project.key):undefined;let host:ProjectRuntime|undefined;
+   try{
+    if(pending){host=await pending;if(await host.controlClose("pause"))throw new Error("TASK_BUSY");await host.close();runtimes.delete(project!.key);}
+    return taskView(await tasks.remove(ticketId));
+   }finally{if(host?.isAlive())await host.controlClose("resume").catch(()=>{});removing.delete(task.workspace);}
+  })());
+ });
  ipcMain.handle("harness:initial-project",async event=>{validateSender(event);return workspaceArgument?connect((await registry.select(workspaceArgument)).key):null;});
  ipcMain.handle("harness:open-project",async(event,key:unknown)=>{validateSender(event);if(typeof key!=="string")throw new Error("INVALID_PROJECT");return connect(key);});
  const fixtureProjects=fixture?process.argv.flatMap((value,index)=>value==="--fixture-project"&&process.argv[index+1]?[process.argv[index+1]!]:[]):[];
@@ -99,6 +133,6 @@ void app.whenReady().then(async()=>{
   const value=payload as {projectKey:unknown;sessionId:unknown;after:unknown};return(await runtime(value.projectKey)).events({sessionId:value.sessionId,after:value.after});
  });
  window.once("ready-to-show",()=>window.show());await window.loadFile(index);
- if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});const restartPhase=argument("--fixture-restart-phase");if(restartPhase?.startsWith("effect-"))await verifyDesktopEffectCrashSmoke(window,runtimes,reportDirectory,restartPhase);else if(restartPhase)await verifyDesktopRestartSmoke(window,runtimes,reportDirectory,restartPhase,argument("--fixture-cli"));else{await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}}
+ if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});const restartPhase=argument("--fixture-restart-phase");if(restartPhase?.startsWith("tasks-"))await verifyDesktopWorktreesSmoke(window,runtimes,reportDirectory,restartPhase);else if(restartPhase?.startsWith("effect-"))await verifyDesktopEffectCrashSmoke(window,runtimes,reportDirectory,restartPhase);else if(restartPhase)await verifyDesktopRestartSmoke(window,runtimes,reportDirectory,restartPhase,argument("--fixture-cli"));else{await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}}
 }).catch(async(error)=>{if(fixture)console.error(error);if(reportDirectory)await writeFile(path.join(reportDirectory,"failure.json"),JSON.stringify({code:"DESKTOP_VERIFICATION_FAILED"})).catch(()=>{});process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n");app.exit(1);});
 app.on("window-all-closed",()=>app.quit());

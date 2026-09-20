@@ -119,7 +119,7 @@ This historical view remains unchanged by later repository edits. Older decision
 incomplete previews or exhausted archive capacity show “Diff final no disponible”.
 The renderer displays literal text and identifies content altered by redaction.
 
-## Managed task worktrees (HU31, in progress)
+## Managed task worktrees (HU31)
 
 The host-side manager in `src/task-worktrees.ts` creates a new `feat/` branch and
 worktree from the selected repository's committed HEAD. It stores task identity,
@@ -136,9 +136,26 @@ disabled for manager operations, including status and removal. These worktrees u
 committed file content; dependency installation and LFS/filter execution are not
 implicit creation steps.
 
-This increment is not yet connected to renderer controls or sessions. The next work
-is task creation/selection UI, per-worktree runtime state outside the checkout,
-visible inspection/removal review and packaged concurrent-task/restart verification.
+Open “Tareas aisladas” to create a task. Choose its title and optional new `feat/`
+branch, then explicitly accept starting from the source repository's committed HEAD.
+Each task opens its own worker and conversation database outside the checkout.
+The panel shows its branch, base commit and status, and lists sibling tasks while
+one is selected. Switching tasks preserves work running in the other workers.
+
+“Revisar limpieza” displays pending paths, unintegrated commits and Git locks.
+Only a clean, integrated, unlocked checkout can enable “Retirar worktree revisado”.
+Active runtime work blocks removal; the host pauses admission before closing an idle
+worker and rechecking the Git review. The task record, branch and conversation
+state remain on disk. Removed tasks cannot be reopened through this panel; it does
+not yet expose archived conversation browsing or automatic repair of interrupted
+creation. Such records remain visible for manual inspection.
+
+Use `bun run --cwd desktop smoke:worktrees` after building, or
+`bun run --cwd desktop smoke:worktrees:packaged` after packaging. The offline fixture
+creates two tasks through the UI, verifies simultaneous runs and cross-task session
+rejection, cancels both, restarts the whole application, verifies the same sessions
+and separate files, refuses dirty cleanup and removes only the reviewed clean task.
+It also checks the original staged/unstaged/untracked files and index remain intact.
 
 Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
 that exits 7. It verifies failed-check display, duplicate-submit protection, a lost

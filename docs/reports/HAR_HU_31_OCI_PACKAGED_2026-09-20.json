@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "packaged": true,
+  "platform": "darwin",
+  "arch": "arm64",
+  "fixtureRuntime": true,
+  "realDocker": false,
+  "completePreview": true,
+  "explicitApproval": true,
+  "hostBytesVerified": true,
+  "patchBoundEvidence": true,
+  "verifiedFinalDiff": true,
+  "verifiedPatchId": "sha256:61711f4883080bfb4c7767be3a8a9267f1a746872acc38e604b28b131afe5da1"
+}

@@ -1,0 +1,60 @@
+import {app,type BrowserWindow} from "electron";
+import {readFile,writeFile,access} from "node:fs/promises";
+import path from "node:path";
+import assert from "node:assert/strict";
+import type {ProjectRuntime} from "./runtime-host.js";
+import type {DesktopTask} from "./bridge.js";
+
+/** Offline host fixture: two UI-created tasks, separate workers and durable sessions. */
+export async function verifyDesktopWorktreesSmoke(window:BrowserWindow,runtimes:Map<string,Promise<ProjectRuntime>>,directory:string,phase:string){
+ assert(["tasks-create","tasks-reopen"].includes(phase));
+ const js=(source:string)=>window.webContents.executeJavaScript(source);
+ const wait=async(source:string)=>{for(let i=0;i<240;i++){if(await js(source))return;await new Promise(resolve=>setTimeout(resolve,50));}await writeFile(path.join(directory,`${phase}-failure.txt`),await js("document.body.innerText"));throw new Error(`TASK_SMOKE_TIMEOUT: ${source}`);};
+ const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+ const key=()=>js('document.querySelector("main").dataset.projectKey') as Promise<string>;
+ await wait('document.querySelector("[data-ready=true]") !== null');
+ if(phase==="tasks-reopen"){await click('[data-project]');}
+ await wait('document.querySelector("[data-action=new-session]")?.disabled === false');
+ const sourceKey=await key(),file=path.join(directory,"tasks-checkpoint.json");
+ let saved:Array<{task:DesktopTask;projectKey:string;sessionId:string;runId:string}>=[];
+ const workers:ProjectRuntime[]=[];
+ if(phase==="tasks-create"){
+  for(const input of [{title:"bad",initialState:"copy-dirty"},{title:"bad",initialState:"committed-head",workspace:"/tmp/foreign"}])assert(await js(`window.harness.createTask(${JSON.stringify(sourceKey)},${JSON.stringify(input)}).then(()=>false,()=>true)`));
+  assert(await js('window.harness.openTask("unknown").then(()=>false,()=>true)'));
+  assert(await js('window.harness.removeTask("unknown").then(()=>false,()=>true)'));
+  for(let i=0;i<2;i++){
+   await js(`{const field=document.querySelector('[data-field="task-title"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(field,${JSON.stringify("Tarea <img onerror=alert(1)> ")}+${i});field.dispatchEvent(new Event("input",{bubbles:true}));}`);
+   await click('[data-field="task-policy"]');await wait('document.querySelector("[data-action=create-task]").disabled === false');await click('[data-action="create-task"]');
+   await wait(`document.querySelector("main").dataset.projectKey !== ${JSON.stringify(i?saved[0]!.projectKey:sourceKey)} && document.querySelector("[data-action=new-session]")?.disabled === false`);
+   const projectKey=await key(),runtime=await runtimes.get(projectKey)!;workers.push(runtime);
+   const tasks:DesktopTask[]=await js(`window.harness.tasks(${JSON.stringify(sourceKey)})`),task=tasks.find(t=>t.workspace===runtime.context.project.workspace)!;assert(task);assert(!("stateDirectory" in task));
+   assert.equal(await readFile(path.join(task.workspace,"review.txt"),"utf8"),"baseline\n");assert.equal(await js('document.querySelectorAll(".task-panel img").length'),0);
+   await access(path.join(task.workspace,".zhivex-harness")).then(()=>assert.fail("State inside checkout"),()=>{});
+   await click('[data-action="new-session"]');await wait('Boolean(document.querySelector("main").dataset.sessionId)');const sessionId:string=await js('document.querySelector("main").dataset.sessionId');
+   await click('[data-action="wait"]');await wait('document.querySelector("[data-action=cancel]").disabled === false');
+   const result=await runtime.command({method:"session.get",sessionId});assert(result.ok&&result.data.kind==="session");const runId=result.data.session.runs[0]!.runId;
+   saved.push({task,projectKey,sessionId,runId});
+  }
+  assert.notEqual(workers[0]!.context.runtimePid,workers[1]!.context.runtimePid);
+  for(let i=0;i<2;i++){
+   const item=saved[i]!,runtime=workers[i]!;const run=await runtime.command({method:"run.get",sessionId:item.sessionId,runId:item.runId});assert(run.ok&&run.data.kind==="run");assert.equal(run.data.run.status,"running");
+   const foreign=await runtime.command({method:"session.get",sessionId:saved[1-i]!.sessionId});assert.equal(foreign.ok,false);
+  }
+  await writeFile(path.join(saved[0]!.task.workspace,"review.txt"),"task one only\n");assert.equal(await readFile(path.join(saved[1]!.task.workspace,"review.txt"),"utf8"),"baseline\n");
+  for(const item of saved){await click(`[data-task="${item.task.id}"] [data-action="open-task"]`);await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(item.projectKey)} && document.querySelector("[data-session]")?.disabled === false`);await click(`[data-session="${item.sessionId}"]`);await wait('document.querySelector("[data-action=cancel]").disabled === false');await click('[data-action="cancel"]');await wait('document.body.innerText.includes("cancelled")');}
+  await writeFile(file,JSON.stringify(saved));
+ }else{
+  saved=JSON.parse(await readFile(file,"utf8"));
+  const tasks=await js(`window.harness.tasks(${JSON.stringify(sourceKey)})`);assert.deepEqual(tasks,saved.map(item=>item.task));
+  for(const item of saved){
+   await wait(`document.querySelector('[data-task="${item.task.id}"] [data-action="open-task"]')?.disabled === false`);await click(`[data-task="${item.task.id}"] [data-action="open-task"]`);await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(item.projectKey)} && document.querySelector("[data-session]")?.disabled === false`);
+   const runtime=await runtimes.get(item.projectKey)!;workers.push(runtime);const session=await runtime.command({method:"session.get",sessionId:item.sessionId});assert(session.ok&&session.data.kind==="session");assert.deepEqual(session.data.session.runs.map(run=>[run.runId,run.status]),[[item.runId,"cancelled"]]);
+  }
+  await click(`[data-task="${saved[0]!.task.id}"] [data-action="review-task-removal"]`);await wait('document.querySelector("[data-action=confirm-task-removal]") !== null');assert(await js('document.querySelector("[data-action=confirm-task-removal]").disabled'));
+  await click(`[data-task="${saved[1]!.task.id}"] [data-action="review-task-removal"]`);await wait('document.querySelector("[data-action=confirm-task-removal]")?.disabled === false');await click('[data-action="confirm-task-removal"]');await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(sourceKey)}`);
+  const removed:DesktopTask[]=await js(`window.harness.tasks(${JSON.stringify(sourceKey)})`);assert.equal(removed.find(task=>task.id===saved[1]!.task.id)?.status,"removed");
+  await access(saved[1]!.task.workspace).then(()=>assert.fail("Checkout still exists"),()=>{});await access(path.join(path.dirname(saved[1]!.task.workspace),"state","operations.sqlite"));
+  assert.equal(await readFile(path.join(saved[0]!.task.workspace,"review.txt"),"utf8"),"task one only\n");
+ }
+ await writeFile(path.join(directory,`${phase}-report.json`),JSON.stringify({phase,packaged:app.isPackaged,appPid:process.pid,runtimePids:workers.map(worker=>worker.context.runtimePid),tasks:saved.map(item=>item.task.id),concurrentRuns:phase==="tasks-create",restartIsolation:phase==="tasks-reopen",reviewedCleanup:phase==="tasks-reopen",fixture:true}));window.close();
+}

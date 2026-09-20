@@ -9,7 +9,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  const wait=async(expression:string)=>{for(let i=0;i<200;i++){if(await js(expression))return;await new Promise(r=>setTimeout(r,50));}await writeFile(path.join(reportDirectory,"failure-view.txt"),await js("document.body.innerText"));throw new Error(`RENDERER_TIMEOUT: ${expression}`);};
  const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  await wait('document.querySelector("[data-ready=true]") !== null');
- const isolated=await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "chooseProject,command,events,initialProject,openProject,projects,resolveReview,review"');assert(isolated);
+ const isolated=await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "chooseProject,command,createTask,events,initialProject,openProject,openTask,projects,removeTask,resolveReview,review,reviewTaskRemoval,tasks"');assert(isolated);
  const emptyStartup=!(await js('window.harness.projects()')).length;
  if(emptyStartup){assert(await js('document.body.innerText.includes("Abrí un repositorio")'));await click('[data-action="open-project"]');await wait('Boolean(document.querySelector("main").dataset.projectKey) && document.querySelector("[data-action=new-session]").disabled === false');}
  const projects=await js('window.harness.projects()');assert.equal(projects.length,1);const firstKey=projects[0].key;
@@ -50,7 +50,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  // HU28: duplicate submit, actual read/check tools, failed receipt, redaction and reconnect.
  await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
  await wait('document.querySelector("[data-action=start]").disabled === false');
- await js('for(let i=0;i<2;i++)document.querySelector("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
+ await js('for(let i=0;i<2;i++)document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
  await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("[data-action=wait]").disabled === false');
  const pendingSession=await first.command({method:"session.get",sessionId});assert(pendingSession.ok&&pendingSession.data.kind==="session");assert.equal(pendingSession.data.session.runs.length,runIds.length+1);
  const probeId=pendingSession.data.session.runs.at(-1)!.runId;

@@ -12,7 +12,9 @@
     "smoke": "bun run scripts/smoke.ts",
     "smoke:packaged": "bun run scripts/smoke.ts --packaged",
     "smoke:restart": "bun run scripts/smoke-restart.ts",
-    "smoke:restart:packaged": "bun run scripts/smoke-restart.ts --packaged"
+    "smoke:restart:packaged": "bun run scripts/smoke-restart.ts --packaged",
+    "smoke:worktrees": "bun run scripts/smoke-worktrees.ts",
+    "smoke:worktrees:packaged": "bun run scripts/smoke-worktrees.ts --packaged"
   },
   "dependencies": {
     "react": "^19.2.0",

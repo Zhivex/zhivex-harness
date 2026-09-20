@@ -104,15 +104,16 @@ separate; no beta claim. Historical increments remain in their dedicated reports
 
 Source: https://app.notion.com/p/3e1777b104f681319a9ac8db519c9caf?pvs=204
 
-- [ ] Crear tarea permite asignar worktree y rama con identidad persistida y estado visible.
-- [ ] Cambios sin commit del checkout original no se pierden ni se copian implícitamente; la política de estado inicial es explícita.
-- [ ] Limpiar worktree requiere revisar cambios no integrados; dos tareas concurrentes y un reinicio conservan sus entornos separados.
+- [x] Crear tarea permite asignar worktree y rama con identidad persistida y estado visible.
+- [x] Cambios sin commit del checkout original no se pierden ni se copian implícitamente; la política de estado inicial es explícita.
+- [x] Limpiar worktree requiere revisar cambios no integrados; dos tareas concurrentes y un reinicio conservan sus entornos separados.
 
-Host manager implemented; UI/runtime integration remains. Evidence:
-HAR_HU_31_MANAGER_2026-09-20.md. Six real-Git tests, 47 assertions and desktop
-typecheck pass. Initial policy is committed HEAD without source dirty-state copy;
-cleanup refuses dirty/ignored/unmerged/locked state and preserves branches.
-No acceptance criterion is closed by this manager-only increment.
+Implemented and verified locally; pending publication. Evidence:
+HAR_HU_31_CLOSURE_2026-09-20.md. 673 tests pass (3837 assertions); types,
+documentation and stable contracts pass. The unsigned macOS arm64 package verifies
+two concurrent task workers, separate sessions/files, whole-app restart, explicit
+cleanup review and original staged/unstaged/untracked preservation. General desktop
+and offline OCI review regressions also pass on this candidate.
 
 ## HAR-HU-32 — Crear commits y pull requests con autorización explícita
 

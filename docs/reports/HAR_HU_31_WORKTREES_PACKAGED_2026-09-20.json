@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "packaged": true,
+  "fixture": true,
+  "originalChangesPreserved": true,
+  "concurrentTaskIsolation": true,
+  "wholeAppRestart": true,
+  "reviewedCleanup": true,
+  "workersExited": true,
+  "phases": [
+    {
+      "phase": "tasks-create",
+      "packaged": true,
+      "appPid": 36656,
+      "runtimePids": [
+        37614,
+        38525
+      ],
+      "tasks": [
+        "8d6522e3-4847-4c14-8922-7ed44aa0f702",
+        "08c30d80-eba4-401f-ad14-9d41270f76aa"
+      ],
+      "concurrentRuns": true,
+      "restartIsolation": false,
+      "reviewedCleanup": false,
+      "fixture": true
+    },
+    {
+      "phase": "tasks-reopen",
+      "packaged": true,
+      "appPid": 39526,
+      "runtimePids": [
+        40067,
+        40573
+      ],
+      "tasks": [
+        "8d6522e3-4847-4c14-8922-7ed44aa0f702",
+        "08c30d80-eba4-401f-ad14-9d41270f76aa"
+      ],
+      "concurrentRuns": false,
+      "restartIsolation": true,
+      "reviewedCleanup": true,
+      "fixture": true
+    }
+  ],
+  "evidenceDirectory": "/tmp/har-tasks-j5cTWq/report"
+}
