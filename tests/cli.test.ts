@@ -47,6 +47,10 @@ const runCli = async (arguments_: string[], env: Record<string, string> = {}) =>
 };
 
 describe("CLI parsing", () => {
+  test("accepts literal session search only for listing", () => {
+    expect(parseCliArgs(["sessions", "list", "--search", "parser", "--limit", "1"])).toMatchObject({ sessionSearch: "parser", limit: 1 });
+    expect(() => parseCliArgs(["run", "--search", "parser", "task"])).toThrow("not supported");
+  });
   test("parses explicit personal profile initialization and selection", () => {
     expect(parseCliArgs([
       "init",

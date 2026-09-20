@@ -154,6 +154,10 @@ try:
     assert not pathlib.Path(root, "result.txt").exists()
     send("\x03")
     read_until("> ")
+    send("/rename Daily pilot\n")
+    read_until("> ")
+    send("/sessions pilot\n")
+    assert b"Daily pilot" in read_until("> ")
     send("/pending\n")
     assert b"apply_reviewed_edits" in read_until("> ")
     assert not pathlib.Path(root, "result.txt").exists()
@@ -165,7 +169,9 @@ try:
                              str(cli), "chat", "--continue", "--workspace", root],
                             stdin=slave, stdout=slave, stderr=slave, env=env)
     os.close(slave)
-    read_until("> ")
+    restored = read_until("> ")
+    assert b"durable status: waiting_approval" in restored
+    assert b"apply_reviewed_edits" in restored
     send("/pending\n")
     assert b"apply_reviewed_edits" in read_until("> ")
     send("/approve\n")

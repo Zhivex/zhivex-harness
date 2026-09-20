@@ -6,7 +6,7 @@ import { sanitizeTerminalText } from "./terminal-ui.js";
 export const CONSOLE_COMMANDS = [
   "/help", "/provider", "/model", "/route", "/status", "/diff", "/review",
   "/resume", "/pending", "/approve", "/deny", "/compact", "/new", "/rename",
-  "/clear", "/exit", "/paste", "/context", "/attach", "/attachments", "/detach"
+  "/clear", "/exit", "/paste", "/context", "/attach", "/attachments", "/detach", "/sessions", "/usage"
 ] as const;
 export const MAX_CONSOLE_INPUT_BYTES = 64 * 1024;
 

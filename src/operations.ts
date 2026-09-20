@@ -1,4 +1,5 @@
 import { inspectRuntimeDiagnostics, inspectRuntimeManifest } from "./runtime-diagnostics.js";
+import { inspectUsageLedger, USAGE_LEDGER_KEY } from "./usage-ledger.js";
 import { RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
 import { chmod, lstat, mkdir, open } from "node:fs/promises";
 import path from "node:path";
@@ -169,6 +170,7 @@ export const inspectHarnessRun = async (
     hierarchy,
     ledger,
     runtimeDiagnostics: inspectRuntimeDiagnostics(state.metadata?.[RUNTIME_DIAGNOSTICS_KEY]),
+    usageLedger: inspectUsageLedger(state.metadata?.[USAGE_LEDGER_KEY]),
     effectiveRuntime: inspectRuntimeManifest(state.metadata?.effectiveRuntime),
     toolJournal: journal.map((entry) => ({
       toolCallId: entry.toolCallId,

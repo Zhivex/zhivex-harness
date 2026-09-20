@@ -5,8 +5,22 @@ import path from "node:path";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "../src/console-context.js";
 import { createEmptyHarnessContextBundle } from "../src/context-engineering.js";
 import { Workspace } from "../src/workspace.js";
+import { resolveHarnessConfig } from "../src/config.js";
 
 describe("console context", () => {
+  test("distinguishes available skills, retained loaded receipts, limits and truncated attachments", () => {
+    const context = createEmptyHarnessContextBundle();
+    context.skills = [{ id: "review", scope: "project", name: "review", description: "Review", path: "skills/review/SKILL.md", digest: context.fingerprint, bytes: 50 }];
+    const output = formatConsoleContext(context, { config: resolveHarnessConfig({}),
+      attachments: [{ path: "large.txt", digest: context.fingerprint, truncated: true }],
+      messages: [{ role: "tool", parts: [{ type: "tool-result", toolResult: { toolName: "load_skill", isError: false,
+        output: { id: "review", digest: context.fingerprint, instructions: "HIDDEN_SKILL_BODY" } } }] }] });
+    expect(output).toContain("Loaded skill receipts in retained messages: review");
+    expect(output).toContain("TRUNCATED excerpt");
+    expect(output).toContain("Compaction thresholds:");
+    expect(output).toContain("Excluded by policy:");
+    expect(output).not.toContain("HIDDEN_SKILL_BODY");
+  });
   test("attachments exclude protected files, links, and stale bytes", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "harness-console-"));
     try {
@@ -24,6 +38,8 @@ describe("console context", () => {
       await expect(attachments.prompt(workspace, "review")).rejects.toThrow("Attachment changed");
       await attachments.add(workspace, "example.ts");
       expect(await attachments.prompt(workspace, "review")).toContain("changed");
+      expect(attachments.remove("example.ts")).toBe(true);
+      expect(await attachments.prompt(workspace, "review")).toBe("review");
       attachments.clear();
       expect(await attachments.prompt(workspace, "review")).toBe("review");
     } finally { await rm(root, { recursive: true, force: true }); }

@@ -6,6 +6,14 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+### Daily CLI workflow (HAR-HU-13, 16–19)
+
+- Add installed-package first-use coverage, recovery guidance and a runnable example.
+- Search project sessions and reconcile durable state and pending approvals before continuation.
+- Inspect attachment limits, retained skill receipts and context compaction; clarify exact approval scope and verification outcomes.
+- Persist per-provider/model usage across child calls and resumed runs. Optional dated pricing and per-run monetary limits block unknown or stale pricing and unknown usage; displayed costs remain estimates.
+- Prepare a frozen two-repository evaluation cohort and installed-artifact pilot driver. Live baseline and pilot results remain pending authorization (HAR-HU-14, 20).
+
 ### Console input and streaming (HAR-HU-15)
 
 - Insert bracketed clipboard content as bounded, editable literal text; prevent

@@ -1,0 +1,7 @@
+{
+  "name": "harness-first-use-example",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.0",
+  "scripts": { "test": "bun test" }
+}

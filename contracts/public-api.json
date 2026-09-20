@@ -856,6 +856,8 @@
       },
       "run": {
         "allowed": [
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -917,6 +919,20 @@
           "--subagent"
         ],
         "conflicts": {
+          "--usage-limit-usd": [
+            "--max-cost-usd",
+            "--input-cost-per-million",
+            "--output-cost-per-million"
+          ],
+          "--max-cost-usd": [
+            "--usage-limit-usd"
+          ],
+          "--input-cost-per-million": [
+            "--usage-limit-usd"
+          ],
+          "--output-cost-per-million": [
+            "--usage-limit-usd"
+          ],
           "--json": [
             "--jsonl"
           ],
@@ -927,6 +943,8 @@
       },
       "review": {
         "allowed": [
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -961,6 +979,8 @@
       },
       "chat": {
         "allowed": [
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -1021,6 +1041,20 @@
           "--subagent"
         ],
         "conflicts": {
+          "--usage-limit-usd": [
+            "--max-cost-usd",
+            "--input-cost-per-million",
+            "--output-cost-per-million"
+          ],
+          "--max-cost-usd": [
+            "--usage-limit-usd"
+          ],
+          "--input-cost-per-million": [
+            "--usage-limit-usd"
+          ],
+          "--output-cost-per-million": [
+            "--usage-limit-usd"
+          ],
           "--session": [
             "--continue"
           ],
@@ -1225,7 +1259,8 @@
           "--user",
           "--namespace",
           "--limit",
-          "--json"
+          "--json",
+          "--search"
         ],
         "required": [],
         "repeatable": [],

@@ -1,5 +1,39 @@
 # CLI contract
 
+Session discovery: `zhx sessions list --workspace <project> --search <text>` filters
+literal title/ID substrings before applying `--limit`. In the console use
+`/sessions [text]`, `/rename <title>` and `/resume <sessionId>`; reopening shows
+the durable status and pending approval payloads before a new task is accepted.
+`/context` shows active rules, available skills, attachment selection, exclusion
+policy and compaction limits. Attach/detach affects the next request; old excerpts
+remain in conversation history until a new session. Modified attachments must be
+reattached. Credential presence in `doctor` does not validate credentials live.
+
+### Transport usage and monetary limits
+
+Console `/usage` and run JSON `usageLedger` expose usage by API provider/model.
+Calls are recorded before transport in the private operations SQLite database;
+SDK child rollups are not added a second time. Missing usage and interrupted calls
+remain incomplete across restarts. A run's original price snapshot and cap survive
+`resume`; a new chat turn starts a new run budget, not a cumulative session budget.
+
+Use `--pricing-file <file.json> --usage-limit-usd <amount>` for a per-run monetary
+limit across parent and child routes. The file is a schemaVersion 1 object with a
+`prices` array: each entry specifies `provider`, `model`, `inputUsdPerMillion`,
+`outputUsdPerMillion`, `source`, `asOf` and `expiresAt` (UTC ISO timestamps).
+Prices are operator-supplied estimates, never confirmed invoices. Missing/expired
+prices or unresolved usage block new budgeted calls. The next request reserves
+estimated input and capped output before transport; parallel calls share the cap.
+Input prediction is heuristic; it is not a provider tokenizer or billing guarantee.
+Actual usage above the estimate is retained and blocks further calls if exhausted.
+Cache discounts and special billing tiers are not modeled; configure conservative
+inclusive rates. Qwen routes without an explicit supported output cap are blocked
+under this monetary policy. Unpriced non-budgeted runs report unknown cost.
+Legacy `--max-cost-usd` pricing remains available with its existing homogeneous-route
+restriction; do not combine the two monetary policies.
+Resume of pre-ledger runs marks historical usage unknown. Importing only a run
+snapshot cannot reset an existing ledger budget: restore the complete state backup.
+
 The Zhivex Harness `1.0` release is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands

@@ -4,6 +4,7 @@ Start with the [project README](../README.md) for stable 1.0 installation and a 
 
 ## Usage and integration
 
+- [Guided first use](FIRST_USE.md): clean profile, example, approvals and recovery.
 - [CLI](CLI.md): commands, interactive sessions, configuration and output contracts.
 - [Repository editing](REPOSITORY_EDITING.md): proposals, approvals, moves and recovery.
 - [Durable operations](DURABLE_OPERATIONS.md): persistence, budgets, resumption and migrations.

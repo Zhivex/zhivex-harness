@@ -96,6 +96,8 @@ export interface UpdateSessionInput {
 }
 
 export interface ListSessionsQuery {
+  /** Literal case-insensitive substring of the title or session ID, before limiting. */
+  search?: string;
   limit?: number;
   includeArchived?: boolean;
   includeDeleted?: boolean;
@@ -639,16 +641,19 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
       if (limit > MAX_LIST_LIMIT) {
         throw new HarnessConfigError(`limit cannot exceed ${MAX_LIST_LIMIT}.`);
       }
-      const rows = database.query<SessionRow, [string, string, number]>(`
+      const search = query.search?.trim() ?? "";
+      if (search.length > 256) throw new HarnessConfigError("Session search exceeds 256 characters.");
+      const rows = database.query<SessionRow, [string, string, number, string]>(`
         SELECT session_id, title, parent_session_id, forked_from_turn_id, revision, activity_seq,
                created_at, updated_at, archived_at, deleted_at
         FROM zhivex_cli_sessions
         WHERE workspace_key = ?1 AND scope_key = ?2
+          AND (?4 = '' OR instr(lower(COALESCE(title, '')), lower(?4)) > 0 OR instr(lower(session_id), lower(?4)) > 0)
           ${query.includeArchived ? "" : "AND archived_at IS NULL"}
           ${query.includeDeleted ? "" : "AND deleted_at IS NULL"}
         ORDER BY activity_seq DESC
         LIMIT ?3
-      `).all(workspaceKey, scopeKey, limit);
+      `).all(workspaceKey, scopeKey, limit, search);
       return rows.map((row) => {
         const latest = latestRunRow(row.session_id);
         const runCount = database.query<CountRow, [string]>(

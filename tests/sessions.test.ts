@@ -44,6 +44,19 @@ const fixture = async (options: Partial<Parameters<typeof openCliSessionStore>[0
 };
 
 describe("durable CLI sessions", () => {
+  test("searches literal titles before limiting and survives rename/restart", async () => {
+    const { store, workspace, stateDirectory } = await fixture();
+    const old = await store.create({ title: "Fix 100% parser" });
+    await store.create({ title: "recent unrelated" });
+    expect((await store.list({ search: "PARSER", limit: 1 }))[0]?.sessionId).toBe(old.sessionId);
+    expect(await store.list({ search: "%" })).toHaveLength(1);
+    expect(await store.list({ search: "' OR 1=1 --" })).toHaveLength(0);
+    await store.rename(old.sessionId, "New label");
+    expect(await store.list({ search: "parser" })).toHaveLength(0);
+    const reopened = await fixture({ workspace, stateDirectory });
+    expect((await reopened.store.list({ search: "new label" }))[0]?.sessionId).toBe(old.sessionId);
+    await expect(store.list({ search: "a".repeat(257) })).rejects.toThrow("256");
+  });
   test("persists immutable run bindings and permits provider changes only on a new terminal turn", async () => {
     const { workspace, stateDirectory, store } = await fixture();
     const created = await store.create({
@@ -188,6 +201,7 @@ describe("durable CLI sessions", () => {
     expect(await first.get(b.sessionId)).toBeUndefined();
     expect(first.workspaceKey).not.toBe(otherWorkspace.workspaceKey);
     expect(first.scopeKey).not.toBe(otherScope.scopeKey);
+    expect(await first.list({ search: "other" })).toHaveLength(0);
   });
 
   test("supports optimistic rename, bounded indexes and stable idempotent append", async () => {
