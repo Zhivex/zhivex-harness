@@ -29,3 +29,9 @@ test("complete host preimages enable edits only when all displayed bytes remain 
  const complete=projectApprovalReview(source,s=>s);expect(complete.items[0]).toMatchObject({complete:true,files:[{view:"full-file",before:"secret old",after:"secret new"}]});
  const redacted=projectApprovalReview(source,s=>s.replaceAll("secret","[REDACTED]"));expect(redacted.items[0]).toMatchObject({complete:false,restriction:"REDACTED"});expect(JSON.stringify(redacted)).not.toContain("secret");
 });
+
+test("OCI review exposes complete delete and permission scope alongside verifier argv",()=>{
+ const source=run("verify_and_apply_environment_patch",{patchId:"sha256:"+"a".repeat(64),command:"node",args:["verify.mjs"]});
+ source.approvals[0]!.filePreview={status:"complete",proposalId:"sha256:"+"a".repeat(64),files:[{path:"old.txt",expectedDigest:"sha256:"+"b".repeat(64),before:"old",after:null,afterDigest:null,beforeMode:0o755,operation:"delete"}]};
+ expect(projectApprovalReview(source,s=>s).items[0]).toMatchObject({complete:true,commands:['["node","verify.mjs"]'],files:[{operation:"delete",before:"old",after:"",beforeMode:0o755,view:"full-file"}]});
+});

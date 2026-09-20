@@ -165,7 +165,7 @@
     },
     {
       "name": "createHarness",
-      "sha256": "sha256:b1b86f1ad676eae330dd0e99929e857348552ff690c784fdd416d2e2b02943a8"
+      "sha256": "sha256:7cea05d51dff835bef5f3205e917273797af3ce09084ab99b608671c2812ccfb"
     },
     {
       "name": "createHarnessMcpTools",
@@ -173,7 +173,7 @@
     },
     {
       "name": "createHarnessOciExecutionEnvironment",
-      "sha256": "sha256:c917a44a086366b3c5538d2f418d90bb31d23e71cf538bd9f0b60381364d2b69"
+      "sha256": "sha256:6a62e4a6befffc36d8f702c45a0a833fdb62b6eaf64bf28a13200fc30dafd8c4"
     },
     {
       "name": "createHarnessStateBackup",
@@ -273,7 +273,7 @@
     },
     {
       "name": "runHarness",
-      "sha256": "sha256:ce1ebda0ee0bd1e79e9fb5286715bf3e02df7d5233321cdc68b27df15831fd36"
+      "sha256": "sha256:584ffc9c7bfbdfc556226907d97d68d7e5d82ec67e39688b6bb79c03b8e1361a"
     },
     {
       "name": "serializeStreamEvent",
@@ -487,8 +487,8 @@
     },
     {
       "name": "ZhivexHarness",
-      "sha256": "sha256:269224d4842f1f2db11128f883c33ae6e57eb1a9c26dba3aab4162f388ea5ff3"
+      "sha256": "sha256:984c1171cdd88a8138de73523aca11f384d6bcedefdd9c688b346e60c56ee7fb"
     }
   ],
-  "digest": "sha256:fee8715a578348e24978cd5414fd0cf34f25398167ecea1609bb5a26fd364ccb"
+  "digest": "sha256:8ba085a5db0789062d55e69d844e873fc3d448f65c49364a511935871b868491"
 }

@@ -181,3 +181,8 @@ Fourth HU29 increment: durable decision intent and journal-bound effect history.
 Status-distinction criterion verified by unit/integration tests and packaged
 renderer-reload flow. Evidence: HAR_HU_29_HISTORY_2026-09-20.md. Remaining acceptance
 criteria stay open; no publication claim.
+
+Fifth HU29 increment: read-only OCI content/mode previews and verified import
+history bound to patch/run/argv. 654 full-suite tests pass; OCI integration uses a
+fixture runtime. Packaged local-flow regression and installed CLI/SDK smoke pass.
+Evidence and explicit remaining demonstration: HAR_HU_29_OCI_2026-09-20.md.

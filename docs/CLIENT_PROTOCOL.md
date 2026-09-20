@@ -187,3 +187,21 @@ Responses include `decisionTotal`, at most 25 decisions and an optional
 `decisionNextOffset`; pass `decisionOffset` to `run.get` to read later pages. A fresh
 read starts at offset zero. Legacy runs have no service decision ledger and return
 an empty history, rather than fabricated historical approvals.
+
+## OCI review and patch-bound verification
+
+OCI approval previews read existing artifacts through the configured environment's
+`previewPatch` operation. They check run/scope/environment binding, immutable patch
+identity, host content and modes, without acquiring a runtime or creating a missing
+snapshot. Full UTF-8 contents and mode transitions include recoverable deletions.
+Invalid UTF-8 patches fail instead of displaying or importing replacement bytes.
+
+Verified environment imports and verified reviewed edits expose journal evidence
+only when the import receipt matches the run and patch, verifier argv matches the
+approved input, and verification exited zero without timeout. Reviewed-edit proof
+also matches its proposalId to the approved changes. Plain checks are explicitly
+not certified against a specific patch. All fields remain subject to host redaction.
+
+The environment preview method is additive on the Beta environment interface;
+factory return signatures were reviewed and their snapshot updated. Existing
+execution and import methods retain their contracts and mutation-time checks.

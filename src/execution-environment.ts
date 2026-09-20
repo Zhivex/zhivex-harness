@@ -1341,7 +1341,8 @@ const textContent = (file: SnapshotFile, maxFileWriteBytes: number) => {
   if (file.contents.includes(0)) {
     throw new Error(`Environment patch contains a binary file that cannot be imported: ${file.path}.`);
   }
-  return file.contents.toString("utf8");
+  try { return new TextDecoder("utf-8", {fatal:true,ignoreBOM:true}).decode(file.contents); }
+  catch { throw new Error("Environment patch requires valid UTF-8 text."); }
 };
 
 const createEnvironmentPatch = async (
@@ -1559,6 +1560,7 @@ export const harnessExecutionSession = (
 
 export interface HarnessOciExecutionEnvironment extends AgentExecutionEnvironment {
   acquire(request: AgentExecutionEnvironmentAcquireRequest): Promise<HarnessExecutionSession>;
+  previewPatch(request: Pick<AgentExecutionEnvironmentAcquireRequest,"runId"|"scope">, expectedPatchId: FileDigest): Promise<{patchId:FileDigest;entries:EnvironmentPatchEntry[]}>;
   readonly image: OciImageInspection;
   readonly runtime: HarnessOciRuntimeAdapter;
 }
@@ -1636,6 +1638,25 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
     manifest,
     image,
     runtime,
+    async previewPatch(request, expectedPatchId) {
+      const stateDirectory=await realpath(options.stateDirectory);
+      const scopeKey=executionScopeKey(request.scope);
+      const identity=executionIdentity(options.workspace.root,stateDirectory,request.runId,scopeKey);
+      const directory=path.join(stateDirectory,"environments",runHash(identity));
+      // This read path neither acquires a runtime nor creates missing snapshots.
+      for(const candidate of [path.join(stateDirectory,"environments"),directory,path.join(directory,"base"),path.join(directory,"workspace")]){
+        const entry=await lstat(candidate);
+        if(entry.isSymbolicLink()||!entry.isDirectory()||await realpath(candidate)!==candidate)throw new Error("Unsafe execution review directory.");
+      }
+      const file=await readRegularFileNoFollow(path.join(directory,"environment.json"),{label:"Execution metadata",maxBytes:1024*1024});
+      const metadata=JSON.parse(file.contents.toString("utf8")) as EnvironmentMetadata;
+      if(metadata.schemaVersion!==HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION||metadata.runId!==request.runId||metadata.scopeKey!==scopeKey||metadata.stateDirectory!==stateDirectory||metadata.executionIdentity!==identity||metadata.hostWorkspace!==options.workspace.root||metadata.binding.fingerprint!==binding.fingerprint||metadata.binding.workspaceId!==binding.workspaceId)throw new Error("Execution review binding changed.");
+      const base=await Workspace.open(path.join(directory,"base")),current=await Workspace.open(path.join(directory,"workspace"));
+      const patch=await createEnvironmentPatch(request.runId,base,current,options.config.maxFileWriteBytes,options.config.maxWorkspaceBytes,undefined,identity);
+      if(patch.patchId!==expectedPatchId)throw new Error("The OCI patch changed after review.");
+      for(const entry of patch.entries)await inspectHostPrecondition(options.workspace,entry.path,entry.beforeDigest,entry.beforeMode);
+      return {patchId:patch.patchId,entries:patch.entries};
+    },
     async acquire(request: AgentExecutionEnvironmentAcquireRequest) {
       const ioMetrics: HarnessExecutionIoMetrics = {
         inventoryPasses: 0,
@@ -2039,6 +2060,10 @@ export const createHarnessOciExecutionEnvironment = async (
     const environment = await createHarnessOciExecutionEnvironmentUnsafe(options);
     return {
       ...environment,
+      async previewPatch(request,patchId) {
+        try { return await environment.previewPatch(request,patchId); }
+        catch(error) { return executionBoundaryError(error,"Execution patch review failed."); }
+      },
       async acquire(request) {
         try {
           return typedExecutionSession(await environment.acquire(request));

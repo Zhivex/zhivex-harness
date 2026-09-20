@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { HarnessClientRun } from "../../src/client-contract.js";
-export interface ApprovalReviewFile {path:string;expectedDigest:string|null;before?:string;after?:string;view:"literal-replacement"|"replacement-contents"|"operation"|"full-file";afterDigest?:string}
+export interface ApprovalReviewFile {path:string;expectedDigest:string|null;before?:string;after?:string;view:"literal-replacement"|"replacement-contents"|"operation"|"full-file";afterDigest?:string|null;beforeMode?:number;afterMode?:number;operation?:"create"|"update"|"delete"}
 export interface ApprovalReviewItem {
  approvalId:string;digest:string;expiresAt:number;name:string;payloadDigest:string;
  payload:string;files:ApprovalReviewFile[];commands:string[];consequence:string;
@@ -25,11 +25,11 @@ export function projectApprovalReview(run:HarnessClientRun,redact:(text:string)=
   if(typeof args.command==="string")commands.push(JSON.stringify([args.command,...(Array.isArray(args.args)?args.args:[])]));
   if(typeof args.script==="string")commands.push(args.script);
   if(Array.isArray(args.commands))for(const entry of args.commands){const c=object(entry);if(c&&typeof c.command==="string")commands.push(JSON.stringify([c.command,...(Array.isArray(c.args)?c.args:[])]));}
-  const needsBase=["apply_patch","apply_reviewed_edits","apply_reviewed_replacement"].includes(name);
+  const needsBase=["apply_patch","apply_reviewed_edits","apply_reviewed_replacement","apply_environment_patch","verify_and_apply_environment_patch","verify_and_apply_reviewed_edits"].includes(name);
   const preview=approval.filePreview;
   if(needsBase&&preview?.status==="complete"){
    files.length=0;
-   files.push(...preview.files.map(file=>({path:file.path,expectedDigest:file.expectedDigest,before:file.before??"",after:file.after,afterDigest:file.afterDigest,view:"full-file" as const})));
+   files.push(...preview.files.map(file=>({path:file.path,expectedDigest:file.expectedDigest,before:file.before??"",after:file.after??"",afterDigest:file.afterDigest,...(file.beforeMode===undefined?{}:{beforeMode:file.beforeMode}),...(file.afterMode===undefined?{}:{afterMode:file.afterMode}),...(file.operation?{operation:file.operation}:{}),view:"full-file" as const})));
   }
   const execution=name==="run_check"||name.startsWith("run_environment_")||name.startsWith("verify_and_apply_");
   const mutation=name.startsWith("apply_")||name.startsWith("verify_and_apply_")||["move_file","quarantine_file","restore_file"].includes(name);

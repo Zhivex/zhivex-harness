@@ -28,3 +28,12 @@ test("history projects bounded pages without dropping the durable ledger",()=>{
  expect(approvalDecisionViews(run,[],25)[0]!.approvalId).toBe("a25");
  expect(approvalDecisionViews(run,[],50).map(r=>r.approvalId)).toEqual(["a50","a51"]);
 });
+
+test("verified OCI evidence binds patch, run and exact verifier argv; mismatches cannot certify application",()=>{
+ const patchId="sha256:"+"b".repeat(64),args={patchId,command:"node",args:["verify.mjs"]};
+ const record={...row,name:"verify_and_apply_environment_patch",inputDigest:approvalInputDigest(args)};
+ const receipt={kind:"verified-environment-patch-import",patchId,verification:{command:["node","verify.mjs"],exitCode:0,timedOut:false},imported:{kind:"environment-patch-import",patchId,runId:"run",changes:[{path:"a.txt",beforeDigest:"sha256:"+"c".repeat(64),afterDigest:"sha256:"+"d".repeat(64)}]}};
+ const view=(output:unknown)=>approvalDecisionViews(state(record),[journal({toolName:record.name,input:args,output:output as never})])[0]!;
+ expect(view(receipt)).toMatchObject({status:"applied",evidence:{verifiedPatchId:patchId,command:["node","verify.mjs"],exitCode:0,effects:[{path:"a.txt"}]}});
+ for(const bad of [{...receipt,patchId:"sha256:"+"e".repeat(64)},{...receipt,imported:{...receipt.imported,runId:"other"}},{...receipt,verification:{...receipt.verification,command:["node","different.mjs"]}},{...receipt,verification:{...receipt.verification,exitCode:1}},{...receipt,verification:{...receipt.verification,timedOut:true}}])expect(view(bad).status).toBe("unknown");
+});

@@ -98,12 +98,19 @@ Approval is enabled for complete run_check and protected file-edit previews
 bytes, including BOM/CRLF, are bound to the expected digest and displayed beside
 the destination. Missing/create-only, stale, protected, invalid UTF-8, oversized or
 redacted bases cannot enable approval. Rejection can cover incomplete proposals.
-OCI approvals remain disabled until patch/mode previews exist. Packaged macOS
-arm64 smoke verifies file rejection, subsequent approval and exact resulting bytes.
-Durable decision/effect history and OCI review remain required before HU29 closes.
+When the host is configured for OCI, apply_environment_patch and
+verify_and_apply_environment_patch use read-only artifact previews including
+create/update/delete operations and before/after modes. Verified reviewed edits
+show complete host-bound contents and exact verifier argv; the execution transaction
+still requires a clean snapshot and unchanged post-verification patch. Packaged
+macOS arm64 smoke verifies file rejection, subsequent approval and exact bytes.
+OCI behavior has integration evidence with a fixture runtime; packaged OCI and
+real-runtime validation remain separate.
 
 The per-run “Historial de decisiones” reads durable service decisions and journal
 receipts on demand, including older runs after renderer reload. It distinguishes
 rejected, applied, failed, succeeded and unconfirmed outcomes, with file effect
 digests and check exit codes. Pages load explicitly. This does not yet bind a plain
-run_check receipt to the exact bytes of a preceding patch or supply OCI review.
+run_check receipt to the exact bytes of a preceding patch. Verified OCI import
+receipts instead expose the exact patchId, verifier argv and successful exit code.
+The history rejects mismatched run/patch/argv receipts instead of showing verified.

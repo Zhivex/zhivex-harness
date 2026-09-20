@@ -167,7 +167,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       return { kind: "run", session: sessionDocument(s), run: await documentRun(result.state) };
     }
     let state = await getRun(s, c.runId);
-    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace) : await documentRun(state,c.decisionOffset) };
+    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace,{environment:harness.executionEnvironment,scope:harness.config.scope}) : await documentRun(state,c.decisionOffset) };
     if ((state.revision ?? 0) !== c.expectedRevision) return fail("REVISION_CONFLICT");
     if (c.method === "run.cancel") {
       if (["created", "running", "cancel_requested"].includes(state.status)) return fail("INVALID_STATE");
@@ -248,7 +248,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           } catch { return error("NOT_FOUND"); }
         }
         if (c.method === "run.get" && c.projectId === projectId) {
-          try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace) : await documentRun(state,c.decisionOffset) } }; }
+          try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace,{environment:harness.executionEnvironment,scope:harness.config.scope}) : await documentRun(state,c.decisionOffset) } }; }
           catch { return error("NOT_FOUND"); }
         }
         return error(c.method === "approval.resolve" ? "REVISION_CONFLICT" : "BUSY");
