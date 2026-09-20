@@ -480,7 +480,7 @@ No se infieren los bytes de las respuestas del benchmark a partir del fixture.
 
 La corrección está preparada en la rama local SDK
 `feat/qwen-terminal-tool-calls`, sobre el commit posterior al release
-identificado en [su expediente](../../upstream-fixes/qwen-terminal-tool-calls/README.md).
+identificado en [la PR del SDK](https://github.com/Zhivex/zhivex-ai-sdk/pull/103).
 Pasan 209 tests Qwen, 2.424 tests SDK, tipos, docs y build. El adapter compilado
 pasa el mismo fixture que falla en Qwen 0.14.3: una llamada emitida, finish
 normalizado tool-calls y uso 12/8. El parche valida el lote completo antes de

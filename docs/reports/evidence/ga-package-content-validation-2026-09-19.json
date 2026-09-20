@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-release-artifact-validation",
+  "baseCommit": "26f5fcd68826952dc3d706b89d5d72a9ba9b344a",
+  "sourceChange": "Replace unpackaged relative dossier link with published SDK PR 103",
+  "artifactSha512": "c46708a7053628e4b38a4b059b632fed6e4bc065ff9b91e2b40b04f49f613f06d1aa10600c9eef40d4d85a71d490e0e6626ffa58dd783d3b2e117adcdd39eb0d",
+  "files": 204,
+  "bytes": 1055949,
+  "artifactCheck": "passed",
+  "documentationCheck": "passed",
+  "forbiddenPathMatches": [],
+  "checks": [
+    "Archive path allowlist, required files and duplicate paths",
+    "All relative Markdown links resolve within archive",
+    "Package identity, engines and publication policy",
+    "Node runtime and CLI compatibility"
+  ],
+  "limitations": [
+    "Local package only; not published and not provenance-attested",
+    "Path scan does not establish absence of every possible secret in content"
+  ]
+}
