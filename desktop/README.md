@@ -1,7 +1,7 @@
 # Zhivex Harness desktop alpha — in progress
 
-HAR-HU-26 architecture validation and HU27 project/conversation navigation are
-implemented. HU28–35 retain separate acceptance criteria. Uses an isolated React renderer, validated preload bridge and separate
+HAR-HU-26 architecture validation and HU27 project/conversation navigation and HU28 chat are
+implemented. HU29–35 retain separate acceptance criteria. Uses an isolated React renderer, validated preload bridge and separate
 runtime utility process sharing the existing Harness client/service contract.
 
 ```sh
@@ -56,3 +56,25 @@ renderer reload, empty launch, invalid-folder recovery and duplicate launch.
 For deterministic automation only, host `--fixture-project` arguments supply the
 native picker's results; the renderer never supplies a path. Registry tests also
 verify canonical aliases, concurrent persistence and unchanged uncommitted files.
+
+## Chat and recovery (HU28)
+
+The timeline groups the user's message, streamed response, tools and check receipts
+by run. Failed checks show their actual exit code; missing receipts are explicitly
+unverified. Repository content is literal text, with no HTML/Markdown execution.
+The renderer receives redacted activity and safe run metadata, not raw engine output,
+CLI result objects or approval arguments. Diff/approval review remains HU29.
+
+Double submit is blocked synchronously. If a command response is lost after admission,
+the UI requires “Actualizar estado” before sending again, and reconciles the stored
+run instead of automatically resubmitting it. A failed activity poll preserves the
+cursor and retries reads; reopening uses replay or an explicit expired-cursor snapshot.
+Session queries work during streaming, so renderer reload does not require cancelling
+the engine. A service process crash and restart remains the fuller HU30 recovery flow.
+
+Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
+that exits 7. It verifies failed-check display, duplicate-submit protection, a lost
+response after accepted work, temporary transport unavailability, renderer reload
+during streaming, expired snapshots, literal hostile markup and a secret split across
+chunks. Fault switches exist only on the trusted host's fixture runtime object; they
+are not part of the preload bridge. No model API is contacted.

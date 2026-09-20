@@ -57,7 +57,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
         const page=await requestHarnessLocalService(credentials,"events",{projectId,sessionId:session.sessionId,after:cursor});
         if(page.cursorExpired)throw new HarnessStateConflictError("Service activity cursor expired; reopen the session snapshot.");
         cursor=page.nextCursor;
-        for(const event of page.events){activeRun=event.runId;const a=event.activity;if(a.type==="checkpoint")continue;
+        for(const event of page.events){activeRun=event.runId;const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;
           if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");
           else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}
         }
@@ -67,7 +67,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       for (;;) {
       const tail=await requestHarnessLocalService(credentials,"events",{projectId,sessionId:session.sessionId,after:cursor});
       if(tail.cursorExpired)throw new HarnessStateConflictError("Service activity cursor expired; inspect session.");
-      for(const event of tail.events){const a=event.activity;if(a.type==="checkpoint")continue;if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}}
+      for(const event of tail.events){const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}}
       cursor=tail.nextCursor;
       if(tail.events.length<200)break;
       }

@@ -108,3 +108,24 @@ The CLI adapter now consumes this transport via opt-in `--service`; see
 [CLI.md](CLI.md#shared-local-service-experimental). It shares the direct CLI result
 serializer and persists that projection with the run. New run admission explicitly
 uses the host scope. No renderer or CLI can override it.
+
+## Chat activity and concurrent readers
+
+User prompts are recorded once per admitted run as redacted `user-message` activity.
+Snapshots retain the prompt, bounded text, run status and up to 256 tool records per
+run. A `run_check` tool result exposes only its integer exitCode and timedOut flag;
+a successful tool transport does not prove a check passed. Raw stdout/stderr and
+arguments remain excluded. Prompt display is bounded to 60 KiB after redaction and
+marks truncation. Known secret values containing spaces are buffered across chunks.
+
+Session/project reads remain available while a run is active. Those reads do not
+refresh session revisions; clients query the selected run for current status. They
+cannot submit another mutation through this read path. Service-mode CLI skips the
+new user-message records so its existing JSONL event contract remains unchanged.
+
+Desktop applies cursor and activity updates atomically and ignores duplicate or
+older pages. Expired cursors replace the view from the durable snapshot. Main drops
+raw engine output, the rich CLI result and approval arguments before returning a
+run to the renderer, and redacts known host credential values and common token forms.
+This is a renderer/activity boundary; it does not claim that all historical engine
+state or the separate operator-facing rich CLI contract is a sanitized export.

@@ -68,11 +68,11 @@ Evidence: docs/reports/HAR_HU_27_2026-09-20.md; registry regression tests and pa
 
 Source: https://app.notion.com/p/3e1777b104f681c8bb76e138bf016bb2?pvs=204
 
-- [ ] Chat muestra streaming, herramientas, checks y estados sin exponer secretos ni renderizar contenido activo inseguro.
-- [ ] Enviar y cancelar usa el contrato del servicio, con prevención de envíos duplicados y estados de error recuperables.
-- [ ] Reabrir una conversación reconstruye actividad y resultado mediante snapshot/replay, incluso después de una desconexión.
+- [x] Chat muestra streaming, herramientas, checks y estados sin exponer secretos ni renderizar contenido activo inseguro.
+- [x] Enviar y cancelar usa el contrato del servicio, con prevención de envíos duplicados y estados de error recuperables.
+- [x] Reabrir una conversación reconstruye actividad y resultado mediante snapshot/replay, incluso después de una desconexión.
 
-Evidence: pending.
+Evidence: docs/reports/HAR_HU_28_2026-09-20.md; 633 tests, installed CLI/SDK smoke and packaged chat/fault/replay smoke passed.
 
 ## HAR-HU-29 — Revisar diffs y resolver aprobaciones en escritorio
 

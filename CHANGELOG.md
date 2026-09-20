@@ -672,3 +672,12 @@ No configuration, SQLite, approval, or execution-policy migration is required. E
   with durable event replay and existing versioned JSON/JSONL documents.
 - Persisted the shared CLI result projection and explicitly bound service run
   admission to host scope. Added CLI/second-client crash recovery in installed smoke.
+
+### Experimental desktop chat
+
+- Added redacted per-run chat activity with durable prompts, bounded tool snapshots
+  and actual check exit codes. Session reads remain available during execution.
+- Preserved CLI JSONL compatibility; desktop strips rich engine/CLI/approval payloads,
+  deduplicates replay and reconciles lost responses before allowing another send.
+- Verified packaged macOS chat with duplicate submission, failed check, expired
+  snapshot, transport interruption, renderer reload and split-secret fixtures.

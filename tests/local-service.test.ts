@@ -72,6 +72,9 @@ test("disconnect during streaming retains activity and drains accepted work on s
   const req=request({socketPath:f.credentials.socketPath,path:"/command",method:"POST",headers:{authorization:`Bearer ${f.credentials.token}`,"content-type":"application/json"}},res=>res.resume());req.on("error",()=>{});req.end(body);
   await began;req.destroy();
   const page=await requestHarnessLocalService(f.credentials,"events",{projectId:f.hello.projectId,sessionId});expect(page.events.length).toBeGreaterThan(0);
+  const during=await f.call({method:"session.get",sessionId});expect(during).toMatchObject({ok:true,data:{kind:"session"}});
+  expect(await f.call({method:"session.list"})).toMatchObject({ok:true,data:{kind:"sessions",sessions:[{sessionId}]}});
+  const again=await f.call({method:"session.get",sessionId});if(during.ok&&again.ok)expect(again.data).toEqual(during.data);
   const firstCursor=page.nextCursor;release();
   await f.service.close();
   const {openHarnessActivityStore}=await import("../src/service-events.js");const activity=await openHarnessActivityStore(f.harness.config);

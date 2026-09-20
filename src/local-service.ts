@@ -105,6 +105,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       ...(options.maxEvents===undefined?{}:{maxEvents:options.maxEvents}), ...(options.retentionMs===undefined?{}:{retentionMs:options.retentionMs})
     });
     adapter = await createHarnessClientAdapter(harness, {
+      onPrompt: (sessionId,runId,prompt) => activity!.prompt(sessionId,runId,prompt),
       onEvent: (sessionId,runId,event) => activity!.append(sessionId,runId,event),
       onCheckpoint: (sessionId,runId,status) => activity!.checkpoint(sessionId,runId,status)
     });

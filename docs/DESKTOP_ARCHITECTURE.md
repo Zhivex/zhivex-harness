@@ -19,7 +19,9 @@ keys and cannot supply arbitrary paths. Main checks
 the exact local page URL, WebContents identity and main frame on every request. It
 validates the strict HU21 envelope, rejects renderer project/workspace overrides and
 binds its host-selected project. Tokens remain in main and the owner-private service
-file. A separate Electron utility process owns the actual Harness, SQLite and tools.
+file. Main strips rich CLI output and approval payloads from run responses, redacts known
+host credentials, and sends allowlisted durable activity to React. A separate
+Electron utility process owns the actual Harness, SQLite and tools.
 Its Unix socket uses the existing HU22–25 authentication, authorization and replay.
 No policy decision is delegated to the renderer.
 
@@ -57,7 +59,8 @@ Responses are scoped to the selected view to prevent cross-project races. One ap
 instance owns the catalog; duplicate launch focuses the existing window. Runtime
 startup failures fail closed; dead-owner recovery is explicit.
 Closing the app drains accepted work; this may take until the configured timeout.
-Renderer crash recovery and the full approval journey belong to HU30. A missing
+Renderer reload during a running stream is verified in HU28; process-crash recovery
+and the full approval journey belong to HU30. A missing
 provider key produces a runtime error; secure credential UI is HU33. Production
 configuration and OCI onboarding must not silently assume Docker is present.
 

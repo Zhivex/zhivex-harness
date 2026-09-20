@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import type { DesktopContext,DesktopProject } from "./bridge.js";
 import type { HarnessClientRun,HarnessClientSession } from "../../src/client-contract.js";
+import { Conversation } from "./Conversation.js";
+import { applyActivityPage,emptyActivity } from "./activity.js";
 import { Navigation } from "./Navigation.js";
-const isRunning=(run:HarnessClientRun|undefined)=>Boolean(run&&["created","running","queued"].includes(run.status));
+const isRunning=(run:HarnessClientRun|undefined)=>Boolean(run&&["created","running","queued","cancel_requested"].includes(run.status));
 const command=async(key:string,value:Record<string,unknown>)=>{const result=await window.harness.command(key,value);if(!result.ok)throw new Error(result.error.code);return result.data;};
 
 export function App(){
  const [projects,setProjects]=useState<DesktopProject[]>([]),[context,setContext]=useState<DesktopContext>();
  const [sessions,setSessions]=useState<HarnessClientSession[]>([]),[session,setSession]=useState<HarnessClientSession>();
- const [run,setRun]=useState<HarnessClientRun>(),[text,setText]=useState(""),[prompt,setPrompt]=useState("");
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[ready,setReady]=useState(false);
- const generation=useRef(0),cursor=useRef(0),activeRun=useRef<string|undefined>(undefined),submitting=useRef(new Set<string>());
+ const [run,setRun]=useState<HarnessClientRun>(),[activity,setActivity]=useState(emptyActivity),[prompt,setPrompt]=useState("");
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(""),[ready,setReady]=useState(false),[disconnected,setDisconnected]=useState(false),[reconcileRequired,setReconcileRequired]=useState(false);
+ const generation=useRef(0),activityRef=useRef(emptyActivity()),activeRun=useRef<string|undefined>(undefined),submitting=useRef(new Set<string>());
  const previousRuns=useRef<Set<string>|undefined>(undefined);
  const refreshProjects=async()=>setProjects(await window.harness.projects());
  const refreshSessions=async(key:string)=>{const data=await command(key,{method:"session.list"});if(data.kind!=="sessions")throw new Error();return data.sessions;};
- const reset=()=>{generation.current++;setSession(undefined);setRun(undefined);setText("");setBusy(false);setPrompt("");cursor.current=0;activeRun.current=undefined;previousRuns.current=undefined;setError("");return generation.current;};
+ const reset=()=>{generation.current++;setSession(undefined);setRun(undefined);setActivity(emptyActivity());activityRef.current=emptyActivity();setBusy(false);setPrompt("");activeRun.current=undefined;previousRuns.current=undefined;setError("");setDisconnected(false);setReconcileRequired(false);return generation.current;};
  const selecting=useRef(false);
  async function selectProject(open:()=>Promise<DesktopContext|null>){
   if(selecting.current)return;selecting.current=true;setLoading(true);setError("");
@@ -31,7 +33,7 @@ export function App(){
    const last=data.session.runs.at(-1);const loaded=last?await command(key,{method:"run.get",sessionId:id,runId:last.runId}):undefined;
    if(epoch!==generation.current)return;
    if(loaded?.kind==="run"){setRun(loaded.run);activeRun.current=loaded.run.runId;setBusy(isRunning(loaded.run));}
-   setSession(data.session);
+   setSession(data.session);setSessions(items=>items.map(item=>item.sessionId===id?data.session:item));
   }catch{if(epoch===generation.current)setError("No se pudo recuperar la conversación. Actualizá la lista o seleccioná otra sesión.");}
   finally{if(epoch===generation.current)setLoading(false);}
  }
@@ -45,23 +47,22 @@ export function App(){
   if(!context||!session)return;const key=context.project.key,id=session.sessionId,epoch=generation.current;let stopped=false,timer:ReturnType<typeof setTimeout>;
   const poll=async()=>{
    try{
-    const page=await window.harness.events(key,id,cursor.current);if(stopped||epoch!==generation.current)return;
-    cursor.current=page.nextCursor;
-    if(page.cursorExpired&&page.snapshot){setText(Object.values(page.snapshot.runs).map(r=>r.text).join("\n"));}
-    else{let delta="";for(const event of page.events){if(!previousRuns.current?.has(event.runId))activeRun.current=event.runId;if(typeof event.activity.textDelta==="string")delta+=event.activity.textDelta;}if(delta)setText(t=>(t+delta).slice(-262144));}
-    if(page.events.some(e=>e.activity.type==="checkpoint")&&activeRun.current){const current=await command(key,{method:"run.get",sessionId:id,runId:activeRun.current});if(stopped||epoch!==generation.current)return;if(current.kind==="run"){setRun(current.run);setBusy(isRunning(current.run)||submitting.current.has(`${key}:${id}`));}}
-   }catch{if(!stopped&&epoch===generation.current)setError("Conexión interrumpida. Actualizá la conversación para recuperar el estado; el servicio conserva el trabajo.");}
+    const page=await window.harness.events(key,id,activityRef.current.cursor);if(stopped||epoch!==generation.current)return;
+    setDisconnected(false);const next=applyActivityPage(activityRef.current,page);activityRef.current=next;setActivity(next);
+    for(const runId of next.order)if(!previousRuns.current?.has(runId))activeRun.current=runId;
+    if((page.cursorExpired||page.events.some(e=>e.activity.type==="checkpoint"))&&activeRun.current){const current=await command(key,{method:"run.get",sessionId:id,runId:activeRun.current});if(stopped||epoch!==generation.current)return;if(current.kind==="run"){setRun(current.run);setSessions(items=>items.map(item=>item.sessionId===id?{...current.session,runs:current.session.runs.map(ref=>ref.runId===current.run.runId?{...ref,status:current.run.status as typeof ref.status}:ref)}:item));setBusy(isRunning(current.run)||submitting.current.has(`${key}:${id}`));}}
+   }catch{if(!stopped&&epoch===generation.current)setDisconnected(true);}
    if(!stopped)timer=setTimeout(poll,100);
   };void poll();return()=>{stopped=true;clearTimeout(timer);};
  },[context?.project.key,session?.sessionId]);
  async function start(value:string){
-  if(!context||!session||!value.trim()||busy||loading)return;
+  if(!context||!session||!value.trim()||busy||loading||reconcileRequired||disconnected)return;
   const key=context.project.key,id=session.sessionId,operation=`${key}:${id}`,epoch=generation.current;
   if(submitting.current.has(operation))return;submitting.current.add(operation);previousRuns.current=new Set(session.runs.map(r=>r.runId));setBusy(true);setError("");setRun(undefined);activeRun.current=undefined;
   try{const current=await command(key,{method:"session.get",sessionId:id});if(current.kind!=="session")throw new Error();
    const result=await command(key,{method:"run.start",sessionId:id,expectedRevision:current.session.revision,idempotencyKey:crypto.randomUUID(),prompt:value});
    if(result.kind!=="run")throw new Error();if(epoch!==generation.current)return;setRun(result.run);setSession(result.session);setPrompt("");const items=await refreshSessions(key);if(epoch===generation.current)setSessions(items);
-  }catch{if(epoch===generation.current)setError("No se pudo completar. Actualizá el estado antes de volver a enviar.");}
+  }catch{if(epoch===generation.current){setReconcileRequired(true);setError("No se pudo completar. Actualizá el estado antes de volver a enviar.");}}
   finally{submitting.current.delete(operation);if(epoch===generation.current){setBusy(false);previousRuns.current=undefined;}}
  }
  async function cancel(){if(!context||!session||!activeRun.current)return;const key=context.project.key,id=session.sessionId,epoch=generation.current;try{
@@ -72,8 +73,9 @@ export function App(){
  <Navigation projects={projects} context={context} sessions={sessions} selectedSession={session?.sessionId} loading={loading} open={()=>void selectProject(()=>window.harness.chooseProject())} selectProject={key=>void selectProject(()=>window.harness.openProject(key))} selectSession={id=>void selectSession(id)} create={()=>void createSession()}/>
  <section><header><div><span className="eyebrow">{context?.project.name??"TU ESPACIO DE TRABAJO"}</span><h1>{session?.title??(session?"Nueva conversación":"Proyectos y conversaciones")}</h1></div>{context?.fixture?<span className="badge">Modelo offline</span>:null}</header>
  <div className="conversation" aria-busy={loading}><div className="welcome"><span className="symbol">◈</span><h2>{loading?"Recuperando estado…":!context?"Abrí un repositorio para empezar.":!session?"Elegí una conversación o creá una nueva.":"¿Qué querés resolver?"}</h2><p>{context?.project.workspace??"Tus conversaciones y el estado de las tareas permanecen separados por proyecto."}</p></div>
- {text?<pre aria-label="Respuesta del servicio">{text}</pre>:null}{run?<p role="status" className="status">Estado: {run.status} · {run.runId}</p>:null}
+ <Conversation key={session?.sessionId??"empty"} activity={activity}/>{run?<p role="status" className="status">Estado: {run.status} · {run.runId}</p>:null}
+ {disconnected?<p role="alert" className="error">Conexión interrumpida. Recuperando actividad; el servicio conserva el trabajo.</p>:null}
  {error?<div role="alert" className="error"><p>{error}</p><button className="secondary" data-action="retry" onClick={()=>{if(context&&session)void selectSession(session.sessionId);else if(context)void selectProject(()=>window.harness.openProject(context.project.key));else void refreshProjects().catch(()=>setError("No se pudo leer el índice de proyectos."));}}>Actualizar estado</button></div>:null}</div>
- <footer><form onSubmit={event=>{event.preventDefault();void start(prompt);}}><label htmlFor="prompt">Mensaje</label><textarea id="prompt" value={prompt} onChange={event=>setPrompt(event.target.value)} disabled={!session||loading} placeholder="Describí la tarea…" maxLength={64000}/><div className="actions"><button type="submit" data-action="start" disabled={!session||busy||loading||!prompt.trim()}>Enviar ↗</button>{context?.fixture?<button type="button" className="secondary" data-action="wait" disabled={!session||busy} onClick={()=>void start("wait-for-cancel")}>Probar espera</button>:null}<button type="button" className="secondary" data-action="cancel" disabled={!busy||!activeRun.current} onClick={()=>void cancel()}>Cancelar</button><button type="button" className="secondary" disabled={!session||loading} onClick={()=>{if(session)void selectSession(session.sessionId);}}>Actualizar conversación</button></div></form></footer>
+ <footer><form onSubmit={event=>{event.preventDefault();void start(prompt);}}><label htmlFor="prompt">Mensaje</label><textarea id="prompt" value={prompt} onChange={event=>setPrompt(event.target.value)} disabled={!session||loading} placeholder="Describí la tarea…" maxLength={64000}/><div className="actions"><button type="submit" data-action="start" disabled={!session||busy||loading||reconcileRequired||disconnected||!prompt.trim()}>Enviar ↗</button>{context?.fixture?<button type="button" className="secondary" data-action="wait" disabled={!session||busy||reconcileRequired||disconnected} onClick={()=>void start("wait-for-cancel")}>Probar espera</button>:null}<button type="button" className="secondary" data-action="cancel" disabled={!busy||!activeRun.current} onClick={()=>void cancel()}>Cancelar</button><button type="button" className="secondary" disabled={!session||loading} onClick={()=>{if(session)void selectSession(session.sessionId);}}>Actualizar conversación</button></div></form></footer>
  </section></main>;
 }

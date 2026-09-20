@@ -55,6 +55,7 @@ export type HarnessClientNegotiation =
 export interface HarnessClientAdapterOptions {
   approvalMaxAgeMs?: number;
   now?: () => number;
+  onPrompt?: (sessionId: string, runId: string, prompt: string) => void | Promise<void>;
   onEvent?: (sessionId: string, runId: string, event: AgentStreamEvent) => void | Promise<void>;
   onCheckpoint?: (sessionId: string, runId: string, status: string) => void | Promise<void>;
 }
@@ -153,6 +154,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       if (previous && !["completed", "failed", "cancelled", "timed_out"].includes(previous.status)) return fail("INVALID_STATE");
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
+      await options.onPrompt?.(s.sessionId, runId, c.prompt);
       const result = await invoke(s.sessionId, { runId, scope: harness.config.scope, messages: appendUserMessage(previous?.messages ?? [], c.prompt) });
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
       return { kind: "run", session: sessionDocument(s), run: documentRun(result.state) };
@@ -215,6 +217,15 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           })();
           if(key) receipts.set(key, { fingerprint, response: cancellation });
           return structuredClone(await cancellation);
+        }
+        if (c.projectId === projectId && ["project.get", "session.get", "session.list"].includes(c.method)) {
+          try {
+            // Reads must not refresh/write session revisions while a run owns mutation admission.
+            const data: HarnessClientData = c.method === "project.get" ? {kind:"project",projectId}
+              : c.method === "session.get" ? {kind:"session",session:sessionDocument(await getSession(c.sessionId))}
+              : {kind:"sessions",sessions:await Promise.all((await sessions.list(c.method === "session.list" && c.search !== undefined ? {search:c.search}:{})).map(async s=>sessionDocument(await getSession(s.sessionId))))};
+            return {protocolVersion:1,requestId:request.requestId,ok:true,data};
+          } catch { return error("NOT_FOUND"); }
         }
         if (c.method === "run.get" && c.projectId === projectId) {
           try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: documentRun(state) } }; }

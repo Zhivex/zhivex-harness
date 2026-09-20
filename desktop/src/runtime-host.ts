@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 import { readHarnessLocalCredentials, requestHarnessLocalService } from "../../src/local-service.js";
+import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
 export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;recover:boolean}){
@@ -17,18 +18,24 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
   });
   const credentials=await readHarnessLocalCredentials(ready.credentialsPath);
   const hello=await requestHarnessLocalService(credentials,"hello",{versions:[1]});if(!hello.ok)throw new Error("PROTOCOL_UNSUPPORTED");
+  const redact=desktopRedactor([...hostSensitiveValues(process.env),credentials.token]);
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
-  return {context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
+  let fixtureOffline=false,fixtureDropResponse=false;
+  return {dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
    async command(command:unknown){
+    if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
     if(!command||typeof command!=="object"||Array.isArray(command)||"projectId" in command)throw new Error("INVALID_COMMAND");
     const parsed=harnessClientRequestSchema.safeParse({protocolVersion:1,requestId:`desktop_${randomUUID()}`,connectionId:hello.connectionId,command:{...command,projectId:hello.projectId}});
     if(!parsed.success)throw new Error("INVALID_COMMAND");
-    return requestHarnessLocalService(credentials,"command",parsed.data);
+    const response=await requestHarnessLocalService(credentials,"command",parsed.data);
+    if(fixtureDropResponse&&parsed.data.command.method==="run.start"){fixtureDropResponse=false;throw new Error("TRANSPORT_RESPONSE_LOST");}
+    return redact.response(response);
    },
    async events(payload:unknown){
+    if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
     const parsed=z.object({sessionId:z.string().min(1).max(160),after:z.number().int().nonnegative()}).strict().safeParse(payload);
     if(!parsed.success)throw new Error("INVALID_CURSOR");
-    return requestHarnessLocalService(credentials,"events",{projectId:hello.projectId,...parsed.data});
+    return redact.redact(await requestHarnessLocalService(credentials,"events",{projectId:hello.projectId,...parsed.data})) as Awaited<ReturnType<typeof requestHarnessLocalService<"events">>>;
    },
    async close(){if(!exited){worker.postMessage("close");await stopped;}}
   };

@@ -7,9 +7,11 @@ import { streamEventDocument } from "./cli-stream.js";
 import type { HarnessConfig } from "./config.js";
 
 export interface HarnessActivityEvent { schemaVersion: 1; eventId: string; sequence: number; sessionId: string; runId: string; at: number; activity: Record<string, unknown> }
-export interface HarnessActivitySnapshot { schemaVersion: 1; sessionId: string; sequence: number; runs: Record<string, { text: string; status: string; truncated: boolean }> }
+export interface HarnessActivityRun {text:string;status:string;truncated:boolean;prompt?:string;tools?:Record<string,{name:string;status:string;exitCode?:number;timedOut?:boolean}>}
+export interface HarnessActivitySnapshot { schemaVersion: 1; sessionId: string; sequence: number; runs: Record<string, HarnessActivityRun> }
 export interface HarnessActivityPage { schemaVersion: 1; cursorExpired: boolean; nextCursor: number; events: HarnessActivityEvent[]; snapshot?: HarnessActivitySnapshot }
 export interface HarnessActivityStore {
+  prompt(sessionId:string,runId:string,prompt:string):void;
   append(sessionId: string, runId: string, event: AgentStreamEvent): void;
   checkpoint(sessionId: string, runId: string, status: string): void;
   replay(sessionId: string, after?: number): HarnessActivityPage;
@@ -36,8 +38,16 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
   const tails=new Map<string,string>(); const discard=new Set<string>();
   const flush=(key:string,chunk:string,final=false)=>{
     let text=(tails.get(key)??"")+chunk;
+    // Replace complete known values before selecting a whitespace boundary. Known
+    // credentials can themselves contain spaces and span several provider chunks.
+    for(const secret of options.sensitiveValues??[])if(secret)text=text.split(secret).join("[REDACTED]");
     if(discard.has(key)){const end=text.search(/\s/);if(end<0&&!final)return "";text=end<0?"":text.slice(end);discard.delete(key);}
-    const boundary=final?text.length:(text.match(/^[\s\S]*\s/)?.[0].length??0);
+    let boundary=final?text.length:(text.match(/^[\s\S]*\s/)?.[0].length??0);
+    if(!final)for(const secret of options.sensitiveValues??[]){
+      if(!secret)continue;
+      let start=text.indexOf(secret[0]!,Math.max(0,text.length-secret.length+1));
+      while(start>=0&&start<boundary){if(secret.startsWith(text.slice(start))){boundary=start;break;}start=text.indexOf(secret[0]!,start+1);}
+    }
     let result=redact(text.slice(0,boundary));text=text.slice(boundary);
     if(text.length>16_384){result+="[TRUNCATED]";text="";discard.add(key);}
     tails.set(key,text);return result;
@@ -56,9 +66,19 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     db.exec("BEGIN IMMEDIATE");try{
       const current=snapshot(sessionId).state;
       const runs=Object.keys(current.runs);if(!current.runs[runId]&&runs.length>=1000)throw new Error("ACTIVITY_RUN_LIMIT");
-      const state=current.runs[runId]??{text:"",status:"running",truncated:false};
+      const state:HarnessActivityRun=current.runs[runId]??{text:"",status:"running",truncated:false};
       if(typeof activity.textDelta==="string") {state.text+=activity.textDelta;if(state.text.length>256*1024){state.text=state.text.slice(-256*1024);state.truncated=true;}}
-      if(typeof activity.status==="string")state.status=activity.status;
+      if(activity.type==="user-message"&&typeof activity.prompt==="string")state.prompt=activity.prompt;
+      if(typeof activity.toolCallId==="string"&&typeof activity.toolName==="string"){
+        state.tools??={};const key=`tool:${activity.toolCallId}`;
+        if(state.tools[key]||Object.keys(state.tools).length<256){
+          const status=activity.type==="tool-result"?(activity.isError===true||activity.timedOut===true||typeof activity.exitCode==="number"&&activity.exitCode!==0?"failed":"completed"):"running";
+          state.tools[key]={name:activity.toolName,status,...(typeof activity.exitCode==="number"?{exitCode:activity.exitCode}:{}),...(typeof activity.timedOut==="boolean"?{timedOut:activity.timedOut}:{})};
+        }else state.truncated=true;
+      }
+      if(typeof activity.status==="string"&&(activity.type==="checkpoint"||activity.type==="agent-run-finish"))state.status=activity.status;
+      if(activity.type==="agent-run-start")state.status="running";
+      if(activity.type==="tool-approval-request"||activity.type==="agent-approval-request")state.status="waiting_approval";
       current.runs[runId]=state;
       if(Buffer.byteLength(JSON.stringify(current))>2*1024*1024)throw new Error("ACTIVITY_SNAPSHOT_LIMIT");
       db.query("INSERT INTO client_activity_events(scope,session,run,at,activity) VALUES(?,?,?,?,?)").run(scope,sessionId,runId,at,encoded);
@@ -68,6 +88,7 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     }catch(e){db.exec("ROLLBACK");throw e;}
   };
   return {
+    prompt(sessionId,runId,prompt){const safe=redact(prompt);const truncated=Buffer.byteLength(safe)>60*1024;write(sessionId,runId,{type:"user-message",prompt:truncated?Buffer.from(safe).subarray(0,60*1024).toString("utf8")+"[TRUNCATED]":safe});},
     append(sessionId,runId,event){
       const key=`${sessionId}:${runId}`;
       if(event.type==="text-delta"){
@@ -77,7 +98,14 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
         const textDelta=flush(key,"",true);if(textDelta)write(sessionId,runId,{type:"text-delta",textDelta});tails.delete(key);
       }
       const projected=streamEventDocument(event);
-      if(projected)write(sessionId,runId,redactValue(projected) as Record<string,unknown>);
+      if(projected){
+        let receipt:Record<string,unknown>={};
+        if(event.type==="tool-result"&&event.toolResult.toolName==="run_check"){
+          const output=event.toolResult.output;
+          if(output&&typeof output==="object"&&!Array.isArray(output)&&"exitCode" in output&&Number.isSafeInteger(output.exitCode))receipt={exitCode:output.exitCode,timedOut:"timedOut" in output&&output.timedOut===true};
+        }
+        write(sessionId,runId,redactValue({...projected,...receipt}) as Record<string,unknown>);
+      }
     },
     checkpoint(sessionId,runId,status){const key=`${sessionId}:${runId}`;const textDelta=flush(key,"",true);if(textDelta)write(sessionId,runId,{type:"text-delta",textDelta});tails.delete(key);write(sessionId,runId,{type:"checkpoint",status});},
     replay(sessionId,after=0){

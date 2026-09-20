@@ -44,3 +44,26 @@ test("expired cursors get atomic snapshot and explicit recovery cursor; isolatio
   expect(other.replay("s").events).toHaveLength(0);other.close();store.close();
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("expired snapshot preserves redacted prompts and actual failed check receipts",async()=>{
+ const root=await mkdtemp("/tmp/har-events-check-");try{
+  const store=await openHarnessActivityStore(resolveHarnessConfig({workspace:root}),{maxEvents:1,sensitiveValues:["fixture-private-28"]});
+  store.prompt("s","r","Question fixture-private-28 <img onerror=alert(1)>");
+  store.append("s","r",{type:"tool-call",toolCall:{id:"check",name:"run_check",input:{secret:"fixture-private-28"}}});
+  store.append("s","r",{type:"tool-result",toolResult:{toolCallId:"check",toolName:"run_check",isError:false,output:{exitCode:7,timedOut:false,stdout:"fixture-private-28"}}});
+  store.checkpoint("s","r","completed");const snapshot=store.replay("s");
+  expect(snapshot.cursorExpired).toBe(true);expect(snapshot.snapshot?.runs.r?.prompt).toBe("Question [REDACTED] <img onerror=alert(1)>");
+  expect(snapshot.snapshot?.runs.r?.tools?.["tool:check"]).toMatchObject({name:"run_check",status:"failed",exitCode:7,timedOut:false});
+  expect(JSON.stringify(snapshot)).not.toContain("fixture-private-28");expect(JSON.stringify(snapshot)).not.toContain("stdout");store.close();
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("known credentials containing whitespace remain private across stream boundaries",async()=>{
+ const root=await mkdtemp("/tmp/har-events-spaced-");try{
+  const store=await openHarnessActivityStore(resolveHarnessConfig({workspace:root}),{sensitiveValues:["private phrase value"]});
+  store.append("s","r",{type:"text-delta",textDelta:"answer private phrase "});
+  expect(JSON.stringify(store.replay("s"))).not.toContain("private phrase");
+  store.append("s","r",{type:"text-delta",textDelta:"value next "});store.checkpoint("s","r","completed");
+  expect(store.replay("s").events.map(e=>e.activity.textDelta??"").join("")).toBe("answer [REDACTED] next ");store.close();
+ }finally{await rm(root,{recursive:true,force:true});}
+});
