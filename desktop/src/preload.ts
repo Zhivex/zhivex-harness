@@ -1,8 +1,10 @@
+import {credentialBridge} from "./credential-bridge.js";
 import {pullRequestBridge} from "./pr-bridge.js";
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "./bridge.js";
 const bridge:DesktopBridge=Object.freeze({
     ...pullRequestBridge(ipcRenderer),
+ ...credentialBridge(ipcRenderer),
  remoteTargets:(projectKey:string)=>ipcRenderer.invoke("harness:remote-targets",{projectKey}),
  reviewPush:(projectKey:string,destination:unknown)=>ipcRenderer.invoke("harness:review-push",{projectKey,destination}),
  push:(projectKey:string,ticketId:string)=>ipcRenderer.invoke("harness:push",{projectKey,ticketId}),

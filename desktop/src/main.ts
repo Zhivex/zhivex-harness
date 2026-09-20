@@ -1,3 +1,5 @@
+import {openCredentialStore} from "./credential-store.js";
+import {credentialCoordinator} from "./credential-coordinator.js";
 import {registerPullRequestIpc} from "./pr-ipc.js";
 import {openGitHubGitTransport} from "./github-git-transport.js";
 import {openRemoteDelivery} from "./remote-delivery.js";
@@ -39,6 +41,7 @@ void app.whenReady().then(async()=>{
  const directory=fixture&&reportDirectory?path.join(reportDirectory,"socket"):`/tmp/zhx-desktop-${process.getuid?.()}`;
  const buildDirectory=path.join(app.getAppPath(),"build");
  const connect=async(key:string)=>{
+ if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE");
   if(closing)throw new Error("APPLICATION_CLOSING");
   const known=registry.get(key);
   const project=await registry.select(known.workspace);
@@ -50,10 +53,11 @@ void app.whenReady().then(async()=>{
   let pending=runtimes.get(key);
   if(pending&&!((await pending).isAlive())){runtimes.delete(key);pending=undefined;}
   if(closing||removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");
-  if(!pending){pending=launchProjectRuntime(project,{buildDirectory,directory,fixture,...(task?{stateDirectory:task.stateDirectory}:{}),fixtureOci:fixture&&process.argv.includes("--fixture-oci"),fixtureEffectCrash:fixture&&process.argv.includes("--fixture-effect-crash"),recover:true});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
+  if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE");
+if(!pending){pending=launchProjectRuntime(project,{credentialHelper:app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"),buildDirectory,directory,fixture,...(task?{stateDirectory:task.stateDirectory}:{}),fixtureOci:fixture&&process.argv.includes("--fixture-oci"),fixtureEffectCrash:fixture&&process.argv.includes("--fixture-effect-crash"),recover:true});runtimes.set(key,pending);void pending.catch(()=>{if(runtimes.get(key)===pending)runtimes.delete(key);});}
   return {...(await pending).context,...(task?{task:taskView(task)}:{})};
  };
- const runtime=async(key:unknown)=>{if(typeof key!=="string"||!runtimes.has(key))throw new Error("PROJECT_NOT_OPEN");return runtimes.get(key)!;};
+ const runtime=async(key:unknown)=>{if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE");if(typeof key!=="string"||!runtimes.has(key))throw new Error("PROJECT_NOT_OPEN");return runtimes.get(key)!;};
  const index=path.join(buildDirectory,"index.html"),url=pathToFileURL(index).href;
  const window=new BrowserWindow({width:1120,height:760,minWidth:720,minHeight:520,show:false,backgroundColor:"#101315",title:"Zhivex Harness",webPreferences:{preload:path.join(buildDirectory,"preload.cjs"),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,webviewTag:false}});
  mainWindow=window;
@@ -93,6 +97,13 @@ void app.whenReady().then(async()=>{
  const deliveryManagers=new Map<string,Promise<Awaited<ReturnType<typeof openGitDelivery>>>>(),deliveryBusy=new Set<string>();
  const delivery=async(key:string)=>{const project=registry.get(key);if(removing.has(project.workspace))throw new Error("PROJECT_UNAVAILABLE");const task=tasks.list().find(task=>task.workspace===project.workspace);if(task)await tasks.inspect(task.id);let manager=deliveryManagers.get(key);if(!manager){manager=openGitDelivery(project.workspace,path.join(app.getPath("userData"),"git-delivery",key),hostSensitiveValues(process.env));deliveryManagers.set(key,manager);void manager.catch(()=>deliveryManagers.delete(key));}return manager;};
  const gitPayload=(event:Electron.IpcMainInvokeEvent,value:unknown,fields:string[])=>{validateSender(event);if(!value||typeof value!=="object"||Array.isArray(value)||Object.keys(value).sort().join(",")!==fields.sort().join(","))throw new Error("INVALID_GIT_REQUEST");const payload=value as Record<string,unknown>;if(typeof payload.projectKey!=="string")throw new Error("INVALID_PROJECT");registry.get(payload.projectKey);return payload as Record<string,unknown>&{projectKey:string};};
+ const credentialStore=openCredentialStore(app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"));
+ const credentials=credentialCoordinator({busy:()=>closing||taskOperations.size>0||deliveryBusy.size>0,hosts:()=>Promise.all([...runtimes.values()]),clear:()=>runtimes.clear(),configure:()=>fixture?Promise.resolve("unsupported"):credentialStore.configure(),delete:()=>fixture?Promise.resolve("unsupported"):credentialStore.delete()});
+ const credentialRequest=(event:Electron.IpcMainInvokeEvent,args:unknown[])=>{validateSender(event);if(args.length)throw new Error("INVALID_CREDENTIAL_REQUEST");};
+ ipcMain.handle("harness:credential-status",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.status());});
+ ipcMain.handle("harness:credential-probe",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.probe());});
+ ipcMain.handle("harness:credential-configure",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("configure"));});
+ ipcMain.handle("harness:credential-delete",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("delete"));});
  const gitMutation=async<T>(key:string,operation:(manager:Awaited<ReturnType<typeof openGitDelivery>>)=>Promise<T>)=>{
   if(deliveryBusy.has(key))throw new Error("GIT_DELIVERY_BUSY");deliveryBusy.add(key);let host:ProjectRuntime|undefined;
   try{host=await runtime(key);if(await host.controlClose("pause"))throw new Error("GIT_RUNTIME_BUSY");return await operation(await delivery(key));}finally{if(host?.isAlive()&&!closing)await host.controlClose("resume").catch(()=>{});deliveryBusy.delete(key);}

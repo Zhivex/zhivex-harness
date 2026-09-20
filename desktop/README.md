@@ -311,3 +311,21 @@ The packaged worktree smoke uses a fake host `gh`, local PR records and a local
 bare remote. It loses both the API response and the renderer response, then checks
 one POST, one PR, recovery after reload and app restart, and verified link routing.
 It does not create a real GitHub PR or certify live authentication.
+
+### macOS provider credentials (HU33, integration in progress)
+
+“Credenciales de OpenAI” exposes presence, a bounded connection check, native
+configuration and deletion. The key is entered only in an AppKit secure field;
+renderer IPC has no read-secret method or secret argument. Configuration and
+removal pause runtime admission and refuse active work. After a successful or
+uncertain change, prior runtime processes are closed; reopen the project to use
+the new credential. Failed closure keeps new work blocked until app restart.
+
+The helper resides outside ASAR in packaged Resources and uses macOS Keychain.
+The host sends the saved key to the runtime through private utility-process IPC,
+not argv or process environment. The provider receives an explicit credential
+environment object; a project environment file is not the desktop credential store.
+Known values are included in client activity/renderer redaction. A complete audit
+of core persistence, file-derived secret echoes and exports remains outstanding;
+HU33 is not yet closed. Non-macOS backends are unsupported. Fixture mode does not
+access personal Keychain data or invoke credential configuration.

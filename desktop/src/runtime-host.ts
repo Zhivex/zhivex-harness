@@ -1,3 +1,4 @@
+import {openCredentialStore} from "./credential-store.js";
 import { utilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -8,8 +9,12 @@ import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
-export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;stateDirectory?:string;recover:boolean}){
- const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,stateDirectory:options.stateDirectory,directory:options.directory,fixture:options.fixture,fixtureOci:options.fixture&&options.fixtureOci===true,fixtureEffectCrash:options.fixture&&options.fixtureEffectCrash===true,recover:options.recover})],{serviceName:`Harness · ${project.name}`,stdio:"pipe"});
+export async function launchProjectRuntime(project:DesktopProject,options:{credentialHelper?:string;buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;stateDirectory?:string;recover:boolean}){
+ const stored=options.fixture?undefined:await openCredentialStore(options.credentialHelper??path.join(options.buildDirectory,"credential-store")).read();
+ if(stored&&!['present','missing'].includes(stored.status))throw new Error("CREDENTIAL_STORE_UNAVAILABLE");
+ const secret=stored?.secret;
+ const workerEnv:NodeJS.ProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>options.fixture||!/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)));
+ const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,stateDirectory:options.stateDirectory,directory:options.directory,fixture:options.fixture,fixtureOci:options.fixture&&options.fixtureOci===true,fixtureEffectCrash:options.fixture&&options.fixtureEffectCrash===true,recover:options.recover})],{env:workerEnv, serviceName:`Harness · ${project.name}`,stdio:"pipe"});
  if(options.fixture)worker.stderr?.on("data",chunk=>process.stderr.write(chunk));
  let exited=false;const stopped=new Promise<void>(resolve=>worker.once("exit",()=>{exited=true;resolve();}));
  try{
@@ -17,10 +22,11 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
    const timer=setTimeout(()=>reject(new Error("RUNTIME_START_TIMEOUT")),15000);
    worker.once("message",message=>{clearTimeout(timer);if(message?.kind==="ready")resolve(message);else reject(new Error("RUNTIME_START_FAILED"));});
    worker.once("exit",()=>{clearTimeout(timer);reject(new Error("RUNTIME_EXITED"));});
+ worker.postMessage({kind:"credential-bootstrap",...(secret?{secret}:{})});
   });
   const credentials=await readHarnessLocalCredentials(ready.credentialsPath);
   const hello=await requestHarnessLocalService(credentials,"hello",{versions:[1]});if(!hello.ok)throw new Error("PROTOCOL_UNSUPPORTED");
-  const redact=desktopRedactor([...hostSensitiveValues(process.env),credentials.token]);
+  const redact=desktopRedactor([...hostSensitiveValues(process.env),credentials.token,...(secret?[secret]:[])]);
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
   const tickets=new ReviewTickets();
   let fixtureOffline=false,fixtureDropResponse=false;

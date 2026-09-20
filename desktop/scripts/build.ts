@@ -12,3 +12,5 @@ const renderer=await Bun.build({entrypoints:[path.join(root,"src/renderer.tsx")]
 if(!renderer.success)throw new AggregateError(renderer.logs,"Renderer build failed");
 await copyFile(path.join(root,"src/index.html"),path.join(outdir,"index.html"));
 console.log("Desktop bundles built with Bun.");
+
+if(process.platform==="darwin")await import("./build-credential-helper.js");
