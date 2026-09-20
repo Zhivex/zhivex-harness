@@ -71,7 +71,14 @@ the UI requires “Actualizar estado” before sending again, and reconciles the
 run instead of automatically resubmitting it. A failed activity poll preserves the
 cursor and retries reads; reopening uses replay or an explicit expired-cursor snapshot.
 Session queries work during streaming, so renderer reload does not require cancelling
-the engine. A service process crash and restart remains the fuller HU30 recovery flow.
+the engine. After a service crash, “Reabrir proyecto” launches a replacement only
+after proving that the prior transport owner is dead. It recovers stored runs and
+pending approvals without resubmitting work. An interrupted active run can be
+explicitly cancelled once its execution lease expires (normally up to 30 seconds).
+A live lease rejects that cancellation with a retry instruction. Cancellation
+preserves prior messages, tool receipts and file effects; it does not roll back
+changes or certify an interrupted tool's outcome. Descendants receive cancellation
+requests while retaining their own leases; completed descendants remain completed.
 
 Packaged smoke executes a real read_file and an explicitly fixture-approved run_check
 that exits 7. It verifies failed-check display, duplicate-submit protection, a lost

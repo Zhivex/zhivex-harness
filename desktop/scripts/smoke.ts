@@ -14,7 +14,7 @@ const invalid=path.join(output,"not-a-repo");await mkdir(invalid);
 const args=[...(packaged?[]:[root]),...(empty?[]:["--workspace",workspace]),"--smoke-test",...(oci?["--fixture-oci"]:[]),"--report-directory",report,...(empty?["--fixture-project",workspace]:[]),"--fixture-project",invalid,"--fixture-project",second];
 const child=spawn(executable,args,{cwd:output,env:{PATH:process.env.PATH!,HOME:output,ZHIVEX_HARNESS_DESKTOP_FIXTURE_SECRET:"desktop-fixture-private-value-2837"},stdio:["ignore","pipe","pipe"]});
 let stderr="";child.stderr.on("data",chunk=>stderr+=chunk);child.stdout.resume();
-const timer=setTimeout(()=>child.kill("SIGKILL"),45000);
+const timer=setTimeout(()=>child.kill("SIGKILL"),90000);
 try{
  const code=await new Promise<number|null>((resolve,reject)=>{child.once("exit",resolve);child.once("error",reject);});
  assert.equal(code,0,stderr);

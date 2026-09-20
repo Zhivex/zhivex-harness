@@ -191,3 +191,9 @@ HU30 in progress: pending-approval runtime crash recovery now works through
 “Reabrir proyecto”; dead-owner cleanup is serialized without blocking contention.
 655 tests and packaged recovery smoke pass. Evidence and remaining acceptance:
 HAR_HU_30_RECOVERY_2026-09-20.md. No HU30 checkbox is closed by this increment.
+
+HU30 active-run increment: explicit orphan cancellation requires an available
+execution lease; live owners are preserved, children are requested to stop without
+finalizing them, and no tool is replayed. 656 tests (3744 assertions) and the
+unsigned packaged Electron crash/reopen/cancel flow pass, as does installed
+CLI/SDK smoke. Evidence: HAR_HU_30_ACTIVE_RECOVERY_2026-09-20.md. HU30 remains open.

@@ -33,6 +33,34 @@ const start = async(f:Awaited<ReturnType<typeof fixture>>) => {
   return data(await f.call({method:"run.start",idempotencyKey:"start",sessionId:s.sessionId,expectedRevision:s.revision,prompt:"Edit a.txt"}),"run");
 };
 
+test("idle cancellation preserves live leases and finalizes an orphan without replaying tools",async()=>{
+ const checkpoints:string[]=[];const f=await fixture({onCheckpoint:(_s,_r,status)=>{checkpoints.push(status);}});
+ try{
+  const pending=await start(f);const state=(await f.harness.store.load(pending.run.runId,f.harness.config.scope))!;
+  await f.harness.store.save({...state,status:"running"},{expectedRevision:state.revision!});
+  const running=data(await f.call({method:"run.get",sessionId:pending.session.sessionId,runId:state.runId}),"run");
+  const command={method:"run.cancel" as const,sessionId:pending.session.sessionId,runId:state.runId,expectedRevision:running.run.revision};
+  expect(await f.harness.store.acquireLease!(state.runId,{ownerId:"other-worker",ttlMs:30_000},f.harness.config.scope)).toBeDefined();
+  expect(await f.call({...command,idempotencyKey:"live-owner"})).toMatchObject({ok:false,error:{code:"BUSY"}});
+  expect((await f.harness.store.load(state.runId,f.harness.config.scope))!.status).toBe("running");
+  await f.harness.store.releaseLease!(state.runId,"other-worker",f.harness.config.scope);
+  await f.harness.store.save({...state,runId:"child-live",parentRunId:state.runId,status:"running",revision:0},{expectedRevision:0});
+  await f.harness.store.save({...state,runId:"child-done",parentRunId:state.runId,status:"completed",revision:0},{expectedRevision:0});
+  await f.harness.store.acquireLease!("child-live",{ownerId:"child-worker",ttlMs:30_000},f.harness.config.scope);
+  expect(await f.call({...command,expectedRevision:0,idempotencyKey:"stale-orphan"})).toMatchObject({ok:false,error:{code:"REVISION_CONFLICT"}});
+  const cancelled=data(await f.call({...command,idempotencyKey:"orphan"}),"run");expect(cancelled.run.status).toBe("cancelled");
+  expect(checkpoints.at(-1)).toBe("cancelled");
+  expect((await f.harness.store.load("child-live",f.harness.config.scope))!.status).toBe("cancel_requested");
+  expect((await f.harness.store.load("child-done",f.harness.config.scope))!.status).toBe("completed");
+  expect(await f.harness.store.renewLease!("child-live",{ownerId:"child-worker",ttlMs:30_000},f.harness.config.scope)).toBeDefined();
+  expect((await f.harness.store.load(state.runId,f.harness.config.scope))!.messages).toEqual(state.messages);
+  expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");expect(f.harness.workspace.mutationAudit()).toHaveLength(0);
+  const next=data(await f.call({method:"run.start",sessionId:pending.session.sessionId,expectedRevision:cancelled.session.revision,idempotencyKey:"after-orphan",prompt:"Continue without repeating the interrupted tool"}),"run");
+  expect(next.run.status).toBe("completed");expect(next.run.runId).not.toBe(state.runId);
+  expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
+ }finally{await f.close();}
+});
+
 describe("client protocol against the real harness, no terminal",()=>{
   test("project, session, edit approval, completion, query, continuation and replay",async()=>{
     const f=await fixture();try{

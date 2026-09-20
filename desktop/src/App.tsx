@@ -69,7 +69,7 @@ export function App(){
  async function cancel(){if(!context||!session||!activeRun.current)return;const key=context.project.key,id=session.sessionId,epoch=generation.current;try{
   const current=await command(key,{method:"run.get",sessionId:id,runId:activeRun.current});if(current.kind!=="run")throw new Error();
   await command(key,{method:"run.cancel",sessionId:id,runId:current.run.runId,expectedRevision:current.run.revision,idempotencyKey:crypto.randomUUID()});
- }catch{if(epoch===generation.current)setError("La cancelación recibió un conflicto. Actualizá el estado actual.");}}
+ }catch(error){if(epoch===generation.current)setError(error instanceof Error&&error.message==="BUSY"?"La ejecución todavía tiene una reserva vigente. Esperá unos segundos, actualizá el estado y volvé a cancelar. Cancelar no revierte los cambios ya realizados.":"La cancelación recibió un conflicto. Actualizá el estado actual.");}}
  return <main data-ready={ready} data-project-key={context?.project.key} data-session-id={session?.sessionId}>
  <Navigation projects={projects} context={context} sessions={sessions} selectedSession={session?.sessionId} loading={loading} open={()=>void selectProject(()=>window.harness.chooseProject())} selectProject={key=>void selectProject(()=>window.harness.openProject(key))} selectSession={id=>void selectSession(id)} create={()=>void createSession()}/>
  <section><header><div><span className="eyebrow">{context?.project.name??"TU ESPACIO DE TRABAJO"}</span><h1>{session?.title??(session?"Nueva conversación":"Proyectos y conversaciones")}</h1></div>{context?.fixture?<span className="badge">Modelo offline</span>:null}</header>

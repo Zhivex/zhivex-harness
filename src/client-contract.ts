@@ -170,11 +170,40 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace,{environment:harness.executionEnvironment,scope:harness.config.scope}) : await documentRun(state,c.decisionOffset) };
     if ((state.revision ?? 0) !== c.expectedRevision) return fail("REVISION_CONFLICT");
     if (c.method === "run.cancel") {
-      if (["created", "running", "cancel_requested"].includes(state.status)) return fail("INVALID_STATE");
+      if (["created", "running", "queued", "cancel_requested"].includes(state.status)) {
+        // An idle adapter may be reopening a crashed worker's run. A persisted
+        // running status alone does not prove that its execution lease is dead.
+        const ownerId = `cancel_${randomUUID()}`;
+        if (!harness.store.acquireLease || !harness.store.releaseLease) return fail("INVALID_STATE");
+        if (!await harness.store.acquireLease(state.runId, { ownerId, ttlMs: 30_000 }, harness.config.scope)) return fail("BUSY");
+        try {
+          state = await getRun(s, state.runId);
+          if ((state.revision ?? 0) !== c.expectedRevision) return fail("REVISION_CONFLICT");
+          // Descendants may still own independent leases: request their stop,
+          // but only finalize the parent whose lease we actually hold.
+          const visited = new Set([state.runId]);
+          const requestChildren = async (parentRunId: string): Promise<void> => {
+            for (const child of await harness.store.findByParentRunId?.(parentRunId, harness.config.scope) ?? []) {
+              if (visited.has(child.runId)) continue;
+              visited.add(child.runId);
+              await requestChildren(child.runId);
+              if (!["completed", "failed", "cancelled", "timed_out"].includes(child.status)) {
+                await cancelHarnessRun(harness.store, harness.config, child.runId);
+              }
+            }
+          };
+          await requestChildren(state.runId);
+          await cancelHarnessRun(harness.store, harness.config, state.runId, { final: true });
+          state = await getRun(s, state.runId);
+        } finally {
+          await harness.store.releaseLease(state.runId, ownerId, harness.config.scope);
+        }
+      }
       if (!["completed", "failed", "cancelled", "timed_out"].includes(state.status)) {
         await cancelHarnessRun(harness.store, harness.config, state.runId, { final: true, cascade: true });
         state = await getRun(s, state.runId);
       }
+      await options.onCheckpoint?.(s.sessionId, state.runId, state.status);
     } else {
       if (state.status !== "waiting_approval") return fail("INVALID_STATE");
       if ((options.now ?? Date.now)() > (state.updatedAt ?? state.startedAt ?? 0) + approvalMaxAgeMs) return fail("APPROVAL_MISMATCH");
