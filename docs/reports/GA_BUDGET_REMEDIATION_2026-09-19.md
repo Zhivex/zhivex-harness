@@ -1,5 +1,10 @@
 # GA-01: corrección y validación
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 **GA-01 resuelto en el checkout local. GA continúa pendiente.**
 
 El SDK calculaba una sola vez el máximo de salida al iniciar la invocación y lo

@@ -1,5 +1,10 @@
 # RC14 validation and publication hold
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 ## Decision
 
 RC14 is prepared but publication is held after the new live cohort exposed continuing delivery failures. This is a release-readiness judgment, not a failed protected release workflow or a claim that the benchmark has a predefined comparative score gate. No RC14 tag, workflow dispatch, or registry publication was performed. The readiness ledger remains pending; GA human security review remains open.

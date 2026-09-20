@@ -1,5 +1,10 @@
 # Recuperación de reparaciones: diagnóstico de desarrollo
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 **Corrección implementada; aceptación live y GA todavía pendientes.**
 
 El fingerprint `fe23962a75a1376aa486d886cd84986beba7daecf721dfdce7e3fc800f8ef82d`

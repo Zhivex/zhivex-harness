@@ -15,6 +15,10 @@ The 1.0 support scope is tracked in the [machine-readable support matrix](./docs
 
 Only the most recent published `1.0.x` patch receives routine fixes. The exact `v1.0.0` tag passed protected release-bound base, orchestration, routing and model-directed execution for Meta, Qwen and OpenAI on 2026-09-20; the complete representative matrix passed on its authorized second attempt. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
+## Installation diagnostics
+
+Follow the [stable installation commands](./README.md#installation) or [isolated Bun example](./examples/README.md). Run `zhx --version`, `zhx --help`, and `zhx doctor` before reporting an installation issue. Doctor is local: a missing provider credential produces a diagnostic failure until that credential is configured. Include the version, OS, Node/Bun versions and sanitized diagnostics in a report; never include keys or your `.env` file.
+
 ## Support channels
 
 Use [GitHub Issues](https://github.com/Zhivex/zhivex-harness/issues) for reproducible bugs and feature requests. For vulnerabilities, follow [SECURITY.md](./SECURITY.md) and do not post exploit details publicly.

@@ -1,6 +1,6 @@
 # CLI contract
 
-The Zhivex Harness `1.0` candidate is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
+The Zhivex Harness `1.0` release is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands
 
@@ -132,7 +132,7 @@ Project context discovery reads a root `AGENTS.md` and the optional `.zhivex/har
 
 `--require-capability <name>`, `--subagent <profile>`, and `--reviewer <explorer|reviewer>` are repeatable. `--mcp-config <path>` loads a schema-versioned file inside the canonical workspace. Child limits use `--subagent-max-steps`, `--subagent-max-tool-calls`, `--subagent-max-tool-errors`, `--subagent-max-input-tokens`, `--subagent-max-output-tokens`, `--subagent-max-total-tokens`, and `--subagent-timeout-ms`. Parallel review is capped by `--max-parallel-reviews`.
 
-`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `0.11.x`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
+`--route <profile=provider[:model]>` is repeatable for `explorer`, `implementer`, `tester`, and `reviewer`. Omit the model to use that provider's default. Duplicate roles and unknown providers fail before a model is created. Only routed roles are instantiated. `--max-cost-usd` cannot be combined with routes in `1.0`, because the current budget has one operator-supplied price pair and cannot price heterogeneous child usage accurately.
 
 `review` is application-owned parallelism and accepts only read-only explorer/reviewer members. Its execution limits are the `--subagent-max-*` and `--subagent-timeout-ms` child limits; parent `--max-*`/`--timeout-ms` budgets, MCP, OCI, check allowlists, automatic approval, and extra `--subagent` profiles are rejected rather than accepted without effect. Model-directed delegation occurs only inside `run` or `chat` when the parent invokes an enabled `delegate_<profile>` tool.
 

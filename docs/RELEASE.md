@@ -60,7 +60,7 @@ bun run smoke:artifact -- "$HARNESS_ARTIFACT"
 
 The manual tag-bound live-certification workflow runs `bun run build` immediately before packing. This is required because its readiness preflight validates source and release identity but does not create `dist/`; a source-only tarball is not valid release evidence.
 
-`release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package.
+`release-artifacts/`, `.npmrc`, `.env`, source tests, Git metadata, and local run state are excluded from the package. Development reports under `docs/reports/` and historical benchmark JSON under `benchmarks/baselines/` also remain repository-only archives. Published guides link to those archives; artifact validation rejects accidentally bundled copies.
 
 ## External prerequisites
 

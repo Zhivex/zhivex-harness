@@ -63,6 +63,9 @@ const inspectArtifact = async () => {
     const entries = archive.stdout.split(/\r?\n/).filter(Boolean);
     assert(entries.length > 0, "release artifact is empty");
     assert.equal(new Set(entries).size, entries.length, "release artifact contains duplicate paths");
+    assert(!entries.some(entry =>
+      entry.startsWith("package/docs/reports/") || entry.startsWith("package/benchmarks/baselines/")
+    ), "release artifact includes repository-only development reports or benchmark baselines");
 
     const exactAllowed = new Set([
       "package/package.json",

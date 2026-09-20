@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `1.0.0` is the current public npm release on `latest`; `1.0.0-rc.14` remains on `next`. The protected stable release passed deterministic, installed-package, OCI and live-provider gates, followed by all 42 representative cases on the authorized second attempt. Registry bytes and SLSA provenance were independently verified. The [first failed attempt](./docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md) remains recorded. The RC14 security assessment used an explicit [user-delegated AI exception](./docs/RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Consult the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), [release evidence](./docs/LIVE_CERTIFICATION.md), [stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md) and [changelog](./CHANGELOG.md).
+Version `1.0.0` is the current public npm release on `latest`; `1.0.0-rc.14` remains on `next`. The protected stable release passed deterministic, installed-package, OCI and live-provider gates, followed by all 42 representative cases on the authorized second attempt. Registry bytes and SLSA provenance were independently verified. The [first failed attempt](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md) remains recorded. The RC14 security assessment used an explicit [user-delegated AI exception](./docs/RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Consult the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), [release evidence](./docs/LIVE_CERTIFICATION.md), [stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md) and [changelog](./CHANGELOG.md).
 
 ## Why Zhivex Harness
 
@@ -40,7 +40,7 @@ bun run demo:hostile
 
 The expected result is a schema-versioned JSON proof with `secretExcluded`, `networkDenied`, `exactlyOnceJournal`, and `staleHostImportBlocked` all set to `true`. Pass `--keep` to retain the disposable workspace for inspection. The complete scenario and evidence limits are documented in [docs/HOSTILE_REPOSITORY_DEMO.md](./docs/HOSTILE_REPOSITORY_DEMO.md).
 
-## What RC.13 adds
+## Daily workflow in 1.0
 
 - explicit personal provider/model profiles through `zhx init` and `--profile`, stored outside the repository without credentials;
 - Tab command completion, previewed multiline tasks, bounded task history, and Alt+Enter input;
@@ -48,7 +48,7 @@ The expected result is a schema-versioned JSON proof with `secretExcluded`, `net
 - Ctrl+C cancellation with runtime cleanup and preserved pending approvals, plus recovery to the prompt after command/provider errors; and
 - terminal-safe Markdown and optional colored diffs, with unsolicited input discarded before approval prompts.
 
-See the [RC.13 changelog and migration notes](./CHANGELOG.md#100-rc13---2026-09-03) and [interactive workflow guide](./docs/CLI.md#interactive-daily-workflow). No configuration or store migration from RC.12 is required.
+See the [interactive workflow guide](./docs/CLI.md#interactive-daily-workflow) and [1.0 compatibility policy](./docs/STABILITY.md).
 
 Earlier release changes and migrations are recorded in the [changelog](./CHANGELOG.md). Browse the [documentation index](./docs/README.md) for usage, architecture, maintenance, and historical reports.
 
@@ -63,22 +63,26 @@ It does not include arbitrary host shell access, `stdio` MCP, permanent deletion
 
 ## Installation
 
-Run the Node-first `latest` release with an exact version:
+Install with Bun 1.4.0 or newer; the installed CLI runs on Node.js 22.13.0 or newer. Pin the stable release for a reproducible first run:
 
 ```bash
-bunx @zhivex-ai/harness@0.11.1 --version
+bunx @zhivex-ai/harness@1.0.0 --version
+bunx @zhivex-ai/harness@1.0.0 --help
+bunx @zhivex-ai/harness@1.0.0 doctor
 ```
 
-To try the published RC.13 candidate on `next`, pin its exact version:
+Expected version: `1.0.0`. Help and doctor do not call a model. Without a provider credential, doctor reports a missing credential and exits with code `3`; this is an environment diagnostic, not an installation failure.
+
+For the `zhx` and `zhivex-harness` commands used below, install globally and put Bun's global bin directory (`bun pm bin -g`) on your `PATH`:
 
 ```bash
-bunx @zhivex-ai/harness@1.0.0-rc.13 --version
-bunx @zhivex-ai/harness@1.0.0-rc.13 init --profile daily --provider openai
-bunx @zhivex-ai/harness@1.0.0-rc.13 doctor --profile daily
-bunx @zhivex-ai/harness@1.0.0-rc.13 --profile daily "inspect this repository"
+bun add --global @zhivex-ai/harness@1.0.0
+zhx --version
+zhx --help
+zhx doctor
 ```
 
-RC.13 is a prerelease; publication on `next` does not promote it to GA.
+See the [isolated installation example](./examples/README.md) for a local install without changing global tools, and [support](./SUPPORT.md) for requirements and troubleshooting. Prior RCs are historical prereleases; use the stable version above for onboarding.
 
 To exercise the source checkout, contributors use Bun for deterministic repository tooling while the built CLI itself runs on Node:
 
@@ -88,7 +92,7 @@ cp .env.example .env
 bun run dev --version
 ```
 
-RC.13 includes first-run setup that stores only a provider and model in an explicit personal profile. From a source checkout:
+Version 1.0 includes first-run setup that stores only a provider and model in an explicit personal profile. From a source checkout:
 
 ```bash
 bun run dev init --profile daily --provider openai
@@ -133,12 +137,11 @@ zhivex-harness --version
 
 Inside the console, `/help` lists `/provider`, `/model`, `/route`, `/status`, `/diff`, `/review`, `/resume`, `/pending`, `/approve`, `/deny`, `/compact`, `/new`, `/rename`, and `/exit`. Tool and step activity is rendered without tool payloads; approval cards sanitize terminal controls and keep governed edit/command payloads fully reviewable.
 
-The published RC.13 also adds Tab command completion, `/paste` for previewed
+The 1.0 console includes Tab command completion, `/paste` for previewed
 multiline tasks, `/context` for active project rules/skills, and `/attach <path>` for
 bounded file excerpts. Ctrl+C interrupts active work while retaining the session;
 errors return to the prompt. See the [interactive workflow](./docs/CLI.md#interactive-daily-workflow)
-for attachment limits, approval behavior, and recovery. These source additions are
-not yet published or live-certified.
+for attachment limits, approval behavior, and recovery.
 
 Project context engineering is enabled by default. A root `AGENTS.md` plus an optional `.zhivex/harness.json` can declare bounded context files, rule files, and progressively loaded `SKILL.md` directories. Disable discovery with `--no-project-context` or select another manifest with `--context-config`.
 
@@ -179,7 +182,7 @@ zhx run --provider openai --route explorer=qwen --route reviewer=gemini \
   "implement the change, then review it independently"
 ```
 
-Routing with `--max-cost-usd` remains rejected in `0.11.1`: aggregate usage cannot yet be priced correctly when roles use different models.
+Routing with `--max-cost-usd` remains rejected in `1.0`: aggregate usage cannot yet be priced correctly when roles use different models.
 
 Writes and checks pause for approval. In a non-interactive execution, state is saved in `.zhivex-harness/runs/operations.sqlite`:
 
@@ -263,18 +266,18 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 
 ## Providers and defaults
 
-| Provider | Default model | Support in `latest` (`0.11.1`) |
+| Provider | Default model | Support in `1.0.0` |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 0.11.1 release-bound base, delegation, and OCI execution certified |
-| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 0.11.1 release-bound base, delegation, routing, and OCI execution certified |
-| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · 0.11.1 release-bound base, delegation, routing, and OCI execution certified |
+| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 1.0.0 release-bound base, delegation, and OCI execution certified |
+| Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · 1.0.0 release-bound base, delegation, routing, and OCI execution certified |
+| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · 1.0.0 release-bound base, delegation, routing, and OCI execution certified |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
-The exact `v0.11.1` tag passed proposal/approval/restart, bounded delegation, OpenAI-parent/Qwen-reviewer routing, and model-directed OCI execution for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` on 2026-08-23. Luna remains the OpenAI default, while Terra and Sol remain explicit `--model` selections with older local base evidence only. Controlled and official-SDK MCP interoperability are verified separately and do not imply compatibility with every server or protocol feature. Provider capability claims remain artifact- and date-bound under the [live certification contract](./docs/LIVE_CERTIFICATION.md); credential detection and deterministic tests do not replace real provider evidence.
+The exact `v1.0.0` release passed protected base, delegation, routing and model-directed OCI gates for Meta, Qwen and OpenAI on 2026-09-20. The representative matrix passed 14/14 cases per provider on its authorized second attempt. Gemini remains provisional. See the [release evidence](./docs/LIVE_CERTIFICATION.md#current-public-status) for artifact identity and the preserved first-attempt failure. Controlled and official-SDK MCP interoperability are separate transport evidence. Credential detection and deterministic tests do not replace real provider certification.
 
-For `next`, the exact `v1.0.0-rc.13` artifact passed protected live certification and all 14 representative cases for each of Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` on 2026-09-08. See the [RC.13 release evidence](./docs/LIVE_CERTIFICATION.md#current-public-status) for the workflow and artifact identity. Gemini remains provisional.
+Older release certifications remain in the [historical evidence](./docs/LIVE_CERTIFICATION.md#historical-release-bound-evidence); they are not the current installation baseline.
 
 ## Security boundaries
 
@@ -320,7 +323,7 @@ The workspace benchmark reports topology-only and digest-bound listing separatel
 
 The [Time-to-Safe-Fix benchmark](./docs/TIME_TO_SAFE_FIX.md) adds task-level clean/attacked matrices, `safeResolved` scoring, approval/system latency separation, Wilson rate intervals, and matched overhead against a direct profile. Its bundled deterministic smoke validates only the benchmark pipeline. Public capability or safety claims require a real external driver, exact dataset revision, matched model/runtime controls, and disclosed failures.
 
-Full generated reports remain local and Git-ignored under `./results/` (source checkout). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](./benchmarks/baselines/).
+Full generated reports remain local and Git-ignored under `./results/` (source checkout). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](https://github.com/Zhivex/zhivex-harness/tree/main/benchmarks/baselines).
 
 The live gate is opt-in and billable:
 

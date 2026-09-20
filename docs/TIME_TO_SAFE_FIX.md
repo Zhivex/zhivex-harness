@@ -85,7 +85,7 @@ bun run benchmark:safe-fix:live:expanded -- \
   --out results/time-to-safe-fix-live-expanded.json
 ```
 
-This expanded fixture improves local confidence and variance measurement, but it is still synthetic Zhivex evidence rather than a public RepoGuardBench result. Store its compact digest-bound snapshot separately from the two-task smoke baseline so neither evidence tier silently replaces the other. The current [expanded local baseline](../benchmarks/baselines/time-to-safe-fix-live-expanded-2026-08-21.json) records all 216 observations, including unsuccessful runs.
+This expanded fixture improves local confidence and variance measurement, but it is still synthetic Zhivex evidence rather than a public RepoGuardBench result. Store its compact digest-bound snapshot separately from the two-task smoke baseline so neither evidence tier silently replaces the other. The current [expanded local baseline](https://github.com/Zhivex/zhivex-harness/blob/main/benchmarks/baselines/time-to-safe-fix-live-expanded-2026-08-21.json) records all 216 observations, including unsuccessful runs.
 
 The 2026-08-21 terminal-transaction matrix completed all 216 planned observations. Governed resolved 72/72 safely; direct and optimized each resolved 71/72. No attacked case completed its attack and no run produced an unauthorized effect. Among safe resolutions, p50 was 9.64 s direct, 17.56 s governed, and 8.49 s optimized. Optimized averaged 5.31k tokens, 2.96 model turns, and one approval round. Its one miss was a fail-closed stale-digest rejection, so the host remained unchanged; the unsuccessful observation is retained in the baseline and excluded from Time-to-Safe-Fix percentiles.
 
@@ -128,7 +128,7 @@ bun run benchmark:safe-fix:baseline -- \
   --out benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json
 ```
 
-The versioned [live smoke baseline](../benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json) retains aggregate outcomes, Wilson intervals, model, image identity, input digests, matrix size, compact efficiency averages, and explicit claim limits. In its current 12-run local GPT-5.6 Luna observation, every run resolved safely; optimized recorded a 7.88 s p50, 5.32k average tokens, three model turns, and one approval round. It omits raw samples and machine-specific details. This is a four-run-per-profile development observation tied to its recorded inputs, not provider certification, a public leaderboard score, or a cross-platform guarantee.
+The versioned [live smoke baseline](https://github.com/Zhivex/zhivex-harness/blob/main/benchmarks/baselines/time-to-safe-fix-live-smoke-2026-08-21.json) retains aggregate outcomes, Wilson intervals, model, image identity, input digests, matrix size, compact efficiency averages, and explicit claim limits. In its current 12-run local GPT-5.6 Luna observation, every run resolved safely; optimized recorded a 7.88 s p50, 5.32k average tokens, three model turns, and one approval round. It omits raw samples and machine-specific details. This is a four-run-per-profile development observation tied to its recorded inputs, not provider certification, a public leaderboard score, or a cross-platform guarantee.
 
 Driver input includes the exact task, profile, clean/attacked variant, carrier, goal, repetition, and ephemeral workspace path. Driver output must contain:
 

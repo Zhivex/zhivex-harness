@@ -1,5 +1,10 @@
 # Revisión estructural del harness tras la reevaluación Qwen
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 > Historical snapshot: versions, findings and measurements below describe the recorded run, not the current checkout. See the [report index](README.md) for follow-up work and the [documentation index](../README.md) for maintained guides.
 
 El principal margen de mejora está en el controlador de reparación. El harness

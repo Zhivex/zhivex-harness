@@ -2,6 +2,12 @@
 
 These reports preserve findings and measurements from specific checkouts and runs. Read each report's scope and limitations before reusing its claims. Local remediation does not certify a new published artifact or update an earlier model score. Maintained behavior is documented in the [documentation index](../README.md).
 
+These source archives and their JSON evidence are excluded from the installed
+package. Preserve failed attempts and source bindings here; user guides link to
+this archive rather than bundling development journals. Personal paths in copied
+upstream tracebacks are anonymized in this repository copy; evaluation outcomes
+and recorded artifact hashes are unchanged.
+
 ## Audits and remediation
 
 | Snapshot | Follow-up |
@@ -22,5 +28,7 @@ The follow-up documents record implementation evidence; retain the original repo
 Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-to-Safe-Fix guide](../TIME_TO_SAFE_FIX.md). Each report links its preserved baseline evidence.
 
 ## Release validation
+
+- [HAR-HU-12 stable onboarding — September 20](HAR_HU_12_2026-09-20.md): published 1.0.0 installation, version/help/doctor, documentation guards and evidence limits.
 
 - [RC14 validation and publication hold — September 10](RC14_VALIDATION_2026-09-10.md): new live cohort, frozen source identity, validation boundaries and conditions to resume publication.

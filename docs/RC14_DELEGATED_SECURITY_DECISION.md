@@ -1,11 +1,14 @@
 # RC14 delegated security decision
 
+Historical candidate decision. Stable publication subsequently completed; see the
+[current release evidence](LIVE_CERTIFICATION.md#current-public-status). This
+record preserves the review scope and exception used for that candidate.
+
 ## Authorization and attribution
 
-On 2026-09-20, after the independent-human-review requirement and the pending
-RC14 dossier had been explained, the requesting user instructed:
-“Haz la revision humana, confiamos en tu criterio”. This explicitly delegates
-the technical security judgment to Codex. It does not make Codex a human.
+On 2026-09-20, technical security judgment for RC14 was explicitly delegated
+to Codex after disclosure of the independent-human-review requirement.
+This authorization is recorded as an AI review, not a human review.
 
 For this exact RC14 promotion decision, the project records an explicit exception
 to the independent human authorship requirement: the review is performed by
@@ -24,7 +27,7 @@ threshold, coverage inventory, provenance check or runtime approval is relaxed.
 
 - Candidate: `v1.0.0-rc.14`, commit `d1c5abcc6d1fa482c211c4327c86f592663d559b`.
 - Exact artifact identity and observation time: `../security-reviews/rc14-review.json` in the source checkout.
-- Verification record: [delegated review evidence](reports/evidence/rc14-delegated-security-review-2026-09-20.json).
+- Verification record: [delegated review evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/rc14-delegated-security-review-2026-09-20.json).
 - Scope: 10 controls, 11 trust boundaries and 31 authority-bearing tool classes.
 
 This review continues the directed source assessment recorded on 2026-09-19,
@@ -71,10 +74,10 @@ The protected representative matrix passed 42/42 on RC14, but that does not
 establish broad coding accuracy or reverse the exploratory result. This
 decision addresses the security gate only.
 
-## Remaining promotion work
+## Historical promotion work
 
-The security ledger may reference this completed review with the exception
-visible in the readiness documentation. GA still requires the exact `1.0.0`
+At the time of this decision, the security ledger could reference this completed review with the exception
+visible in the readiness documentation. GA still required the exact `1.0.0`
 version, readiness phase, release checks and protected stable publication,
 followed by verification of its own artifact. No tag, dist-tag or package is
 published by this review.

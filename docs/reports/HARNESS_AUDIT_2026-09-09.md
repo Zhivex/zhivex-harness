@@ -1,5 +1,10 @@
 # Auditoría integral del harness — 2026-09-09
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 > Historical snapshot: versions, findings and measurements below describe the recorded run, not the current checkout. See the [report index](README.md) for follow-up work and the [documentation index](../README.md) for maintained guides.
 
 > Estado posterior: los once hallazgos tienen implementaciones y regresiones locales.
