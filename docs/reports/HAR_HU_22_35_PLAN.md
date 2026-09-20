@@ -142,7 +142,9 @@ Source: https://app.notion.com/p/3e1777b104f681459966fbb71f9f5c78?pvs=204
 - [ ] La configuración muestra presencia y prueba acotada de conexión sin revelar el secreto.
 - [ ] Bloqueo del almacén, rotación y credencial inválida ofrecen recuperación; otros sistemas quedan sin soporte hasta validar su backend.
 
-Evidence: pending.
+Host increment: HAR_HU_33_KEYCHAIN_HOST_2026-09-20.md. Native temporary
+Keychain self-test and four host tests (52 assertions) pass. UI/runtime/package
+integration and persistence-leak evidence remain; all criteria stay open.
 
 ## HAR-HU-34 — Distribuir un instalador macOS firmado y verificable
 
