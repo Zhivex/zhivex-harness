@@ -8,8 +8,8 @@ import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
-export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;recover:boolean}){
- const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,directory:options.directory,fixture:options.fixture,fixtureOci:options.fixture&&options.fixtureOci===true,recover:options.recover})],{serviceName:`Harness · ${project.name}`,stdio:"pipe"});
+export async function launchProjectRuntime(project:DesktopProject,options:{buildDirectory:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;recover:boolean}){
+ const worker=utilityProcess.fork(path.join(options.buildDirectory,"runtime.cjs"),[JSON.stringify({workspace:project.workspace,directory:options.directory,fixture:options.fixture,fixtureOci:options.fixture&&options.fixtureOci===true,fixtureEffectCrash:options.fixture&&options.fixtureEffectCrash===true,recover:options.recover})],{serviceName:`Harness · ${project.name}`,stdio:"pipe"});
  if(options.fixture)worker.stderr?.on("data",chunk=>process.stderr.write(chunk));
  let exited=false;const stopped=new Promise<void>(resolve=>worker.once("exit",()=>{exited=true;resolve();}));
  try{

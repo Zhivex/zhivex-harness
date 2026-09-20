@@ -1,5 +1,7 @@
 import {fixtureOciRuntime} from "./fixture-oci.js";
 import {createHash} from "node:crypto";
+import {writeFileSync} from "node:fs";
+import path from "node:path";
 import { hostSensitiveValues } from "./redaction.js";
 import { createHarness } from "../../src/harness.js";
 import { startHarnessLocalService, recoverHarnessLocalService } from "../../src/local-service.js";
@@ -8,7 +10,7 @@ import type { LanguageModel } from "@zhivex-ai/agents";
 
 const parent = (process as NodeJS.Process & {parentPort: { postMessage(value: unknown):void; on(event: "message", listener: (event:{data:unknown})=>void):void }}).parentPort;
 async function boot() {
- const config=JSON.parse(process.argv[2]!) as {workspace:string;directory:string;fixture:boolean;fixtureOci?:boolean;recover:boolean};
+ const config=JSON.parse(process.argv[2]!) as {workspace:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;recover:boolean};
  const base=createMockLanguageModel();
  const mock:LanguageModel={...base,async stream(input){return(async function*(){
   const userIndex=input.messages.findLastIndex(m=>m.role==="user");const prompt=JSON.stringify(input.messages[userIndex]??{});
@@ -42,6 +44,17 @@ async function boot() {
  try {
   if(config.recover)try{await recoverHarnessLocalService(harness,config.directory);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
   const service=await startHarnessLocalService(harness,{directory:config.directory,sensitiveValues:hostSensitiveValues(process.env),...(config.fixture?{maxEvents:8,approvalNow:()=>Date.now()+fixtureClockOffset}:{})});
+  if(config.fixture&&config.fixtureEffectCrash){
+   const complete=harness.store.completeToolExecution!.bind(harness.store);
+   harness.store.completeToolExecution=async(entry,options)=>{
+    if(entry.toolName==="apply_reviewed_replacement"&&entry.status==="completed"){
+     // The real tool already returned after writing; no journal completion is saved.
+     writeFileSync(path.join(config.directory,"effect-crash.json"),JSON.stringify({runId:entry.runId,toolName:entry.toolName,pid:process.pid,beforeJournalCommit:true}),{mode:0o600});
+     process.kill(process.pid,"SIGKILL");await new Promise<never>(()=>{});
+    }
+    return complete(entry,options);
+   };
+  }
   parent.postMessage({kind:"ready",credentialsPath:service.credentialsPath,pid:process.pid,node:process.versions.node,stateDirectory:harness.config.stateDirectory});
   parent.on("message",event=>{
    if(!event.data||typeof event.data!=="object"||event.data.kind!=="close-control")return;

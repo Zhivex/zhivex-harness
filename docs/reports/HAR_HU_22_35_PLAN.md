@@ -92,18 +92,13 @@ Source: https://app.notion.com/p/3e1777b104f68109bd14c4b4b0640a70?pvs=204
 - [x] Se ensayan caída de renderer, desconexión, reinicio del servicio y cierre de ventana con una aprobación pendiente; se documenta cuándo continúa o pausa el trabajo.
 - [x] La misma sesión es coherente en CLI y escritorio; se publica una lista priorizada de fallos y el criterio de entrada a beta.
 
-Evidence: HAR_HU_30_APP_RESTART_2026-09-20.md and HAR_DESKTOP_ALPHA_BETA_ENTRY_2026-09-20.md, plus prior packaged service/transport recovery reports. HU30 remains in progress; final diff and listed alpha issues remain open.
-
-Active-close P1 resolved: all-project admission pause, explicit stay/cancel choice,
-visible window until work stops, no forced close or replay. Packaged active-close
-and pending-approval regression pass; 662 tests, 3764 assertions. Evidence:
-HAR_HU_30_ACTIVE_CLOSE_2026-09-20.md. Final diff and effect-boundary recovery remain.
-
-Final diff P1 resolved: bounded pre-execution archive, exact receipt-bound content
-projection and history UI. Packaged restart excludes later repository edits; OCI
-fixture demonstrates review/approve/verify/import/final diff. 667 tests, 3790
-assertions. Evidence: HAR_HU_30_FINAL_DIFF_2026-09-20.md. The three journey criteria
-have local evidence; HU30 remains open for the effect-boundary crash P1.
+Evidence: HAR_HU_30_CLOSURE_2026-09-20.md. All three criteria and the remaining
+alpha P1 issues are verified locally. The package demonstrates a SIGKILL after
+file write/before journal completion, unknown outcome preservation, old-approval
+rejection, explicit cancellation after lease expiry and continuation without replay.
+667 tests, 3790 assertions; current packaged restart and OCI fixture regression pass.
+Implemented, pending publication. Signing and real OCI/provider certification are
+separate; no beta claim. Historical increments remain in their dedicated reports.
 
 ## HAR-HU-31 — Aislar tareas en worktrees administrados
 

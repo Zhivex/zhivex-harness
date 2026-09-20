@@ -4,16 +4,15 @@ This is the local alpha assessment for HU30. No beta release is certified.
 
 | Priority | Open issue or verification gap | Evidence and required exit |
 | --- | --- | --- |
-| P1 | Forced interruption during a file effect lacks a packaged reconciliation demonstration. | Active-run recovery currently kills an offline waiting model. Inject a failure at the effect/journal boundary and prove that recovery distinguishes applied, failed and unknown effects without replaying the tool. |
 | P2 | An active run recovered after a worker crash may require waiting for lease expiry. | Packaged recovery proves immediate BUSY and explicit successful cancellation after 31 seconds. The UI explains the wait. Beta documentation must retain the distinction between cancellation and rollback; independently leased descendants must not be falsely finalized. |
 | P2 | Signing, notarization and external distribution remain unavailable. | User authorized unsigned packaging first. HU34 remains open until Developer ID, notarization, artifact verification and clean-machine installation evidence are available. |
 
 ## Entry into beta
 
-1. Complete all HU30 criteria, including durable final diff, effect-boundary recovery,
-   the interruption matrix and shared CLI/desktop session evidence. Resolve the P1
-   issues above, or record an explicit scope decision from the product owner;
-   passing unrelated tests does not waive them.
+1. Preserve the completed local HU30 acceptance evidence: durable final diff,
+   effect-boundary recovery, interruption matrix and shared CLI/desktop sessions.
+   The identified HU30 P1 issues are resolved; regressions must reopen the relevant
+   gate rather than rely on unrelated passing tests.
 2. Implement and verify HU31–35 against their Notion criteria: managed worktrees;
    explicitly authorized Git delivery; OS-backed credentials; signed/verifiable
    macOS installation; recoverable, integrity-checked updates and state migrations.
@@ -55,4 +54,12 @@ projected on demand only when the applied receipt matches its proposal, paths an
 content digests. Packaged restart verifies the original content after a later edit;
 the OCI fixture verifies the final diff alongside the exact patch/check receipt.
 Older or bounded-out archives show an explicit unavailable state. Evidence:
-HAR_HU_30_FINAL_DIFF_2026-09-20.md. Effect-boundary crash reconciliation remains P1.
+HAR_HU_30_FINAL_DIFF_2026-09-20.md.
+
+Resolved alpha issue: the packaged effect-boundary test now kills the actual worker
+after a real fixture-file write and before journal completion. A new process reads
+the same run as running with unknown decision outcome, no applied diff, and rejects
+the original approval. After lease expiry, explicit cancellation and a new user run
+preserve the file bytes and modification time without replay. This is conservative
+reconciliation, not automatic certification of a missing receipt. Evidence:
+HAR_HU_30_CLOSURE_2026-09-20.md and HAR_HU_30_EFFECT_CRASH_PACKAGED_2026-09-20.json.

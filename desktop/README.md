@@ -102,6 +102,13 @@ unsigned package, use `bun run --cwd desktop package` followed by
 by a host-only fixture; no renderer IPC is added and no provider API is contacted.
 Append `--active-close` to either restart smoke to verify staying with an active run,
 explicit cancellation on quit, worker exit and recovery of that same cancelled run.
+Append `--effect-crash` instead to kill the offline worker after a real fixture-file
+write but before journal completion. Recovery preserves the file, shows “Resultado
+sin confirmar”, rejects the old approval, waits for lease expiry before explicit
+cancellation, and allows a new run without replaying the tool. This does not infer
+success from matching file bytes or expose an applied diff without its receipt.
+The fault hook requires host-launch fixture flags and is absent from renderer IPC.
+“Cancelar” is also available when a run is waiting for approval.
 
 Applied decisions now offer “Ver cambio aplicado” in their history. Complete
 before/after previews are stored with decision admission before execution, bounded
