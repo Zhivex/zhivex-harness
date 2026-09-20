@@ -17,6 +17,7 @@ spec = json.loads(pathlib.Path(sys.argv[1]).read_text())
 master, slave = pty.openpty()
 env = dict(os.environ, NO_COLOR="1", TERM="dumb")
 argv = ["node", spec["cli"], "run", "--workspace", spec["workspace"],
+        "--state-dir", spec["stateDirectory"],
         "--provider", spec["provider"], "--model", spec["model"],
         "--max-steps", str(spec["limits"]["maxSteps"]),
         "--max-input-tokens", str(spec["limits"]["maxInputTokens"]),

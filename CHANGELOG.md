@@ -12,7 +12,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Search project sessions and reconcile durable state and pending approvals before continuation.
 - Inspect attachment limits, retained skill receipts and context compaction; clarify exact approval scope and verification outcomes.
 - Persist per-provider/model usage across child calls and resumed runs. Optional dated pricing and per-run monetary limits block unknown or stale pricing and unknown usage; displayed costs remain estimates.
-- Prepare a frozen two-repository evaluation cohort and installed-artifact pilot driver. Live baseline and pilot results remain pending authorization (HAR-HU-14, 20).
+- Prepare a frozen two-repository evaluation cohort and installed-artifact pilot driver. Complete the authorized live baseline and pilot (HAR-HU-14, 20): both artifacts scored 6/10; release recommendation remains HOLD.
 
 ### Console input and streaming (HAR-HU-15)
 

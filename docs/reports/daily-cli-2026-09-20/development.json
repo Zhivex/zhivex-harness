@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-cli-pilot",
+  "label": "candidate",
+  "split": "development",
+  "observedAt": "2026-09-20T17:42:55.552Z",
+  "cohort": "HAR-HU-14-20-daily-cli-2026-09-20",
+  "cohortSha256": "dcb3b770bb1c0ad0ef73deb2e833d3d8d982e577222cc19c89de6aae1f6fd866",
+  "installedCliSha256": "c0276aecfc84d3c47c2fc3ae372c11373de6a44af3559de3ef3905b98374e266",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "limits": {
+    "maxSteps": 12,
+    "maxInputTokens": 60000,
+    "maxOutputTokens": 4096,
+    "timeoutMs": 150000
+  },
+  "repositories": {
+    "harness": {
+      "commit": "94bd3aba4ffeaa6b4dd922c0a61ebebda1814cb4",
+      "url": "https://github.com/Zhivex/zhivex-harness"
+    },
+    "sdk": {
+      "commit": "65a4a7748c489978b45908a63a05be0e2e63497e",
+      "url": "https://github.com/Zhivex/zhivex-ai-sdk"
+    }
+  },
+  "rows": [
+    {
+      "taskId": "D01",
+      "repository": "harness",
+      "kind": "read",
+      "result": "correct",
+      "runtimeStatus": "completed",
+      "exitCode": 0,
+      "timedOut": false,
+      "initialOracleExit": 0,
+      "finalOracleExit": 0,
+      "scopePreserved": true,
+      "latencyMs": 4660,
+      "approvals": 0,
+      "denials": 0,
+      "interventions": 0,
+      "usage": {
+        "steps": 2,
+        "toolCalls": 1,
+        "toolErrors": 0,
+        "inputTokens": 5899,
+        "outputTokens": 62,
+        "totalTokens": 5961
+      },
+      "costUsd": null,
+      "costStatus": "unknown",
+      "phase": "verify",
+      "elapsedMs": 5381
+    },
+    {
+      "taskId": "D02",
+      "repository": "sdk",
+      "kind": "read",
+      "result": "incorrect",
+      "runtimeStatus": "completed",
+      "exitCode": 0,
+      "timedOut": false,
+      "initialOracleExit": 0,
+      "finalOracleExit": 0,
+      "scopePreserved": false,
+      "latencyMs": 3032,
+      "approvals": 0,
+      "denials": 0,
+      "interventions": 0,
+      "usage": {
+        "steps": 2,
+        "toolCalls": 1,
+        "toolErrors": 0,
+        "inputTokens": 5886,
+        "outputTokens": 58,
+        "totalTokens": 5944
+      },
+      "costUsd": null,
+      "costStatus": "unknown",
+      "phase": "verify",
+      "elapsedMs": 4086
+    }
+  ],
+  "limitations": [
+    "Single attempt per task/artifact; ten curated tasks are not a population estimate.",
+    "Seeded repairs and scoped features in real repository snapshots, not unsolicited changes to projects.",
+    "Programmatic operator approval policy; not a human usability study.",
+    "Costs unknown; provider token counters are not invoices.",
+    "macOS/Node local evidence; no protected release certification or competitive parity claim."
+  ]
+}

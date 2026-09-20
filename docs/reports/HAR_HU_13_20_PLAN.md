@@ -17,8 +17,8 @@ Source: https://app.notion.com/p/3e1777b104f6813f907decef6f5ba3a2?pvs=204
 Source: https://app.notion.com/p/3e1777b104f681859487f45b5df8abc4?pvs=204
 
 - [x] Se predeclaran al menos 10 tareas de lectura, reparación y cambio funcional, separando desarrollo y evaluación nueva.
-- [ ] Cada intento registra versión, proveedor/modelo, límites, resultado independiente, latencia, uso y número de intervenciones.
-- [ ] Se publican fallos y tareas incompletas; el costo desconocido se marca como tal y se conserva el dataset para comparar mejoras.
+- [x] Cada intento registra versión, proveedor/modelo, límites, resultado independiente, latencia, uso y número de intervenciones.
+- [x] Se publican fallos y tareas incompletas; el costo desconocido se marca como tal y se conserva el dataset para comparar mejoras.
 
 ## HAR-HU-15 — Pulir la entrada y el streaming de la consola
 
@@ -64,9 +64,9 @@ Source: https://app.notion.com/p/3e1777b104f6817581d9f607b72a94a8?pvs=204
 
 Source: https://app.notion.com/p/3e1777b104f68184b268e16bbba2b879?pvs=204
 
-- [ ] Se ejecuta la cohorte predeclarada con el artefacto instalado y al menos dos repositorios representativos.
-- [ ] El informe compara corrección, tiempo, consumo e intervenciones con la baseline, conservando fallos y límites.
-- [ ] Se registran fricciones priorizadas y una decisión explícita de salida; no se declara paridad competitiva a partir de smoke tests.
+- [x] Se ejecuta la cohorte predeclarada con el artefacto instalado y al menos dos repositorios representativos.
+- [x] El informe compara corrección, tiempo, consumo e intervenciones con la baseline, conservando fallos y límites.
+- [x] Se registran fricciones priorizadas y una decisión explícita de salida; no se declara paridad competitiva a partir de smoke tests.
 
 ## Execution order and evidence
 
@@ -77,5 +77,5 @@ Source: https://app.notion.com/p/3e1777b104f68184b268e16bbba2b879?pvs=204
 5. Run baseline and candidate installed artifacts against isolated copies of two real repositories; retain failures, unknown costs and an explicit release decision (20).
 6. Run relevant regressions, full suite, types, contracts, docs, installed-package/PTY checks; record commit and update Notion from actual evidence.
 
-No release or live certification is inferred from offline fixtures. The prepared cohort uses isolated Harness and TypeScript SDK snapshots. Live baseline and candidate evaluation remain pending explicit authorization following automatic approval review rejection. Monetary prices must have source/date/expiry; missing or stale prices cannot satisfy a monetary cap.
+No release or live certification is inferred from offline fixtures. The prepared cohort uses isolated Harness and TypeScript SDK snapshots. Live baseline and candidate evaluation completed after explicit authorization. Both scored 6/10; release recommendation is HOLD. See HAR_HU_14_20_LIVE_2026-09-20.md. Monetary prices must have source/date/expiry; missing or stale prices cannot satisfy a monetary cap.
 

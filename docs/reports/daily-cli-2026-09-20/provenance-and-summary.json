@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "authorization": "User explicitly authorized OpenAI gpt-5.6-luna, isolated Harness/SDK code and API costs before any live calls.",
+  "attempts": {
+    "development": 2,
+    "baselineEvaluation": 10,
+    "candidateEvaluation": 10
+  },
+  "cohortSha256": "dcb3b770bb1c0ad0ef73deb2e833d3d8d982e577222cc19c89de6aae1f6fd866",
+  "evaluationDriverSha256": "75a2afc9914324f750e8741acb6e0b0b4ae00b9a626d487f5397e259b93c5c26",
+  "ptyDriverSha256": "57ea74244735826e04bbed2df2b7af58c59c203f02b0b75988d05dfdafdf21f2",
+  "artifacts": {
+    "baseline": {
+      "sourceCommit": "c7d0799018cb105f6d583b60b344d9697ae01395",
+      "packageVersion": "1.0.0",
+      "installedCliSha256": "a70c66bb23ab5579e9e28831eff8b19133cb61ad6b0c1c1ab40ca1371e9baf96",
+      "tarballSha256": "750800999e6196e711f1fe560d848b5f19ef3c69f382a68b7b1288ca6ed8a5c9",
+      "summary": {
+        "independentlyCorrect": 6,
+        "runtimeCompleted": 4,
+        "latencyMsTotal": 84760,
+        "latencyMsMedian": 8570.5,
+        "inputTokens": 234917,
+        "outputTokens": 4567,
+        "approvals": 6,
+        "denials": 3,
+        "costUsd": null
+      }
+    },
+    "candidate": {
+      "sourceCommit": "aaf304e",
+      "packageVersion": "1.0.0",
+      "installedCliSha256": "c0276aecfc84d3c47c2fc3ae372c11373de6a44af3559de3ef3905b98374e266",
+      "tarballSha256": "b85f49a468485fc4c9837182ba5e724567e4677c307b377b45eba65d5e74cd1c",
+      "summary": {
+        "independentlyCorrect": 6,
+        "runtimeCompleted": 4,
+        "latencyMsTotal": 91149,
+        "latencyMsMedian": 7936.0,
+        "inputTokens": 265186,
+        "outputTokens": 5199,
+        "approvals": 6,
+        "denials": 2,
+        "costUsd": null
+      }
+    }
+  },
+  "decision": "HOLD: candidate 6/10 independently correct; required 10/10."
+}

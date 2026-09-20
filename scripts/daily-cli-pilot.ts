@@ -5,6 +5,8 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { runPortableProcess } from "../src/process-runtime.js";
+import { resolveHarnessConfig } from "../src/config.js";
+import { openHarnessPersistence } from "../src/operations.js";
 
 const prepareOnly = process.argv.includes("--prepare-only");
 assert(prepareOnly || process.env.ZHIVEX_HARNESS_LIVE === "1", "Explicit live opt-in required.");
@@ -42,6 +44,7 @@ const cliBytes = await readFile(cli);
 for (const task of cohort.tasks.filter(t => t.split === split)) {
   const root = await mkdtemp(path.join(os.tmpdir(), `har-pilot-${task.id}-`));
   const workspace = path.join(root, "repo"); await mkdir(workspace);
+  const stateDirectory = path.join(root, "state");
   const started = Date.now();
   let phase = "prepare";
   try {
@@ -77,7 +80,7 @@ for (const task of cohort.tasks.filter(t => t.split === split)) {
       continue;
     }
     const specPath = path.join(root, "spec.json");
-    await writeFile(specPath, JSON.stringify({ cli, workspace, provider: cohort.provider, model: cohort.model,
+    await writeFile(specPath, JSON.stringify({ cli, workspace, stateDirectory, provider: cohort.provider, model: cohort.model,
       limits: cohort.limits, prompt: task.prompt, editable: task.kind === "read" ? [] : [task.file] }));
     phase = "agent";
     const child = await run(["python3", path.resolve(import.meta.dir, "daily-cli-pty.py"), specPath], root, cohort.limits.timeoutMs + 30_000);
@@ -89,18 +92,25 @@ for (const task of cohort.tasks.filter(t => t.split === split)) {
     const added = (await checked(["git", "ls-files", "--others", "--exclude-standard"], workspace)).stdout.trim().split("\n").filter(Boolean);
     const files = [...changed, ...added];
     const scopePreserved = files.every(file => task.kind !== "read" && file === task.file);
-    const answer = observed.terminal.replace(/[, _]/g, "").toLowerCase();
+    const listed = await run(["node", cli, "runs", "list", "--workspace", workspace, "--state-dir", stateDirectory, "--json"], workspace);
+    const runs = listed.exitCode === 0 ? JSON.parse(listed.stdout).runs : [];
+    const runId = runs?.[0]?.runId;
+    const inspected = runId ? await run(["node", cli, "runs", "inspect", runId, "--workspace", workspace, "--state-dir", stateDirectory, "--json"], workspace) : undefined;
+    const inspection = inspected?.exitCode === 0 ? JSON.parse(inspected.stdout) : undefined;
+    // Judge only the durable assistant answer, never echoed prompts/tool previews.
+    const config = resolveHarnessConfig({ workspace, stateDirectory });
+    const persistence = await openHarnessPersistence(config);
+    let answer = "";
+    try {
+      const state = runId ? await persistence.store.load(runId, config.scope) : undefined;
+      answer = (state?.outputText ?? "").replace(/[, _]/g, "").toLowerCase();
+    } finally { persistence.close(); }
     const correct = scopePreserved && (task.kind === "read"
       ? task.answerTerms!.every(term => answer.includes(term.replace(/[, _]/g, "").toLowerCase()))
       : after.exitCode === 0 && files.includes(task.file));
-    const listed = await run(["node", cli, "runs", "list", "--workspace", workspace, "--json"], workspace);
-    const runs = listed.exitCode === 0 ? JSON.parse(listed.stdout).runs : [];
-    const runId = runs?.[0]?.runId;
-    const inspected = runId ? await run(["node", cli, "runs", "inspect", runId, "--workspace", workspace, "--json"], workspace) : undefined;
-    const inspection = inspected?.exitCode === 0 ? JSON.parse(inspected.stdout) : undefined;
     rows.push({ taskId: task.id, repository: task.repository, kind: task.kind, result: correct ? "correct" : "incorrect",
       runtimeStatus: inspection?.run?.status ?? "unavailable", exitCode: observed.exitCode, timedOut: observed.timedOut,
-      initialOracleExit: before.exitCode, finalOracleExit: after.exitCode, scopePreserved,
+      initialOracleExit: before.exitCode, finalOracleExit: after.exitCode, scopePreserved, changedFiles: files,
       latencyMs: observed.elapsedMs, approvals: observed.approvals, denials: observed.denials,
       interventions: observed.approvals + observed.denials, usage: inspection?.budget?.consumption ?? null,
       costUsd: null, costStatus: "unknown", phase, elapsedMs: Date.now() - started });
