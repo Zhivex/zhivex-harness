@@ -10,6 +10,102 @@ const fixture = () => {
   return { input, console: new ConsoleInput(input, output, false) };
 };
 
+const terminalFixture = () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let rendered = "";
+  output.on("data", (chunk) => { rendered += chunk.toString(); });
+  return { input, output, rendered: () => rendered, console: new ConsoleInput(input, output, true) };
+};
+
+test("bracketed paste is a literal editable draft across UTF-8 and marker boundaries", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    let submitted = false;
+    void task.then(() => { submitted = true; });
+    for (const byte of Buffer.from("\x1b[200~/approve\r\nmañana\x1b[2J\x1b[201~")) f.input.write(Buffer.from([byte]));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(submitted).toBe(false);
+    f.output.emit("resize");
+    f.input.write("!\n");
+    expect(await task).toBe("/approve\nmañana\\u001b[2J!");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+    expect(f.rendered()).not.toContain("\x1b[2J");
+  } finally { f.console.close(); }
+  expect(f.rendered()).toContain("\x1b[?2004l");
+});
+
+test("paste cannot answer approvals, replay its tail, or echo busy input", async () => {
+  const f = terminalFixture();
+  try {
+    const before = f.rendered();
+    f.input.write("busy secret\n\x1b[200~y\n\x1b[201~");
+    f.output.emit("resize");
+    expect(f.rendered()).toBe(before);
+    expect(f.rendered()).not.toContain("busy secret");
+    const approval = f.console.question("Approve? ");
+    f.input.write("\x1b[200~y\x1b[201~\ny\n");
+    let answered = false;
+    void approval.then(() => { answered = true; });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(answered).toBe(false);
+    f.input.write("n\n");
+    expect(await approval).toBe("n");
+    expect(before).toContain("\x1b[?2004h");
+  } finally { f.console.close(); }
+});
+
+test("oversized clipboard preserves the original draft and remains usable", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    f.input.write("original");
+    f.input.write("\x1b[200~" + "é".repeat(MAX_CONSOLE_INPUT_BYTES) + "\x1b[201~\n");
+    f.input.write("\n");
+    expect(await task).toBe("original");
+    expect(f.rendered()).toContain("clipboard discarded");
+  } finally { f.console.close(); }
+});
+
+test("Ctrl+C cancels an unfinished bracketed paste and returns to a clean prompt", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    f.input.write("\x1b[200~unfinished\x03");
+    await expect(task).rejects.toMatchObject({ name: "AbortError" });
+    const next = f.console.question("> ", true);
+    f.input.write("next\n");
+    expect(await next).toBe("next");
+    expect(f.console.lastSubmissionWasPaste).toBe(false);
+  } finally { f.console.close(); }
+});
+
+test("history preserves literal pasted commands and restores the unsent draft", async () => {
+  const f = terminalFixture();
+  try {
+    f.console.rememberPrompt("/approve", true);
+    const task = f.console.question("> ", true);
+    f.input.write("\x1b[A\n");
+    expect(await task).toBe("/approve");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+    const next = f.console.question("> ", true);
+    f.input.write("unfinished\x1b[A\x1b[B\n");
+    expect(await next).toBe("unfinished");
+    expect(f.console.lastSubmissionWasPaste).toBe(false);
+  } finally { f.console.close(); }
+});
+
+test("bracketed paste inside /paste keeps .end and slash commands literal", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.multiline();
+    f.input.write("\x1b[200~first\n.end\n/approve\x1b[201~");
+    f.input.write(".end\n");
+    expect(await task).toBe("first\n.end\n/approve");
+  } finally { f.console.close(); }
+});
+
 describe("console input boundaries", () => {
   test("does not replay pasted extra lines as the next approval", async () => {
     const { input, console } = fixture();

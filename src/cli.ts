@@ -1185,8 +1185,9 @@ const printTerminalResult = (
   result: AgentRunOutput,
   harness: ZhivexHarness,
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
 ) => {
+  tracker.markdown?.flush();
   const document = runResultDocument(result, harness);
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
@@ -1310,7 +1311,7 @@ const runOnce = async (options: CliOptions) => {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
   const { harness, routes } = await createConfiguredHarness(options);
-  const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+  const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
   let closeAttempted = false;
   try {
     const result = await runHarness(
@@ -1337,6 +1338,7 @@ const runOnce = async (options: CliOptions) => {
       closeAttempted = true;
       await harness.close().catch(() => undefined);
     }
+    tracker.markdown?.flush();
     throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
   }
 };
@@ -1465,7 +1467,7 @@ const resumeRun = async (options: CliOptions) => {
       onTelemetryEvent: orchestrationObserver(options.json || options.jsonl)
     });
     const approve = options.approve;
-    const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+    const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
     let harnessCloseAttempted = false;
     try {
       const result = await runHarness(
@@ -1505,6 +1507,7 @@ const resumeRun = async (options: CliOptions) => {
       } catch {
         // Preserve the operation or first cleanup failure as the terminal cause.
       }
+      tracker.markdown?.flush();
       throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
     }
   } finally {
@@ -1660,7 +1663,7 @@ const chat = async (options: CliOptions) => {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
-    const tracker = { streamedText: false };
+    const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
@@ -1681,6 +1684,7 @@ const chat = async (options: CliOptions) => {
         }
       ));
     } catch {
+      tracker.markdown?.flush();
       const durable = await latestState(await refreshSession());
       session = await sessionStore.updateRun(session.sessionId, state.runId, {
         status: durable ? sessionStatus(durable.status) : "failed"
@@ -1692,6 +1696,7 @@ const chat = async (options: CliOptions) => {
       );
       return;
     }
+    tracker.markdown?.flush();
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
@@ -1727,45 +1732,48 @@ const chat = async (options: CliOptions) => {
   try {
     for (;;) {
       try {
-        let prompt = (await readline.question("\n> ", true)).trim();
-        if (!prompt) {
+        const submitted = await readline.question("\n> ", true);
+        const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
+        let prompt = literalInput ? submitted : submitted.trim();
+        if (!prompt.trim()) {
           continue;
         }
-        if (prompt === "/exit" || prompt === "/quit") {
+        const command = literalInput ? "" : prompt;
+        if (command === "/exit" || command === "/quit") {
           break;
         }
-        if (prompt === "/context") {
+        if (command === "/context") {
           process.stdout.write(`${formatConsoleContext(harness.context)}\n`);
           continue;
         }
-        if (prompt === "/attachments") {
+        if (command === "/attachments") {
           process.stdout.write(`${sanitizeTerminalText(JSON.stringify(attachments.list(), null, 2))}\n`);
           continue;
         }
-        if (prompt === "/detach" || prompt.startsWith("/detach ")) {
+        if (command === "/detach" || command.startsWith("/detach ")) {
           const file = prompt.slice(7).trim();
           if (file) attachments.remove(file); else attachments.clear();
           process.stderr.write("Attachment selection updated.\n");
           continue;
         }
-        if (prompt === "/attach" || prompt.startsWith("/attach ")) {
+        if (command === "/attach" || command.startsWith("/attach ")) {
           const file = prompt.slice(7).trim();
           if (!file) { process.stderr.write("Usage: /attach <workspace-relative path>\n"); continue; }
           const attached = await attachments.add(harness.workspace, file);
           process.stderr.write(`Attached ${sanitizeTerminalText(attached.path)} (${attached.startLine}-${attached.endLine}/${attached.totalLines} lines${attached.truncated ? "; excerpt" : ""}). Sent with your next task.\n`);
           continue;
         }
-        if (prompt === "/help") {
+        if (command === "/help") {
           process.stderr.write(
             "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
             "/diff · /review <task> · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
             "/new [title] · /rename <title> · /clear · /exit\n" +
             "/paste · /context · /attach <path> · /attachments · /detach [path]\n" +
-            "Tab completes commands; Up/Down recalls prompts; Alt+Enter inserts a newline. Ctrl+C stops the active operation or discards input.\n"
+            "Tab completes commands; Up/Down recalls prompts; Alt+Enter inserts a newline. Bracketed paste inserts literal text; Enter sends it. Ctrl+C stops the active operation or discards input.\n"
           );
           continue;
         }
-        if (prompt === "/clear") {
+        if (command === "/clear") {
           messages = [];
           retainedTasks = [];
           attachments.clear();
@@ -1773,23 +1781,23 @@ const chat = async (options: CliOptions) => {
           process.stderr.write("Context cleared.\n");
           continue;
         }
-        if (prompt === "/status") {
+        if (command === "/status") {
           process.stderr.write(`${await statusLine()}\n`);
           continue;
         }
-        if (prompt === "/diff") {
+        if (command === "/diff") {
           const diff = await harness.workspace.gitDiff();
           const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
           process.stdout.write(formatConsoleDiff(output, terminalSupportsColor(Boolean(process.stdout.isTTY))) || "No workspace changes.\n");
           continue;
         }
-        if (prompt === "/compact") {
+        if (command === "/compact") {
           const beforeBytes = Buffer.byteLength(JSON.stringify(messages));
           messages = compactHarnessMessages(messages);
           process.stderr.write(`Context: ${beforeBytes} -> ${Buffer.byteLength(JSON.stringify(messages))} bytes. Full task sources remain in durable memory.\n`);
           continue;
         }
-        if (prompt === "/pending") {
+        if (command === "/pending") {
           const state = await latestState(await refreshSession());
           if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
             process.stderr.write("The current session has no pending approval.\n");
@@ -1800,11 +1808,11 @@ const chat = async (options: CliOptions) => {
           }
           continue;
         }
-        if (prompt === "/approve" || prompt === "/deny") {
+        if (command === "/approve" || command === "/deny") {
           await continuePendingApproval(prompt === "/approve");
           continue;
         }
-        if (prompt === "/provider" || prompt.startsWith("/provider ")) {
+        if (command === "/provider" || command.startsWith("/provider ")) {
           const value = prompt.slice("/provider".length).trim();
           if (!value) {
             process.stderr.write(`${providerAvailability().map((provider) =>
@@ -1825,7 +1833,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
           continue;
         }
-        if (prompt === "/model" || prompt.startsWith("/model ")) {
+        if (command === "/model" || command.startsWith("/model ")) {
           const value = prompt.slice("/model".length).trim();
           if (!value) {
             process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
@@ -1842,7 +1850,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
           continue;
         }
-        if (prompt === "/route" || prompt.startsWith("/route ")) {
+        if (command === "/route" || command.startsWith("/route ")) {
           const value = prompt.slice("/route".length).trim();
           if (!value) {
             process.stderr.write(`${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
@@ -1871,7 +1879,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Routes: ${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
           continue;
         }
-        if (prompt === "/new" || prompt.startsWith("/new ")) {
+        if (command === "/new" || command.startsWith("/new ")) {
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot leave session while run ${active.runId} is ${active.status}.\n`);
@@ -1883,7 +1891,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Created session ${session.sessionId}.\n`);
           continue;
         }
-        if (prompt === "/rename" || prompt.startsWith("/rename ")) {
+        if (command === "/rename" || command.startsWith("/rename ")) {
           const title = prompt.slice("/rename".length).trim();
           if (!title) {
             process.stderr.write("Usage: /rename <title>\n");
@@ -1893,7 +1901,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Renamed session to ${session.title}.\n`);
           continue;
         }
-        if (prompt === "/resume" || prompt.startsWith("/resume ")) {
+        if (command === "/resume" || command.startsWith("/resume ")) {
           const selector = prompt.slice("/resume".length).trim() || "last";
           const selected = selector === "last"
             ? await sessionStore.latest({ includeArchived: true })
@@ -1911,7 +1919,7 @@ const chat = async (options: CliOptions) => {
           );
           continue;
         }
-        if (prompt === "/review" || prompt.startsWith("/review ")) {
+        if (command === "/review" || command.startsWith("/review ")) {
           const reviewPrompt = prompt.slice("/review".length).trim();
           if (!reviewPrompt) {
             process.stderr.write("Usage: /review <task>\n");
@@ -1936,7 +1944,6 @@ const chat = async (options: CliOptions) => {
           }
           continue;
         }
-
         const active = await hasActiveTurn();
         if (active) {
           process.stderr.write(
@@ -1945,18 +1952,18 @@ const chat = async (options: CliOptions) => {
           continue;
         }
 
-        if (prompt === "/paste") {
+        if (!literalInput && prompt === "/paste") {
           prompt = await readline.multiline();
           if (!prompt.trim()) continue;
           process.stdout.write(`\nDraft:\n${sanitizeTerminalText(prompt)}\n`);
           // Drain the current input event before accepting a separate send decision.
           await new Promise<void>((resolve) => setImmediate(resolve));
           if ((await readline.question("Send this draft? Type send: ")).trim() !== "send") continue;
-        } else if (prompt.startsWith("/")) {
+        } else if (!literalInput && prompt.startsWith("/")) {
           process.stderr.write("Unknown command. Use /help, or /paste to send literal text starting with /.\n");
           continue;
         }
-        readline.rememberPrompt(prompt);
+        readline.rememberPrompt(prompt, literalInput || command === "/paste");
         prompt = await attachments.prompt(harness.workspace, prompt);
         const runId = `run_${randomUUID()}`;
         session = await sessionStore.appendRun(session.sessionId, {
@@ -1967,7 +1974,7 @@ const chat = async (options: CliOptions) => {
         });
         const turn = session.runs.at(-1)!;
 
-        const tracker = { streamedText: false };
+        const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
         let markedRunning = false;
         let result: AgentRunOutput;
         try {
@@ -2018,6 +2025,7 @@ const chat = async (options: CliOptions) => {
             }
           ));
         } catch (error) {
+          tracker.markdown?.flush();
           const durable = await latestState(await refreshSession());
           session = await sessionStore.updateRun(session.sessionId, runId, {
             status: durable ? sessionStatus(durable.status) : "failed"
@@ -2025,6 +2033,7 @@ const chat = async (options: CliOptions) => {
           if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
           throw error;
         }
+        tracker.markdown?.flush();
         if (!tracker.streamedText && result.outputText) {
           process.stdout.write(sanitizeTerminalText(result.outputText));
         }

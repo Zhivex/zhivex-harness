@@ -6,6 +6,16 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+### Console input and streaming (HAR-HU-15)
+
+- Insert bracketed clipboard content as bounded, editable literal text; prevent
+  pasted commands and approval answers from executing accidentally.
+- Suppress input echo while a run is active, preserve drafts across terminal resize,
+  and deliver partial streamed lines during provider pauses and on error cleanup.
+- Extend the offline Node PTY demonstration with clipboard safety, cursor editing,
+  resize, provider failure and history recovery. JSON/JSONL and persisted state
+  contracts are unchanged.
+
 ## 1.0.0 - 2026-09-20
 
 ### GA promotion

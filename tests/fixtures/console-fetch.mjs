@@ -3,20 +3,29 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 let editRequested = existsSync(process.env.CONSOLE_FIXTURE_REQUESTS) &&
   readFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, 'utf8').includes('EDIT_FIXTURE');
 let slowRequested = false;
+let failedRequested = false;
 globalThis.fetch = async (url, options) => {
   if (!String(url).startsWith('https://api.openai.com/v1/')) throw new Error('Unexpected fixture endpoint');
   const body = JSON.parse(options.body);
   appendFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, JSON.stringify(body) + '\n');
   const slow = !slowRequested && JSON.stringify(body).includes('SLOW_FIXTURE');
   if (slow) slowRequested = true;
+  const fail = !failedRequested && JSON.stringify(body).includes('FAIL_STREAM_FIXTURE');
+  if (fail) failedRequested = true;
   let abort;
   const stream = new ReadableStream({
     start(controller) {
       const send = (event) => controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`));
       abort = () => controller.error(new DOMException('Fixture interrupted', 'AbortError'));
       if (slow) {
+        send({ type: 'response.output_text.delta', delta: 'Cancellable partial' });
         options.signal?.addEventListener('abort', abort, { once: true });
         if (options.signal?.aborted) abort();
+        return;
+      }
+      if (fail) {
+        send({ type: 'response.output_text.delta', delta: 'Recoverable partial\u001b[2J' });
+        setTimeout(() => controller.error(new Error('Fixture provider disconnected')), 350);
         return;
       }
       if (!editRequested && JSON.stringify(body).includes('EDIT_FIXTURE')) {

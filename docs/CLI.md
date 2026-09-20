@@ -9,12 +9,33 @@ The Zhivex Harness `1.0` release is Node-first and exposes a durable agent conso
 The console completes slash-command prefixes with Tab. `/paste` captures a bounded
 multiline draft: finish with `.end` on a separate line, review the preview, then type
 `send` at the separate confirmation prompt. Slash commands inside the draft remain
-literal model input. Use this mode for multiline clipboard content. Lines arriving
+literal model input. Use this mode when the terminal does not support bracketed
+paste. With bracketed paste, clipboard content is inserted as a literal editable
+draft; a separate Enter sends it. Pasted slash commands never execute console
+commands, and pasted answers never approve changes. Clipboard controls are escaped,
+and an oversized clipboard is discarded while retaining the existing draft.
+Lines arriving
 without an active question are discarded, including surplus lines after a task or
 approval answer; they are never queued as future approvals. Input history is not
 saved to disk or shared with approval questions. Up/Down recall the last 100 task
 prompts in this process (at most 256 KiB); `/clear` and session switches clear them.
 Alt+Enter inserts a newline without submitting. Drafts are limited to 64 KiB.
+Left/Right and Home/End edit the draft in the supported Node terminal runtime;
+resizing the terminal preserves it. Ctrl+C discards the current draft (including
+an unfinished paste), or cancels the active operation and returns after cleanup.
+During an operation, typed input is ignored without echoing over the stream.
+
+Text streams progressively, including partial lines during provider pauses. Activity,
+approval requests and completion remain separate labelled events. Partial output is
+flushed before errors or returning to the prompt, and terminal controls from the
+provider are escaped. After a provider error, Up recalls the submitted task for
+editing/retry; history stays in memory only. Markdown styling is best effort when
+a provider pauses inside markup; text is never replayed to restyle it.
+
+Reproduce this flow offline with `bun run build` followed by
+`python3 scripts/console-pty-smoke.py` (Python 3 and Node on macOS/Linux). The PTY
+fixture covers paste, navigation, resize, partial provider failure, recovery,
+cancellation and approval safety without sending requests to a live provider.
 
 `/context` displays the exact active project manifest, rule/context paths, digests,
 and available skills. Skills are indexed for progressive loading; the list does not
