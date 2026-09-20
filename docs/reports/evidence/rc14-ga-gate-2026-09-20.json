@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "kind": "post-publication-ga-release-gate",
+  "releaseTag": "v1.0.0-rc.14",
+  "releaseCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+  "command": "bun run readiness:1.0:release",
+  "exitCode": 1,
+  "failures": [
+    "GA release gate requires package version 1.0.0",
+    "GA readiness phase is not ready",
+    "GA blocker remains open: security-review",
+    "GA requires a current passing security review with zero critical/high findings",
+    "GA security review evidence is invalid: security review evidence must be a workspace-relative path"
+  ],
+  "logSha256": "2e3ae16dbdb830fd64199a0deebad0275beb3deb37b58153d0a2f7e78ac515a1",
+  "context": "Run with the RC14 publication record and full representative cases added to the GA ledger. Version remains RC14, readiness remains preparation, formal security review remains pending.",
+  "scope": "The authenticated gate verified passing RC registry, tag, provenance and workflow evidence and full representative coverage; the listed failures remain blockers."
+}

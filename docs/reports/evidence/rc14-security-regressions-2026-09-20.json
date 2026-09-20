@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "kind": "tag-bound-automated-security-regression-check",
+  "reviewer": {
+    "name": "Codex",
+    "type": "automated"
+  },
+  "releaseTag": "v1.0.0-rc.14",
+  "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+  "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383",
+  "sourceProbeResults": [
+    {
+      "id": "SEC-01",
+      "passed": true,
+      "acceptedConflictingWrites": 1,
+      "finalContent": "first"
+    },
+    {
+      "id": "CONTROL-sequential-stale-digest",
+      "passed": true,
+      "rejectedStale": true
+    },
+    {
+      "id": "SEC-02",
+      "passed": true,
+      "replacementVisibleByDefault": true,
+      "omissionNoticeVisible": false,
+      "fullViewAvailable": true
+    },
+    {
+      "id": "SEC-03",
+      "passed": true,
+      "missingTools": []
+    },
+    {
+      "id": "SEC-04",
+      "passed": true,
+      "throughPublicRunHarness": true,
+      "status": "completed",
+      "differentTenantUserNamespace": true,
+      "otherTenantCandidateInToolOutput": false
+    }
+  ],
+  "artifactSha512Hex": "50cbb824550db3f90e4c911365224c32f558968f9ae0c286e8fa12bc4df5dd0c4c12a2b5cf8db40175603ce189f238f68e9ea642e77f46f73bfa2c4ac87ff8a2",
+  "artifactCheck": "passed",
+  "sourceFiles": {
+    "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+    "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302",
+    "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+    "scripts/validate-security-review.ts": "956d8d332ce59c39d6b2fd763be2a0f162e51760f4d63cd1e5c9bdbe48b778f3"
+  },
+  "limitations": [
+    "These are focused source-level regressions on the tagged commit, not a fresh complete security audit of every packaged or transitive line.",
+    "No human identity or final review signature is asserted."
+  ],
+  "publicationVerification": {
+    "status": "passed",
+    "publishedAt": "2026-09-20T12:47:20.607Z",
+    "registryIntegrity": "sha512-UMu4JFUNs/kOTJETZSJMMvVYlo+a4MKG6PoSvE313QxMEqK1z420AXVgPOGJ8jj2jp6mQud/Rvc7+ixKyH/4og==",
+    "provenance": "verified",
+    "representativeCases": 42,
+    "workflow": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383"
+  }
+}
