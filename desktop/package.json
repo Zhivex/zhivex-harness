@@ -1,0 +1,28 @@
+{
+  "name": "zhivex-harness-desktop",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "main": "build/main.cjs",
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "start": "electron .",
+    "typecheck": "tsc --noEmit",
+    "package": "bun run build && bun run scripts/package.ts",
+    "smoke": "bun run scripts/smoke.ts",
+    "smoke:packaged": "bun run scripts/smoke.ts --packaged"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "electron": "44.4.3",
+    "@electron/packager": "^18.3.6",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
+  },
+  "trustedDependencies": [
+    "electron"
+  ]
+}

@@ -14,3 +14,7 @@ results/*
 # Python benchmark helpers
 scripts/swebench/__pycache__/
 evaluations/external/.venv/
+
+# Desktop build artifacts
+desktop/build/
+desktop/out/

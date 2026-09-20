@@ -40,3 +40,5 @@ including failed attempts; the guides below describe their scope.
 
 - [Benchmark guide](../benchmarks/README.md) and [Time-to-Safe-Fix protocol](TIME_TO_SAFE_FIX.md).
 - [Report index](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md): dated audits, remediation evidence and model comparisons. Historical findings and scores do not describe later code automatically.
+
+- [Desktop architecture spike](DESKTOP_ARCHITECTURE.md): Electron/React process boundaries and unsigned macOS packaging evidence.

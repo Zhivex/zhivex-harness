@@ -48,11 +48,11 @@ Evidence: docs/reports/HAR_HU_25_2026-09-20.md; 627 tests and installed CLI/serv
 
 Source: https://app.notion.com/p/3e1777b104f68127b878c070f94238cd?pvs=204
 
-- [ ] Un spike Electron + React abre una ventana y conversa con un proceso runtime separado mediante el contrato mínimo.
-- [ ] Se comprueban SQLite, cancelación, arranque y OCI en macOS; se documentan compatibilidad Node y límites de empaquetado.
-- [ ] Una decisión de arquitectura acepta o descarta la hipótesis con evidencia y amenazas; el renderer no recibe acceso general a filesystem ni credenciales.
+- [x] Un spike Electron + React abre una ventana y conversa con un proceso runtime separado mediante el contrato mínimo.
+- [x] Se comprueban SQLite, cancelación, arranque y OCI en macOS; se documentan compatibilidad Node y límites de empaquetado.
+- [x] Una decisión de arquitectura acepta o descarta la hipótesis con evidencia y amenazas; el renderer no recibe acceso general a filesystem ni credenciales.
 
-Evidence: pending.
+Evidence: docs/reports/HAR_HU_26_2026-09-20.md; packaged Electron smoke and macOS OCI smoke passed. Unsigned architecture spike only.
 
 ## HAR-HU-27 — Abrir proyectos y navegar conversaciones
 
