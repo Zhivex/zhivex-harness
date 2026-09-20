@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "targetVersion": "1.0.0",
-  "phase": "preparation",
+  "phase": "ready",
   "evidenceMaxAgeDays": 30,
   "contractManifest": "contracts/public-api.json",
   "stabilityPolicy": "docs/STABILITY.md",

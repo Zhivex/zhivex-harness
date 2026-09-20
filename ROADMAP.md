@@ -5,6 +5,8 @@
 
 This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.11.1` are published on npm. Version `0.11.1` delivers file and release hardening without a `0.11.x` contract change; registry publication, supply-chain provenance, and provider certification remain separate evidence boundaries. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
+Version `1.0.0` is the local source release candidate. It is not yet tagged or published as a new artifact. Its protected stable certification and publication remain pending; published RC.14 evidence supports preparation, not a claim that stable bytes have shipped.
+
 ## Planning principles
 
 RC.13 is published to npm `next` with 42/42 representative cases, protected live certification, and independently verified registry integrity and SLSA provenance. Its [reviewer dossier](docs/RC13_SECURITY_REVIEW.md) remains historical context.

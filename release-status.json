@@ -1,24 +1,19 @@
 {
   "schemaVersion": 1,
   "package": "@zhivex-ai/harness",
-  "version": "0.11.1",
-  "status": "published",
+  "version": "1.0.0",
+  "status": "candidate",
   "channel": "latest",
-  "tag": "v0.11.1",
-  "sourceCommit": "d7e3e87a64999bc9244b55c398f1ef49b89d5a29",
+  "tag": "v1.0.0",
+  "sourceCommit": "06d0ae113f5545cc0c62b9e2952409fe7535ec49",
   "registry": "https://registry.npmjs.org/",
-  "registryIntegrity": "sha512-lF1ZzWi4HKsAUAdrpFb6Gf3afsrv89Mkm6tnqA/EGCHGWKZ7c1qQaM2opxrKFQIFQhfWJO4BrYMWQLDWC840kA==",
-  "provenance": "verified",
-  "githubRelease": "https://github.com/Zhivex/zhivex-harness/releases/tag/v0.11.1",
-  "publishedAt": "2026-08-23T15:24:37.716Z",
+  "provenance": "pending",
   "liveCertification": {
-    "status": "certified",
-    "base": "passed-release-bound-run",
-    "orchestration": "passed-release-bound-run",
-    "routing": "passed-release-bound-run",
-    "execution": "passed-release-bound-run",
-    "remoteWorkflow": "passed",
-    "remoteWorkflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/32648233081",
-    "observedAt": "2026-08-23T15:24:11.534Z"
+    "status": "pending",
+    "base": "pending-release-bound-run",
+    "orchestration": "pending-release-bound-run",
+    "routing": "pending-release-bound-run",
+    "execution": "pending-release-bound-run",
+    "remoteWorkflow": "pending"
   }
 }

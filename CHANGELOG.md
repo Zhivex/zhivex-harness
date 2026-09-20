@@ -6,6 +6,23 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 1.0.0 - 2026-09-20
+
+### GA promotion
+
+- Promote the RC.14 runtime and dependency set without further runtime changes.
+  Stable API/CLI/schema contracts, supported Node runtimes and migration policies
+  are defined in the published stability and support documents.
+- Bind readiness to the published RC evidence, including RC.14 protected live
+  certification and its complete 42-case Meta/Qwen/OpenAI representative matrix.
+  Gemini remains provisional and outside the GA-certified cohort.
+- Complete the artifact-bound security assessment under the explicitly documented
+  RC.14-only delegated AI review exception. This is not an independent human audit.
+  Preserve all four resolved findings, residual risks and negative exploratory
+  SWE-bench results; no broad coding-accuracy claim is made.
+- Existing paused approvals remain bound to their original artifact. Stable
+  publication and provenance require their own protected release workflow.
+
 ## 1.0.0-rc.14 - 2026-09-20
 
 ### GA validation remediation
