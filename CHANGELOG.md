@@ -6,7 +6,24 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-## 1.0.0-rc.14 - Unreleased
+## 1.0.0-rc.14 - 2026-09-20
+
+### GA validation remediation
+
+- Serialize workspace mutations across processes and isolate OCI state by the
+  canonical workspace, state directory, user, tenant, namespace and run identity.
+  Reject legacy unscoped snapshots and require review of full replacement edits.
+- Add opt-in `requireVerifiedDelivery` for repair runs. Preserve bounded planning,
+  unknown-tool recovery and closure reserve across checkpoints without granting
+  approvals or increasing total token limits. Older paused approvals must resume
+  with their original artifact because the runtime policy binding changed.
+- Consume published Core 1.22.0, Agents 1.8.0, OpenAI 0.13.3, Qwen 0.14.4,
+  Gemini 0.12.1 and Meta 0.2.6. Preserve supported terminal-error usage and
+  complete Qwen terminal tool calls through the upstream adapter fixes.
+- Capture evaluation candidates from the actual run scope and verify Python
+  imports against the candidate checkout. Preserve complete failed evaluation
+  evidence; local validation and development results do not constitute GA
+  certification or replace release-bound representative and security evidence.
 
 ### Full harness review remediation (2026-09-10)
 
