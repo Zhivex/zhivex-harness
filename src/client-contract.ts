@@ -5,6 +5,7 @@ import type { AgentRunState, AgentStreamEvent } from "@zhivex-ai/agents";
 import { appendUserMessage, runHarness, type ZhivexHarness } from "./harness.js";
 import { cancelHarnessRun } from "./operations.js";
 import { openCliSessionStore, type CliSession, type CliSessionStore, SESSION_RUN_STATUSES, type SessionRunStatus } from "./sessions.js";
+import { runResultDocument } from "./run-document.js";
 import { HarnessStateConflictError } from "./errors.js";
 
 export const HARNESS_CLIENT_PROTOCOL_VERSION = 1 as const;
@@ -34,11 +35,9 @@ export const harnessClientRequestSchema = z.object({
 export type HarnessClientCommand = z.infer<typeof harnessClientCommandSchema>;
 export type HarnessClientRequest = z.infer<typeof harnessClientRequestSchema>;
 export type HarnessClientErrorCode = "INVALID_REQUEST" | "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" | "NOT_FOUND" | "REVISION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "CAPACITY_EXCEEDED" | "APPROVAL_MISMATCH" | "INVALID_STATE" | "BUSY" | "EXECUTION_FAILED";
-export interface HarnessClientSession {
-  sessionId: string; revision: number; title?: string; runs: { runId: string; status: string }[];
-}
+export interface HarnessClientSession extends CliSession {}
 export interface HarnessClientRun {
-  runId: string; revision: number; status: string; output: string;
+  runId: string; revision: number; status: string; output: string; cliResult?: unknown;
   approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown; expiresAt: number }[];
 }
 export type HarnessClientData =
@@ -78,10 +77,9 @@ const sessionStatus = (status: string): SessionRunStatus => {
   if (!(SESSION_RUN_STATUSES as readonly string[]).includes(status)) return fail("INVALID_STATE");
   return status as SessionRunStatus;
 };
-const sessionDocument = (value: CliSession): HarnessClientSession => ({ sessionId: value.sessionId, revision: value.revision,
-  ...(value.title === undefined ? {} : { title: value.title }), runs: value.runs.map(r => ({ runId: r.runId, status: r.status })) });
+const sessionDocument = (value: CliSession): HarnessClientSession => structuredClone(value);
 const runDocument = (state: AgentRunState, approvalMaxAgeMs: number): HarnessClientRun => ({ runId: state.runId, revision: state.revision ?? 0,
-  status: state.status, output: state.outputText ?? "", approvals: state.pendingApprovals.map(a => ({
+  status: state.status, output: state.outputText ?? "", ...(state.metadata?.clientCliResultV1 ? {cliResult:state.metadata.clientCliResultV1}:{}), approvals: state.pendingApprovals.map(a => ({
     approvalId: a.id, expiresAt: (state.updatedAt ?? state.startedAt ?? 0) + approvalMaxAgeMs, provider: a.provider, kind: a.kind ?? "provider", digest: digest(a), action: a
   })) });
 
@@ -98,13 +96,19 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
   let active: { sessionId: string; runId: string; controller: AbortController } | undefined;
   const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1]) => {
     const runId = "state" in input ? input.state.runId : input.runId!;
+    const mutationOffset = harness.workspace.mutationAudit().length;
     const controller = new AbortController(); active = { sessionId, runId, controller };
     try {
       const result = await runHarness(harness, { ...input, abortSignal: controller.signal }, {
         onEvent: event => options.onEvent?.(sessionId, runId, event)
       });
-      await options.onCheckpoint?.(sessionId, runId, result.state.status);
-      return result;
+      const document = { ...runResultDocument(result, harness), mutations: harness.workspace.mutationAudit().slice(mutationOffset) };
+      const latest = { ...result.state, metadata: { ...result.state.metadata, clientCliResultV1: JSON.parse(JSON.stringify(document)) } };
+      await harness.store.save(latest, { expectedRevision: result.state.revision ?? 0 });
+      const saved = await harness.store.load(runId, harness.config.scope);
+      if (!saved) throw new Error("CLIENT_RESULT_STATE_MISSING");
+      await options.onCheckpoint?.(sessionId, runId, saved.status);
+      return { ...result, state: saved };
     } catch (e) {
       await options.onCheckpoint?.(sessionId, runId, "interrupted");
       throw e;
@@ -149,7 +153,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       if (previous && !["completed", "failed", "cancelled", "timed_out"].includes(previous.status)) return fail("INVALID_STATE");
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
-      const result = await invoke(s.sessionId, { runId, messages: appendUserMessage(previous?.messages ?? [], c.prompt) });
+      const result = await invoke(s.sessionId, { runId, scope: harness.config.scope, messages: appendUserMessage(previous?.messages ?? [], c.prompt) });
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
       return { kind: "run", session: sessionDocument(s), run: documentRun(result.state) };
     }

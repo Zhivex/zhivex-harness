@@ -25,11 +25,11 @@
     },
     {
       "name": "CLI_OPTION_DEFINITIONS",
-      "sha256": "sha256:2ab0cae31073a4ab05aa39800bf03a1ec7a89f5cf0cd9105937e79e53cb82b5e"
+      "sha256": "sha256:ac981aadf7a89313aa9744aca63c61d700797f6356bd43cf92be4984ea5e8d80"
     },
     {
       "name": "CLI_OPTION_NAMES",
-      "sha256": "sha256:906e5be40d1d3490b658e3fd33a12b2c1b0f1ba909c95b129371816f8ec4845a"
+      "sha256": "sha256:2c94006a4fcb5a7df4e5d24fe57533b436f630bf656ffae864f7e461f0c694ac"
     },
     {
       "name": "DEFAULT_ALLOWED_CHECKS",
@@ -331,7 +331,7 @@
     },
     {
       "name": "CliOptionName",
-      "sha256": "sha256:d58b6e56c94266eede249ccf72991ae45518a7368bcfe0769499059730f172e1"
+      "sha256": "sha256:9628cdc1bd1d28ff1ecb4e29091a04a6cfdff48c4b9da2d49c1d64ca003f7a76"
     },
     {
       "name": "CliReviewGroupDocument",
@@ -490,5 +490,5 @@
       "sha256": "sha256:81a02c5f5cd3cb9dea1ad7b798300e8658592718d90f01ce9a35bf29e7c3090a"
     }
   ],
-  "digest": "sha256:03d6e54ef24f83e849bf91f3be3a2d0ae7d40ac7b52e6881ebf1f6b2f7dbaa18"
+  "digest": "sha256:f1150a4254c1ab5796719aeccbc6090590d4ab1639e544f48adb6b8903126c14"
 }

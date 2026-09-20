@@ -22,6 +22,12 @@ const service=await startHarnessLocalService(h,{directory:c.directory});
 process.stdout.write(JSON.stringify({credentialsPath:service.credentialsPath})+'\\n');
 process.once('SIGTERM',()=>{void service.close();});
 `);
+const cli=async(args:string[])=>{
+ const child=spawn("node",[path.join(path.dirname(entry),"cli.js"),...args],{env:{PATH:process.env.PATH!,HOME:root},stdio:["ignore","pipe","pipe"]});
+ let stdout="",stderr="";child.stdout.on("data",c=>stdout+=c);child.stderr.on("data",c=>stderr+=c);
+ const code=await new Promise<number|null>((resolve,reject)=>{child.once("exit",resolve);child.once("error",reject);});
+ assert.equal(code,0,stderr);return stdout;
+};
 let current:ChildProcess|undefined;
 const boot=async(resume=false)=>{
  const child=spawn("node",[fixture,JSON.stringify({workspace,directory:root+"/socket",resume})],{env:{PATH:process.env.PATH!,HOME:root},stdio:["ignore","pipe","pipe"]});current=child;
@@ -39,7 +45,9 @@ const boot=async(resume=false)=>{
 };
 try{
  const first=await boot();const s=await first.call({method:"session.create",idempotencyKey:"create"});assert(s.ok&&s.data.kind==="session");const sessionId=s.data.session.sessionId;
- const pending=await first.call({method:"run.start",sessionId,expectedRevision:s.data.session.revision,idempotencyKey:"start",prompt:"Edit a.txt"});assert(pending.ok&&pending.data.kind==="run");assert.equal(pending.data.run.status,"waiting_approval");
+ const cliStarted=JSON.parse(await cli(["run","--service",first.credentials.socketPath.replace(/\.sock$/,".json"),"--session",sessionId,"--json","Edit a.txt"]));
+ api.parseCliJsonDocument(cliStarted);assert.equal(cliStarted.status,"waiting_approval");
+ const pending=await first.call({method:"run.get",sessionId,runId:cliStarted.runId});assert(pending.ok&&pending.data.kind==="run");assert.equal(pending.data.run.status,"waiting_approval");
  const runId=pending.data.run.runId;const page=await api.requestHarnessLocalService(first.credentials,"events",{projectId:first.hello.projectId,sessionId});
  first.child.kill("SIGKILL");await first.stopped;
  const {createMockLanguageModel}=await import(testing);
@@ -50,8 +58,12 @@ try{
  const replay=await api.requestHarnessLocalService(second.credentials,"events",{projectId:second.hello.projectId,sessionId});assert.deepEqual(replay,page);
  await assert.rejects(api.requestHarnessLocalService(first.credentials,"hello",{versions:[1]}));
  const command={method:"approval.resolve" as const,sessionId,runId,expectedRevision:state.data.run.revision,idempotencyKey:"approve",decisions:state.data.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
- const done=await second.call(command);assert(done.ok&&done.data.kind==="run");assert.equal(done.data.run.status,"completed");
- const duplicate=await second.call(command);assert(duplicate.ok);assert.deepEqual(duplicate.data,done.data);
+ const resumed=await cli(["resume",runId,"--service",second.credentials.socketPath.replace(/\.sock$/,".json"),"--session",sessionId,"--approve","--jsonl"]);
+ const lines=resumed.trim().split("\n").map(line=>api.parseCliJsonLineDocument(JSON.parse(line)));
+ assert.equal(lines.at(-1)?.kind,"run-stream-result");
+ const done=await second.call({method:"run.get",sessionId,runId});assert(done.ok&&done.data.kind==="run");assert.equal(done.data.run.status,"completed");
+ const duplicate=await second.call(command);assert.equal(duplicate.ok,false);
+ const sessions=JSON.parse(await cli(["sessions","list","--service",second.credentials.socketPath.replace(/\.sock$/,".json"),"--json"]));api.parseCliJsonDocument(sessions);assert.equal(sessions.sessions.length,1);
  assert.equal(await readFile(workspace+"/a.txt","utf8"),"after\n");
  second.child.kill("SIGTERM");await second.stopped;
  const audit=await api.createHarness({workspace,provider:"openai",modelInstance:createMockLanguageModel(),subagentProfiles:[]});

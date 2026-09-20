@@ -38,11 +38,11 @@ Evidence: docs/reports/HAR_HU_22_24_2026-09-20.md; 625 passing tests and install
 
 Source: https://app.notion.com/p/3e1777b104f681439edae7b512ce6281?pvs=204
 
-- [ ] Un adaptador CLI usa comandos/eventos del servicio y mantiene los contratos públicos documentados.
-- [ ] El modo no interactivo conserva códigos de salida y salida estructurada; se documenta cualquier cambio o deprecación.
-- [ ] La misma sesión se inicia por CLI, consulta por otro cliente y recupera tras desconexión con pruebas sobre paquete instalado.
+- [x] Un adaptador CLI usa comandos/eventos del servicio y mantiene los contratos públicos documentados.
+- [x] El modo no interactivo conserva códigos de salida y salida estructurada; se documenta cualquier cambio o deprecación.
+- [x] La misma sesión se inicia por CLI, consulta por otro cliente y recupera tras desconexión con pruebas sobre paquete instalado.
 
-Evidence: pending.
+Evidence: docs/reports/HAR_HU_25_2026-09-20.md; 627 tests and installed CLI/service recovery smoke passed.
 
 ## HAR-HU-26 — Validar arquitectura y empaquetado del escritorio
 

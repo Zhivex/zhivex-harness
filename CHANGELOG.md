@@ -665,3 +665,10 @@ No configuration, SQLite, approval, or execution-policy migration is required. E
 ### Added
 
 - Initial provider-portable coding harness MVP for Meta, Qwen, and OpenAI.
+
+### Experimental local service CLI
+
+- Added opt-in `--service` for run/resume/chat and session list/inspect/rename,
+  with durable event replay and existing versioned JSON/JSONL documents.
+- Persisted the shared CLI result projection and explicitly bound service run
+  admission to host scope. Added CLI/second-client crash recovery in installed smoke.

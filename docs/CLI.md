@@ -295,3 +295,36 @@ Library callers select `agentProfile: "repair"` in `createHarness` and can obser
 bounded timings/accounting with `runHarness(..., { onDiagnostics })`. Telemetry
 observer exceptions do not alter the execution result. A stricter caller can
 explicitly override tool-error behavior or terminal receipt settings.
+
+## Shared local service (experimental)
+
+Use `--service /absolute/private/credentials.json` with `run`, `resume`, `chat`, or
+`sessions list|inspect|rename`. The host starts the service as described in
+[LOCAL_SERVICE.md](LOCAL_SERVICE.md). The CLI reads its private credential file;
+it never prints the token or starts another engine in service mode.
+
+```sh
+zhx run --service /private/service/project.json --json "Explain this repository"
+zhx run --service /private/service/project.json --session ses_example --jsonl "Continue"
+zhx resume run_example --service /private/service/project.json --session ses_example --approve --jsonl
+zhx sessions list --service /private/service/project.json --json
+zhx chat --service /private/service/project.json --continue
+```
+
+Runtime/provider/workspace policy flags are rejected in this mode because the host
+owns them. Commands without `--service` retain their existing direct behavior.
+`--session` on `run` or `resume` is specific to service mode. JSON uses the existing
+schemaVersion 1 documents (run JSON adds sessionId); JSONL retains monotonically
+sequenced run-event and run-stream-result records. Pending approval is exit 0,
+failed/cancelled/timed-out runs and transport/state errors exit 1, usage errors exit 2.
+Service sessions preserve full session documents. `/help` lists the service chat
+commands; host configuration commands remain available through direct mode.
+
+Streaming follows durable replay pages without running effects client-side. Ctrl+C
+requests cancellation with the run's current revision. Disconnecting the CLI does
+not shut down the service. After a service restart read the rotated credentials,
+inspect the session and explicitly resume its current pending approval. Do not
+blindly retry an uncertain command with a new idempotency key. The host persists the
+CLI result projection for runs executed through this adapter; older runs without
+that projection can be inspected through run/session queries but are not synthesized
+into a new CLI result. Approval output remains untrusted repository text.

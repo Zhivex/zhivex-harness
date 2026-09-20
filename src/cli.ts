@@ -3,6 +3,8 @@ import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
 import { USAGE_LEDGER_KEY, usagePricingSchema, formatUsageLedger, inspectUsageLedger } from "./usage-ledger.js";
 import { TASK_SOURCE_KEY, taskSources } from "./task-memory.js";
 
+import { runResultDocument } from "./run-document.js";
+export { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal-markdown.js";
 import { ConsoleInput } from "./console-input.js";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console-context.js";
@@ -50,9 +52,7 @@ import {
   type ZhivexHarness
 } from "./harness.js";
 import {
-  estimateAgentRunCost,
-  type AgentTelemetryObserver,
-  type TokenPricing
+  type AgentTelemetryObserver
 } from "@zhivex-ai/agents/ops";
 import {
   cancelHarnessRun,
@@ -187,6 +187,7 @@ type ChangesCommand = (typeof CLI_CHANGES_COMMANDS)[number];
 type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 
 export interface CliOptions {
+  serviceFile?: string;
   command: Command;
   profile?: string;
   provider?: string;
@@ -794,6 +795,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--jsonl":
         options.jsonl = true;
         break;
+      case "--service":
+        options.serviceFile = optionValue(argv, index, argument);
+        index += 1;
+        break;
       case "--session":
         options.sessionId = optionValue(argv, index, argument);
         index += 1;
@@ -964,6 +969,13 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError(`${options.command} does not accept positional arguments.`);
   }
 
+  if (options.serviceFile) {
+    const allowed = new Set(["--service", "--session", "--idempotency-key", "--yes", "--json", "--jsonl", "--approve", "--deny", "--search", "--continue"]);
+    for (const arg of optionCounts.keys()) if (arg.startsWith("--") && !allowed.has(arg)) throw new CliUsageError(`Service mode does not accept ${arg}; runtime configuration belongs to the service host.`);
+  } else if (["run", "resume"].includes(options.command) && optionCounts.has("--session")) {
+    throw new CliUsageError("--session for run/resume requires --service.");
+  }
+
   const commandKey = options.command === "runs"
     ? `runs:${options.runsCommand}`
     : options.command === "sessions"
@@ -1023,6 +1035,7 @@ Options:
   --session <id>                 Open a durable interactive session
   --continue                     Open the latest durable interactive session
   --workspace <path>             Target workspace (default: cwd)
+  --service <credentials.json>   Use the private local runtime (run/resume/chat/sessions)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
   --context-config <path>        Project context/rules/skills manifest (default: .zhivex/harness.json)
@@ -1133,75 +1146,6 @@ const terminalApprovalResolver = (
   }
 };
 
-const costPricing = (harness: ZhivexHarness): TokenPricing | undefined => harness.config.costBudget
-  ? {
-      inputCostPer1kTokens: harness.config.costBudget.inputCostPer1kTokens,
-      outputCostPer1kTokens: harness.config.costBudget.outputCostPer1kTokens,
-      currency: "USD"
-    }
-  : undefined;
-
-export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness) => ({
-  schemaVersion: CLI_JSON_SCHEMA_VERSION,
-  kind: "run-result" as const,
-  runId: result.state.runId,
-  status: result.status,
-  provider: result.state.provider,
-  model: result.state.modelId,
-  output: result.outputText,
-  steps: result.steps.length,
-  toolCalls: result.toolResults.length,
-  mutations: harness.workspace.mutationAudit(),
-  pendingApprovals: result.state.pendingApprovals.map((approval) => ({
-    id: approval.id,
-    kind: approval.kind ?? "provider",
-    name: approval.name,
-    arguments: approval.arguments,
-    ...(approval.childRunId ? { childRunId: approval.childRunId } : {}),
-    ...(approval.childAgentId ? { childAgentId: approval.childAgentId } : {})
-  })),
-  children: (result.state.childRuns ?? []).map((child) => ({
-    runId: child.runId,
-    agentId: child.agentId,
-    toolName: child.toolName,
-    status: child.status,
-    steps: child.steps,
-    toolCalls: child.toolCalls,
-    toolErrors: child.toolErrors,
-    usage: child.usage
-  })),
-  usage: result.usage,
-  ...(result.state.metadata?.[USAGE_LEDGER_KEY] ? { usageLedger: inspectUsageLedger(result.state.metadata[USAGE_LEDGER_KEY]) } : {}),
-  budget: getAgentBudgetStatus(result.state, harness.config.budget, result),
-  ...(harness.config.costBudget
-    ? {
-        costBudget: {
-          limitUsd: harness.config.costBudget.maxCostUsd,
-          estimate: estimateAgentRunCost(result.state, costPricing(harness))
-        }
-      }
-    : {}),
-  scope: result.state.scope,
-  capabilities: harness.capabilities,
-  orchestration: {
-    profiles: harness.config.orchestration.profiles,
-    childBudget: harness.config.orchestration.childBudget,
-    mcpServers: harness.mcpConfiguration.servers.map((server) => server.name)
-  },
-  execution: harness.executionEnvironment
-    ? {
-        backend: "oci" as const,
-        binding: result.state.executionEnvironment,
-        image: harness.executionEnvironment.image
-      }
-    : { backend: "none" as const },
-  store: {
-    backend: harness.config.storeBackend,
-    stateDirectory: harness.config.stateDirectory,
-    migration: harness.persistence?.migration
-  },
-  stateDirectory: harness.config.stateDirectory
-});
 
 const printTerminalResult = (
   result: AgentRunOutput,
@@ -3278,6 +3222,11 @@ const manageState = async (options: CliOptions) => {
 
 export const main = async (argv = process.argv.slice(2)) => {
   const parsedOptions = parseCliArgs(argv);
+  if (parsedOptions.serviceFile) {
+    const { runServiceCli } = await import("./service-client-cli.js");
+    await runServiceCli(parsedOptions, annotateCliStreamError);
+    return;
+  }
   const options = parsedOptions.command === "init"
     ? parsedOptions
     : await applyCliProfile(parsedOptions);

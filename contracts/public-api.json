@@ -912,6 +912,8 @@
       },
       "run": {
         "allowed": [
+          "--service",
+          "--session",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1035,6 +1037,7 @@
       },
       "chat": {
         "allowed": [
+          "--service",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1188,6 +1191,8 @@
       },
       "resume": {
         "allowed": [
+          "--service",
+          "--session",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1308,6 +1313,7 @@
       },
       "sessions:list": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1324,6 +1330,7 @@
       },
       "sessions:inspect": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1338,6 +1345,7 @@
       },
       "sessions:rename": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",

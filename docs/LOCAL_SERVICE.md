@@ -103,3 +103,8 @@ receipt. Fixtures use mock providers; no live API or certification claim is made
 HU-25 adds the CLI service adapter; desktop and distribution remain separate acceptance
 items in `docs/reports/HAR_HU_22_35_PLAN.md`. Signing/notarization will be configured
 later at the user's request; an unsigned artifact cannot satisfy HU-34.
+
+The CLI adapter now consumes this transport via opt-in `--service`; see
+[CLI.md](CLI.md#shared-local-service-experimental). It shares the direct CLI result
+serializer and persists that projection with the run. New run admission explicitly
+uses the host scope. No renderer or CLI can override it.
