@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "./bridge.js";
 const bridge:DesktopBridge=Object.freeze({
+ review:(projectKey:string,sessionId:string,runId:string)=>ipcRenderer.invoke("harness:review",{projectKey,sessionId,runId}),
  projects:()=>ipcRenderer.invoke("harness:projects"),
  chooseProject:()=>ipcRenderer.invoke("harness:choose-project"),
  openProject:(projectKey:string)=>ipcRenderer.invoke("harness:open-project",projectKey),

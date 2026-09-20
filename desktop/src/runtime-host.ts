@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 import { readHarnessLocalCredentials, requestHarnessLocalService } from "../../src/local-service.js";
+import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor,hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
@@ -22,6 +23,13 @@ export async function launchProjectRuntime(project:DesktopProject,options:{build
   const context:DesktopContext={project,projectId:hello.projectId,runtimePid:ready.pid,runtimeNode:ready.node,fixture:options.fixture};
   let fixtureOffline=false,fixtureDropResponse=false;
   return {dropFixtureRunResponse(){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureDropResponse=true;},setFixtureOffline(value:boolean){if(!options.fixture)throw new Error("FIXTURE_DISABLED");fixtureOffline=value;},context,stateDirectory:ready.stateDirectory,isAlive:()=>!exited,
+   async review(sessionId:unknown,runId:unknown){
+    if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
+    const envelope=harnessClientRequestSchema.parse({protocolVersion:1,requestId:`review_${randomUUID()}`,connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId,runId}});
+    const response=await requestHarnessLocalService(credentials,"command",envelope);
+    if(!response.ok||response.data.kind!=="run")throw new Error("REVIEW_UNAVAILABLE");
+    return projectApprovalReview(response.data.run,redact.text);
+   },
    async command(command:unknown){
     if(fixtureOffline)throw new Error("TRANSPORT_UNAVAILABLE");
     if(!command||typeof command!=="object"||Array.isArray(command)||"projectId" in command)throw new Error("INVALID_COMMAND");

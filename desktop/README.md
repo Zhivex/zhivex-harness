@@ -78,3 +78,16 @@ response after accepted work, temporary transport unavailability, renderer reloa
 during streaming, expired snapshots, literal hostile markup and a secret split across
 chunks. Fault switches exist only on the trusted host's fixture runtime object; they
 are not part of the preload bridge. No model API is contacted.
+
+## Approval review work in progress (HU29)
+
+A pending run offers “Revisar solicitud”. The host retrieves the exact scoped run
+and exposes a bounded review projection with run revision, approval digest, payload
+digest, expiry, files, commands and consequences. Literal replacements are explicitly
+labeled as fragments; full-content edits do not invent an unseen preimage. Redacted,
+invalid or oversized payloads are marked incomplete. The raw approval wrapper and
+host signatures remain private.
+
+This first increment is read-only. Approval/rejection controls, complete patch-bound
+before/after inspection and durable decision/effect history are still required before
+HU29 can close. Existing engine authorization remains authoritative.

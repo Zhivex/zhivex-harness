@@ -153,3 +153,12 @@ Evidence: pending.
 5. Signed/notarized installer, integrity/versioned release evidence and tested update recovery (34–35). Actual signing/notarization requires an available Developer ID and notarization profile; do not substitute unsigned/ad-hoc artifacts for acceptance.
 
 User decision: prepare packaging now; configure Developer ID/notarization later. HU-34 signing acceptance remains outstanding.
+
+## HU29 work in progress
+
+Read-only approval projection and desktop panel implemented after b6fbc58. Three
+projection tests and desktop TypeScript pass; development Electron smoke opened a
+real pending run_check approval and verified the review revision/digest. Still open:
+positive/negative decision flow, full patch-bound before/after and check evidence,
+and durable distinction between denied, failed and applied operations. No HU29
+acceptance box is closed by this partial increment.

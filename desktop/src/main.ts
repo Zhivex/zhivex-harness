@@ -55,6 +55,10 @@ void app.whenReady().then(async()=>{
   validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="command,projectKey")throw new Error("INVALID_COMMAND");
   const value=payload as {projectKey:unknown;command:unknown};return(await runtime(value.projectKey)).command(value.command);
  });
+ ipcMain.handle("harness:review",async(event,payload:unknown)=>{
+  validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="projectKey,runId,sessionId")throw new Error("INVALID_REVIEW");
+  const value=payload as {projectKey:unknown;sessionId:unknown;runId:unknown};return(await runtime(value.projectKey)).review(value.sessionId,value.runId);
+ });
  ipcMain.handle("harness:events",async(event,payload:unknown)=>{
   validateSender(event);if(!payload||typeof payload!=="object"||Array.isArray(payload)||Object.keys(payload).sort().join(",")!=="after,projectKey,sessionId")throw new Error("INVALID_CURSOR");
   const value=payload as {projectKey:unknown;sessionId:unknown;after:unknown};return(await runtime(value.projectKey)).events({sessionId:value.sessionId,after:value.after});
