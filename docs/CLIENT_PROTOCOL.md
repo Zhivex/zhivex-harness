@@ -145,3 +145,24 @@ It uses the real Harness and durable stores with an offline mock model; no provi
 credentials/calls, HTTP listener, terminal parser or desktop application is involved.
 Regressions also cover revision/digest drift, denial, concurrent duplicate requests,
 connection renewal, receipt-copy isolation and cross-session identifiers.
+
+## Complete file approval previews (HU29)
+
+`run.get` accepts optional `includeReview: true`. Ordinary polls retain their prior
+shape and cost. The service derives paths and contents exclusively from the scoped
+run's pending approvals. Supported file mutations return `filePreview` with the
+proposal identity, full before/after text and digests; unavailable bases return only
+`status: unavailable`, without file/error details. Protected descriptor reads and
+fatal UTF-8 decoding preserve exact BOM/CRLF bytes. Review payloads are bounded
+and never silently truncated into an approvable preview. Mutation-time digest
+checks remain authoritative: a preview is not a filesystem lock.
+
+New terminal-run continuations close missing tool-result transcript entries with
+an explicit unknown-outcome context record. This prevents dangling calls from an
+older rejected/failed run being treated as fresh pending requests. It does not
+assert an effect, generate a successful receipt or authorize replay. Error activity
+uses the persisted run status when available rather than always saying interrupted.
+
+Workspace adds read-only `previewPatch` and `previewReplacement` methods. This is
+an additive Stable API change; the reviewed declaration snapshot includes the
+transitive Workspace signatures. It does not remove or alter existing methods.

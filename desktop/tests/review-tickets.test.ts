@@ -13,7 +13,7 @@ test("expired, fabricated, incomplete and unsupported approvals fail closed",()=
  const tickets=new ReviewTickets();
  expect(()=>tickets.consume("forged",true,1000)).toThrow("REVIEW_REQUIRED");
  const expired=tickets.issue("s",review());expect(()=>tickets.consume(expired.ticketId,false,2000)).toThrow("REVIEW_EXPIRED");
- for(const variant of [ {...review().items[0]!,complete:false}, {...review().items[0]!,name:"apply_patch"}]){
+ for(const variant of [ {...review().items[0]!,complete:false}, {...review().items[0]!,name:"apply_environment_patch"}]){
   const view={...review(),items:[variant]},issued=tickets.issue("s",view);
   expect(issued.canApprove).toBe(false);
   expect(()=>tickets.consume(issued.ticketId,true,1000)).toThrow("REVIEW_INCOMPLETE");

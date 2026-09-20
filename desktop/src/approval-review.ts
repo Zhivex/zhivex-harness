@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import type { HarnessClientRun } from "../../src/client-contract.js";
-export interface ApprovalReviewFile {path:string;expectedDigest:string|null;before?:string;after?:string;view:"literal-replacement"|"replacement-contents"|"operation"}
+export interface ApprovalReviewFile {path:string;expectedDigest:string|null;before?:string;after?:string;view:"literal-replacement"|"replacement-contents"|"operation"|"full-file";afterDigest?:string}
 export interface ApprovalReviewItem {
  approvalId:string;digest:string;expiresAt:number;name:string;payloadDigest:string;
  payload:string;files:ApprovalReviewFile[];commands:string[];consequence:string;
- complete:boolean;restriction?:"REDACTED"|"TOO_LARGE"|"INVALID_PAYLOAD";
+ complete:boolean;restriction?:"REDACTED"|"TOO_LARGE"|"INVALID_PAYLOAD"|"BASE_UNAVAILABLE";
 }
 export interface ApprovalReview {schemaVersion:1;runId:string;revision:number;status:string;items:ApprovalReviewItem[]}
 const object=(value:unknown):Record<string,unknown>|undefined=>value&&typeof value==="object"&&!Array.isArray(value)?value as Record<string,unknown>:undefined;
@@ -25,10 +25,17 @@ export function projectApprovalReview(run:HarnessClientRun,redact:(text:string)=
   if(typeof args.command==="string")commands.push(JSON.stringify([args.command,...(Array.isArray(args.args)?args.args:[])]));
   if(typeof args.script==="string")commands.push(args.script);
   if(Array.isArray(args.commands))for(const entry of args.commands){const c=object(entry);if(c&&typeof c.command==="string")commands.push(JSON.stringify([c.command,...(Array.isArray(c.args)?c.args:[])]));}
+  const needsBase=["apply_patch","apply_reviewed_edits","apply_reviewed_replacement"].includes(name);
+  const preview=approval.filePreview;
+  if(needsBase&&preview?.status==="complete"){
+   files.length=0;
+   files.push(...preview.files.map(file=>({path:file.path,expectedDigest:file.expectedDigest,before:file.before??"",after:file.after,afterDigest:file.afterDigest,view:"full-file" as const})));
+  }
   const execution=name==="run_check"||name.startsWith("run_environment_")||name.startsWith("verify_and_apply_");
   const mutation=name.startsWith("apply_")||name.startsWith("verify_and_apply_")||["move_file","quarantine_file","restore_file"].includes(name);
   const consequence=[execution?"Autoriza ejecutar los comandos mostrados; no certifica que los checks pasen.":"",mutation?"Autoriza la modificación indicada con sus precondiciones de contenido.":"",!execution&&!mutation?"Autoriza la operación exacta mostrada; el motor valida capacidades y alcance.":""].filter(Boolean).join(" ");
-  const changed=safe!==payload||redact(name)!==name;
-  return {...base,payload:safe,files:files.map(file=>({...file,path:redact(file.path),expectedDigest:file.expectedDigest===null?null:redact(file.expectedDigest),...(file.before===undefined?{}:{before:redact(file.before)}),...(file.after===undefined?{}:{after:redact(file.after)})})),commands:commands.map(redact),consequence,complete:!changed,...(changed?{restriction:"REDACTED" as const}:{})};
+  const changed=safe!==payload||redact(name)!==name||redact(JSON.stringify(files))!==JSON.stringify(files);
+  const baseUnavailable=needsBase&&preview?.status!=="complete";
+  return {...base,payload:safe,files:files.map(file=>({...file,path:redact(file.path),expectedDigest:file.expectedDigest===null?null:redact(file.expectedDigest),...(file.before===undefined?{}:{before:redact(file.before)}),...(file.after===undefined?{}:{after:redact(file.after)})})),commands:commands.map(redact),consequence,complete:!changed&&!baseUnavailable,...(changed?{restriction:"REDACTED" as const}:baseUnavailable?{restriction:"BASE_UNAVAILABLE" as const}:{})};
  })};
 }

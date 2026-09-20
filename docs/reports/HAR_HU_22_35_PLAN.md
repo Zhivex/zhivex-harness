@@ -171,3 +171,8 @@ desktop typecheck/build and development Electron smoke passed; smoke resolved th
 real pending check through a receipt and rejected the generic renderer bypass.
 Evidence: /tmp/har-electron-NsAkBU/report. This does not certify the buttons end to
 end, persistent decision history, stale-client scenarios or the installed package.
+
+Third HU29 increment: complete protected file previews and packaged approval/rejection
+flow verified. Terminal continuation after denial repaired. Evidence and remaining
+criteria: HAR_HU_29_PROGRESS_2026-09-20.md. Suite: 645 pass, 0 fail; package smoke
+includes exact preimage/destination, reject-preserves-file and literal HTML-like text.

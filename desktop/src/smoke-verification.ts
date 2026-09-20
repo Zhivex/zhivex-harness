@@ -1,11 +1,11 @@
 import { app, type BrowserWindow } from "electron";
-import { stat, writeFile } from "node:fs/promises";
+import { stat, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
 import type { ProjectRuntime } from "./runtime-host.js";
 export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<string,Promise<ProjectRuntime>>,reportDirectory:string){
- const js=(source:string)=>window.webContents.executeJavaScript(source);
+ const js=async(source:string)=>{try{return await window.webContents.executeJavaScript(source);}catch(error){await writeFile(path.join(reportDirectory,"failure-script.txt"),source);await writeFile(path.join(reportDirectory,"failure-view.txt"),await window.webContents.executeJavaScript("document.body.innerText"));throw error;}};
  const wait=async(expression:string)=>{for(let i=0;i<200;i++){if(await js(expression))return;await new Promise(r=>setTimeout(r,50));}await writeFile(path.join(reportDirectory,"failure-view.txt"),await js("document.body.innerText"));throw new Error(`RENDERER_TIMEOUT: ${expression}`);};
  const click=(selector:string)=>js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  await wait('document.querySelector("[data-ready=true]") !== null');
@@ -86,7 +86,20 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  await click('[data-action="retry"]');await wait('document.querySelector("#prompt").disabled === false && document.body.innerText.includes("response-loss-probe") && !document.body.innerText.includes("No se pudo completar.")');
  const reconciled=await first.command({method:"session.get",sessionId});assert(reconciled.ok&&reconciled.data.kind==="session");assert.deepEqual(reconciled.data.session.runs,lost.data.session.runs);
  assert.equal(await js(`document.querySelector('[data-session="${sessionId}"] small').textContent`),"completed");
+ for(const approve of [false,true]){
+  await js(`{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"file-review-probe");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
+  await wait('document.querySelector("[data-action=start]").disabled === false');await click('[data-action="start"]');
+  await wait('document.querySelector("[data-action=review]") !== null');await click('[data-action="review"]');
+  await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+  assert.equal(await js('document.querySelector(".review-file .removed").textContent'),"context\r\nbefore\r\nlast");
+  assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));
+  assert.equal(await readFile(path.join(first.context.project.workspace,"review.txt"),"utf8"),"context\r\nbefore\r\nlast");
+  if(approve){await js('document.querySelector(".review-file").scrollIntoView({block:"center"})');await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");await writeFile(path.join(reportDirectory,"screenshot-review.png"),(await window.webContents.capturePage()).toPNG());}
+  await click(approve?'[data-action="approve-review"]':'[data-action="deny-review"]');
+  await wait('document.querySelector("[data-action=review]") === null && document.querySelector("#prompt").disabled === false');
+  assert.equal(await readFile(path.join(first.context.project.workspace,"review.txt"),"utf8"),approve?"context\r\nafter <img onerror=alert(1)>\r\nlast":"context\r\nbefore\r\nlast");
+ }
  const database=await stat(path.join(first.stateDirectory,"operations.sqlite"));
  await writeFile(path.join(reportDirectory,"screenshot.png"),(await window.webContents.capturePage()).toPNG());
- await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
+ await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
 }

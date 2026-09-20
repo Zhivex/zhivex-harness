@@ -93,7 +93,11 @@ only the opaque receipt and an explicit boolean; the host supplies the captured 
 revision and approval digests. Direct approval.resolve from the renderer is rejected.
 Expired receipts fail locally and competing clients remain subject to engine revision
 checks. Lost responses require reconciliation and a new review, never blind replay.
-Approval is currently enabled only for complete run_check reviews; rejection can
-cover incomplete proposals. File and OCI approvals remain disabled until protected
-full before/after previews exist. Durable decision/effect history and packaged UI
-approval/rejection verification are still required before HU29 can close.
+Approval is enabled for complete run_check and protected file-edit previews
+(apply_patch, apply_reviewed_edits, apply_reviewed_replacement). Exact UTF-8 base
+bytes, including BOM/CRLF, are bound to the expected digest and displayed beside
+the destination. Missing/create-only, stale, protected, invalid UTF-8, oversized or
+redacted bases cannot enable approval. Rejection can cover incomplete proposals.
+OCI approvals remain disabled until patch/mode previews exist. Packaged macOS
+arm64 smoke verifies file rejection, subsequent approval and exact resulting bytes.
+Durable decision/effect history and OCI review remain required before HU29 closes.

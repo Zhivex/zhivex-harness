@@ -125,7 +125,7 @@
     },
     {
       "name": "Workspace",
-      "sha256": "sha256:58d3cb1d3c4db4e3832fd4c2445febca984d08c2bf62f035dbe2aa3d4cde14c1"
+      "sha256": "sha256:3e26e6e06d28107c6191ff010e80470beaa34a548bef1556caa46c96a2f966fe"
     },
     {
       "name": "appendUserMessage",
@@ -165,7 +165,7 @@
     },
     {
       "name": "createHarness",
-      "sha256": "sha256:a1334ac53d799be64a7a960784dabffee114834885d4a93c51a5263adbbc6cec"
+      "sha256": "sha256:b1b86f1ad676eae330dd0e99929e857348552ff690c784fdd416d2e2b02943a8"
     },
     {
       "name": "createHarnessMcpTools",
@@ -173,7 +173,7 @@
     },
     {
       "name": "createHarnessOciExecutionEnvironment",
-      "sha256": "sha256:9ead262d7b342c1135c68e3ff20f99afb251bf03698ed2fd97c4d97bfbb9afb7"
+      "sha256": "sha256:c917a44a086366b3c5538d2f418d90bb31d23e71cf538bd9f0b60381364d2b69"
     },
     {
       "name": "createHarnessStateBackup",
@@ -209,7 +209,7 @@
     },
     {
       "name": "inspectHarnessRun",
-      "sha256": "sha256:45b35dae10bd8567f0f1c8a011f2cade31f66ebacd380f3166fb720c644a4743"
+      "sha256": "sha256:cc09fcb2817b6796298ee5646f4e3da859e2dfd5535be14c524c6632a1dba4fd"
     },
     {
       "name": "inspectHarnessState",
@@ -273,7 +273,7 @@
     },
     {
       "name": "runHarness",
-      "sha256": "sha256:c280b2b1ca8ba03f96a572b324ae00426c44cc2607d425fe028d3ea4d5f73de4"
+      "sha256": "sha256:ce1ebda0ee0bd1e79e9fb5286715bf3e02df7d5233321cdc68b27df15831fd36"
     },
     {
       "name": "serializeStreamEvent",
@@ -427,7 +427,7 @@
     },
     {
       "name": "HarnessExecutionSession",
-      "sha256": "sha256:c0c52240a22c28cd18fbb785b2e47ed5b301bbc0563d7defa4c22e6a6df828b3"
+      "sha256": "sha256:3bf8a21fccb5793b92bbbd10c6a99f07bf404096422246e8c18d93bff328c743"
     },
     {
       "name": "HarnessMcpConfiguration",
@@ -487,8 +487,8 @@
     },
     {
       "name": "ZhivexHarness",
-      "sha256": "sha256:81a02c5f5cd3cb9dea1ad7b798300e8658592718d90f01ce9a35bf29e7c3090a"
+      "sha256": "sha256:269224d4842f1f2db11128f883c33ae6e57eb1a9c26dba3aab4162f388ea5ff3"
     }
   ],
-  "digest": "sha256:f1150a4254c1ab5796719aeccbc6090590d4ab1639e544f48adb6b8903126c14"
+  "digest": "sha256:fee8715a578348e24978cd5414fd0cf34f25398167ecea1609bb5a26fd364ccb"
 }

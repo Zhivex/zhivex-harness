@@ -39,6 +39,10 @@ describe("client protocol against the real harness, no terminal",()=>{
       expect(data(await f.call({method:"project.get"}),"project").projectId).toBe(f.hello.projectId);
       const pending=await start(f); expect(pending.run.status).toBe("waiting_approval");
       expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
+      const reviewed=data(await f.call({method:"run.get",sessionId:pending.session.sessionId,runId:pending.run.runId,includeReview:true}),"run");
+      expect(reviewed.run.revision).toBe(pending.run.revision);
+      expect(reviewed.run.approvals[0]!.filePreview).toMatchObject({status:"complete",files:[{path:"a.txt",before:"before\n",after:"after\n"}]});
+      expect(data(await f.call({method:"run.get",sessionId:pending.session.sessionId,runId:pending.run.runId}),"run").run.approvals[0]!.filePreview).toBeUndefined();
       const command={method:"approval.resolve" as const,idempotencyKey:"approve",sessionId:pending.session.sessionId,runId:pending.run.runId,expectedRevision:pending.run.revision,decisions:pending.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
       const done=data(await f.call(command),"run"); expect(done.run.status).toBe("completed");
       expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("after\n");
@@ -121,4 +125,18 @@ test("two clients decide once and a persisted approval expiry rejects late decis
   expect(await late.call({method:"approval.resolve",sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"expired",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))})).toMatchObject({ok:false,error:{code:"APPROVAL_MISMATCH"}});
   expect(await readFile(late.workspace+"/a.txt","utf8")).toBe("before\n");
  }finally{await late.close();}
+});
+
+test("rejection checkpoint reports persisted failure and continuation closes the unrecorded tool call",async()=>{
+ const statuses:string[]=[];const f=await fixture({onCheckpoint:(_s,_r,status)=>{statuses.push(status);}});
+ try{
+  const p=await start(f);await f.call({method:"approval.resolve",sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"deny-gap",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:false}))});
+  expect(statuses.at(-1)).toBe("failed");
+  const session=data(await f.call({method:"session.get",sessionId:p.session.sessionId}),"session").session;
+  const next=data(await f.call({method:"run.start",sessionId:session.sessionId,expectedRevision:session.revision,idempotencyKey:"next-after-denial",prompt:"Continue after denial"}),"run");
+  const stored=await f.harness.store.load(next.run.runId,f.harness.config.scope);
+  const results=stored!.messages.flatMap(m=>m.parts).filter(p=>p.type==="tool-result"&&p.toolResult.toolCallId==="edit-1");
+  expect(results).toHaveLength(1);expect(results[0]).toMatchObject({toolResult:{isError:true,output:{status:"outcome_unknown"}}});
+  expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
+ }finally{await f.close();}
 });

@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import { hostSensitiveValues } from "./redaction.js";
 import { createHarness } from "../../src/harness.js";
 import { startHarnessLocalService, recoverHarnessLocalService } from "../../src/local-service.js";
@@ -12,6 +13,10 @@ async function boot() {
   const userIndex=input.messages.findLastIndex(m=>m.role==="user");const prompt=JSON.stringify(input.messages[userIndex]??{});
   const probe=prompt.includes("activity-probe");
   const hasResult=input.messages.slice(userIndex+1).some(m=>m.role==="tool");
+  if(prompt.includes("file-review-probe")&&!hasResult){
+   yield{type:"tool-call" as const,toolCall:{id:`review-edit-${userIndex}`,name:"apply_reviewed_replacement",input:{path:"review.txt",expectedDigest:"sha256:"+createHash("sha256").update("context\r\nbefore\r\nlast").digest("hex"),oldText:"before",newText:"after <img onerror=alert(1)>"}}};
+   yield{type:"finish" as const,finishReason:"tool-calls" as const};return;
+  }
   if(probe&&!hasResult){
    yield{type:"tool-call" as const,toolCall:{id:"probe-read",name:"read_file",input:{path:"package.json"}}};
    yield{type:"tool-call" as const,toolCall:{id:"probe-check",name:"run_check",input:{check:"test",expectedScript:"bun -e 'process.exit(7)'"}}};
