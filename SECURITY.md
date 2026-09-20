@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published `0.11.x` patch. Older minors and private checkpoints are not supported release channels. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Security fixes are provided for the latest published `1.0.x` patch. Older minors and private checkpoints are not supported release channels. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Reporting a vulnerability
 

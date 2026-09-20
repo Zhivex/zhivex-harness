@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-stable-publication",
+  "version": "1.0.0",
+  "tag": "v1.0.0",
+  "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+  "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+  "publicationAttempt": 2,
+  "liveCertificationAttempt": 1,
+  "representativeAttempt": 2,
+  "observedAt": "2026-09-20T14:36:27.276Z",
+  "publishedAt": "2026-09-20T14:33:51.271Z",
+  "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+  "registryAttestation": "https://registry.npmjs.org/-/npm/v1/attestations/@zhivex-ai%2fharness@1.0.0",
+  "registryIntegrity": "verified-byte-identical",
+  "provenance": "verified",
+  "channel": "latest",
+  "representativeSummary": {
+    "valid": true,
+    "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+    "driverCommit": "28723ff3350b7572d5bd68f2d40b6feef1e0e6b4",
+    "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+    "providers": [
+      {
+        "provider": "meta",
+        "model": "muse-spark-1.2",
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "omitted": 0
+      },
+      {
+        "provider": "qwen",
+        "model": "qwen3.8-max",
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "omitted": 0
+      },
+      {
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "omitted": 0
+      }
+    ]
+  },
+  "liveDiagnostics": [
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:41:32.509Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "base",
+      "status": "passed",
+      "outcomes": [
+        {
+          "provider": "meta",
+          "status": "passed"
+        },
+        {
+          "provider": "qwen",
+          "status": "passed"
+        },
+        {
+          "provider": "openai",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:42:21.015Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "orchestration",
+      "status": "passed",
+      "outcomes": [
+        {
+          "provider": "meta",
+          "status": "passed"
+        },
+        {
+          "provider": "qwen",
+          "status": "passed"
+        },
+        {
+          "provider": "openai",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:42:46.626Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "routing",
+      "status": "passed",
+      "outcomes": [
+        {
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:43:12.951Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "execution",
+      "status": "passed",
+      "outcomes": [
+        {
+          "provider": "meta",
+          "status": "passed"
+        },
+        {
+          "provider": "qwen",
+          "status": "passed"
+        },
+        {
+          "provider": "openai",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:41:10.038Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "oci",
+      "status": "passed",
+      "outcomes": [
+        {
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "release-gate-diagnostic",
+      "generatedAt": "2026-09-20T13:41:04.223Z",
+      "binding": {
+        "releaseTag": "v1.0.0",
+        "sourceCommit": "69c8a4b0b3e62c3f492257a792670ce6ce8f4298",
+        "artifactSha512": "sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==",
+        "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845",
+        "workflowRunAttempt": 1
+      },
+      "gate": "oci-preload",
+      "status": "passed",
+      "outcomes": [
+        {
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "firstAttemptEvidence": "docs/reports/evidence/ga-publication-attempt-1-2026-09-20.json",
+  "securityReview": "security-reviews/rc14-review.json",
+  "securityReviewAttribution": "Codex under explicit delegated-AI exception; not an independent human audit",
+  "rollback": {
+    "priorStableVersion": "0.11.1",
+    "priorStableTag": "v0.11.1",
+    "policy": "docs/ROLLBACK.md"
+  },
+  "limitations": [
+    "First-attempt Qwen failure remains unexplained and retained.",
+    "Separate exploratory SWE-bench results remain Harness 0/5 versus control 1/5.",
+    "Gemini is provisional.",
+    "No immutable package bytes or tags were replaced."
+  ]
+}

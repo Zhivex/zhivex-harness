@@ -1,8 +1,8 @@
 # Support
 
-Zhivex Harness `0.11.x` is the latest supported pre-1.0 Node-first CLI and TypeScript library. Observable contracts may change in a later minor release when the change and migration path are documented in [CHANGELOG.md](./CHANGELOG.md). The mutable machine-readable public release state is recorded in the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), outside immutable npm artifacts.
+Zhivex Harness `1.0.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable public release state is recorded in the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), outside immutable npm artifacts.
 
-The detailed 1.0 target is tracked in the [machine-readable support matrix](./docs/support-matrix.json) and its [human-readable view](./docs/SUPPORT_MATRIX.md). Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) once 1.0 is promoted.
+The 1.0 support scope is tracked in the [machine-readable support matrix](./docs/support-matrix.json) and its [human-readable view](./docs/SUPPORT_MATRIX.md). Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) for the published 1.x line.
 
 ## Supported baseline
 
@@ -13,7 +13,7 @@ The detailed 1.0 target is tracked in the [machine-readable support matrix](./do
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published `0.11.x` patch receives routine fixes. The exact `v0.11.1` tag passed the protected release-bound base, orchestration, routing, and model-directed execution matrix for Meta, Qwen, and OpenAI on 2026-08-23. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Only the most recent published `1.0.x` patch receives routine fixes. The exact `v1.0.0` tag passed protected release-bound base, orchestration, routing and model-directed execution for Meta, Qwen and OpenAI on 2026-09-20; the complete representative matrix passed on its authorized second attempt. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
 
 ## Support channels
 
