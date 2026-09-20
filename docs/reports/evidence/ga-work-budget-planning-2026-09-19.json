@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "work-budget-planning-transition-regression",
+  "trigger": "Required-delivery OCI run has no candidate and its current request crosses the work budget, with or without a registered verifier.",
+  "before": "Local positive regression failed with WORK_TOKEN_BUDGET before planning. Two continuation regressions then reproduced loss of reserve after planning and rejection of a preplanned repair.",
+  "after": "Current-request estimation enters durable closure reserve. Missing verifiers use the existing two-attempt plan/task-only path. Registering a plan and checkpoint restoration preserve reserve access; total budgets and approval requirements remain unchanged.",
+  "sources": {
+    "src/harness.ts": "42326c3921bacd23e941954cc9d554c5b4746b9030b75acad5e07454ce0a865b",
+    "src/model-budget.ts": "ac83587ddfa7cd27644296a03d2eb8cccfce5da310d54cecb2bda139232e1988",
+    "src/repair-controller.ts": "8164e43ee79568bc8a6981277da4019045218da8493f32043cdeeccf7a043b06",
+    "tests/repair-plan-transition.test.ts": "2e88719c2226d6b5818e97cbafd1bf73fc5cde4f5e86fa0b273d13a315c72c7a"
+  },
+  "validation": {
+    "focusedTests": 20,
+    "fullSuite": {
+      "passed": 584,
+      "failed": 0,
+      "files": 72
+    },
+    "runtimeTypecheck": "passed",
+    "toolingTypecheck": "passed",
+    "documentation": "passed",
+    "preparationContract": "passed; one GA blocker open",
+    "stableSignatures": "unchanged",
+    "installedPackageSmoke": "passed for @zhivex-ai/harness@1.0.0-rc.14"
+  },
+  "limits": [
+    "No live effectiveness claim.",
+    "Previous fresh-cohort failures remain unchanged.",
+    "Does not claim to resolve the independent grader failure or the total-input failure in other cases."
+  ]
+}

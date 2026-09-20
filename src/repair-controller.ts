@@ -16,6 +16,7 @@ const stateSchema = z.object({ schemaVersion: z.literal(1),
   verificationFailures: z.number().int().nonnegative(),
   completionReminders: z.number().int().min(0).max(1).default(0),
   planRequired: z.boolean().default(false),
+  workBudgetClosure: z.boolean().default(false),
   requireVerifiedDelivery: z.boolean().default(false),
   hypothesis: z.string().max(1000), nextCheck: z.string().max(500),
   receipts: z.array(z.object({ commandId: z.string().max(128), purpose: z.string().max(500),
@@ -31,7 +32,8 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 /** Application-owned evidence controller. Scheduling is not approval. All emitted
  * calls enter the ordinary SDK registry, approval, lease and execution gates. */
 export const createRepairController = (metadata: Record<string, unknown>, oci: boolean,
-  options: { requireVerifiedDelivery?: boolean; progressContext?: ReturnType<typeof createRepairProgress>["workingContext"] } = {}) => {
+  options: { requireVerifiedDelivery?: boolean; progressContext?: ReturnType<typeof createRepairProgress>["workingContext"];
+    workBudgetReached?: (input: ModelGenerateInput) => boolean } = {}) => {
   const state = metadata[REPAIR_CONTROLLER_KEY] === undefined ? stateSchema.parse({ schemaVersion: 1,
     phase: "explore", candidate: null, revision: 0, verifier: null, verifierRequests: 0,
     verificationFailures: 0, hypothesis: "", nextCheck: "", receipts: [] }) : stateSchema.parse(metadata[REPAIR_CONTROLLER_KEY]);
@@ -41,7 +43,7 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
   // A rejected edit creates a bounded planning obligation too. Its next model
   // turns expose only plan/task tools and retain the two-attempt durable limit;
   // permit those turns to use the existing reserve, never extra total tokens.
-  const closure = () => state.planRequired || pending() || state.phase === "recover";
+  const closure = () => state.workBudgetClosure || state.planRequired || pending() || state.phase === "recover";
   const completionPending = () => (state.requireVerifiedDelivery && state.phase !== "delivered") || state.planRequired || pending() || (state.verifier !== null && state.phase !== "delivered");
   const markIncomplete = () => { if (completionPending()) state.phase = "incomplete"; };
   const verificationFailed = (attemptedVerification = true) => { if (attemptedVerification) state.verificationFailures++; state.phase = "recover"; state.verifier = null; state.verifierRequests = 0; };
@@ -142,11 +144,27 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
       previousRequestIds: sources.slice(-4, -1).map(source => source.id),
       phase: state.phase, candidate: state.candidate, revision: state.revision, planRequired: state.planRequired,
       requireVerifiedDelivery: state.requireVerifiedDelivery,
+      workBudgetClosure: state.workBudgetClosure,
       hypothesis: state.hypothesis, nextCheck: state.nextCheck, checks: state.receipts.slice(-2),
       progress: options.progressContext?.() ?? null,
       completionReminder: state.completionReminders > 0 ? "A final answer did not fulfill the repair. Continue the focused repair and verification; do not claim delivery without a verified candidate." : null };
-    input.messages = [...input.messages, { role: "user", parts: [{ type: "text",
-      text: `[Harness working state; not approval]\n${JSON.stringify(projection)}\nUse read_task for complete constraints if the excerpt is incomplete. A candidate must be verified before completion.` }] }];
+    const workingState = { type: "text" as const, text: "" };
+    const renderState = () => { workingState.text = `[Harness working state; not approval]\n${JSON.stringify(projection)}\nUse read_task for complete constraints if the excerpt is incomplete. A candidate must be verified before completion.`; };
+    renderState();
+    input.messages = [...input.messages, { role: "user", parts: [workingState] }];
+    // Inspect this request, including the working-state message, before the
+    // budget gate rejects exploration. Reuse the durable two-attempt planning
+    // path; selecting a plan neither authorizes edits nor increases ceilings.
+    if (oci && state.requireVerifiedDelivery && !pending() &&
+      ["explore", "reproduce"].includes(state.phase) && options.workBudgetReached?.(input)) {
+      // Keep the existing reserve available after the plan is recorded and
+      // across checkpoints, so the committed repair can reach its first edit.
+      state.workBudgetClosure = true;
+      projection.workBudgetClosure = true;
+      if (!state.verifier) state.planRequired = true;
+      projection.planRequired = state.planRequired;
+      renderState();
+    }
     if (state.phase === "incomplete") throw new Error("REPAIR_INCOMPLETE: authorization or verification is missing.");
     if (pending() && state.verificationFailures > 2) throw new Error("REPAIR_VERIFICATION_RETRIES_EXHAUSTED");
     if (state.planRequired && !state.verifier) {

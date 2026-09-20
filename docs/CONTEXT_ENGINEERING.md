@@ -231,3 +231,7 @@ Paused runs from an older binding must be completed/denied with their original
 artifact; these changes deliberately do not reinterpret an old approval.
 
 Repair mode returns an unknown tool selection to the model as `TOOL_NOT_REGISTERED`, just as invalid arguments receive structured feedback. It never resolves aliases or executes an unregistered tool. Existing tool-error, step and token limits bound recovery; callers can override `unknownToolMode` to `throw` or use `stopOnError`. Strict mode retains its fail-fast behavior, and subsequent mutations still require approval.
+
+For required-delivery OCI runs, reaching the predicted work-budget boundary without a verifier transitions into the same durable two-attempt planning path before rejecting another exploration request. That request exposes only `repair_plan` and `read_task`. The estimate includes the working-state message and current tool catalogue; the budget gate recalculates after narrowing. This spends only the existing closure reserve, keeps total input/output ceilings, and neither executes nor approves a repair. Optional inspection runs do not gain access to the reserve.
+
+Closure-reserve eligibility from this boundary is durable across checkpoints and remains active after recording the verifier, so planning can lead to an edit. A repair with an existing verifier can enter the same reserve. This does not replenish tokens, grant tool approval, or establish that a candidate satisfies the task.

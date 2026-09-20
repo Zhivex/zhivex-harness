@@ -18,6 +18,12 @@ export const estimateRequestTokens = (input: ModelGenerateInput) => {
   return Math.ceil(characters / 3) + 64;
 };
 
+export const workBudgetReached = (input: ModelGenerateInput,
+  stats: { inputTokens: number; outputTokens: number; reservedInputTokens: number; reservedOutputTokens: number },
+  limits: { inputTokens: number; outputTokens: number }) =>
+  stats.inputTokens + estimateRequestTokens(input) > limits.inputTokens - stats.reservedInputTokens ||
+  stats.outputTokens >= limits.outputTokens - stats.reservedOutputTokens;
+
 /** Per logical run; snapshots are attached to every durable SDK checkpoint. */
 export const createModelBudget = (limits: { inputTokens: number; outputTokens: number }, options: {
   saved?: unknown; diagnostics?: unknown; closure?: () => boolean; reserveFraction?: number;

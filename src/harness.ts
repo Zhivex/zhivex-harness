@@ -2,7 +2,7 @@ import { assembleHarnessTools } from "./tool-registry.js";
 import { createCheckpointTokenCap, createRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
 import { createRepairController } from "./repair-controller.js";
 import { runtimeCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
-import { MODEL_BUDGET_KEY, createModelBudget } from "./model-budget.js";
+import { MODEL_BUDGET_KEY, createModelBudget, workBudgetReached } from "./model-budget.js";
 import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY } from "./task-memory.js";
 import { replacementEditSchema } from "./replacement-edits.js";
@@ -135,7 +135,7 @@ const createHarnessBinding = (
   fingerprint: `sha256:${createHash("sha256")
     .update(JSON.stringify({
       agentProfile: config.agentProfile,
-      runtimePolicy: "repair-v5-bounded-tool-selection-recovery",
+      runtimePolicy: "repair-v6-work-boundary-planning",
       requireVerifiedDelivery: config.requireVerifiedDelivery,
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
@@ -1454,6 +1454,7 @@ export const runHarness = async (
     const metadata = ("state" in input ? input.state.metadata : input.metadata) ?? {};
     policyController = createRepairController(metadata, harness.config.execution.backend === "oci", {
       requireVerifiedDelivery: harness.config.requireVerifiedDelivery,
+      workBudgetReached: request => workBudgetReached(request, policyBudget!.stats, limits),
       progressContext: () => policyProgress!.workingContext()
     });
     const savedBudget = metadata[MODEL_BUDGET_KEY] ?? ("state" in input ? {
