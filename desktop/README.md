@@ -1,20 +1,27 @@
-# Zhivex Harness desktop spike
+# Zhivex Harness desktop alpha — in progress
 
-HAR-HU-26 architecture validation. The alpha application flows in HU27–35 remain
-separate. Uses an isolated React renderer, validated preload bridge and separate
+HAR-HU-26 architecture validation and HU27 project/conversation navigation are
+implemented. HU28–35 retain separate acceptance criteria. Uses an isolated React renderer, validated preload bridge and separate
 runtime utility process sharing the existing Harness client/service contract.
 
 ```sh
 bun install --cwd desktop --frozen-lockfile
 bun run --cwd desktop build
 bun run --cwd desktop typecheck
+bun run --cwd desktop start
+# Optional initial repository:
 bun run --cwd desktop start --workspace /absolute/repository
 bun run --cwd desktop smoke
 bun run --cwd desktop package
-bun run --cwd desktop smoke:packaged
+bun run --cwd desktop smoke:packaged --empty-start
 ```
 
-The development launcher requires an explicit workspace. Provider keys, if used,
+The launcher opens without a project; use “Abrir repositorio” to choose a Git
+repository. Native folder selection is canonicalized to the Git root. Recent
+projects persist in a private bounded index under the app user-data directory.
+Selecting a project or conversation only reads state; creating a conversation and
+sending a task require their own controls. Tab/Enter/Space work on native buttons;
+Up/Down/Home/End move focus within the navigation lists. Provider keys, if used,
 come from the host environment; do not pass them on the command line. The smoke
 creates a temporary repository, uses an offline model and writes a screenshot plus
 JSON report under the reported temporary directory. `--smoke-test` is an explicit
@@ -34,3 +41,18 @@ launcher. SIGTERM/normal quit drains accepted work; pending approvals are durabl
 Do not forcibly remove ownership files to bypass a live service.
 
 Architecture, threats and acceptance limits: [DESKTOP_ARCHITECTURE.md](../docs/DESKTOP_ARCHITECTURE.md).
+
+
+Each opened project has its own runtime and service project binding. Navigation
+never redirects in-flight commands; responses from a previous view cannot replace
+the selected project's state. Closing the application drains all opened runtimes.
+A second application instance focuses the existing window instead of opening a
+second catalog/runtime owner. Missing repositories and disconnected sessions show
+recovery actions. No repository branch or working-tree contents change on selection.
+
+The packaged smoke covers two Git repositories, separate conversation lists,
+cross-project session rejection, no new runs on navigation, keyboard activation,
+renderer reload, empty launch, invalid-folder recovery and duplicate launch.
+For deterministic automation only, host `--fixture-project` arguments supply the
+native picker's results; the renderer never supplies a path. Registry tests also
+verify canonical aliases, concurrent persistence and unchanged uncommitted files.

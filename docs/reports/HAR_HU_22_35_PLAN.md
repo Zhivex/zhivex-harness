@@ -58,11 +58,11 @@ Evidence: docs/reports/HAR_HU_26_2026-09-20.md; packaged Electron smoke and macO
 
 Source: https://app.notion.com/p/3e1777b104f681d4b8c0c08926b36e5f?pvs=204
 
-- [ ] La interfaz permite seleccionar repositorio, ver proyectos recientes y crear/listar conversaciones por proyecto.
-- [ ] Elegir sesión recupera estado desde el servicio y muestra carga, vacío y errores con acciones útiles.
-- [ ] La navegación funciona por teclado y los proyectos mantienen contexto separado sin ejecutar acciones al seleccionarlos.
+- [x] La interfaz permite seleccionar repositorio, ver proyectos recientes y crear/listar conversaciones por proyecto.
+- [x] Elegir sesión recupera estado desde el servicio y muestra carga, vacío y errores con acciones útiles.
+- [x] La navegación funciona por teclado y los proyectos mantienen contexto separado sin ejecutar acciones al seleccionarlos.
 
-Evidence: pending.
+Evidence: docs/reports/HAR_HU_27_2026-09-20.md; registry regression tests and packaged two-project/navigation/reload smoke passed.
 
 ## HAR-HU-28 — Conversar y observar el progreso de una tarea
 

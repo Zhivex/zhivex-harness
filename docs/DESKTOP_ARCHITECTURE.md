@@ -12,7 +12,10 @@ network connections, inline scripts, frames and arbitrary resources. Navigation,
 new windows, webviews and permission requests are denied. Repository text is rendered
 as text; there is no HTML interpreter, shell bridge or arbitrary filesystem API.
 
-The isolated preload exposes exactly context(), command() and events(). Main checks
+The isolated preload exposes projects(), chooseProject(), openProject(),
+initialProject(), command() and events(). Project paths originate in the native
+picker or a trusted launcher argument; renderer commands use registered project
+keys and cannot supply arbitrary paths. Main checks
 the exact local page URL, WebContents identity and main frame on every request. It
 validates the strict HU21 envelope, rejects renderer project/workspace overrides and
 binds its host-selected project. Tokens remain in main and the owner-private service
@@ -28,7 +31,7 @@ No policy decision is delegated to the renderer.
 - The packaged macOS arm64 .app starts from a fresh external working directory and
   temporary HOME, opens the real window, creates SQLite, streams an offline response
   and cancels an active run. Assertions verify no require/process in the renderer,
-  exactly three bridge methods, a different runtime PID and rejected forged
+  only the declared bridge methods, a different runtime PID and rejected forged
   project/workspace fields. Screenshot and machine report are emitted by the smoke.
 - Bun bundles the runtime dependencies and UI. SQLite uses Electron's node:sqlite;
   no native addon recompilation is needed. The runtime version is embedded from the
@@ -48,8 +51,11 @@ trusted code and need distribution integrity and updates. A same-user malicious
 process is outside this local authentication boundary; file mode checks are not
 an operating-system user isolation substitute.
 
-The spike selects one workspace through a launcher argument. There is no project
-picker yet. Runtime startup failures fail closed; dead-owner recovery is explicit.
+HU27 adds the native project picker, private recent-project catalog, per-project
+runtimes and conversation navigation. Selection queries state without starting runs.
+Responses are scoped to the selected view to prevent cross-project races. One app
+instance owns the catalog; duplicate launch focuses the existing window. Runtime
+startup failures fail closed; dead-owner recovery is explicit.
 Closing the app drains accepted work; this may take until the configured timeout.
 Renderer crash recovery and the full approval journey belong to HU30. A missing
 provider key produces a runtime error; secure credential UI is HU33. Production
