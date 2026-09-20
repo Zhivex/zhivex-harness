@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "kind": "fresh-post-fix-external-cohort-plan",
+  "classification": "Five-task exploratory fresh holdout; not GA certification alone",
+  "implementationCommit": "1886644a12135348f645de634e4f10a45e247f6a",
+  "seed": 2026091902,
+  "taskCount": 5,
+  "repetitions": 1,
+  "candidates": [
+    "zhivex",
+    "mini-swe-agent"
+  ],
+  "provider": "qwen",
+  "model": "qwen3.8-flash",
+  "datasetRevision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+  "excludedInstances": [
+    "astropy__astropy-14995",
+    "django__django-11265",
+    "django__django-12262",
+    "django__django-13410",
+    "django__django-14915",
+    "django__django-15128",
+    "django__django-15554",
+    "django__django-15569",
+    "django__django-15851",
+    "pydata__xarray-4695",
+    "pydata__xarray-6721",
+    "pytest-dev__pytest-8399",
+    "scikit-learn__scikit-learn-10908",
+    "scikit-learn__scikit-learn-14141",
+    "sympy__sympy-15809",
+    "sympy__sympy-20438",
+    "sympy__sympy-21930"
+  ],
+  "exclusionsSha256": "a57d36b1253ac1df5a2037b6d10cbac4a3f7453bea171b057a5ea7b96130cb2f",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "rules": [
+    "Selection fixed by sorted task IDs and seeded shuffle before any results.",
+    "Every selected task must prepare and pass preflight before paid calls.",
+    "Freeze implementation, model, images and budgets for all ten runs.",
+    "Keep failed, missing and ungraded samples in the denominator.",
+    "No per-task retries or replacement tasks.",
+    "Only public task material reaches models; independent official grader judges imported patches.",
+    "Report the entire cohort; do not infer GA from one passing task or adjust acceptance after results."
+  ]
+}
