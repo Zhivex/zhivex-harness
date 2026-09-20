@@ -45,6 +45,7 @@ describe("client protocol against the real harness, no terminal",()=>{
       expect(data(await f.call({method:"run.get",sessionId:pending.session.sessionId,runId:pending.run.runId}),"run").run.approvals[0]!.filePreview).toBeUndefined();
       const command={method:"approval.resolve" as const,idempotencyKey:"approve",sessionId:pending.session.sessionId,runId:pending.run.runId,expectedRevision:pending.run.revision,decisions:pending.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
       const done=data(await f.call(command),"run"); expect(done.run.status).toBe("completed");
+      expect(done.run.decisions).toMatchObject([{status:"applied",approved:true,reviewedRevision:pending.run.revision,evidence:{effects:[{path:"a.txt"}]}}]);
       expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("after\n");
       const replay=data(await f.call(command),"run");expect(replay).toEqual(done);
       expect(f.harness.workspace.mutationAudit().length).toBe(1);
@@ -64,6 +65,7 @@ describe("client protocol against the real harness, no terminal",()=>{
       await writeFile(f.workspace+"/a.txt","changed externally\n");
       expect(await f.call({...cmd,idempotencyKey:"drift"})).toMatchObject({ok:false,error:{code:"EXECUTION_FAILED"}});
       expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("changed externally\n");
+      const failed=data(await f.call({method:"run.get",sessionId:p.session.sessionId,runId:p.run.runId}),"run");expect(failed.run.decisions?.[0]?.status).toBe("failed");
     }finally{await f.close();}
   });
   test("deny and checkpoint cancel preserve the file; cancellation is replayable",async()=>{
@@ -132,6 +134,7 @@ test("rejection checkpoint reports persisted failure and continuation closes the
  try{
   const p=await start(f);await f.call({method:"approval.resolve",sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"deny-gap",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:false}))});
   expect(statuses.at(-1)).toBe("failed");
+  const denied=data(await f.call({method:"run.get",sessionId:p.session.sessionId,runId:p.run.runId}),"run");expect(denied.run.decisions).toMatchObject([{status:"rejected",approved:false}]);
   const session=data(await f.call({method:"session.get",sessionId:p.session.sessionId}),"session").session;
   const next=data(await f.call({method:"run.start",sessionId:session.sessionId,expectedRevision:session.revision,idempotencyKey:"next-after-denial",prompt:"Continue after denial"}),"run");
   const stored=await f.harness.store.load(next.run.runId,f.harness.config.scope);
@@ -139,4 +142,33 @@ test("rejection checkpoint reports persisted failure and continuation closes the
   expect(results).toHaveLength(1);expect(results[0]).toMatchObject({toolResult:{isError:true,output:{status:"outcome_unknown"}}});
   expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
  }finally{await f.close();}
+});
+
+test("durable decision admission survives lost storage acknowledgement and prevents second authorization",async()=>{
+ const f=await fixture();let reopened:Awaited<ReturnType<typeof createHarnessClientAdapter>>|undefined;
+ const original=f.harness.store.save.bind(f.harness.store);
+ try{
+  const p=await start(f);let injected=false;
+  f.harness.store.save=async(state,options)=>{const result=await original(state,options);if(!injected&&state.metadata?.clientApprovalDecisionsV1){injected=true;throw new Error("fixture acknowledgement lost");}return result;};
+  const decision={method:"approval.resolve" as const,sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"lost-admission",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
+  expect(await f.call(decision)).toMatchObject({ok:false,error:{code:"EXECUTION_FAILED"}});
+  f.harness.store.save=original;f.adapter.close();reopened=await createHarnessClientAdapter(f.harness);const hello=reopened.negotiate([1]);if(!hello.ok)throw new Error();
+  const stored=await f.harness.store.load(p.run.runId,f.harness.config.scope);
+  expect(stored!.metadata?.clientApprovalDecisionsV1).toMatchObject([{approved:true,reviewedRevision:p.run.revision}]);
+  expect(await reopened.dispatch({protocolVersion:1,requestId:"retry-after-restart",connectionId:hello.connectionId,command:{...decision,projectId:hello.projectId,expectedRevision:stored!.revision,idempotencyKey:"fresh-key"}})).toMatchObject({ok:false,error:{code:"APPROVAL_MISMATCH"}});
+  expect(f.harness.workspace.mutationAudit()).toHaveLength(0);expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
+ }finally{f.harness.store.save=original;reopened?.close();await f.close();}
+});
+
+test("applied decision and journal evidence are recovered by a newly opened harness",async()=>{
+ const f=await fixture();let second:Awaited<ReturnType<typeof createHarness>>|undefined,adapter:Awaited<ReturnType<typeof createHarnessClientAdapter>>|undefined;
+ try{
+  const p=await start(f);const done=data(await f.call({method:"approval.resolve",sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"apply-before-restart",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))}),"run");
+  f.adapter.close();await f.harness.close();
+  second=await createHarness({workspace:f.workspace,provider:"openai",modelInstance:createMockLanguageModel(),subagentProfiles:[]});adapter=await createHarnessClientAdapter(second);
+  const hello=adapter.negotiate([1]);if(!hello.ok)throw new Error();
+  const loaded=data(await adapter.dispatch({protocolVersion:1,requestId:"history-restart",connectionId:hello.connectionId,command:{method:"run.get",projectId:hello.projectId,sessionId:p.session.sessionId,runId:p.run.runId}}),"run");
+  expect(loaded.run.decisions).toEqual(done.run.decisions);expect(loaded.run.decisions?.[0]?.status).toBe("applied");
+  expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("after\n");
+ }finally{adapter?.close();await second?.close();await f.close();}
 });

@@ -206,6 +206,11 @@
             },
             "includeReview": {
               "type": "boolean"
+            },
+            "decisionOffset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 512
             }
           },
           "required": [

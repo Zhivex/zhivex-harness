@@ -166,3 +166,24 @@ uses the persisted run status when available rather than always saying interrupt
 Workspace adds read-only `previewPatch` and `previewReplacement` methods. This is
 an additive Stable API change; the reviewed declaration snapshot includes the
 transitive Workspace signatures. It does not remove or alter existing methods.
+
+## Durable approval decisions (HU29)
+
+`approval.resolve` saves bounded decision intent in run metadata before invoking
+execution. Each row records approval identity/digest, reviewed revision, time,
+explicit approve/deny and a hash of the tool input; it does not duplicate raw
+arguments, file contents, credentials or command output. An already admitted
+approval cannot be authorized again after a lost acknowledgement or reconnection.
+The run can still be inspected or cancelled; an unknown effect is never retried
+implicitly. The per-run admission limit is 512 decisions and fails before execution.
+
+`run.get` returns decisions with evidence reconstructed from the durable tool journal.
+Matching requires run, provider call id, tool name and input hash. A file decision is
+`applied` only with a valid patch-result receipt; check success requires exit 0 without
+timeout. Rejection, failure and unknown outcome remain distinct from run completion.
+The projection contains digests and allowlisted receipt fields, never stdout/stderr.
+
+Responses include `decisionTotal`, at most 25 decisions and an optional
+`decisionNextOffset`; pass `decisionOffset` to `run.get` to read later pages. A fresh
+read starts at offset zero. Legacy runs have no service decision ledger and return
+an empty history, rather than fabricated historical approvals.

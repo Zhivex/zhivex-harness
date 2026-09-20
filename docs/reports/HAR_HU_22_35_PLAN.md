@@ -80,7 +80,7 @@ Source: https://app.notion.com/p/3e1777b104f681fb9c57eb4e53ca5c9e?pvs=204
 
 - [ ] Un visor presenta archivos, diff, comandos y evidencia de checks ligados al run y parche concretos.
 - [ ] Aprobar y rechazar muestran consecuencias y alcance; el servicio rechaza decisiones caducadas o conflictos con otro cliente.
-- [ ] Los estados pendiente, rechazado, fallido y aplicado son distinguibles; contenido de repositorio no puede accionar controles de aprobación.
+- [x] Los estados pendiente, rechazado, fallido y aplicado son distinguibles; contenido de repositorio no puede accionar controles de aprobación.
 
 Evidence: pending.
 
@@ -176,3 +176,8 @@ Third HU29 increment: complete protected file previews and packaged approval/rej
 flow verified. Terminal continuation after denial repaired. Evidence and remaining
 criteria: HAR_HU_29_PROGRESS_2026-09-20.md. Suite: 645 pass, 0 fail; package smoke
 includes exact preimage/destination, reject-preserves-file and literal HTML-like text.
+
+Fourth HU29 increment: durable decision intent and journal-bound effect history.
+Status-distinction criterion verified by unit/integration tests and packaged
+renderer-reload flow. Evidence: HAR_HU_29_HISTORY_2026-09-20.md. Remaining acceptance
+criteria stay open; no publication claim.

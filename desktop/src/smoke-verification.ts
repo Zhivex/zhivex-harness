@@ -86,6 +86,7 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
  await click('[data-action="retry"]');await wait('document.querySelector("#prompt").disabled === false && document.body.innerText.includes("response-loss-probe") && !document.body.innerText.includes("No se pudo completar.")');
  const reconciled=await first.command({method:"session.get",sessionId});assert(reconciled.ok&&reconciled.data.kind==="session");assert.deepEqual(reconciled.data.session.runs,lost.data.session.runs);
  assert.equal(await js(`document.querySelector('[data-session="${sessionId}"] small').textContent`),"completed");
+ const decisionRuns:Array<{runId:string;status:string}>=[];
  for(const approve of [false,true]){
   await js(`{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"file-review-probe");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
   await wait('document.querySelector("[data-action=start]").disabled === false');await click('[data-action="start"]');
@@ -98,8 +99,20 @@ export async function verifyDesktopSmoke(window:BrowserWindow,runtimes:Map<strin
   await click(approve?'[data-action="approve-review"]':'[data-action="deny-review"]');
   await wait('document.querySelector("[data-action=review]") === null && document.querySelector("#prompt").disabled === false');
   assert.equal(await readFile(path.join(first.context.project.workspace,"review.txt"),"utf8"),approve?"context\r\nafter <img onerror=alert(1)>\r\nlast":"context\r\nbefore\r\nlast");
+  const latest=await first.command({method:"session.get",sessionId});assert(latest.ok&&latest.data.kind==="session");decisionRuns.push({runId:latest.data.session.runs.at(-1)!.runId,status:approve?"applied":"rejected"});
  }
+ const reloadedHistory=new Promise<void>(resolve=>window.webContents.once("did-finish-load",()=>resolve()));window.webContents.reload();await reloadedHistory;await wait('document.querySelector("[data-ready=true]") !== null');
+ if(emptyStartup)await click(`[data-project="${firstKey}"]`);
+ await wait('document.querySelector("[data-session]")?.disabled === false');await click(`[data-session="${sessionId}"]`);
+ for(const item of [...decisionRuns,{runId:probeId,status:"failed"}]){
+  await wait(`document.querySelector('[data-run="${item.runId}"] [data-action="decision-history"]') !== null`);
+  await click(`[data-run="${item.runId}"] [data-action="decision-history"]`);
+  await wait(`document.querySelector('[data-run="${item.runId}"] [data-decision-status="${item.status}"]') !== null`);
+ }
+ await js(`document.querySelector('[data-run="${decisionRuns[1]!.runId}"] .decision-history').scrollIntoView({block:"center"})`);
+ await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
+ await writeFile(path.join(reportDirectory,"screenshot-decisions.png"),(await window.webContents.capturePage()).toPNG());
  const database=await stat(path.join(first.stateDirectory,"operations.sqlite"));
  await writeFile(path.join(reportDirectory,"screenshot.png"),(await window.webContents.capturePage()).toPNG());
- await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
+ await writeFile(path.join(reportDirectory,"report.json"),JSON.stringify({schemaVersion:1,platform:process.platform,arch:process.arch,electron:process.versions.electron,hostNode:process.versions.node,runtimeNode:first.context.runtimeNode,separateProcess:true,isolatedRenderer:isolated,rejectedOverrides,sqliteBytes:database.size,streaming:true,cancellation:true,fileApprovalUI:true,fileRejectionUI:true,completePreimage:true,decisionHistoryReload:true,duplicateSubmitPrevented:true,lostResponseReconciled:true,failedCheckVisible:true,redactedRenderer:true,literalRepositoryText:true,activeReconnect:true,expiredSnapshot:true,projectIsolation:true,singleInstance:true,emptyStartup,invalidProjectRecovery:true,selectionHasNoExecution:true,keyboardNavigation:true,rendererReload:true,recentProjects:2,packaged:app.isPackaged,fixture:true},null,2));
 }

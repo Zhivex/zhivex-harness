@@ -1,3 +1,4 @@
+import {APPROVAL_HISTORY_KEY,approvalDecisionViews,approvalInputDigest,readApprovalDecisions,type ApprovalDecisionRecord,type ApprovalDecisionView} from "./approval-history.js";
 import {terminalContinuationMessages} from "./terminal-continuation.js";
 import {attachApprovalPreviews, type ApprovalFilePreview} from "./approval-preview.js";
 /** Experimental in-process client protocol. No transport or terminal dependencies. */
@@ -25,7 +26,7 @@ export const harnessClientCommandSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("session.get"), ...session }).strict(),
   z.object({ method: z.literal("session.rename"), ...session, ...mutation, expectedRevision: revision, title: z.string().max(256) }).strict(),
   z.object({ method: z.literal("run.start"), ...session, ...mutation, expectedRevision: revision, prompt: z.string().min(1).max(64 * 1024) }).strict(),
-  z.object({ method: z.literal("run.get"), ...run, includeReview: z.boolean().optional() }).strict(),
+  z.object({ method: z.literal("run.get"), ...run, includeReview: z.boolean().optional(), decisionOffset: z.number().int().min(0).max(512).optional() }).strict(),
   z.object({ method: z.literal("approval.resolve"), ...run, ...mutation, expectedRevision: revision,
     decisions: z.array(z.object({ approvalId: z.string().min(1).max(256), digest: z.string().regex(/^[a-f0-9]{64}$/), approve: z.boolean() }).strict()).min(1).max(64) }).strict(),
   z.object({ method: z.literal("run.cancel"), ...run, ...mutation, expectedRevision: revision }).strict()
@@ -39,7 +40,7 @@ export type HarnessClientRequest = z.infer<typeof harnessClientRequestSchema>;
 export type HarnessClientErrorCode = "INVALID_REQUEST" | "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" | "NOT_FOUND" | "REVISION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "CAPACITY_EXCEEDED" | "APPROVAL_MISMATCH" | "INVALID_STATE" | "BUSY" | "EXECUTION_FAILED";
 export interface HarnessClientSession extends CliSession {}
 export interface HarnessClientRun {
-  runId: string; revision: number; status: string; output: string; cliResult?: unknown;
+  runId: string; revision: number; status: string; output: string; cliResult?: unknown; decisions?: ApprovalDecisionView[]; decisionTotal?: number; decisionNextOffset?: number;
   approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown; expiresAt: number; filePreview?: ApprovalFilePreview }[];
 }
 export type HarnessClientData =
@@ -90,7 +91,10 @@ const runDocument = (state: AgentRunState, approvalMaxAgeMs: number): HarnessCli
 export const createHarnessClientAdapter = async (harness: ZhivexHarness, options: HarnessClientAdapterOptions = {}): Promise<HarnessClientAdapter> => {
   const approvalMaxAgeMs = options.approvalMaxAgeMs ?? 15 * 60_000;
   if (!Number.isSafeInteger(approvalMaxAgeMs) || approvalMaxAgeMs < 1) throw new Error("APPROVAL_TTL_INVALID");
-  const documentRun = (state: AgentRunState) => runDocument(state, approvalMaxAgeMs);
+  const documentRun = async (state: AgentRunState,offset=0): Promise<HarnessClientRun> => {
+    const total=readApprovalDecisions(state).length;
+    return {...runDocument(state,approvalMaxAgeMs),decisions:approvalDecisionViews(state,await harness.store.listToolCalls?.(state.runId,harness.config.scope)??[],offset),decisionTotal:total,...(offset+25<total?{decisionNextOffset:offset+25}:{})};
+  };
   const sessions: CliSessionStore = await openCliSessionStore({ workspace: harness.config.workspace,
     stateDirectory: harness.config.stateDirectory, scope: harness.config.scope });
   const projectId = `project_${digest([sessions.workspaceKey, sessions.scopeKey])}`;
@@ -160,10 +164,10 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       await options.onPrompt?.(s.sessionId, runId, c.prompt);
       const result = await invoke(s.sessionId, { runId, scope: harness.config.scope, messages: appendUserMessage(terminalContinuationMessages(previous?.messages ?? []), c.prompt) });
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
-      return { kind: "run", session: sessionDocument(s), run: documentRun(result.state) };
+      return { kind: "run", session: sessionDocument(s), run: await documentRun(result.state) };
     }
     let state = await getRun(s, c.runId);
-    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(documentRun(state), harness.workspace) : documentRun(state) };
+    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace) : await documentRun(state,c.decisionOffset) };
     if ((state.revision ?? 0) !== c.expectedRevision) return fail("REVISION_CONFLICT");
     if (c.method === "run.cancel") {
       if (["created", "running", "cancel_requested"].includes(state.status)) return fail("INVALID_STATE");
@@ -181,10 +185,23 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
         if (!a || digest(a) !== d.digest) return fail("APPROVAL_MISMATCH");
         return { provider: a.provider, approvalRequestId: a.id, approve: d.approve };
       });
+      const history=readApprovalDecisions(state);
+      if(history.length+c.decisions.length>512)return fail("CAPACITY_EXCEEDED");
+      if(c.decisions.some(d=>history.some(row=>row.approvalId===d.approvalId&&row.digest===d.digest)))return fail("APPROVAL_MISMATCH");
+      const recorded:ApprovalDecisionRecord[]=c.decisions.map(d=>{
+        const a=pending.find(a=>a.id===d.approvalId)!;
+        let inputDigest:string|undefined;try{inputDigest=approvalInputDigest(JSON.parse(a.arguments));}catch{}
+        return {approvalId:d.approvalId,digest:d.digest,name:a.name,approved:d.approve,decidedAt:(options.now??Date.now)(),reviewedRevision:c.expectedRevision,...(a.toolCallId?{toolCallId:a.toolCallId}:{}),...(inputDigest?{inputDigest}:{})};
+      });
+      // Commit intent before executing. Crash recovery must not authorize a second decision.
+      const admitted={...state,metadata:{...state.metadata,[APPROVAL_HISTORY_KEY]:JSON.parse(JSON.stringify([...history,...recorded]))}};
+      readApprovalDecisions(admitted);
+      await harness.store.save(admitted,{expectedRevision:state.revision??0});
+      state=await getRun(s,c.runId);
       state = (await invoke(s.sessionId, { state, approvals })).state;
     }
     s = await sessions.updateRun(s.sessionId, state.runId, { status: sessionStatus(state.status) });
-    return { kind: "run", session: sessionDocument(s), run: documentRun(state) };
+    return { kind: "run", session: sessionDocument(s), run: await documentRun(state) };
   };
   return {
     negotiate(versions) {
@@ -215,7 +232,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
               controller?.abort();
               const latest = await getRun(s, c.runId);
               await options.onCheckpoint?.(s.sessionId, c.runId, latest.status);
-              return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: documentRun(latest) } };
+              return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: await documentRun(latest) } };
             } catch { return error("EXECUTION_FAILED"); }
           })();
           if(key) receipts.set(key, { fingerprint, response: cancellation });
@@ -231,7 +248,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           } catch { return error("NOT_FOUND"); }
         }
         if (c.method === "run.get" && c.projectId === projectId) {
-          try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(documentRun(state), harness.workspace) : documentRun(state) } }; }
+          try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: c.includeReview ? await attachApprovalPreviews(await documentRun(state,c.decisionOffset), harness.workspace) : await documentRun(state,c.decisionOffset) } }; }
           catch { return error("NOT_FOUND"); }
         }
         return error(c.method === "approval.resolve" ? "REVISION_CONFLICT" : "BUSY");

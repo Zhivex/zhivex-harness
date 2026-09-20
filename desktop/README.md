@@ -101,3 +101,9 @@ redacted bases cannot enable approval. Rejection can cover incomplete proposals.
 OCI approvals remain disabled until patch/mode previews exist. Packaged macOS
 arm64 smoke verifies file rejection, subsequent approval and exact resulting bytes.
 Durable decision/effect history and OCI review remain required before HU29 closes.
+
+The per-run “Historial de decisiones” reads durable service decisions and journal
+receipts on demand, including older runs after renderer reload. It distinguishes
+rejected, applied, failed, succeeded and unconfirmed outcomes, with file effect
+digests and check exit codes. Pages load explicitly. This does not yet bind a plain
+run_check receipt to the exact bytes of a preceding patch or supply OCI review.

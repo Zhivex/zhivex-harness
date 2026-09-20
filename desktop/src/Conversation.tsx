@@ -1,6 +1,7 @@
+import {DecisionHistory} from "./DecisionHistory.js";
 import {useEffect,useLayoutEffect,useRef} from "react";
 import type { ConversationActivity } from "./activity.js";
-export function Conversation({activity}:{activity:ConversationActivity}){
+export function Conversation({activity,projectKey,sessionId}:{activity:ConversationActivity;projectKey?:string|undefined;sessionId?:string|undefined}){
  const root=useRef<HTMLDivElement>(null),follow=useRef(true);
  useEffect(()=>{const container=root.current?.parentElement;if(!container)return;const scroll=()=>{follow.current=container.scrollHeight-container.scrollTop-container.clientHeight<80;};container.addEventListener("scroll",scroll,{passive:true});return()=>container.removeEventListener("scroll",scroll);},[]);
  useLayoutEffect(()=>{const container=root.current?.parentElement;if(container&&follow.current)container.scrollTop=container.scrollHeight;},[activity.cursor]);
@@ -10,6 +11,6 @@ export function Conversation({activity}:{activity:ConversationActivity}){
  {run.prompt?<div className="user-message"><span className="eyebrow">VOS</span><p>{run.prompt}</p></div>:null}
  <div className="assistant-message"><span className="eyebrow">HARNESS</span>{run.text?<pre aria-label="Respuesta del servicio">{run.text}</pre>:null}
  {run.tools? <ul className="tool-activity" aria-label="Herramientas y checks">{Object.entries(run.tools).map(([key,tool])=><li key={key} data-tool={tool.name} data-tool-status={tool.status}><span>{tool.name==="run_check"?"Check":"Herramienta"} · {tool.name}</span><span>{tool.name==="run_check"&&tool.exitCode===undefined?(tool.status==="running"?"En ejecución":"Sin evidencia de resultado"):tool.status==="running"?"En ejecución":tool.status==="failed"?"Falló":"Completado"}{tool.exitCode!==undefined?` · exit ${tool.exitCode}`:""}{tool.timedOut?" · tiempo agotado":""}</span></li>)}</ul>:null}
- <p className="status">Estado: {run.status}</p>{run.truncated?<p className="muted">Contenido limitado por retención.</p>:null}</div></article>;})}
+ <p className="status">Estado: {run.status}</p>{run.truncated?<p className="muted">Contenido limitado por retención.</p>:null}</div>{projectKey&&sessionId?<DecisionHistory key={`${projectKey}:${sessionId}:${id}`} projectKey={projectKey} sessionId={sessionId} runId={id}/>:null}</article>;})}
  </div>;
 }
