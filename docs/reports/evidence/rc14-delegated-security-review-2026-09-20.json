@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "kind": "delegated-ai-security-review-verification",
+  "reviewerType": "ai",
+  "independentHumanAudit": false,
+  "authorization": {
+    "instruction": "Haz la revision humana, confiamos en tu criterio",
+    "interpretation": "Explicit delegation of technical security judgment to Codex, recorded as AI review without a human identity or signature.",
+    "decisionRecord": "docs/RC14_DELEGATED_SECURITY_DECISION.md"
+  },
+  "observedAt": "2026-09-20T13:25:48.476Z",
+  "releaseTag": "v1.0.0-rc.14",
+  "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+  "artifactSha512": "sha512-UMu4JFUNs/kOTJETZSJMMvVYlo+a4MKG6PoSvE313QxMEqK1z420AXVgPOGJ8jj2jp6mQud/Rvc7+ixKyH/4og==",
+  "review": "security-reviews/rc14-review.json",
+  "scope": "Continuation of the documented directed source review, delta assessment and published artifact binding; not an exhaustive audit of transitive dependencies.",
+  "securityProbes": {
+    "passed": 5,
+    "failed": 0,
+    "command": "bun run scripts/validate-security-review.ts"
+  },
+  "regressions": {
+    "passed": 137,
+    "failed": 0,
+    "files": 10,
+    "assertions": 659,
+    "logSha256": "e9073c41244649fd68a1573ca31ee890ec325afe4f461b25009669022318122d"
+  },
+  "publishedArtifactVerification": "passed: integrity, next dist-tag and SLSA source/workflow binding",
+  "sourceFileSha256": {
+    ".github/workflows/ci.yml": "51c5cc7c6246ada698e83a6605a2f0c1fb9d469e16e6621eb8ccd4df0168a6fb",
+    ".github/workflows/codeql.yml": "bcf5455d1ca2156a1c98ac93f1d61da3d1fdc65b9c91d6e517439de543b73ed5",
+    ".github/workflows/release.yml": "2d932704d6a488f9de5547eb4e6ecd30af1ba5e1e8bd57d97b7a432b1940beda",
+    "contracts/security-controls.json": "e37f2e624e54de01fcd4e13b71d9507c026693b0a6321685d3c5311e87df2032",
+    "docs/THREAT_MODEL.md": "aad7ba70374cb20e96f70431a10fe4270a55ee268fa29f58418c82aef16b8fad",
+    "scripts/check-release-artifact.ts": "33b498a6e37b5b78d8b91e0c091c8603763d713b7414eb5bfacf24d0017f51ab",
+    "scripts/package-smoke.ts": "f52c33b517157026cf1b50b6546ead09481e6f15e683550e41383b0a93f9a209",
+    "scripts/release-provenance.ts": "384d0b2e70367c820edce359473dd78b3d7a8863b4feeb8a8184f8474a2056e5",
+    "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+    "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+    "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+    "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+    "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+    "src/file-security.ts": "b8c9f4988c4339c73a60ab4fa8d394b3eecc19117a0c61a8d19ab6483ca253df",
+    "src/harness.ts": "42326c3921bacd23e941954cc9d554c5b4746b9030b75acad5e07454ce0a865b",
+    "src/mcp.ts": "7722de031921c620ec03b9e42a6596ef8415aa8e4bb5f93ea84d2427c466e554",
+    "src/operations.ts": "bcccaf4d1d0ec117c2ed35df92185564d33399e5fdc5c12225ac61f14fd0b4b1",
+    "src/orchestration.ts": "b56c8c7d526a99b745cc17769e0a1b7b500b25920e77f34aa0dd01c9758de319",
+    "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+    "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+    "src/repair-controller.ts": "8164e43ee79568bc8a6981277da4019045218da8493f32043cdeeccf7a043b06",
+    "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+    "src/runtime-policy.ts": "8356acf0102f0e73839b81ed628a5c0d9a89d9c21b0ca416efedde8f1b3414e2",
+    "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+    "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+    "src/task-memory.ts": "5b62c863be5a23c33608633cd7aac0464f5536d01cba930aca58b11870170731",
+    "src/terminal-ui.ts": "4da1878a76ba608a2517bf5d5c992a9a88702aba3fd800a9980129ba93e157bc",
+    "src/tool-registry.ts": "7e90fff11940e525883c9ec0d2adbea2e6616f8bd9bc4ec77e1b7277e4217f2c",
+    "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302",
+    "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+    "src/model-budget.ts": "ac83587ddfa7cd27644296a03d2eb8cccfce5da310d54cecb2bda139232e1988",
+    "src/repair-progress.ts": "cf30117ab69564f2b36ff8f0e86dcb876e6c031647340a7b1bef648d1e0366b9",
+    "src/runtime-checkpoints.ts": "e3b75a0b86fb5d21992b1a126b35446110ba5fcaf4317ed5005b1a44555118dc",
+    "src/config.ts": "67ed44b55505ff8dd94f60ba89c33c217759cd7c79de45ccda369f248309cdff"
+  },
+  "limitations": [
+    "No independent human audit or human signature is claimed.",
+    "Known resolved findings remain in the final inventory.",
+    "The separate fresh SWE-bench result remains 0/5 Harness versus 1/5 control; this security decision does not establish coding effectiveness.",
+    "Host, daemon, operator and service trust assumptions remain as documented."
+  ],
+  "workflowEvidenceVerification": "passed against GitHub and registry using unchanged verifySecurityReviewWorkflowEvidence",
+  "finalReadinessGate": {
+    "securityEvidence": "passed",
+    "remainingFailures": [
+      "GA release gate requires package version 1.0.0",
+      "GA readiness phase is not ready"
+    ],
+    "logSha256": "eb9d3268825f60ca515adf156a6a7a6a10e2750acdedb0fc9fbaf0f0a6a7abb7"
+  }
+}
