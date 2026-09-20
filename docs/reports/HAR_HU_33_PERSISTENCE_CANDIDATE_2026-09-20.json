@@ -1,0 +1,16 @@
+{
+  "signed": false,
+  "notarized": false,
+  "platform": "darwin",
+  "arch": "arm64",
+  "files": [
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/app.asar",
+      "sha256": "4dbfd154da5e7c97d0d2d9260172eef03735b86f922c3e273d530a1d3a3129f1"
+    },
+    {
+      "path": "desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/Resources/credential-store",
+      "sha256": "ab730ff801f847e6a687d63fd4656c0a8b353bedd743e36332f90f09af70b7dd"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import {protectPersistenceSecret} from "../../src/persistence-secrets.js";
+import {resolveHarnessConfig,createProviderModel} from "../../src/config.js";
 import {fixtureOciRuntime} from "./fixture-oci.js";
 import {createHash} from "node:crypto";
 import {writeFileSync} from "node:fs";
@@ -13,6 +15,7 @@ async function boot() {
  const config=JSON.parse(process.argv[2]!) as {workspace:string;directory:string;fixture:boolean;fixtureOci?:boolean;fixtureEffectCrash?:boolean;stateDirectory?:string;recover:boolean};
  const bootstrap=await new Promise<{secret?:string}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("BOOTSTRAP_TIMEOUT")),10000);parent.on("message",event=>{const value=event.data;if(!value||typeof value!=="object"||!("kind" in value)||value.kind!=="credential-bootstrap")return;clearTimeout(timer);if(Object.keys(value).some(k=>!["kind","secret"].includes(k))||("secret" in value&&(typeof value.secret!=="string"||!value.secret||value.secret.length>8192)))return reject(new Error("BOOTSTRAP_INVALID"));resolve(value as {secret?:string});});});
  const providerEnv={...(bootstrap.secret?{OPENAI_API_KEY:bootstrap.secret}:{})};
+ if(bootstrap.secret)protectPersistenceSecret(bootstrap.secret);
  const base=createMockLanguageModel();
  const mock:LanguageModel={...base,async stream(input){return(async function*(){
   const userIndex=input.messages.findLastIndex(m=>m.role==="user");const prompt=JSON.stringify(input.messages[userIndex]??{});
@@ -42,7 +45,7 @@ async function boot() {
   yield{type:"finish" as const,finishReason:"stop" as const};
  })();}};
  let fixtureClockOffset=0;
- const harness=await createHarness({env:providerEnv,workspace:config.workspace,...(config.stateDirectory?{stateDirectory:config.stateDirectory}:{}),provider:"openai",...(config.fixture?{modelInstance:mock}:{}),subagentProfiles:[],...(config.fixture&&config.fixtureOci?{executionBackend:"oci",ociAllowedCommands:["node","bun"],ociRuntimeAdapter:fixtureOciRuntime()}:{})});
+ const harness=await createHarness({env:{},storeBackend:"sqlite",workspace:config.workspace,...(config.stateDirectory?{stateDirectory:config.stateDirectory}:{}),provider:"openai",modelInstance:config.fixture?mock:createProviderModel(resolveHarnessConfig({workspace:config.workspace,provider:"openai",storeBackend:"sqlite"}),providerEnv),subagentProfiles:[],...(config.fixture&&config.fixtureOci?{executionBackend:"oci",ociAllowedCommands:["node","bun"],ociRuntimeAdapter:fixtureOciRuntime()}:{})});
  try {
   if(config.recover)try{await recoverHarnessLocalService(harness,config.directory);}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}
   const service=await startHarnessLocalService(harness,{directory:config.directory,sensitiveValues:[...hostSensitiveValues(process.env),...(bootstrap.secret?[bootstrap.secret]:[])],...(config.fixture?{maxEvents:8,approvalNow:()=>Date.now()+fixtureClockOffset}:{})});

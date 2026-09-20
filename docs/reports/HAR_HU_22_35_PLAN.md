@@ -148,6 +148,9 @@ integration and persistence-leak evidence remain; all criteria stay open.
 Settings/private-bootstrap increment: HAR_HU_33_CREDENTIAL_INTEGRATION_2026-09-20.md;
 eight host/coordinator tests (68 assertions) pass. Full secret persistence and
 native configuration journeys remain unverified.
+Persistence boundary: HAR_HU_33_PERSISTENCE_BOUNDARY_2026-09-20.md; separate model
+credential environment and SQLite rejection protect known literal/JSON-escaped
+keys. Four focused tests prove rejected echoes and a later successful safe run.
 
 ## HAR-HU-34 — Distribuir un instalador macOS firmado y verificable
 

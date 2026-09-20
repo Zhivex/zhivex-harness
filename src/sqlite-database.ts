@@ -1,3 +1,4 @@
+import {assertNoPersistenceSecret} from "./persistence-secrets.js";
 import { createRequire } from "node:module";
 import type { DatabaseSync as NodeDatabaseSync } from "node:sqlite";
 
@@ -73,6 +74,7 @@ export class SqliteDatabase {
   }
 
   exec(sql: string): void {
+    assertNoPersistenceSecret(sql);
     this.#database.exec(sql);
   }
 
@@ -84,9 +86,12 @@ export class SqliteDatabase {
     // positional binder rejects it with SQLITE_RANGE. Normalizing only those
     // placeholders to prefixed named bindings preserves repeated indices and
     // keeps anonymous `?` plus caller-supplied named parameters unchanged.
+    assertNoPersistenceSecret(sql);
     const normalized = normalizeNumberedParameters(sql);
     const statement = this.#database.prepare(normalized.sql);
     const invoke = <T>(method: (...parameters: never[]) => T, parameters: readonly unknown[]) => {
+      assertNoPersistenceSecret(sql);
+      assertNoPersistenceSecret(parameters);
       const bindings = numberedBindings(normalized.indexes, parameters);
       return bindings
         ? method(bindings as never)

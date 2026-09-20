@@ -334,3 +334,10 @@ Layout regression: after building, run `bun run desktop/scripts/smoke-layout.ts`
 from the repository root (`--packaged` reads the packaged renderer). This verifies
 sidebar/conversation placement at 1120px and 720px with credentials expanded and
 collapsed, using an isolated empty-project renderer fixture.
+
+Known stored credentials are now rejected at the SQLite boundary before SQL or
+bound values reach disk, including JSON-escaped strings and blobs. The runtime
+constructs the provider with a separate key-only environment; MCP receives the
+empty general environment. Rejection fails the operation without substituting
+altered authoritative state. This does not scrub historical data or claim arbitrary
+encoding detection; native credential and export journeys remain under verification.
