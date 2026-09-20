@@ -9,7 +9,7 @@ This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library 
 
 RC.13 is published to npm `next` with 42/42 representative cases, protected live certification, and independently verified registry integrity and SLSA provenance. Its [reviewer dossier](docs/RC13_SECURITY_REVIEW.md) remains historical context.
 
-RC.14 is published to npm `next` with all protected live gates and 42/42 representative cases passed; independent verification matched registry integrity and SLSA provenance. The final human security review remains open against RC.14; use the [current reviewer dossier](docs/RC14_SECURITY_REVIEW.md). The separate failed exploratory SWE-bench cohort is preserved and does not become passing evidence.
+RC.14 is published to npm `next` with all protected live gates and 42/42 representative cases passed; independent verification matched registry integrity and SLSA provenance. RC.14 now has a completed Codex security review under an explicit [user-delegated AI exception](docs/RC14_DELEGATED_SECURITY_DECISION.md), with no identified open critical/high findings. This is not an independent human audit; use the [current reviewer dossier](docs/RC14_SECURITY_REVIEW.md). The separate failed exploratory SWE-bench cohort is preserved and does not become passing evidence.
 
 - Make the harness distributable and observable before expanding its side-effect surface.
 - Keep provider portability in the harness and provider-specific behavior behind capability checks.

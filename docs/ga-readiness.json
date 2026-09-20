@@ -30,11 +30,11 @@
     ]
   },
   "securityReview": {
-    "status": "pending",
-    "criticalFindings": null,
-    "highFindings": null,
-    "observedAt": null,
-    "evidence": null
+    "status": "passed",
+    "criticalFindings": 0,
+    "highFindings": 0,
+    "observedAt": "2026-09-20T13:25:48.476Z",
+    "evidence": "security-reviews/rc14-review.json"
   },
   "releaseCandidates": [
     {
@@ -341,8 +341,12 @@
     },
     {
       "id": "security-review",
-      "status": "open",
-      "issue": "https://github.com/Zhivex/zhivex-harness/issues/32"
+      "status": "closed",
+      "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
+      "evidence": [
+        "docs/RC14_DELEGATED_SECURITY_DECISION.md",
+        "security-reviews/rc14-review.json"
+      ]
     },
     {
       "id": "gemini-ga-decision",

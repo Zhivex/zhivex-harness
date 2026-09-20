@@ -1,0 +1,1090 @@
+{
+  "schemaVersion": 1,
+  "kind": "harness-security-review-evidence",
+  "releaseTag": "v1.0.0-rc.14",
+  "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+  "artifactSha512": "sha512-UMu4JFUNs/kOTJETZSJMMvVYlo+a4MKG6PoSvE313QxMEqK1z420AXVgPOGJ8jj2jp6mQud/Rvc7+ixKyH/4og==",
+  "reviewer": {
+    "name": "Codex (AI technical reviewer, explicitly delegated by the requesting user; not an independent human auditor)",
+    "identity": "https://openai.com/codex/"
+  },
+  "observedAt": "2026-09-20T13:25:48.476Z",
+  "status": "passed",
+  "evidence": {
+    "ci": {
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510241338",
+      "conclusion": "success"
+    },
+    "codeql": {
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510241346",
+      "conclusion": "success"
+    },
+    "dependencyAudit": {
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383",
+      "conclusion": "success"
+    },
+    "release": {
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383",
+      "conclusion": "success"
+    },
+    "provenance": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@zhivex-ai%2fharness@1.0.0-rc.14",
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "artifactSha512": "sha512-UMu4JFUNs/kOTJETZSJMMvVYlo+a4MKG6PoSvE313QxMEqK1z420AXVgPOGJ8jj2jp6mQud/Rvc7+ixKyH/4og==",
+      "status": "verified"
+    },
+    "oci": {
+      "releaseTag": "v1.0.0-rc.14",
+      "sourceCommit": "d1c5abcc6d1fa482c211c4327c86f592663d559b",
+      "workflowUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383",
+      "conclusion": "success"
+    }
+  },
+  "findings": [
+    {
+      "id": "sec-04",
+      "severity": "high",
+      "status": "resolved",
+      "title": "OCI snapshots ignore tenant/user/namespace identity",
+      "disposition": "mitigated",
+      "rationale": "OCI artifacts and resource cleanup bind canonical workspace/state directory, tenant/user/namespace and run identity. The public runHarness cross-scope disclosure reproduction now fails to disclose another scope candidate; isolation and lifecycle regressions pass.",
+      "followUpUrl": "https://github.com/Zhivex/zhivex-harness/pull/77",
+      "controlThreats": [
+        "cross-scope-state-access"
+      ],
+      "owner": "Zhivex Harness maintainers (remediation in merged PR #77)"
+    },
+    {
+      "id": "sec-01",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "Concurrent approved writes both pass the same digest precondition",
+      "disposition": "mitigated",
+      "rationale": "Cross-process cooperative mutation locking serializes digest checks and publication; concurrent writers admit exactly one conflicting change. Process-death and OCI import regressions pass. External non-Harness writers remain outside the protocol.",
+      "followUpUrl": "https://github.com/Zhivex/zhivex-harness/pull/77",
+      "controlThreats": [
+        "crash-or-concurrent-writer"
+      ],
+      "owner": "Zhivex Harness maintainers (remediation in merged PR #77)"
+    },
+    {
+      "id": "sec-02",
+      "severity": "medium",
+      "status": "resolved",
+      "title": "Replacement approval hides replacement text in its default card",
+      "disposition": "mitigated",
+      "rationale": "Default replacement approval renders the full old/new text and digest with terminal escaping. The long-oldText adversarial marker and rendering regressions pass.",
+      "followUpUrl": "https://github.com/Zhivex/zhivex-harness/pull/77",
+      "controlThreats": [
+        "approval-replay-or-substitution"
+      ],
+      "owner": "Zhivex Harness maintainers (remediation in merged PR #77)"
+    },
+    {
+      "id": "sec-03",
+      "severity": "low",
+      "status": "resolved",
+      "title": "Formal authority inventory omits read_task and repair_plan",
+      "disposition": "mitigated",
+      "rationale": "The authority inventory includes read_task and repair_plan and is checked against the actual tool catalog. Coverage contains all 31 current tool classes.",
+      "followUpUrl": "https://github.com/Zhivex/zhivex-harness/pull/77",
+      "controlThreats": [
+        "compromised-model-or-provider"
+      ],
+      "owner": "Zhivex Harness maintainers (remediation in merged PR #77)"
+    }
+  ],
+  "coverage": {
+    "controls": [
+      {
+        "threat": "malicious-repository-context",
+        "mitigations": [
+          "bounded context files",
+          "progressive skill loading",
+          "digest-bound edits",
+          "descriptor-bound configuration reads"
+        ],
+        "regressionEvidence": [
+          "tests/context-engineering.test.ts",
+          "tests/edit-contracts.test.ts",
+          "tests/mcp.test.ts"
+        ],
+        "residualRisk": "Trusted project instructions may influence model behavior within granted tool authority.",
+        "status": "passed"
+      },
+      {
+        "threat": "compromised-model-or-provider",
+        "mitigations": [
+          "application-owned tools",
+          "approval gates",
+          "budgets",
+          "redaction",
+          "sensitive-path Git filtering"
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/cli-stream.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Provider receives prompts and may return adversarial content; operators must scope data and review approvals.",
+        "status": "passed"
+      },
+      {
+        "threat": "hostile-mcp-server",
+        "mitigations": [
+          "HTTPS or allowlisted loopback",
+          "tool allowlists",
+          "permissions",
+          "bounded payloads"
+        ],
+        "regressionEvidence": [
+          "tests/mcp.test.ts",
+          "scripts/mcp-interoperability-smoke.ts"
+        ],
+        "residualRisk": "An approved remote MCP service can observe the inputs explicitly sent to it.",
+        "status": "passed"
+      },
+      {
+        "threat": "approval-replay-or-substitution",
+        "mitigations": [
+          "fingerprints",
+          "exact proposal digests",
+          "durable approval identity"
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/edit-contracts.test.ts"
+        ],
+        "residualRisk": "Paused approvals require the original artifact and cannot be rebound across incompatible policy versions.",
+        "status": "passed"
+      },
+      {
+        "threat": "cross-scope-state-access",
+        "mitigations": [
+          "tenant/user/namespace scope",
+          "workspace binding",
+          "scoped hierarchy reads"
+        ],
+        "regressionEvidence": [
+          "tests/operations.test.ts",
+          "tests/sessions.test.ts"
+        ],
+        "residualRisk": "A process with direct filesystem access to the local state directory remains inside the trust boundary.",
+        "status": "passed"
+      },
+      {
+        "threat": "tampered-personal-profile",
+        "mitigations": [
+          "explicit profile selection",
+          "external user configuration",
+          "owner-only permissions",
+          "strict provider/model-only schema",
+          "descriptor-bound no-follow reads"
+        ],
+        "regressionEvidence": [
+          "tests/cli-profiles.test.ts",
+          "tests/cli.test.ts",
+          "scripts/package-smoke.ts"
+        ],
+        "residualRisk": "A compromised operator account or host filesystem can still replace the selected provider/model configuration.",
+        "status": "passed"
+      },
+      {
+        "threat": "hostile-subprocess",
+        "mitigations": [
+          "no-network OCI",
+          "resource ceilings",
+          "argv allowlist",
+          "separate host import approval"
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "scripts/oci-execution-smoke.ts"
+        ],
+        "residualRisk": "Containers are not VMs; the host kernel and OCI daemon are trusted.",
+        "status": "passed"
+      },
+      {
+        "threat": "crash-or-concurrent-writer",
+        "mitigations": [
+          "SQLite WAL",
+          "optimistic revisions",
+          "leases",
+          "interrupted cleanup recovery"
+        ],
+        "regressionEvidence": [
+          "tests/operations.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Power loss and external filesystem corruption still require operator backup and recovery.",
+        "status": "passed"
+      },
+      {
+        "threat": "supply-chain-substitution",
+        "mitigations": [
+          "annotated tag",
+          "immutable tarball",
+          "SHA-512",
+          "OIDC provenance",
+          "pinned workflow actions"
+        ],
+        "regressionEvidence": [
+          "tests/release-workflow.test.ts",
+          "scripts/check-release-artifact.ts",
+          "scripts/release-provenance.ts"
+        ],
+        "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies.",
+        "status": "passed"
+      },
+      {
+        "threat": "compromised-host-kernel-or-daemon",
+        "mitigations": [
+          "explicitly out of scope",
+          "dedicated host or microVM guidance"
+        ],
+        "regressionEvidence": [
+          "docs/EXECUTION_ENVIRONMENTS.md",
+          "SECURITY.md"
+        ],
+        "residualRisk": "The harness cannot protect against an already compromised host, kernel, container daemon, or maintainer account.",
+        "status": "passed"
+      }
+    ],
+    "trustBoundaries": [
+      {
+        "id": "operator-approval",
+        "controlThreats": [
+          "compromised-model-or-provider",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Durable approval identity binds tool input and environment. The default replacement card includes full oldText/newText and digest (src/harness.ts; src/terminal-ui.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/cli-stream.test.ts",
+          "tests/security.test.ts",
+          "tests/edit-contracts.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/terminal-ui.test.ts"
+        ],
+        "residualRisk": "Provider receives prompts and may return adversarial content; operators must scope data and review approvals. Paused approvals require the original artifact and cannot be rebound across incompatible policy versions.",
+        "status": "passed"
+      },
+      {
+        "id": "model-provider",
+        "controlThreats": [
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Application-owned tools, approval checks, durable usage limits and fail-closed missing usage constrain provider output (src/harness.ts; src/runtime-policy.ts; src/model-budget.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/harness.test.ts",
+          "tests/cli-stream.test.ts",
+          "tests/security.test.ts"
+        ],
+        "residualRisk": "Provider receives prompts and may return adversarial content; operators must scope data and review approvals.",
+        "status": "passed"
+      },
+      {
+        "id": "repository-context",
+        "controlThreats": [
+          "malicious-repository-context"
+        ],
+        "mitigations": [
+          "Bounded untrusted repository and attachment text; protected paths, descriptor-bound reads and digest-bound edits (src/context-engineering.ts; src/console-context.ts; src/file-security.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/context-engineering.test.ts",
+          "tests/edit-contracts.test.ts",
+          "tests/mcp.test.ts"
+        ],
+        "residualRisk": "Trusted project instructions may influence model behavior within granted tool authority.",
+        "status": "passed"
+      },
+      {
+        "id": "mcp-server",
+        "controlThreats": [
+          "hostile-mcp-server"
+        ],
+        "mitigations": [
+          "HTTPS/allowlisted loopback, explicit credentials, rejected redirects, bounded payloads and permission-derived approvals (src/mcp.ts; src/tool-registry.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/mcp.test.ts",
+          "scripts/mcp-interoperability-smoke.ts"
+        ],
+        "residualRisk": "An approved remote MCP service can observe the inputs explicitly sent to it.",
+        "status": "passed"
+      },
+      {
+        "id": "target-subprocess",
+        "controlThreats": [
+          "hostile-subprocess"
+        ],
+        "mitigations": [
+          "Host checks bind expected scripts and reject lifecycle substitutions; OCI command authority is separately approved (src/package-manager.ts; src/process-runtime.ts; src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "scripts/oci-execution-smoke.ts"
+        ],
+        "residualRisk": "Containers are not VMs; the host kernel and OCI daemon are trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "oci-runtime",
+        "controlThreats": [
+          "hostile-subprocess",
+          "compromised-host-kernel-or-daemon"
+        ],
+        "mitigations": [
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "scripts/oci-execution-smoke.ts",
+          "docs/EXECUTION_ENVIRONMENTS.md",
+          "SECURITY.md",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Containers are not VMs; the host kernel and OCI daemon are trusted. The harness cannot protect against an already compromised host, kernel, container daemon, or maintainer account.",
+        "status": "passed"
+      },
+      {
+        "id": "local-state",
+        "controlThreats": [
+          "cross-scope-state-access",
+          "crash-or-concurrent-writer"
+        ],
+        "mitigations": [
+          "Scoped private SQLite stores, optimistic revisions, leases and recovery (src/operations.ts; src/sessions.ts; src/state-backup.ts). OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts). Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/operations.test.ts",
+          "tests/sessions.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/workspace-concurrency.test.ts"
+        ],
+        "residualRisk": "A process with direct filesystem access to the local state directory remains inside the trust boundary. Power loss and external filesystem corruption still require operator backup and recovery.",
+        "status": "passed"
+      },
+      {
+        "id": "personal-profile",
+        "controlThreats": [
+          "tampered-personal-profile"
+        ],
+        "mitigations": [
+          "Explicit profile selection, strict provider/model schema, owner-only permissions and descriptor-bound reads (src/cli-profiles.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/cli-profiles.test.ts",
+          "tests/cli.test.ts",
+          "scripts/package-smoke.ts"
+        ],
+        "residualRisk": "A compromised operator account or host filesystem can still replace the selected provider/model configuration.",
+        "status": "passed"
+      },
+      {
+        "id": "github-actions",
+        "controlThreats": [
+          "supply-chain-substitution"
+        ],
+        "mitigations": [
+          "Pinned actions, least-privilege jobs, protected live/publish environments and non-persisted checkout credentials (.github/workflows/ci.yml; .github/workflows/codeql.yml; .github/workflows/release.yml)."
+        ],
+        "regressionEvidence": [
+          "tests/release-workflow.test.ts",
+          "scripts/check-release-artifact.ts",
+          "scripts/release-provenance.ts",
+          "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383"
+        ],
+        "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies.",
+        "status": "passed"
+      },
+      {
+        "id": "npm-registry",
+        "controlThreats": [
+          "supply-chain-substitution"
+        ],
+        "mitigations": [
+          "Exact RC14 published integrity and SLSA source/workflow binding verified against the protected release (scripts/release-provenance.ts; scripts/verify-registry-release.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/release-workflow.test.ts",
+          "scripts/check-release-artifact.ts",
+          "scripts/release-provenance.ts",
+          "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383"
+        ],
+        "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies.",
+        "status": "passed"
+      },
+      {
+        "id": "downstream-consumer",
+        "controlThreats": [
+          "supply-chain-substitution"
+        ],
+        "mitigations": [
+          "The protected RC14 workflow installs and exercises the exact packed artifact before publishing those bytes (scripts/package-smoke.ts; scripts/check-release-artifact.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/release-workflow.test.ts",
+          "scripts/check-release-artifact.ts",
+          "scripts/release-provenance.ts",
+          "https://github.com/Zhivex/zhivex-harness/actions/runs/35510484383"
+        ],
+        "residualRisk": "Registry, GitHub, npm, and maintainer identities remain external trust dependencies.",
+        "status": "passed"
+      }
+    ],
+    "authorityBearingTools": [
+      {
+        "id": "read_task",
+        "controlThreats": [
+          "compromised-model-or-provider",
+          "cross-scope-state-access"
+        ],
+        "mitigations": [
+          "Slices redacted original request from current run metadata; no arbitrary run lookup.",
+          "Source: src/task-memory.ts"
+        ],
+        "regressionEvidence": [
+          "tests/full-remediation.test.ts",
+          "tests/security-review-evidence.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Unknown secret formats may survive redaction; the current run request is disclosed to the configured provider.",
+        "status": "passed"
+      },
+      {
+        "id": "repair_plan",
+        "controlThreats": [
+          "compromised-model-or-provider",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Model-authored verifier/plan enters durable metadata; synthetic verification still uses normal approval and execution gates.",
+          "Source: src/task-memory.ts",
+          "Source: src/repair-controller.ts",
+          "Source: src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/full-remediation.test.ts",
+          "tests/repair-plan-transition.test.ts",
+          "tests/required-repair-delivery.test.ts",
+          "tests/repair-completion-reminder.test.ts",
+          "tests/security-review-evidence.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "A model-authored verifier can be irrelevant; recording it is not approval or proof of correctness. The operator must assess argv and intended coverage.",
+        "status": "passed"
+      },
+      {
+        "id": "list_files",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+          "Source: src/workspace.ts",
+          "Source: src/file-security.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "read_file",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+          "Source: src/workspace.ts",
+          "Source: src/file-security.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "read_files",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+          "Source: src/workspace.ts",
+          "Source: src/file-security.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "search_files",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+          "Source: src/workspace.ts",
+          "Source: src/file-security.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "search_many",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Bounded protected-path/no-follow reads; OCI reads use the active snapshot.",
+          "Source: src/workspace.ts",
+          "Source: src/file-security.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "propose_edits",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Computes a proposal digest; execution approval is separately required.",
+          "Source: src/edit-contracts.ts",
+          "Source: src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts"
+        ],
+        "residualRisk": "A proposal is not proof of correctness or authorization.",
+        "status": "passed"
+      },
+      {
+        "id": "apply_patch",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "apply_reviewed_replacement",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts).",
+          "Full replacement payload is visible in the default approval card (src/terminal-ui.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/terminal-ui.test.ts"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "apply_reviewed_edits",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "move_file",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "quarantine_file",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "restore_file",
+        "controlThreats": [
+          "malicious-repository-context",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Interrupt approval and digest/content preconditions; no-overwrite creates and recoverable quarantine.",
+          "Source: src/harness.ts",
+          "Source: src/workspace.ts",
+          "Source: src/replacement-edits.ts",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/edit-contracts.test.ts",
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "run_check",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Approval binds expected script; pre/post lifecycle scripts rejected; environment filtered.",
+          "Source: src/harness.ts",
+          "Source: src/package-manager.ts",
+          "Source: src/process-runtime.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/execution-environment.test.ts"
+        ],
+        "residualRisk": "Approved host execution trusts repository code; use OCI for untrusted projects.",
+        "status": "passed"
+      },
+      {
+        "id": "mutation_audit",
+        "controlThreats": [
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Audit receipts and Git diff filtered for protected paths; external diff/textconv/fsmonitor disabled.",
+          "Source: src/workspace.ts",
+          "Source: src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "git_diff",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Audit receipts and Git diff filtered for protected paths; external diff/textconv/fsmonitor disabled.",
+          "Source: src/workspace.ts",
+          "Source: src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/security.test.ts",
+          "tests/workspace-concurrency.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats.",
+        "status": "passed"
+      },
+      {
+        "id": "run_environment_command",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "run_environment_batch",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "run_environment_shell",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Exact argv/script approval; no network, resource bounds, snapshot attestation and failure discard.",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "environment_status",
+        "controlThreats": [
+          "hostile-subprocess",
+          "compromised-host-kernel-or-daemon"
+        ],
+        "mitigations": [
+          "Read-only environment binding and content/mode-bound candidate summary.",
+          "Source: src/execution-environment.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "inspect_environment_patch",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Read-only environment binding and content/mode-bound candidate summary.",
+          "Source: src/execution-environment.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "apply_environment_patch",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Separate import approval binds patch identity; host digests, active lease/cancellation and recoverable quarantine are checked at import (src/harness.ts; src/execution-environment.ts).",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "Source: src/workspace.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts).",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/workspace-concurrency.test.ts"
+        ],
+        "residualRisk": "This import tool does not run a verifier. The operator must assess correctness separately. Writers outside the Harness lock protocol and a compromised host account remain trusted.",
+        "status": "passed"
+      },
+      {
+        "id": "verify_and_apply_environment_patch",
+        "controlThreats": [
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "One interrupt approval binds an inspected patch and exact verifier argv. Import requires exit code zero, unchanged patch identity before/after verification and an active lease (src/harness.ts).",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "Source: src/workspace.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts).",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/workspace-concurrency.test.ts"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats. The selected verifier can be incomplete or irrelevant; its argv and coverage require operator review.",
+        "status": "passed"
+      },
+      {
+        "id": "verify_and_apply_reviewed_edits",
+        "controlThreats": [
+          "malicious-repository-context",
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "One interrupt approval binds full digest-bound edits and exact verifier argv. A clean OCI snapshot, matching approved paths, exit code zero, unchanged reviewed patch and active lease are required before import (src/harness.ts).",
+          "Source: src/harness.ts",
+          "Source: src/execution-environment.ts",
+          "Source: src/workspace.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts).",
+          "Harness mutations use a bounded, crash-released cross-process SQLite lock and recheck digest preconditions inside it (src/workspace-mutation-lock.ts; src/workspace.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/terminal-verification-recovery.test.ts",
+          "tests/execution-environment.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json",
+          "tests/workspace-concurrency.test.ts"
+        ],
+        "residualRisk": "Writers outside the Harness lock protocol and a compromised host account remain outside this guarantee. Read-only audit output is not a transaction and may contain unknown secret formats. The selected verifier can be incomplete or irrelevant; its argv and coverage require operator review.",
+        "status": "passed"
+      },
+      {
+        "id": "load_skill",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Load only discovered bounded skill, with revalidated digest.",
+          "Source: src/context-engineering.ts",
+          "Source: src/harness.ts"
+        ],
+        "regressionEvidence": [
+          "tests/context-engineering.test.ts"
+        ],
+        "residualRisk": "Skill prose may influence the model but is not approval.",
+        "status": "passed"
+      },
+      {
+        "id": "delegate_explorer",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+          "Source: src/orchestration.ts",
+          "Source: src/runtime-policy.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted. Child authority depends on the selected role; tester execution and implementer mutations still require ordinary approval.",
+        "status": "passed"
+      },
+      {
+        "id": "delegate_implementer",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider",
+          "hostile-subprocess",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+          "Source: src/orchestration.ts",
+          "Source: src/runtime-policy.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted. Child authority depends on the selected role; tester execution and implementer mutations still require ordinary approval.",
+        "status": "passed"
+      },
+      {
+        "id": "delegate_tester",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider",
+          "hostile-subprocess"
+        ],
+        "mitigations": [
+          "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+          "Source: src/orchestration.ts",
+          "Source: src/runtime-policy.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted. Child authority depends on the selected role; tester execution and implementer mutations still require ordinary approval.",
+        "status": "passed"
+      },
+      {
+        "id": "delegate_reviewer",
+        "controlThreats": [
+          "malicious-repository-context",
+          "compromised-model-or-provider"
+        ],
+        "mitigations": [
+          "Fixed profile catalog and child budgets; read-only tool subsets; implementation approvals promoted to parent.",
+          "Source: src/orchestration.ts",
+          "Source: src/runtime-policy.ts",
+          "Source: src/harness.ts",
+          "OCI artifact directories, metadata, patch identities and cleanup bind canonical workspace, state directory, tenant/user/namespace and run identity; legacy unscoped artifacts are rejected (src/execution-environment.ts)."
+        ],
+        "regressionEvidence": [
+          "tests/orchestration.test.ts",
+          "docs/reports/evidence/rc14-security-regressions-2026-09-20.json"
+        ],
+        "residualRisk": "Allowed data is visible to the configured provider; the host account, state-directory access, kernel and OCI daemon remain trusted. Child authority depends on the selected role; tester execution and implementer mutations still require ordinary approval.",
+        "status": "passed"
+      },
+      {
+        "id": "mcp-network-tool",
+        "controlThreats": [
+          "hostile-mcp-server",
+          "approval-replay-or-substitution"
+        ],
+        "mitigations": [
+          "Permission-derived approval cannot be removed by server annotations; reserved-name collision rejected.",
+          "Source: src/mcp.ts",
+          "Source: src/tool-registry.ts"
+        ],
+        "regressionEvidence": [
+          "tests/mcp.test.ts",
+          "tests/full-remediation.test.ts"
+        ],
+        "residualRisk": "Explicitly approved service observes sent data; custom injected clients are trusted application code.",
+        "status": "passed"
+      }
+    ]
+  }
+}

@@ -1,6 +1,8 @@
 # Security review evidence
 
-Harness 1.0 promotion requires one current, human-authored JSON review under `security-reviews/` bound to the final recorded release candidate. The reviewer must inspect the exact candidate, not a mutable branch or a different artifact.
+Harness 1.0 promotion normally requires one current, human-authored JSON review under `security-reviews/` bound to the final recorded release candidate. The reviewer must inspect the exact candidate, not a mutable branch or a different artifact.
+
+For RC14 only, the user explicitly delegated the assessment to Codex after the human-review requirement was explained. The [scoped decision record](RC14_DELEGATED_SECURITY_DECISION.md) permits the clearly attributed AI review for this candidate. It is not an independent human audit and does not change machine verification, coverage or severity requirements. Future candidates do not inherit this exception.
 
 The schema is implemented by `scripts/security-review-evidence.ts` and rejects unknown fields. A passing document records:
 

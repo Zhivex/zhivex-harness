@@ -22,7 +22,7 @@ The preparation gate does not certify production readiness. It verifies that pub
 8. Preserve the published `1.0.0-rc.12` evidence: the protected workflow passed deterministic, installed-artifact, OCI, live-provider, complete Meta/Qwen/OpenAI representative, registry-integrity, and SLSA-provenance gates for the exact annotated tag.
 9. Preserve published RC.13, including onboarding, daily console workflow, cancellation, and diagnostics: protected workflow `34263591864` passed all live gates and 42/42 representative cases, then published `next` with independently verified integrity and SLSA provenance. Retain [the RC.13 reviewer dossier](./RC13_SECURITY_REVIEW.md) as historical context.
 10. Record published RC.14: protected workflow `35510484383` passed all live gates and 42/42 representative cases, and independent verification matched the published `next` artifact integrity and SLSA provenance. The final candidate is now RC.14; use [its reviewer dossier](./RC14_SECURITY_REVIEW.md).
-11. Record a current security review with no open critical/high findings against the final passing candidate.
+11. RC.14 has a completed Codex security review with no identified open critical/high findings under the explicit [user-delegated AI exception](./RC14_DELEGATED_SECURITY_DECISION.md). This is not an independent human audit; the strict artifact/workflow/coverage verifier remains unchanged.
 12. Change the readiness phase to `ready` only after all evidence is committed and passes the release gate.
 13. Publish `1.0.0` to `latest`; never promote an RC by merely moving a dist-tag.
 
