@@ -5,7 +5,7 @@
 
 This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library contract. The `0.2.0` source baseline is tagged locally, `0.3.0` and `0.4.0` are private checkpoints, and `0.5.0` through `0.11.1` are published on npm. Version `0.11.1` delivers file and release hardening without a `0.11.x` contract change; registry publication, supply-chain provenance, and provider certification remain separate evidence boundaries. Releases are ordered by dependency and safety risk, not by calendar date. A version ships only when its exit criteria are satisfied.
 
-Version `1.0.0` is the local source release candidate. It is not yet tagged or published as a new artifact. Its protected stable certification and publication remain pending; published RC.14 evidence supports preparation, not a claim that stable bytes have shipped.
+Version `1.0.0` is the tagged source release candidate. Its first protected publication attempt passed artifact validation and live certification but failed one Qwen representative case, so npm publication was skipped. See the [attempt report](docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md). Published RC.14 evidence does not replace failed stable certification.
 
 ## Planning principles
 
