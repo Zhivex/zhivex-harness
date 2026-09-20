@@ -6,6 +6,11 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+### Shared client contract (HAR-HU-21)
+
+- Add an experimental versioned in-process adapter over existing sessions, runs, approvals and checkpoint cancellation. Strict command validation, connection-scoped idempotency and expected revisions are explicit.
+- Add a JSON Schema, integration documentation and an offline reference client tested against the installed package. No service listener, replay stream or multi-client coordination is introduced.
+
 ### Daily CLI workflow (HAR-HU-13, 16–19)
 
 - Add installed-package first-use coverage, recovery guidance and a runnable example.

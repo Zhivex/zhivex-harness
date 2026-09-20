@@ -477,3 +477,6 @@ export type {
   TimeToSafeFixSample,
   TimeToSafeFixTask
 } from "./time-to-safe-fix.js";
+
+export { HARNESS_CLIENT_PROTOCOL_VERSION, harnessClientCommandSchema, harnessClientRequestSchema, createHarnessClientAdapter } from "./client-contract.js";
+export type { HarnessClientCommand, HarnessClientRequest, HarnessClientErrorCode, HarnessClientSession, HarnessClientRun, HarnessClientData, HarnessClientResponse, HarnessClientNegotiation, HarnessClientAdapter } from "./client-contract.js";
