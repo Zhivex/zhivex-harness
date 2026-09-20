@@ -19,11 +19,9 @@ The existing CLI/JSONL interfaces remain unchanged.
 
 The adapter owns its session-index connection, but never closes the host's Harness.
 It supports **one exclusive writer**, serial command execution, and direct awaited
-responses. A second command while a different command executes receives BUSY;
+responses. A second mutation while a different command executes receives BUSY (competing approval decisions receive REVISION_CONFLICT);
 identical idempotent retries join the first response. There is no listener, remote
-authentication, live streaming/replay, cross-process lock, in-flight cancellation,
-or automatic CLI transport migration. HU-22, HU-23, HU-24 and HU-25 cover those
-separate surfaces. The host must prevent other adapters/CLI processes from writing
+authentication, live streaming/replay, cross-process lock, automatic CLI transport migration. The local service now supplies protected transport, persisted activity and coordinated active cancellation; see [Local service](LOCAL_SERVICE.md). CLI transport migration is tracked in HU-25. The host must prevent other adapters/CLI processes from writing
 the same scope concurrently. Expected revisions here are preconditions within that
 exclusive-writer boundary, not a distributed concurrency guarantee.
 
@@ -48,8 +46,7 @@ The adapter does not erase sessions or runs on close.
 
 Protocol major 1 is the only accepted request version. Incompatible request fields
 are rejected (strict validation, INVALID_REQUEST); negotiate again when upgrading.
-Only advertised capabilities may be assumed. `run.cancel.checkpoint` deliberately
-does not advertise active-run cancellation. Adding an optional operation requires
+Only advertised capabilities may be assumed. `run.cancel.checkpoint` and `run.cancel.active` are separately advertised. Adding an optional operation requires
 capability negotiation; changing existing field meaning requires a new major.
 
 ## Command envelopes
@@ -130,8 +127,7 @@ Denial is explicit and can produce EXECUTION_FAILED under the engine's strict to
 policy; it never applies the denied edit or fabricates completion.
 
 Cancellation is final and cascades from a paused run. Terminal runs are unchanged.
-Active/created/cancel_requested states reject checkpoint cancellation; future
-coordinated cancellation belongs to HU-24. No shell command executes in the client.
+For a currently owned active run, run.cancel first records cancellation in the durable store and then aborts the owner invocation; run.get remains available while execution is active. A reconstructed active state without a live owner rejects checkpoint cancellation rather than guessing about effects. Approval previews include expiresAt (15 minutes from the persisted checkpoint by default); late decisions fail with APPROVAL_MISMATCH. No shell command executes in the client.
 
 ## Executable reference client and acceptance
 

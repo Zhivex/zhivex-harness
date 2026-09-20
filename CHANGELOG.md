@@ -6,6 +6,12 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+### Local service and replay (HAR-HU-22–24)
+
+- Add a private authenticated Unix transport and Node runtime owner with graceful drain and explicit dead-process recovery.
+- Persist redacted activity with stable event IDs, cursor replay, bounded retention and expired-cursor snapshots.
+- Coordinate approval revisions/expiry and active cancellation across clients; verify crash recovery and a single edit journal receipt against the installed artifact.
+
 ### Shared client contract (HAR-HU-21)
 
 - Add an experimental versioned in-process adapter over existing sessions, runs, approvals and checkpoint cancellation. Strict command validation, connection-scoped idempotency and expected revisions are explicit.

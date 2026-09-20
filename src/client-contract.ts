@@ -1,7 +1,7 @@
 /** Experimental in-process client protocol. No transport or terminal dependencies. */
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import type { AgentRunState } from "@zhivex-ai/agents";
+import type { AgentRunState, AgentStreamEvent } from "@zhivex-ai/agents";
 import { appendUserMessage, runHarness, type ZhivexHarness } from "./harness.js";
 import { cancelHarnessRun } from "./operations.js";
 import { openCliSessionStore, type CliSession, type CliSessionStore, SESSION_RUN_STATUSES, type SessionRunStatus } from "./sessions.js";
@@ -39,7 +39,7 @@ export interface HarnessClientSession {
 }
 export interface HarnessClientRun {
   runId: string; revision: number; status: string; output: string;
-  approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown }[];
+  approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown; expiresAt: number }[];
 }
 export type HarnessClientData =
   | { kind: "project"; projectId: string }
@@ -53,6 +53,12 @@ export type HarnessClientResponse = { protocolVersion: 1; requestId: string | nu
 export type HarnessClientNegotiation =
   | { ok: true; protocolVersion: 1; connectionId: string; projectId: string; capabilities: readonly string[] }
   | { ok: false; error: { code: "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" } };
+export interface HarnessClientAdapterOptions {
+  approvalMaxAgeMs?: number;
+  now?: () => number;
+  onEvent?: (sessionId: string, runId: string, event: AgentStreamEvent) => void | Promise<void>;
+  onCheckpoint?: (sessionId: string, runId: string, status: string) => void | Promise<void>;
+}
 export interface HarnessClientAdapter {
   negotiate(versions: readonly number[]): HarnessClientNegotiation;
   dispatch(request: unknown): Promise<HarnessClientResponse>;
@@ -74,18 +80,36 @@ const sessionStatus = (status: string): SessionRunStatus => {
 };
 const sessionDocument = (value: CliSession): HarnessClientSession => ({ sessionId: value.sessionId, revision: value.revision,
   ...(value.title === undefined ? {} : { title: value.title }), runs: value.runs.map(r => ({ runId: r.runId, status: r.status })) });
-const runDocument = (state: AgentRunState): HarnessClientRun => ({ runId: state.runId, revision: state.revision ?? 0,
+const runDocument = (state: AgentRunState, approvalMaxAgeMs: number): HarnessClientRun => ({ runId: state.runId, revision: state.revision ?? 0,
   status: state.status, output: state.outputText ?? "", approvals: state.pendingApprovals.map(a => ({
-    approvalId: a.id, provider: a.provider, kind: a.kind ?? "provider", digest: digest(a), action: a
+    approvalId: a.id, expiresAt: (state.updatedAt ?? state.startedAt ?? 0) + approvalMaxAgeMs, provider: a.provider, kind: a.kind ?? "provider", digest: digest(a), action: a
   })) });
 
 /** One trusted host, one workspace/scope, one connection epoch; no multi-writer guarantee. */
-export const createHarnessClientAdapter = async (harness: ZhivexHarness): Promise<HarnessClientAdapter> => {
+export const createHarnessClientAdapter = async (harness: ZhivexHarness, options: HarnessClientAdapterOptions = {}): Promise<HarnessClientAdapter> => {
+  const approvalMaxAgeMs = options.approvalMaxAgeMs ?? 15 * 60_000;
+  if (!Number.isSafeInteger(approvalMaxAgeMs) || approvalMaxAgeMs < 1) throw new Error("APPROVAL_TTL_INVALID");
+  const documentRun = (state: AgentRunState) => runDocument(state, approvalMaxAgeMs);
   const sessions: CliSessionStore = await openCliSessionStore({ workspace: harness.config.workspace,
     stateDirectory: harness.config.stateDirectory, scope: harness.config.scope });
   const projectId = `project_${digest([sessions.workspaceKey, sessions.scopeKey])}`;
   const connectionId = `connection_${randomUUID()}`;
   let closed = false, busy = false;
+  let active: { sessionId: string; runId: string; controller: AbortController } | undefined;
+  const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1]) => {
+    const runId = "state" in input ? input.state.runId : input.runId!;
+    const controller = new AbortController(); active = { sessionId, runId, controller };
+    try {
+      const result = await runHarness(harness, { ...input, abortSignal: controller.signal }, {
+        onEvent: event => options.onEvent?.(sessionId, runId, event)
+      });
+      await options.onCheckpoint?.(sessionId, runId, result.state.status);
+      return result;
+    } catch (e) {
+      await options.onCheckpoint?.(sessionId, runId, "interrupted");
+      throw e;
+    } finally { active = undefined; }
+  };
   const receipts = new Map<string, { fingerprint: string; response: Promise<HarnessClientResponse> }>();
   const getSession = async (sessionId: string) => {
     const found = await sessions.get(sessionId);
@@ -125,12 +149,12 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness): Promis
       if (previous && !["completed", "failed", "cancelled", "timed_out"].includes(previous.status)) return fail("INVALID_STATE");
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
-      const result = await runHarness(harness, { runId, messages: appendUserMessage(previous?.messages ?? [], c.prompt) });
+      const result = await invoke(s.sessionId, { runId, messages: appendUserMessage(previous?.messages ?? [], c.prompt) });
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
-      return { kind: "run", session: sessionDocument(s), run: runDocument(result.state) };
+      return { kind: "run", session: sessionDocument(s), run: documentRun(result.state) };
     }
     let state = await getRun(s, c.runId);
-    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: runDocument(state) };
+    if (c.method === "run.get") return { kind: "run", session: sessionDocument(s), run: documentRun(state) };
     if ((state.revision ?? 0) !== c.expectedRevision) return fail("REVISION_CONFLICT");
     if (c.method === "run.cancel") {
       if (["created", "running", "cancel_requested"].includes(state.status)) return fail("INVALID_STATE");
@@ -140,6 +164,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness): Promis
       }
     } else {
       if (state.status !== "waiting_approval") return fail("INVALID_STATE");
+      if ((options.now ?? Date.now)() > (state.updatedAt ?? state.startedAt ?? 0) + approvalMaxAgeMs) return fail("APPROVAL_MISMATCH");
       const pending = state.pendingApprovals;
       if (c.decisions.length !== pending.length || new Set(c.decisions.map(d => d.approvalId)).size !== pending.length) return fail("APPROVAL_MISMATCH");
       const approvals = c.decisions.map(d => {
@@ -147,16 +172,16 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness): Promis
         if (!a || digest(a) !== d.digest) return fail("APPROVAL_MISMATCH");
         return { provider: a.provider, approvalRequestId: a.id, approve: d.approve };
       });
-      state = (await runHarness(harness, { state, approvals })).state;
+      state = (await invoke(s.sessionId, { state, approvals })).state;
     }
     s = await sessions.updateRun(s.sessionId, state.runId, { status: sessionStatus(state.status) });
-    return { kind: "run", session: sessionDocument(s), run: runDocument(state) };
+    return { kind: "run", session: sessionDocument(s), run: documentRun(state) };
   };
   return {
     negotiate(versions) {
       if (closed) return { ok: false, error: { code: "CONNECTION_EXPIRED" } };
       if (!versions.includes(1)) return { ok: false, error: { code: "VERSION_UNSUPPORTED" } };
-      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["project.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "idempotency.connection", "revision.precondition"] };
+      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["project.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "run.cancel.active", "idempotency.connection", "revision.precondition"] };
     },
     async dispatch(value) {
       const parsed = harnessClientRequestSchema.safeParse(value);
@@ -169,7 +194,30 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness): Promis
       const fingerprint = digest(c);
       const existing = key ? receipts.get(key) : undefined;
       if (existing) return existing.fingerprint === fingerprint ? { ...structuredClone(await existing.response), requestId: request.requestId } : error("IDEMPOTENCY_CONFLICT");
-      if (busy) return error("BUSY");
+      if (busy) {
+        if (c.method === "run.cancel" && c.projectId === projectId && active?.runId === c.runId && active.sessionId === c.sessionId) {
+          if (key && receipts.size >= 1024) return error("CAPACITY_EXCEEDED");
+          const cancellation = (async (): Promise<HarnessClientResponse> => {
+            try {
+              const s = await getSession(c.sessionId); const state = await getRun(s, c.runId);
+              if ((state.revision ?? 0) !== c.expectedRevision) return error("REVISION_CONFLICT");
+              const controller = active?.controller;
+              await cancelHarnessRun(harness.store, harness.config, c.runId, { cascade: true });
+              controller?.abort();
+              const latest = await getRun(s, c.runId);
+              await options.onCheckpoint?.(s.sessionId, c.runId, latest.status);
+              return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: documentRun(latest) } };
+            } catch { return error("EXECUTION_FAILED"); }
+          })();
+          if(key) receipts.set(key, { fingerprint, response: cancellation });
+          return structuredClone(await cancellation);
+        }
+        if (c.method === "run.get" && c.projectId === projectId) {
+          try { const s = await getSession(c.sessionId); const state = await getRun(s, c.runId); return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: "run", session: sessionDocument(s), run: documentRun(state) } }; }
+          catch { return error("NOT_FOUND"); }
+        }
+        return error(c.method === "approval.resolve" ? "REVISION_CONFLICT" : "BUSY");
+      }
       if (key && receipts.size >= 1024) return error("CAPACITY_EXCEEDED");
       busy = true;
       const response = (async (): Promise<HarnessClientResponse> => {

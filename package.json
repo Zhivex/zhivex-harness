@@ -66,7 +66,7 @@
   "scripts": {
     "dev": "bun run src/cli.ts",
     "start": "node dist/cli.js",
-    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
+    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts ./src/service-cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "docs:check": "bun run scripts/check-docs.ts",
     "contract:check": "bun run scripts/check-1-0-readiness.ts",
@@ -108,7 +108,8 @@
     "evaluate:continuity": "bun test tests/compaction.test.ts tests/harness.test.ts",
     "benchmark:swebench": "bun run scripts/benchmark-swebench.ts",
     "benchmark:swebench:test": "bun test tests/swebench.test.ts",
-    "typecheck:tooling": "tsc -p tsconfig.tooling.json"
+    "typecheck:tooling": "tsc -p tsconfig.tooling.json",
+    "service": "node dist/service-cli.js"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.8.0",

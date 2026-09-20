@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness } from "../src/harness.js";
-import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData } from "../src/client-contract.js";
+import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client-contract.js";
 
-const fixture = async () => {
+const fixture = async (options?: HarnessClientAdapterOptions) => {
   const workspace = await mkdtemp(tmpdir()+"/har-client-");
   await writeFile(workspace+"/a.txt", "before\n");
   const model = createMockLanguageModel({ streamEvents: [[
@@ -15,7 +15,7 @@ const fixture = async () => {
     } } }, { type: "finish", finishReason: "tool-calls" }
   ], [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }], [{ type: "text-delta", textDelta: "summary" }, { type: "finish", finishReason: "stop" }]] });
   const harness = await createHarness({ workspace, provider: "openai", modelInstance: model, subagentProfiles: [] });
-  const adapter = await createHarnessClientAdapter(harness);
+  const adapter = await createHarnessClientAdapter(harness, options);
   const hello = adapter.negotiate([2,1]); if (!hello.ok) throw new Error("negotiation failed");
   let seq=0;
   const request = (command: Omit<HarnessClientCommand,"projectId"> & Record<string,unknown>) => ({protocolVersion:1,requestId:`req_${++seq}`,connectionId:hello.connectionId,command:{...command,projectId:hello.projectId}});
@@ -108,4 +108,17 @@ describe("client protocol against the real harness, no terminal",()=>{
       expect(await f.call({method:"session.rename",sessionId:p.session.sessionId,expectedRevision:0,idempotencyKey:"badrev",title:"wrong"})).toMatchObject({ok:false,error:{code:"REVISION_CONFLICT"}});
     }finally{await f.close();}
   });
+});
+
+test("two clients decide once and a persisted approval expiry rejects late decisions",async()=>{
+ const f=await fixture();try{
+  const p=await start(f);const command={method:"approval.resolve" as const,sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
+  const [first,second]=await Promise.all([f.call({...command,idempotencyKey:"client-one"}),f.call({...command,idempotencyKey:"client-two"})]);
+  expect(first.ok).toBe(true);expect(second).toMatchObject({ok:false,error:{code:"REVISION_CONFLICT"}});expect(f.harness.workspace.mutationAudit()).toHaveLength(1);
+ }finally{await f.close();}
+ const late=await fixture({now:()=>Date.now()+60*60*1000});try{
+  const p=await start(late);expect(p.run.approvals[0]!.expiresAt).toBeLessThan(Date.now()+60*60*1000);
+  expect(await late.call({method:"approval.resolve",sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:"expired",decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))})).toMatchObject({ok:false,error:{code:"APPROVAL_MISMATCH"}});
+  expect(await readFile(late.workspace+"/a.txt","utf8")).toBe("before\n");
+ }finally{await late.close();}
 });

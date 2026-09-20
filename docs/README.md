@@ -5,6 +5,7 @@ Start with the [project README](../README.md) for stable 1.0 installation and a 
 ## Usage and integration
 
 - [Guided first use](FIRST_USE.md): clean profile, example, approvals and recovery.
+- [Local service](LOCAL_SERVICE.md): protected Unix transport, durable replay and coordinated cancellation.
 - [Shared client protocol](CLIENT_PROTOCOL.md): experimental commands, revisions, exact approvals and reference client.
 - [CLI](CLI.md): commands, interactive sessions, configuration and output contracts.
 - [Repository editing](REPOSITORY_EDITING.md): proposals, approvals, moves and recovery.
