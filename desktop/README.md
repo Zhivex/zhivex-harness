@@ -329,3 +329,8 @@ Known values are included in client activity/renderer redaction. A complete audi
 of core persistence, file-derived secret echoes and exports remains outstanding;
 HU33 is not yet closed. Non-macOS backends are unsupported. Fixture mode does not
 access personal Keychain data or invoke credential configuration.
+
+Layout regression: after building, run `bun run desktop/scripts/smoke-layout.ts`
+from the repository root (`--packaged` reads the packaged renderer). This verifies
+sidebar/conversation placement at 1120px and 720px with credentials expanded and
+collapsed, using an isolated empty-project renderer fixture.
