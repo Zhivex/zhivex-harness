@@ -61,3 +61,23 @@ no confiable de herramienta, redactado y limitado a 2048 caracteres por canal;
 el error genérico y la proyección de telemetría siguen omitiéndolo. La redacción
 por patrones no garantiza eliminar cualquier dato de negocio que un comando
 aprobado imprima. No equivale a aceptación live ni revisión de artefacto final.
+
+## Revalidación del candidato actual
+
+Sobre el commit `c2b2bb917d0471e61afc5f731a61c00b44fa3731`,
+`bun run scripts/validate-security-review.ts` vuelve a terminar con código 0:
+SEC-01, SEC-02, SEC-03, SEC-04 y el control de digest obsoleto pasan.
+La [evidencia actual](../docs/reports/evidence/security-current-2026-09-19.json)
+conserva los resultados y hashes de fuente. Las correcciones posteriores
+referidas antes como working tree ya están incluidas en este commit.
+
+Dictamen: los cuatro hallazgos conocidos están corregidos en la aceptación
+local. Esto no acredita ausencia de otros defectos ni constituye firma humana.
+La suite completa registrada para este candidato tiene 555 tests correctos;
+la nueva ejecución aquí documentada es la aceptación adversarial focal.
+
+GA sigue NO-GO. La serie de desarrollo v8 obtuvo Harness 0/1 frente a control
+1/1 con Qwen; todavía falta entrega fiable, la corrección del SDK publicada y
+consumida por el candidato, cohorte representativa y holdout fresco, CI/release
+protegidos y revisión del artefacto final. Véase el
+[informe de recuperación](../docs/reports/GA_REPAIR_RECOVERY_2026-09-19.md).

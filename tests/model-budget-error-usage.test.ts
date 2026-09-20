@@ -9,6 +9,17 @@ const failure = (usage?: unknown, provider = "openai") => Object.assign(new Prov
 }), usage === undefined ? {} : { usage });
 const context = () => ({ input: { messages: [] }, model: createMockLanguageModel({ provider: "openai" }) });
 const budget = () => createModelBudget({ inputTokens: 1000, outputTokens: 1000 });
+test("published OpenAI adapter preserves rejected stream usage through runHarness without executing tools", async () => {
+  const child = Bun.spawn([process.execPath, "run", "scripts/validate-openai-harness-usage.mjs"], {
+    cwd: new URL("..", import.meta.url).pathname, stdout: "pipe", stderr: "pipe"
+  });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited
+  ]);
+  expect(exitCode, stderr).toBe(0);
+  expect(JSON.parse(stdout)).toMatchObject({ passed: true, failed: true, toolExecutions: 0,
+    inputTokens: 12, outputTokens: 8, usageComplete: true, network: "mock-only" });
+});
 for (const mode of ["generate", "stream-open", "stream-body"] as const) {
   test(`records terminal failure usage and preserves the error: ${mode}`, async () => {
     const b = budget(), error = failure({ inputTokens: 12, outputTokens: 8, cachedInputTokens: 4 });

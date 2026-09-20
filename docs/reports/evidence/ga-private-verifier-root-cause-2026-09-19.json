@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "private-verifier-root-cause",
+  "classification": "One development diagnostic; no holdout or acceptance claim",
+  "result": {
+    "status": "failed",
+    "failure": "INPUT_TOKEN_BUDGET",
+    "inputTokens": 92923,
+    "outputTokens": 1028,
+    "usageComplete": true
+  },
+  "verifier": {
+    "command": "python",
+    "runner": "pytest",
+    "exitCode": 1,
+    "timedOut": false,
+    "cause": "pytest is not installed in the execution image",
+    "rawRecordSha256": "e6abe285468b47bade51ea28ed0665160ed042bad33a494b239a050d400a419e"
+  },
+  "captureDefect": {
+    "observedScopes": [
+      "[\"local\",null,\"workspace-c55b2d1c50bf51cc\"]",
+      "[null,null,null]"
+    ],
+    "cause": "Capture used config.scope while actual run state was unscoped; these identify distinct snapshots.",
+    "impact": "Historical candidatePresent=false does not prove the run had no candidate; imported host patch and official resolved results are unchanged."
+  },
+  "corrections": [
+    "Remove unverified pytest recommendation from benchmark instructions; discover existing runner or self-contained assertion.",
+    "Capture candidates using state.runId and state.scope, including undefined scope."
+  ],
+  "validation": {
+    "focusedSuite": "13 passed",
+    "toolingTypecheck": "passed"
+  },
+  "limitations": [
+    "Does not retroactively identify every prior verifier failure.",
+    "No claim that instruction correction resolves the task live.",
+    "Private state retained locally for offline candidate diagnosis; raw output not embedded in this report."
+  ]
+}

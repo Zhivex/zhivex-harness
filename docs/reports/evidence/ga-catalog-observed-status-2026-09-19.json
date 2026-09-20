@@ -1,0 +1,15 @@
+{
+  "kind": "development-catalog-observation-status",
+  "status": "completed",
+  "reason": null,
+  "plan": "ga-catalog-observed-plan-2026-09-19.json",
+  "liveEvidence": true,
+  "userAuthorization": "explicit user authorization received",
+  "localValidation": {
+    "command": "bun test tests/swebench-model-catalog.test.ts tests/sdk-compaction.test.ts tests/swebench.test.ts",
+    "exitCode": 0,
+    "passed": 25,
+    "failed": 0
+  },
+  "scope": "Authorized trial completed with independent grading; both samples retained"
+}

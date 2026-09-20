@@ -162,6 +162,15 @@ the argv digest and purpose to the candidate revision, but a zero exit code does
 not independently establish that the chosen check covers the user's requirement.
 Host-mode edits require an approved `run_check` before completion.
 
+Applications that require an actual repair can set `requireVerifiedDelivery: true`
+when creating a Harness with `agentProfile: "repair"`. This creates a durable
+completion obligation before exploration starts; a final answer without a
+verified delivery is failed in both the result and saved checkpoint. The option
+is bound to the run fingerprint and cannot be removed by restoring the controller
+with defaults. It does not itself open the closure reserve or grant permission
+for tools. Inspection-only callers leave it false. The SWE-bench driver enables
+it because its task explicitly requires a verified repair and import.
+
 A concrete repair plan also prevents completion before a candidate exists. If
 the provider returns a normal final answer with a pending obligation and known
 usage, the controller may schedule one read-only `read_task` reminder through the
@@ -176,7 +185,9 @@ An OCI edit attempted without a concrete verifier is rejected before execution
 and records a durable planning obligation. The next provider requests expose
 only `repair_plan` and `read_task`, for at most two planning attempts; supported
 modes explicitly request `repair_plan`. Execution checks also block unrelated
-tools until a valid verifier is recorded. Resuming does not reset this limit.
+tools until a valid verifier is recorded. These restricted planning turns can
+use the existing closure reserve after ordinary work reaches its ceiling;
+they cannot exceed the total input/output budget. Resuming does not reset this limit.
 Recording the verifier restores the ordinary catalogue, but never supplies
 approval for the edit or check and does not increase the token budget.
 

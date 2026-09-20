@@ -16,6 +16,7 @@ const stateSchema = z.object({ schemaVersion: z.literal(1),
   verificationFailures: z.number().int().nonnegative(),
   completionReminders: z.number().int().min(0).max(1).default(0),
   planRequired: z.boolean().default(false),
+  requireVerifiedDelivery: z.boolean().default(false),
   hypothesis: z.string().max(1000), nextCheck: z.string().max(500),
   receipts: z.array(z.object({ commandId: z.string().max(128), purpose: z.string().max(500),
     argvDigest: digestSchema, candidate: digestSchema.nullable(), exitCode: z.number().int(),
@@ -30,14 +31,18 @@ const record = (value: unknown): Record<string, unknown> => value && typeof valu
 /** Application-owned evidence controller. Scheduling is not approval. All emitted
  * calls enter the ordinary SDK registry, approval, lease and execution gates. */
 export const createRepairController = (metadata: Record<string, unknown>, oci: boolean,
-  options: { progressContext?: ReturnType<typeof createRepairProgress>["workingContext"] } = {}) => {
+  options: { requireVerifiedDelivery?: boolean; progressContext?: ReturnType<typeof createRepairProgress>["workingContext"] } = {}) => {
   const state = metadata[REPAIR_CONTROLLER_KEY] === undefined ? stateSchema.parse({ schemaVersion: 1,
     phase: "explore", candidate: null, revision: 0, verifier: null, verifierRequests: 0,
     verificationFailures: 0, hypothesis: "", nextCheck: "", receipts: [] }) : stateSchema.parse(metadata[REPAIR_CONTROLLER_KEY]);
+  state.requireVerifiedDelivery ||= options.requireVerifiedDelivery === true;
   const snapshot = () => structuredClone(state);
   const pending = () => state.candidate !== null && state.phase !== "delivered";
-  const closure = () => pending() || state.phase === "recover";
-  const completionPending = () => state.planRequired || pending() || (state.verifier !== null && state.phase !== "delivered");
+  // A rejected edit creates a bounded planning obligation too. Its next model
+  // turns expose only plan/task tools and retain the two-attempt durable limit;
+  // permit those turns to use the existing reserve, never extra total tokens.
+  const closure = () => state.planRequired || pending() || state.phase === "recover";
+  const completionPending = () => (state.requireVerifiedDelivery && state.phase !== "delivered") || state.planRequired || pending() || (state.verifier !== null && state.phase !== "delivered");
   const markIncomplete = () => { if (completionPending()) state.phase = "incomplete"; };
   const verificationFailed = (attemptedVerification = true) => { if (attemptedVerification) state.verificationFailures++; state.phase = "recover"; state.verifier = null; state.verifierRequests = 0; };
   const wrapTools = (tools: ToolSet): ToolSet => Object.fromEntries(Object.entries(tools).map(([name, tool]) => {
@@ -136,6 +141,7 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
     const projection = { activeRequest: latest ? { id: latest.id, excerpt: latest.text.slice(0, 1600), totalCharacters: latest.text.length } : null,
       previousRequestIds: sources.slice(-4, -1).map(source => source.id),
       phase: state.phase, candidate: state.candidate, revision: state.revision, planRequired: state.planRequired,
+      requireVerifiedDelivery: state.requireVerifiedDelivery,
       hypothesis: state.hypothesis, nextCheck: state.nextCheck, checks: state.receipts.slice(-2),
       progress: options.progressContext?.() ?? null,
       completionReminder: state.completionReminders > 0 ? "A final answer did not fulfill the repair. Continue the focused repair and verification; do not claim delivery without a verified candidate." : null };

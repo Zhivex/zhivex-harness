@@ -1,0 +1,18 @@
+{
+  "kind": "published-qwen-development-validation",
+  "classification": "known development task; not holdout or GA acceptance",
+  "qwenVersion": "0.14.4",
+  "repetitions": 1,
+  "control": "unchanged mini-SWE-agent",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "lockSha256": "dbabdf161b3dba306f475c81f37e5ab1620fb98052127bb3ed2a0a0cb611ede4",
+  "releaseRun": "https://github.com/Zhivex/zhivex-ai-sdk/actions/runs/35477096556"
+}

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+import { wrapLanguageModel } from "@zhivex-ai/core";
 import { createHarness, runHarness } from "../src/harness.js";
 import { createEditProposal } from "../src/edit-contracts.js";
 import { projectState } from "../scripts/swebench/telemetry.js";
@@ -38,8 +39,16 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
         { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 10, outputTokens: 2, totalTokens: 12 } }
       ]) });
       const store = createInMemoryAgentRunStore();
+      let recoveryFeedbackReachedModel = false;
+      const observedModel = wrapLanguageModel(model, [{ wrapStream: async (context, next) => {
+        recoveryFeedbackReachedModel ||= context.input.messages.some(message => message.parts.some(part =>
+          part.type === "tool-result" && part.toolResult.isError === true &&
+          JSON.stringify(part.toolResult.output).includes("private fixture failure")
+        ));
+        return next();
+      } }]);
       harness = await createHarness({ workspace: root, executionBackend: "oci", provider: "openai",
-        modelInstance: model, store, ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 5, agentProfile: scenario === "repair-corrected" ? "repair" : "strict" });
+        modelInstance: observedModel, store, ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 5, agentProfile: scenario === "repair-corrected" ? "repair" : "strict" });
       const session = await harness.executionEnvironment!.acquire({ runId: "recovery" }) as HarnessExecutionSession;
       const before = await session.workspace.readFile("value.txt");
       const changes = [{ path: "value.txt", expectedDigest: before.digest, content: "after\n" }];
@@ -64,6 +73,7 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
         expect(completed.status).toBe("completed");
         expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("after\n");
         expect(executions).toBe(2);
+        expect(recoveryFeedbackReachedModel).toBe(true);
         expect(new Set(approvals).size).toBe(2);
         const failed = completed.toolResults.find((r) => r.isError);
         expect(failed?.output).toMatchObject({ kind: "terminal-verification-failure", verification: { exitCode: 4 } });

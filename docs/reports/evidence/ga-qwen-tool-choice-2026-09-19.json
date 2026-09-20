@@ -1,0 +1,85 @@
+{
+  "kind": "synthetic-qwen-tool-choice-probe",
+  "model": "qwen3.8-flash",
+  "toolExecution": false,
+  "rows": [
+    {
+      "choice": "named",
+      "wire": {
+        "choice": {
+          "type": "function",
+          "function": {
+            "name": "repair_plan"
+          }
+        },
+        "thinking": false,
+        "tools": [
+          "read_task",
+          "repair_plan"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "toolCallChunks": 25,
+        "contentCharacters": 0,
+        "finishes": [
+          "stop"
+        ]
+      },
+      "adapter": {
+        "tools": [],
+        "textCharacters": 0,
+        "finish": "stop",
+        "usage": {
+          "inputTokens": 832,
+          "cachedInputTokens": 0,
+          "outputTokens": 106,
+          "totalTokens": 938
+        }
+      },
+      "failure": null
+    },
+    {
+      "choice": "required",
+      "wire": {
+        "choice": "required",
+        "thinking": false,
+        "tools": [
+          "read_task",
+          "repair_plan"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "toolCallChunks": 24,
+        "contentCharacters": 0,
+        "finishes": [
+          "tool_calls"
+        ]
+      },
+      "adapter": {
+        "tools": [
+          "repair_plan"
+        ],
+        "textCharacters": 0,
+        "finish": "tool-calls",
+        "usage": {
+          "inputTokens": 828,
+          "cachedInputTokens": 0,
+          "outputTokens": 110,
+          "totalTokens": 938
+        }
+      },
+      "failure": null
+    }
+  ],
+  "versions": {
+    "qwen": "0.14.3",
+    "core": "1.22.0"
+  },
+  "limitations": [
+    "Two synthetic calls; no tool execution",
+    "Wire metadata only; no raw response or arguments retained",
+    "Does not prove the contents of earlier benchmark responses"
+  ]
+}

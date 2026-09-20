@@ -1,0 +1,699 @@
+{
+  "schemaVersion": 1,
+  "kind": "diagnostic-tool-catalog-ablation",
+  "classification": "Known development task; experimental driver, not product or GA acceptance",
+  "plan": "ga-catalog-ablation-plan-2026-09-19.json",
+  "implementation": {
+    "gitCommit": "c2b2bb917d0471e61afc5f731a61c00b44fa3731",
+    "sources": {
+      "bun.lock": "e370459197ce52c3961770f3c5ccaab7ff35ddbe641ef72e8bd61f87a8b8e3fe",
+      "evaluations/external/requirements.lock": "42e90a08f10f821ebb958af79256f707a9fb5cf365277c4f9e2715d612028179",
+      "package.json": "a4a2507e3ad876d72cad49a16e149192d33521fb4175bb40a3eb077ccfdf43a1",
+      "scripts/benchmark-swebench.ts": "ed17063e1847017ba2e72f14732b6ff8f5b1af7cd5253b91302af75f2a9e8476",
+      "scripts/swebench/candidate.py": "f5e3410b91b950acfbe50fc7511891816a8fb1c223082397e2c6300cf1e866cf",
+      "scripts/swebench/candidate.ts": "bf102becfcce0c9a3f0df0a8f1ce0e5aaea7db2d252f6d9454a8370c24e53982",
+      "scripts/swebench/common.py": "ad790227dac3bec1f592c458c993efff4f9d3de8f0df39b33e3238b58b3f0b3b",
+      "scripts/swebench/context-metrics.ts": "7b84da6789413aa634d997c5963ee6796584e06c3eafe5f68f424fb7e27815e9",
+      "scripts/swebench/mini_driver.py": "bd0a77221878370ec44760122a51f07fb56d969612afa9a7f171248b2958baa6",
+      "scripts/swebench/model-budget.ts": "e46dd406ee5d58a051a15c7d7133513666292303d8c6534f861a6db0e711f47c",
+      "scripts/swebench/preflight.py": "aed092a75dd52f504fba6d14814b69bd627ff17d0e311a1f1279f8b613b69675",
+      "scripts/swebench/prepare.py": "bb7edd3fba5dbbe26597c97d744c60b94dbb7bcdfd7740a4a058c8583bd27e4c",
+      "scripts/swebench/report.py": "d0b8d45f32c48e0ba2cb977f50838065a497a0ecaf3b4243ed94139393ce4d6b",
+      "scripts/swebench/run.py": "94dccd55dfe6f70d8f8f2da70331700ec85eddd958547e0c3afe3dc416c9802c",
+      "scripts/swebench/telemetry.ts": "743c9baf273e9240d704d098b6bd5eea9e76ef3e49ae636aaafa9bfd7a85b45b",
+      "scripts/swebench/test_candidate.py": "e77d16379b748baa2daf184a45ea62587d938b6a7d48dcf9f6061f8af21fafd9",
+      "scripts/swebench/test_contracts.py": "902e966d0fbf8501dbb15e011849f160331c033cd2a5480f9920d0f365a08d03",
+      "scripts/swebench/zhivex-driver.ts": "8d68286b42979a603dcded8860133e134d351f25aedb5dd98ed2ef6f810cbd74",
+      "scripts/time-to-safe-fix-efficiency.ts": "dd20fd8839280332ae4ca80d6846e98e07ff15d79e200b206fa2ba6be2724d2f",
+      "src/bounded-reads.ts": "9807bb460894be3279c5425af19863d1c6e419a1582ba6910ec7e7fc35703ed6",
+      "src/capabilities.ts": "56fdb60a2f6e1d33b2dc26d38b6d2709807e491ba1268d47b97876c2c0591d65",
+      "src/change-envelope.ts": "9047ec978c9e5117965b8093ec961d855f97bbc2c3accdc79b74cfe6a0e4f01e",
+      "src/cli-options.ts": "f48d9be132fed38f2ddbcfecbd8222c664a0df2f20edc28ce8d1b9b1a1900863",
+      "src/cli-profiles.ts": "4fe451f1645e95f4957597a8724fa989b3c661ae1693252bfd6e74a51d20fc74",
+      "src/cli-stream.ts": "5ab8a4b1b8cf0a3dfa7b5b1f9e4e0facf8f6e7f6c341bdf700a41dc8927c825e",
+      "src/cli.ts": "5a4acb4695a968a58fbeac05c4bb89848a9653d6189590f0ff90e430ffa98d14",
+      "src/compaction.ts": "9e06a0abeeef155377f40c160b21c56256bca95ec18c5ee897681a5fc73db169",
+      "src/config.ts": "b1d3991e84add58603fb85b2a604b9b3eb56ae879d0fa30b0cb40545fa44edc1",
+      "src/console-context.ts": "0ad7e4559504b9ed09ab500d615dea09af1075d357f02ec3b77f003d55d951db",
+      "src/console-input.ts": "dc8ea0cdbba1364db288d5156c5ff9819362c46b37ef35a98b0475b6c445b1f8",
+      "src/context-engineering.ts": "1995e564f6b91974e75bf66dd421ddcbea29b1f8eee59b76eb4e34c9d6d8f47e",
+      "src/context-metrics.ts": "3eb30f9db808f918ed8d73d4f8ac19a13acb09ed5c1ee70fdae05201714b9198",
+      "src/edit-contracts.ts": "47cc3132e27f8749d54a32bbcc33bb174cf4448f0d0171b2578cdb559cf2176b",
+      "src/errors.ts": "e02f4eb80562a83762f908bda56c950ec6a2b78725c0c8a49f41fee0057ab903",
+      "src/execution-environment.ts": "9ce6c49afab26527d5296f0c11f106063590f7333300d58dd49d5a1ec1b4b6e9",
+      "src/file-security.ts": "b8c9f4988c4339c73a60ab4fa8d394b3eecc19117a0c61a8d19ab6483ca253df",
+      "src/harness.ts": "195983cfbacb6097a5c8c2a106e59c3fae2437f053299da1c0170dd914879c8d",
+      "src/index.ts": "4bbfcd11376d48c4f1c1ec17d6b5c9f51baa9331fa999432be178bae94530a5e",
+      "src/json-contracts.ts": "0780145636b47829a1aa6087c574d5654eb31b7534ea7d9c38c188d648c90272",
+      "src/mcp.ts": "7722de031921c620ec03b9e42a6596ef8415aa8e4bb5f93ea84d2427c466e554",
+      "src/model-budget.ts": "97c00019d7e737fc7acdd04cdac0811dca8d85c3e858de519ebba91888cf1ee7",
+      "src/operations.ts": "bcccaf4d1d0ec117c2ed35df92185564d33399e5fdc5c12225ac61f14fd0b4b1",
+      "src/orchestration.ts": "b56c8c7d526a99b745cc17769e0a1b7b500b25920e77f34aa0dd01c9758de319",
+      "src/package-manager.ts": "cec4666bbab2f42e0a269709631f79f9f87c2c4dbb3cafeffacfaff761069e2c",
+      "src/process-runtime.ts": "b7286731a0b5c96dcad0b8e3a4bf1155d0539d73303cd7ebe77ffabf858f1729",
+      "src/providers.ts": "70ccfc7f315cd7238e83d69b719ce4908f3b620c564cbb4f00f93e102e025602",
+      "src/repair-controller.ts": "2c05370e93978a5bf106b2cee293478a77b47920cec7470f536b31757198f41c",
+      "src/repair-progress.ts": "cf30117ab69564f2b36ff8f0e86dcb876e6c031647340a7b1bef648d1e0366b9",
+      "src/repair-verifier.ts": "b70fb11feee8cdc7933947ccac0b78f8bb5c0eaccc3b29ad527197d77f40ffc9",
+      "src/replacement-edits.ts": "8a0efdd3a7a9fc3e5a5475916cbd17ef882265881bb61076db58673e80b72957",
+      "src/routing.ts": "8e7c9f5968b4bd638cbbc86b19847ca183f3418b9a298783b96a88cffa568e22",
+      "src/run-interruption.ts": "df99129cf2dd6b938eca629cb897c4350a7d57fe6bf0ce437f5f3f30271617df",
+      "src/runtime-checkpoints.ts": "e3b75a0b86fb5d21992b1a126b35446110ba5fcaf4317ed5005b1a44555118dc",
+      "src/runtime-diagnostics.ts": "e1e5a3a558fa2aaeb477335dc336551f022c1234fe5e742eefc6599c8803e364",
+      "src/runtime-policy.ts": "8356acf0102f0e73839b81ed628a5c0d9a89d9c21b0ca416efedde8f1b3414e2",
+      "src/sessions.ts": "5167c8cf36bd4b8845ee278883394700321b65397f49c1dda0cf0d0de09dd06e",
+      "src/sqlite-database.ts": "18765d1ca0c2f2ad87bfd82d311312dfe8a42006556f27bc21da5892ed3b044e",
+      "src/state-backup.ts": "b6f8f1aedeb5dce31b65c23c7ffc50030870655b58a5aaaef9989bafb9da5c68",
+      "src/state-directory.ts": "3711550991951e6b738a08deaa0e06da84d01864c03a9602600f592963fa3211",
+      "src/task-memory.ts": "5b62c863be5a23c33608633cd7aac0464f5536d01cba930aca58b11870170731",
+      "src/terminal-markdown.ts": "8cffb6ebaf25108cb2bee04956d9b2973635b010f5d7ce6be21b3ceffe3e8bfd",
+      "src/terminal-ui.ts": "4da1878a76ba608a2517bf5d5c992a9a88702aba3fd800a9980129ba93e157bc",
+      "src/time-to-safe-fix.ts": "4add1d49c0ea209cc496c66fa2b2012dc7bcab87e678a58c8591b3c2cdc8df8a",
+      "src/tool-registry.ts": "7e90fff11940e525883c9ec0d2adbea2e6616f8bd9bc4ec77e1b7277e4217f2c",
+      "src/version.ts": "b2c2f80a40adc08e8258b81e82434273f0bdfa787528b2221f14efe7f06aa747",
+      "src/workspace-mutation-lock.ts": "ca201242db16173bd3a4d86c5d8bb0c2b6f3c43bfed3e4fa4ff5f06a75b19e80",
+      "src/workspace.ts": "809f8bbfcf72fed10d860c48585089ca65bb3ef7c672ee6df3c918907a968302"
+    }
+  },
+  "model": "qwen3.8-flash",
+  "limits": {
+    "steps": 24,
+    "outputPerTurn": 2048,
+    "inputTokens": 100000,
+    "outputTokens": 16000,
+    "timeoutSeconds": 300,
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "samples": [
+    {
+      "candidate": "zhivex",
+      "instanceId": "django__django-15851",
+      "repetition": 0,
+      "resolved": false,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "candidateCaptureFailure": null,
+      "modelTimings": [
+        {
+          "durationMs": 2857.5545,
+          "firstTokenMs": 2856.44675,
+          "completed": true
+        },
+        {
+          "durationMs": 1765.3069590000014,
+          "firstTokenMs": 1764.9363750000011,
+          "completed": true
+        },
+        {
+          "durationMs": 1971.8102500000023,
+          "firstTokenMs": 1971.582500000004,
+          "completed": true
+        },
+        {
+          "durationMs": 1423.2325410000049,
+          "firstTokenMs": 1423.1229160000003,
+          "completed": true
+        },
+        {
+          "durationMs": 1604.3790000000008,
+          "firstTokenMs": 1604.1530829999974,
+          "completed": true
+        },
+        {
+          "durationMs": 1363.2940420000086,
+          "firstTokenMs": 1362.9413330000098,
+          "completed": true
+        },
+        {
+          "durationMs": 3342.460540999993,
+          "firstTokenMs": 3341.9722499999916,
+          "completed": true
+        },
+        {
+          "durationMs": 1671.2688750000088,
+          "firstTokenMs": 1671.0233750000043,
+          "completed": true
+        },
+        {
+          "durationMs": 13546.226541000011,
+          "firstTokenMs": 13545.892208000005,
+          "completed": true
+        }
+      ],
+      "stageTimings": [
+        {
+          "event": "command-requested",
+          "elapsedMs": 6210.767709
+        }
+      ],
+      "approvalTimings": [
+        {
+          "durationMs": 0.08533399999942048,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.06737500000235741,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.01600000000325963,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.022415999999793712,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.02399999999033753,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.02983299999323208,
+          "resolved": true
+        },
+        {
+          "durationMs": 0.03674999999930151,
+          "resolved": true
+        }
+      ],
+      "toolTimings": [
+        {
+          "name": "run_environment_shell",
+          "calls": 7,
+          "errors": 0,
+          "totalMs": 89482.442086,
+          "maxMs": 13939.199584000002
+        },
+        {
+          "name": "repair_plan",
+          "calls": 1,
+          "errors": 0,
+          "totalMs": 0.08249999998952262,
+          "maxMs": 0.08249999998952262
+        }
+      ],
+      "schemaVersion": 1,
+      "status": "failed",
+      "failure": "EXECUTION_FAILED",
+      "phase": "agent",
+      "durationMs": 141427.978167,
+      "approvals": 7,
+      "turns": [
+        {
+          "index": 1,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 2628,
+          "outputTokens": 59,
+          "cachedInputTokens": 0,
+          "requestCharacters": 6814,
+          "tools": []
+        },
+        {
+          "index": 2,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 3004,
+          "outputTokens": 61,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 8045,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 527,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2852.733541,
+                "workspaceExportMs": 6749.016,
+                "totalMs": 13525.643375,
+                "sessionCreationMs": 3923.315709
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 4115,
+          "outputTokens": 80,
+          "cachedInputTokens": 2048,
+          "requestCharacters": 12232,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 3462,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2308.533958,
+                "workspaceExportMs": 7081.781625,
+                "totalMs": 11503.703292,
+                "sessionCreationMs": 2113.314875
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 4415,
+          "outputTokens": 57,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 13344,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 628,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2551.948125,
+                "workspaceExportMs": 8370.394875,
+                "totalMs": 13939.041666,
+                "sessionCreationMs": 3016.637958
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 4802,
+          "outputTokens": 63,
+          "cachedInputTokens": 3328,
+          "requestCharacters": 14769,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 989,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 3493.600166,
+                "workspaceExportMs": 8051.391792,
+                "totalMs": 13708.315958,
+                "sessionCreationMs": 2163.173
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 5089,
+          "outputTokens": 34,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 15822,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 601,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2686.813583,
+                "workspaceExportMs": 7644.495041,
+                "totalMs": 12726.732584,
+                "sessionCreationMs": 2395.366833
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "status": "completed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "repair_plan"
+          ],
+          "inputTokens": 6848,
+          "outputTokens": 224,
+          "cachedInputTokens": 4096,
+          "requestCharacters": 23276,
+          "tools": [
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 7093,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2419.42325,
+                "workspaceExportMs": 7370.358916,
+                "totalMs": 12047.248042,
+                "sessionCreationMs": 2257.312958
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "status": "waiting_approval",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "run_environment_shell"
+          ],
+          "inputTokens": 7332,
+          "outputTokens": 48,
+          "cachedInputTokens": 6144,
+          "requestCharacters": 25450,
+          "tools": [
+            {
+              "name": "repair_plan",
+              "isError": false,
+              "characters": 801
+            },
+            {
+              "name": "run_environment_shell",
+              "isError": false,
+              "characters": 463,
+              "phaseLatencies": {
+                "commandAndAttestationMs": 2746.627709,
+                "workspaceExportMs": 7016.995125,
+                "totalMs": 12029.79325,
+                "sessionCreationMs": 2266.033208
+              },
+              "exitCode": 0,
+              "timedOut": false
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "status": "failed",
+          "finishReason": "tool-calls",
+          "requestedTools": [
+            "other-tool"
+          ],
+          "inputTokens": 3387,
+          "outputTokens": 54,
+          "cachedInputTokens": 1024,
+          "requestCharacters": 2472,
+          "tools": [
+            {
+              "name": "other-tool",
+              "isError": true,
+              "characters": 4,
+              "diagnostic": {
+                "code": "EXECUTION_FAILED",
+                "category": "execution",
+                "failureType": "execution",
+                "retryable": false,
+                "chain": [
+                  {
+                    "validationCode": null,
+                    "providerReason": null,
+                    "validationIssues": [],
+                    "status": null,
+                    "errorClass": "Object",
+                    "providerHints": [],
+                    "fingerprint": "6d0579d910635f92f565c11d29a0704f48dc1b126b5cff8674e01de04ef58a64",
+                    "reason": "not registered"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "inputTokens": 41620,
+      "outputTokens": 680,
+      "cachedInputTokens": 26112,
+      "modelCalls": 9,
+      "compactions": [
+        {
+          "beforeStep": 9,
+          "estimatedTokensBefore": 5972,
+          "estimatedTokensAfter": 1850
+        }
+      ],
+      "terminalDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "failureType": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "validationCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "Object",
+            "providerHints": [],
+            "fingerprint": "4781c6db9c61c01642ad93cb9a3b069cb6ef16d947024b4852fa71e010ef7fed",
+            "reason": "not registered"
+          }
+        ]
+      },
+      "thrownDiagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "failureType": "execution",
+        "retryable": false,
+        "chain": [
+          {
+            "validationCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": "HarnessExecutionError",
+            "providerHints": [],
+            "fingerprint": "4781c6db9c61c01642ad93cb9a3b069cb6ef16d947024b4852fa71e010ef7fed",
+            "reason": "not registered"
+          },
+          {
+            "validationCode": null,
+            "providerReason": null,
+            "validationIssues": [],
+            "status": null,
+            "errorClass": null,
+            "providerHints": [],
+            "fingerprint": "4781c6db9c61c01642ad93cb9a3b069cb6ef16d947024b4852fa71e010ef7fed",
+            "reason": "not registered"
+          }
+        ]
+      },
+      "guardrails": [],
+      "repairProgress": {
+        "repeatedResults": 0,
+        "suppressedResults": 0,
+        "blockedBroadCalls": 0,
+        "enteredClosure": false,
+        "phase": "explore",
+        "blockedPhaseCalls": 0,
+        "planRecorded": true
+      },
+      "contextMetrics": [
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 2548,
+          "assistantCharacters": 0,
+          "toolResultCharacters": 0,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 2815,
+          "assistantCharacters": 266,
+          "toolResultCharacters": 696,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3081,
+          "assistantCharacters": 554,
+          "toolResultCharacters": 4327,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3081,
+          "assistantCharacters": 867,
+          "toolResultCharacters": 5124,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3081,
+          "assistantCharacters": 1132,
+          "toolResultCharacters": 6282,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3081,
+          "assistantCharacters": 1413,
+          "toolResultCharacters": 7052,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3081,
+          "assistantCharacters": 1603,
+          "toolResultCharacters": 14314,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 3399,
+          "assistantCharacters": 2497,
+          "toolResultCharacters": 15274,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        },
+        {
+          "systemCharacters": 4262,
+          "userCharacters": 2470,
+          "assistantCharacters": 2501,
+          "toolResultCharacters": 632,
+          "otherMessageCharacters": 0,
+          "toolDefinitionCharacters": 3357,
+          "unmeasuredToolDefinitions": 0
+        }
+      ],
+      "omittedContextMeasurements": 0,
+      "toolCalls": 8,
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "protectedFilesChanged": [],
+      "gradingMethod": "empty-patch-no-solution",
+      "officialResolved": false,
+      "candidateCaptured": true,
+      "candidatePatchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "candidateGradingStatus": "completed",
+      "candidateResolved": false,
+      "repairStages": {
+        "candidatePresent": false,
+        "importedPatchPresent": false,
+        "verificationAttempted": false
+      },
+      "gradingDurationMs": 0.16387499636039138,
+      "totalDurationMs": 153439.36329201097
+    },
+    {
+      "candidate": "mini-swe-agent",
+      "instanceId": "django__django-15851",
+      "repetition": 0,
+      "resolved": true,
+      "gradingStatus": "completed",
+      "usageComplete": true,
+      "costUsd": null,
+      "schemaVersion": 1,
+      "status": "Submitted",
+      "failure": null,
+      "phase": "agent",
+      "durationMs": 22133.75095796073,
+      "approvals": 0,
+      "toolCalls": 8,
+      "inputTokens": 22969,
+      "outputTokens": 636,
+      "cachedInputTokens": 15872,
+      "modelCalls": 8,
+      "patchSha256": "873ee0e2d09108303f5ebe1fa4d0aec08ee9e4ce52b93941c70b4c8c91c21db4",
+      "protectedFilesChanged": [],
+      "officialResolved": true,
+      "candidateCaptured": true,
+      "candidatePatchSha256": "873ee0e2d09108303f5ebe1fa4d0aec08ee9e4ce52b93941c70b4c8c91c21db4",
+      "candidateGradingStatus": "completed",
+      "candidateResolved": true,
+      "repairStages": {
+        "candidatePresent": true,
+        "importedPatchPresent": null,
+        "verificationAttempted": null
+      },
+      "gradingDurationMs": 24649.95683298912,
+      "totalDurationMs": 49208.5399160278
+    }
+  ],
+  "report": {
+    "schemaVersion": 1,
+    "kind": "swebench-comparison",
+    "manifestSha256": "69eec29ad77147b4e43408679277faacc89bb04680b711b15217cfa9fe5f34ed",
+    "complete": true,
+    "candidates": {
+      "zhivex": {
+        "planned": 1,
+        "recorded": 1,
+        "resolved": 0,
+        "candidateCaptured": 1,
+        "candidateResolved": 0,
+        "candidateGraded": 1,
+        "resolutionRate": 0.0,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": null
+      },
+      "mini-swe-agent": {
+        "planned": 1,
+        "recorded": 1,
+        "resolved": 1,
+        "candidateCaptured": 1,
+        "candidateResolved": 1,
+        "candidateGraded": 1,
+        "resolutionRate": 1.0,
+        "missing": 0,
+        "gradingFailures": 0,
+        "usageComplete": true,
+        "totalCostUsd": null,
+        "costPerResolvedUsd": null,
+        "resolvedP50Ms": 49208.5399160278
+      }
+    },
+    "pairedTaskResolutionDifference": -1.0,
+    "pairedTaskBootstrap95": null,
+    "evidenceBoundary": "Local matched-model comparison. Missing and failed runs remain in the denominator. Small-sample intervals are exploratory. No safety superiority is inferred from SWE-bench correctness."
+  },
+  "limitations": [
+    "One repetition; no causal or general reliability claim",
+    "Catalog and rendered instructions changed together",
+    "Existing shell route uses different existing quotas from native reads",
+    "No runtime policy or product profile changed"
+  ]
+}

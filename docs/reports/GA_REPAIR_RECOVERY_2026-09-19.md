@@ -318,3 +318,321 @@ y [validación local por hash](evidence/ga-working-context-2026-09-19.json).
 El siguiente diagnóstico debe aislar el efecto del catálogo/contexto antes de
 añadir reglas nuevas. Una variante diagnóstica no sustituirá el perfil del
 producto ni se contará como aceptación GA.
+
+## Diagnóstico del catálogo reducido
+
+La variante aislada de cinco herramientas, predeclarada en
+[el plan](evidence/ga-catalog-ablation-plan-2026-09-19.json), terminó con Harness
+0/1 y control 1/1; grading y accounting completos. Harness consumió 41.620
+tokens de entrada y 680 de salida en nueve llamadas. Tras compactar, solicitó
+una herramienta no registrada y terminó con EXECUTION_FAILED. No se atribuye
+causalidad a la compactación a partir de esta sola muestra.
+
+Se conservan ambas muestras, el informe y la identidad de fuente en
+[la evidencia](evidence/ga-catalog-ablation-2026-09-19.json). Frente al baseline
+v8 sólo cambió el driver: catálogo e instrucciones renderizadas conjuntamente.
+El shell ya disponible usa sus propios cupos; no son las mismas rutas ejecutadas
+que las lecturas nativas. La variante no modifica el perfil del producto y no
+cuenta como aceptación GA. Este resultado no justifica promover el catálogo
+reducido ni demuestra que el tamaño del catálogo explique los fallos previos.
+
+La inspección del SDK instalado y una regresión de transporte descartan una
+pérdida determinística del catálogo o de las instrucciones de sistema en la
+compactación ordinaria: cinco solicitudes conservan ambos elementos idénticos,
+con más de una compactación intermedia. Pasan 13 tests de
+`tests/sdk-compaction.test.ts` y tipos de tooling. Esta prueba usa un modelo
+simulado y no explica por sí sola la elección live de una herramienta no
+registrada; no se introdujo un cambio especulativo del runtime. La próxima
+investigación necesita evidencia del catálogo efectivo en el límite del
+proveedor, conservando la política de telemetría sin prompts ni secretos.
+
+El driver ahora instrumenta el límite de entrada al adapter, por dentro de los
+middlewares del controlador y presupuesto. `modelCatalog` conserva por llamada
+los nombres locales ofrecidos y, para cada llamada devuelta, si fue ofrecida y
+si pertenece al registro del driver. Los nombres externos se sustituyen por
+`other-tool`; no se guardan argumentos, esquemas, mensajes ni errores crudos.
+La evidencia se limita a 100 solicitudes y 64 llamadas devueltas por solicitud,
+con contadores explícitos de omisiones. Una interrupción conserva
+`completed: false` y no modifica el error ni los eventos.
+
+Pasan 12 tests del driver y observador, y tipos de tooling. La prueba de orden
+demuestra que observa el catálogo restringido por política, no sólo el inicial.
+Esto mide el contrato neutral que recibe el adapter; no captura los bytes HTTP
+ni prueba qué catálogo vio el servicio remoto. Las llamadas sintéticas del
+controlador no llegan al adapter y no forman parte de esta medición. Todavía
+no hay una nueva muestra live con esta instrumentación; no se atribuye una
+causa al fallo anterior ni se declara mejoría de entrega.
+
+La siguiente muestra, con catálogo completo y observación en el adapter, quedó
+[predeclarada](evidence/ga-catalog-observed-plan-2026-09-19.json), pero **no se
+inició**: la revisión automática de permisos rechazó el envío externo por no
+constar autorización específica del contenido y destino. Se solicitó permiso
+para el caso público, fragmentos del repositorio de evaluación e instrucciones
+del Harness hacia Qwen internacional, con una ejecución por candidato y los
+límites originales. No se reintentó por otra vía.
+[Estado separado de la evidencia live](evidence/ga-catalog-observed-status-2026-09-19.json).
+La validación local conjunta de observación, compactación y driver pasa 25 tests.
+
+## Integración de la corrección publicada del SDK
+
+Tras la confirmación del operador, la consulta pública con `bun info` verifica
+Core 1.22.0, OpenAI 0.13.3 y Qwen 0.14.3. El Harness fija ahora esas versiones
+en package.json y bun.lock, incluido el override de Core. Agents 1.8.0,
+Gemini 0.12.1 y Meta 0.2.6 siguen siendo las versiones consultadas. Se actualizó
+la documentación del lote y su comprobación exacta; los relatos anteriores
+sobre OpenAI 0.13.2 se conservan como evidencia histórica.
+
+El probe `validate-openai-stream-usage.ts` pasa con el paquete publicado:
+error incomplete_arguments, cero llamadas de herramienta emitidas y uso
+12/8 conservado. No usa red de proveedores. Pasan 559 tests, tipos de runtime
+y tooling, build y smoke del tarball instalado. El primer intento de smoke
+falló por EPERM del directorio temporal; la repetición con permisos terminó
+correctamente. Esto cierra la dependencia del parche local para esta aceptación,
+no acredita por sí solo provenance del SDK ni una nueva certificación live.
+
+La autorización pendiente de Qwen y la de push del Harness siguen siendo
+fronteras independientes. La confirmación de publicación del SDK no se tomó
+como autorización de esas operaciones. GA permanece NO-GO por los pendientes
+de entrega fiable y certificación final.
+
+La aceptación integrada también pasa con `runHarness` del workspace y el
+adapter del registry: el run falla sin ejecutar herramientas y contabiliza
+12 tokens de entrada y 8 de salida, con usageComplete=true. Se incorporó
+como regresión automática en `tests/model-budget-error-usage.test.ts`; sus
+10 casos y tipos de tooling pasan. La prueba inyecta SSE local, sin llamadas
+a proveedores. [Versiones, hashes y límites](evidence/ga-published-sdk-2026-09-19.json).
+
+## Prueba Qwen autorizada con dependencias publicadas
+
+Tras autorización explícita, la muestra con catálogo completo terminó con
+Harness 0/1 y mini-SWE-agent 1/1, grading y accounting completos. Harness
+consumió 64.624 tokens de entrada y 915 de salida en nueve llamadas; el control
+20.189 y 597 en ocho. El Harness terminó por WORK_TOKEN_BUDGET, sin candidato
+ni verificación. Las nueve solicitudes conservaron las 13 herramientas y un
+mensaje de sistema; todas las llamadas devueltas estaban ofrecidas y registradas.
+No hubo omisiones de observación. Esta muestra no reproduce el fallo previo
+de herramienta desconocida y no demuestra la causa de ese fallo histórico.
+
+Se conserva la [evidencia completa saneada](evidence/ga-catalog-observed-2026-09-19.json).
+El cambio conjunto de dependencias y observación impide atribuir diferencias a
+una sola variable. Es una tarea conocida de desarrollo, no holdout ni aceptación
+GA. Los límites y el grader no cambiaron. La autorización de la prueba Qwen no
+se extiende al push ni a publicación del Harness.
+
+El fingerprint del último error coincide exactamente con el mensaje constante
+REPAIR_PLAN_REQUIRED: el modelo intentó una edición sin registrar antes el
+verificador. La edición se rechazó y el siguiente turno quedó bloqueado por
+el presupuesto de trabajo. La frontera a investigar es la planificación
+tardía y la reserva de recuperación; esta evidencia no justifica retirar la
+precondición de verificación ni ampliar los límites para obtener un aprobado.
+
+## Reserva para recuperar una edición rechazada sin plan
+
+La transición observada se reprodujo sin red: tras rechazar una edición sin
+verificador, el controlador ofrecía sólo repair_plan/read_task, pero el budget
+no consideraba esa obligación como cierre. Con el 70% ya consumido, la llamada
+fallaba antes de poder registrar el plan. La nueva regresión falló antes del
+arreglo y pasa después, también restaurando el estado.
+
+La obligación planRequired habilita ahora la reserva existente para los dos
+intentos restringidos de planificación. Se mantiene la prohibición de ejecutar
+la edición, el límite durable de intentos y el techo total de tokens; una
+segunda prueba confirma rechazo al alcanzar ese techo. El fingerprint de
+política pasa a repair-v3-reserved-plan-recovery para distinguir los checkpoints
+del contrato anterior. No se incrementaron los límites del benchmark.
+
+Pasan 562 tests tras la corrección de reserva, además de tipos. Esta aceptación
+es determinística: todavía no demuestra una mejora de entrega live.
+
+La repetición Qwen con la corrección terminó: Harness 0/1 y control 1/1,
+grading y accounting completos. Harness consumió 22.916 tokens de entrada y
+949 de salida en cinco llamadas. Intentó editar sin plan en el tercer turno;
+los dos turnos de selección explícita ofrecieron repair_plan/read_task pero
+no devolvieron llamadas desde el adapter. El read_task observado en el cuarto
+turno es el recordatorio sintético del controlador, no una llamada de Qwen.
+No hubo candidato ni verificación. El fallo ocurrió antes de alcanzar la
+reserva, por lo que esta muestra no evalúa su eficacia live.
+[Evidencia íntegra saneada](evidence/ga-plan-reserve-2026-09-19.json).
+
+Una nueva prueba sin red verifica el cuerpo Chat serializado por Qwen 0.14.3
+con el controlador real: tool_choice selecciona explícitamente repair_plan,
+enable_thinking=false y el catálogo contiene sólo repair_plan/read_task.
+Pasan la prueba y tipos de tooling. Esta comprobación verifica serialización
+local; no acredita los bytes de la solicitud live histórica ni identifica la
+causa de la ausencia de llamadas en la respuesta remota. No se relajó la
+verificación ni se aumentaron intentos o presupuestos.
+
+## Pérdida de llamadas Qwen al finalizar con stop
+
+Un diagnóstico live mínimo con fixture sintético aisló una diferencia entre
+servicio y adapter. Con selección explícita repair_plan, el servicio devolvió
+25 fragmentos tool_calls y finish_reason=stop; Qwen 0.14.3 emitió cero llamadas.
+Con selección required devolvió 24 fragmentos y finish_reason=tool_calls, y el
+adapter sí emitió repair_plan. Ninguna herramienta se ejecutó.
+[Evidencia saneada](evidence/ga-qwen-tool-choice-2026-09-19.json).
+
+La inspección del adapter confirma que sólo vacía los buffers cuando el motivo
+es tool_calls. `bun run scripts/validate-qwen-terminal-tool-call.ts` reproduce
+sin red la pérdida con JSON completo y final stop: exit 1, cero llamadas, uso
+12/8 conservado. Este defecto es del adapter; aún falta corregirlo y validar
+que length, streams truncados y argumentos inválidos nunca habiliten ejecución.
+No se infieren los bytes de las respuestas del benchmark a partir del fixture.
+
+La corrección está preparada en la rama local SDK
+`feat/qwen-terminal-tool-calls`, sobre el commit posterior al release
+identificado en [su expediente](../../upstream-fixes/qwen-terminal-tool-calls/README.md).
+Pasan 209 tests Qwen, 2.424 tests SDK, tipos, docs y build. El adapter compilado
+pasa el mismo fixture que falla en Qwen 0.14.3: una llamada emitida, finish
+normalizado tool-calls y uso 12/8. El parche valida el lote completo antes de
+emitir efectos; casos truncados o inválidos se rechazan. Incluye changeset y
+el mínimo Core 1.22.0. No está publicado ni instalado en el Harness; no se
+hizo push. La prueba del build local no acredita aún el paquete publicado.
+
+La corrección Qwen quedó en el commit local SDK `35e2bb4`. Pasó el smoke de
+consumidores instalados (51 entrypoints y golden path determinístico con Bun
+1.4.2). El diagnóstico live sintético con el adapter compilado recupera ahora
+repair_plan tanto con selección explícita y final stop como con required y
+final tool_calls, conservando uso.
+[Evidencia posterior](evidence/ga-qwen-tool-choice-patched-2026-09-19.json).
+No ejecutó herramientas ni evaluó una reparación; falta integrar el paquete
+publicado y repetir la aceptación del Harness. No se hizo push ni publicación.
+
+## Reparación completa con tarball Qwen corregido
+
+Una copia aislada del Harness instaló el tarball local construido del commit
+SDK 35e2bb4, conservando el catálogo, política, tarea, límites y grader. Los
+hashes de fuente congelados sólo difieren del baseline en package.json y
+bun.lock; el hash SHA-256 del tarball queda ligado al plan y resultado.
+
+Resultado: **Harness 1/1 y control 1/1**, grading y accounting completos.
+Harness registró plan, verificó e importó el parche y pasó el evaluador
+independiente, con 71.480 tokens de entrada y 1.252 de salida. El control
+consumió 19.344 y 545. Se preservan todas las muestras y fallos anteriores.
+[Evidencia](evidence/ga-qwen-patched-package-2026-09-19.json).
+
+Es una sola tarea conocida de desarrollo y un paquete local con el mismo
+número de versión que el publicado, distinguido por hash; no constituye
+certificación del registry, holdout ni prueba estadística de fiabilidad.
+El Harness principal sigue fijando Qwen 0.14.3 publicado. El siguiente gate
+es revisar/publicar la corrección SDK, integrarla por versión y verificar la
+cohorte representativa y holdout con el candidato final. No se hizo push ni
+se promovió el ledger a GA.
+
+La revisión final añadió una regresión de error explícito tardío del proveedor:
+el lote ya completo no debe emitirse si después llega ese error. Falló antes y
+pasó después. El commit local SDK `c850ae0` lo rechaza conservando uso reportado
+sin propagar detalles crudos. Pasan 2.425 tests, tipos, docs, build y aceptación
+offline del adapter compilado. La evidencia live y de consumidores anterior
+sigue vinculada a `35e2bb4`; no se atribuye al nuevo commit. El parche y el
+texto de PR quedaron actualizados; no se hizo push.
+
+El smoke de consumidores instalados se repitió y pasó sobre el commit final
+SDK c850ae0 (51 entrypoints, Bun 1.4.2). La evidencia live sigue ligada al
+commit anterior. Se solicitó autorización específica para subir la rama SDK
+y abrir un PR; sigue pendiente. No hay publicación del parche Qwen ni se
+puede certificar el candidato final del Harness contra esa versión publicada.
+
+Por autorización explícita del operador, se ejecutó version-packages: Qwen
+0.14.4 y changelog preparados, Core/SDK sin bump. Se incorporó main, resolviendo
+sólo un comentario del gate de rangos, y pasaron de nuevo 2.425 tests, tipos,
+docs, build y consumidores instalados (51 entrypoints). La rama se subió y
+la [PR #103](https://github.com/Zhivex/zhivex-ai-sdk/pull/103) quedó abierta
+sin draft, head e4cc9eb3e8218b604f58eccc3a8830f24e9fa71b. CI y CodeQL estaban
+en curso al comprobarla. No se hizo merge ni publicación.
+
+## Integración del Qwen publicado y nueva muestra
+
+La PR #103 fue mergeada externamente. CI, CodeQL y consumidores Node pasaron;
+provider conformance provenance quedó skipped. El release
+[35477096556](https://github.com/Zhivex/zhivex-ai-sdk/actions/runs/35477096556)
+terminó success y el registry publica Qwen 0.14.4. El Harness ahora fija esa
+versión, incluida la documentación y el gate del lote. La aceptación offline
+de terminal-stop pasa contra el paquete instalado. Pasan 563 tests, tipos,
+docs, contrato de preparación y smoke del paquete Harness instalado.
+
+La nueva comparación live produjo **Harness 0/1 y control 1/1**, con grading y
+accounting completos. Harness terminó completed tras cinco llamadas, sin plan,
+candidato, verificación ni importación; el grader rechazó la entrega. Consumió
+32.073 tokens de entrada y 281 de salida. El control resolvió con 26.718 y 820.
+[Evidencia publicada](evidence/ga-qwen-published-2026-09-19.json).
+
+Se conserva el éxito anterior con tarball local, sin sustituir este fallo.
+El defecto del adapter está corregido, pero queda una frontera del Harness:
+la obligación actual sólo nace al registrar un plan o intentar/realizar una
+edición; una finalización temprana desde exploración puede quedar completed
+sin entregar una reparación. Se requiere un contrato explícito de entrega
+para tareas que la exijan, preservando usos legítimos de inspección sin edición.
+No se declara GA ni se atribuye causalidad de la variación a las dependencias.
+
+## Contrato explícito de entrega verificada
+
+Se añadió requireVerifiedDelivery, false por defecto y válido sólo con perfil
+repair. Al activarlo, la obligación nace antes del primer plan o edición; una
+finalización desde exploración no puede quedar completed sin entrega verificada.
+Persiste en el controlador y se liga al fingerprint del run. No abre por sí sola
+la reserva ni añade aprobaciones, intentos o presupuesto. El recordatorio único
+y la obligación de verificación existentes se mantienen. El driver SWE-bench
+lo activa porque su contrato exige reparación e importación. Inspección sin
+edición sigue disponible dejando false.
+
+La regresión falló antes y pasa después: salida y checkpoint quedan failed
+cuando el modelo finaliza sin reparar, incluso conservando la obligación al
+restaurar con opciones por defecto. Pasan 566 tests de la suite y una prueba
+adicional de validación/fingerprint; las cuatro pruebas focales, tipos, docs,
+contratos y paquete instalado pasan. Se regeneró el snapshot de firmas por la
+nueva opción pública y sus tipos transitivos.
+[Evidencia por hash](evidence/ga-required-delivery-2026-09-19.json).
+Esto elimina un falso completed; todavía no demuestra mayor resolución live.
+
+La comparación con entrega requerida terminó con **Harness 0/1 y control
+1/1**, grading y accounting completos. Harness quedó failed por
+INPUT_TOKEN_BUDGET tras 96.896 tokens de entrada y 1.330 de salida en trece
+llamadas facturadas. Registró un plan, intentó editar y verificar, pero la
+verificación produjo error y la recuperación no terminó. Dos lecturas fueron
+rechazadas por REPAIR_PLAN_SCOPE y una nueva edición por REPAIR_PLAN_REQUIRED.
+El control resolvió con 16.988 tokens de entrada y 544 de salida.
+[Evidencia íntegra saneada](evidence/ga-required-delivery-live-2026-09-19.json).
+
+Esta muestra no terminó con respuesta final desde exploración: no prueba
+causalmente la eficacia del nuevo gate, aunque conserva correctamente el fallo.
+La regresión determinística sigue siendo la evidencia del cierre del falso
+completed. El error inicial de verificación sólo tiene un fingerprint genérico
+en esta telemetría; no se atribuye su causa sin evidencia adicional. El siguiente
+diagnóstico debe separar fallo del comando, rechazo por deriva del parche y
+error de importación para enfocar la recuperación, sin publicar logs crudos.
+
+### Offline verifier diagnosis and feedback regression
+
+The required-delivery development run failed its verifier with exit code 1. The fixed `TerminalVerificationFailure` message hashes exactly to `d22955ecb1810cd7e960e732636eec570e04ab3b19eab276ebf23e2096a3c941`. Inspection of the full turn 9 also confirms existing structured evidence: exit 1, no timeout, failed verification, and 436 output characters. A later null-output projection does not establish missing model feedback. The underlying reason for verifier failure remains unknown; this is not evidence of a defective repair versus a defective verifier or environment.
+
+Telemetry now recognizes only the exact fixed failure template and emits a bounded numeric exit code even for message-only serialized exceptions. It exports no raw message or verifier output. A regression checks strict and repair recovery at the next model request boundary, in addition to persisted state: bounded verifier diagnostics reach the model while external telemetry omits their content. All 18 focused tests and runtime/tooling typechecks passed. No new provider call, benchmark rerun, or change to prior failed samples was made. Evidence: `docs/reports/evidence/ga-verifier-failure-identification-2026-09-19.json`. GA remains unproven.
+
+### Validation follow-up and one bounded diagnostic pair
+
+The complete local suite passed 568 tests across 68 files before the verifier-output marker projection was added. After that telemetry-only change, 19 focused tests and the tooling typecheck passed. Documentation, preparation contract and five local security probes passed. The contract still reports one open GA blocker. Source hashes and check boundaries are retained in `evidence/ga-local-validation-followup-2026-09-19.json`.
+
+The predeclared `ga-verifier-hints` pair is complete: Harness 0/1 versus control 1/1, with complete usage and grading. Harness used 94,600 input / 1,580 output tokens and stopped at INPUT_TOKEN_BUDGET. Its verifier returned exit 1 without a timeout at turn 13; no allowed Python exception marker was observed. The control used 27,051 input / 673 output tokens. No repair, prompt, model or budget setting was changed for this run. There was no repeat after completion.
+
+This result does not identify the cause of verifier failure. The model had already spent turns on a missing path, a tool-input schema error and two plan-scope rejections before the edit. These are observed costs, not proof of the verifier's cause. A further diagnosis needs the exact approved verifier and bounded local failure details at the execution boundary; widening exception-label guesses or repeating the same pair would be insufficient. The temporary run state was intentionally cleaned by the runner, so the previous raw failure output cannot be recovered from retained samples. Evidence: `evidence/ga-verifier-hints-plan-2026-09-19.json` and `evidence/ga-verifier-hints-live-2026-09-19.json`. This remains development evidence and does not satisfy representative or fresh-holdout acceptance.
+
+### Private execution diagnosis: unavailable runner and incorrect candidate scope
+
+A single predeclared Harness-only diagnostic retained at most three verifier failure records in a private local temporary directory. The driver used the same Qwen model and limits; no control or acceptance evaluation was claimed. It stopped at INPUT_TOKEN_BUDGET (92,923 input / 1,028 output tokens). The captured approved verifier used `python -m pytest`; Python reported that pytest was not installed. This directly establishes the verifier infrastructure failure for this diagnostic, not every previous sample. The benchmark prompt had recommended pytest without checking availability. That recommendation is now replaced by discovering the project runner and available dependencies, or using a self-contained assertion; no dependencies or budget limits were changed.
+
+Retained environment metadata also reproduced a candidate-capture defect: the actual run was unscoped, but the final diagnostic capture acquired config.scope and therefore inspected a different, empty snapshot. Candidate capture now uses the actual state.runId and state.scope. A real filesystem/OCI-session regression demonstrates that the configuration scope is empty while the run scope contains its edit. Historical candidatePresent=false values therefore cannot prove absence of a candidate. Imported host patches and official task failures remain unchanged.
+
+The private observer preserves approval metadata, original error identity and normal execution even if its callback throws. Its callback is disabled by default and does not add raw records to exported benchmark results. Thirteen focused tests and the tooling typecheck pass. Evidence: `evidence/ga-private-verifier-plan-2026-09-19.json` and `evidence/ga-private-verifier-root-cause-2026-09-19.json`. The retained private snapshot now permits offline candidate diagnosis without another model request. No live effectiveness claim is made for either correction.
+
+### Retained candidate passes official grading without another model call
+
+The corrected scope-aware capture recovered one updated file, `django/db/backends/postgresql/client.py`, from the prior private diagnostic. Capture validated the retained execution binding and content digests. The existing candidate exporter reconstructed the diff in a separate disposable checkout and verified its base digests; no protected files changed. The pinned official evaluator completed with `resolved: true` for patch SHA-256 `15989da845ac1f766848c5c2e153296d7eef926a752ec658548702ac0e028bc7`. No model request or provider credential was involved in this grading.
+
+This distinguishes a correct retained repair from unsuccessful delivery: the original verifier required unavailable pytest, import did not succeed, and the original run remains failed at its input budget. It does not demonstrate that the corrected prompt now completes the entire live flow. Historical failed samples remain unchanged. The current complete local suite passes 571 tests across 70 files. Evidence: `evidence/ga-retained-candidate-grading-2026-09-19.json`. The next live check should test the corrected verifier-discovery instruction and successful verified import under the unchanged limits; GA representative and fresh-holdout gates remain open.
+
+### Verifier-discovery instruction: complete matched pair, delivery still fails
+
+The single predeclared `ga-verifier-discovery` pair completed with full grading and usage: Harness delivered 0/1 and control delivered 1/1. Harness consumed 95,888 input / 1,241 output tokens. The corrected capture now finds its candidate and the official evaluator resolves that candidate, but neither verifier succeeded (exit codes 1 and 2), no patch was imported, and the run reached INPUT_TOKEN_BUDGET. The discovery instruction alone therefore does not establish reliable verification and delivery. No further retry or budget increase was made.
+
+The scope correction has direct live evidence; delivery remains blocked. The next improvement must address actual verifier selection/execution failures rather than treating a correct retained patch as successful delivery. Source-bound samples and the unchanged-budget plan are retained in `evidence/ga-verifier-discovery-live-2026-09-19.json` and `evidence/ga-verifier-discovery-plan-2026-09-19.json`. This result does not alter any earlier sample or satisfy GA acceptance.
+
+The current installed-package smoke also passed for `@zhivex-ai/harness@1.0.0-rc.14` after the verifier-discovery pair. No package publication was performed.

@@ -5,11 +5,15 @@ const knownTools = new Set(["read_task", "repair_plan", "mutation_audit", "list_
 const safeToolName = (name: string) => knownTools.has(name) ? name : "other-tool";
 export const sanitizeOperationalError = (error: unknown) => {
   const normalized = normalizeHarnessError(error);
-  const chain: { validationCode: "TOOL_INPUT_VALIDATION_ERROR" | null; fingerprint: string; reason: string | null; providerReason: string | null; validationIssues: { code: string; path: (string | number)[] }[]; status: number | null; errorClass: string | null; providerHints: string[] }[] = [];
+  const chain: { validationCode: "TOOL_INPUT_VALIDATION_ERROR" | null; verifierExitCode: number | null; fingerprint: string; reason: string | null; providerReason: string | null; validationIssues: { code: string; path: (string | number)[] }[]; status: number | null; errorClass: string | null; providerHints: string[] }[] = [];
   let current = error;
   for (let depth = 0; current && typeof current === "object" && depth < 5; depth++) {
     const value = current as { message?: unknown; cause?: unknown; reason?: unknown; status?: unknown; statusCode?: unknown; constructor?: { name?: string }; responseBody?: unknown };
     const text = typeof value.message === "string" ? value.message : "";
+    // The SDK may serialize an exception to message-only. Recognize only our
+    // exact fixed template, without exporting any command output or suffix.
+    const verifierMatch = /^The approved verifier failed with exit code ([1-9]\d{0,2}); the host workspace was not changed\.$/.exec(text);
+    const verifierExitCode = verifierMatch && Number(verifierMatch[1]) <= 255 ? Number(verifierMatch[1]) : null;
     const reason = ["lease", "snapshot", "permission", "timeout", "budget", "symlink", "output limit", "tool call", "read-only", "invalid input", "not registered", "cannot satisfy", "compaction", "must be", "enoent", "no such file", "not a directory", "is a directory", "invalid line range", "protected", "not unique", "no tool output", "previous_response_id", "function_call", "invalid_request_error", "context_length_exceeded", "rate limit", "unauthorized", "tool_calls", "tool call id", "undeclared", "not allowlisted"].find((key) => text.toLowerCase().includes(key)) ?? null;
     const providerReason = typeof value.reason === "string" && ["empty_arguments", "invalid_json", "arguments_too_large", "incomplete_arguments", "inconsistent_metadata", "response_failed", "response_incomplete", "stream_truncated"].includes(value.reason) ? value.reason : null;
     const validationIssues: { code: string; path: (string | number)[] }[] = [];
@@ -32,7 +36,7 @@ export const sanitizeOperationalError = (error: unknown) => {
     const errorClass = name && ["ZodError", "AgentPolicyTimeoutError", "ConfigurationError", "FileChangedWhileReadingError", "FileSizeLimitError", "GuardrailTriggeredError", "StreamBufferOverflowError", "ToolExecutionSuspendedError", "ToolExecutionTimeoutError", "UnsafeFileTypeError", "UnsupportedFeatureError", "ProviderResponseTooLargeError", "ProviderHTTPError", "ValidationError", "ConflictError", "TypeError", "HarnessExecutionError", "HarnessWorkspaceError", "ProviderToolCallError", "ParseError", "SyntaxError", "AbortError", "TimeoutError", "Error", "Object"].includes(name) ? name : null;
     const body = typeof value.responseBody === "string" ? value.responseBody.toLowerCase() : "";
     const providerHints = ["reasoning", "encrypted", "following", "preceding", "without", "required", "function_call", "function_call_output", "no tool output", "not found", "invalid", "duplicate", "message", "assistant", "input", "signature", "store", "unsupported", "too long"].filter((hint) => body.includes(hint));
-    chain.push({ validationCode: schemaError ? "TOOL_INPUT_VALIDATION_ERROR" : null, providerReason, validationIssues, status, errorClass, providerHints, fingerprint: createHash("sha256").update(text).digest("hex"), reason });
+    chain.push({ validationCode: schemaError ? "TOOL_INPUT_VALIDATION_ERROR" : null, verifierExitCode, providerReason, validationIssues, status, errorClass, providerHints, fingerprint: createHash("sha256").update(text).digest("hex"), reason });
     current = value.cause;
   }
   const failureType = chain.some(c => c.validationCode) ? "schema" : chain.some(c => c.reason === "budget") ? "budget"
@@ -47,9 +51,16 @@ const commandOutcome = (name: string, value: unknown) => {
   if (!value || typeof value !== "object") return {};
   const outer = value as Record<string, unknown>;
   const data = outer.verification && typeof outer.verification === "object" ? outer.verification as Record<string, unknown> : outer;
+  const diagnostics = data.diagnostics && typeof data.diagnostics === "object" ? data.diagnostics as Record<string, unknown> : data;
+  // These are observed output markers, not trusted diagnoses or instructions.
+  // Retain only fixed labels; never exception messages, paths or module names.
+  const output = [diagnostics.stdout, diagnostics.stderr].filter((part): part is string => typeof part === "string")
+    .map(part => part.slice(0, 2048) + "\n" + part.slice(-2048)).join("\n");
+  const verificationHints = name.startsWith("verify_") ? ["ModuleNotFoundError", "ImportError", "AssertionError", "SyntaxError", "NameError", "TypeError", "AttributeError", "FileNotFoundError"]
+    .filter(label => new RegExp(`(?:^|\\n)${label}:`).test(output)) : [];
   const phases = data.phaseLatencies && typeof data.phaseLatencies === "object" ? Object.fromEntries(Object.entries(data.phaseLatencies).filter(([key, value]) =>
     ["hostSynchronizationMs", "sessionCreationMs", "commandAndAttestationMs", "workspaceExportMs", "totalMs"].includes(key) && typeof value === "number" && Number.isFinite(value) && value >= 0)) : undefined;
-  return { ...(phases ? { phaseLatencies: phases } : {}), ...(Number.isSafeInteger(data.exitCode) ? { exitCode: data.exitCode } : {}),
+  return { ...(verificationHints.length ? { verificationHints } : {}), ...(phases ? { phaseLatencies: phases } : {}), ...(Number.isSafeInteger(data.exitCode) ? { exitCode: data.exitCode } : {}),
     ...(typeof data.timedOut === "boolean" ? { timedOut: data.timedOut } : {}),
     ...(typeof data.cancelled === "boolean" ? { cancelled: data.cancelled } : {}),
     ...(typeof data.outputLimitExceeded === "boolean" ? { outputLimitExceeded: data.outputLimitExceeded } : {}),

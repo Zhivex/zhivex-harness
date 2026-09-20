@@ -112,15 +112,15 @@
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.8.0",
-    "@zhivex-ai/core": "1.20.0",
+    "@zhivex-ai/core": "1.22.0",
     "@zhivex-ai/gemini": "0.12.1",
     "@zhivex-ai/meta": "0.2.6",
-    "@zhivex-ai/openai": "0.13.2",
-    "@zhivex-ai/qwen": "0.14.2",
+    "@zhivex-ai/openai": "0.13.3",
+    "@zhivex-ai/qwen": "0.14.4",
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.20.0"
+    "@zhivex-ai/core": "1.22.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/server": "2.0.0",

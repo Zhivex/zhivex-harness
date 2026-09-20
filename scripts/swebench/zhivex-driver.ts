@@ -1,4 +1,4 @@
-import { captureCandidate } from "./candidate.js";
+import { captureCandidate, captureRunCandidate } from "./candidate.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -8,8 +8,13 @@ import type { AgentRunOutput, AgentRunState, AgentStep, ToolSet } from "@zhivex-
 import { createHarness, runHarness, renderHarnessInstructions, type HarnessRunDiagnostics } from "../../src/harness.js";
 import type { HarnessExecutionSession } from "../../src/execution-environment.js";
 import { selectAndInstrumentTools } from "../time-to-safe-fix-efficiency.js";
+import { wrapLanguageModel } from "@zhivex-ai/core";
+import { createCatalogObserver } from "./model-catalog.js";
+import { observeVerifierFailures, type VerifierFailureObserver } from "./verifier-observer.js";
 
 import { projectState, sanitizeOperationalError } from "./telemetry.js";
+
+export const SWE_BENCH_VERIFICATION_INSTRUCTIONS = "\nSWE-bench evaluation: source is in /workspace. Discover the project's documented test runner and confirm its dependencies are available before committing to a verifier. Do not assume pytest is installed. Use the existing project runner or a self-contained assertion with available dependencies; do not install new dependencies. The independent evaluator runs after you finish. Do not alter tests or project configuration. Inspect the patch, then use verify_and_apply_environment_patch with a focused verifier that asserts the reported behavior and related variants. Successful verification is required for import. No hidden evaluator tests are available.";
 
 export const requestSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -31,7 +36,7 @@ export const requestSchema = z.strictObject({
   })
 });
 
-export async function runDriver(raw: unknown, preflight = false) {
+export async function runDriver(raw: unknown, preflight = false, onVerifierFailure?: VerifierFailureObserver) {
   const input = requestSchema.parse(raw);
   let diagnostics: HarnessRunDiagnostics | undefined;
   let candidate: Awaited<ReturnType<typeof captureCandidate>> | undefined;
@@ -54,10 +59,11 @@ export async function runDriver(raw: unknown, preflight = false) {
   const names = ["read_task", "repair_plan", "mutation_audit", "list_files", "read_files", "search_files", "search_many", "apply_reviewed_replacement", "apply_reviewed_edits", "run_environment_shell",
     "run_environment_command", "inspect_environment_patch", "verify_and_apply_environment_patch"];
   let measured: ReturnType<typeof selectAndInstrumentTools> | undefined;
+  const catalog = createCatalogObserver(names);
   try {
     harness = await createHarness({
       workspace: input.workspace, stateDirectory: state, provider: input.provider, model: input.model,
-      store: createInMemoryAgentRunStore(), projectContext: false, agentProfile: "repair",
+      store: createInMemoryAgentRunStore(), projectContext: false, agentProfile: "repair", requireVerifiedDelivery: true,
       onTelemetryEvent: (event) => {
         if (event.type === "guardrail-triggered") {
           const limit = event.metadata?.budgetLimit;
@@ -77,10 +83,11 @@ export async function runDriver(raw: unknown, preflight = false) {
       timeoutMs: input.limits.timeoutSeconds * 1000, subagentProfiles: [], env: process.env
     });
     measured = selectAndInstrumentTools(harness.agent.tools as ToolSet, names);
-    harness.agent.tools = measured.tools;
+    harness.agent.tools = observeVerifierFailures(measured.tools, onVerifierFailure);
+    harness.agent.model = wrapLanguageModel(harness.agent.model, [catalog.middleware]);
     harness.agent.instructions = renderHarnessInstructions(names);
     harness.agent.instructions += "\nRepair progress policy: after 70% of either cumulative token budget is used, repository-wide discovery pauses. Reserve the remaining budget for focused reads, reproduction, repair, checks and verified import. Unchanged results from a third identical read/search are omitted. Adjust scope when instructed; never skip verification to fit the budget.";
-    harness.agent.instructions += "\nSWE-bench evaluation: source is in /workspace. Use python -m pytest or project tests for your own checks. The independent evaluator runs after you finish. Do not alter tests or project configuration. Inspect the patch, then use verify_and_apply_environment_patch with a focused verifier that asserts the reported behavior and related variants. Successful verification is required for import. No hidden evaluator tests are available.";
+    harness.agent.instructions += SWE_BENCH_VERIFICATION_INSTRUCTIONS;
     if (preflight) {
       phase = "preflight";
       const session = await harness.executionEnvironment!.acquire({ runId: `swebench-${input.runToken}`, scope: harness.config.scope });
@@ -123,15 +130,9 @@ export async function runDriver(raw: unknown, preflight = false) {
   } finally {
     if (harness && !lastState) lastState = await Promise.resolve(harness.store.load(`swebench-${input.runToken}`, harness.config.scope)).catch(() => undefined) ?? undefined;
     if (harness?.executionEnvironment && !preflight && lastState) {
-      let session: HarnessExecutionSession | undefined;
       try {
-        session = await harness.executionEnvironment.acquire({ runId: `swebench-${input.runToken}`, scope: harness.config.scope }) as HarnessExecutionSession;
-        candidate = await captureCandidate(session);
+        candidate = await captureRunCandidate(harness.executionEnvironment, lastState);
       } catch (error) { candidateCaptureFailure = sanitizeOperationalError(error); }
-      finally {
-        try { await session?.release?.({ status: "completed" }); }
-        catch (error) { candidateCaptureFailure ??= sanitizeOperationalError(error); }
-      }
     }
     await harness?.close().catch(error => { thrownDiagnostic ??= sanitizeOperationalError(error); failure ??= "CLEANUP_FAILED"; });
     if (!managedState) await rm(state, { recursive: true, force: true }).catch(error => { thrownDiagnostic ??= sanitizeOperationalError(error); failure ??= "CLEANUP_FAILED"; });
@@ -141,6 +142,7 @@ export async function runDriver(raw: unknown, preflight = false) {
   return {
     candidateSnapshot: candidate ?? null, candidateCaptureFailure: candidateCaptureFailure ?? null,
     modelTimings: diagnostics?.modelTimings ?? [],
+    modelCatalog: catalog.snapshot(),
     stageTimings,
     approvalTimings: diagnostics?.approvalTimings ?? [],
     toolTimings: [...(measured?.timings.entries() ?? [])].map(([name, timing]) => ({ name, ...timing })),

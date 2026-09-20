@@ -135,7 +135,8 @@ const createHarnessBinding = (
   fingerprint: `sha256:${createHash("sha256")
     .update(JSON.stringify({
       agentProfile: config.agentProfile,
-      runtimePolicy: "repair-v2-durable-closure",
+      runtimePolicy: "repair-v4-explicit-delivery",
+      requireVerifiedDelivery: config.requireVerifiedDelivery,
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
       toolContractVersion: TOOL_CONTRACT_VERSION,
@@ -1452,6 +1453,7 @@ export const runHarness = async (
     const limits = { inputTokens: harness.config.budget.maxInputTokens, outputTokens: harness.config.budget.maxOutputTokens };
     const metadata = ("state" in input ? input.state.metadata : input.metadata) ?? {};
     policyController = createRepairController(metadata, harness.config.execution.backend === "oci", {
+      requireVerifiedDelivery: harness.config.requireVerifiedDelivery,
       progressContext: () => policyProgress!.workingContext()
     });
     const savedBudget = metadata[MODEL_BUDGET_KEY] ?? ("state" in input ? {
