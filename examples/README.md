@@ -23,4 +23,4 @@ To continue in your actual project, use the [global installation and credential 
 - [MCP configuration](./mcp-config.json): optional bounded network MCP integration; see [extensibility](../docs/EXTENSIBILITY.md).
 - [Change envelope input](./change-envelope-input.json) and [patch](./change.patch): illustrative data for [change envelopes](../docs/CHANGE_ENVELOPES.md). Digests and timestamps are sample evidence, not certification of a current workspace; generate fresh evidence for real changes.
 
-Earlier versions and RC evidence belong to the [changelog](../CHANGELOG.md) and [historical reports](../docs/reports/README.md), not the first-run installation path.
+Earlier versions and RC evidence belong to the [changelog](../CHANGELOG.md) and [historical reports](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md), not the first-run installation path.

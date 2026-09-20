@@ -1,5 +1,10 @@
 # Validación externa automatizada de GA — 19 de septiembre de 2026
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 **Veredicto: NO-GO para RC.14 / promoción a 1.0.0.** Se reproduce un bloqueo
 funcional de los flujos de varios turnos de Meta y OpenAI con el presupuesto
 predeterminado. La suite existente pasa, pero no detecta esta combinación.

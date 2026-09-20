@@ -54,14 +54,14 @@
     "SECURITY.md",
     "SUPPORT.md",
     "LICENSE",
-    "docs",
+    "docs/*.md",
+    "docs/*.json",
     "contracts",
     "examples",
     "fixtures",
     "evaluations/*.json",
     "evaluations/*.jsonl",
-    "benchmarks/README.md",
-    "benchmarks/baselines/*.json"
+    "benchmarks/README.md"
   ],
   "scripts": {
     "dev": "bun run src/cli.ts",

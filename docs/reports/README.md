@@ -2,6 +2,12 @@
 
 These reports preserve findings and measurements from specific checkouts and runs. Read each report's scope and limitations before reusing its claims. Local remediation does not certify a new published artifact or update an earlier model score. Maintained behavior is documented in the [documentation index](../README.md).
 
+These source archives and their JSON evidence are excluded from the installed
+package. Preserve failed attempts and source bindings here; user guides link to
+this archive rather than bundling development journals. Personal paths in copied
+upstream tracebacks are anonymized in this repository copy; evaluation outcomes
+and recorded artifact hashes are unchanged.
+
 ## Audits and remediation
 
 | Snapshot | Follow-up |

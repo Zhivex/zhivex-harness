@@ -1,5 +1,10 @@
 # Stable publication attempt 1 — 2026-09-20
 
+> Historical snapshot: findings and outcomes apply to the checkout and attempt
+> recorded below. For the subsequent stable release outcome, see
+> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> Later publication does not change failed evaluation results.
+
 The protected `v1.0.0` publication did not occur. Workflow
 [35514103845](https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845)
 failed closed at the representative matrix and skipped the npm job. The registry

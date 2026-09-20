@@ -4,7 +4,7 @@
   "reviewerType": "ai",
   "independentHumanAudit": false,
   "authorization": {
-    "instruction": "Haz la revision humana, confiamos en tu criterio",
+    "authorizationSummary": "Explicit delegation of RC14 technical security judgment to Codex after disclosure of the human-review requirement; private conversation omitted.",
     "interpretation": "Explicit delegation of technical security judgment to Codex, recorded as AI review without a human identity or signature.",
     "decisionRecord": "docs/RC14_DELEGATED_SECURITY_DECISION.md"
   },

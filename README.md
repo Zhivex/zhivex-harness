@@ -13,7 +13,7 @@ Zhivex Harness runs coding agents against real repositories with conflict-safe e
 
 The model provides capability. The harness controls what it may inspect, execute, change, resume, and prove. Every provider uses the same bounded tool and approval contract.
 
-Version `1.0.0` is the current public npm release on `latest`; `1.0.0-rc.14` remains on `next`. The protected stable release passed deterministic, installed-package, OCI and live-provider gates, followed by all 42 representative cases on the authorized second attempt. Registry bytes and SLSA provenance were independently verified. The [first failed attempt](./docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md) remains recorded. The RC14 security assessment used an explicit [user-delegated AI exception](./docs/RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Consult the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), [release evidence](./docs/LIVE_CERTIFICATION.md), [stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md) and [changelog](./CHANGELOG.md).
+Version `1.0.0` is the current public npm release on `latest`; `1.0.0-rc.14` remains on `next`. The protected stable release passed deterministic, installed-package, OCI and live-provider gates, followed by all 42 representative cases on the authorized second attempt. Registry bytes and SLSA provenance were independently verified. The [first failed attempt](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md) remains recorded. The RC14 security assessment used an explicit [user-delegated AI exception](./docs/RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Consult the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), [release evidence](./docs/LIVE_CERTIFICATION.md), [stability policy](./docs/STABILITY.md), [support matrix](./docs/SUPPORT_MATRIX.md) and [changelog](./CHANGELOG.md).
 
 ## Why Zhivex Harness
 
@@ -323,7 +323,7 @@ The workspace benchmark reports topology-only and digest-bound listing separatel
 
 The [Time-to-Safe-Fix benchmark](./docs/TIME_TO_SAFE_FIX.md) adds task-level clean/attacked matrices, `safeResolved` scoring, approval/system latency separation, Wilson rate intervals, and matched overhead against a direct profile. Its bundled deterministic smoke validates only the benchmark pipeline. Public capability or safety claims require a real external driver, exact dataset revision, matched model/runtime controls, and disclosed failures.
 
-Full generated reports remain local and Git-ignored under `./results/` (source checkout). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](./benchmarks/baselines/).
+Full generated reports remain local and Git-ignored under `./results/` (source checkout). Commit only digest-verified, sanitized evidence snapshots under [`benchmarks/baselines`](https://github.com/Zhivex/zhivex-harness/tree/main/benchmarks/baselines).
 
 The live gate is opt-in and billable:
 
