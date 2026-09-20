@@ -636,3 +636,13 @@ The single predeclared `ga-verifier-discovery` pair completed with full grading 
 The scope correction has direct live evidence; delivery remains blocked. The next improvement must address actual verifier selection/execution failures rather than treating a correct retained patch as successful delivery. Source-bound samples and the unchanged-budget plan are retained in `evidence/ga-verifier-discovery-live-2026-09-19.json` and `evidence/ga-verifier-discovery-plan-2026-09-19.json`. This result does not alter any earlier sample or satisfy GA acceptance.
 
 The current installed-package smoke also passed for `@zhivex-ai/harness@1.0.0-rc.14` after the verifier-discovery pair. No package publication was performed.
+
+### Python editable-install shadowing reproduced and fixed in candidate images
+
+Offline execution of the documented Django runner exposed another environment defect: running `python tests/runtests.py dbshell --settings=test_sqlite --parallel=1` reported Django from `/testbed/django`, outside the mounted candidate. Its apparent pass did not verify the retained edit. The image's editable installation took precedence when Python used the nested script directory rather than the checkout root.
+
+Derived candidate images now set `PYTHONPATH=/workspace:/workspace/src:/testbed:/testbed/src`; the image tag derivation includes this policy. Both candidates still receive the same image, and the control retains `/testbed` resolution. Native preflight checks top-level checkout package origins without relying on `-c`'s current-directory shortcut and fails closed on absent or shadowed checkout packages. Old prepared images must be rebuilt; old results remain immutable development evidence, not proof of candidate-bound verification.
+
+The corrected image `sha256:4c8b7a320988313b8881a96f334a189bfd0d6fda47cc0219d648867ffe765b80` resolves Django from `/workspace` for Harness and `/testbed` for the control. The public runner now genuinely sees the candidate and fails one historical test expecting the old argument order (26 tests, 5 skips); that is distinct from infrastructure availability. A separate four-case assertion derived solely from the public issue rejects the old image's source origin, fails against the baseline under the corrected image, and passes against the retained candidate. No repository tests, evaluator tests or host source were changed.
+
+Twelve focused tests, tooling typecheck, Python compilation and native OCI preflight pass. No model/provider request was made. Evidence: `evidence/ga-python-checkout-imports-2026-09-19.json`. The next live comparison must use the corrected pinned image; this offline validation does not prove reliable verified delivery.

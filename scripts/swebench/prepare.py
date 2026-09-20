@@ -80,8 +80,9 @@ def main():
                 f"FROM {node['RepoDigests'][0]} AS node\nFROM {base['RepoDigests'][0]}\n"
                 "COPY --from=node /usr/local/bin/node /usr/local/bin/node\n"
                 'ENV PATH="/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/bin:${PATH}"\n'
-                "ENV PYTHONDONTWRITEBYTECODE=1\n")
-            candidate_tag = "zhivex-swebench:" + digest({"base": base["Id"], "node": node["Id"]})[:20]
+                "ENV PYTHONDONTWRITEBYTECODE=1\n"
+                'ENV PYTHONPATH="/workspace:/workspace/src:/testbed:/testbed/src"\n')
+            candidate_tag = "zhivex-swebench:" + digest({"base": base["Id"], "node": node["Id"], "pythonPathPolicy": "checkout-first-v1"})[:20]
             command(["docker", "build", "--platform", "linux/amd64", "-t", candidate_tag, str(context)])
             selected["image"] = image_info(candidate_tag)["Id"]
             checkout = command(["docker", "run", "--rm", "--platform", "linux/amd64", "--network", "none",

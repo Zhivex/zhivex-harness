@@ -11,6 +11,7 @@ import { selectAndInstrumentTools } from "../time-to-safe-fix-efficiency.js";
 import { wrapLanguageModel } from "@zhivex-ai/core";
 import { createCatalogObserver } from "./model-catalog.js";
 import { observeVerifierFailures, type VerifierFailureObserver } from "./verifier-observer.js";
+import { pythonSourceProbe } from "./python-environment.js";
 
 import { projectState, sanitizeOperationalError } from "./telemetry.js";
 
@@ -93,8 +94,8 @@ export async function runDriver(raw: unknown, preflight = false, onVerifierFailu
       const session = await harness.executionEnvironment!.acquire({ runId: `swebench-${input.runToken}`, scope: harness.config.scope });
       try {
         if ((session as Partial<HarnessExecutionSession>).kind !== "zhivex-oci") throw new Error("Unexpected execution backend");
-        const result = await (session as HarnessExecutionSession).runCommand("python", ["-c", "import sys; assert sys.version_info.major == 3"]);
-        if (result.exitCode !== 0) throw new Error("Python preflight failed");
+        const result = await (session as HarnessExecutionSession).runCommand("python", ["-c", pythonSourceProbe()]);
+        if (result.exitCode !== 0) throw new Error("Python checkout import binding preflight failed");
       } finally { await session.release?.({ status: "completed" }); }
     } else {
     phase = "agent";
