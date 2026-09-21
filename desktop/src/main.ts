@@ -1,7 +1,9 @@
+import {resumeDesktopUpdateRecovery} from "./update-recovery.js";
 import {checkDesktopStateFormat, DesktopStateError} from "./state-format.js";
 import updateTrust from "../update-trust.json";
 import desktopMetadata from "../package.json";
 import {parseDesktopUpdateTrust} from "./update-trust.js";
+import {createDesktopUpdateInstaller, DesktopInstallError} from "./update-install.js";
 import {createDesktopUpdateSession} from "./update-session.js";
 import {createDesktopUpdateFeed} from "./update-feed.js";
 import {registerDesktopUpdateIpc} from "./update-ipc.js";
@@ -34,17 +36,31 @@ if (fixture && reportDirectory) app.setPath("userData", path.join(reportDirector
 if (!app.requestSingleInstanceLock()) app.exit(0);
 let mainWindow: BrowserWindow | undefined;
 app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus(); } });
-const runtimes = new Map<string, Promise<ProjectRuntime>>(); let closing = false;
+const runtimes = new Map<string, Promise<ProjectRuntime>>(); let closing = false, updating = false;
 let exitApproved = false;
 let requestExit = () => { exitApproved = true; app.quit(); };
 app.on("before-quit", event => { if (!exitApproved) { event.preventDefault(); requestExit(); } });
 void app.whenReady().then(async () => {
-    await checkDesktopStateFormat(app.getPath("userData"));
+    try {await checkDesktopStateFormat(app.getPath("userData"));}
+    catch (error) {
+        const trust = parseDesktopUpdateTrust(updateTrust);
+        if (!(error instanceof DesktopStateError) || error.code !== "DESKTOP_STATE_RECOVERY_REQUIRED" || !trust.enabled || !app.isPackaged) throw error;
+        try {await resumeDesktopUpdateRecovery({userData: app.getPath("userData"), application: path.resolve(process.resourcesPath, "../.."), teamId: trust.teamId, version: desktopMetadata.version});}
+        catch {throw error;}
+        exitApproved = true; app.quit(); return;
+    }
  const registry = await openProjectRegistry(path.join(app.getPath("userData"), "projects"));
     const tasks = await openTaskWorktrees(path.join(app.getPath("userData"), "tasks"));
     const taskView = (task: ManagedTask): DesktopTask => ({ id: task.id, sourceProjectKey: task.sourceProjectKey, title: task.title, branch: task.branch, baseCommit: task.baseCommit, workspace: task.workspace, status: task.status });
     const taskOperations = new Set<Promise<unknown>>(), removing = new Set<string>();
     const trackTask = async<T>(operation: Promise<T>) => { taskOperations.add(operation); try { return await operation; } finally { taskOperations.delete(operation); } };
+    // Track every application IPC, including reads that reconcile persisted metadata.
+    const workIpc: Pick<typeof ipcMain, "handle"> = {handle(channel, listener) {
+        ipcMain.handle(channel, (event, ...args: unknown[]) => {
+            validateSender(event);
+            return trackTask(Promise.resolve(listener(event, ...args)));
+        });
+    }};
     const sourceProject = (key: string) => { const project = registry.get(key), task = tasks.list().find(task => task.workspace === project.workspace); return task ? registry.get(task.sourceProjectKey) : project; };
     const directory = fixture && reportDirectory ? path.join(reportDirectory, "socket") : `/tmp/zhx-desktop-${process.getuid?.()}`;
     const buildDirectory = path.join(app.getAppPath(), "build");
@@ -71,6 +87,10 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     mainWindow = window;
     const fixtureCloseChoices = fixture ? (argument("--fixture-close-choices") ?? "").split(",") : [];
     requestExit = () => {
+        if (updating) {
+            if (updateSession.state().status === "recovery-required") {exitApproved = true; app.quit();}
+            return;
+        }
         if (closing || exitApproved) return; closing = true;
         void (async () => {
             await Promise.allSettled([...taskOperations]);
@@ -95,9 +115,25 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
             if (response === 0) window.webContents.reload(); else app.quit();
         })().catch(() => app.quit()).finally(() => { recoveringRenderer = false; });
     });
-    const validateSender = (event: Electron.IpcMainInvokeEvent) => { if (closing || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== url) throw new Error("UNTRUSTED_SENDER"); };
-    const updateFeed = createDesktopUpdateFeed(parseDesktopUpdateTrust(process.platform === "darwin" && process.arch === "arm64" ? updateTrust : {schemaVersion: 1, enabled: false}), desktopMetadata.version);
-    registerDesktopUpdateIpc(ipcMain, validateSender, createDesktopUpdateSession(updateFeed, {directory: path.join(app.getPath("userData"), "update-downloads")}));
+    const validateOrigin = (event: Electron.IpcMainInvokeEvent) => { if (closing || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== url) throw new Error("UNTRUSTED_SENDER"); };
+    const validateSender = (event: Electron.IpcMainInvokeEvent) => {validateOrigin(event); if (updating) throw new Error("UPDATE_IN_PROGRESS");};
+    const trustedUpdates = parseDesktopUpdateTrust(process.platform === "darwin" && process.arch === "arm64" ? updateTrust : {schemaVersion: 1, enabled: false});
+    const updateFeed = createDesktopUpdateFeed(trustedUpdates, desktopMetadata.version);
+    const installer = createDesktopUpdateInstaller({application: path.resolve(process.resourcesPath, "../.."), userData: app.getPath("userData"), teamId: trustedUpdates.enabled ? trustedUpdates.teamId : "", version: desktopMetadata.version}, {
+        busy: () => closing || taskOperations.size > 0 || deliveryBusy.size > 0 || credentials.changing,
+        block: value => {updating = value;},
+        hosts: () => Promise.all([...runtimes.values()]),
+        inventory: () => ({projects: registry.list(), tasks: tasks.list()}),
+        closeTransports: async () => {for (const pending of remoteManagers.values()) await (await pending).transport.close(); remoteManagers.clear();},
+        clearHosts: () => runtimes.clear(),
+        reload: () => {if (!window.isDestroyed()) window.webContents.reload();},
+        quit: () => {exitApproved = true; app.quit();},
+    });
+    const updateSession = createDesktopUpdateSession(updateFeed, {directory: path.join(app.getPath("userData"), "update-downloads"), install: async prepared => {
+        if (!app.isPackaged || !trustedUpdates.enabled) throw new DesktopInstallError("install-failed");
+        await installer(prepared);
+    }});
+    registerDesktopUpdateIpc(ipcMain, validateOrigin, updateSession);
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false)); session.defaultSession.setPermissionCheckHandler(() => false);
     window.webContents.setWindowOpenHandler(() => ({ action: "deny" })); window.webContents.on("will-navigate", event => event.preventDefault()); window.webContents.on("will-attach-webview", event => event.preventDefault());
     const remoteManagers = new Map<string, Promise<{ transport: Awaited<ReturnType<typeof openGitHubGitTransport>>; manager: Awaited<ReturnType<typeof openRemoteDelivery>> }>>();
@@ -110,35 +146,35 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     const credentialStore=openCredentialStore(app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"));
  const credentials=credentialCoordinator({busy:()=>closing||taskOperations.size>0||deliveryBusy.size>0,hosts:()=>Promise.all([...runtimes.values()]),clear:()=>runtimes.clear(),configure:()=>fixture?Promise.resolve("unsupported"):credentialStore.configure(),delete:()=>fixture?Promise.resolve("unsupported"):credentialStore.delete()});
  const credentialRequest=(event:Electron.IpcMainInvokeEvent,args:unknown[])=>{validateSender(event);if(args.length)throw new Error("INVALID_CREDENTIAL_REQUEST");};
- ipcMain.handle("harness:credential-status",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.status());});
- ipcMain.handle("harness:credential-probe",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.probe());});
- ipcMain.handle("harness:credential-configure",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("configure"));});
- ipcMain.handle("harness:credential-delete",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("delete"));});
+ workIpc.handle("harness:credential-status",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.status());});
+ workIpc.handle("harness:credential-probe",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.probe());});
+ workIpc.handle("harness:credential-configure",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("configure"));});
+ workIpc.handle("harness:credential-delete",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("delete"));});
  const gitMutation = async<T>(key: string, operation: (manager: Awaited<ReturnType<typeof openGitDelivery>>) => Promise<T>) => {
         if (deliveryBusy.has(key)) throw new Error("GIT_DELIVERY_BUSY"); deliveryBusy.add(key); let host: ProjectRuntime | undefined;
         try { host = await runtime(key); if (await host.controlClose("pause")) throw new Error("GIT_RUNTIME_BUSY"); return await operation(await delivery(key)); } finally { if (host?.isAlive() && !closing) await host.controlClose("resume").catch(() => { }); deliveryBusy.delete(key); }
     };
-    ipcMain.handle("harness:git-changes", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey"]); return (await delivery(payload.projectKey)).changes(); });
-    ipcMain.handle("harness:git-stage", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "paths"]); return trackTask(gitMutation(payload.projectKey, manager => manager.stage(payload.paths))); });
-    ipcMain.handle("harness:git-review-commit", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "input"]); return (await delivery(payload.projectKey)).reviewCommit(payload.input); });
-    ipcMain.handle("harness:git-commit", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "ticketId"]); if (typeof payload.ticketId !== "string") throw new Error("INVALID_GIT_REQUEST"); const ticketId = payload.ticketId; return trackTask(gitMutation(payload.projectKey, async manager => { const result = await manager.commit(ticketId); if (fixture && process.argv.includes("--fixture-drop-git-response") && !fixtureGitResponseDropped) { fixtureGitResponseDropped = true; throw new Error("GIT_RESPONSE_LOST"); } return result; })); });
-    ipcMain.handle("harness:git-reconcile", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "operationId"]); if (typeof payload.operationId !== "string") throw new Error("INVALID_GIT_REQUEST"); return (await delivery(payload.projectKey)).reconcile(payload.operationId); });
-    ipcMain.handle("harness:remote-targets", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey"]); return trackTask((async () => (await remoteDelivery(payload.projectKey)).transport.targets())()); });
-    ipcMain.handle("harness:review-push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "destination"]); return trackTask((async () => (await remoteDelivery(payload.projectKey)).manager.reviewPush(payload.destination))()); });
-    ipcMain.handle("harness:push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "ticketId"]); if (typeof payload.ticketId !== "string") throw new Error("INVALID_PUSH_REQUEST"); const id = payload.ticketId; return trackTask(gitMutation(payload.projectKey, async () => { const result = await (await remoteDelivery(payload.projectKey)).manager.push(id); if (fixture && process.argv.includes("--fixture-drop-push-response") && !fixturePushResponseDropped) { fixturePushResponseDropped = true; throw new Error("PUSH_RESPONSE_LOST"); } return result; })); });
-    ipcMain.handle("harness:reconcile-push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "operationId"]); if (typeof payload.operationId !== "string") throw new Error("INVALID_PUSH_REQUEST"); const id = payload.operationId; return trackTask((async () => (await remoteDelivery(payload.projectKey)).manager.reconcile(id))()); });
+    workIpc.handle("harness:git-changes", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey"]); return (await delivery(payload.projectKey)).changes(); });
+    workIpc.handle("harness:git-stage", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "paths"]); return trackTask(gitMutation(payload.projectKey, manager => manager.stage(payload.paths))); });
+    workIpc.handle("harness:git-review-commit", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "input"]); return (await delivery(payload.projectKey)).reviewCommit(payload.input); });
+    workIpc.handle("harness:git-commit", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "ticketId"]); if (typeof payload.ticketId !== "string") throw new Error("INVALID_GIT_REQUEST"); const ticketId = payload.ticketId; return trackTask(gitMutation(payload.projectKey, async manager => { const result = await manager.commit(ticketId); if (fixture && process.argv.includes("--fixture-drop-git-response") && !fixtureGitResponseDropped) { fixtureGitResponseDropped = true; throw new Error("GIT_RESPONSE_LOST"); } return result; })); });
+    workIpc.handle("harness:git-reconcile", async (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "operationId"]); if (typeof payload.operationId !== "string") throw new Error("INVALID_GIT_REQUEST"); return (await delivery(payload.projectKey)).reconcile(payload.operationId); });
+    workIpc.handle("harness:remote-targets", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey"]); return trackTask((async () => (await remoteDelivery(payload.projectKey)).transport.targets())()); });
+    workIpc.handle("harness:review-push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "destination"]); return trackTask((async () => (await remoteDelivery(payload.projectKey)).manager.reviewPush(payload.destination))()); });
+    workIpc.handle("harness:push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "ticketId"]); if (typeof payload.ticketId !== "string") throw new Error("INVALID_PUSH_REQUEST"); const id = payload.ticketId; return trackTask(gitMutation(payload.projectKey, async () => { const result = await (await remoteDelivery(payload.projectKey)).manager.push(id); if (fixture && process.argv.includes("--fixture-drop-push-response") && !fixturePushResponseDropped) { fixturePushResponseDropped = true; throw new Error("PUSH_RESPONSE_LOST"); } return result; })); });
+    workIpc.handle("harness:reconcile-push", (event, value: unknown) => { const payload = gitPayload(event, value, ["projectKey", "operationId"]); if (typeof payload.operationId !== "string") throw new Error("INVALID_PUSH_REQUEST"); const id = payload.operationId; return trackTask((async () => (await remoteDelivery(payload.projectKey)).manager.reconcile(id))()); });
     registerPullRequestIpc({payload:gitPayload,remote:remoteDelivery,mutate:(key,operation)=>gitMutation(key,operation),track:trackTask,directory:path.join(app.getPath("userData"),"pull-requests"),dropResponse:fixture&&process.argv.includes("--fixture-drop-pr-response"),...(fixture&&reportDirectory?{fixtureDirectory:reportDirectory}:{})});
-    ipcMain.handle("harness:projects", event => { validateSender(event); const managed = new Set(tasks.list().map(task => task.workspace)); return registry.list().filter(project => !managed.has(project.workspace)); });
-    ipcMain.handle("harness:tasks", (event, key: unknown) => { validateSender(event); if (typeof key !== "string") throw new Error("INVALID_PROJECT"); return tasks.list(sourceProject(key).key).map(taskView); });
-    ipcMain.handle("harness:create-task", (event, value: unknown) => {
+    workIpc.handle("harness:projects", event => { validateSender(event); const managed = new Set(tasks.list().map(task => task.workspace)); return registry.list().filter(project => !managed.has(project.workspace)); });
+    workIpc.handle("harness:tasks", (event, key: unknown) => { validateSender(event); if (typeof key !== "string") throw new Error("INVALID_PROJECT"); return tasks.list(sourceProject(key).key).map(taskView); });
+    workIpc.handle("harness:create-task", (event, value: unknown) => {
         validateSender(event); if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).sort().join(",") !== "input,projectKey") throw new Error("INVALID_TASK");
         const payload = value as { projectKey: unknown; input: unknown }; if (typeof payload.projectKey !== "string") throw new Error("INVALID_PROJECT");
         return trackTask(tasks.create(sourceProject(payload.projectKey), payload.input).then(taskView));
     });
-    ipcMain.handle("harness:open-task", async (event, id: unknown) => { validateSender(event); if (typeof id !== "string") throw new Error("INVALID_TASK"); const task = tasks.get(id); if (task.status !== "ready" || removing.has(task.workspace)) throw new Error("TASK_NOT_READY"); const project = await registry.select(task.workspace); return connect(project.key); });
+    workIpc.handle("harness:open-task", async (event, id: unknown) => { validateSender(event); if (typeof id !== "string") throw new Error("INVALID_TASK"); const task = tasks.get(id); if (task.status !== "ready" || removing.has(task.workspace)) throw new Error("TASK_NOT_READY"); const project = await registry.select(task.workspace); return connect(project.key); });
     const removalTickets = new Map<string, string>();
-    ipcMain.handle("harness:review-task-removal", async (event, id: unknown) => { validateSender(event); if (typeof id !== "string") throw new Error("INVALID_TASK"); const review = await tasks.reviewRemoval(id); removalTickets.set(review.ticketId, id); while (removalTickets.size > 128) removalTickets.delete(removalTickets.keys().next().value!); return { ...review, task: taskView(review.task) }; });
-    ipcMain.handle("harness:remove-task", (event, ticketId: unknown) => {
+    workIpc.handle("harness:review-task-removal", async (event, id: unknown) => { validateSender(event); if (typeof id !== "string") throw new Error("INVALID_TASK"); const review = await tasks.reviewRemoval(id); removalTickets.set(review.ticketId, id); while (removalTickets.size > 128) removalTickets.delete(removalTickets.keys().next().value!); return { ...review, task: taskView(review.task) }; });
+    workIpc.handle("harness:remove-task", (event, ticketId: unknown) => {
         validateSender(event); if (typeof ticketId !== "string" || !removalTickets.has(ticketId)) throw new Error("TASK_REVIEW_REQUIRED"); const id = removalTickets.get(ticketId)!; removalTickets.delete(ticketId);
         return trackTask((async () => {
             const task = tasks.get(id); if (removing.has(task.workspace) || [...deliveryBusy].some(key => registry.get(key).workspace === task.workspace)) throw new Error("TASK_BUSY"); removing.add(task.workspace);
@@ -149,11 +185,11 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
             } finally { if (host?.isAlive()) await host.controlClose("resume").catch(() => { }); removing.delete(task.workspace); }
         })());
     });
-    ipcMain.handle("harness:initial-project", async event => { validateSender(event); return workspaceArgument ? connect((await registry.select(workspaceArgument)).key) : null; });
-    ipcMain.handle("harness:open-project", async (event, key: unknown) => { validateSender(event); if (typeof key !== "string") throw new Error("INVALID_PROJECT"); return connect(key); });
+    workIpc.handle("harness:initial-project", async event => { validateSender(event); return workspaceArgument ? connect((await registry.select(workspaceArgument)).key) : null; });
+    workIpc.handle("harness:open-project", async (event, key: unknown) => { validateSender(event); if (typeof key !== "string") throw new Error("INVALID_PROJECT"); return connect(key); });
     const fixtureProjects = fixture ? process.argv.flatMap((value, index) => value === "--fixture-project" && process.argv[index + 1] ? [process.argv[index + 1]!] : []) : [];
     let choosing = false;
-    ipcMain.handle("harness:choose-project", async event => {
+    workIpc.handle("harness:choose-project", async event => {
         validateSender(event); if (choosing) throw new Error("PROJECT_PICKER_BUSY"); choosing = true;
         try {
             // Only host-launch fixture paths can replace the native picker in packaged tests.
@@ -163,19 +199,19 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
             return connect((await registry.select(result.filePaths[0])).key);
         } finally { choosing = false; }
     });
-    ipcMain.handle("harness:command", async (event, payload: unknown) => {
+    workIpc.handle("harness:command", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "command,projectKey") throw new Error("INVALID_COMMAND");
         const value = payload as { projectKey: unknown; command: unknown }; if (value.command && typeof value.command === "object" && "method" in value.command && value.command.method === "approval.resolve") throw new Error("REVIEW_REQUIRED"); return (await runtime(value.projectKey)).command(value.command);
     });
-    ipcMain.handle("harness:review", async (event, payload: unknown) => {
+    workIpc.handle("harness:review", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "projectKey,runId,sessionId") throw new Error("INVALID_REVIEW");
         const value = payload as { projectKey: unknown; sessionId: unknown; runId: unknown }; return (await runtime(value.projectKey)).review(value.sessionId, value.runId);
     });
-    ipcMain.handle("harness:resolve-review", async (event, payload: unknown) => {
+    workIpc.handle("harness:resolve-review", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "approve,projectKey,ticketId") throw new Error("INVALID_DECISION");
         const value = payload as { projectKey: unknown; ticketId: unknown; approve: unknown }; return (await runtime(value.projectKey)).resolveReview(value.ticketId, value.approve);
     });
-    ipcMain.handle("harness:events", async (event, payload: unknown) => {
+    workIpc.handle("harness:events", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "after,projectKey,sessionId") throw new Error("INVALID_CURSOR");
         const value = payload as { projectKey: unknown; sessionId: unknown; after: unknown }; return (await runtime(value.projectKey)).events({ sessionId: value.sessionId, after: value.after });
     });

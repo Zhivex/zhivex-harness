@@ -90,3 +90,21 @@ test("invalid durable phase/outcome is refused before callbacks or filesystem ef
  await expect(executeDesktopUpdateJob(f.job, {...f.deps, assertStopped: async () => {called = true;}})).rejects.toThrow("UPDATE_JOB_INVALID");
  expect(called).toBe(false); expect(await readFile(path.join(f.application, "version"), "utf8")).toBe("1.0.0");
 }));
+test("pre-armed journal survives the recovery boundary and startup selects only its pinned receipt", () => fixture(async f => {
+ const {findDesktopUpdateRecoveryJob} = await import("../src/update-job.js");
+ const profile = path.join(f.root, "pre-arm"); await mkdir(profile, {mode: 0o700});
+ const state = await prepareDesktopStateTransaction(profile, []);
+ await expect(prepareDesktopUpdateJob(profile, state, f.swap)).rejects.toThrow("UPDATE_JOB_PREPARE_FAILED");
+ const job = await prepareDesktopUpdateJob(profile, state, f.swap, {allowUnarmed: true});
+ await expect(findDesktopUpdateRecoveryJob(profile)).rejects.toThrow();
+ await expect(executeDesktopUpdateJob(job, f.deps)).rejects.toThrow("UPDATE_JOB_STATE_MISSING");
+ await armDesktopStateTransaction(profile, state);
+ expect(await findDesktopUpdateRecoveryJob(profile)).toEqual(job);
+ await prepareDesktopUpdateJob(profile, state, f.swap);
+ await expect(findDesktopUpdateRecoveryJob(profile)).rejects.toThrow("UPDATE_RECOVERY_JOB_INVALID");
+}));
+test("restart rejects a completed job whose application has not passed the native publisher policy", () => fixture(async f => {
+ const {reopenCompletedDesktopUpdate} = await import("../src/update-recovery.js");
+ await executeDesktopUpdateJob(f.job, f.deps);
+ await expect(reopenCompletedDesktopUpdate(f.job)).rejects.toThrow("UPDATE_APPLICATION_OUTCOME_INVALID");
+}));

@@ -32,7 +32,25 @@ manifest and private staging paths; renderer requests have no arguments. Concurr
 checks/downloads share the active operation. Downloads verify exact size and SHA-256,
 remove partial files on failure and allow retry. Rechecking removes the prior staged
 artifact before selecting another version. Downloading does not pause project work.
-Installation coordination with main is still pending; no button in this version
-starts installation. Signing
-and notarization remain deferred. Enabling feed checks does not complete HU35 or
-certify a signed successful update.
+The downloaded state offers “Instalar y reiniciar”. Main closes admission to new
+application IPC and refuses active work without cancellation. It pauses idle runtime
+services, rechecks the artifact, mounts the DMG read-only, verifies and stages the
+candidate on the installation volume, then detaches the image. Only then does it
+close services, acquire exclusive state leases and back up every registered project
+and task. A durable job pins the application and state receipts before recovery is
+armed. Main exits only after the worker acknowledges the complete descriptor handoff.
+
+The worker confirms installation or rollback, releases state leases and asks macOS
+to reopen the verified application. An interrupted update is located by its exact
+active recovery receipt on startup, before registries open; a new worker resumes
+that job. Ambiguous failures retain the recovery gate and show a fixed diagnostic.
+A missing or ambiguous job never authorizes a guessed restore. Failures before the
+recovery gate resume idle runtimes or reload after their closure.
+
+The current state format remains 1; incompatible future formats are rejected, not
+implicitly migrated. SQLite exclusion is cooperative for current Harness clients;
+older clients and arbitrary direct SQLite libraries do not honor its lease protocol.
+Their exclusion is not certified by these tests. Do not treat the native image
+rejection test or fixture handoff tests as a successful signed production update.
+Production trust values, Developer ID and notarization remain deferred. The default
+build keeps updates disabled until that configuration is supplied.

@@ -84,6 +84,15 @@ export async function desktopStateTransactionStatus(userData: string, transactio
  } catch {throw new Error("DESKTOP_STATE_TRANSACTION_MISMATCH");}
 }
 
+/** Startup recovery reads the pinned receipt before any project registry opens. */
+export async function activeDesktopStateTransaction(userData: string): Promise<DesktopStateTransaction> {
+ const ctx = await context(userData);
+ const pointer = pointerSchema.parse(JSON.parse((await read(ctx.active, 1024)).toString("utf8")));
+ const transaction = {id: pointer.id, sha256: pointer.sha256};
+ await load(userData, transaction);
+ return transaction;
+}
+
 /** Host/worker-only inventory bound to the persisted receipt hash. */
 export async function desktopStateTransactionDatabasePaths(userData: string, transaction: DesktopStateTransaction): Promise<string[]> {
  try {const ctx = await load(userData, transaction); return ctx.receipt.databases.map(db => path.join(db.stateDirectory, HARNESS_SQLITE_FILE)).sort();}

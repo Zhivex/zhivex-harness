@@ -1,0 +1,20 @@
+import {createHash, generateKeyPairSync, sign} from 'node:crypto';
+import {createReadStream} from 'node:fs';
+import {chmod, copyFile, mkdtemp, readdir, realpath, rm, rmdir, stat} from 'node:fs/promises';
+import path from 'node:path';
+import {prepareDownloadedApplication} from '../src/update-install.js';
+import {verifyUpdateManifest} from '../src/update-manifest.js';
+const root=path.resolve(import.meta.dir,'../..');
+const directory=await realpath(await mkdtemp('/tmp/har-native-image-'));
+const artifact=path.join(directory,'update.dmg');
+await copyFile(path.join(root,'desktop/out/installer/Zhivex-Harness-0.1.0-alpha.1-darwin-arm64-unsigned.dmg'),artifact);await chmod(artifact,0o600);
+const hash=createHash('sha256');for await (const bytes of createReadStream(artifact)) hash.update(bytes);
+const sha256=hash.digest('hex'),size=(await stat(artifact)).size,keys=generateKeyPairSync('ed25519');
+const payload=Buffer.from(JSON.stringify({schemaVersion:1,product:'ai.zhivex.harness',platform:'darwin',arch:'arm64',version:'0.1.0-alpha.2',channel:'prerelease',publishedAt:Date.now()-1000,expiresAt:Date.now()+300000,state:{minReadable:1,maxReadable:1},artifact:{url:'https://github.com/Zhivex/zhivex-harness/releases/download/desktop-v0.1.0-alpha.2/app.dmg',size,sha256}}));
+const update=verifyUpdateManifest(JSON.stringify({payload:payload.toString('base64url'),signature:sign(null,payload,keys.privateKey).toString('base64url')}),{publicKey:keys.publicKey,currentVersion:'0.1.0-alpha.1',channel:'prerelease',stateSchema:1});
+let rejected=false;
+try {await prepareDownloadedApplication({update,download:{directory,artifact,size,sha256}},{application:path.join(root,'desktop/out/Zhivex Harness-darwin-arm64/Zhivex Harness.app'),teamId:'ABCDEFGHIJ',version:'0.1.0-alpha.1'});}catch(error){if(error instanceof Error&&error.message==='UPDATE_APPLICATION_PREPARE_FAILED')rejected=true;else throw error;}
+if(!rejected)throw Error('UNSIGNED_APPLICATION_ACCEPTED');
+if(JSON.stringify(await readdir(directory))!==JSON.stringify(['update.dmg']))throw Error('IMAGE_NOT_DETACHED_OR_CLEANED');
+await rm(artifact);await rmdir(directory);
+console.log(JSON.stringify({realDiskImage:true,nativeVerifier:true,unsignedApplicationRejected:true,detachedBeforeReturn:true,fixtureManifest:true,pass:true}));

@@ -1,11 +1,11 @@
 import {createHash, randomUUID} from "node:crypto";
 import {constants} from "node:fs";
-import {lstat, mkdir, open, realpath, rename, unlink} from "node:fs/promises";
+import {lstat, mkdir, open, readdir, realpath, rename, unlink} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
 import {readRegularFileNoFollow} from "../../src/file-security.js";
 import {createApplicationSwapper, type ApplicationSwap} from "./application-swap.js";
-import {desktopStateTransactionStatus, desktopStateTransactionDatabasePaths, finishDesktopStateTransaction, restoreDesktopStateTransaction, type DesktopStateTransaction} from "./state-transaction.js";
+import {activeDesktopStateTransaction, desktopStateTransactionStatus, desktopStateTransactionDatabasePaths, finishDesktopStateTransaction, restoreDesktopStateTransaction, type DesktopStateTransaction} from "./state-transaction.js";
 
 const absolute = z.string().max(4096).refine(p => path.isAbsolute(p) && path.normalize(p) === p && !/[\x00-\x1f\x7f]/.test(p));
 const schema = z.object({schemaVersion: z.literal(1), id: z.string().uuid(), userData: absolute,
@@ -54,20 +54,36 @@ export async function inspectDesktopUpdateJob(job: DesktopUpdateJob) {
    if (status !== "active" && journal.phase !== "finishing") throw new Error();
   }
   const identity = {schemaVersion: journal.schemaVersion, id: journal.id, userData: journal.userData, state: journal.state, application: journal.application};
-  return {phase: journal.phase, state: structuredClone(journal.state), digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex"), databasePaths: await desktopStateTransactionDatabasePaths(job.userData, journal.state)};
+  return {phase: journal.phase, application: structuredClone(journal.application), outcome: journal.outcome, state: structuredClone(journal.state), digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex"), databasePaths: await desktopStateTransactionDatabasePaths(job.userData, journal.state)};
  } catch {throw new Error("UPDATE_JOB_INVALID");}
 }
 
-/** After state recovery is armed, before launch. The host supplies both receipts. */
-export async function prepareDesktopUpdateJob(userData: string, state: DesktopStateTransaction, application: ApplicationSwap): Promise<DesktopUpdateJob> {
+/** Persist both receipts before launch. Main may journal before arming recovery so
+ * a crash at that boundary retains the application rollback identity. */
+export async function prepareDesktopUpdateJob(userData: string, state: DesktopStateTransaction, application: ApplicationSwap, options: {allowUnarmed?: boolean} = {}): Promise<DesktopUpdateJob> {
  try {
   userData = await realpath(userData);
-  if (await desktopStateTransactionStatus(userData, state) !== "active") throw new Error();
+  if (await desktopStateTransactionStatus(userData, state) !== "active" && !options.allowUnarmed) throw new Error();
   const root = path.join(userData, "update-jobs"); await mkdir(root, {recursive: true, mode: 0o700}); await privateDirectory(root); await sync(userData);
   const id = randomUUID(), directory = path.join(root, id); await mkdir(directory, {mode: 0o700}); await sync(root);
   await save(directory, schema.parse({schemaVersion: 1, id, userData, state, application, phase: "prepared", outcome: null}));
   return {userData, id};
  } catch {throw new Error("UPDATE_JOB_PREPARE_FAILED");}
+}
+
+/** A unique durable job must match the active recovery receipt. Never guess by age. */
+export async function findDesktopUpdateRecoveryJob(userData: string): Promise<DesktopUpdateJob> {
+ const state = await activeDesktopStateTransaction(userData);
+ const root = path.join(userData, "update-jobs"); await privateDirectory(root);
+ const names = await readdir(root); if (names.length > 1000) throw new Error("UPDATE_RECOVERY_JOB_INVALID");
+ const matches: DesktopUpdateJob[] = [];
+ for (const id of names) {
+  if (!z.string().uuid().safeParse(id).success) continue;
+  const job = {userData, id}, {journal} = await load(job);
+  if (journal.state.id === state.id && journal.state.sha256 === state.sha256 && journal.phase !== "completed") matches.push(job);
+ }
+ if (matches.length !== 1) throw new Error("UPDATE_RECOVERY_JOB_INVALID");
+ return matches[0]!;
 }
 
 /** Run only with the native worker lock held. assertStopped must prove admission

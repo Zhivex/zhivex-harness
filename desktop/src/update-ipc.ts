@@ -5,4 +5,5 @@ export function registerDesktopUpdateIpc(ipc: Pick<IpcMain, "handle">, validate:
  ipc.handle("harness:update-status", (event, ...args: unknown[]) => {guard(event, args); return feed.state();});
  ipc.handle("harness:check-updates", (event, ...args: unknown[]) => {guard(event, args); return feed.check();});
  ipc.handle("harness:download-update", (event, ...args: unknown[]) => {guard(event, args); return feed.download();});
+ ipc.handle("harness:install-update", (event, ...args: unknown[]) => {guard(event, args); return feed.install();});
 }

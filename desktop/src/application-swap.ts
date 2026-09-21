@@ -65,6 +65,11 @@ async function checkTree(application: string, flush: boolean) {
  */
 export function createApplicationSwapper(verify: Verify = createMacApplicationVerifier()) {
  return {
+  async discardPrepared(swap: ApplicationSwap): Promise<void> {
+   const loc = await load(swap);
+   if (loc.journal.phase !== "prepared" || await exists(loc.previous)) throw new Error("UPDATE_APPLICATION_ALREADY_STARTED");
+   await rm(loc.directory, {recursive: true}); await sync(loc.parent);
+  },
   async verifyOutcome(swap: ApplicationSwap, outcome: "installed" | "restored"): Promise<void> {
    try {
     const {journal} = await load(swap);

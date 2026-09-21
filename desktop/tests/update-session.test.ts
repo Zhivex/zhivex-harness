@@ -58,3 +58,27 @@ test("bad artifact bytes are removed, failure is sanitized, and retry uses the a
   expect((await session.download()).status).toBe("downloaded");
  } finally {await rm(directory, {recursive: true, force: true});}
 });
+test("installation IPC shares one attempt, retries active work, and keeps recovery state pinned", async () => {
+ const {DesktopInstallError} = await import("../src/update-install.js");
+ const directory = await mkdtemp(path.join(os.tmpdir(), "update-session-"));
+ try {
+  let installs = 0, release!: () => void;
+  const gate = new Promise<void>(resolve => {release = resolve;});
+  const feed = createDesktopUpdateFeed(trust, "1.0.0", {fetch: fetcher(() => new Response(manifest()))});
+  const session = createDesktopUpdateSession(feed, {directory, fetch: fetcher(() => new Response(bytes)), install: async prepared => {
+   installs++; expect(await readFile(prepared.download.artifact)).toEqual(bytes);
+   if (installs === 1) {await gate; throw new DesktopInstallError("work-active");}
+   throw new DesktopInstallError("recovery-required");
+  }});
+  const handlers = new Map<string, (...args: any[]) => any>();
+  registerDesktopUpdateIpc({handle: (name, handler) => {handlers.set(name, handler);}}, () => {}, session);
+  const install = handlers.get("harness:install-update")!;
+  expect(() => install({}, {application: "/other"})).toThrow("INVALID_UPDATE_REQUEST");
+  await session.check(); await session.download();
+  const first = install({}); expect(session.state().status).toBe("installing"); expect(install({})).toBe(first); expect(session.check()).toBe(first);
+  release(); expect((await first).status).toBe("work-active");
+  expect((await install({})).status).toBe("recovery-required");
+  expect((await session.check()).status).toBe("recovery-required");
+  expect((await install({})).status).toBe("recovery-required"); expect(installs).toBe(2);
+ } finally {await rm(directory, {recursive: true, force: true});}
+});
