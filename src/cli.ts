@@ -138,6 +138,7 @@ import {
 import {
   applyCliProfile,
   createCliProfile,
+  loadCliProfile,
   resolveCliProfilePath,
   validateCliProfileName
 } from "./cli-profiles.js";
@@ -2152,6 +2153,17 @@ export const providersDocument = (env: NodeJS.ProcessEnv = process.env) => ({
   providers: providerAvailability(env)
 });
 
+export const confirmDefaultProfileSelection = async (
+  profile: { provider: HarnessProvider; model: string },
+  ask: (prompt: string) => Promise<string>
+) => {
+  const selected = { provider: profile.provider, model: profile.model };
+  const provider = sanitizeTerminalText(selected.provider);
+  const model = sanitizeTerminalText(selected.model);
+  const answer = (await ask(`Use default profile ${provider}/${model}? [y/N]: `)).trim().toLowerCase();
+  return answer === "y" || answer === "yes" ? selected : undefined;
+};
+
 const initializeCli = async (options: CliOptions) => {
   const profileName = options.profile ?? "default";
   const envProvider = options.provider ?? process.env.ZHIVEX_HARNESS_PROVIDER;
@@ -2222,7 +2234,7 @@ const initializeCli = async (options: CliOptions) => {
     "Next:",
     `  ${doctorCommand}`,
     `  ${runCommand}`,
-    "Profiles contain provider and model only. The default profile is used by the interactive console when no provider/model is explicitly configured."
+    "Profiles contain provider and model only. A later bare interactive console asks before using the default profile."
   ].join("\n") + "\n");
 };
 
@@ -3313,7 +3325,21 @@ export const main = async (argv = process.argv.slice(2)) => {
     let exists = true;
     try { await lstat(resolveCliProfilePath("default")); }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") exists = false; else throw error; }
-    if (exists) parsedOptions = { ...parsedOptions, profile: "default" };
+    if (exists) {
+      const profile = await loadCliProfile("default");
+      const prompt = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        const selected = await confirmDefaultProfileSelection(profile, (question) => prompt.question(question));
+        if (!selected) {
+          process.stderr.write("Default profile was not selected. Reopen with --profile default or an explicit --provider and --model.\n");
+          return;
+        }
+        // Use the values shown to the operator, without reopening a mutable profile.
+        parsedOptions = { ...parsedOptions, ...selected };
+      } finally {
+        prompt.close();
+      }
+    }
     else if (!providerAvailability().some(provider => provider.configured)) {
       process.stdout.write(formatConsoleWelcome({ version: HARNESS_VERSION, workspace: parsedOptions.workspace ?? process.cwd() }) + "\nFirst-time setup — choose your provider and model.\n");
       await initializeCli({ ...parsedOptions, command: "init", profile: "default" });

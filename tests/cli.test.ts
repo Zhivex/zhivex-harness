@@ -9,6 +9,7 @@ import {
   CliUsageError,
   type DoctorReport,
   cliExitCodeForError,
+  confirmDefaultProfileSelection,
   createHarnessResumeMetadata,
   createDoctorReport,
   formatDoctorReport,
@@ -21,6 +22,7 @@ import {
   summarizeApproval,
   withTemporaryHarnessProfiles
 } from "../src/cli.js";
+import { applyCliProfile, createCliProfile, loadCliProfile, resolveCliProfilePath } from "../src/cli-profiles.js";
 import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
 import { parseCliJsonDocument } from "../src/json-contracts.js";
 import { SqliteDatabase } from "../src/sqlite-database.js";
@@ -47,6 +49,43 @@ const runCli = async (arguments_: string[], env: Record<string, string> = {}) =>
 };
 
 describe("CLI parsing", () => {
+  test("requires an explicit confirmation before selecting the default profile", async () => {
+    const profile = { provider: "openai" as const, model: "gpt-5.6-luna" };
+    const prompts: string[] = [];
+    expect(await confirmDefaultProfileSelection(profile, async prompt => {
+      prompts.push(prompt);
+      return "yes";
+    })).toEqual(profile);
+    expect(await confirmDefaultProfileSelection(profile, async () => "y")).toEqual(profile);
+    expect(await confirmDefaultProfileSelection(profile, async () => "")).toBeUndefined();
+    expect(await confirmDefaultProfileSelection(profile, async () => "no")).toBeUndefined();
+    expect(prompts).toEqual(["Use default profile openai/gpt-5.6-luna? [y/N]: "]);
+  });
+
+  test("uses the confirmed provider/model even when the profile changes during confirmation", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-profile-confirmation-"));
+    const context = { env: { ZHIVEX_HARNESS_CONFIG_DIR: root } };
+    const original = { provider: "openai" as const, model: "gpt-5.6-luna" };
+    try {
+      await createCliProfile("default", original, context);
+      const profile = await loadCliProfile("default", context);
+      const selected = await confirmDefaultProfileSelection(profile, async () => {
+        await writeFile(resolveCliProfilePath("default", context), JSON.stringify({
+          schemaVersion: 1, provider: "qwen", model: "qwen3.8-max"
+        }), { mode: 0o600 });
+        return "yes";
+      });
+      expect(await loadCliProfile("default", context)).toMatchObject({ provider: "qwen" });
+      expect(selected).toEqual(original);
+      // The same options path used by main must not reopen the confirmed profile.
+      const options = await applyCliProfile({ ...parseCliArgs(["chat"]), ...selected }, context);
+      expect(options).toMatchObject(original);
+      expect(options.profile).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test("accepts literal session search only for listing", () => {
     expect(parseCliArgs(["sessions", "list", "--search", "parser", "--limit", "1"])).toMatchObject({ sessionSearch: "parser", limit: 1 });
     expect(() => parseCliArgs(["run", "--search", "parser", "task"])).toThrow("not supported");

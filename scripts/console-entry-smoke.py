@@ -87,8 +87,21 @@ try:
         assert saved["provider"] == "openai"
     finally: setup.close()
     fixture_env = dict(env, OPENAI_API_KEY="fixture-only", OPENAI_BASE_URL="https://api.openai.com/v1", CONSOLE_FIXTURE_REQUESTS=str(root / "requests.jsonl"))
+    denied = Console([], fixture_env)
+    try:
+        denied.read("Use default profile openai/" + saved["model"] + "? [y/N]: ")
+        denied.send("n\n")
+        denied.read("Default profile was not selected")
+        assert denied.wait_exit() == 0
+        assert not (root / "requests.jsonl").exists()
+    finally: denied.close()
     direct = Console([], fixture_env)
     try:
+        direct.read("Use default profile openai/" + saved["model"] + "? [y/N]: ")
+        # Change the private file while the actual CLI is waiting for confirmation.
+        profile_path = root / "config/profiles/default.json"
+        profile_path.write_text(json.dumps(dict(saved, provider="qwen", model="qwen3.8-max")))
+        direct.send("yes\n")
         assert b"Welcome" in direct.read("\n> ")
         direct.send("/conversation\t\n")
         # Selection opens the conversation picker without submitting a provider request.
@@ -106,7 +119,10 @@ try:
         direct.read("Fixture done")
         compact_output = direct.read("\n> ")
         assert b"model stream" not in compact_output
-        count = len((root / "requests.jsonl").read_text().splitlines())
+        recorded = (root / "requests.jsonl").read_text().splitlines()
+        assert all(json.loads(request)["model"] == saved["model"] for request in recorded)
+        profile_path.write_text(json.dumps(saved))
+        count = len(recorded)
         direct.send("\x12needle\n")
         direct.read("history needle")
         time.sleep(.1)

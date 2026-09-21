@@ -15,6 +15,8 @@ provider and model. It stores that selection in a private user profile outside t
 repository. The console then offers a hidden API key prompt: save in the system
 keychain or use only for this CLI session. Profiles themselves never contain keys.
 Use `/menu` → **Credentials** to replace or remove keys. See [Credentials](CREDENTIALS.md).
+On later bare `zhx` launches, the console shows the saved provider/model and asks
+for confirmation before activating the `default` profile or contacting a provider.
 
 ## Environment keys for automation
 

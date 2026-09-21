@@ -14,6 +14,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  desktop-security:
+    name: Desktop security and package smoke
+    runs-on: macos-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Install immutable root dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Install immutable desktop dependencies
+        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+
+      - name: Install pinned Electron runtime
+        run: node desktop/node_modules/electron/install.js
+
+      - name: Audit desktop dependencies
+        run: bun audit
+        working-directory: desktop
+
+      - name: Validate desktop source and security regressions
+        run: |
+          bun run --cwd desktop typecheck
+          bun test desktop/tests
+
+      - name: Package and exercise the desktop application
+        run: |
+          bun run --cwd desktop package
+          bun run --cwd desktop smoke:packaged --empty-start
+
+      - name: Verify desktop build produced no tracked changes
+        run: git diff --exit-code
+
   verify:
     name: Node 24 / ${{ matrix.os }} (Bun tooling)
     runs-on: ${{ matrix.os }}
@@ -46,6 +94,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Prepare desktop native tests on macOS
+        if: runner.os == 'macOS'
+        run: |
+          bun install --cwd desktop --frozen-lockfile --ignore-scripts
+          node desktop/node_modules/electron/install.js
+
       - name: Prepare isolated Linux credential store
         if: runner.os == 'Linux'
         run: |
@@ -77,6 +131,9 @@ jobs:
 
       - name: Inspect package contents
         run: bun run pack:inspect
+
+      - name: Verify interactive console with offline PTY fixtures
+        run: bun run smoke:console
 
       - name: Verify one exact package artifact
         run: |

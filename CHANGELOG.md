@@ -17,6 +17,13 @@ release remains 1.0.0. Desktop has its own private alpha version.
   notarization and update trust configuration remain pending; automatic updates
   remain disabled in the default alpha build.
 
+### Release validation and profile safety
+
+- Install the pinned Electron runtime explicitly before macOS native tests, including
+  the general validation job; keep other dependency lifecycle scripts disabled.
+- Bind default-profile confirmation to the displayed provider/model so a profile
+  changed while the prompt is open cannot redirect the current invocation.
+
 ### Developer experience and documentation
 
 - Lead `zhx --help` with everyday actions; add command-specific help and `zhx help all` for the complete reference.

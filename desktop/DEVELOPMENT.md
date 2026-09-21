@@ -17,6 +17,11 @@ bun run --cwd desktop start
 bun run --cwd desktop start --workspace /absolute/repository
 ```
 
+CI installs dependencies with `--ignore-scripts`, then explicitly runs
+`node desktop/node_modules/electron/install.js` from the repository root. This
+installs the pinned, checksum-verified Electron binary needed by native tests;
+other dependency lifecycle scripts remain disabled.
+
 ## Validate and package
 
 ```sh

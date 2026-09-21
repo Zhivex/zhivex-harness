@@ -1,4 +1,4 @@
-import packager from "@electron/packager";
+import { packager } from "@electron/packager";
 import { mkdtemp, cp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
 const root = path.resolve(import.meta.dir, "..");
