@@ -8,7 +8,8 @@ import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
 import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../../src/state-backup.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import {SqliteDatabase} from "../../src/sqlite-database.js";
-import type {SqliteAccessLease} from "../../src/sqlite-access.js";
+import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
+import {validateRecordedWorkspace} from "../../src/recorded-workspace.js";
 
 export const DESKTOP_DATABASE_BACKUP_LIMIT = 128 * 1024 * 1024;
 export interface DesktopDatabaseBackup {directory: string; size: number; sha256: string; logicalChecksum: string}
@@ -85,4 +86,29 @@ export async function verifyDesktopDatabaseBackup(backup: DesktopDatabaseBackup)
   const contents = await readRegularFileNoFollow(path.join(backup.directory, HARNESS_SQLITE_FILE), {label: "desktop backup", maxBytes: DESKTOP_DATABASE_BACKUP_LIMIT, requireSingleLink: true});
   if (contents.stat.uid !== process.getuid?.() || (contents.stat.mode & 0o077) || contents.contents.length !== backup.size || createHash("sha256").update(contents.contents).digest("hex") !== backup.sha256) throw new Error();
  } catch {throw new Error("DESKTOP_BACKUP_INVALID");}
+}
+
+/** Worker state check under an exclusive inherited lease. Reads the live database
+ * without migrations, checkpointing, opening sessions or recreating a checkout.
+ * Core export validation covers its records; it is not an equality comparison
+ * against the backup or a semantic validator for every desktop activity table.
+ */
+export async function verifyDesktopDatabaseState(config: DesktopBackupConfig & {accessLease: SqliteAccessLease}): Promise<void> {
+ try {
+  await validateRecordedWorkspace(config.workspace, config.workspaceAbsent === true);
+  await validateStateDirectory(config.workspace, config.stateDirectory);
+  const directory = await privateDirectory(config.stateDirectory), filename = path.join(directory, HARNESS_SQLITE_FILE);
+  const stat = await statRegularFileNoFollow(filename, {label: "desktop state", requireSingleLink: true});
+  if (stat.uid !== process.getuid?.() || (stat.mode & 0o077) || stat.size > DESKTOP_DATABASE_BACKUP_LIMIT) throw new Error();
+  exclusiveSqliteAccessDescriptor(config.accessLease, filename);
+  const db = new SqliteDatabase(filename, {readonly: true, create: false, accessLease: config.accessLease});
+  try {
+   db.exec("PRAGMA busy_timeout=1000");
+   if (db.query<{page_count: number}>("PRAGMA page_count").get()!.page_count * db.query<{page_size: number}>("PRAGMA page_size").get()!.page_size > DESKTOP_DATABASE_BACKUP_LIMIT) throw new Error();
+   if (db.query<{quick_check: string}>("PRAGMA quick_check").all().some(row => row.quick_check !== "ok")) throw new Error();
+   assertIdle(db);
+  } finally {db.close();}
+  await createArchivedHarnessStateBackup(config, {accessLease: config.accessLease});
+  exclusiveSqliteAccessDescriptor(config.accessLease, filename);
+ } catch {throw new Error("DESKTOP_DATABASE_STATE_INVALID");}
 }

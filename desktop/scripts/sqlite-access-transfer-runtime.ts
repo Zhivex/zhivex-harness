@@ -13,6 +13,7 @@ import {createApplicationSwapper} from "../src/application-swap.js";
 import {prepareDesktopUpdateJob, executeDesktopUpdateJob} from "../src/update-job.js";
 import {armDesktopStateTransaction} from "../src/state-transaction.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
+import {verifyDesktopDatabaseState} from "../src/database-backup.js";
 import {prepareDesktopUpdateHandoff, adoptDesktopUpdateHandoffState, acknowledgeDesktopUpdateHandoff, waitForDesktopUpdateAcknowledgement, waitForDesktopUpdateOwners, assertDesktopUpdateOwnersStopped} from "../src/update-handoff.js";
 const swapper = createApplicationSwapper(async (bundle, policy) => {assert.equal(await readFile(path.join(bundle, "version"), "utf8"), policy.version);});
 const exists = (file: string) => access(file).then(() => true, () => false);
@@ -39,7 +40,21 @@ async function worker() {
   await acknowledgeDesktopUpdateHandoff(handoff, access);
   await waitForDesktopUpdateOwners(handoff, {stateAccess: access});
   await poll(() => exists(path.join(f.root, "worker-release")));
+  const entry = access.entries[0]!, config = {...resolveHarnessConfig({workspace: f.workspace, stateDirectory: path.dirname(entry.databasePath), storeBackend: "sqlite", provider: "openai"}), accessLease: entry.lease};
+  const stateBytes = async () => Promise.all(["", "-wal"].map(async suffix => exists(entry.databasePath + suffix).then(async present => {const bytes = present ? await readFile(entry.databasePath + suffix) : null; return bytes?.length ? bytes : null;})));
+  const beforeVerification = await stateBytes();
+  await verifyDesktopDatabaseState(config);
+  assert.deepEqual(await stateBytes(), beforeVerification);
+  const incompatible = new SqliteDatabase(entry.databasePath, {accessLease: entry.lease});
+  let originalVersion: number;
+  try {originalVersion = incompatible.query<{version: number}>("SELECT version FROM zhivex_cli_session_schema WHERE singleton=1").get()!.version; incompatible.exec("UPDATE zhivex_cli_session_schema SET version=999999 WHERE singleton=1");} finally {incompatible.close();}
+  const beforeRejection = await stateBytes();
+  await assert.rejects(verifyDesktopDatabaseState(config), /DESKTOP_DATABASE_STATE_INVALID/);
+  assert.deepEqual(await stateBytes(), beforeRejection);
+  const unchanged = new SqliteDatabase(entry.databasePath, {accessLease: entry.lease});
+  try {assert.equal(unchanged.query<{version: number}>("SELECT version FROM zhivex_cli_session_schema WHERE singleton=1").get()!.version, 999999); unchanged.query("UPDATE zhivex_cli_session_schema SET version=? WHERE singleton=1").run(originalVersion);} finally {unchanged.close();}
   const outcome = await executeDesktopUpdateJob(handoff.job, {swapper, assertStopped: () => assertDesktopUpdateOwnersStopped(handoff, access), verifyState: async () => {
+   await verifyDesktopDatabaseState(config);
    const entry = access.entries[0]!; assert.equal(entry.databasePath, f.databasePath);
    const db = new SqliteDatabase(entry.databasePath, {accessLease: entry.lease});
    try {assert.equal(db.query<{n: number}>("SELECT n FROM value").get()!.n, 7); assert.equal(db.query<{title: string}>("SELECT title FROM zhivex_cli_sessions").get()!.title, "native retained");} finally {db.close();}
@@ -88,7 +103,7 @@ async function parent() {
   await poll(async () => {try {process.kill(pid, 0); return false;} catch {return true;}});
   const reopened = new SqliteDatabase(databasePath); try {assert.equal(reopened.query<{n: number}>("SELECT n FROM value").get()!.n, 7);} finally {reopened.close();}
   const evidence = await mkdtemp("/tmp/har-transfer-report-");
-  const report = {node: process.versions.node, electron: process.versions.electron, exclusiveBackupPrepared: true, snapshotRecordsVerified: true, receiptBoundHandoff: true, durableJobCompleted: true, fixtureBundleVerifier: true, exclusiveBeforeHostExit: true, exclusiveAfterHostExit: true, inheritedLeaseUsedByWorker: true, workerCrashReleasesLease: true, contentsPreserved: true, pass: true};
+  const report = {node: process.versions.node, electron: process.versions.electron, exclusiveBackupPrepared: true, snapshotRecordsVerified: true, receiptBoundHandoff: true, durableJobCompleted: true, liveStateReadOnlyVerified: true, incompatibleSchemaRejectedWithoutMigration: true, fixtureBundleVerifier: true, exclusiveBeforeHostExit: true, exclusiveAfterHostExit: true, inheritedLeaseUsedByWorker: true, workerCrashReleasesLease: true, contentsPreserved: true, pass: true};
   await writeFile(path.join(evidence, "report.json"), JSON.stringify(report, null, 2)); console.log(JSON.stringify({evidence, ...report}));
  } finally {
   if (child && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
