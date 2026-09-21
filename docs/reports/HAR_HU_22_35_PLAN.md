@@ -182,6 +182,13 @@ them or opening project indexes. Five unit tests, packaged normal-flow smoke and
 four layout checks pass. See HAR_HU_35_STATE_GATE_2026-09-20.md. Migration/backup
 and recovery implementation remain outstanding; all three criteria stay open.
 
+Update transaction coordinator added, with 12 tests / 56 assertions, including
+real SQLite/local-service proof that active work finishes without cancellation
+and preparation blocks external-client mutations. It is not yet wired to main;
+native install/recovery callbacks remain to implement. The core logical backup
+omits visual activity and desktop indexes/journals, so it cannot alone certify
+complete restoration. See HAR_HU_35_COORDINATION_2026-09-20.md.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).
