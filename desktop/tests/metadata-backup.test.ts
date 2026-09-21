@@ -1,7 +1,7 @@
 import {test, expect} from "bun:test";
 import {mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
-import {createDesktopMetadataBackup, readDesktopMetadataBackup} from "../src/metadata-backup.js";
+import {createDesktopMetadataBackup, readDesktopMetadataBackup, verifyDesktopMetadataState} from "../src/metadata-backup.js";
 async function fixture(run: (root: string, userData: string) => Promise<void>) {
  const root = await mkdtemp("/tmp/har-metadata-backup-"), userData = path.join(root, "profile"); await mkdir(userData);
  try {await run(root, userData);} finally {await rm(root, {recursive: true, force: true});}
@@ -38,4 +38,25 @@ test("symlinked metadata refuses backup and clears partial staging", () => fixtu
  await mkdir(path.join(userData, "projects")); await symlink(path.join(root, "target"), path.join(userData, "projects/projects.json"));
  const backups = path.join(root, "backups");
  await expect(createDesktopMetadataBackup(userData, backups)).rejects.toThrow("DESKTOP_METADATA_BACKUP_FAILED"); expect(await readdir(backups)).toEqual([]);
+}));
+test("live verification ignores the transaction marker but detects added, removed and changed metadata", () => fixture(async (root, userData) => {
+ await write(userData, "projects/projects.json", "original");
+ await write(userData, `git-delivery/${journal}`, "original journal");
+ const backup = await createDesktopMetadataBackup(userData, path.join(root, "backups"));
+ await write(userData, "state-compatibility/format.json", '{"format":1,"phase":"migrating"}');
+ await verifyDesktopMetadataState(userData, backup);
+ await write(userData, `remote-delivery/${journal}`, "new journal");
+ await expect(verifyDesktopMetadataState(userData, backup)).rejects.toThrow("DESKTOP_METADATA_STATE_INVALID");
+ await rm(path.join(userData, `remote-delivery/${journal}`));
+ await rm(path.join(userData, `git-delivery/${journal}`));
+ await expect(verifyDesktopMetadataState(userData, backup)).rejects.toThrow("DESKTOP_METADATA_STATE_INVALID");
+ await write(userData, `git-delivery/${journal}`, "original journal");
+ await write(userData, "projects/projects.json", "changed");
+ await expect(verifyDesktopMetadataState(userData, backup)).rejects.toThrow("DESKTOP_METADATA_STATE_INVALID");
+ expect(await readFile(path.join(userData, "projects/projects.json"), "utf8")).toBe("changed");
+}));
+test("live verification rejects a symlinked fixed-index parent", () => fixture(async (root, userData) => {
+ const backup = await createDesktopMetadataBackup(userData, path.join(root, "backups"));
+ const outside = path.join(root, "outside"); await mkdir(outside, {mode: 0o700}); await symlink(outside, path.join(userData, "projects"));
+ await expect(verifyDesktopMetadataState(userData, backup)).rejects.toThrow("DESKTOP_METADATA_STATE_INVALID");
 }));

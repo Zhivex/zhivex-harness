@@ -7,16 +7,20 @@ import {validateRecordedWorkspace} from "../../src/recorded-workspace.js";
 import {readRegularFileNoFollow, statRegularFileNoFollow} from "../../src/file-security.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {createDesktopDatabaseBackup, verifyDesktopDatabaseBackup, DESKTOP_DATABASE_BACKUP_LIMIT, type DesktopBackupConfig} from "./database-backup.js";
-import {createDesktopMetadataBackup, readDesktopMetadataBackup} from "./metadata-backup.js";
+import {createDesktopDatabaseBackup, verifyDesktopDatabaseBackup, verifyDesktopDatabaseState, DESKTOP_DATABASE_BACKUP_LIMIT, type DesktopBackupConfig} from "./database-backup.js";
+import {createDesktopMetadataBackup, readDesktopMetadataBackup, verifyDesktopMetadataState} from "./metadata-backup.js";
+import {resolveHarnessConfig} from "../../src/config.js";
+import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
 import {checkDesktopStateFormat, DESKTOP_STATE_FORMAT} from "./state-format.js";
 
 const sha = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const absolute = z.string().max(4096).refine(p => path.isAbsolute(p) && path.normalize(p) === p);
+const scopePart = z.string().min(1).max(128).regex(/^[^\x00-\x1f\x7f]+$/);
+const scope = z.object({tenantId: scopePart, userId: scopePart.optional(), namespace: scopePart.optional()}).strict();
 const file = z.union([z.object({name: z.string().max(512), size: z.number().int().min(0).max(1024 * 1024), sha256: hash}).strict(), z.object({name: z.string().max(512), absent: z.literal(true)}).strict()]);
 const receiptSchema = z.object({schemaVersion: z.literal(1), userData: absolute, format: z.literal(1),
- databases: z.array(z.object({workspace: absolute, workspaceAbsent: z.literal(true).optional(), stateDirectory: absolute, backup: z.object({directory: z.string().regex(/^database-[A-Za-z0-9]+$/), size: z.number().int().min(1).max(DESKTOP_DATABASE_BACKUP_LIMIT), sha256: hash, logicalChecksum: z.string().regex(/^sha256:[a-f0-9]{64}$/)}).strict().nullable()}).strict()).max(600),
+ databases: z.array(z.object({workspace: absolute, workspaceAbsent: z.literal(true).optional(), scope: scope.optional(), stateDirectory: absolute, backup: z.object({directory: z.string().regex(/^database-[A-Za-z0-9]+$/), size: z.number().int().min(1).max(DESKTOP_DATABASE_BACKUP_LIMIT), sha256: hash, logicalChecksum: z.string().regex(/^sha256:[a-f0-9]{64}$/)}).strict().nullable()}).strict()).max(600),
  metadata: z.object({directory: z.string().regex(/^metadata-[A-Za-z0-9]+$/), files: z.array(file).max(4096)}).strict(),
 }).strict();
 const pointerSchema = z.object({schemaVersion: z.literal(1), id: z.string().uuid(), sha256: hash}).strict();
@@ -86,6 +90,41 @@ export async function desktopStateTransactionDatabasePaths(userData: string, tra
  catch {throw new Error("DESKTOP_STATE_TRANSACTION_MISMATCH");}
 }
 
+/** Confirmation while the recovery gate is still active. This validates format-1
+ * state under every exclusive lease; it must not compare old metadata after the
+ * gate has cleared and a restarted application may have accepted new work.
+ */
+export async function verifyDesktopStateTransaction(userData: string, transaction: DesktopStateTransaction, supplied: ReadonlyArray<{databasePath: string; lease: SqliteAccessLease}>): Promise<void> {
+ try {
+  const access = supplied.map(entry => ({...entry})), ctx = await load(userData, transaction);
+  const expected = ctx.receipt.databases.map(db => path.join(db.stateDirectory, HARNESS_SQLITE_FILE)).sort();
+  if (JSON.stringify(access.map(entry => entry.databasePath).sort()) !== JSON.stringify(expected)) throw new Error();
+  const leases = new Map(access.map(entry => [entry.databasePath, entry.lease]));
+  const guard = async () => {
+   if (await desktopStateTransactionStatus(userData, transaction) !== "active") throw new Error();
+   for (const entry of access) exclusiveSqliteAccessDescriptor(entry.lease, entry.databasePath);
+  };
+  await guard();
+  const marker = JSON.parse((await read(path.join(ctx.home, MARKER), 1024)).toString("utf8"));
+  if (marker?.format !== DESKTOP_STATE_FORMAT || !["migrating", "ready"].includes(marker?.phase) || Object.keys(marker).length !== 2) throw new Error();
+  for (const db of ctx.receipt.databases) {
+   const databasePath = path.join(db.stateDirectory, HARNESS_SQLITE_FILE);
+   if (!db.backup) {
+    for (const suffix of ["", "-wal", "-shm"]) if (await exists(databasePath + suffix)) throw new Error();
+   } else {
+    // Older receipts remain restorable, but lack an explicit scope for this new
+    // verification path. Never infer it from the worker environment.
+    if (!db.scope) throw new Error();
+    const config = {...resolveHarnessConfig({workspace: db.workspace, stateDirectory: db.stateDirectory, storeBackend: "sqlite", provider: "openai"}), scope: {tenantId: db.scope.tenantId, ...(db.scope.userId ? {userId: db.scope.userId} : {}), ...(db.scope.namespace ? {namespace: db.scope.namespace} : {})}};
+    await verifyDesktopDatabaseState({...config, ...(db.workspaceAbsent ? {workspaceAbsent: true as const} : {}), accessLease: leases.get(databasePath)!});
+   }
+   await guard();
+  }
+  await verifyDesktopMetadataState(ctx.home, {...ctx.receipt.metadata, directory: path.join(ctx.directory, ctx.receipt.metadata.directory)});
+  await guard();
+ } catch {throw new Error("DESKTOP_STATE_VERIFICATION_FAILED");}
+}
+
 /** Caller enumerates all registered projects/tasks and holds admission closed for the entire transaction. */
 export async function prepareDesktopStateTransaction(userData: string, configs: DesktopBackupConfig[]): Promise<DesktopStateTransaction> {
  let ownedDirectory: string | undefined;
@@ -107,7 +146,7 @@ export async function prepareDesktopStateTransaction(userData: string, configs: 
     total += copy.size; if (total > TOTAL_LIMIT) throw new Error();
     backup = {...copy, directory: path.basename(copy.directory)};
    }
-   databases.push({workspace, stateDirectory, backup, ...(config.workspaceAbsent ? {workspaceAbsent: true as const} : {})});
+   databases.push({workspace, stateDirectory, scope: config.scope, backup, ...(config.workspaceAbsent ? {workspaceAbsent: true as const} : {})});
   }
   const metadataCopy = await createDesktopMetadataBackup(ctx.home, directory);
   const metadata = {...metadataCopy, directory: path.basename(metadataCopy.directory)};

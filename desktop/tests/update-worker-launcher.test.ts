@@ -23,7 +23,8 @@ async function exists(file: string) {return lstat(file).then(() => true, () => f
 async function fixture(run: (f: {directory: string; worker: string; executable: string; helper: string; arguments: string[]}, groups: number[]) => Promise<void>) {
  const directory = await realpath(await mkdtemp("/tmp/har-update-worker-")), worker = path.join(directory, "worker.cjs"), groups: number[] = [];
  await writeFile(worker, `const fs=require('node:fs');const id=process.argv[2];
-fs.writeFileSync(id+'.started',JSON.stringify({pid:process.pid,keys:Object.keys(process.env),node:process.versions.node,electron:process.versions.electron}));
+fs.writeFileSync(id+'.starting',JSON.stringify({pid:process.pid,keys:Object.keys(process.env),node:process.versions.node,electron:process.versions.electron}));
+fs.renameSync(id+'.starting',id+'.started');
 const timer=setInterval(()=>{if(fs.existsSync(id+'.release')){clearInterval(timer);process.exit(0)}},25);
 setTimeout(()=>process.exit(2),20000).unref();`, {mode: 0o600});
  try {await run({directory, worker, executable: await realpath(electron), helper, arguments: []}, groups);}

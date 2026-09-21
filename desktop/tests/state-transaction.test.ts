@@ -7,7 +7,8 @@ import {openCliSessionStore} from "../../src/sessions.js";
 import {openHarnessActivityStore} from "../../src/service-events.js";
 import {SqliteDatabase} from "../../src/sqlite-database.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
-import {prepareDesktopStateTransaction, armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction} from "../src/state-transaction.js";
+import {prepareDesktopStateTransaction, armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction, verifyDesktopStateTransaction} from "../src/state-transaction.js";
+import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/sqlite-access.js";
 
 async function fixture(run: (f: {root: string; userData: string; configs: ReturnType<typeof resolveHarnessConfig>[]}) => Promise<void>) {
  const root = await realpath(await mkdtemp("/tmp/har-state-transaction-")), userData = path.join(root, "profile"); await mkdir(userData);
@@ -101,3 +102,26 @@ test("state absent before migration returns to absence while new DB and orphan s
  const saved = path.join(stateDirectory, `.update-recovery-${t.id}`);
  expect((await Promise.all((await readdir(saved)).map(n => readFile(path.join(saved, n), "utf8")))).sort()).toEqual(["new", "new-shm", "new-wal"]);
 }));
+test.skipIf(process.platform !== "darwin")("receipt verification requires every exclusive lease and preserves absent state and cleared-gate boundaries", async () => {
+ const root = await realpath(await mkdtemp("/tmp/har-verify-receipt-"));
+ const configs = [], access: Array<{databasePath: string; lease: SqliteAccessLease}> = [];
+ try {
+  for (let i = 0; i < 2; i++) {
+   const workspace = path.join(root, `workspace${i}`), stateDirectory = path.join(root, `state${i}`);
+   await mkdir(workspace); await mkdir(stateDirectory, {mode: 0o700});
+   configs.push(resolveHarnessConfig({workspace, stateDirectory, storeBackend: "sqlite", provider: "openai", tenantId: `tenant${i}`}));
+   const databasePath = path.join(stateDirectory, HARNESS_SQLITE_FILE); access.push({databasePath, lease: acquireSqliteAccess(databasePath, true)!});
+  }
+  const transaction = await prepareDesktopStateTransaction(root, configs); await armDesktopStateTransaction(root, transaction);
+  const receipt = JSON.parse(await readFile(path.join(root, "update-recovery", transaction.id, "receipt.json"), "utf8"));
+  expect(receipt.databases.map((db: {scope: {tenantId: string}}) => db.scope.tenantId)).toEqual(["tenant0", "tenant1"]);
+  await verifyDesktopStateTransaction(root, transaction, access);
+  await expect(verifyDesktopStateTransaction(root, transaction, access.slice(1))).rejects.toThrow("DESKTOP_STATE_VERIFICATION_FAILED");
+  await expect(verifyDesktopStateTransaction(root, transaction, [access[0]!, access[0]!])).rejects.toThrow("DESKTOP_STATE_VERIFICATION_FAILED");
+  const sidecar = access[1]!.databasePath + "-wal"; await writeFile(sidecar, "unexpected", {mode: 0o600});
+  await expect(verifyDesktopStateTransaction(root, transaction, access)).rejects.toThrow("DESKTOP_STATE_VERIFICATION_FAILED");
+  expect(await readFile(sidecar, "utf8")).toBe("unexpected"); await rm(sidecar);
+  await finishDesktopStateTransaction(root, () => verifyDesktopStateTransaction(root, transaction, access));
+  await expect(verifyDesktopStateTransaction(root, transaction, access)).rejects.toThrow("DESKTOP_STATE_VERIFICATION_FAILED");
+ } finally {access.forEach(entry => entry.lease.close()); await rm(root, {recursive: true, force: true});}
+});

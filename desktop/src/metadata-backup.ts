@@ -33,12 +33,7 @@ async function writePrivate(filename: string, value: Buffer) {
  try {await file.writeFile(value); await file.sync();} finally {await file.close();}
  const dir = await open(parent, constants.O_RDONLY | constants.O_NOFOLLOW); try {await dir.sync();} finally {await dir.close();}
 }
-/** Host-selected metadata only; no Chromium profile, credentials, repositories or task checkouts.
- * Must execute under the update coordinator with all index/journal mutation admission closed.
- */
-export async function createDesktopMetadataBackup(userData: string, backupRoot: string): Promise<DesktopMetadataBackup> {
- let directory: string | undefined;
- try {
+async function metadataNames(userData: string): Promise<string[]> {
   const names = [...fixed];
   for (const root of journalRoots) {
    const base = path.join(userData, root); if (!await directoryExists(base)) continue;
@@ -50,6 +45,15 @@ export async function createDesktopMetadataBackup(userData: string, backupRoot: 
     }
    }
   }
+  return names.sort();
+}
+/** Host-selected metadata only; no Chromium profile, credentials, repositories or task checkouts.
+ * Must execute under the update coordinator with all index/journal mutation admission closed.
+ */
+export async function createDesktopMetadataBackup(userData: string, backupRoot: string): Promise<DesktopMetadataBackup> {
+ let directory: string | undefined;
+ try {
+  const names = await metadataNames(userData);
   await mkdir(backupRoot, {recursive: true, mode: 0o700}); if (!await directoryExists(backupRoot)) throw new Error();
   directory = await mkdtemp(path.join(await realpath(backupRoot), "metadata-"));
   const files: DesktopMetadataBackup["files"] = []; let size = 0;
@@ -93,4 +97,27 @@ export async function readDesktopMetadataBackup(backup: DesktopMetadataBackup): 
   if (fixed.some(name => !values.has(name))) throw new Error();
   return values;
  } catch {throw new Error("DESKTOP_METADATA_BACKUP_INVALID");}
+}
+
+/** Format-1 updates preserve index/journal bytes. The transaction owns and checks
+ * the format marker separately; no profile or checkout files are compared.
+ */
+export async function verifyDesktopMetadataState(userData: string, backup: DesktopMetadataBackup): Promise<void> {
+ try {
+  const expected = await readDesktopMetadataBackup(backup);
+  expected.delete("state-compatibility/format.json");
+  const names = (await metadataNames(userData)).filter(name => name !== "state-compatibility/format.json");
+  if (JSON.stringify(names) !== JSON.stringify([...expected.keys()].sort())) throw new Error();
+  let size = 0;
+  for (const name of names) {
+   let bytes: Buffer | null = null;
+   if (await directoryExists(path.dirname(path.join(userData, name)))) {
+    try {bytes = await readPrivate(path.join(userData, name));}
+    catch (error) {if ((error as NodeJS.ErrnoException).code !== "ENOENT" || !fixed.includes(name)) throw error;}
+   }
+   size += bytes?.length ?? 0; if (size > LIMIT) throw new Error();
+   const original = expected.get(name);
+   if (bytes === null ? original !== null : !original || !bytes.equals(original)) throw new Error();
+  }
+ } catch {throw new Error("DESKTOP_METADATA_STATE_INVALID");}
 }

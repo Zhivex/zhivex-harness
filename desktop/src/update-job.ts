@@ -54,7 +54,7 @@ export async function inspectDesktopUpdateJob(job: DesktopUpdateJob) {
    if (status !== "active" && journal.phase !== "finishing") throw new Error();
   }
   const identity = {schemaVersion: journal.schemaVersion, id: journal.id, userData: journal.userData, state: journal.state, application: journal.application};
-  return {phase: journal.phase, digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex"), databasePaths: await desktopStateTransactionDatabasePaths(job.userData, journal.state)};
+  return {phase: journal.phase, state: structuredClone(journal.state), digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex"), databasePaths: await desktopStateTransactionDatabasePaths(job.userData, journal.state)};
  } catch {throw new Error("UPDATE_JOB_INVALID");}
 }
 
