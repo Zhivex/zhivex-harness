@@ -195,6 +195,13 @@ tests / 34 assertions plus an Electron 44.4.3 / Node 24.21.0 component check pas
 Cross-project durable receipts, actual restore and coordinator/UI wiring are
 still pending. See HAR_HU_35_COMPLETE_BACKUP_COMPONENTS_2026-09-20.md.
 
+Persistent state transaction and actual fixture restoration now implemented:
+receipt on disk, intent-before-migration barrier, all-copy verification, quarantine,
+and retry after partial restore. Ten tests / 45 assertions, native Electron/Node
+recovery of two databases, four packaged state gates, normal-flow package smoke
+and four layout checks pass. See HAR_HU_35_STATE_RECOVERY_2026-09-20.md. Main/UI,
+coordinator and real binary installer/verification remain to connect; criteria open.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).

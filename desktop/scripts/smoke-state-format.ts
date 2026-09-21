@@ -10,12 +10,17 @@ for (const [name, payload, code] of [
  ["future", '{"format":2,"phase":"ready"}', "DESKTOP_STATE_INCOMPATIBLE"],
  ["interrupted", '{"format":1,"phase":"migrating"}', "DESKTOP_STATE_RECOVERY_REQUIRED"],
  ["invalid", "synthetic private data must not appear in diagnostic", "DESKTOP_STATE_INVALID"],
+ ["intent", '{"format":1,"phase":"ready"}', "DESKTOP_STATE_RECOVERY_REQUIRED"],
 ]) {
  const directory = path.join(report, name!);
  const markerDirectory = path.join(directory, "user-data/state-compatibility");
  await mkdir(markerDirectory, {recursive: true, mode: 0o700});
  const marker = path.join(markerDirectory, "format.json");
  await writeFile(marker, payload!, {mode: 0o600});
+ if (name === "intent") {
+  await mkdir(path.join(directory, "user-data/update-recovery"), {mode: 0o700});
+  await writeFile(path.join(directory, "user-data/update-recovery/active.json"), "interrupted recovery intent", {mode: 0o600});
+ }
  const child = spawn(executable, [...(packaged ? [] : [root]), "--smoke-test", "--report-directory", directory], {cwd: root, env: {PATH: process.env.PATH, HOME: directory}, stdio: "ignore"});
  const timer = setTimeout(() => child.kill("SIGKILL"), 30_000);
  let exit;

@@ -1,0 +1,7 @@
+{
+  "node": "24.21.0",
+  "electron": "44.4.3",
+  "databases": 2,
+  "interruptionRecovered": true,
+  "pass": true
+}

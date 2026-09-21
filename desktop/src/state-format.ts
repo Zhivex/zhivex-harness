@@ -14,6 +14,10 @@ export class DesktopStateError extends Error {
 export async function checkDesktopStateFormat(userData: string): Promise<void> {
  const directory = path.join(userData, "state-compatibility");
  try {
+  // The recovery intent is written before the format marker. Any surviving intent
+  // blocks startup even if power was lost before the marker changed (or after reset).
+  try {await lstat(path.join(userData, "update-recovery/active.json")); throw new DesktopStateError("DESKTOP_STATE_RECOVERY_REQUIRED");}
+  catch (error) {if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;}
   await mkdir(directory, {recursive: true, mode: 0o700});
   const info = await lstat(directory);
   if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || (info.mode & 0o077)) throw new Error();
