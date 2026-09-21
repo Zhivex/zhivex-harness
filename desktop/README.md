@@ -363,3 +363,12 @@ also exercises the update handoff using the installed lock helper and installed
 Electron runtime after detaching the image. That fixture does not enable or
 certify an updater in main/UI. The worker entrypoint and external-state ownership
 guard remain integration work.
+
+On macOS, current core SQLite connections now retain shared kernel locks in
+`.DATABASE_NAME.access-lock` beside each database. Update preparation can request
+exclusive access only after those connections close; new connections fail while
+an exclusive owner holds the lock. Keep these lock files in place through database
+replacement and do not use their existence as evidence of a live process. Native
+verification: `bun run desktop/scripts/smoke-backup.ts --access`. This protocol
+does not cover older binaries or clients opening SQLite outside the core adapter,
+and exclusive-lock acquisition/transfer still needs wiring into the updater.

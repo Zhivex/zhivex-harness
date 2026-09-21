@@ -1,0 +1,9 @@
+{
+  "node": "24.21.0",
+  "electron": "44.4.3",
+  "liveConnectionBlocksExclusivePeer": true,
+  "exclusivePeerBlocksNewConnection": true,
+  "killedOwnerReleasesKernelLock": true,
+  "contentsPreserved": true,
+  "pass": true
+}

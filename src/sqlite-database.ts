@@ -1,4 +1,5 @@
 import {assertNoPersistenceSecret} from "./persistence-secrets.js";
+import {acquireSqliteAccess, validateSqliteAccess, retainSqliteAccess, type SqliteAccessLease} from "./sqlite-access.js";
 import { createRequire } from "node:module";
 import type { DatabaseSync as NodeDatabaseSync } from "node:sqlite";
 
@@ -16,6 +17,7 @@ export interface SqliteDatabaseOptions {
   create?: boolean;
   readonly?: boolean;
   strict?: boolean;
+  accessLease?: SqliteAccessLease;
 }
 
 export interface SqliteStatement<
@@ -59,6 +61,10 @@ const numberedBindings = (indexes: readonly number[], parameters: readonly unkno
  */
 export class SqliteDatabase {
   readonly #database: NodeDatabaseSync;
+  readonly #access: SqliteAccessLease | undefined;
+  readonly #ownedAccess: boolean;
+  readonly #releaseBorrowed: (() => void) | undefined;
+  readonly #databasePath: string;
 
   constructor(databasePath: string, options: SqliteDatabaseOptions = {}) {
     // Callers create and validate writable database files before opening them.
@@ -67,13 +73,21 @@ export class SqliteDatabase {
     // missing bindings by default.
     void options.create;
     void options.strict;
-    const DatabaseSync = loadDatabaseSync();
-    this.#database = new DatabaseSync(databasePath, {
-      ...(options.readonly === undefined ? {} : { readOnly: options.readonly })
-    });
+    if (options.accessLease) validateSqliteAccess(options.accessLease, databasePath);
+    this.#access = options.accessLease ?? acquireSqliteAccess(databasePath);
+    this.#ownedAccess = options.accessLease === undefined;
+    this.#databasePath = databasePath;
+    this.#releaseBorrowed = options.accessLease ? retainSqliteAccess(options.accessLease, databasePath) : undefined;
+    try {
+      const DatabaseSync = loadDatabaseSync();
+      this.#database = new DatabaseSync(databasePath, {
+        ...(options.readonly === undefined ? {} : { readOnly: options.readonly })
+      });
+    } catch (error) {if (this.#ownedAccess) this.#access?.close(); this.#releaseBorrowed?.(); throw error;}
   }
 
   exec(sql: string): void {
+    if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
     assertNoPersistenceSecret(sql);
     this.#database.exec(sql);
   }
@@ -87,9 +101,11 @@ export class SqliteDatabase {
     // placeholders to prefixed named bindings preserves repeated indices and
     // keeps anonymous `?` plus caller-supplied named parameters unchanged.
     assertNoPersistenceSecret(sql);
+    if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
     const normalized = normalizeNumberedParameters(sql);
     const statement = this.#database.prepare(normalized.sql);
     const invoke = <T>(method: (...parameters: never[]) => T, parameters: readonly unknown[]) => {
+      if (this.#access) validateSqliteAccess(this.#access, this.#databasePath);
       assertNoPersistenceSecret(sql);
       assertNoPersistenceSecret(parameters);
       const bindings = numberedBindings(normalized.indexes, parameters);
@@ -107,6 +123,8 @@ export class SqliteDatabase {
   close(throwOnError = true): void {
     try {
       this.#database.close();
+      if (this.#ownedAccess) this.#access?.close();
+      this.#releaseBorrowed?.();
     } catch (error) {
       if (throwOnError) {
         throw error;
