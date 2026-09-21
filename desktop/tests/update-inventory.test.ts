@@ -2,7 +2,8 @@ import {expect, test} from "bun:test";
 import {createHash, randomUUID} from "node:crypto";
 import {mkdir, mkdtemp, realpath, rm, symlink, writeFile, readFile} from "node:fs/promises";
 import path from "node:path";
-import {collectDesktopUpdateInventory, prepareDesktopUpdateState} from "../src/update-inventory.js";
+import {collectDesktopUpdateInventory, prepareDesktopUpdateState, prepareExclusiveDesktopUpdateState} from "../src/update-inventory.js";
+import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor} from "../../src/sqlite-access.js";
 import {resolveHarnessConfig} from "../../src/config.js";
 import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/operations.js";
 import {openCliSessionStore} from "../../src/sessions.js";
@@ -87,4 +88,23 @@ test("host preparation backs up the unopened source and managed task as separate
    try {expect(copy.query<{title: string}>("SELECT title FROM zhivex_cli_sessions").get()!.title).toBe(`retained ${i}`);} finally {copy.close();}
   }
  } finally {owners.forEach(db => db.close());}
+}));
+test.skipIf(process.platform !== "darwin")("exclusive preparation locks absent databases and returns transferable leases", () => fixture(async f => {
+ const prepared = await prepareExclusiveDesktopUpdateState(f.userData, [], [f.task]);
+ try {
+  expect(prepared.access).toHaveLength(2);
+  for (const entry of prepared.access) {expect(() => new SqliteDatabase(entry.databasePath)).toThrow("SQLITE_ACCESS_UNAVAILABLE"); expect(exclusiveSqliteAccessDescriptor(entry.lease, entry.databasePath)).toBe(entry.lease.fd);}
+  const receipt = JSON.parse(await readFile(path.join(f.userData, "update-recovery", prepared.transaction.id, "receipt.json"), "utf8"));
+  expect(receipt.databases.map((d: {backup: unknown}) => d.backup)).toEqual([null, null]);
+ } finally {prepared.releaseAccess();}
+ for (const entry of prepared.access) {const db = new SqliteDatabase(entry.databasePath); db.close();}
+}));
+test.skipIf(process.platform !== "darwin")("a busy source releases earlier acquired leases without cancelling its owner", () => fixture(async f => {
+ const config = resolveHarnessConfig({workspace: f.source, provider: "openai", storeBackend: "sqlite"}); const persistence = await openHarnessPersistence(config);
+ try {
+  await expect(prepareExclusiveDesktopUpdateState(f.userData, [], [f.task])).rejects.toThrow("UPDATE_STATE_ACCESS_PREPARATION_FAILED");
+  // The task path sorts before the source and was acquired before source contention.
+  const lease = acquireSqliteAccess(path.join(f.task.stateDirectory, HARNESS_SQLITE_FILE), true)!; lease.close();
+  expect(() => acquireSqliteAccess(path.join(config.stateDirectory, HARNESS_SQLITE_FILE), true)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ } finally {persistence.close();}
 }));

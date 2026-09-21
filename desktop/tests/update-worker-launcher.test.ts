@@ -2,6 +2,7 @@ import {expect, test, beforeAll, afterAll} from "bun:test";
 import {chmod, lstat, mkdtemp, readFile, realpath, rm, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {launchDesktopUpdateWorker} from "../src/update-worker-launcher.js";
+import {acquireSqliteAccess} from "../../src/sqlite-access.js";
 
 const nativeTest = process.platform === "darwin" ? test : test.skip;
 const electron = path.resolve(import.meta.dir, "../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
@@ -85,3 +86,19 @@ nativeTest("lock helper becomes the worker so no separate supervisor can release
  await poll(async () => {try {process.kill(contender.pid, 0); return false;} catch {return true;}});
  expect(await exists(second + ".started")).toBe(false);
 }), 15000);
+nativeTest("launcher refuses shared and duplicate state leases without releasing the host's lease", () => fixture(async f => {
+ const databasePath = path.join(f.directory, "operations.sqlite"), shared = acquireSqliteAccess(databasePath)!;
+ try {await expect(launchDesktopUpdateWorker({...f, stateAccess: [{databasePath, lease: shared}]})).rejects.toThrow("UPDATE_WORKER_LAUNCH_FAILED");} finally {shared.close();}
+ const exclusive = acquireSqliteAccess(databasePath, true)!;
+ try {
+  await expect(launchDesktopUpdateWorker({...f, stateAccess: [{databasePath, lease: exclusive}, {databasePath, lease: exclusive}]})).rejects.toThrow("UPDATE_WORKER_LAUNCH_FAILED");
+  expect(() => acquireSqliteAccess(databasePath)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ } finally {exclusive.close();}
+}));
+nativeTest("a lease released during asynchronous launch preparation cannot be transferred", () => fixture(async f => {
+ const databasePath = path.join(f.directory, "operations.sqlite"), lease = acquireSqliteAccess(databasePath, true)!;
+ const launched = launchDesktopUpdateWorker({...f, stateAccess: [{databasePath, lease}]});
+ lease.close();
+ await expect(launched).rejects.toThrow("UPDATE_WORKER_LAUNCH_FAILED");
+ const next = acquireSqliteAccess(databasePath, true)!; next.close();
+}));

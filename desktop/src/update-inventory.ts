@@ -1,5 +1,5 @@
 import {createHash} from "node:crypto";
-import {lstat, realpath} from "node:fs/promises";
+import {lstat, realpath, mkdir} from "node:fs/promises";
 import path from "node:path";
 import {resolveHarnessConfig} from "../../src/config.js";
 import type {DesktopBackupConfig} from "./database-backup.js";
@@ -7,6 +7,8 @@ import {validateStateDirectory} from "../../src/state-directory.js";
 import type {DesktopProject} from "./bridge.js";
 import type {ManagedTask} from "./task-worktrees.js";
 import {prepareDesktopStateTransaction} from "./state-transaction.js";
+import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/sqlite-access.js";
+import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
 
 export class UpdateInventoryError extends Error {
  constructor(readonly code: "UPDATE_INVENTORY_INVALID" | "UPDATE_STATE_WORKSPACE_UNAVAILABLE") {super(code);}
@@ -81,4 +83,28 @@ export async function prepareDesktopUpdateState(userData: string, projects: Desk
  const inventory = await collectDesktopUpdateInventory(userData, projects, tasks);
  const transaction = await prepareDesktopStateTransaction(userData, inventory.configs);
  return {transaction, inventory};
+}
+
+/** After pausing and closing known runtimes, before backup. Acquires every state
+ * lease nonblockingly or releases all acquired leases. Keep returned leases until
+ * the native worker acknowledges their inheritance; never unlink the lock files.
+ */
+export async function prepareExclusiveDesktopUpdateState(userData: string, projects: DesktopProject[], tasks: ManagedTask[]) {
+ const access: Array<{databasePath: string; lease: SqliteAccessLease}> = [];
+ const releaseAccess = () => {let failed = false; for (const entry of access) {try {entry.lease.close();} catch {failed = true;}} if (failed) throw new Error("UPDATE_STATE_ACCESS_RELEASE_FAILED");};
+ try {
+  if (process.platform !== "darwin") throw new Error();
+  const inventory = await collectDesktopUpdateInventory(userData, projects, tasks);
+  const configs: DesktopBackupConfig[] = [];
+  for (const config of [...inventory.configs].sort((a, b) => a.stateDirectory.localeCompare(b.stateDirectory))) {
+   await validateStateDirectory(config.workspace, config.stateDirectory);
+   await mkdir(config.stateDirectory, {recursive: true, mode: 0o700});
+   const info = await lstat(config.stateDirectory);
+   if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || (info.mode & 0o077)) throw new Error();
+   const databasePath = path.join(await realpath(config.stateDirectory), HARNESS_SQLITE_FILE), lease = acquireSqliteAccess(databasePath, true);
+   if (!lease) throw new Error(); access.push({databasePath, lease}); configs.push({...config, accessLease: lease});
+  }
+  const transaction = await prepareDesktopStateTransaction(userData, configs);
+  return {transaction, inventory, access, releaseAccess};
+ } catch {releaseAccess(); throw new Error("UPDATE_STATE_ACCESS_PREPARATION_FAILED");}
 }

@@ -372,3 +372,11 @@ replacement and do not use their existence as evidence of a live process. Native
 verification: `bun run desktop/scripts/smoke-backup.ts --access`. This protocol
 does not cover older binaries or clients opening SQLite outside the core adapter,
 and exclusive-lock acquisition/transfer still needs wiring into the updater.
+
+`prepareExclusiveDesktopUpdateState` acquires the complete inventory before
+snapshotting and returns the host leases for `launchDesktopUpdateWorker.stateAccess`.
+The native helper preserves those leases at fd 4 onward while fd 3 serializes
+workers. A trusted worker can adopt each descriptor against its recorded database
+path; the host retains its originals until the worker acknowledges. Native check:
+`bun run desktop/scripts/smoke-backup.ts --transfer`. The production handoff must
+bind that ordered path/descriptor map to the state receipt before enabling main/UI.

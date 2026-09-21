@@ -2,6 +2,7 @@ import {spawn} from "node:child_process";
 import {constants} from "node:fs";
 import {lstat, open, realpath} from "node:fs/promises";
 import path from "node:path";
+import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
 
 /** Host-only launch primitive. The private directory and bundled worker must be
  * staged outside the application before launch. Arguments contain paths/IDs only.
@@ -15,10 +16,15 @@ import path from "node:path";
  */
 export async function launchDesktopUpdateWorker(input: {
  directory: string; executable: string; helper: string; worker: string; arguments: string[];
+ stateAccess?: Array<{databasePath: string; lease: SqliteAccessLease}>;
 }): Promise<{pid: number}> {
  try {
   if (process.platform !== "darwin" || input.arguments.length > 8 ||
       input.arguments.some(a => a.length > 4096 || /[\x00-\x1f\x7f]/.test(a))) throw new Error();
+  const stateAccess = (input.stateAccess ?? []).map(entry => ({...entry}));
+  if (stateAccess.length > 600) throw new Error();
+  const stateDescriptors = stateAccess.map(entry => exclusiveSqliteAccessDescriptor(entry.lease, entry.databasePath));
+  if (new Set(stateDescriptors).size !== stateDescriptors.length) throw new Error();
   for (const value of [input.directory, input.executable, input.helper, input.worker]) {
    if (!path.isAbsolute(value) || /[\x00-\x1f\x7f]/.test(value) || await realpath(value) !== value) throw new Error();
   }
@@ -34,9 +40,12 @@ export async function launchDesktopUpdateWorker(input: {
    const info = await lock.stat();
    if (!info.isFile() || info.nlink !== 1 || info.uid !== process.getuid?.() || (info.mode & 0o077) || info.size !== 0) throw new Error();
    await lock.sync();
-   const child = spawn(input.helper, [input.executable, input.worker, ...input.arguments], {
+   // Async path checks above must not turn a released/reused descriptor into a
+   // transfer. Revalidate synchronously at the spawn boundary.
+   for (const [index, entry] of stateAccess.entries()) if (exclusiveSqliteAccessDescriptor(entry.lease, entry.databasePath) !== stateDescriptors[index]) throw new Error();
+   const child = spawn(input.helper, [...(stateDescriptors.length ? ["--state-fds", String(stateDescriptors.length)] : []), input.executable, input.worker, ...input.arguments], {
     cwd: input.directory, detached: true,
-    stdio: ["ignore", "ignore", "ignore", lock.fd],
+    stdio: ["ignore", "ignore", "ignore", lock.fd, ...stateDescriptors],
     // Never inherit provider keys, NODE_OPTIONS, loader hooks or Electron flags.
     env: {PATH: "/usr/bin:/bin:/usr/sbin:/sbin", LANG: "C", ELECTRON_RUN_AS_NODE: "1"},
    });

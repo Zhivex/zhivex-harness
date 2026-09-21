@@ -2,7 +2,7 @@ import {expect, test} from "bun:test";
 import {mkdir, mkdtemp, realpath, rm, unlink, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {SqliteDatabase} from "../src/sqlite-database.js";
-import {acquireSqliteAccess, type SqliteAccessLease} from "../src/sqlite-access.js";
+import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor, adoptExclusiveSqliteAccess, type SqliteAccessLease} from "../src/sqlite-access.js";
 const nativeTest = process.platform === "darwin" ? test : test.skip;
 async function fixture(run: (file: string) => Promise<void>) {const root = await realpath(await mkdtemp("/tmp/har-sqlite-access-")); try {await run(path.join(root, "operations.sqlite"));} finally {await rm(root, {recursive: true, force: true});}}
 nativeTest("all live core connections block exclusivity; exclusive owner blocks new connections", () => fixture(async file => {
@@ -43,4 +43,16 @@ nativeTest("symlink lock and failed SQLite construction leave no usable or leake
  expect(() => new SqliteDatabase(file)).toThrow("SQLITE_ACCESS_UNAVAILABLE"); await unlink(lock);
  await mkdir(file); expect(() => new SqliteDatabase(file)).toThrow();
  const lease = acquireSqliteAccess(file, true)!; lease.close();
+}));
+nativeTest("transfer requires exclusive access with no borrowed connections; adoption cannot duplicate a live lease", () => fixture(async file => {
+ const shared = acquireSqliteAccess(file)!;
+ try {expect(() => exclusiveSqliteAccessDescriptor(shared, file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");} finally {shared.close();}
+ const exclusive = acquireSqliteAccess(file, true)!;
+ try {
+  const db = new SqliteDatabase(file, {accessLease: exclusive});
+  try {expect(() => exclusiveSqliteAccessDescriptor(exclusive, file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");} finally {db.close();}
+  expect(exclusiveSqliteAccessDescriptor(exclusive, file)).toBe(exclusive.fd);
+  expect(() => adoptExclusiveSqliteAccess(file, exclusive.fd)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+  expect(() => adoptExclusiveSqliteAccess(file, 3)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ } finally {exclusive.close();}
 }));

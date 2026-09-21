@@ -8,10 +8,11 @@ import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
 import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../../src/state-backup.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import {SqliteDatabase} from "../../src/sqlite-database.js";
+import type {SqliteAccessLease} from "../../src/sqlite-access.js";
 
 export const DESKTOP_DATABASE_BACKUP_LIMIT = 128 * 1024 * 1024;
 export interface DesktopDatabaseBackup {directory: string; size: number; sha256: string; logicalChecksum: string}
-export interface DesktopBackupConfig extends HarnessConfig {workspaceAbsent?: true}
+export interface DesktopBackupConfig extends HarnessConfig {workspaceAbsent?: true; accessLease?: SqliteAccessLease}
 function assertIdle(db: SqliteDatabase) {
  const terminal = "('completed','failed','cancelled','timed_out')";
  // Unlike a scope-specific logical export, a whole-file snapshot includes ALL scopes.
@@ -41,7 +42,7 @@ export async function createDesktopDatabaseBackup(config: DesktopBackupConfig, b
   directory = await mkdtemp(path.join(await privateDirectory(backupRoot), "database-"));
   const destination = path.join(directory, HARNESS_SQLITE_FILE);
   // SQLite creates the file inside this newly allocated private directory.
-  const sourceDb = new SqliteDatabase(source, {readonly: true});
+  const sourceDb = new SqliteDatabase(source, {readonly: true, ...(config.accessLease ? {accessLease: config.accessLease} : {})});
   try {
    sourceDb.exec("PRAGMA busy_timeout=1000");
    const before = sourceDb.query<{data_version: number}>("PRAGMA data_version").get()!.data_version;
