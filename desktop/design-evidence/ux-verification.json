@@ -1,0 +1,64 @@
+{
+  "packaged": true,
+  "fixtureModel": true,
+  "providers": [
+    {
+      "provider": "qwen",
+      "runtimeBinding": true,
+      "storedRunBinding": true
+    },
+    {
+      "provider": "meta",
+      "runtimeBinding": true,
+      "storedRunBinding": true
+    },
+    {
+      "provider": "gemini",
+      "runtimeBinding": true,
+      "storedRunBinding": true
+    },
+    {
+      "provider": "openai",
+      "runtimeBinding": true,
+      "storedRunBinding": true
+    }
+  ],
+  "customModel": true,
+  "rendererReload": true,
+  "approvalBlocksSwitch": true,
+  "unsupportedProviderRejected": true,
+  "layout": [
+    {
+      "width": 1120,
+      "height": 728,
+      "composerVisible": true,
+      "chatHeight": 418.5,
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 720,
+      "height": 488,
+      "composerVisible": true,
+      "chatHeight": 252,
+      "noHorizontalOverflow": true
+    }
+  ],
+  "ux": {
+    "suggestionsOnlyFill": true,
+    "searchConversations": true,
+    "sidebarToggle": true,
+    "modelSearch": true,
+    "dismissRestoresModel": true,
+    "dialogFocusReturn": true,
+    "enterSends": true,
+    "shiftEnterAndIMEProtected": true,
+    "bundledFonts": true,
+    "compactLayout": {
+      "width": 720,
+      "height": 488,
+      "composerVisible": true,
+      "sendVisible": true,
+      "noHorizontalOverflow": true
+    }
+  }
+}
