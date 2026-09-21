@@ -189,6 +189,12 @@ native install/recovery callbacks remain to implement. The core logical backup
 omits visual activity and desktop indexes/journals, so it cannot alone certify
 complete restoration. See HAR_HU_35_COORDINATION_2026-09-20.md.
 
+Full SQLite and desktop-metadata backup components now cover that omission:
+WAL content, visual activity, project/task indexes and delivery journals. Seven
+tests / 34 assertions plus an Electron 44.4.3 / Node 24.21.0 component check pass.
+Cross-project durable receipts, actual restore and coordinator/UI wiring are
+still pending. See HAR_HU_35_COMPLETE_BACKUP_COMPONENTS_2026-09-20.md.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).
