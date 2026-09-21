@@ -4,7 +4,8 @@ import AppKit
 
 // Secrets never appear in arguments, errors or configuration files.
 let service = "ai.zhivex.harness.providers"
-let account = "openai"
+let providers = ["openai": "OpenAI", "qwen": "Qwen", "meta": "Meta", "gemini": "Gemini"]
+var account = "openai"
 enum VaultError: Error { case status(OSStatus), invalid, cancelled }
 func check(_ status: OSStatus) throws { if status != errSecSuccess { throw VaultError.status(status) } }
 func unlocked(_ keychain: SecKeychain) throws {
@@ -58,7 +59,7 @@ func remove(_ keychain: SecKeychain) throws {
 }
 func prompt(fixture: (value: String, cancel: Bool)? = nil) throws -> Data {
     let app = NSApplication.shared; app.setActivationPolicy(.accessory); app.activate(ignoringOtherApps: true)
-    let alert = NSAlert(); alert.messageText = "Clave de OpenAI"
+    let alert = NSAlert(); alert.messageText = "Clave de \(providers[account] ?? account)"
     alert.informativeText = "Se guardará en el llavero de macOS. Reemplaza la clave anterior."
     alert.addButton(withTitle: "Guardar en el llavero"); alert.addButton(withTitle: "Cancelar")
     let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
@@ -102,6 +103,16 @@ func selfTest(nativeUI: Bool = false, deliverRead: Bool = false) throws {
     try password.withCString { bytes in try check(SecKeychainUnlock(keychain, UInt32(password.utf8.count), bytes, true)) }
     guard try read(keychain) == second else { throw VaultError.invalid }
     let delivered = try read(keychain)
+    let originalAccount = account
+    for other in providers.keys where other != originalAccount {
+        account = other
+        guard try !present(keychain) else { throw VaultError.invalid }
+        try save(keychain, first)
+        guard try read(keychain) == first else { throw VaultError.invalid }
+        try remove(keychain)
+    }
+    account = originalAccount
+    guard try read(keychain) == second else { throw VaultError.invalid }
     try remove(keychain); try remove(keychain); guard try !present(keychain) else { throw VaultError.invalid }
     if deliverRead {
         guard let delivered = delivered else { throw VaultError.invalid }
@@ -109,8 +120,10 @@ func selfTest(nativeUI: Bool = false, deliverRead: Bool = false) throws {
     } else { emit(nativeUI ? "native-ui-test-passed" : "self-test-passed") }
 }
 do {
-    guard CommandLine.arguments.count == 2 else { throw VaultError.invalid }
+    guard [2, 3].contains(CommandLine.arguments.count) else { throw VaultError.invalid }
     let command = CommandLine.arguments[1]
+    if CommandLine.arguments.count == 3 { account = CommandLine.arguments[2] }
+    guard providers[account] != nil else { throw VaultError.invalid }
     if ["self-test", "self-test-ui", "self-test-read"].contains(command) { try selfTest(nativeUI: command == "self-test-ui", deliverRead: command == "self-test-read") } else {
         guard ["status", "configure", "read", "delete"].contains(command) else { throw VaultError.invalid }
         var result: SecKeychain?; try check(SecKeychainCopyDefault(&result))

@@ -523,3 +523,38 @@ section.decision-history {
 .task-panel h4 {
     font-size: 13px
 }
+/* The chat owns its scrolling area; the composer remains visible at every size. */
+main { height: 100dvh; min-height: 0; overflow: hidden; }
+main > aside { min-height: 0; }
+.chat-workspace { height: 100dvh; padding: 24px 32px 20px; min-height: 0; gap: 18px; }
+.chat-workspace > header { padding-bottom: 18px; flex-shrink: 0; align-items: center; }
+.chat-workspace h1 { font-size: 20px; }
+.chat-workspace > .conversation { min-height: 0; max-height: none; padding: 0 8px 8px 0; overflow-y: auto; flex: 1; }
+.chat-workspace .welcome { margin: 36px auto; text-align: center; max-width: 500px; }
+.chat-workspace .welcome h2 { font-size: 25px; line-height: 1.3; }
+.chat-workspace .welcome p { overflow-wrap: anywhere; font-size: 12px; }
+.chat-workspace .timeline { max-width: 860px; margin: 0 auto; }
+.user-message { margin: 20px 0 20px auto; padding: 16px 20px; border-radius: 16px 16px 4px 16px; background: #202b25; max-width: 88%; }
+.user-message p { font-size: 14px; line-height: 1.7; }
+.assistant-message { margin: 24px 0; }
+.assistant-message pre { font-family: inherit; font-size: 14px; line-height: 1.75; border: 0; background: transparent; padding: 12px 0; }
+.chat-composer { flex-shrink: 0; border: 1px solid #3b4b40; border-radius: 16px; background: #171e1a; padding: 14px 16px; box-shadow: 0 8px 32px #0002; }
+.chat-composer:focus-within { border-color: #799b86; }
+.composer-label { display: block; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: #a5b9ac; }
+.chat-composer textarea { background: transparent; border: 0; padding: 8px 0; margin: 0 0 8px; min-height: 66px; max-height: 120px; font-family: inherit; font-size: 14px; line-height: 1.6; resize: vertical; }
+.chat-composer textarea:focus-visible { outline-offset: 3px; outline-width: 1px; }
+.chat-composer .actions { border-top: 1px solid #2c3930; margin-top: 10px; padding-top: 10px; align-items: center; gap: 8px; }
+.chat-composer .actions button { padding: 9px 12px; }
+.chat-composer .actions [data-action=start] { margin-left: auto; order: 2; }
+.model-fields { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px; }
+.model-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; min-width: 0; flex: 1 1 130px; }
+.model-fields select, .model-fields input, .credential-settings select { width: 100%; min-width: 0; border: 1px solid #3c4b41; border-radius: 7px; color: #dce9e0; background: #202a24; padding: 8px; font: inherit; font-size: 12px; }
+.model-fields select:focus-visible, .model-fields input:focus-visible, .credential-settings select:focus-visible { outline: 2px solid #a9cbb6; outline-offset: 2px; }
+.model-fields .custom-model { flex-basis: 180px; }
+.model-fields button { padding: 8px 10px; }
+.model-selector .model-hint { font-size: 10px; line-height: 1.5; margin: 7px 0 0; overflow-wrap: anywhere; color: #a3b4a9; }
+.model-selector .error { margin-top: 8px; }
+.credential-settings label { display: block; margin-top: 14px; }
+.credential-settings select { margin-top: 6px; }
+@media(max-width:800px) { .chat-workspace { padding: 18px; gap: 12px; } .chat-workspace > header { flex-direction: row; } .chat-workspace h1 { font-size: 18px; } .chat-composer { padding: 12px; } .chat-composer .actions button { font-size: 11px; padding: 8px; } }
+@media(max-height:620px) { .chat-workspace { gap: 8px; padding-top: 14px; padding-bottom: 12px; } .chat-workspace > header { padding-bottom: 10px; } .chat-composer textarea { min-height: 40px; height: 48px; } .model-selector .model-hint { display: none; } }

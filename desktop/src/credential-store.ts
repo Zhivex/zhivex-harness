@@ -1,3 +1,4 @@
+import { modelSelectionSchema } from "./model-selection.js";
 import { rememberSensitiveValue } from "./redaction.js";
 import { spawn } from "node:child_process";
 import os from "node:os";
@@ -9,7 +10,14 @@ export type CredentialProbe = CredentialStatus | "connected" | "invalid-credenti
 type Action = "status" | "configure" | "read" | "delete";
 const responseSchema = z.object({ status: statusSchema, secret: z.string().min(1).max(8192).regex(/^[^\s\x00-\x1f\x7f]+$/).optional() }).strict();
 /** Host-only. Never expose read() or helper stdout through the renderer bridge. */
-export function openCredentialStore(helper: string, options: { platform?: string; request?: typeof fetch; timeoutMs?: number } = {}) {
+export function openCredentialStore(helper: string, options: { provider?: string; platform?: string; request?: typeof fetch; timeoutMs?: number } = {}) {
+    const provider = modelSelectionSchema.shape.provider.parse(options.provider ?? "openai");
+    const endpoints = {
+        openai: "https://api.openai.com/v1/models",
+        qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models",
+        meta: "https://api.meta.ai/v1/models",
+        gemini: "https://generativelanguage.googleapis.com/v1beta/models"
+    };
     const supported = (options.platform ?? process.platform) === "darwin";
     if (!path.isAbsolute(helper)) throw new Error("CREDENTIAL_HELPER_PATH");
     let queue = Promise.resolve();
@@ -17,7 +25,7 @@ export function openCredentialStore(helper: string, options: { platform?: string
     const invoke = async (action: Action): Promise<z.infer<typeof responseSchema>> => {
         if (!supported) return { status: "unsupported" };
         return new Promise(resolve => {
-            let child: ReturnType<typeof spawn>; try { child = spawn(helper, [action], { cwd: os.tmpdir(), env: { PATH: "/usr/bin:/bin", ...(process.env.HOME ? { HOME: process.env.HOME } : {}) }, stdio: ["ignore", "pipe", "ignore"] }); } catch { return resolve({ status: "unavailable" }); }
+            let child: ReturnType<typeof spawn>; try { child = spawn(helper, provider === "openai" ? [action] : [action, provider], { cwd: os.tmpdir(), env: { PATH: "/usr/bin:/bin", ...(process.env.HOME ? { HOME: process.env.HOME } : {}) }, stdio: ["ignore", "pipe", "ignore"] }); } catch { return resolve({ status: "unavailable" }); }
             let chunks: Buffer[] = [], bytes = 0, done = false;
             const finish = (result: z.infer<typeof responseSchema>) => { if (done) return; done = true; clearTimeout(timer); chunks = []; resolve(result); };
             const timer = setTimeout(() => { child.kill("SIGKILL"); finish({ status: "unavailable" }); }, options.timeoutMs ?? (action === "configure" ? 120000 : 10000));
@@ -33,7 +41,7 @@ export function openCredentialStore(helper: string, options: { platform?: string
         read: () => serial(() => invoke("read")),
         probe: (): Promise<CredentialProbe> => serial(async () => {
             const value = await invoke("read"); if (value.status !== "present" || !value.secret) return value.status;
-            try { const response = await (options.request ?? fetch)("https://api.openai.com/v1/models", { method: "GET", headers: { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
+            try { const response = await (options.request ?? fetch)(endpoints[provider], { method: "GET", headers: provider === "gemini" ? { "x-goog-api-key": value.secret } : { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
         })
     };
 }

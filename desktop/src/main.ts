@@ -1,3 +1,6 @@
+import {verifyDesktopModelsSmoke} from "./smoke-models-verification.js";
+import {desktopProviders, defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
+import {prepareModelTransition, sameModel} from "./model-transition.js";
 import {resumeDesktopUpdateRecovery} from "./update-recovery.js";
 import {checkDesktopStateFormat, DesktopStateError} from "./state-format.js";
 import updateTrust from "../update-trust.json";
@@ -36,7 +39,7 @@ if (fixture && reportDirectory) app.setPath("userData", path.join(reportDirector
 if (!app.requestSingleInstanceLock()) app.exit(0);
 let mainWindow: BrowserWindow | undefined;
 app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus(); } });
-const runtimes = new Map<string, Promise<ProjectRuntime>>(); let closing = false, updating = false;
+const runtimes = new Map<string, Promise<ProjectRuntime>>(); let closing = false, updating = false, modelChanging = false;
 let exitApproved = false;
 let requestExit = () => { exitApproved = true; app.quit(); };
 app.on("before-quit", event => { if (!exitApproved) { event.preventDefault(); requestExit(); } });
@@ -68,11 +71,11 @@ void app.whenReady().then(async () => {
  if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE");
         if (closing) throw new Error("APPLICATION_CLOSING");
         const known = registry.get(key);
-        const project = await registry.select(known.workspace);
+        let project = await registry.select(known.workspace);
         if (project.key !== key) throw new Error("PROJECT_IDENTITY_CHANGED");
         if (closing || removing.has(project.workspace)) throw new Error("PROJECT_UNAVAILABLE");
         const task = tasks.list().find(task => task.workspace === project.workspace);
-        if (task) await tasks.inspect(task.id);
+        if (task) {await tasks.inspect(task.id);if (!project.modelSelection) project = await registry.setModel(project.key, registry.get(task.sourceProjectKey).modelSelection ?? defaultModelSelection());}
         if (closing || removing.has(project.workspace)) throw new Error("PROJECT_UNAVAILABLE");
         let pending = runtimes.get(key);
         if (pending && !((await pending).isAlive())) { runtimes.delete(key); pending = undefined; }
@@ -116,7 +119,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         })().catch(() => app.quit()).finally(() => { recoveringRenderer = false; });
     });
     const validateOrigin = (event: Electron.IpcMainInvokeEvent) => { if (closing || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== url) throw new Error("UNTRUSTED_SENDER"); };
-    const validateSender = (event: Electron.IpcMainInvokeEvent) => {validateOrigin(event); if (updating) throw new Error("UPDATE_IN_PROGRESS");};
+    const validateSender = (event: Electron.IpcMainInvokeEvent) => {validateOrigin(event); if (updating) throw new Error("UPDATE_IN_PROGRESS"); if (modelChanging) throw new Error("MODEL_CHANGE_IN_PROGRESS");};
     const trustedUpdates = parseDesktopUpdateTrust(process.platform === "darwin" && process.arch === "arm64" ? updateTrust : {schemaVersion: 1, enabled: false});
     const updateFeed = createDesktopUpdateFeed(trustedUpdates, desktopMetadata.version);
     const installer = createDesktopUpdateInstaller({application: path.resolve(process.resourcesPath, "../.."), userData: app.getPath("userData"), teamId: trustedUpdates.enabled ? trustedUpdates.teamId : "", version: desktopMetadata.version}, {
@@ -143,13 +146,45 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     const deliveryManagers = new Map<string, Promise<Awaited<ReturnType<typeof openGitDelivery>>>>(), deliveryBusy = new Set<string>();
     const delivery = async (key: string) => { const project = registry.get(key); if (removing.has(project.workspace)) throw new Error("PROJECT_UNAVAILABLE"); const task = tasks.list().find(task => task.workspace === project.workspace); if (task) await tasks.inspect(task.id); let manager = deliveryManagers.get(key); if (!manager) { manager = openGitDelivery(project.workspace, path.join(app.getPath("userData"), "git-delivery", key), hostSensitiveValues(process.env)); deliveryManagers.set(key, manager); void manager.catch(() => deliveryManagers.delete(key)); } return manager; };
     const gitPayload = (event: Electron.IpcMainInvokeEvent, value: unknown, fields: string[]) => { validateSender(event); if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).sort().join(",") !== fields.sort().join(",")) throw new Error("INVALID_GIT_REQUEST"); const payload = value as Record<string, unknown>; if (typeof payload.projectKey !== "string") throw new Error("INVALID_PROJECT"); registry.get(payload.projectKey); return payload as Record<string, unknown> & { projectKey: string }; };
-    const credentialStore=openCredentialStore(app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"));
- const credentials=credentialCoordinator({busy:()=>closing||taskOperations.size>0||deliveryBusy.size>0,hosts:()=>Promise.all([...runtimes.values()]),clear:()=>runtimes.clear(),configure:()=>fixture?Promise.resolve("unsupported"):credentialStore.configure(),delete:()=>fixture?Promise.resolve("unsupported"):credentialStore.delete()});
- const credentialRequest=(event:Electron.IpcMainInvokeEvent,args:unknown[])=>{validateSender(event);if(args.length)throw new Error("INVALID_CREDENTIAL_REQUEST");};
- workIpc.handle("harness:credential-status",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.status());});
- workIpc.handle("harness:credential-probe",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(fixture?Promise.resolve("unsupported"):credentialStore.probe());});
- workIpc.handle("harness:credential-configure",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("configure"));});
- workIpc.handle("harness:credential-delete",(event,...args:unknown[])=>{credentialRequest(event,args);return trackTask(credentials.change("delete"));});
+    const credentialHelper = app.isPackaged ? path.join(process.resourcesPath,"credential-store") : path.join(buildDirectory,"credential-store");
+    const credentialStore = (provider: string) => openCredentialStore(credentialHelper, {provider});
+ const credentials=credentialCoordinator({busy:()=>closing||taskOperations.size>0||deliveryBusy.size>0,hosts:()=>Promise.all([...runtimes.values()]),clear:()=>runtimes.clear(),configure:provider=>fixture?Promise.resolve("unsupported"):credentialStore(provider).configure(),delete:provider=>fixture?Promise.resolve("unsupported"):credentialStore(provider).delete()});
+ const credentialRequest=(event:Electron.IpcMainInvokeEvent,args:unknown[])=>{validateSender(event);if(args.length>1)throw new Error("INVALID_CREDENTIAL_REQUEST");return modelSelectionSchema.shape.provider.parse(args[0] ?? "openai");};
+ workIpc.handle("harness:credential-status",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return fixture?Promise.resolve("unsupported"):credentialStore(p).status();});
+ workIpc.handle("harness:credential-probe",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return fixture?Promise.resolve("unsupported"):credentialStore(p).probe();});
+ workIpc.handle("harness:credential-configure",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return credentials.change("configure",p);});
+ workIpc.handle("harness:credential-delete",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return credentials.change("delete",p);});
+ workIpc.handle("harness:providers", (_event,...args:unknown[]) => {if(args.length)throw new Error("INVALID_PROVIDER_REQUEST");return desktopProviders();});
+ workIpc.handle("harness:select-model", async (event,value:unknown) => {
+    const payload = gitPayload(event,value,["projectKey","selection"]);
+    const selection = modelSelectionSchema.parse(payload.selection);
+    const project = registry.get(payload.projectKey);
+    const previous = project.modelSelection ?? defaultModelSelection();
+    if (sameModel(previous,selection)) return connect(project.key);
+    if (credentials.changing || taskOperations.size || deliveryBusy.size) throw new Error("MODEL_WORK_ACTIVE");
+    modelChanging = true;
+    let old: ProjectRuntime | undefined, next: ProjectRuntime | undefined, closed = false;
+    try {
+        // Validate access before stopping a working runtime. No secret is returned to the UI.
+        if (!fixture && !["present","missing"].includes(await credentialStore(selection.provider).status())) throw new Error("MODEL_CREDENTIAL_UNAVAILABLE");
+        await connect(project.key);
+        old = await runtimes.get(project.key);
+        if (old) {await prepareModelTransition(old); await old.close(); closed = true; runtimes.delete(project.key);}
+        const task = tasks.list().find(t => t.workspace === project.workspace);
+        const pending = launchProjectRuntime({...project,modelSelection:selection},{credentialHelper,buildDirectory,directory,fixture,recover:true,...(task?{stateDirectory:task.stateDirectory}:{})});
+        next = await pending;
+        const saved = await registry.setModel(project.key, selection);
+        runtimes.set(project.key,Promise.resolve(next));
+        return {...next.context,project:saved,...(task?{task:taskView(task)}:{})};
+    } catch (error) {
+        if (next) await next.close();
+        if (closed) {
+            runtimes.delete(project.key);
+            try {await connect(project.key);} catch {/* The UI can explicitly reopen the project. */}
+        }
+        throw error;
+    } finally {modelChanging = false;}
+ });
  const gitMutation = async<T>(key: string, operation: (manager: Awaited<ReturnType<typeof openGitDelivery>>) => Promise<T>) => {
         if (deliveryBusy.has(key)) throw new Error("GIT_DELIVERY_BUSY"); deliveryBusy.add(key); let host: ProjectRuntime | undefined;
         try { host = await runtime(key); if (await host.controlClose("pause")) throw new Error("GIT_RUNTIME_BUSY"); return await operation(await delivery(key)); } finally { if (host?.isAlive() && !closing) await host.controlClose("resume").catch(() => { }); deliveryBusy.delete(key); }
@@ -216,6 +251,6 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         const value = payload as { projectKey: unknown; sessionId: unknown; after: unknown }; return (await runtime(value.projectKey)).events({ sessionId: value.sessionId, after: value.after });
     });
     window.once("ready-to-show", () => window.show()); await window.loadFile(index);
-    if (fixture && reportDirectory) { await mkdir(reportDirectory, { recursive: true }); const restartPhase = argument("--fixture-restart-phase"); if (restartPhase?.startsWith("tasks-")) await verifyDesktopWorktreesSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase?.startsWith("effect-")) await verifyDesktopEffectCrashSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase) await verifyDesktopRestartSmoke(window, runtimes, reportDirectory, restartPhase, argument("--fixture-cli")); else { await (process.argv.includes("--fixture-oci") ? verifyDesktopOciSmoke : verifyDesktopSmoke)(window, runtimes, reportDirectory); app.quit(); } }
+    if (fixture && reportDirectory) { await mkdir(reportDirectory, { recursive: true }); const restartPhase = argument("--fixture-restart-phase"); if (restartPhase?.startsWith("tasks-")) await verifyDesktopWorktreesSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase?.startsWith("effect-")) await verifyDesktopEffectCrashSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase) await verifyDesktopRestartSmoke(window, runtimes, reportDirectory, restartPhase, argument("--fixture-cli")); else { await (process.argv.includes("--fixture-models") ? verifyDesktopModelsSmoke : process.argv.includes("--fixture-oci") ? verifyDesktopOciSmoke : verifyDesktopSmoke)(window, runtimes, reportDirectory); app.quit(); } }
 }).catch(async (error) => { if(error instanceof DesktopStateError){ if(!fixture) dialog.showErrorBox("No se puede abrir este estado", "Esta versión no puede abrir el estado guardado o una migración requiere recuperación. Usá la versión compatible y conservá los datos y sus backups. Código: " + error.code); if(reportDirectory) await writeFile(path.join(reportDirectory,"state-format-failure.json"),JSON.stringify({code:error.code})).catch(()=>{}); app.exit(1); return; } if (fixture) console.error(error); if (reportDirectory) await writeFile(path.join(reportDirectory, "failure.json"), JSON.stringify({ code: "DESKTOP_VERIFICATION_FAILED" })).catch(() => { }); process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n"); app.exit(1); });
 app.on("window-all-closed", () => app.quit());

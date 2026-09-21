@@ -1,0 +1,48 @@
+# Proveedores y modelos en el desktop
+
+El desktop usa los cuatro proveedores ya registrados en el Harness: OpenAI, Qwen,
+Meta y Gemini. No se incorporan proveedores nuevos. Gemini conserva su estado
+provisional en el registro del motor.
+
+## Uso
+
+1. Abrí un repositorio. Se puede consultar el historial sin una API key.
+2. En el área de escritura elegí **Proveedor** y **Modelo**, y pulsá **Usar modelo**.
+   Se ofrece el modelo predeterminado del registro; **Otro modelo…** permite indicar
+   un ID habilitado en tu cuenta. La selección no certifica disponibilidad remota.
+3. En **Credenciales**, seleccioná el proveedor y guardá la clave en el diálogo
+   seguro de macOS. El proyecto abierto se reconecta al terminar. Las claves se
+   guardan en cuentas distintas del llavero, sin llegar al renderer, argumentos,
+   variables de entorno del proceso hijo ni archivos de configuración.
+4. Enviá el mensaje. Sin clave, el envío permanece deshabilitado, pero el historial
+   y la configuración siguen disponibles.
+
+La elección se conserva por proyecto, incluso al reiniciar. Una tarea nueva en un
+worktree hereda inicialmente la selección del proyecto origen y después conserva
+la suya. El cambio afecta los siguientes mensajes de ese proyecto; no modifica los
+proveedores/modelos registrados en ejecuciones anteriores. No se permite cambiar
+mientras haya una ejecución, una aprobación o una recuperación pendiente en
+cualquiera de las conversaciones del proyecto. Finalizá o cancelá ese trabajo
+primero. Cambiar una clave tampoco cancela una ejecución activa.
+
+## Alcance de conexión
+
+Se utilizan los endpoints predeterminados de los adaptadores. Qwen usa Model
+Studio internacional (Singapur), con credenciales estándar. Los endpoints
+personalizados, otros despliegues regionales y planes especiales no se configuran
+en esta interfaz. No se heredan overrides del shell para cambiar silenciosamente
+el destino de la clave. La prueba de conexión consulta modelos, sin generación;
+no certifica permisos de un modelo concreto ni su capacidad para usar herramientas.
+
+## Verificación local
+
+- `bun test desktop/tests/model-selection.test.ts desktop/tests/credential-store.test.ts`
+- `bun run --cwd desktop typecheck`
+- `bun run --cwd desktop build`
+- `bun run desktop/scripts/smoke.ts --models`
+- `bun run desktop/scripts/smoke.ts --models --packaged` después de empaquetar.
+
+El smoke usa modelos offline: comprueba IPC, selección real del runtime,
+persistencia en las sesiones, recarga, aprobaciones y geometría del chat. No es una
+certificación live de las cuentas de los proveedores. El helper nativo incluye un
+self-test de aislamiento entre cuentas en un llavero temporal.

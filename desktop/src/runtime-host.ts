@@ -1,3 +1,4 @@
+import {defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
 import {createHash} from "node:crypto";
 import {openCredentialStore} from "./credential-store.js";
 import { utilityProcess } from "electron";
@@ -11,11 +12,12 @@ import { desktopRedactor, hostSensitiveValues } from "./redaction.js";
 import { harnessClientRequestSchema } from "../../src/client-contract.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
 export async function launchProjectRuntime(project: DesktopProject, options: {credentialHelper?:string;fixtureCredentialHelper?:string; buildDirectory: string; directory: string; fixture: boolean; fixtureOci?: boolean; fixtureEffectCrash?: boolean; stateDirectory?: string; recover: boolean }) {
-  const stored=options.fixture&&!options.fixtureCredentialHelper?undefined:await openCredentialStore((options.fixture?options.fixtureCredentialHelper:options.credentialHelper)??path.join(options.buildDirectory,"credential-store")).read();
+  const modelSelection = modelSelectionSchema.parse(project.modelSelection ?? defaultModelSelection());
+  const stored=options.fixture&&!options.fixtureCredentialHelper?undefined:await openCredentialStore((options.fixture?options.fixtureCredentialHelper:options.credentialHelper)??path.join(options.buildDirectory,"credential-store"), {provider: modelSelection.provider}).read();
  if(stored&&!['present','missing'].includes(stored.status))throw new Error("CREDENTIAL_STORE_UNAVAILABLE");
  const secret=stored?.secret;
  const workerEnv:NodeJS.ProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>options.fixture||!/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)));
- const worker = utilityProcess.fork(path.join(options.buildDirectory, "runtime.cjs"), [JSON.stringify({ workspace: project.workspace, stateDirectory: options.stateDirectory, directory: options.directory, fixture: options.fixture, fixtureOci: options.fixture && options.fixtureOci === true, fixtureEffectCrash: options.fixture && options.fixtureEffectCrash === true, recover: options.recover })], { env:workerEnv, serviceName: `Harness · ${project.name}`, stdio: "pipe" });
+ const worker = utilityProcess.fork(path.join(options.buildDirectory, "runtime.cjs"), [JSON.stringify({ modelSelection, workspace: project.workspace, stateDirectory: options.stateDirectory, directory: options.directory, fixture: options.fixture, fixtureOci: options.fixture && options.fixtureOci === true, fixtureEffectCrash: options.fixture && options.fixtureEffectCrash === true, recover: options.recover })], { env:workerEnv, serviceName: `Harness · ${project.name}`, stdio: "pipe" });
   if (options.fixture) worker.stderr?.on("data", chunk => process.stderr.write(chunk));
   let exited = false; const stopped = new Promise<void>(resolve => worker.once("exit", () => { exited = true; resolve(); }));
   try {
@@ -28,7 +30,7 @@ export async function launchProjectRuntime(project: DesktopProject, options: {cr
     const credentials = await readHarnessLocalCredentials(ready.credentialsPath);
     const hello = await requestHarnessLocalService(credentials, "hello", { versions: [1] }); if (!hello.ok) throw new Error("PROTOCOL_UNSUPPORTED");
     const redact = desktopRedactor([...hostSensitiveValues(process.env), credentials.token,...(secret?[secret]:[])]);
-    const context: DesktopContext = { project, projectId: hello.projectId, runtimePid: ready.pid, runtimeNode: ready.node, fixture: options.fixture };
+    const context: DesktopContext = { credentialConfigured:options.fixture||Boolean(secret), modelSelection, project, projectId: hello.projectId, runtimePid: ready.pid, runtimeNode: ready.node, fixture: options.fixture };
     const tickets = new ReviewTickets();
     let fixtureOffline = false, fixtureDropResponse = false;
     return {
@@ -49,6 +51,7 @@ export async function launchProjectRuntime(project: DesktopProject, options: {cr
         return tickets.issue(sessionId as string, projectApprovalReview(response.data.run, redact.text));
       },
       async resolveReview(ticketId: unknown, approve: unknown) {
+        if (!options.fixture && !secret && approve === true) throw new Error("MODEL_CREDENTIAL_REQUIRED");
         if (fixtureOffline) throw new Error("TRANSPORT_UNAVAILABLE");
         const command = tickets.consume(ticketId, approve);
         const envelope = harnessClientRequestSchema.parse({ protocolVersion: 1, requestId: `decision_${randomUUID()}`, connectionId: hello.connectionId, command: { ...command, projectId: hello.projectId } });
@@ -59,6 +62,7 @@ export async function launchProjectRuntime(project: DesktopProject, options: {cr
         if (!command || typeof command !== "object" || Array.isArray(command) || "projectId" in command) throw new Error("INVALID_COMMAND");
         const parsed = harnessClientRequestSchema.safeParse({ protocolVersion: 1, requestId: `desktop_${randomUUID()}`, connectionId: hello.connectionId, command: { ...command, projectId: hello.projectId } });
         if (!parsed.success) throw new Error("INVALID_COMMAND");
+        if (!options.fixture && !secret && parsed.data.command.method === "run.start") throw new Error("MODEL_CREDENTIAL_REQUIRED");
         const response = await requestHarnessLocalService(credentials, "command", parsed.data);
         if (fixtureDropResponse && parsed.data.command.method === "run.start") { fixtureDropResponse = false; throw new Error("TRANSPORT_RESPONSE_LOST"); }
         return redact.response(response);

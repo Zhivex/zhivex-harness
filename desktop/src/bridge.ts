@@ -1,10 +1,14 @@
 import type { HarnessClientResponse } from "../../src/client-contract.js";
 import type { HarnessActivityPage } from "../../src/service-events.js";
-export interface DesktopProject { key: string; workspace: string; name: string; lastOpenedAt: number }
+export interface DesktopModelSelection { provider: string; model: string }
+export interface DesktopProvider { id: string; name: string; defaultModel: string; support: "certified" | "provisional" }
+export interface DesktopProject { modelSelection?: DesktopModelSelection | undefined; key: string; workspace: string; name: string; lastOpenedAt: number }
 export interface DesktopTask { id: string; sourceProjectKey: string; title: string; branch: string; baseCommit: string; workspace: string; status: "creating" | "ready" | "needs-attention" | "removed" }
 export interface DesktopTaskRemoval { ticketId: string; task: DesktopTask; head: string; integrationCommit: string; changedPaths: string[]; unmergedCommits: number; locked: boolean; canRemove: boolean; expiresAt: number }
-export interface DesktopContext { project: DesktopProject; projectId: string; runtimePid: number; runtimeNode: string; fixture: boolean; task?: DesktopTask }
+export interface DesktopContext { credentialConfigured?: boolean; modelSelection?: DesktopModelSelection | undefined; project: DesktopProject; projectId: string; runtimePid: number; runtimeNode: string; fixture: boolean; task?: DesktopTask }
 export interface DesktopBridge {
+    providers(): Promise<DesktopProvider[]>;
+    selectModel(projectKey: string, selection: DesktopModelSelection): Promise<DesktopContext>;
     remoteTargets(projectKey: string): Promise<import("./github-git-transport.js").RemoteTargets>;
     reviewPush(projectKey: string, destination: import("./remote-delivery.js").PushDestination): Promise<import("./remote-delivery.js").PushReview>;
     push(projectKey: string, ticketId: string): Promise<import("./remote-delivery.js").PushOperation>;

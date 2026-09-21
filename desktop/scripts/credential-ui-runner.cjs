@@ -2,7 +2,7 @@ const {app,BrowserWindow,ipcMain}=require('electron');const fs=require('node:fs'
 const build=process.argv[2],report=process.argv[3];app.setPath('userData',path.join(report,'profile'));
 app.whenReady().then(async()=>{
  let present=false,locked=false,configureCalls=0,probeCalls=0;
- ipcMain.handle('harness:initial-project',()=>null);ipcMain.handle('harness:projects',()=>[]);
+ ipcMain.handle('harness:providers',()=>[{id:'openai',name:'OpenAI',defaultModel:'gpt-5.6-luna',support:'certified'},{id:'qwen',name:'Qwen',defaultModel:'qwen3.8-max',support:'certified'},{id:'meta',name:'Meta',defaultModel:'muse-spark-1.2',support:'certified'},{id:'gemini',name:'Gemini',defaultModel:'gemini-3.6-flash',support:'provisional'}]);ipcMain.handle('harness:initial-project',()=>null);ipcMain.handle('harness:projects',()=>[]);
  ipcMain.handle('harness:credential-status',()=>locked?'locked':present?'present':'missing');
  ipcMain.handle('harness:credential-configure',()=>{configureCalls++;if(configureCalls===1)return 'cancelled';present=true;return 'saved';});
  ipcMain.handle('harness:credential-probe',()=>++probeCalls===1?'invalid-credential':'connected');

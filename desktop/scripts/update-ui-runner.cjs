@@ -3,7 +3,7 @@ const fs=require('node:fs'); const path=require('node:path'); const assert=requi
 const build=process.argv[2],report=process.argv[3]; app.setPath('userData',path.join(report,'profile'));
 app.whenReady().then(async()=>{
  let calls=0,downloads=0,installs=0,state={status:'idle'};
- ipcMain.handle('harness:initial-project',()=>null); ipcMain.handle('harness:projects',()=>[]);
+ ipcMain.handle('harness:providers',()=>[{id:'openai',name:'OpenAI',defaultModel:'gpt-5.6-luna',support:'certified'},{id:'qwen',name:'Qwen',defaultModel:'qwen3.8-max',support:'certified'},{id:'meta',name:'Meta',defaultModel:'muse-spark-1.2',support:'certified'},{id:'gemini',name:'Gemini',defaultModel:'gemini-3.6-flash',support:'provisional'}]);ipcMain.handle('harness:initial-project',()=>null); ipcMain.handle('harness:projects',()=>[]);
  ipcMain.handle('harness:update-status',()=>state);
  ipcMain.handle('harness:check-updates',async()=>{calls++;state={status:'checking'};await new Promise(r=>setTimeout(r,50));return state=[{status:'available',version:'1.1.0',channel:'stable'},{status:'failed'},{status:'current'},{status:'unconfigured'}][calls-1];});
  ipcMain.handle('harness:download-update',async()=>{downloads++;state={status:'downloading',version:'1.1.0',channel:'stable'};await new Promise(r=>setTimeout(r,downloads===2?1500:100));return state={status:downloads===1?'download-failed':'downloaded',version:'1.1.0',channel:'stable'};});

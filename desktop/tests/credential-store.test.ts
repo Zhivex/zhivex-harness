@@ -26,3 +26,12 @@ test("malformed, oversized, crashed and timed out helpers cannot leak output",as
  for(const script of ['console.log("fixture-value");','console.log(JSON.stringify({status:"present",secret:"fixture-value"}));','console.log("fixture-value".repeat(2000));','console.error("fixture-value");process.exit(2);'])await fixture(script,async helper=>{expect(await openCredentialStore(helper,{platform:"darwin"}).status()).toBe("unavailable");});
  await fixture('setTimeout(()=>{},10000);',async helper=>{expect(await openCredentialStore(helper,{platform:"darwin",timeoutMs:20}).status()).toBe("unavailable");});
 });
+test("non-OpenAI helpers select isolated accounts and probe only the matching host",async()=>{
+ for(const [provider,url] of Object.entries({qwen:"https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models",meta:"https://api.meta.ai/v1/models",gemini:"https://generativelanguage.googleapis.com/v1beta/models"})){
+  await fixture(`if(process.argv[3]!==${JSON.stringify(provider)}||process.argv.length!==4)process.exit(4);console.log(JSON.stringify({status:"present",secret:"provider-fixture"}));`,async helper=>{
+   let calls=0;const request=(async(target,init)=>{calls++;expect(target).toBe(url);expect(init?.redirect).toBe("error");expect(init?.headers).toEqual(provider==="gemini"?{"x-goog-api-key":"provider-fixture"}:{Authorization:"Bearer provider-fixture"});return new Response("{}",{status:200});}) as typeof fetch;
+   expect(await openCredentialStore(helper,{provider,platform:"darwin",request}).probe()).toBe("connected");expect(calls).toBe(1);
+  });
+ }
+ expect(()=>openCredentialStore("/tmp/helper",{provider:"deepseek"})).toThrow();
+});
