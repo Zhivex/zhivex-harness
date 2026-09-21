@@ -6,6 +6,7 @@ const job = process.argv.includes("--job");
 const handoff = process.argv.includes("--handoff");
 const access = process.argv.includes("--access");
 const transfer = process.argv.includes("--transfer");
+const missingStateFd = process.argv.includes("--missing-state-fd");
 const appPathIndex = process.argv.indexOf("--app-path"), appPath = appPathIndex < 0 ? undefined : process.argv[appPathIndex + 1];
 if (appPathIndex >= 0 && (!appPath || !path.isAbsolute(appPath) || !appPath.endsWith(".app"))) throw new Error("INVALID_APPLICATION_PATH");
 if ((job || handoff || transfer) && !appPath) await import("./build-update-worker-lock.js");
@@ -16,7 +17,7 @@ const result = await Bun.build({entrypoints: [path.join(import.meta.dir, transfe
 }}]});
 if (!result.success) throw new Error("BACKUP_FIXTURE_BUILD_FAILED");
 await chmod(path.join(directory, "verify.cjs"), 0o600);
-const child = spawn(appPath ? path.join(appPath, "Contents/MacOS/Zhivex Harness") : path.join(root, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"), [path.join(directory, "verify.cjs"), ...(job || handoff || transfer ? [appPath ? path.join(appPath, "Contents/Resources/update-worker-lock") : path.join(root, "build/update-worker-lock")] : [])], {cwd: directory, env: {PATH: process.env.PATH, HOME: directory, ELECTRON_RUN_AS_NODE: "1"}, stdio: "inherit"});
+const child = spawn(appPath ? path.join(appPath, "Contents/MacOS/Zhivex Harness") : path.join(root, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"), [path.join(directory, "verify.cjs"), ...(job || handoff || transfer ? [appPath ? path.join(appPath, "Contents/Resources/update-worker-lock") : path.join(root, "build/update-worker-lock")] : []), ...(transfer && missingStateFd ? ["missing-state-fd"] : [])], {cwd: directory, env: {PATH: process.env.PATH, HOME: directory, ELECTRON_RUN_AS_NODE: "1"}, stdio: "inherit"});
 const timer = setTimeout(() => child.kill("SIGKILL"), 30_000);
 try {const code = await new Promise<number | null>((resolve, reject) => {child.once("exit", resolve); child.once("error", reject);}); if (code !== 0) throw new Error("NATIVE_BACKUP_CHECK_FAILED");}
 finally {clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");}

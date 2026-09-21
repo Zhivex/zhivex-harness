@@ -13,7 +13,7 @@ const swapper = createApplicationSwapper(async (bundle, policy) => {assert.equal
 async function host() {
  const filename = process.argv[3]!, f = JSON.parse(await readFile(filename, "utf8")), workerFile = await realpath(process.argv[1]!);
  const handoff = await prepareDesktopUpdateHandoff(f.job, []);
- const worker = await launchDesktopUpdateWorker({directory: path.dirname(workerFile), worker: workerFile, helper: f.helper, executable: process.execPath, arguments: ["worker", filename, handoff.nonce]});
+ const worker = await launchDesktopUpdateWorker({directory: path.dirname(workerFile), worker: workerFile, helper: f.helper, executable: process.execPath, arguments: ["worker", filename, handoff.nonce, handoff.sha256]});
  await writeFile(path.join(f.root, "spawn.json"), JSON.stringify(worker));
  await waitForDesktopUpdateAcknowledgement(handoff, worker.pid);
  await writeFile(path.join(f.root, "acknowledged.json"), JSON.stringify({hostPid: process.pid, workerPid: worker.pid}));
@@ -21,7 +21,7 @@ async function host() {
  await poll(() => exists(path.join(f.root, "exit-host")));
 }
 async function worker() {
- const f = JSON.parse(await readFile(process.argv[3]!, "utf8")), handoff = {job: f.job, nonce: process.argv[4]!};
+ const f = JSON.parse(await readFile(process.argv[3]!, "utf8")), handoff = {job: f.job, nonce: process.argv[4]!, sha256: process.argv[5]!};
  await acknowledgeDesktopUpdateHandoff(handoff);
  await waitForDesktopUpdateOwners(handoff, {timeoutMs: 10000});
  const outcome = await executeDesktopUpdateJob(f.job, {swapper, assertStopped: () => assertDesktopUpdateOwnersStopped(handoff), verifyState: async () => {}});

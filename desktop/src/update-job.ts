@@ -5,7 +5,7 @@ import path from "node:path";
 import {z} from "zod";
 import {readRegularFileNoFollow} from "../../src/file-security.js";
 import {createApplicationSwapper, type ApplicationSwap} from "./application-swap.js";
-import {desktopStateTransactionStatus, finishDesktopStateTransaction, restoreDesktopStateTransaction, type DesktopStateTransaction} from "./state-transaction.js";
+import {desktopStateTransactionStatus, desktopStateTransactionDatabasePaths, finishDesktopStateTransaction, restoreDesktopStateTransaction, type DesktopStateTransaction} from "./state-transaction.js";
 
 const absolute = z.string().max(4096).refine(p => path.isAbsolute(p) && path.normalize(p) === p && !/[\x00-\x1f\x7f]/.test(p));
 const schema = z.object({schemaVersion: z.literal(1), id: z.string().uuid(), userData: absolute,
@@ -45,7 +45,7 @@ async function load(job: DesktopUpdateJob) {
  return {directory, journal};
 }
 
-/** Host/worker handoff identity. Never exposes paths or receipts to the renderer. */
+/** Host/worker handoff identity and inventory. Must never be exposed through renderer IPC. */
 export async function inspectDesktopUpdateJob(job: DesktopUpdateJob) {
  try {
   const {journal} = await load(job);
@@ -54,7 +54,7 @@ export async function inspectDesktopUpdateJob(job: DesktopUpdateJob) {
    if (status !== "active" && journal.phase !== "finishing") throw new Error();
   }
   const identity = {schemaVersion: journal.schemaVersion, id: journal.id, userData: journal.userData, state: journal.state, application: journal.application};
-  return {phase: journal.phase, digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex")};
+  return {phase: journal.phase, digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex"), databasePaths: await desktopStateTransactionDatabasePaths(job.userData, journal.state)};
  } catch {throw new Error("UPDATE_JOB_INVALID");}
 }
 

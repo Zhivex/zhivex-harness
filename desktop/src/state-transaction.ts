@@ -80,6 +80,12 @@ export async function desktopStateTransactionStatus(userData: string, transactio
  } catch {throw new Error("DESKTOP_STATE_TRANSACTION_MISMATCH");}
 }
 
+/** Host/worker-only inventory bound to the persisted receipt hash. */
+export async function desktopStateTransactionDatabasePaths(userData: string, transaction: DesktopStateTransaction): Promise<string[]> {
+ try {const ctx = await load(userData, transaction); return ctx.receipt.databases.map(db => path.join(db.stateDirectory, HARNESS_SQLITE_FILE)).sort();}
+ catch {throw new Error("DESKTOP_STATE_TRANSACTION_MISMATCH");}
+}
+
 /** Caller enumerates all registered projects/tasks and holds admission closed for the entire transaction. */
 export async function prepareDesktopStateTransaction(userData: string, configs: DesktopBackupConfig[]): Promise<DesktopStateTransaction> {
  let ownedDirectory: string | undefined;
