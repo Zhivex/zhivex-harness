@@ -62,6 +62,23 @@ async function load(userData: string, transaction: DesktopStateTransaction) {
  return {...ctx, directory, receipt};
 }
 
+/** Read-only binding check for the durable update job. Absence is meaningful only
+ * after that job has persisted its finishing phase; it is not proof of success.
+ */
+export async function desktopStateTransactionStatus(userData: string, transaction: DesktopStateTransaction): Promise<"active" | "absent"> {
+ try {
+  const ctx = await load(userData, transaction);
+  if (!await exists(ctx.active)) {
+   const marker = JSON.parse((await read(path.join(ctx.home, MARKER), 1024)).toString("utf8"));
+   if (marker?.format !== DESKTOP_STATE_FORMAT || marker?.phase !== "ready" || Object.keys(marker).length !== 2) throw new Error();
+   return "absent";
+  }
+  const pointer = pointerSchema.parse(JSON.parse((await read(ctx.active, 1024)).toString("utf8")));
+  if (pointer.id !== transaction.id || pointer.sha256 !== transaction.sha256) throw new Error();
+  return "active";
+ } catch {throw new Error("DESKTOP_STATE_TRANSACTION_MISMATCH");}
+}
+
 /** Caller enumerates all registered projects/tasks and holds admission closed for the entire transaction. */
 export async function prepareDesktopStateTransaction(userData: string, configs: HarnessConfig[]): Promise<DesktopStateTransaction> {
  let ownedDirectory: string | undefined;

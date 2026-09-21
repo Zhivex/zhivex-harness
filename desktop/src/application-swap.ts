@@ -65,6 +65,13 @@ async function checkTree(application: string, flush: boolean) {
  */
 export function createApplicationSwapper(verify: Verify = createMacApplicationVerifier()) {
  return {
+  async verifyOutcome(swap: ApplicationSwap, outcome: "installed" | "restored"): Promise<void> {
+   try {
+    const {journal} = await load(swap);
+    if (journal.phase !== outcome) throw new Error();
+    await verify(swap.application, {teamId: journal.teamId, version: outcome === "installed" ? journal.nextVersion : journal.previousVersion});
+   } catch {throw new Error("UPDATE_APPLICATION_OUTCOME_INVALID");}
+  },
   async prepare(input: {application: string; candidate: string; teamId: string; previousVersion: string; nextVersion: string}): Promise<ApplicationSwap> {
    let ownedDirectory: string | undefined;
    try {
