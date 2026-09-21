@@ -7,6 +7,7 @@ import {resolveHarnessConfig} from "../../src/config.js";
 import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/operations.js";
 import {openCliSessionStore} from "../../src/sessions.js";
 import {SqliteDatabase} from "../../src/sqlite-database.js";
+import {armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction} from "../src/state-transaction.js";
 import type {ManagedTask} from "../src/task-worktrees.js";
 const project = (workspace: string) => ({workspace, key: `project_${createHash("sha256").update(workspace).digest("hex").slice(0, 32)}`, name: "fixture", lastOpenedAt: 1});
 async function fixture(run: (f: {root: string; userData: string; source: string; task: ManagedTask}) => Promise<void>) {
@@ -30,11 +31,30 @@ test("includes incomplete task states without changing their registry records or
   expect(result.configs).toHaveLength(2); expect(JSON.stringify(task)).toBe(before);
  }
 }));
-test("retained history of a removed checkout blocks an incomplete backup", () => fixture(async f => {
+test("retained history of a removed checkout is explicitly included as archived state", () => fixture(async f => {
  await rm(f.task.workspace, {recursive: true}); await mkdir(f.task.stateDirectory, {mode: 0o700});
  const bytes = path.join(f.task.stateDirectory, "history"); await writeFile(bytes, "preserve");
- await expect(collectDesktopUpdateInventory(f.userData, [], [{...f.task, status: "removed"}])).rejects.toThrow("UPDATE_STATE_WORKSPACE_UNAVAILABLE");
+ const inventory = await collectDesktopUpdateInventory(f.userData, [], [{...f.task, status: "removed"}]);
+ expect(inventory.configs.find(c => c.workspace === f.task.workspace)?.workspaceAbsent).toBe(true);
  expect(await readFile(bytes, "utf8")).toBe("preserve");
+}));
+test("removed worktree conversations survive backup and restoration without recreating the checkout", () => fixture(async f => {
+ const config = resolveHarnessConfig({workspace: f.task.workspace, stateDirectory: f.task.stateDirectory, provider: "openai", storeBackend: "sqlite"});
+ const persistence = await openHarnessPersistence(config); persistence.close();
+ const sessions = await openCliSessionStore({workspace: config.workspace, stateDirectory: config.stateDirectory, scope: config.scope});
+ await sessions.create({title: "retained conversation"}); sessions.close();
+ await rm(f.task.workspace, {recursive: true});
+ const filename = path.join(config.stateDirectory, HARNESS_SQLITE_FILE), owner = new SqliteDatabase(filename);
+ let prepared;
+ try {owner.query("SELECT count(*) FROM sqlite_master").get(); prepared = await prepareDesktopUpdateState(f.userData, [], [{...f.task, status: "removed"}]);} finally {owner.close();}
+ const receipt = JSON.parse(await readFile(path.join(f.userData, "update-recovery", prepared.transaction.id, "receipt.json"), "utf8"));
+ expect(receipt.databases.find((d: {workspace: string}) => d.workspace === f.task.workspace).workspaceAbsent).toBe(true);
+ await armDesktopStateTransaction(f.userData, prepared.transaction);
+ const changed = new SqliteDatabase(filename); try {changed.exec("UPDATE zhivex_cli_sessions SET title='partial migration'");} finally {changed.close();}
+ await restoreDesktopStateTransaction(f.userData, {assertStopped: async () => {}});
+ const restored = new SqliteDatabase(filename); try {expect(restored.query<{title: string}>("SELECT title FROM zhivex_cli_sessions").get()!.title).toBe("retained conversation");} finally {restored.close();}
+ await finishDesktopStateTransaction(f.userData, async () => {});
+ await expect(realpath(f.task.workspace)).rejects.toThrow();
 }));
 test("records a missing checkout only when its state is also absent", () => fixture(async f => {
  await rm(f.task.workspace, {recursive: true});

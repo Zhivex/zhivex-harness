@@ -1,7 +1,8 @@
 import {createHash} from "node:crypto";
 import {lstat, realpath} from "node:fs/promises";
 import path from "node:path";
-import {resolveHarnessConfig, type HarnessConfig} from "../../src/config.js";
+import {resolveHarnessConfig} from "../../src/config.js";
+import type {DesktopBackupConfig} from "./database-backup.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import type {DesktopProject} from "./bridge.js";
 import type {ManagedTask} from "./task-worktrees.js";
@@ -26,7 +27,7 @@ async function canonicalOrAbsent(filename: string) {
  * This reads paths/configuration only; it neither opens registries nor reconciles Git.
  */
 export async function collectDesktopUpdateInventory(userData: string, projects: DesktopProject[], tasks: ManagedTask[]): Promise<{
- configs: HarnessConfig[];
+ configs: DesktopBackupConfig[];
  absentWorkspaces: string[];
 }> {
  try {
@@ -50,16 +51,19 @@ export async function collectDesktopUpdateInventory(userData: string, projects: 
   // Its managed state directory always wins over the ordinary project default.
   for (const [workspace, stateDirectory] of taskStates) sources.set(workspace, stateDirectory);
   if (sources.size > 600) throw new Error();
-  const configs: HarnessConfig[] = [], absentWorkspaces: string[] = [];
+  const configs: DesktopBackupConfig[] = [], absentWorkspaces: string[] = [];
   for (const [workspace, stateDirectory] of sources) {
    const workspacePresent = await canonicalOrAbsent(workspace);
    const statePresent = await canonicalOrAbsent(stateDirectory);
    await validateStateDirectory(workspace, stateDirectory);
    if (!workspacePresent) {
-    // Removed worktrees may retain conversations in their external state directory.
-    // The existing bound backup needs the original workspace: never silently skip it.
-    if (statePresent) throw new UpdateInventoryError("UPDATE_STATE_WORKSPACE_UNAVAILABLE");
-    absentWorkspaces.push(workspace); continue;
+    if (statePresent) {
+     // Only managed task state has a trusted retained identity independent of a
+     // missing checkout; unavailable ordinary projects must not be rebound.
+     if (!taskStates.has(workspace)) throw new UpdateInventoryError("UPDATE_STATE_WORKSPACE_UNAVAILABLE");
+     configs.push({...resolveHarnessConfig({workspace, stateDirectory, storeBackend: "sqlite", provider: "openai"}), workspaceAbsent: true});
+    } else absentWorkspaces.push(workspace);
+    continue;
    }
    configs.push(resolveHarnessConfig({workspace, stateDirectory, storeBackend: "sqlite", provider: "openai"}));
   }

@@ -3,11 +3,11 @@ import {constants} from "node:fs";
 import {lstat, mkdir, open, realpath, rename, unlink, link, rm} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
-import type {HarnessConfig} from "../../src/config.js";
+import {validateRecordedWorkspace} from "../../src/recorded-workspace.js";
 import {readRegularFileNoFollow, statRegularFileNoFollow} from "../../src/file-security.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {createDesktopDatabaseBackup, verifyDesktopDatabaseBackup, DESKTOP_DATABASE_BACKUP_LIMIT} from "./database-backup.js";
+import {createDesktopDatabaseBackup, verifyDesktopDatabaseBackup, DESKTOP_DATABASE_BACKUP_LIMIT, type DesktopBackupConfig} from "./database-backup.js";
 import {createDesktopMetadataBackup, readDesktopMetadataBackup} from "./metadata-backup.js";
 import {checkDesktopStateFormat, DESKTOP_STATE_FORMAT} from "./state-format.js";
 
@@ -16,7 +16,7 @@ const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const absolute = z.string().max(4096).refine(p => path.isAbsolute(p) && path.normalize(p) === p);
 const file = z.union([z.object({name: z.string().max(512), size: z.number().int().min(0).max(1024 * 1024), sha256: hash}).strict(), z.object({name: z.string().max(512), absent: z.literal(true)}).strict()]);
 const receiptSchema = z.object({schemaVersion: z.literal(1), userData: absolute, format: z.literal(1),
- databases: z.array(z.object({workspace: absolute, stateDirectory: absolute, backup: z.object({directory: z.string().regex(/^database-[A-Za-z0-9]+$/), size: z.number().int().min(1).max(DESKTOP_DATABASE_BACKUP_LIMIT), sha256: hash, logicalChecksum: z.string().regex(/^sha256:[a-f0-9]{64}$/)}).strict().nullable()}).strict()).max(600),
+ databases: z.array(z.object({workspace: absolute, workspaceAbsent: z.literal(true).optional(), stateDirectory: absolute, backup: z.object({directory: z.string().regex(/^database-[A-Za-z0-9]+$/), size: z.number().int().min(1).max(DESKTOP_DATABASE_BACKUP_LIMIT), sha256: hash, logicalChecksum: z.string().regex(/^sha256:[a-f0-9]{64}$/)}).strict().nullable()}).strict()).max(600),
  metadata: z.object({directory: z.string().regex(/^metadata-[A-Za-z0-9]+$/), files: z.array(file).max(4096)}).strict(),
 }).strict();
 const pointerSchema = z.object({schemaVersion: z.literal(1), id: z.string().uuid(), sha256: hash}).strict();
@@ -56,7 +56,8 @@ async function load(userData: string, transaction: DesktopStateTransaction) {
  const receipt = receiptSchema.parse(JSON.parse(bytes.toString("utf8")));
  if (receipt.userData !== ctx.home || new Set(receipt.databases.map(d => d.stateDirectory)).size !== receipt.databases.length || receipt.databases.reduce((n, d) => n + (d.backup?.size ?? 0), 0) > TOTAL_LIMIT) throw new Error();
  for (const db of receipt.databases) {
-  if (await realpath(db.workspace) !== db.workspace || (await exists(db.stateDirectory) && await realpath(db.stateDirectory) !== db.stateDirectory)) throw new Error();
+  await validateRecordedWorkspace(db.workspace, db.workspaceAbsent === true);
+  if (await exists(db.stateDirectory) && await realpath(db.stateDirectory) !== db.stateDirectory) throw new Error();
   await validateStateDirectory(db.workspace, db.stateDirectory);
  }
  return {...ctx, directory, receipt};
@@ -80,7 +81,7 @@ export async function desktopStateTransactionStatus(userData: string, transactio
 }
 
 /** Caller enumerates all registered projects/tasks and holds admission closed for the entire transaction. */
-export async function prepareDesktopStateTransaction(userData: string, configs: HarnessConfig[]): Promise<DesktopStateTransaction> {
+export async function prepareDesktopStateTransaction(userData: string, configs: DesktopBackupConfig[]): Promise<DesktopStateTransaction> {
  let ownedDirectory: string | undefined;
  try {
   await checkDesktopStateFormat(userData);
@@ -91,7 +92,7 @@ export async function prepareDesktopStateTransaction(userData: string, configs: 
   for (const config of configs) {
    if (config.storeBackend !== "sqlite") throw new Error();
    await validateStateDirectory(config.workspace, config.stateDirectory);
-   const workspace = await realpath(config.workspace);
+   const workspace = await validateRecordedWorkspace(config.workspace, config.workspaceAbsent === true);
    const stateDirectory = await exists(config.stateDirectory) ? await realpath(config.stateDirectory) : path.resolve(config.stateDirectory);
    if (databases.some(d => d.stateDirectory === stateDirectory)) continue;
    let backup = null;
@@ -100,7 +101,7 @@ export async function prepareDesktopStateTransaction(userData: string, configs: 
     total += copy.size; if (total > TOTAL_LIMIT) throw new Error();
     backup = {...copy, directory: path.basename(copy.directory)};
    }
-   databases.push({workspace, stateDirectory, backup});
+   databases.push({workspace, stateDirectory, backup, ...(config.workspaceAbsent ? {workspaceAbsent: true as const} : {})});
   }
   const metadataCopy = await createDesktopMetadataBackup(ctx.home, directory);
   const metadata = {...metadataCopy, directory: path.basename(metadataCopy.directory)};

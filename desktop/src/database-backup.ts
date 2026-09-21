@@ -5,12 +5,13 @@ import path from "node:path";
 import type {HarnessConfig} from "../../src/config.js";
 import {readRegularFileNoFollow, statRegularFileNoFollow} from "../../src/file-security.js";
 import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {createHarnessStateBackup} from "../../src/state-backup.js";
+import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../../src/state-backup.js";
 import {validateStateDirectory} from "../../src/state-directory.js";
 import {SqliteDatabase} from "../../src/sqlite-database.js";
 
 export const DESKTOP_DATABASE_BACKUP_LIMIT = 128 * 1024 * 1024;
 export interface DesktopDatabaseBackup {directory: string; size: number; sha256: string; logicalChecksum: string}
+export interface DesktopBackupConfig extends HarnessConfig {workspaceAbsent?: true}
 function assertIdle(db: SqliteDatabase) {
  const terminal = "('completed','failed','cancelled','timed_out')";
  // Unlike a scope-specific logical export, a whole-file snapshot includes ALL scopes.
@@ -28,7 +29,7 @@ async function privateDirectory(directory: string) {
  * Caller must hold desktop admission closed and provide host-controlled paths.
  * This captures one database; cross-project/index consistency belongs to the update transaction.
  */
-export async function createDesktopDatabaseBackup(config: HarnessConfig, backupRoot: string): Promise<DesktopDatabaseBackup> {
+export async function createDesktopDatabaseBackup(config: DesktopBackupConfig, backupRoot: string): Promise<DesktopDatabaseBackup> {
  let directory: string | undefined;
  try {
   await validateStateDirectory(config.workspace, config.stateDirectory);
@@ -57,7 +58,7 @@ export async function createDesktopDatabaseBackup(config: HarnessConfig, backupR
    assertIdle(snapshot);
   } finally {snapshot.close();}
   // Reuse core binding/schema/terminal-journal validation on the COPY, never migrate the source.
-  const logical = await createHarnessStateBackup({...config, stateDirectory: directory, storeBackend: "sqlite"});
+  const logical = await (config.workspaceAbsent ? createArchivedHarnessStateBackup : createHarnessStateBackup)({...config, stateDirectory: directory, storeBackend: "sqlite"});
   // Core validators open/close SQLite; checkpoint any sidecars before hashing the final copy.
   const finalDb = new SqliteDatabase(destination);
   try {
