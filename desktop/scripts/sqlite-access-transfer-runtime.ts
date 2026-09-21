@@ -15,13 +15,16 @@ import {armDesktopStateTransaction, verifyDesktopStateTransaction} from "../src/
 import {checkDesktopStateFormat} from "../src/state-format.js";
 import {verifyDesktopDatabaseState} from "../src/database-backup.js";
 import {prepareDesktopUpdateHandoff, adoptDesktopUpdateHandoffState, acknowledgeDesktopUpdateHandoff, waitForDesktopUpdateAcknowledgement, waitForDesktopUpdateOwners, assertDesktopUpdateOwnersStopped} from "../src/update-handoff.js";
+import {createDesktopUpdateWorkerStager} from "../src/update-worker-staging.js";
 const swapper = createApplicationSwapper(async (bundle, policy) => {assert.equal(await readFile(path.join(bundle, "version"), "utf8"), policy.version);});
 const exists = (file: string) => access(file).then(() => true, () => false);
 async function poll(check: () => Promise<boolean>) {const deadline = Date.now() + 8000; while (Date.now() < deadline) {if (await check()) return; await new Promise(r => setTimeout(r, 25));} throw new Error("FIXTURE_TIMEOUT");}
 async function host() {
  const f = JSON.parse(await readFile(process.argv[3]!, "utf8"));
  let workerFile = await realpath(process.argv[1]!);
- if (f.productionWorker) {const staged = path.join(path.dirname(workerFile), "production-worker.cjs"); await copyFile(f.productionWorker, staged); await chmod(staged, 0o600); workerFile = staged;}
+ const stager = createDesktopUpdateWorkerStager(async application => {assert.equal(application, f.sourceApplication);});
+ const source = f.sourceApplication ? await stager.prepare({application: f.sourceApplication, userData: f.userData, teamId: "ABCDEFGHIJ", version: "0.1.0-alpha.1"}) : undefined;
+ if (f.productionWorker && !source) {const staged = path.join(path.dirname(workerFile), "production-worker.cjs"); await copyFile(f.productionWorker, staged); await chmod(staged, 0o600); workerFile = staged;}
  const project = {key: `project_${createHash("sha256").update(f.workspace).digest("hex").slice(0, 32)}`, workspace: f.workspace, name: "fixture", lastOpenedAt: 1};
  const prepared = await prepareExclusiveDesktopUpdateState(f.userData, [project], []);
  try {
@@ -29,8 +32,8 @@ async function host() {
   const swap = await swapper.prepare({application: f.application, candidate: f.candidate, teamId: "ABCDEFGHIJ", previousVersion: "1.0.0", nextVersion: "1.1.0"});
   await armDesktopStateTransaction(f.userData, prepared.transaction);
   const job = await prepareDesktopUpdateJob(f.userData, prepared.transaction, swap), handoff = await prepareDesktopUpdateHandoff(job, [], prepared.access);
-  const worker = await launchDesktopUpdateWorker({directory: path.dirname(workerFile), worker: workerFile, helper: f.helper, executable: process.execPath, arguments: f.productionWorker ? [f.userData, job.id, handoff.nonce, handoff.sha256] : ["worker", process.argv[3]!, handoff.nonce, handoff.sha256, job.id], stateAccess: f.missingStateFd ? [] : prepared.access});
-  await writeFile(path.join(f.root, "spawn.json"), JSON.stringify({...worker, job}));
+  const worker = source ? await stager.launch(source, handoff, prepared.access) : await launchDesktopUpdateWorker({directory: path.dirname(workerFile), worker: workerFile, helper: f.helper, executable: process.execPath, arguments: f.productionWorker ? [f.userData, job.id, handoff.nonce, handoff.sha256] : ["worker", process.argv[3]!, handoff.nonce, handoff.sha256, job.id], stateAccess: f.missingStateFd ? [] : prepared.access});
+  await writeFile(path.join(f.root, "spawn.json"), JSON.stringify({...worker, job, ...(source ? {stagedSha256: source.sha256} : {})}));
   await waitForDesktopUpdateAcknowledgement(handoff, worker.pid); await writeFile(path.join(f.root, "host-ready"), String(process.pid));
   await poll(() => exists(path.join(f.root, "host-release")));
  } finally {prepared.releaseAccess();}
@@ -80,7 +83,8 @@ async function parent() {
   const sessions = await openCliSessionStore({workspace, stateDirectory: config.stateDirectory, scope: config.scope}); await sessions.create({title: "native retained"}); sessions.close();
   const initial = new SqliteDatabase(databasePath); initial.exec("CREATE TABLE value(n INTEGER); INSERT INTO value VALUES(7)"); initial.close();
   const missingStateFd = process.argv[3] === "missing-state-fd", productionWorker = process.argv[3] === "production-worker" ? process.argv[4] : undefined;
-  const fixture = path.join(root, "fixture.json"); await writeFile(fixture, JSON.stringify({root, workspace, userData, databasePath, application, candidate, missingStateFd, productionWorker, helper: await realpath(process.argv[2]!)}), {mode: 0o600});
+  const sourceApplication = productionWorker && process.argv[5] ? await realpath(process.argv[5]) : undefined;
+  const fixture = path.join(root, "fixture.json"); await writeFile(fixture, JSON.stringify({root, workspace, userData, databasePath, application, candidate, missingStateFd, productionWorker, sourceApplication, helper: await realpath(process.argv[2]!)}), {mode: 0o600});
   child = spawn(process.execPath, [process.argv[1]!, "host", fixture], {stdio: "ignore", env: {PATH: "/usr/bin:/bin", ELECTRON_RUN_AS_NODE: "1"}});
   const exited = new Promise<number | null>((resolve, reject) => {child!.once("exit", resolve); child!.once("error", reject);});
   if (missingStateFd) {
@@ -107,7 +111,7 @@ async function parent() {
    await assert.rejects(checkDesktopStateFormat(userData));
    const db = new SqliteDatabase(databasePath); try {assert.equal(db.query<{n: number}>("SELECT n FROM value").get()!.n, 7);} finally {db.close();}
    const evidence = await mkdtemp("/tmp/har-production-worker-report-");
-   const report = {node: process.versions.node, electron: process.versions.electron, productionWorkerEntry: true, nativeSignatureVerifier: true, hostAcknowledgement: true, unsignedBundleRejected: true, previousAppAndDataPreserved: true, recoveryRemainsArmed: true, pass: true};
+   const report = {node: process.versions.node, electron: process.versions.electron, productionWorkerEntry: true, stagedPackagedWorker: Boolean(sourceApplication), sourceSignatureFixture: Boolean(sourceApplication), nativeSignatureVerifier: true, hostAcknowledgement: true, unsignedBundleRejected: true, previousAppAndDataPreserved: true, recoveryRemainsArmed: true, pass: true};
    await writeFile(path.join(evidence, "report.json"), JSON.stringify(report, null, 2)); console.log(JSON.stringify({evidence, ...report})); return;
   }
   assert.throws(() => new SqliteDatabase(databasePath), /SQLITE_ACCESS_UNAVAILABLE/);
