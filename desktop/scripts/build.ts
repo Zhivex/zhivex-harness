@@ -1,6 +1,8 @@
 import { rm, mkdir, copyFile } from "node:fs/promises";
 import path from "node:path";
+import {parseDesktopUpdateTrust} from "../src/update-trust.js";
 const root = path.resolve(import.meta.dir, "..");
+parseDesktopUpdateTrust(await Bun.file(path.join(root, "update-trust.json")).json());
 const outdir = path.join(root, "build"); await rm(outdir, { recursive: true, force: true }); await mkdir(outdir);
 const metadata = await Bun.file(path.join(root, "../package.json")).json();
 const versionPlugin: Bun.BunPlugin = { name: "embedded-runtime-version", setup(builder) { builder.onLoad({ filter: /[\\/]src[\\/]sqlite-database\.ts$/ }, async args => ({ contents: (await Bun.file(args.path).text()).replace("createRequire(import.meta.url)", "createRequire(process.execPath)"), loader: "ts" })); builder.onLoad({ filter: /[\\/]src[\\/]version\.ts$/ }, () => ({ contents: `export const HARNESS_VERSION=${JSON.stringify(metadata.version)}; export const NODE_ENGINE_RANGE=${JSON.stringify(metadata.engines.node)}; export const BUN_ENGINE_RANGE=${JSON.stringify(metadata.engines.bun)};`, loader: "ts" })); } };

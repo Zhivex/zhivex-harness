@@ -48,9 +48,9 @@ function decode(value: string) {
  return bytes;
 }
 /** The public key and policy must come from trusted host/build configuration, never the feed or renderer. */
-export function verifyUpdateManifest(envelope: string, policy: {
+function verifyManifest(envelope: string, policy: {
  publicKey: string | KeyObject; currentVersion: string; channel: "stable" | "prerelease"; stateSchema: number;
-}): VerifiedUpdate {
+}, allowCurrent = false): VerifiedUpdate {
  try {
   if (Buffer.byteLength(envelope) > 32 * 1024) throw new Error();
   const parsed = z.object({payload: z.string().max(24000), signature: z.string().max(128)}).strict().parse(JSON.parse(envelope));
@@ -60,7 +60,8 @@ export function verifyUpdateManifest(envelope: string, policy: {
   const manifest = manifestSchema.parse(JSON.parse(new TextDecoder("utf-8", {fatal: true}).decode(payload)));
   const candidate = version(manifest.version), now = Date.now();
   if (manifest.channel !== policy.channel || (manifest.channel === "prerelease") !== Boolean(candidate.pre)) throw new Error();
-  if (compareUpdateVersions(manifest.version, policy.currentVersion) <= 0) throw new Error();
+  const order = compareUpdateVersions(manifest.version, policy.currentVersion);
+  if (order < 0 || (!allowCurrent && order === 0)) throw new Error();
   if (manifest.publishedAt > now + 5 * 60_000 || manifest.expiresAt <= now || manifest.expiresAt <= manifest.publishedAt || manifest.expiresAt - manifest.publishedAt > 7 * 86400_000) throw new Error();
   if (!Number.isSafeInteger(policy.stateSchema) || manifest.state.minReadable > policy.stateSchema || manifest.state.maxReadable < policy.stateSchema || manifest.state.minReadable > manifest.state.maxReadable) throw new Error();
   const url = new URL(manifest.artifact.url);
@@ -71,4 +72,13 @@ export function verifyUpdateManifest(envelope: string, policy: {
   authenticated.add(manifest);
   return manifest;
  } catch { throw new Error("UPDATE_MANIFEST_REJECTED"); }
+}
+
+export function verifyUpdateManifest(envelope: string, policy: Parameters<typeof verifyManifest>[1]): VerifiedUpdate {
+ return verifyManifest(envelope, policy);
+}
+/** Same-version manifests are authenticated fully, but never exposed as installable updates. */
+export function checkUpdateManifest(envelope: string, policy: Parameters<typeof verifyManifest>[1]): {kind: "current"} | {kind: "available"; update: VerifiedUpdate} {
+ const update = verifyManifest(envelope, policy, true);
+ return compareUpdateVersions(update.version, policy.currentVersion) === 0 ? {kind: "current"} : {kind: "available", update};
 }
