@@ -158,7 +158,9 @@ Source: https://app.notion.com/p/3e1777b104f6815bb468f800ff8b80cc?pvs=204
 - [ ] Instalación limpia, apertura, SQLite y conexión al runtime pasan en el artefacto distribuido; ausencia de OCI muestra instrucciones claras.
 - [ ] Versión, hash y notas de release coinciden con la fuente; permisos requeridos y desinstalación que preserva datos están documentados.
 
-Evidence: pending.
+In progress: HAR_HU_34_INSTALLER_PREPARATION_2026-09-20.md. Local unsigned DMG
+and version/hash manifest generated; native helper deployment target corrected
+from host macOS 27 to declared macOS 13. Signing/notarization remain deferred.
 
 ## HAR-HU-35 — Actualizar la aplicación con recuperación de estado
 

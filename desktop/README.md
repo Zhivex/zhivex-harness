@@ -344,3 +344,12 @@ authentication is not certified.
 
 Integrated Keychain/host/packaged-runtime check: `bun run desktop/scripts/smoke-native-credentials.ts`.
 It uses temporary native keychains and a mock model, never personal credentials.
+
+### Local installer candidate (HU34, in progress)
+
+After packaging, run `bun run desktop/scripts/prepare-installer.ts` from the root.
+The unsigned DMG, release manifest and instructions are in `desktop/out/installer`.
+Use `bun run desktop/scripts/smoke-installer.ts` to verify a temporary installation
+extracted from that DMG. No /Applications or personal profile is modified.
+Developer ID signing, notarization and downloaded Gatekeeper acceptance remain
+pending. See [installation instructions](INSTALLATION.md).

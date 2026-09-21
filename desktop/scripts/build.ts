@@ -14,3 +14,6 @@ await copyFile(path.join(root,"src/index.html"),path.join(outdir,"index.html"));
 console.log("Desktop bundles built with Bun.");
 
 if(process.platform==="darwin")await import("./build-credential-helper.js");
+
+const desktopMetadata=await Bun.file(path.join(root,"package.json")).json();
+await Bun.write(path.join(outdir,"runtime-metadata.json"),JSON.stringify({desktopVersion:desktopMetadata.version,harnessVersion:metadata.version,electronVersion:desktopMetadata.devDependencies.electron}));

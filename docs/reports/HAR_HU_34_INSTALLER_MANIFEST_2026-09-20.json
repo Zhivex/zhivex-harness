@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "desktopVersion": "0.1.0-alpha.1",
+  "harnessVersion": "1.0.0",
+  "electronVersion": "44.4.3",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "minimumCompilationTarget": "13.0",
+  "developerIdSigned": false,
+  "notarized": false,
+  "published": false,
+  "source": {
+    "revision": "2222f44f65297dcf14d32ff88f71ba19ceaccb6a",
+    "workingTreeModified": true
+  },
+  "artifact": {
+    "file": "Zhivex-Harness-0.1.0-alpha.1-darwin-arm64-unsigned.dmg",
+    "sha256": "22933eb36b121d247c4f3262cadbc44204f639dfb3250a1a24611bbe0bf18edf",
+    "bytes": 141380124
+  },
+  "contents": {
+    "asar": {
+      "sha256": "20e320f824f8b22b5ae451edaa5849560346e7cb3be7fc9ff6f39915fa52e82d",
+      "bytes": 3799024
+    },
+    "credentialHelper": {
+      "sha256": "bd0196072ec8893057c2b098540bd5a3796595135322816898cd1d04376a7a5f",
+      "bytes": 111456
+    }
+  },
+  "builtOnMacOS": "27.0"
+}

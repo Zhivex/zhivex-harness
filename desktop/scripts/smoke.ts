@@ -7,7 +7,9 @@ const packaged=process.argv.includes("--packaged"),empty=process.argv.includes("
 if(oci&&empty)throw new Error("OCI_REVIEW_REQUIRES_WORKSPACE");
 const output=await mkdtemp("/tmp/har-electron-");
 const workspace=path.join(output,"repo"),report=path.join(output,"report");await mkdir(workspace);await mkdir(report);const second=path.join(output,"second-repo");await mkdir(second);for(const repo of [workspace,second])execFileSync("git",["init","-q",repo],{env:{PATH:process.env.PATH!,HOME:output}});
-const executable=packaged?path.join(root,"out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/MacOS/Zhivex Harness"):path.join(root,"node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
+const appPathIndex=process.argv.indexOf("--app-path"), appPath=appPathIndex<0?undefined:process.argv[appPathIndex+1];
+if(appPathIndex>=0&&(!appPath||!path.isAbsolute(appPath)))throw new Error("ABSOLUTE_APP_PATH_REQUIRED");
+const executable=appPath?path.join(appPath,"Contents/MacOS/Zhivex Harness"):packaged?path.join(root,"out/Zhivex Harness-darwin-arm64/Zhivex Harness.app/Contents/MacOS/Zhivex Harness"):path.join(root,"node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");
 await writeFile(path.join(workspace,"package.json"),JSON.stringify({name:"desktop-fixture",private:true,packageManager:"bun@1.4.0",scripts:{test:"bun -e 'process.exit(7)'"}}));
 await writeFile(path.join(workspace,"review.txt"),oci?"before\n":"context\r\nbefore\r\nlast");
 const invalid=path.join(output,"not-a-repo");await mkdir(invalid);
