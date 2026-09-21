@@ -1,3 +1,4 @@
+import {checkDesktopStateFormat, DesktopStateError} from "./state-format.js";
 import {openCredentialStore} from "./credential-store.js";
 import {credentialCoordinator} from "./credential-coordinator.js";
 import {registerPullRequestIpc} from "./pr-ipc.js";
@@ -32,6 +33,7 @@ let exitApproved=false;
 let requestExit=()=>{exitApproved=true;app.quit();};
 app.on("before-quit",event=>{if(!exitApproved){event.preventDefault();requestExit();}});
 void app.whenReady().then(async()=>{
+ await checkDesktopStateFormat(app.getPath("userData"));
  const registry=await openProjectRegistry(path.join(app.getPath("userData"),"projects"));
  const tasks=await openTaskWorktrees(path.join(app.getPath("userData"),"tasks"));
  const taskView=(task:ManagedTask):DesktopTask=>({id:task.id,sourceProjectKey:task.sourceProjectKey,title:task.title,branch:task.branch,baseCommit:task.baseCommit,workspace:task.workspace,status:task.status});
@@ -171,5 +173,5 @@ if(!pending){pending=launchProjectRuntime(project,{credentialHelper:app.isPackag
  });
  window.once("ready-to-show",()=>window.show());await window.loadFile(index);
  if(fixture&&reportDirectory){await mkdir(reportDirectory,{recursive:true});const restartPhase=argument("--fixture-restart-phase");if(restartPhase?.startsWith("tasks-"))await verifyDesktopWorktreesSmoke(window,runtimes,reportDirectory,restartPhase);else if(restartPhase?.startsWith("effect-"))await verifyDesktopEffectCrashSmoke(window,runtimes,reportDirectory,restartPhase);else if(restartPhase)await verifyDesktopRestartSmoke(window,runtimes,reportDirectory,restartPhase,argument("--fixture-cli"));else{await (process.argv.includes("--fixture-oci")?verifyDesktopOciSmoke:verifyDesktopSmoke)(window,runtimes,reportDirectory);app.quit();}}
-}).catch(async(error)=>{if(fixture)console.error(error);if(reportDirectory)await writeFile(path.join(reportDirectory,"failure.json"),JSON.stringify({code:"DESKTOP_VERIFICATION_FAILED"})).catch(()=>{});process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n");app.exit(1);});
+}).catch(async(error)=>{ if(error instanceof DesktopStateError){ if(!fixture) dialog.showErrorBox("No se puede abrir este estado", "Esta versión no puede abrir el estado guardado o una migración requiere recuperación. Usá la versión compatible y conservá los datos y sus backups. Código: " + error.code); if(reportDirectory) await writeFile(path.join(reportDirectory,"state-format-failure.json"),JSON.stringify({code:error.code})).catch(()=>{}); app.exit(1); return; }if(fixture)console.error(error);if(reportDirectory)await writeFile(path.join(reportDirectory,"failure.json"),JSON.stringify({code:"DESKTOP_VERIFICATION_FAILED"})).catch(()=>{});process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n");app.exit(1);});
 app.on("window-all-closed",()=>app.quit());

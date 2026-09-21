@@ -176,6 +176,12 @@ See HAR_HU_35_AUTHENTICATED_DOWNLOAD_2026-09-20.md. Native publisher verificatio
 critical-operation coordination, installation recovery and state migration remain
 open; no HU35 acceptance criterion is closed by this foundation.
 
+State-format gate now runs before desktop registries/runtime admission. The actual
+packaged main rejects future, migrating and malformed markers without changing
+them or opening project indexes. Five unit tests, packaged normal-flow smoke and
+four layout checks pass. See HAR_HU_35_STATE_GATE_2026-09-20.md. Migration/backup
+and recovery implementation remain outstanding; all three criteria stay open.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).

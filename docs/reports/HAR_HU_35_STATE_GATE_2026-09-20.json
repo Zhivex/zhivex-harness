@@ -1,0 +1,29 @@
+{
+  "packaged": true,
+  "rows": [
+    {
+      "name": "future",
+      "exit": 1,
+      "code": "DESKTOP_STATE_INCOMPATIBLE",
+      "markerUnchanged": true,
+      "registriesNotOpened": true,
+      "pass": true
+    },
+    {
+      "name": "interrupted",
+      "exit": 1,
+      "code": "DESKTOP_STATE_RECOVERY_REQUIRED",
+      "markerUnchanged": true,
+      "registriesNotOpened": true,
+      "pass": true
+    },
+    {
+      "name": "invalid",
+      "exit": 1,
+      "code": "DESKTOP_STATE_INVALID",
+      "markerUnchanged": true,
+      "registriesNotOpened": true,
+      "pass": true
+    }
+  ]
+}
