@@ -4,6 +4,8 @@ Objective: implementar el resto de las HU del harness. Source checkout `f61d40b`
 
 No completed flag without direct evidence. This ledger preserves the full scope across turns.
 
+Current audit (2026-09-21): see HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.md/json. HU22–33 are implemented and locally accepted; HU34–35 retain signed-distribution acceptance gaps deferred by the user. Main/UI installation and startup recovery are now connected in 70b04a1; the historical increments below are not the current implementation status. No push or publication.
+
 ## HAR-HU-22 — Exponer el motor mediante un servicio local controlado
 
 Source: https://app.notion.com/p/3e1777b104f681cdad6edcd7abcb70e3?pvs=204
