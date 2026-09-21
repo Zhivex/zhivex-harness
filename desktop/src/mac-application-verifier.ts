@@ -26,15 +26,15 @@ export function createMacApplicationVerifier(command: Command = nativeCommand, p
    if (!path.isAbsolute(requested) || !requested.endsWith(".app") || /[\x00-\x1f\x7f]/.test(requested)) throw new Error();
    const entry = await lstat(requested); if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error();
    const application = await realpath(requested);
-   const helper = path.join(application, "Contents/Resources/credential-store");
-   const helperInfo = await lstat(helper); if (!helperInfo.isFile() || helperInfo.isSymbolicLink()) throw new Error();
+   const helpers = ["credential-store", "update-worker-lock"].map(name => ({name, binary: path.join(application, "Contents/Resources", name)}));
+   for (const helper of helpers) {const info = await lstat(helper.binary); if (!info.isFile() || info.isSymbolicLink()) throw new Error();}
    // Signature identity is enforced by the OS, not inferred from text printed by an untrusted app.
    await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", "--all-architectures", "-R", requirement(PRODUCT, policy.teamId), application]);
-   await command("/usr/bin/codesign", ["--verify", "--strict", "--all-architectures", "-R", requirement(`${PRODUCT}.credential-store`, policy.teamId), helper]);
+   for (const helper of helpers) await command("/usr/bin/codesign", ["--verify", "--strict", "--all-architectures", "-R", requirement(`${PRODUCT}.${helper.name}`, policy.teamId), helper.binary]);
    const plist = JSON.parse((await command("/usr/bin/plutil", ["-convert", "json", "-o", "-", path.join(application, "Contents/Info.plist")])).stdout);
    const numeric = policy.version.split(/[+-]/)[0];
    if (plist.CFBundleIdentifier !== PRODUCT || plist.ZhivexDesktopVersion !== policy.version || plist.CFBundleShortVersionString !== numeric || plist.CFBundleVersion !== numeric || plist.CFBundleExecutable !== "Zhivex Harness") throw new Error();
-   for (const binary of [path.join(application, "Contents/MacOS/Zhivex Harness"), helper]) {
+   for (const binary of [path.join(application, "Contents/MacOS/Zhivex Harness"), ...helpers.map(h => h.binary)]) {
     if ((await command("/usr/bin/lipo", ["-archs", binary])).stdout.trim() !== "arm64") throw new Error();
     const details = await command("/usr/bin/codesign", ["--display", "--verbose=4", binary]);
     if (!/^CodeDirectory .*flags=0x[0-9a-f]+\([^\n)]*\bruntime\b[^\n)]*\)/im.test(details.stderr + details.stdout)) throw new Error();

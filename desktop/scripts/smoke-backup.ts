@@ -4,7 +4,9 @@ import path from "node:path";
 const root = path.resolve(import.meta.dir, ".."), directory = await mkdtemp("/tmp/har-backup-bundle-");
 const job = process.argv.includes("--job");
 const handoff = process.argv.includes("--handoff");
-if (job || handoff) await import("./build-update-worker-lock.js");
+const appPathIndex = process.argv.indexOf("--app-path"), appPath = appPathIndex < 0 ? undefined : process.argv[appPathIndex + 1];
+if (appPathIndex >= 0 && (!appPath || !path.isAbsolute(appPath) || !appPath.endsWith(".app"))) throw new Error("INVALID_APPLICATION_PATH");
+if ((job || handoff) && !appPath) await import("./build-update-worker-lock.js");
 const metadata = await Bun.file(path.join(root, "../package.json")).json();
 const result = await Bun.build({entrypoints: [path.join(import.meta.dir, handoff ? "update-handoff-runtime.ts" : job ? "update-job-runtime.ts" : process.argv.includes("--recovery") ? "state-transaction-runtime.ts" : "backup-runtime-verification.ts")], outdir: directory, naming: "verify.cjs", format: "cjs", target: "node", plugins: [{name: "native-backup-runtime", setup(builder) {
  builder.onLoad({filter: /[\\/]src[\\/]sqlite-database\.ts$/}, async args => ({contents: (await Bun.file(args.path).text()).replace("createRequire(import.meta.url)", "createRequire(process.execPath)"), loader: "ts"}));
@@ -12,7 +14,7 @@ const result = await Bun.build({entrypoints: [path.join(import.meta.dir, handoff
 }}]});
 if (!result.success) throw new Error("BACKUP_FIXTURE_BUILD_FAILED");
 await chmod(path.join(directory, "verify.cjs"), 0o600);
-const child = spawn(path.join(root, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"), [path.join(directory, "verify.cjs"), ...(job || handoff ? [path.join(root, "build/update-worker-lock")] : [])], {cwd: directory, env: {PATH: process.env.PATH, HOME: directory, ELECTRON_RUN_AS_NODE: "1"}, stdio: "inherit"});
+const child = spawn(appPath ? path.join(appPath, "Contents/MacOS/Zhivex Harness") : path.join(root, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"), [path.join(directory, "verify.cjs"), ...(job || handoff ? [appPath ? path.join(appPath, "Contents/Resources/update-worker-lock") : path.join(root, "build/update-worker-lock")] : [])], {cwd: directory, env: {PATH: process.env.PATH, HOME: directory, ELECTRON_RUN_AS_NODE: "1"}, stdio: "inherit"});
 const timer = setTimeout(() => child.kill("SIGKILL"), 30_000);
 try {const code = await new Promise<number | null>((resolve, reject) => {child.once("exit", resolve); child.once("error", reject);}); if (code !== 0) throw new Error("NATIVE_BACKUP_CHECK_FAILED");}
 finally {clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");}

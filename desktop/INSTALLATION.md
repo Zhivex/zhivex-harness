@@ -4,7 +4,9 @@ Este candidato local no está firmado ni notarizado. No es una distribución bet
 verificada por Apple. La firma y notarización se configurarán antes de publicar.
 No desactives Gatekeeper ni elimines la cuarentena para ocultar ese estado.
 
-El paquete contiene Electron, el runtime Node del producto y el helper de llavero.
+El paquete contiene Electron, el runtime Node del producto, el helper de llavero
+y el helper nativo de bloqueo para actualizaciones. La actualización desde la
+interfaz todavía está en preparación; este candidato se reemplaza manualmente.
 No requiere instalar Node o Bun para abrir la aplicación. Arquitectura: Apple
 Silicon (arm64); objetivo mínimo de compilación: macOS 13. La evidencia adjunta
 identifica la versión de macOS donde se ejecutaron las pruebas; no equivale a

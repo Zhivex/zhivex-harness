@@ -353,3 +353,13 @@ Use `bun run desktop/scripts/smoke-installer.ts` to verify a temporary installat
 extracted from that DMG. No /Applications or personal profile is modified.
 Developer ID signing, notarization and downloaded Gatekeeper acceptance remain
 pending. See [installation instructions](INSTALLATION.md).
+
+The package includes `credential-store` and `update-worker-lock` as native
+resources. The release verifier requires Developer ID identifiers
+`ai.zhivex.harness.credential-store` and `ai.zhivex.harness.update-worker-lock`
+with the same pinned Team ID as the app, arm64 and hardened runtime. Production
+signing is not configured yet. Installer evidence hashes both helpers; its smoke
+also exercises the update handoff using the installed lock helper and installed
+Electron runtime after detaching the image. That fixture does not enable or
+certify an updater in main/UI. The worker entrypoint and external-state ownership
+guard remain integration work.
