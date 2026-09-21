@@ -209,6 +209,13 @@ deferred. Numeric macOS version fields fixed and DMG regenerated; temporary inst
 and four layout checks pass. See HAR_HU_34_35_NATIVE_VERIFICATION_2026-09-20.md.
 Current DMG SHA-256: ba95dc0983a40129831288938c2e096ae6cea8daf34fd7cef26a7ecc58ba0e42.
 
+Recoverable application swap now implemented with a private on-volume journal,
+retained previous bundle and retryable rollback. Six tests / 26 assertions pass.
+Two copies of the actual Electron package passed replacement, interrupted rollback,
+retry and the full restored-app smoke, with an explicit unsigned fixture verifier.
+See HAR_HU_35_APPLICATION_SWAP_2026-09-20.md. Worker/main/UI and state+binary
+transaction integration are still pending; this is not a signed update acceptance.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).
