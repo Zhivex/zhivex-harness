@@ -46,3 +46,17 @@ El smoke usa modelos offline: comprueba IPC, selección real del runtime,
 persistencia en las sesiones, recarga, aprobaciones y geometría del chat. No es una
 certificación live de las cuentas de los proveedores. El helper nativo incluye un
 self-test de aislamiento entre cuentas en un llavero temporal.
+
+## Prueba live de Qwen
+
+`bun --env-file=.env run desktop/scripts/live-qwen-smoke.ts --live`
+
+Usa la aplicación ya empaquetada, tres turnos y un repositorio temporal. Verifica
+lectura con herramientas, respuesta en el renderer, continuación del chat y una
+edición que espera aprobación. Reinicia el runtime antes de aprobar y comprueba
+los bytes finales. La clave de `.env` llega por el canal privado del helper; el
+test no escribe ni reemplaza credenciales del llavero personal. El proceso main
+es un driver de prueba que conecta el renderer y el runtime empaquetados. No
+certifica el flujo completo de configuración del main de producción ni otros
+modelos o endpoints. El límite global es de seis minutos, sin reintentos de la
+prueba completa. El reporte solo expone resultados y la fase fallida, si la hay.

@@ -1,0 +1,30 @@
+{
+  "provider": "qwen",
+  "model": "qwen3.8-max",
+  "live": true,
+  "packagedRuntime": true,
+  "packagedRenderer": true,
+  "credentialSource": "local-env-private-helper",
+  "nativeKeychain": false,
+  "readTool": true,
+  "rendererResponse": true,
+  "providerModelBinding": true,
+  "continuation": true,
+  "approvalBeforeWrite": true,
+  "restartRecovery": true,
+  "reviewRenderer": true,
+  "approvedEdit": true,
+  "turns": 3,
+  "status": "passed",
+  "date": "2026-09-21",
+  "implementationRevision": "f250d3f6e1f051fcc7b94e8a8b6fd37159a2c54f",
+  "mainProcess": "live-test-driver",
+  "credentialAbsentFromArtifacts": true,
+  "filesScanned": 66,
+  "persistedEventVerification": {
+    "successfulReadTool": 1,
+    "textDeltaEvents": 4,
+    "successfulEditTool": 1
+  },
+  "scope": "Three synthetic turns, default international Qwen endpoint; no personal repository or Keychain modifications."
+}
