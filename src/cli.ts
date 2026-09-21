@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { formatCliHelp, resolveHelpTopic, shortCliHelp } from "./cli-help.js";
+import { CliCredentials, credentialModel } from "./cli-credentials.js";
 import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
 import { USAGE_LEDGER_KEY, usagePricingSchema, formatUsageLedger, inspectUsageLedger } from "./usage-ledger.js";
 import { TASK_SOURCE_KEY, taskSources } from "./task-memory.js";
@@ -6,6 +8,10 @@ import { TASK_SOURCE_KEY, taskSources } from "./task-memory.js";
 import { runResultDocument } from "./run-document.js";
 export { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal-markdown.js";
+import { navigateConsole } from "./console-navigation.js";
+import { formatComposer } from "./console-presentation.js";
+import { formatConsoleHelp } from "./console-commands.js";
+import { formatConsoleWelcome } from "./console-welcome.js";
 import { ConsoleInput } from "./console-input.js";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console-context.js";
 import { sanitizeTerminalText, formatVerificationSummary } from "./terminal-ui.js";
@@ -37,6 +43,7 @@ import {
   parseProvider,
   providerAvailability,
   providerDescriptor,
+  createProviderModel,
   resolveHarnessConfig,
   type HarnessConfig,
   type HarnessConfigInput,
@@ -113,7 +120,6 @@ import { Workspace } from "./workspace.js";
 import {
   formatApproval,
   formatTerminalEvent,
-  formatTerminalHeader,
   resolveTerminalApprovals,
   terminalSupportsColor
 } from "./terminal-ui.js";
@@ -132,6 +138,7 @@ import {
 import {
   applyCliProfile,
   createCliProfile,
+  resolveCliProfilePath,
   validateCliProfileName
 } from "./cli-profiles.js";
 import {
@@ -189,6 +196,7 @@ type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 export interface CliOptions {
   serviceFile?: string;
   command: Command;
+  helpTopic?: string;
   profile?: string;
   provider?: string;
   model?: string;
@@ -871,6 +879,16 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
   }
 
+  if (options.command === "help") {
+    try {
+      validateCliCommandOptions("help", optionCounts);
+      const topic = resolveHelpTopic(command === "help" ? positional : [command, ...positional], commandWasExplicit);
+      if (topic) options.helpTopic = topic;
+    } catch (error) {
+      throw new CliUsageError(error instanceof Error ? error.message : String(error));
+    }
+    return options;
+  }
   options.implicitCommand = !commandWasExplicit;
   if (options.json && options.jsonl) {
     throw new CliUsageError("You cannot combine --json and --jsonl.");
@@ -969,6 +987,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError(`${options.command} does not accept positional arguments.`);
   }
 
+  if (options.implicitCommand && options.command === "run" && !options.prompt &&
+      (options.continueSession || options.sessionId) && !options.json && !options.jsonl) options.command = "chat";
+
   if (options.serviceFile) {
     const allowed = new Set(["--service", "--session", "--idempotency-key", "--yes", "--json", "--jsonl", "--approve", "--deny", "--search", "--continue"]);
     for (const arg of optionCounts.keys()) if (arg.startsWith("--") && !allowed.has(arg)) throw new CliUsageError(`Service mode does not accept ${arg}; runtime configuration belongs to the service host.`);
@@ -1004,16 +1025,22 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   return options;
 };
 
-export const CLI_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
+export const CLI_HELP_TEXT = shortCliHelp(HARNESS_VERSION);
 
-Usage:
+export const CLI_FULL_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
+
+Everyday commands:
   zhx                              Start the interactive console
+  zhx --continue                   Reopen the latest conversation
+  zhx --session <id>                Reopen a selected conversation
   zhx init [--profile <name>] [--provider <id>] [--model <id>]
   zhx run [options] "task"
   zhx review [options] "review task"
   zhx chat [options] [--continue|--session <id>]
   zhx providers [--json]
   zhx doctor [options] [--json]
+
+Advanced operations and automation:
   zhx resume [options] <runId> --approve|--deny
   zhx runs list [--status <status>] [--limit <n>] [--json]
   zhx sessions list|inspect|rename|fork|archive
@@ -1027,7 +1054,7 @@ Usage:
 
 The long command zhivex-harness remains supported for compatibility.
 
-Options:
+Options (automation and advanced configuration):
   --profile <name>                Explicit personal provider/model profile
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
@@ -1187,7 +1214,8 @@ const printTerminalResult = (
 
 const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown },
+  compact = false
 ) => async (event: AgentStreamEvent) => {
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
@@ -1204,6 +1232,7 @@ const streamSink = (
     return;
   }
   if (!output.json) {
+    if (compact && ["provider-data", "finish", "agent-step-start", "agent-step-finish"].includes(event.type)) return;
     tracker.markdown?.flush();
     const line = formatTerminalEvent(event, {
       color: terminalSupportsColor(Boolean(process.stderr.isTTY))
@@ -1254,7 +1283,8 @@ export const withTemporaryHarnessProfiles = async <T>(
 const createConfiguredHarness = async (
   options: CliOptions,
   extraProfiles: readonly HarnessSubagentProfile[] = [],
-  persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>
+  persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
+  credentials?: { store: CliCredentials; input: ConsoleInput }
 ) => {
   const routes = persistedRoutes ?? resolvedRouting(options);
   const resolvedConfig = resolveHarnessConfig(options);
@@ -1266,6 +1296,13 @@ const createConfiguredHarness = async (
     ...routes.keys()
   ])];
   const quietTelemetry = options.json || options.jsonl;
+  const providerEnv = credentials ? await credentials.store.providerEnvironment(resolvedConfig.provider, credentials.input) : undefined;
+  const routeModels: ReturnType<typeof createHarnessRouteModels> = {};
+  for (const [role, route] of routes) {
+    routeModels[role] = credentials
+      ? await credentialModel(route, await credentials.store.providerEnvironment(route.provider, credentials.input))
+      : createProviderModel(route, process.env);
+  }
   const harness = await createHarness({
     ...options,
     usageAccounting: {
@@ -1273,7 +1310,8 @@ const createConfiguredHarness = async (
       ...(options.usageLimitUsd !== undefined ? { limitUsd: options.usageLimitUsd } : {})
     },
     subagentProfiles: profiles,
-    subagentModels: createHarnessRouteModels(routes),
+    subagentModels: routeModels,
+    ...(providerEnv ? { modelInstance: await credentialModel(resolvedConfig, providerEnv) } : {}),
     onTelemetryEvent: orchestrationObserver(quietTelemetry)
   });
   return { harness, routes };
@@ -1498,6 +1536,8 @@ const chat = async (options: CliOptions) => {
   const sessionStore = await openSessionStoreForConfig(baseConfig);
   const readline = new ConsoleInput(process.stdin, process.stdout);
   const attachments = new ConsoleAttachments();
+  const credentials = { store: new CliCredentials(), input: readline };
+  let credentialsRevision = credentials.store.revision;
   let activeController: AbortController | undefined;
   const interrupt = () => {
     if (activeController && !activeController.signal.aborted) {
@@ -1513,6 +1553,7 @@ const chat = async (options: CliOptions) => {
     try { return await operation(controller.signal); }
     finally { activeController = undefined; }
   };
+  let verbose = false;
   let runtimeOptions: CliOptions = { ...options };
   let routes = resolvedRouting(options);
   const selectedSession = options.sessionId
@@ -1558,7 +1599,8 @@ const chat = async (options: CliOptions) => {
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
     }
-    harness = (await createConfiguredHarness(runtimeOptions, [], routes)).harness;
+    harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
+    credentialsRevision = credentials.store.revision;
   } catch (error) {
     process.off("SIGINT", interrupt);
     readline.close();
@@ -1596,9 +1638,10 @@ const chat = async (options: CliOptions) => {
     nextRoutes: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
     extraProfiles: readonly HarnessSubagentProfile[] = []
   ) => {
-    const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes);
+    const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes, credentials);
     await harness.close();
     harness = created.harness;
+    credentialsRevision = credentials.store.revision;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
   };
@@ -1654,7 +1697,7 @@ const chat = async (options: CliOptions) => {
           )
         },
         {
-          onEvent: streamSink({ json: false, jsonl: false }, tracker),
+          onEvent: streamSink({ json: false, jsonl: false }, tracker, !verbose),
           resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
         }
       ));
@@ -1696,14 +1739,14 @@ const chat = async (options: CliOptions) => {
       `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}`;
   };
 
-  process.stderr.write(`${formatTerminalHeader({
+  process.stderr.write(formatConsoleWelcome({
     version: HARNESS_VERSION,
+    workspace: harness.config.workspace,
     provider: harness.config.provider,
     model: harness.config.model,
     sessionId: session.sessionId,
-    ...(session.title ? { sessionTitle: session.title } : {})
-  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)) })}\n` +
-    "Type /help for console commands.\n");
+    ...(session.title ? { sessionTitle: session.title } : {}),
+  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
 
   const showSessionState = async () => {
     await hasActiveTurn();
@@ -1719,15 +1762,53 @@ const chat = async (options: CliOptions) => {
     await showSessionState();
     for (;;) {
       try {
+        process.stdout.write(formatComposer({
+          model: `${harness.config.provider}/${harness.config.model}`,
+          ...(session.title ? { title: session.title } : {}),
+          status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready",
+          attachments: attachments.list().length,
+          automaticApprovals: options.yes === true,
+        }, process.stdout.columns));
         const submitted = await readline.question("\n> ", true);
         const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
         let prompt = literalInput ? submitted : submitted.trim();
         if (!prompt.trim()) {
           continue;
         }
-        const command = literalInput ? "" : prompt;
+        let command = literalInput ? "" : prompt;
+        if (["/menu", "/provider", "/providers", "/model", "/models"].includes(command)) {
+          const selection = await navigateConsole(readline, {
+            entry: command === "/menu" ? "menu" : command.startsWith("/provider") ? "provider" : "model",
+            current: {provider:harness.config.provider,model:harness.config.model},
+            providers: providerAvailability(),
+            sessions: async () => (await sessionStore.list({limit:200})).map(item => ({value:item.sessionId,label:item.title??"Untitled conversation",detail:item.sessionId})),
+          });
+          if (!selection) continue;
+          if ("command" in selection) { command = selection.command; prompt = command; }
+          else {
+            const active = await hasActiveTurn();
+            if (active) { process.stderr.write(`Cannot switch models while run ${active.runId} is ${active.status}.\n`); continue; }
+            const portableMessages = compactHarnessMessages(messages);
+            await replaceHarness({...runtimeOptions,provider:parseProvider(selection.provider),model:selection.model},routes);
+            messages = portableMessages;
+            process.stderr.write(`Next turn: ${selection.provider}/${selection.model}; context was compacted.\n`);
+            continue;
+          }
+        }
+        if (command === "/credentials") {
+          const active = await hasActiveTurn();
+          if (active) { process.stderr.write("Finish or deny pending work before changing credentials.\n"); continue; }
+          const provider = await readline.select("Credentials / Provider", PROVIDERS.map(id => ({value:id,label:providerDescriptor(id).name})));
+          if (provider) await credentials.store.configure(provider, readline);
+          continue;
+        }
         if (command === "/exit" || command === "/quit") {
           break;
+        }
+        if (command === "/verbose") {
+          verbose = !verbose;
+          process.stdout.write(`Activity detail: ${verbose ? "full" : "compact"}.\n`);
+          continue;
         }
         if (command === "/context") {
           process.stdout.write(`${formatConsoleContext(harness.context, { attachments: attachments.list(), config: harness.config, messages })}\n`);
@@ -1766,14 +1847,8 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Attached ${sanitizeTerminalText(attached.path)} (${attached.startLine}-${attached.endLine}/${attached.totalLines} lines${attached.truncated ? "; excerpt" : ""}). Sent with your next task.\n`);
           continue;
         }
-        if (command === "/help") {
-          process.stderr.write(
-            "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
-            "/diff · /review <task> · /sessions [search] · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
-            "/new [title] · /rename <title> · /clear · /exit\n" +
-            "/paste · /context · /usage · /attach <path> · /attachments · /detach [path]\n" +
-            "Tab completes commands; Up/Down recalls prompts; Alt+Enter inserts a newline. Bracketed paste inserts literal text; Enter sends it. Ctrl+C stops the active operation or discards input.\n"
-          );
+        if (command === "/help" || command === "/help all") {
+          process.stderr.write(formatConsoleHelp("direct", command === "/help all"));
           continue;
         }
         if (command === "/clear") {
@@ -1816,13 +1891,7 @@ const chat = async (options: CliOptions) => {
           continue;
         }
         if (command === "/provider" || command.startsWith("/provider ")) {
-          const value = prompt.slice("/provider".length).trim();
-          if (!value) {
-            process.stderr.write(`${providerAvailability().map((provider) =>
-              `${provider.id}${provider.id === harness.config.provider ? "*" : ""}`
-            ).join(" ")}\n`);
-            continue;
-          }
+          let value = prompt.slice("/provider".length).trim();
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot switch provider while run ${active.runId} is ${active.status}.\n`);
@@ -1837,11 +1906,7 @@ const chat = async (options: CliOptions) => {
           continue;
         }
         if (command === "/model" || command.startsWith("/model ")) {
-          const value = prompt.slice("/model".length).trim();
-          if (!value) {
-            process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
-            continue;
-          }
+          let value = prompt.slice("/model".length).trim();
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot switch model while run ${active.runId} is ${active.status}.\n`);
@@ -1905,7 +1970,15 @@ const chat = async (options: CliOptions) => {
           continue;
         }
         if (command === "/resume" || command.startsWith("/resume ")) {
-          const selector = prompt.slice("/resume".length).trim() || "last";
+          let selector = prompt.slice("/resume".length).trim();
+          if (!selector) {
+            const choices = await sessionStore.list({ limit: 200 });
+            const choice = await readline.select("Zhivex / Conversations", choices.map(item => ({
+              value: item.sessionId, label: item.title ?? "Untitled conversation", detail: `${item.sessionId} · ${item.runCount} turns`,
+            })));
+            if (!choice) continue;
+            selector = choice;
+          }
           const selected = selector === "last"
             ? await sessionStore.latest({ includeArchived: true })
             : await sessionStore.get(selector);
@@ -1956,6 +2029,7 @@ const chat = async (options: CliOptions) => {
           continue;
         }
 
+        if (credentialsRevision !== credentials.store.revision) await replaceHarness(runtimeOptions, routes);
         if (!literalInput && prompt === "/paste") {
           prompt = await readline.multiline();
           if (!prompt.trim()) continue;
@@ -2023,7 +2097,7 @@ const chat = async (options: CliOptions) => {
                   session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
                   markedRunning = true;
                 }
-                await streamSink({ json: false, jsonl: false }, tracker)(event);
+                await streamSink({ json: false, jsonl: false }, tracker, !verbose)(event);
               },
               resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
             }
@@ -2068,6 +2142,7 @@ const chat = async (options: CliOptions) => {
     readline.close();
     await harness.close();
     sessionStore.close();
+    credentials.store.clear();
   }
 };
 
@@ -2143,11 +2218,11 @@ const initializeCli = async (options: CliOptions) => {
     `Provider: ${created.profile.provider} · Model: ${created.profile.model}`,
     availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
-      : `Set one provider credential in your environment: ${availability?.credentialNames.join(" or ") || "see zhx providers"}.`,
+      : `Open zhx to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
     "Next:",
     `  ${doctorCommand}`,
     `  ${runCommand}`,
-    "Profiles contain provider and model only; they are never activated implicitly."
+    "Profiles contain provider and model only. The default profile is used by the interactive console when no provider/model is explicitly configured."
   ].join("\n") + "\n");
 };
 
@@ -3221,11 +3296,29 @@ const manageState = async (options: CliOptions) => {
 };
 
 export const main = async (argv = process.argv.slice(2)) => {
-  const parsedOptions = parseCliArgs(argv);
+  let parsedOptions = parseCliArgs(argv);
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  const openConsole = interactive && !parsedOptions.json && !parsedOptions.jsonl &&
+    (parsedOptions.command === "chat" ||
+      (parsedOptions.command === "run" && parsedOptions.implicitCommand && !parsedOptions.prompt));
+  if (openConsole) parsedOptions = { ...parsedOptions, command: "chat" };
   if (parsedOptions.serviceFile) {
     const { runServiceCli } = await import("./service-client-cli.js");
     await runServiceCli(parsedOptions, annotateCliStreamError);
     return;
+  }
+  if (openConsole && !parsedOptions.profile && !parsedOptions.provider && !parsedOptions.model &&
+      !parsedOptions.sessionId && !parsedOptions.continueSession &&
+      !process.env.ZHIVEX_HARNESS_PROVIDER && !process.env.ZHIVEX_HARNESS_MODEL) {
+    let exists = true;
+    try { await lstat(resolveCliProfilePath("default")); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") exists = false; else throw error; }
+    if (exists) parsedOptions = { ...parsedOptions, profile: "default" };
+    else if (!providerAvailability().some(provider => provider.configured)) {
+      process.stdout.write(formatConsoleWelcome({ version: HARNESS_VERSION, workspace: parsedOptions.workspace ?? process.cwd() }) + "\nFirst-time setup — choose your provider and model.\n");
+      await initializeCli({ ...parsedOptions, command: "init", profile: "default" });
+      parsedOptions = { ...parsedOptions, profile: "default" };
+    }
   }
   const options = parsedOptions.command === "init"
     ? parsedOptions
@@ -3235,7 +3328,7 @@ export const main = async (argv = process.argv.slice(2)) => {
       await initializeCli(options);
       return;
     case "help":
-      process.stdout.write(`${CLI_HELP_TEXT}\n`);
+      process.stdout.write(`${formatCliHelp(options.helpTopic, HARNESS_VERSION, CLI_FULL_HELP_TEXT)}\n`);
       return;
     case "version":
       process.stdout.write(`${HARNESS_VERSION}\n`);
@@ -3265,10 +3358,6 @@ export const main = async (argv = process.argv.slice(2)) => {
       await manageState(options);
       return;
     case "run":
-      if (options.implicitCommand && !options.prompt && process.stdin.isTTY && process.stdout.isTTY) {
-        await chat(options);
-        return;
-      }
       await runOnce(options);
       return;
     case "review":

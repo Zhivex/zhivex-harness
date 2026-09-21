@@ -22,7 +22,7 @@ export async function verifyDesktopEffectCrashSmoke(window: BrowserWindow, runti
         const session = await runtime.command({ method: "session.get", sessionId }); assert(session.ok && session.data.kind === "session"); assert.equal(session.data.session.runs.length, 1); runId = session.data.session.runs[0]!.runId;
         const pending = await runtime.command({ method: "run.get", sessionId, runId }); assert(pending.ok && pending.data.kind === "run"); const decisions = pending.data.run.approvals.map(a => ({ approvalId: a.approvalId, digest: a.digest, approve: true })); assert.equal(decisions.length, 1);
         await click('[data-action="review"]'); await wait('document.querySelector("[data-action=approve-review]")?.disabled === false'); await click('[data-action="approve-review"]');
-        await wait('document.body.innerText.includes("Conexión interrumpida")'); assert(!runtime.isAlive());
+        await wait('document.body.innerText.includes("Connection interrupted")'); assert(!runtime.isAlive());
         const marker = JSON.parse(await readFile(path.join(directory, "socket/effect-crash.json"), "utf8")); assert.equal(marker.runId, runId); assert.equal(marker.pid, runtime.context.runtimePid); assert(marker.beforeJournalCommit);
         assert.equal(await readFile(file, "utf8"), after);
         await writeFile(checkpoint, JSON.stringify({ projectKey, sessionId, runId, decisions, mtime: (await stat(file)).mtimeMs }));
@@ -34,7 +34,7 @@ export async function verifyDesktopEffectCrashSmoke(window: BrowserWindow, runti
         await wait(`document.querySelector('[data-run="${runId}"] [data-action="decision-history"]') !== null`); await click(`[data-run="${runId}"] [data-action="decision-history"]`); await wait('document.querySelector("[data-decision-status=unknown]") !== null'); assert.equal(await js('document.querySelectorAll(".final-diff").length'), 0);
         assert.equal(recovered.data.run.status, "running");
         const duplicate = await runtime.command({ method: "approval.resolve", sessionId, runId, expectedRevision: recovered.data.run.revision, idempotencyKey: "effect-retry", decisions: saved.decisions }); assert(!duplicate.ok); assert.equal(duplicate.error.code, "INVALID_STATE");
-        await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("reserva vigente")');
+        await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("active lease")');
         await new Promise(resolve => setTimeout(resolve, 31000));
         await click('[data-action="retry"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait(`document.querySelector('[data-run="${runId}"]').innerText.includes("cancelled")`);
         await js('{const input=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(input,"Summarize after interruption without editing");input.dispatchEvent(new Event("input",{bubbles:true}));}');

@@ -1,51 +1,53 @@
-# Instalar Zhivex Harness para macOS
+# Install Zhivex Harness for macOS
 
-Este candidato local no está firmado ni notarizado. No es una distribución beta
-verificada por Apple. La firma y notarización se configurarán antes de publicar.
-No desactives Gatekeeper ni elimines la cuarentena para ocultar ese estado.
+## Current availability
 
-El paquete contiene Electron, el runtime Node del producto, el helper de llavero
-y el helper nativo de bloqueo para actualizaciones. La actualización desde la
-interfaz está implementada, pero deshabilitada en la configuración distribuida
-por este checkout. Requiere un feed firmado y una identidad de editor configurados;
-este candidato local se reemplaza manualmente. Véase [UPDATES.md](UPDATES.md).
-No requiere instalar Node o Bun para abrir la aplicación. Arquitectura: Apple
-Silicon (arm64); objetivo mínimo de compilación: macOS 13. La evidencia adjunta
-identifica la versión de macOS donde se ejecutaron las pruebas; no equivale a
-haber probado todas las versiones desde ese mínimo. Intel no está soportado.
+The local alpha candidate is **unsigned and unnotarized**, not an Apple-verified
+beta distribution. Signing and notarization remain distribution requirements.
+Do not disable Gatekeeper or remove quarantine to conceal this state.
 
-1. Compará el SHA-256 del DMG con release-manifest.json mediante `shasum -a 256`.
-   El hash detecta cambios de bytes; un manifiesto sin firma no acredita al editor.
-2. Abrí el DMG y arrastrá Zhivex Harness.app a Aplicaciones. Si ya existe una
-   instalación, conservá la versión anterior hasta verificar la nueva. Cerrá las
-   tareas y la aplicación antes de reemplazarla.
-3. Abrí la aplicación. Para este candidato sin firma, el bloqueo de Gatekeeper
-   es una limitación pendiente de distribución, no un error que deba desactivarse.
-4. Abrí un repositorio, elegí el modelo y configurá la clave de su proveedor en
-   Credenciales. La clave se introduce en una ventana nativa y se guarda en el
-   llavero de macOS.
+Desktop targets Apple Silicon (arm64), with a minimum build target of macOS 13.
+This is not proof of testing on every supported macOS version. Intel is unsupported.
+The packaged app includes Electron, Node and native credential/update helpers.
+You do not need Node, Bun or the npm CLI installed separately.
 
-La selección de repositorios usa el diálogo nativo y permisos normales de archivos;
-no se solicita acceso completo al disco. El llavero puede solicitar autorización o
-desbloqueo. Las conexiones al proveedor y a GitHub requieren red. Git y gh son
-requisitos externos para entrega Git; configurar credenciales de proveedor no
-configura autenticación GitHub.
+Git is required for repository work. GitHub CLI and authentication are needed for
+GitHub delivery. Provider credentials do not configure GitHub authentication.
 
-## OCI y dependencias externas
+## Local installer
 
-La aplicación incluye su runtime, pero no Docker, Podman ni imágenes OCI. Si no
-hay un motor OCI disponible, las operaciones que exigen aislamiento OCI no pueden
-iniciarse. Instalá y arrancá un motor compatible siguiendo la
-[matriz de soporte](../docs/SUPPORT_MATRIX.md) y la
-[guía de ejecución](../docs/EXECUTION_ENVIRONMENTS.md); ejecutá el diagnóstico del Harness
-antes de usar ese modo. No se sustituye silenciosamente OCI por ejecución directa.
+1. Compare the DMG SHA-256 with `release-manifest.json` using `shasum -a 256`.
+   A hash detects byte changes; an unsigned manifest does not authenticate the publisher.
+2. Open the DMG and drag Zhivex Harness.app into Applications. Close tasks and the
+   app before replacing an installation; retain the previous app until verification.
+3. Open the app. Gatekeeper blocking this unsigned candidate remains a distribution
+   limitation; it is not a request to bypass that protection.
+4. Open a repository, choose a model and configure the provider key in **Credentials**.
+   The key is entered through a native dialog and stored in macOS Keychain.
 
-## Desinstalar conservando datos
+The folder picker uses ordinary file permissions and does not request full disk
+access. Keychain may request permission or unlocking. Provider and GitHub connections
+require network access.
 
-Cerrá las tareas y la aplicación, y mové únicamente Zhivex Harness.app a la Papelera.
-Conservá ~/Library/Application Support/zhivex-harness-desktop (o la ruta userData de
-la instalación), los repositorios originales, los worktrees de tareas y el estado
-.zhivex-harness de los proyectos. No borres carpetas de estado o llaveros como parte
-de la desinstalación. Las claves permanecen en el llavero; si querés eliminarlas,
-usá Eliminar clave del llavero antes de quitar la app. Guardá un backup verificable
-del estado antes de migraciones o cambios de versión.
+## Isolated execution
+
+Docker, Podman and OCI images are not bundled. Operations requiring OCI cannot start
+without a compatible running engine and image. See the [support matrix](../docs/SUPPORT_MATRIX.md)
+and [execution guide](../docs/EXECUTION_ENVIRONMENTS.md). OCI is never silently
+replaced with direct host execution.
+
+## Updates
+
+Automatic updates are implemented but disabled in the current configuration. They
+require a signed feed, publisher identity and validation of a signed update. Replace
+this local candidate manually. See [Updates](UPDATES.md).
+
+## Uninstall while preserving data
+
+Close tasks and the app, then move only Zhivex Harness.app to Trash. Preserve
+`~/Library/Application Support/zhivex-harness-desktop` (or the installation's
+`userData` path), original repositories, task worktrees and project `.zhivex-harness`
+state. Do not delete state directories or Keychains during uninstallation.
+
+Keys remain in Keychain. To remove them, use **Eliminar clave del llavero** before
+removing the app. Keep a verified backup of state before migrations or version changes.

@@ -5,6 +5,16 @@
 
 Version `1.0.0` is published on npm as `latest`. Status: published on npm as `latest`. The protected stable release passed live certification and all 42 representative cases on the authorized second attempt, with byte-identical registry integrity and SLSA provenance verified. Preserve the [first failed attempt](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md); see the [published evidence](docs/LIVE_CERTIFICATION.md).
 
+## Next version: 1.1.0
+
+Source candidate: `1.1.0-rc.1` (unpublished). Scope: daily CLI usability,
+authenticated local service/replay and an experimental Desktop client. Stable
+contracts and state format 1 remain compatible. Desktop keeps its separate
+`0.1.0-alpha.1` version and private distribution status.
+
+See [candidate readiness](docs/releases/1.1.0-rc.1.md) for validation evidence and
+remaining release gates. The 1.0.0 publication record is preserved separately.
+
 ## Planning principles
 
 - Make the harness distributable and observable before expanding its side-effect surface.

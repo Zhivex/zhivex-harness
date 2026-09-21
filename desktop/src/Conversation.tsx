@@ -34,11 +34,11 @@ export function Conversation({
     <div
       ref={root}
       className="timeline"
-      aria-label="Actividad de la conversación"
+      aria-label="Conversation activity"
     >
       {activity.recovered ? (
         <p className="muted">
-          Actividad recuperada desde el snapshot guardado.
+          Activity recovered from the saved snapshot.
         </p>
       ) : null}
       {activity.order.map((id) => {
@@ -47,19 +47,19 @@ export function Conversation({
           <article key={id} data-run={id}>
             {run.prompt ? (
               <div className="user-message">
-                <span className="eyebrow">VOS</span>
+                <span className="eyebrow">YOU</span>
                 <p>{run.prompt}</p>
               </div>
             ) : null}
             <div className="assistant-message">
               <span className="eyebrow">HARNESS</span>
               {run.text ? (
-                <pre aria-label="Respuesta del servicio">{run.text}</pre>
+                <pre aria-label="Service response">{run.text}</pre>
               ) : null}
               {run.tools ? (
                 <ul
                   className="tool-activity"
-                  aria-label="Herramientas y checks"
+                  aria-label="Tools and checks"
                 >
                   {Object.entries(run.tools).map(([key, tool]) => (
                     <li
@@ -68,32 +68,32 @@ export function Conversation({
                       data-tool-status={tool.status}
                     >
                       <span>
-                        {tool.name === "run_check" ? "Check" : "Herramienta"} ·{" "}
+                        {tool.name === "run_check" ? "Check" : "Tool"} ·{" "}
                         {tool.name}
                       </span>
                       <span>
                         {tool.name === "run_check" &&
                         tool.exitCode === undefined
                           ? tool.status === "running"
-                            ? "En ejecución"
-                            : "Sin evidencia de resultado"
+                            ? "Running"
+                            : "No result evidence"
                           : tool.status === "running"
-                            ? "En ejecución"
+                            ? "Running"
                             : tool.status === "failed"
-                              ? "Falló"
-                              : "Completado"}
+                              ? "Failed"
+                              : "Completed"}
                         {tool.exitCode !== undefined
                           ? ` · exit ${tool.exitCode}`
                           : ""}
-                        {tool.timedOut ? " · tiempo agotado" : ""}
+                        {tool.timedOut ? " · timed out" : ""}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : null}
-              <p className="status">Estado: {run.status}</p>
+              <p className="status">Status: {run.status}</p>
               {run.truncated ? (
-                <p className="muted">Contenido limitado por retención.</p>
+                <p className="muted">Content limited by retention.</p>
               ) : null}
             </div>
             {projectKey && sessionId ? (

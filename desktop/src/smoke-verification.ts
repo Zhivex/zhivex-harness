@@ -13,7 +13,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const updateStatus = await js('window.harness.updateStatus()');
     if (updateStatus.status === "unconfigured") {assert.deepEqual(await js('window.harness.checkUpdates()'), {status: "unconfigured"}); await wait('document.querySelector("[data-action=check-updates]")?.disabled === true');}
     const emptyStartup = !(await js('window.harness.projects()')).length;
-    if (emptyStartup) { assert(await js('document.body.innerText.includes("Abrí un repositorio")')); await click('[data-action="open-project"]'); await wait('Boolean(document.querySelector("main").dataset.projectKey) && document.querySelector("[data-action=new-session]").disabled === false'); }
+    if (emptyStartup) { assert(await js('document.body.innerText.includes("Open a repository")')); await click('[data-action="open-project"]'); await wait('Boolean(document.querySelector("main").dataset.projectKey) && document.querySelector("[data-action=new-session]").disabled === false'); }
     const projects = await js('window.harness.projects()'); assert.equal(projects.length, 1); const firstKey = projects[0].key;
     let first = await runtimes.get(firstKey)!; assert(first.context.runtimePid !== process.pid);
     const duplicate = spawn(process.execPath, [...(app.isPackaged ? [] : [app.getAppPath()]), "--smoke-test", "--report-directory", reportDirectory], { stdio: "ignore" });
@@ -43,12 +43,12 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await wait('document.querySelector("[data-session]").disabled === false'); window.focus(); window.webContents.focus(); await js('document.querySelector("[data-session]").focus()'); window.webContents.sendInputEvent({ type: "keyDown", keyCode: "ArrowDown" }); window.webContents.sendInputEvent({ type: "keyUp", keyCode: "ArrowDown" });
     assert.equal(await js('document.activeElement.dataset.session'), sessionId);
     window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Return" }); window.webContents.sendInputEvent({ type: "char", keyCode: "\r" }); window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Return" });
-    await wait(`document.querySelector("main").dataset.sessionId === ${JSON.stringify(sessionId)} && document.body.innerText.includes("cancelled") && document.body.innerText.includes("Runtime separado")`);
+    await wait(`document.querySelector("main").dataset.sessionId === ${JSON.stringify(sessionId)} && document.body.innerText.includes("cancelled") && document.body.innerText.includes("Separate runtime")`);
     const after = await first.command({ method: "session.get", sessionId }); assert(after.ok && after.data.kind === "session"); assert.deepEqual(after.data.session.runs.map(r => r.runId), runIds);
     const other = await second.command({ method: "session.get", sessionId: secondSession }); assert(other.ok && other.data.kind === "session"); assert.equal(other.data.session.runs.length, 0);
     const loaded = new Promise<void>(resolve => window.webContents.once("did-finish-load", () => resolve())); window.webContents.reload(); await loaded; await wait('document.querySelector("[data-ready=true]") !== null'); assert.equal((await js('window.harness.projects()')).length, 2);
     if (emptyStartup) { await click(`[data-project="${firstKey}"]`); }
-    await wait('document.querySelectorAll("[data-session]").length === 1 && document.querySelector("[data-session]").disabled === false'); await click(`[data-session="${sessionId}"]`); await wait('document.body.innerText.includes("cancelled") && document.body.innerText.includes("Runtime separado")');
+    await wait('document.querySelectorAll("[data-session]").length === 1 && document.querySelector("[data-session]").disabled === false'); await click(`[data-session="${sessionId}"]`); await wait('document.body.innerText.includes("cancelled") && document.body.innerText.includes("Separate runtime")');
     // HU28: duplicate submit, actual read/check tools, failed receipt, redaction and reconnect.
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false');
@@ -60,7 +60,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
     await first.setFixtureApprovalClock(3600000);
-    await click('[data-action="approve-review"]'); await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("venció")');
+    await click('[data-action="approve-review"]'); await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("expired")');
     const expiredDecision = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(expiredDecision.ok && expiredDecision.data.kind === "run"); assert.equal(expiredDecision.data.run.status, "waiting_approval"); assert.equal(expiredDecision.data.run.decisions?.length, 0);
     await first.setFixtureApprovalClock(0); await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     const staleReview = await first.review(sessionId, probeId);
@@ -68,14 +68,14 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     assert(await js(`window.harness.command(${JSON.stringify(firstKey)},{method:"approval.resolve"}).then(()=>false,()=>true)`));
     const resumed = first.resolveReview(reviewed.ticketId, true);
     first.setFixtureOffline(true);
-    await wait('document.body.innerText.includes("Conexión interrumpida")');
+    await wait('document.body.innerText.includes("Connection interrupted")');
     first.setFixtureOffline(false);
     const reloadActive = new Promise<void>(resolve => window.webContents.once("did-finish-load", () => resolve())); window.webContents.reload(); await reloadActive; await wait('document.querySelector("[data-ready=true]") !== null');
     if (emptyStartup) await click(`[data-project="${firstKey}"]`);
     await wait('document.querySelector("[data-session]")?.disabled === false'); await click(`[data-session="${sessionId}"]`);
     const finished = await resumed; assert(finished.ok && finished.data.kind === "run"); assert.equal(finished.data.run.status, "completed");
     const staleDecision = await js(`window.harness.resolveReview(${JSON.stringify(firstKey)},${JSON.stringify(staleReview.ticketId)},true)`); assert.equal(staleDecision.ok, false); assert.equal(staleDecision.error.code, "REVISION_CONFLICT"); assert.equal(finished.data.run.decisionTotal, 1);
-    await wait(`document.querySelector('[data-run="${probeId}"] [data-tool="run_check"][data-tool-status="failed"]') !== null && document.body.innerText.includes("parte-39")`);
+    await wait(`document.querySelector('[data-run="${probeId}"] [data-tool="run_check"][data-tool-status="failed"]') !== null && document.body.innerText.includes("part-39")`);
     assert(await js('document.body.innerText.includes("exit 7") && document.body.innerText.includes("<img src=x onerror=alert(1)>") && !document.querySelector(".timeline img")'));
     const secret = process.env.ZHIVEX_HARNESS_DESKTOP_FIXTURE_SECRET!;
     assert(!(await js('document.body.innerText')).includes(secret));
@@ -89,9 +89,9 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     first.dropFixtureRunResponse();
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"response-loss-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]');
-    await wait('document.body.innerText.includes("No se pudo completar.")'); assert(await js('document.querySelector("[data-action=start]").disabled'));
+    await wait('document.body.innerText.includes("Could not complete the operation.")'); assert(await js('document.querySelector("[data-action=start]").disabled'));
     const lost = await first.command({ method: "session.get", sessionId }); assert(lost.ok && lost.data.kind === "session"); assert.equal(lost.data.session.runs.length, runIds.length + 2);
-    await click('[data-action="retry"]'); await wait('document.querySelector("#prompt").disabled === false && document.body.innerText.includes("response-loss-probe") && !document.body.innerText.includes("No se pudo completar.")');
+    await click('[data-action="retry"]'); await wait('document.querySelector("#prompt").disabled === false && document.body.innerText.includes("response-loss-probe") && !document.body.innerText.includes("Could not complete the operation.")');
     const reconciled = await first.command({ method: "session.get", sessionId }); assert(reconciled.ok && reconciled.data.kind === "session"); assert.deepEqual(reconciled.data.session.runs, lost.data.session.runs);
     assert.equal(await js(`document.querySelector('[data-session="${sessionId}"] small').textContent`), "completed");
     // HU30: kill a worker while it owns an active run. Reopening only reads it;
@@ -101,10 +101,10 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const activeSession = await first.command({ method: "session.get", sessionId }); assert(activeSession.ok && activeSession.data.kind === "session");
     const interruptedId = activeSession.data.session.runs.at(-1)!.runId;
     const interrupted = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(interrupted.ok && interrupted.data.kind === "run"); assert.equal(interrupted.data.run.status, "running");
-    await first.crashFixture(); await wait('document.body.innerText.includes("Conexión interrumpida")');
+    await first.crashFixture(); await wait('document.body.innerText.includes("Connection interrupted")');
     await click('[data-action="reconnect-project"]'); await wait('document.querySelector("[data-session]")?.disabled === false'); first = await runtimes.get(firstKey)!;
     await click(`[data-session="${sessionId}"]`); await wait('document.querySelector("[data-action=cancel]")?.disabled === false');
-    await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("reserva vigente")');
+    await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("active lease")');
     const stillInterrupted = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(stillInterrupted.ok && stillInterrupted.data.kind === "run"); assert.equal(stillInterrupted.data.run.revision, interrupted.data.run.revision);
     await new Promise(resolve => setTimeout(resolve, 31000));
     await click('[data-action="retry"]'); await wait('document.querySelector("[data-action=cancel]")?.disabled === false'); await click('[data-action="cancel"]');
@@ -118,7 +118,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
         await wait('document.querySelector("[data-action=review]") !== null');
         if (!approve) {
             const prior = await first.command({ method: "session.get", sessionId }); assert(prior.ok && prior.data.kind === "session"); const pendingId = prior.data.session.runs.at(-1)!.runId;
-            const previousPid = first.context.runtimePid; await first.crashFixture(); await wait('document.body.innerText.includes("Conexión interrumpida")');
+            const previousPid = first.context.runtimePid; await first.crashFixture(); await wait('document.body.innerText.includes("Connection interrupted")');
             await click('[data-action="reconnect-project"]'); await wait('document.querySelector("[data-session]")?.disabled === false'); first = await runtimes.get(firstKey)!; assert.notEqual(first.context.runtimePid, previousPid);
             await click(`[data-session="${sessionId}"]`); await wait('document.querySelector("[data-action=review]") !== null');
             const recovered = await first.command({ method: "run.get", sessionId, runId: pendingId }); assert(recovered.ok && recovered.data.kind === "run"); assert.equal(recovered.data.run.status, "waiting_approval"); assert.equal(recovered.data.run.decisionTotal, 0);

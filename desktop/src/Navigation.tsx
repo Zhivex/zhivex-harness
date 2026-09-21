@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Plus,
   Search,
-  Sparkles,
 } from "lucide-react";
 import type {
   DesktopContext,
@@ -51,7 +50,7 @@ export function Navigation(props: {
   const sessions = props.sessions
     .map((session, index) => ({
       session,
-      title: session.title ?? `Conversación ${index + 1}`,
+      title: session.title ?? `Conversation ${index + 1}`,
     }))
     .filter(({ title }) =>
       title.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
@@ -60,7 +59,7 @@ export function Navigation(props: {
     <aside id="sidebar" hidden={props.hidden}>
       <div className="brand">
         <span className="brand-mark">
-          <Sparkles size={20} aria-hidden="true" />
+          <img src="./zhivex-logo.png" alt="" width={36} height={36} />
         </span>
         <div>
           Zhivex <span>Harness</span>
@@ -76,7 +75,7 @@ export function Navigation(props: {
         }}
       >
         <Plus size={16} aria-hidden="true" />
-        Nueva conversación
+        New conversation
       </button>
       <button
         className="open-project secondary"
@@ -85,11 +84,11 @@ export function Navigation(props: {
         disabled={props.loading}
       >
         <FolderOpen size={16} aria-hidden="true" />
-        Abrir repositorio
+        Open repository
       </button>
       <div className="sidebar-content">
-        <nav aria-label="Proyectos recientes" onKeyDown={arrows}>
-          <h2 className="nav-heading">Proyectos recientes</h2>
+        <nav aria-label="Recent projects" onKeyDown={arrows}>
+          <h2 className="nav-heading">Recent projects</h2>
           {props.projects.length ? (
             props.projects.map((project) => (
               <button
@@ -113,21 +112,21 @@ export function Navigation(props: {
               </button>
             ))
           ) : (
-            <p className="muted">Tus repositorios aparecerán acá.</p>
+            <p className="muted">Your repositories will appear here.</p>
           )}
         </nav>
         <label className="sidebar-search">
           <Search size={15} aria-hidden="true" />
           <input
-            aria-label="Buscar conversaciones"
+            aria-label="Search conversations"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar conversaciones"
+            placeholder="Search conversations"
           />
         </label>
-        <nav aria-label="Conversaciones" onKeyDown={arrows}>
+        <nav aria-label="Conversations" onKeyDown={arrows}>
           <div className="nav-heading-row">
-            <h2 className="nav-heading">Conversaciones</h2>
+            <h2 className="nav-heading">Conversations</h2>
             <span className="nav-count">{props.sessions.length}</span>
           </div>
           {sessions.map(({ session, title }) => (
@@ -144,17 +143,17 @@ export function Navigation(props: {
               <MessageSquare size={15} aria-hidden="true" />
               <span>
                 {title}
-                <small>{session.runs.at(-1)?.status ?? "Sin mensajes"}</small>
+                <small>{session.runs.at(-1)?.status ?? "No messages"}</small>
               </span>
             </button>
           ))}
           {!sessions.length ? (
             <p className="muted">
               {query
-                ? "No encontramos conversaciones."
+                ? "No conversations found."
                 : props.context
-                  ? "Una idea, un cambio, una nueva conversación."
-                  : "Abrí un repositorio para empezar."}
+                  ? "An idea, a change, a new conversation."
+                  : "Open a repository to get started."}
             </p>
           ) : null}
         </nav>
@@ -167,8 +166,8 @@ export function Navigation(props: {
             }
           />
           {props.context
-            ? "Servicio local conectado"
-            : "Sin repositorio abierto"}
+            ? "Local service connected"
+            : "No repository open"}
         </div>
         <CredentialSettings
           key={props.context?.modelSelection?.provider ?? "openai"}

@@ -71,6 +71,19 @@ def exit_chat():
 
 try:
     read_until("> ")
+    # Node is the installed CLI runtime. Exercise actual cursor insertion rather
+    # than Bun's readline shim, which ignores native Left/Right cursor edits.
+    send("\x1b[200~first\nsecond\x1b[201~")
+    read_until("second")
+    send("\x1b[A!\x1b[B?\n")
+    read_until("Fixture done")
+    read_until("> ")
+    edited = json.loads(pathlib.Path(root, "requests.jsonl").read_text().splitlines()[-1])
+    assert "first!\\nsecond?" in json.dumps(edited)
+    send("/new\n")
+    read_until("Created session")
+    read_until("> ")
+    pathlib.Path(root, "requests.jsonl").unlink()
     # Real Node readline: resize and cursor navigation preserve a pasted draft.
     send("\x1b[200~/approve\nLiteral clipboard\x1b[201~")
     read_until("Literal clipboard")

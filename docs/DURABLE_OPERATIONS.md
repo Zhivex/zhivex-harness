@@ -125,7 +125,7 @@ The schema `4` migration writes `projectContext: false` and, for OCI, `ociShellM
 
 Complete or deny paused `0.10.x` approvals with the exact `0.10.x` artifact and context that created them. The config migrator does not rewrite run metadata, tool fingerprints, or approval authority. New `0.11.x` runs enable bounded project context by default; disable it explicitly when required, and await `harness.close()` so asynchronous lifecycle hooks and execution-environment cleanup finish.
 
-The historical migration gate is backed by SQLite files captured byte-for-byte from the exact published `0.10.0` and `0.11.1` tarballs after SHA-512 verification, paired with logical JSON expectations and recorded database digests. `bun run migration:check` copies and opens both historical databases with the current runtime, and CI repeats the compiled verifier on the supported Node.js lines. Regenerate them only with `bun run migration:fixtures`; the generator verifies registry integrity and never executes package lifecycle scripts. See [`fixtures/migrations/README.md`](../fixtures/migrations/README.md) and [GA_READINESS.md](./GA_READINESS.md).
+The historical migration gate is backed by SQLite files captured byte-for-byte from the exact published `0.10.0` and `0.11.1` tarballs after SHA-512 verification, paired with logical JSON expectations and recorded database digests. `bun run migration:check` copies and opens both historical databases with the current runtime, and CI repeats the compiled verifier on the supported Node.js lines. Regenerate them only with `bun run migration:fixtures`; the generator verifies registry integrity and never executes package lifecycle scripts. See [`fixtures/migrations/README.md`](../fixtures/migrations/README.md) and [GA_READINESS.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/GA_READINESS.md).
 
 ## Migration from 0.9.x
 
@@ -201,4 +201,4 @@ ZHIVEX_HARNESS_OCI_TMPFS_MB
 
 `bun run evaluate` executes five deterministic golden cases: analysis-only, approved edit-and-test, denied approval, SQLite restart recovery, and provider switching. It checks terminal status, exact tool sequence, maximum steps, a 30-second per-case latency bound, denied-write safety, and exactly-once recovery. `bun run check` runs this gate before the installed-tarball smoke.
 
-The golden baseline is packaged at `evaluations/golden-expectations.json`. It is regression evidence, not live-provider certification. Provider behavior must still pass the opt-in, credentialed live gate described in [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+The golden baseline is packaged at `evaluations/golden-expectations.json`. It is regression evidence, not live-provider certification. Provider behavior must still pass the opt-in, credentialed live gate described in [LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).

@@ -100,11 +100,11 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
             const hosts = await Promise.allSettled([...runtimes.values()]);
             const ready = hosts.flatMap(host => host.status === "fulfilled" ? [host.value] : []);
             const approved = await prepareDesktopShutdown(ready, async () => {
-                const response = fixture ? (fixtureCloseChoices.shift() === "cancel" ? 1 : 0) : (await dialog.showMessageBox(window, { type: "question", title: "Hay trabajo en curso", message: "Hay operaciones activas en tus proyectos.", detail: "Podés volver a la app o solicitar su cancelación antes de salir. Cancelar no revierte los cambios ya realizados. Si no se detienen, la ventana permanecerá abierta.", buttons: ["Volver a la app", "Cancelar trabajos y salir"], defaultId: 0, cancelId: 0, noLink: true })).response;
+                const response = fixture ? (fixtureCloseChoices.shift() === "cancel" ? 1 : 0) : (await dialog.showMessageBox(window, { type: "question", title: "Work in progress", message: "Your projects have active operations.", detail: "Return to the app or request cancellation before quitting. Cancelling does not undo changes already made. If operations do not stop, the window will remain open.", buttons: ["Return to app", "Cancel work and quit"], defaultId: 0, cancelId: 0, noLink: true })).response;
                 return response === 1 ? "cancel" : "stay";
             });
             if (approved) { await Promise.allSettled([...remoteManagers.values()].map(async pending => (await pending).transport.close())); remoteManagers.clear(); runtimes.clear(); exitApproved = true; app.quit(); }
-        })().catch(async () => { if (!fixture && !window.isDestroyed()) await dialog.showMessageBox(window, { type: "warning", title: "La aplicación sigue abierta", message: "No se confirmó que todo el trabajo haya terminado.", detail: "Revisá el estado de tus proyectos antes de volver a salir. No se forzó el cierre ni se repitieron las operaciones.", buttons: ["Volver a la app"] }); }).finally(() => { if (!exitApproved) closing = false; });
+        })().catch(async () => { if (!fixture && !window.isDestroyed()) await dialog.showMessageBox(window, { type: "warning", title: "The application is still open", message: "Completion of all work has not been confirmed.", detail: "Check your projects before quitting again. No shutdown was forced and no operations were repeated.", buttons: ["Return to app"] }); }).finally(() => { if (!exitApproved) closing = false; });
     };
     window.on("close", event => { if (!exitApproved) { event.preventDefault(); requestExit(); } });
     let recoveringRenderer = false;
@@ -113,7 +113,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         recoveringRenderer = true;
         void (async () => {
             // Fixture selection is host-only; the production action is a native dialog.
-            const response = fixture ? 0 : (await dialog.showMessageBox(window, { type: "error", title: "La conversación dejó de responder", message: "La ventana de la conversación se cerró inesperadamente.", detail: "El servicio puede seguir trabajando. Recargar recupera el estado guardado y no vuelve a enviar tu tarea.", buttons: ["Recargar conversación", "Cerrar aplicación"], defaultId: 0, cancelId: 1, noLink: true })).response;
+            const response = fixture ? 0 : (await dialog.showMessageBox(window, { type: "error", title: "The conversation stopped responding", message: "The conversation window closed unexpectedly.", detail: "The service may still be working. Reloading restores the saved state without submitting your task again.", buttons: ["Reload conversation", "Quit application"], defaultId: 0, cancelId: 1, noLink: true })).response;
             if (closing || window.isDestroyed()) return;
             if (response === 0) window.webContents.reload(); else app.quit();
         })().catch(() => app.quit()).finally(() => { recoveringRenderer = false; });
@@ -229,7 +229,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         try {
             // Only host-launch fixture paths can replace the native picker in packaged tests.
             const fixturePath = fixtureProjects.shift();
-            const result = fixture ? { canceled: !fixturePath, filePaths: fixturePath ? [fixturePath] : [] } : await dialog.showOpenDialog(window, { title: "Abrir repositorio", buttonLabel: "Abrir proyecto", properties: ["openDirectory"] });
+            const result = fixture ? { canceled: !fixturePath, filePaths: fixturePath ? [fixturePath] : [] } : await dialog.showOpenDialog(window, { title: "Open repository", buttonLabel: "Open project", properties: ["openDirectory"] });
             if (result.canceled || !result.filePaths[0]) return null;
             return connect((await registry.select(result.filePaths[0])).key);
         } finally { choosing = false; }
@@ -252,5 +252,5 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     });
     window.once("ready-to-show", () => window.show()); await window.loadFile(index);
     if (fixture && reportDirectory) { await mkdir(reportDirectory, { recursive: true }); const restartPhase = argument("--fixture-restart-phase"); if (restartPhase?.startsWith("tasks-")) await verifyDesktopWorktreesSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase?.startsWith("effect-")) await verifyDesktopEffectCrashSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase) await verifyDesktopRestartSmoke(window, runtimes, reportDirectory, restartPhase, argument("--fixture-cli")); else { await (process.argv.includes("--fixture-models") ? verifyDesktopModelsSmoke : process.argv.includes("--fixture-oci") ? verifyDesktopOciSmoke : verifyDesktopSmoke)(window, runtimes, reportDirectory); app.quit(); } }
-}).catch(async (error) => { if(error instanceof DesktopStateError){ if(!fixture) dialog.showErrorBox("No se puede abrir este estado", "Esta versión no puede abrir el estado guardado o una migración requiere recuperación. Usá la versión compatible y conservá los datos y sus backups. Código: " + error.code); if(reportDirectory) await writeFile(path.join(reportDirectory,"state-format-failure.json"),JSON.stringify({code:error.code})).catch(()=>{}); app.exit(1); return; } if (fixture) console.error(error); if (reportDirectory) await writeFile(path.join(reportDirectory, "failure.json"), JSON.stringify({ code: "DESKTOP_VERIFICATION_FAILED" })).catch(() => { }); process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n"); app.exit(1); });
+}).catch(async (error) => { if(error instanceof DesktopStateError){ if(!fixture) dialog.showErrorBox("Cannot open this state", "This version cannot open the saved state or a migration requires recovery. Use a compatible version and preserve your data and backups. Code: " + error.code); if(reportDirectory) await writeFile(path.join(reportDirectory,"state-format-failure.json"),JSON.stringify({code:error.code})).catch(()=>{}); app.exit(1); return; } if (fixture) console.error(error); if (reportDirectory) await writeFile(path.join(reportDirectory, "failure.json"), JSON.stringify({ code: "DESKTOP_VERIFICATION_FAILED" })).catch(() => { }); process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n"); app.exit(1); });
 app.on("window-all-closed", () => app.quit());

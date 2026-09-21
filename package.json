@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.0.0",
+  "version": "1.1.0-rc.1",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -49,13 +49,32 @@
   "files": [
     "dist",
     "README.md",
-    "ROADMAP.md",
     "CHANGELOG.md",
     "SECURITY.md",
     "SUPPORT.md",
     "LICENSE",
-    "docs/*.md",
-    "docs/*.json",
+    "docs/CHANGE_ENVELOPES.md",
+    "docs/CLI.md",
+    "docs/CLIENT_PROTOCOL.md",
+    "docs/CONTEXT_ENGINEERING.md",
+    "docs/CREDENTIALS.md",
+    "docs/DEPRECATIONS.md",
+    "docs/DURABLE_OPERATIONS.md",
+    "docs/EXECUTION_ENVIRONMENTS.md",
+    "docs/EXTENSIBILITY.md",
+    "docs/FIRST_USE.md",
+    "docs/FIRST_USE_EXAMPLE.md",
+    "docs/HOSTILE_REPOSITORY_DEMO.md",
+    "docs/LOCAL_SERVICE.md",
+    "docs/PUBLIC_SECURITY.md",
+    "docs/README.md",
+    "docs/REPOSITORY_EDITING.md",
+    "docs/STABILITY.md",
+    "docs/SUPPORT_MATRIX.md",
+    "docs/THREAT_MODEL.md",
+    "docs/TIME_TO_SAFE_FIX.md",
+    "docs/USAGE.md",
+    "docs/support-matrix.json",
     "contracts",
     "examples",
     "fixtures",
@@ -64,7 +83,7 @@
     "benchmarks/README.md"
   ],
   "scripts": {
-    "dev": "bun run src/cli.ts",
+    "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
     "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts ./src/service-cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
@@ -109,7 +128,9 @@
     "benchmark:swebench": "bun run scripts/benchmark-swebench.ts",
     "benchmark:swebench:test": "bun test tests/swebench.test.ts",
     "typecheck:tooling": "tsc -p tsconfig.tooling.json",
-    "service": "node dist/service-cli.js"
+    "service": "node dist/service-cli.js",
+    "smoke:console": "bun run build && python3 scripts/console-pty-smoke.py && python3 scripts/console-entry-smoke.py",
+    "smoke:credentials": "node --experimental-strip-types scripts/credential-store-smoke.ts"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.8.0",
@@ -134,5 +155,8 @@
     "node": ">=22.13.0",
     "bun": ">=1.4.0"
   },
-  "packageManager": "bun@1.4.0"
+  "packageManager": "bun@1.4.0",
+  "optionalDependencies": {
+    "@napi-rs/keyring": "2.1.0"
+  }
 }

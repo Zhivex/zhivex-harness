@@ -13,6 +13,7 @@ for (const name of ["main", "preload", "runtime", "update-worker-entry"]) {
 const renderer = await Bun.build({ entrypoints: [path.join(root, "src/renderer.tsx")], outdir, target: "browser", format: "esm", define: { "process.env.NODE_ENV": JSON.stringify("production") }, minify: true });
 if (!renderer.success) throw new AggregateError(renderer.logs, "Renderer build failed");
 await copyFile(path.join(root, "src/index.html"), path.join(outdir, "index.html"));
+await copyFile(path.join(root, "assets/zhivex-logo.png"), path.join(outdir, "zhivex-logo.png"));
 console.log("Desktop bundles built with Bun.");
 
 if(process.platform==="darwin")await import("./build-credential-helper.js");

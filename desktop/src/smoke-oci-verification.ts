@@ -17,13 +17,13 @@ export async function verifyDesktopOciSmoke(window: BrowserWindow, runtimes: Map
     await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
     assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "before\n");
     assert.equal(await js('document.querySelector(".review-file .added").textContent'), "verified after\n");
-    assert((await js('document.querySelector("[aria-label=\\"Comando revisado\\"]").textContent')).includes("process.exit(0)"));
+    assert((await js('document.querySelector("[aria-label=\\"Reviewed command\\"]").textContent')).includes("process.exit(0)"));
     assert.equal(await readFile(path.join(runtime.context.project.workspace, "review.txt"), "utf8"), "before\n");
     await click('[data-action="approve-review"]'); await wait('document.querySelector("[data-action=review]") === null && document.body.innerText.includes("completed")');
     assert.equal(await readFile(path.join(runtime.context.project.workspace, "review.txt"), "utf8"), "verified after\n");
     const session = await runtime.command({ method: "session.get", sessionId }); assert(session.ok && session.data.kind === "session"); const runId = session.data.session.runs.at(-1)!.runId;
     await click(`[data-run="${runId}"] [data-action="decision-history"]`); await wait('document.querySelector("[data-decision-status=applied]") !== null');
-    assert(await js('document.body.innerText.includes("Verificado para el parche sha256:") && document.body.innerText.includes("Check · exit 0")'));
+    assert(await js('document.body.innerText.includes("Verified for patch sha256:") && document.body.innerText.includes("Check · exit 0")'));
     await wait('document.querySelector(".final-diff") !== null'); await click('.final-diff summary');
     assert.equal(await js('document.querySelector(".final-diff .removed").textContent'), "before\n"); assert.equal(await js('document.querySelector(".final-diff .added").textContent'), "verified after\n");
     const run = await runtime.command({ method: "run.get", sessionId, runId }); assert(run.ok && run.data.kind === "run"); assert.equal(run.data.run.decisionTotal, 1); assert.equal(run.data.run.decisions?.[0]?.evidence?.verifiedPatchId, run.data.run.decisions?.[0]?.evidence?.proposalId);

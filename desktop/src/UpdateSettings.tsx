@@ -2,19 +2,19 @@ import {useEffect, useRef, useState} from "react";
 import type {DesktopUpdateState} from "./update-session.js";
 import "./credential-settings.css";
 const messages = {
- unconfigured: "Las actualizaciones todavía no están habilitadas en esta versión.",
- idle: "Buscá una versión nueva de la aplicación.",
- checking: "Buscando actualizaciones…",
- current: "Tenés la versión más reciente del canal configurado.",
- downloading: "Descargando y verificando la actualización… Podés seguir trabajando.",
- downloaded: "Descarga verificada. Instalá cuando hayas terminado tus tareas; la app se reiniciará.",
- "download-failed": "No se pudo completar la descarga. Podés reintentar.",
- installing: "Preparando la instalación y el respaldo…",
- restarting: "Reiniciando la aplicación…",
- "work-active": "Hay trabajo activo. Terminá tus tareas y volvé a intentar la instalación.",
- "install-failed": "No se pudo preparar la instalación. Podés reintentar o buscar otra actualización.",
- "recovery-required": "La actualización requiere recuperación. Conservá los datos y volvé a abrir la aplicación.",
- failed: "No se pudo verificar una actualización. Reintentá más tarde.",
+ unconfigured: "Updates are not yet enabled in this version.",
+ idle: "Check for a new version of the application.",
+ checking: "Checking for updates…",
+ current: "You have the latest version for the configured channel.",
+ downloading: "Downloading and verifying the update… You can keep working.",
+ downloaded: "Download verified. Install when you have finished your tasks; the app will restart.",
+ "download-failed": "Could not complete the download. You can try again.",
+ installing: "Preparing installation and backup…",
+ restarting: "Restarting the application…",
+ "work-active": "Work is active. Finish your tasks and try installing again.",
+ "install-failed": "Could not prepare installation. Try again or check for another update.",
+ "recovery-required": "The update requires recovery. Preserve your data and reopen the application.",
+ failed: "Could not verify an update. Try again later.",
 };
 export function UpdateSettings() {
  const [state, setState] = useState<DesktopUpdateState>({status: "idle"});
@@ -46,10 +46,10 @@ export function UpdateSettings() {
   catch {if (mounted.current) setState({status: "failed"});}
   finally {busy.current = false;}
  }
- return <details className="update-settings"><summary>Actualizaciones</summary>
-  <p role="status">{!ready ? "Consultando disponibilidad…" : state.status === "available" ? `Disponible: ${state.version} (${state.channel === "stable" ? "estable" : "versión preliminar"}).` : messages[state.status]}</p>
-  {state.status === "available" || state.status === "download-failed" ? <button type="button" data-action="download-update" onClick={() => void check("download")}>Descargar actualización</button> : null}
-  {["downloaded", "work-active", "install-failed"].includes(state.status) ? <button type="button" data-action="install-update" onClick={() => void check("install")}>Instalar y reiniciar</button> : null}
-  <button type="button" data-action="check-updates" disabled={!ready || state.status === "checking" || state.status === "downloading" || state.status === "installing" || state.status === "restarting" || state.status === "recovery-required" || state.status === "unconfigured"} onClick={() => void check()}>Buscar actualizaciones</button>
+ return <details className="update-settings"><summary>Updates</summary>
+  <p role="status">{!ready ? "Checking availability…" : state.status === "available" ? `Available: ${state.version} (${state.channel === "stable" ? "stable" : "prerelease"}).` : messages[state.status]}</p>
+  {state.status === "available" || state.status === "download-failed" ? <button type="button" data-action="download-update" onClick={() => void check("download")}>Download update</button> : null}
+  {["downloaded", "work-active", "install-failed"].includes(state.status) ? <button type="button" data-action="install-update" onClick={() => void check("install")}>Install and restart</button> : null}
+  <button type="button" data-action="check-updates" disabled={!ready || state.status === "checking" || state.status === "downloading" || state.status === "installing" || state.status === "restarting" || state.status === "recovery-required" || state.status === "unconfigured"} onClick={() => void check()}>Check for updates</button>
  </details>;
 }

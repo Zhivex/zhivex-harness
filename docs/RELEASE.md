@@ -2,6 +2,13 @@
 
 `@zhivex-ai/harness@1.0.0` is the latest public npm release and `v1.0.0` its annotated tag. Its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. Publication used the protected workflow and the original validated tarball. The first representative attempt failed and did not publish; the authorized complete second attempt passed before publication. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
+## Next candidate
+
+The source version is `1.1.0-rc.1`, targeting npm `next` after fresh certification.
+It is not published. See [candidate readiness](releases/1.1.0-rc.1.md).
+`release-status.json` continues to describe the independently verified 1.0.0
+publication; its evidence must not be reused as certification for this candidate.
+
 ## Deterministic gates
 
 From a clean checkout on `main`:

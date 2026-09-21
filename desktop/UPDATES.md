@@ -1,5 +1,13 @@
 # Desktop update trust
 
+## For users
+
+Automatic updates are disabled in the current alpha. Follow [Installation](INSTALLATION.md)
+for manual replacement while preserving data. Signed updates require production
+publisher configuration and validation before they can be enabled.
+
+## Release operator reference
+
 `update-trust.json` is build-owned configuration bundled into the host. The default
 is explicitly disabled. This prevents network checks until a release operator has
 configured a real feed, public key, publisher identity and channel. Renderer IPC,

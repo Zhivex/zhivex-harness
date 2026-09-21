@@ -861,6 +861,8 @@ describe("CLI process contract", () => {
         "doctor",
         "--profile",
         "daily",
+        "--state-dir",
+        path.join(configDirectory, "state"),
         "--json"
       ], env);
       expect(doctor.exitCode).toBe(CLI_EXIT_CODES.success);

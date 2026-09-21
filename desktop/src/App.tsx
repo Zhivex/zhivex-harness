@@ -6,7 +6,6 @@ import {
   PanelLeft,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   Square,
 } from "lucide-react";
 import { ModelSelector } from "./ModelSelector.js";
@@ -103,7 +102,7 @@ export function App() {
     } catch {
       if (epoch === generation.current)
         setError(
-          "No se pudo abrir el repositorio. Comprobá que existe, que es un repositorio Git y que su servicio está disponible. Elegí otro proyecto o reintentá.",
+          "Could not open the repository. Check that it exists, is a Git repository, and its service is available. Choose another project or try again.",
         );
     } finally {
       selecting.current = false;
@@ -123,7 +122,7 @@ export function App() {
       .catch(() => {
         if (!cancelled)
           setError(
-            "No se pudo cargar la lista de proveedores. Reabrí la aplicación.",
+            "Could not load providers. Reopen the application.",
           );
       });
     return () => {
@@ -180,7 +179,7 @@ export function App() {
     } catch {
       if (epoch === generation.current)
         setError(
-          "No se pudo recuperar la conversación. Actualizá la lista o seleccioná otra sesión.",
+          "Could not retrieve the conversation. Refresh the list or select another session.",
         );
     } finally {
       if (epoch === generation.current) setLoading(false);
@@ -204,7 +203,7 @@ export function App() {
     } catch {
       if (epoch === generation.current)
         setError(
-          "No se pudo crear la conversación. Actualizá la lista antes de reintentar.",
+          "Could not create the conversation. Refresh the list before trying again.",
         );
     } finally {
       if (epoch === generation.current) setLoading(false);
@@ -325,7 +324,7 @@ export function App() {
       if (epoch === generation.current) {
         setReconcileRequired(true);
         setError(
-          "No se pudo completar. Actualizá el estado antes de volver a enviar.",
+          "Could not complete the operation. Refresh the status before submitting again.",
         );
       }
     } finally {
@@ -359,8 +358,8 @@ export function App() {
       if (epoch === generation.current)
         setError(
           error instanceof Error && error.message === "BUSY"
-            ? "La ejecución todavía tiene una reserva vigente. Esperá unos segundos, actualizá el estado y volvé a cancelar. Cancelar no revierte los cambios ya realizados."
-            : "La cancelación recibió un conflicto. Actualizá el estado actual.",
+            ? "The run still has an active lease. Wait a few seconds, refresh the status, and cancel again. Cancelling does not undo changes already made."
+            : "Cancellation encountered a conflict. Refresh the current status.",
         );
     }
   }
@@ -403,7 +402,7 @@ export function App() {
             type="button"
             className="icon-button sidebar-toggle"
             aria-label={
-              sidebarHidden ? "Mostrar navegación" : "Ocultar navegación"
+              sidebarHidden ? "Show navigation" : "Hide navigation"
             }
             aria-controls="sidebar"
             aria-expanded={!sidebarHidden}
@@ -413,22 +412,22 @@ export function App() {
           </button>
           <div className="workspace-title">
             <span className="eyebrow">
-              {context?.project.name ?? "TU ESPACIO DE TRABAJO"}
+              {context?.project.name ?? "YOUR WORKSPACE"}
             </span>
             <h1>
               {session?.title ??
-                (session ? "Nueva conversación" : "Construí con Harness")}
+                (session ? "New conversation" : "Build with Harness")}
             </h1>
           </div>
           <div className="header-actions">
             {context?.fixture ? (
-              <span className="badge">Modelo offline</span>
+              <span className="badge">Offline model</span>
             ) : null}
             <button
               type="button"
               className="icon-button"
-              aria-label="Actualizar conversación"
-              title="Actualizar conversación"
+              aria-label="Refresh conversation"
+              title="Refresh conversation"
               disabled={!session || loading}
               onClick={() => {
                 if (session) void selectSession(session.sessionId);
@@ -463,26 +462,26 @@ export function App() {
           {!activity.order.length ? (
             <div className="welcome">
               <span className="welcome-mark">
-                <Sparkles size={28} aria-hidden="true" />
+                <img src="./zhivex-logo.png" alt="Zhivex" width={56} height={56} />
               </span>
-              <span className="eyebrow">DE LA IDEA AL CÓDIGO</span>
+              <span className="eyebrow">FROM IDEA TO CODE</span>
               <h2>
                 {loading ? (
-                  "Preparando tu espacio…"
+                  "Preparing your workspace…"
                 ) : !context ? (
-                  "Tu próximo proyecto empieza acá."
+                  "Your next project starts here."
                 ) : !session ? (
-                  "Una nueva idea. Una nueva conversación."
+                  "A new idea. A new conversation."
                 ) : (
                   <>
-                    ¿Qué vamos a <em>construir hoy?</em>
+                    What shall we <em>build today?</em>
                   </>
                 )}
               </h2>
               <p>
                 {!context
-                  ? "Abrí un repositorio para empezar. Investigá, implementá y revisá con tu modelo favorito."
-                  : "Explorá tu código, convertí ideas en cambios y revisá cada paso antes de aprobarlo."}
+                  ? "Open a repository to get started. Research, implement, and review with your favorite model."
+                  : "Explore your code, turn ideas into changes, and review each step before approving it."}
               </p>
               {!context ? (
                 <button
@@ -492,7 +491,7 @@ export function App() {
                     void selectProject(() => window.harness.chooseProject())
                   }
                 >
-                  Abrir repositorio{" "}
+                  Open repository{" "}
                   <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               ) : !session ? (
@@ -501,7 +500,7 @@ export function App() {
                   disabled={loading}
                   onClick={() => void createSession()}
                 >
-                  Nueva conversación{" "}
+                  New conversation{" "}
                   <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               ) : (
@@ -509,23 +508,23 @@ export function App() {
                   {[
                     {
                       icon: FolderSearch,
-                      title: "Explorar el proyecto",
-                      detail: "Entendé cómo está organizado",
+                      title: "Explore the project",
+                      detail: "Understand how it is organized",
                       prompt:
-                        "Explorá la estructura de este repositorio y explicame sus componentes principales.",
+                        "Explore this repository's structure and explain its main components.",
                     },
                     {
                       icon: Code2,
-                      title: "Implementar un cambio",
-                      detail: "Dale forma a tu próxima idea",
-                      prompt: "Quiero implementar un cambio en este proyecto: ",
+                      title: "Implement a change",
+                      detail: "Shape your next idea",
+                      prompt: "I want to implement a change in this project: ",
                     },
                     {
                       icon: ShieldCheck,
-                      title: "Revisar el código",
-                      detail: "Encontrá mejoras y riesgos",
+                      title: "Review the code",
+                      detail: "Find improvements and risks",
                       prompt:
-                        "Revisá el código de este repositorio e identificá problemas concretos con evidencia. No modifiques archivos todavía.",
+                        "Review this repository's code and identify concrete issues with evidence. Do not modify files yet.",
                     },
                   ].map((item) => (
                     <button
@@ -569,14 +568,13 @@ export function App() {
           ) : null}
           {run ? (
             <p role="status" className="status">
-              Estado: {run.status} · {run.runId}
+              Status: {run.status} · {run.runId}
             </p>
           ) : null}
           {disconnected ? (
             <div role="alert" className="error">
               <p>
-                Conexión interrumpida. Reintentando la lectura del estado
-                guardado.
+                Connection interrupted. Retrying the saved state.
               </p>
               <button
                 type="button"
@@ -590,7 +588,7 @@ export function App() {
                     );
                 }}
               >
-                Reabrir proyecto
+                Reopen project
               </button>
             </div>
           ) : null}
@@ -608,11 +606,11 @@ export function App() {
                     );
                   else
                     void refreshProjects().catch(() =>
-                      setError("No se pudo leer el índice de proyectos."),
+                      setError("Could not read the project index."),
                     );
                 }}
               >
-                Actualizar estado
+                Refresh status
               </button>
             </div>
           ) : null}
@@ -626,7 +624,7 @@ export function App() {
               }}
             >
               <label className="sr-only" htmlFor="prompt">
-                Tu mensaje
+                Your message
               </label>
               <textarea
                 ref={promptInput}
@@ -647,8 +645,8 @@ export function App() {
                 disabled={!session || loading}
                 placeholder={
                   !session
-                    ? "Creá una conversación para empezar…"
-                    : "¿Qué tenés en mente?"
+                    ? "Create a conversation to get started…"
+                    : "What do you have in mind?"
                 }
                 maxLength={64000}
               />
@@ -682,15 +680,15 @@ export function App() {
                       }
                       onClick={() => void start("wait-for-cancel")}
                     >
-                      Probar espera
+                      Test waiting
                     </button>
                   ) : null}
                   <button
                     type="button"
                     className="icon-button cancel-run"
                     data-action="cancel"
-                    aria-label="Cancelar ejecución"
-                    title="Cancelar ejecución"
+                    aria-label="Cancel run"
+                    title="Cancel run"
                     hidden={!busy && run?.status !== "waiting_approval"}
                     disabled={
                       (!busy && run?.status !== "waiting_approval") ||
@@ -704,8 +702,8 @@ export function App() {
                     type="submit"
                     className="send-button"
                     data-action="start"
-                    aria-label="Enviar mensaje"
-                    title="Enviar mensaje"
+                    aria-label="Send message"
+                    title="Send message"
                     disabled={!canSend}
                   >
                     <ArrowUp size={20} />
@@ -717,13 +715,12 @@ export function App() {
           <div className="composer-caption">
             {context?.credentialConfigured === false ? (
               <span className="credential-hint">
-                Configurá la clave del proveedor en Credenciales para enviar
-                mensajes.
+                Configure the provider key in Credentials to send messages.
               </span>
             ) : (
-              <span>Enter para enviar · Shift + Enter para nueva línea</span>
+              <span>Enter to send · Shift + Enter for a new line</span>
             )}
-            <span>{prompt.length.toLocaleString("es-AR")} / 64.000</span>
+            <span>{prompt.length.toLocaleString("en-US")} / 64,000</span>
           </div>
         </footer>
       </section>

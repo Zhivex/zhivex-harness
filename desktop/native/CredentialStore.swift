@@ -59,9 +59,9 @@ func remove(_ keychain: SecKeychain) throws {
 }
 func prompt(fixture: (value: String, cancel: Bool)? = nil) throws -> Data {
     let app = NSApplication.shared; app.setActivationPolicy(.accessory); app.activate(ignoringOtherApps: true)
-    let alert = NSAlert(); alert.messageText = "Clave de \(providers[account] ?? account)"
-    alert.informativeText = "Se guardará en el llavero de macOS. Reemplaza la clave anterior."
-    alert.addButton(withTitle: "Guardar en el llavero"); alert.addButton(withTitle: "Cancelar")
+    let alert = NSAlert(); alert.messageText = "API key for \(providers[account] ?? account)"
+    alert.informativeText = "The key will be saved in macOS Keychain and replace the previous key."
+    alert.addButton(withTitle: "Save in Keychain"); alert.addButton(withTitle: "Cancel")
     let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
     field.placeholderString = "API key"; alert.accessoryView = field; alert.window.initialFirstResponder = field
     if let fixture = fixture {

@@ -41,17 +41,17 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   await capture("welcome-1120");
   await click(".suggestion");
   await wait(
-    "document.querySelector('#prompt').value.startsWith('Explorá') && document.activeElement.id==='prompt'",
+    "document.querySelector('#prompt').value.startsWith('Explore') && document.activeElement.id==='prompt'",
   );
   assert.equal(await js("document.querySelectorAll('[data-run]').length"), 0);
   await fill(
-    '[aria-label="Buscar conversaciones"]',
+    '[aria-label="Search conversations"]',
     "no-existent-conversation",
   );
   await wait(
-    "document.querySelectorAll('[data-session]').length===0 && document.body.innerText.includes('No encontramos')",
+    "document.querySelectorAll('[data-session]').length===0 && document.body.innerText.includes('No conversations found')",
   );
-  await fill('[aria-label="Buscar conversaciones"]', "");
+  await fill('[aria-label="Search conversations"]', "");
   await wait("document.querySelectorAll('[data-session]').length===1");
   await click(".sidebar-toggle");
   await wait(
@@ -61,7 +61,7 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   await wait("!document.querySelector('aside').hidden");
   await click("[data-action=open-models]");
   await wait("document.querySelector('.model-dialog').open");
-  await fill('[aria-label="Buscar modelos"]', "qwen");
+  await fill('[aria-label="Search models"]', "qwen");
   await wait("document.querySelectorAll('.model-card').length===1");
   await click(".model-card");
   await wait("Boolean(document.querySelector('[data-action=apply-model]'))");
@@ -93,7 +93,7 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
     ),
   );
   await capture("models-720");
-  await click('[aria-label="Cerrar selector de modelos"]');
+  await click('[aria-label="Close model selector"]');
   const geometry = await js(
     "(()=>{const c=document.querySelector('.chat-composer').getBoundingClientRect(),s=document.querySelector('[data-action=start]').getBoundingClientRect();return {width:innerWidth,height:innerHeight,composerVisible:c.bottom<=innerHeight,sendVisible:s.right<=innerWidth,noHorizontalOverflow:document.documentElement.scrollWidth<=innerWidth}})()",
   );

@@ -216,3 +216,136 @@ describe("console input boundaries", () => {
     } finally { console.close(); }
   });
 });
+
+test("command menu searches descriptions, selects without executing and respects service capabilities", async () => {
+  const previousTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let rendered = "";
+  output.on("data", chunk => { rendered += chunk.toString(); });
+  const console = new ConsoleInput(input, output, true, "service");
+  try {
+    const task = console.question("> ", true);
+    let submitted = false;
+    void task.then(() => { submitted = true; });
+    input.write("/");
+    expect(rendered).toContain("Show commands");
+    expect(rendered).not.toContain("Select a provider");
+    input.write("conversation");
+    input.write("\x1b[B\t");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(submitted).toBe(false);
+    input.write("\n");
+    expect(await task).toBe("/new ");
+    const approval = console.question("Approve? ");
+    const before = rendered;
+    input.write("/\n");
+    expect(await approval).toBe("/");
+    expect(rendered.slice(before.length)).not.toContain("Show commands");
+  } finally { console.close(); if (previousTerm === undefined) delete process.env.TERM; else process.env.TERM = previousTerm; }
+});
+
+test("Escape dismisses the menu without consuming typing or delayed bracketed paste", async () => {
+  const previousTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    f.input.write("/sta\x1b");
+    await new Promise(resolve => setTimeout(resolve, 120));
+    f.input.write("tus\n");
+    expect(await task).toBe("/status");
+    const next = f.console.question("> ", true);
+    f.input.write("/\x1b");
+    await new Promise(resolve => setTimeout(resolve, 120));
+    f.input.write("[200~approve\x1b[201~");
+    f.input.write("\n");
+    expect(await next).toBe("/approve");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+  } finally {
+    f.console.close();
+    if (previousTerm === undefined) delete process.env.TERM; else process.env.TERM = previousTerm;
+  }
+});
+
+test("history search restores literal drafts without sending them and Escape restores the original draft", async () => {
+  const previousTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const f = terminalFixture();
+  try {
+    f.console.rememberPrompt("/approve pasted request", true);
+    f.console.rememberPrompt("explain the module");
+    const task = f.console.question("> ", true);
+    let submitted = false;
+    void task.then(() => { submitted = true; });
+    f.input.write("unfinished\x12approve\n");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(submitted).toBe(false);
+    f.input.write("\n");
+    expect(await task).toBe("/approve pasted request");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+    const next = f.console.question("> ", true);
+    f.input.write("original\x12module\x1b");
+    await new Promise(resolve => setTimeout(resolve, 120));
+    f.input.write("!\n");
+    expect(await next).toBe("original!");
+  } finally {
+    f.console.close();
+    if (previousTerm === undefined) delete process.env.TERM; else process.env.TERM = previousTerm;
+  }
+});
+
+
+test("shortcut help does not submit a prompt or intercept pasted question marks", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    f.input.write("?");
+    expect(f.rendered()).toContain("Keyboard shortcuts");
+    f.input.write("?what now\n");
+    expect(await task).toBe("?what now");
+    const next = f.console.question("> ", true);
+    f.input.write("\x1b[200~?literal\x1b[201~");
+    f.input.write("\n");
+    expect(await next).toBe("?literal");
+  } finally { f.console.close(); }
+});
+
+test("Enter on a partial slash command inserts the selection without executing approval", async () => {
+  const f = terminalFixture();
+  try {
+    const task = f.console.question("> ", true);
+    let sent = false;
+    void task.then(()=>{sent=true;});
+    f.input.write("/appro\n");
+    await new Promise(resolve=>setImmediate(resolve));
+    expect(sent).toBe(false);
+    f.input.write("\n");
+    expect(await task).toBe("/approve ");
+  } finally { f.console.close(); }
+});
+
+test("nested selection supports filtering, arrow navigation and Escape without executing pasted choices", async () => {
+  const oldTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const f = terminalFixture();
+  try {
+    const selected = f.console.select("Models", [{value:"one",label:"model one"},{value:"two",label:"model two"}]);
+    f.input.write("\x1b[B\r");
+    expect(await selected).toBe("two");
+    const filtered = f.console.select("Models", [{value:"one",label:"model one"},{value:"two",label:"model two"}]);
+    f.input.write("two\r");
+    expect(await filtered).toBe("two");
+    const cancelled = f.console.select("Providers", [{value:"one",label:"provider"}]);
+    f.input.write("\x1b");
+    expect(await cancelled).toBeUndefined();
+    const pasted = f.console.select("Models", [{value:"one",label:"model one"}]);
+    let resolved=false;void pasted.then(()=>{resolved=true;});
+    f.input.write("\x1b[200~model one\x1b[201~\r");
+    await new Promise(resolve=>setImmediate(resolve));
+    expect(resolved).toBe(false);
+    f.input.write("\r");
+    expect(await pasted).toBe("one");
+  } finally {f.console.close();if(oldTerm===undefined)delete process.env.TERM;else process.env.TERM=oldTerm;}
+});

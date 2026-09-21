@@ -13,19 +13,19 @@ app.whenReady().then(async()=>{
  const wait=async(expression)=>{for(let i=0;i<100;i++){if(await js(expression))return;await new Promise(r=>setTimeout(r,20));}throw Error('UPDATE_UI_TIMEOUT');};
  await wait('!document.querySelector("[data-action=check-updates]").disabled');
  await js('document.querySelector(".update-settings").open=true;document.querySelector("[data-action=check-updates]").click();document.querySelector("[data-action=check-updates]").click()');
- await wait('document.querySelector(".update-settings").textContent.includes("Disponible: 1.1.0")'); assert.equal(calls,1);
+ await wait('document.querySelector(".update-settings").textContent.includes("Available: 1.1.0")'); assert.equal(calls,1);
  await js('document.querySelector("[data-action=download-update]").click();document.querySelector("[data-action=download-update]")?.click()');
- await wait('document.querySelector(".update-settings").textContent.includes("No se pudo completar la descarga")'); assert.equal(downloads,1);
+ await wait('document.querySelector(".update-settings").textContent.includes("Could not complete the download")'); assert.equal(downloads,1);
  await js('document.querySelector("[data-action=download-update]").click()');
- await wait('document.querySelector(".update-settings").textContent.includes("Descargando")');
+ await wait('document.querySelector(".update-settings").textContent.includes("Downloading")');
  await w.loadFile(path.join(build,'index.html'));
- await wait('document.querySelector(".update-settings").textContent.includes("Descarga verificada")'); assert.equal(downloads,2);
+ await wait('document.querySelector(".update-settings").textContent.includes("Download verified")'); assert.equal(downloads,2);
  await js('document.querySelector(".update-settings").open=true;document.querySelector(".update-settings").scrollIntoView({block:"nearest"})');
  await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
  fs.writeFileSync(path.join(report,'downloaded.png'),(await w.webContents.capturePage()).toPNG());
- for(const text of ['Hay trabajo activo','No se pudo preparar la instalación']) {await js('document.querySelector("[data-action=install-update]").click();document.querySelector("[data-action=install-update]")?.click()');await wait(`document.querySelector('.update-settings').textContent.includes(${JSON.stringify(text)})`);}
+ for(const text of ['Work is active','Could not prepare installation']) {await js('document.querySelector("[data-action=install-update]").click();document.querySelector("[data-action=install-update]")?.click()');await wait(`document.querySelector('.update-settings').textContent.includes(${JSON.stringify(text)})`);}
  assert.equal(installs,2);
- for(const text of ['No se pudo verificar','Tenés la versión más reciente','todavía no están habilitadas']){await js('document.querySelector("[data-action=check-updates]").click()');await wait(`document.querySelector('.update-settings').textContent.includes(${JSON.stringify(text)})`);}
+ for(const text of ['Could not verify','You have the latest version','not yet enabled']){await js('document.querySelector("[data-action=check-updates]").click()');await wait(`document.querySelector('.update-settings').textContent.includes(${JSON.stringify(text)})`);}
  assert(await js('document.querySelector("[data-action=check-updates]").disabled'));
  assert(await js('document.querySelector("aside").contains(document.querySelector(".update-settings")) && document.querySelector("main").children.length===2'));
  await js('document.querySelector(".update-settings").scrollIntoView({block:"nearest"})');

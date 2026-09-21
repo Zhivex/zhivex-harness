@@ -79,7 +79,7 @@ export async function verifyDesktopModelsSmoke(
   await click(".model-advanced > summary");
   await select("[data-action=select-model]", "__custom");
   await js(
-    `(()=>{const el=document.querySelector('[aria-label="ID del modelo"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'fixture-custom-model');el.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+    `(()=>{const el=document.querySelector('[aria-label="Model ID"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'fixture-custom-model');el.dispatchEvent(new Event('input',{bubbles:true}));})()`,
   );
   await wait("Boolean(document.querySelector('[data-action=apply-model]'))");
   await click("[data-action=apply-model]");
@@ -132,7 +132,7 @@ export async function verifyDesktopModelsSmoke(
     "document.querySelector('main[data-ready=true]') && document.querySelectorAll('[data-session]').length===2",
   );
   await click(`[data-session="${sessionId}"]`);
-  await wait("document.body.innerText.includes('Runtime separado')");
+  await wait("document.body.innerText.includes('Separate runtime')");
   const rows = [];
   for (const [width, height] of [
     [1120, 760],

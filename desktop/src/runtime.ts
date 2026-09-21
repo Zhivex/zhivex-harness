@@ -39,13 +39,13 @@ async function boot() {
                     yield { type: "tool-call" as const, toolCall: { id: "probe-check", name: "run_check", input: { check: "test", expectedScript: "bun -e 'process.exit(7)'" } } };
                     yield { type: "finish" as const, finishReason: "tool-calls" as const }; return;
                 }
-                yield { type: "text-delta" as const, textDelta: "Runtime separado: SQLite y streaming disponibles. " };
+                yield { type: "text-delta" as const, textDelta: "Separate runtime: SQLite and streaming available. " };
                 if (prompt.includes("wait-for-cancel")) await new Promise<void>(resolve => { if (input.abortSignal?.aborted) resolve(); else input.abortSignal?.addEventListener("abort", () => resolve(), { once: true }); });
                 if (probe) {
                     const secret = process.env.ZHIVEX_HARNESS_DESKTOP_FIXTURE_SECRET ?? "fixture-secret";
-                    yield { type: "text-delta" as const, textDelta: "Contenido literal <img src=x onerror=alert(1)> " };
+                    yield { type: "text-delta" as const, textDelta: "Literal content <img src=x onerror=alert(1)> " };
                     yield { type: "text-delta" as const, textDelta: secret.slice(0, 8) }; yield { type: "text-delta" as const, textDelta: secret.slice(8) + " " };
-                    for (let i = 0; i < 40; i++) { await new Promise(r => setTimeout(r, 25)); yield { type: "text-delta" as const, textDelta: `parte-${i} ` }; }
+                    for (let i = 0; i < 40; i++) { await new Promise(r => setTimeout(r, 25)); yield { type: "text-delta" as const, textDelta: `part-${i} ` }; }
                 }
                 yield { type: "finish" as const, finishReason: "stop" as const };
             })();

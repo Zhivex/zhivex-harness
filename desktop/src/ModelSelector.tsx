@@ -83,10 +83,10 @@ export function ModelSelector({
       const code = error instanceof Error ? error.message : "";
       setError(
         code.includes("CREDENTIAL")
-          ? "Guardá la clave de este proveedor en Credenciales antes de seleccionarlo."
+          ? "Save this provider's key in Credentials before selecting it."
           : code.includes("WORK_ACTIVE")
-            ? "Terminá o cancelá las tareas y aprobaciones pendientes del proyecto antes de cambiar de modelo."
-            : "No se pudo cambiar el modelo. Se conserva la selección anterior; reabrí el proyecto si perdió la conexión.",
+            ? "Finish or cancel the project's pending tasks and approvals before changing models."
+            : "Could not change the model. The previous selection is preserved; reopen the project if it lost its connection.",
       );
     } finally {
       pending.current = false;
@@ -106,12 +106,12 @@ export function ModelSelector({
         className="model-trigger secondary"
         data-action="open-models"
         aria-haspopup="dialog"
-        aria-label={`Elegir modelo: ${current.model || "sin selección"}`}
+        aria-label={`Choose model: ${current.model || "no selection"}`}
         disabled={disabled || !context}
         onClick={() => dialog.current?.showModal()}
       >
         <Sparkles size={14} aria-hidden="true" />
-        <span>{current.model || "Elegir modelo"}</span>
+        <span>{current.model || "Choose model"}</span>
         <ChevronDown size={14} aria-hidden="true" />
       </button>
       <dialog
@@ -125,14 +125,14 @@ export function ModelSelector({
       >
         <header className="dialog-header">
           <div>
-            <span className="eyebrow">TU ASISTENTE, TU ELECCIÓN</span>
-            <h2 id="model-dialog-title">Elegí el modelo</h2>
-            <p>Se usará en los próximos mensajes de este proyecto.</p>
+            <span className="eyebrow">YOUR ASSISTANT, YOUR CHOICE</span>
+            <h2 id="model-dialog-title">Choose a model</h2>
+            <p>It will be used for subsequent messages in this project.</p>
           </div>
           <button
             type="button"
             className="icon-button"
-            aria-label="Cerrar selector de modelos"
+            aria-label="Close model selector"
             disabled={saving}
             onClick={close}
           >
@@ -142,8 +142,8 @@ export function ModelSelector({
         <label className="model-search">
           <Search size={16} aria-hidden="true" />
           <input
-            aria-label="Buscar modelos"
-            placeholder="Buscar por modelo o proveedor"
+            aria-label="Search models"
+            placeholder="Search by model or provider"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -173,24 +173,24 @@ export function ModelSelector({
               <strong>{p.defaultModel}</strong>
               <span className="model-card-note">
                 {p.support === "provisional"
-                  ? "Soporte provisional"
-                  : "Modelo predeterminado"}
+                  ? "Provisional support"
+                  : "Default model"}
               </span>
             </button>
           ))}
           {!choices.length ? (
             <p className="muted">
-              No hay modelos que coincidan con tu búsqueda.
+              No models match your search.
             </p>
           ) : null}
         </div>
         <details className="model-advanced">
-          <summary>Configurar otro modelo</summary>
+          <summary>Configure another model</summary>
           <div className="model-fields">
             <label>
-              Proveedor
+              Provider
               <select
-                aria-label="Proveedor"
+                aria-label="Provider"
                 data-action="select-provider"
                 value={draft.provider}
                 disabled={disabled || saving || !context}
@@ -211,9 +211,9 @@ export function ModelSelector({
               </select>
             </label>
             <label>
-              Modelo
+              Model
               <select
-                aria-label="Modelo"
+                aria-label="Model"
                 data-action="select-model"
                 value={custom ? "__custom" : draft.model}
                 disabled={disabled || saving || !context}
@@ -231,15 +231,15 @@ export function ModelSelector({
                     {m}
                   </option>
                 ))}
-                <option value="__custom">Otro modelo…</option>
+                <option value="__custom">Other model…</option>
               </select>
             </label>
             {custom ? (
               <label className="custom-model">
-                ID del modelo
+                Model ID
                 <input
-                  aria-label="ID del modelo"
-                  placeholder="ID habilitado en tu cuenta"
+                  aria-label="Model ID"
+                  placeholder="ID enabled for your account"
                   value={draft.model}
                   maxLength={160}
                   disabled={disabled || saving}
@@ -252,8 +252,7 @@ export function ModelSelector({
           </div>
         </details>
         <p className="model-hint">
-          La disponibilidad depende de tu cuenta y de las credenciales
-          guardadas. Actual: {current.model}.
+          Availability depends on your account and saved credentials. Current: {current.model}.
         </p>
         {error ? (
           <p role="alert" className="error">
@@ -267,7 +266,7 @@ export function ModelSelector({
             disabled={saving}
             onClick={close}
           >
-            Volver
+            Back
           </button>
           {dirty ? (
             <button
@@ -276,7 +275,7 @@ export function ModelSelector({
               disabled={disabled || saving || !draft.model.trim()}
               onClick={() => void apply()}
             >
-              {saving ? "Cambiando…" : "Usar modelo"}
+              {saving ? "Switching…" : "Use model"}
             </button>
           ) : null}
         </div>

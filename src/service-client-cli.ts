@@ -1,3 +1,8 @@
+import { navigateConsole } from "./console-navigation.js";
+import { formatComposer } from "./console-presentation.js";
+import { formatConsoleHelp } from "./console-commands.js";
+import { formatConsoleWelcome } from "./console-welcome.js";
+import { HARNESS_VERSION } from "./version.js";
 import { randomUUID, createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CliOptions } from "./cli.js";
@@ -89,7 +94,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
     while(options.yes&&result.run.status==="waiting_approval")result=await decision(result.run,true);
     finish(result.run,result.streamed);
   };
-  const interrupt=()=>{void cancel().catch(()=>process.stderr.write("Cancellation conflicted; inspect the run before retrying.\n"));};
+  const interrupt=()=>{if(!activeRun)return;void cancel().catch(()=>process.stderr.write("Cancellation conflicted; inspect the run before retrying.\n"));};
   process.on("SIGINT",interrupt);
   try{
     if(options.command==="resume"){
@@ -100,25 +105,41 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       if(!prompt&&!process.stdin.isTTY){for await(const chunk of process.stdin){prompt+=chunk.toString();if(Buffer.byteLength(prompt)>64*1024)throw new HarnessConfigError("Prompt exceeds 64 KiB.");}}
       if(!prompt.trim())throw new HarnessConfigError("A prompt is required.");await start(prompt);return;
     }
-    const input=new ConsoleInput(process.stdin,process.stdout,Boolean(process.stdin.isTTY));input.onInterrupt=interrupt;
+    const input=new ConsoleInput(process.stdin,process.stdout,Boolean(process.stdin.isTTY), "service");input.onInterrupt=interrupt;
     try{
-      process.stdout.write(`Session ${session.sessionId}. /help lists service commands.\n`);
+      process.stdout.write(formatConsoleWelcome({version:HARNESS_VERSION, workspace:projectId, sessionId:session.sessionId, service:true}, {columns:process.stdout.columns??80}) + "\n");
       const previous=await currentRun();if(previous)print(previous);
-      for(;;){const raw=await input.question("\n> ",true).catch(e=>{if(input.isClosed)return "/exit";throw e;});const literal=input.lastSubmissionWasPaste||raw.includes("\n");const text=literal?raw:raw.trim();if(!text)continue;
+      for(;;){
+        process.stdout.write(formatComposer({ model: "local service", status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready", ...(session.title ? {title:session.title}:{}), automaticApprovals:options.yes===true }, process.stdout.columns));
+        const raw=await input.question("\n> ",true).catch(e=>{if(input.isClosed)return "/exit";if(e instanceof Error&&e.name==="AbortError")return "";throw e;});const literal=input.lastSubmissionWasPaste||raw.includes("\n");let text=literal?raw:raw.trim();if(!text)continue;
         if(!literal&&["/exit","/quit"].includes(text))break;
         try{
           if(!literal&&text.startsWith("/")){
-            if(text==="/help")process.stdout.write("/sessions, /new, /resume <session>, /rename <title>, /status, /pending, /approve, /deny, /cancel, /exit. Provider and tool policy are configured by the service host.\n");
-            else if(text==="/sessions")print(await list());
-            else if(text==="/new"){session=await create();process.stdout.write(`Session ${session.sessionId}.\n`);}
-            else if(text.startsWith("/resume ")){session=await getSession(text.slice(8).trim());print(await currentRun());}
+            if(text==="/menu"){
+              const selected=await navigateConsole(input,{entry:"menu",current:{provider:"service",model:"host"},providers:[],service:true,sessions:async()=>(await list()).map(s=>({value:s.sessionId,label:s.title??"Untitled conversation",detail:s.sessionId}))});
+              if(!selected||!("command" in selected))continue;text=selected.command;
+            }
+            if(text==="/help"||text==="/help all")process.stdout.write(formatConsoleHelp("service",text==="/help all"));
+            else if(text==="/sessions"||text.startsWith("/sessions "))print(await list(text.slice(9).trim()||undefined));
+            else if(text==="/new"){session=await create();input.clearHistory();process.stdout.write(`Session ${session.sessionId}.\n`);}
+            else if(text==="/resume"||text.startsWith("/resume ")){
+              let id=text.slice(7).trim();
+              if(!id){const selected=await input.select("Zhivex / Conversations",(await list()).map(s=>({value:s.sessionId,label:s.title??"Untitled conversation",detail:s.sessionId})));if(!selected)continue;id=selected;}
+              session=await getSession(id);input.clearHistory();print(await currentRun());}
             else if(text.startsWith("/rename ")){const r=await call({method:"session.rename",sessionId:session.sessionId,expectedRevision:session.revision,idempotencyKey:key("rename"),title:text.slice(8)});if(r.kind==="session")session=r.session;}
             else if(["/status","/pending"].includes(text))print(await currentRun()??{message:"No run yet."});
+            else if(text==="/paste"){
+              const draft=await input.multiline();
+              process.stdout.write(`Draft preview:\n${sanitizeTerminalText(draft)}\n`);
+              if((await input.question("Send this draft? Type send: ")).trim()==="send" && draft.trim()){
+                input.rememberPrompt(draft,true);await start(draft);
+              }
+            }
             else if(text==="/cancel")await cancel();
             else if(["/approve","/deny"].includes(text)){const run=await currentRun();if(run){const r=await decision(run,text==="/approve");finish(r.run,r.streamed);}}
             else process.stdout.write("Unsupported service command. Use /help.\n");
-          }else await start(text);
-        }catch{process.stderr.write("Service operation failed. Inspect /status before retrying.\n");}
+          }else {input.rememberPrompt(text,literal);await start(text);}
+        }catch{if(input.isClosed)break;process.stderr.write("Service operation failed. Inspect /status before retrying.\n");}
       }
     }finally{input.close();}
   }finally{process.off("SIGINT",interrupt);}
