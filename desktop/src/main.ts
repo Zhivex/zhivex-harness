@@ -2,6 +2,7 @@ import {checkDesktopStateFormat, DesktopStateError} from "./state-format.js";
 import updateTrust from "../update-trust.json";
 import desktopMetadata from "../package.json";
 import {parseDesktopUpdateTrust} from "./update-trust.js";
+import {createDesktopUpdateSession} from "./update-session.js";
 import {createDesktopUpdateFeed} from "./update-feed.js";
 import {registerDesktopUpdateIpc} from "./update-ipc.js";
 import {openCredentialStore} from "./credential-store.js";
@@ -96,7 +97,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     });
     const validateSender = (event: Electron.IpcMainInvokeEvent) => { if (closing || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== url) throw new Error("UNTRUSTED_SENDER"); };
     const updateFeed = createDesktopUpdateFeed(parseDesktopUpdateTrust(process.platform === "darwin" && process.arch === "arm64" ? updateTrust : {schemaVersion: 1, enabled: false}), desktopMetadata.version);
-    registerDesktopUpdateIpc(ipcMain, validateSender, updateFeed);
+    registerDesktopUpdateIpc(ipcMain, validateSender, createDesktopUpdateSession(updateFeed, {directory: path.join(app.getPath("userData"), "update-downloads")}));
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false)); session.defaultSession.setPermissionCheckHandler(() => false);
     window.webContents.setWindowOpenHandler(() => ({ action: "deny" })); window.webContents.on("will-navigate", event => event.preventDefault()); window.webContents.on("will-attach-webview", event => event.preventDefault());
     const remoteManagers = new Map<string, Promise<{ transport: Awaited<ReturnType<typeof openGitHubGitTransport>>; manager: Awaited<ReturnType<typeof openRemoteDelivery>> }>>();

@@ -27,7 +27,12 @@ it is not exposed as an installable artifact. Concurrent checks share one reques
 The renderer receives only status and, when available, version/channel. Diagnostics
 do not expose URLs, keys, server responses or underlying exception text.
 
-The sidebar currently supports checking only. Installation/download coordination
-with main is still pending; no button in this version starts installation. Signing
+The sidebar supports checking and downloading authenticated updates. Main owns the
+manifest and private staging paths; renderer requests have no arguments. Concurrent
+checks/downloads share the active operation. Downloads verify exact size and SHA-256,
+remove partial files on failure and allow retry. Rechecking removes the prior staged
+artifact before selecting another version. Downloading does not pause project work.
+Installation coordination with main is still pending; no button in this version
+starts installation. Signing
 and notarization remain deferred. Enabling feed checks does not complete HU35 or
 certify a signed successful update.

@@ -2,6 +2,7 @@ import {expect, test} from "bun:test";
 import {generateKeyPairSync, sign} from "node:crypto";
 import {createDesktopUpdateFeed} from "../src/update-feed.js";
 import {parseDesktopUpdateTrust} from "../src/update-trust.js";
+import {createDesktopUpdateSession} from "../src/update-session.js";
 import {registerDesktopUpdateIpc} from "../src/update-ipc.js";
 import {requireVerifiedUpdate} from "../src/update-manifest.js";
 const keys = generateKeyPairSync("ed25519");
@@ -45,7 +46,7 @@ test("unsafe redirects, oversized bodies, stalled requests and detailed errors y
 });
 test("IPC validates sender and refuses all renderer configuration arguments", async () => {
  const handlers = new Map<string, (...args: any[]) => any>(), feed = createDesktopUpdateFeed(parseDesktopUpdateTrust({schemaVersion: 1, enabled: false}), "1.0.0");
- registerDesktopUpdateIpc({handle: (name, handler) => {handlers.set(name, handler);}}, event => {if (!(event as unknown as {trusted: boolean}).trusted) throw new Error("UNTRUSTED_SENDER");}, feed);
+ registerDesktopUpdateIpc({handle: (name, handler) => {handlers.set(name, handler);}}, event => {if (!(event as unknown as {trusted: boolean}).trusted) throw new Error("UNTRUSTED_SENDER");}, createDesktopUpdateSession(feed, {directory: "/unused"}));
  expect(() => handlers.get("harness:check-updates")!({trusted: false})).toThrow("UNTRUSTED_SENDER");
  expect(() => handlers.get("harness:check-updates")!({trusted: true}, {feed: "alternate"})).toThrow("INVALID_UPDATE_REQUEST");
  expect(await handlers.get("harness:check-updates")!({trusted: true})).toEqual({status: "unconfigured"});
