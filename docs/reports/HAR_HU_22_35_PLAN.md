@@ -202,6 +202,13 @@ recovery of two databases, four packaged state gates, normal-flow package smoke
 and four layout checks pass. See HAR_HU_35_STATE_RECOVERY_2026-09-20.md. Main/UI,
 coordinator and real binary installer/verification remain to connect; criteria open.
 
+Native publisher verifier added (4 tests / 19 assertions): pinned Developer ID
+for app and credential helper, hardened runtime, arm64/version and notarized OS
+assessment. Real unsigned package rejection verified; signed positive case still
+deferred. Numeric macOS version fields fixed and DMG regenerated; temporary install
+and four layout checks pass. See HAR_HU_34_35_NATIVE_VERIFICATION_2026-09-20.md.
+Current DMG SHA-256: ba95dc0983a40129831288938c2e096ae6cea8daf34fd7cef26a7ecc58ba0e42.
+
 ## Delivery order
 
 1. Runtime owner and protected local transport (22), durable replay (23), coordinated decisions/cancellation (24), CLI client (25).

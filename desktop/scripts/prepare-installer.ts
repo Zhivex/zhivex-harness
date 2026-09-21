@@ -7,7 +7,7 @@ const root=path.resolve(import.meta.dir,"..");const require=createRequire(path.j
 const meta=await Bun.file(path.join(root,"package.json")).json();const app=path.join(root,"out/Zhivex Harness-darwin-arm64/Zhivex Harness.app");
 const command=(binary:string,args:string[])=>execFileSync(binary,args,{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
 const plist=JSON.parse(command("/usr/bin/plutil",["-convert","json","-o","-",path.join(app,"Contents/Info.plist")]));
-if(plist.CFBundleShortVersionString!==meta.version||plist.CFBundleIdentifier!=="ai.zhivex.harness")throw new Error("INSTALLER_BUNDLE_METADATA_MISMATCH");
+if(plist.ZhivexDesktopVersion!==meta.version||plist.CFBundleShortVersionString!==meta.version.split(/[+-]/)[0]||plist.CFBundleVersion!==meta.version.split(/[+-]/)[0]||plist.CFBundleIdentifier!=="ai.zhivex.harness")throw new Error("INSTALLER_BUNDLE_METADATA_MISMATCH");
 const runtime=JSON.parse(extractFile(path.join(app,"Contents/Resources/app.asar"),"build/runtime-metadata.json").toString());
 if(runtime.desktopVersion!==meta.version||runtime.electronVersion!==meta.devDependencies.electron)throw new Error("INSTALLER_RUNTIME_METADATA_MISMATCH");
 const helper=path.join(app,"Contents/Resources/credential-store");for(const file of [helper,path.join(app,"Contents/MacOS/Zhivex Harness")])if(command("/usr/bin/lipo",["-archs",file])!=="arm64")throw new Error("INSTALLER_ARCH_MISMATCH");
