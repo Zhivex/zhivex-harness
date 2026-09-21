@@ -1,86 +1,96 @@
-# Desktop architecture decision — HAR-HU-26
+# Desktop architecture
 
-Status: accept Electron + React for the alpha, following the executable macOS arm64
-spike on 2026-09-20. This is an architecture validation, not the complete desktop
-product or a signed installer. HU27–35 retain their own acceptance criteria.
+The desktop uses Electron and React with a separate Harness runtime process. It
+shares the [client protocol](CLIENT_PROTOCOL.md) and [local service](LOCAL_SERVICE.md)
+with other clients. Development uses Bun; installed application processes use
+Electron's bundled Node runtime. macOS arm64 is the supported alpha target.
 
-## Process boundary
+## Process and trust boundaries
 
-React renders bundled local content inside a sandboxed Chromium renderer with
-nodeIntegration false, contextIsolation true and webSecurity true. A CSP prohibits
-network connections, inline scripts, frames and arbitrary resources. Navigation,
-new windows, webviews and permission requests are denied. Repository text is rendered
-as text; there is no HTML interpreter, shell bridge or arbitrary filesystem API.
+- **Renderer:** bundled local React UI in sandboxed Chromium, with
+  `nodeIntegration: false`, `contextIsolation: true` and `webSecurity: true`.
+  Navigation, new windows, webviews and permission requests are denied. The CSP
+  blocks network connections, inline scripts and frames; packaged fonts may use
+  embedded data URLs. Repository and model text cannot introduce executable HTML.
+- **Preload:** a narrow typed bridge for projects, sessions, activity, model
+  selection, review, tasks, Git delivery, credentials and update status. It exposes
+  no arbitrary shell, filesystem, environment or IPC-channel API. The authoritative
+  interface is `desktop/src/bridge.ts` in the source checkout.
+- **Main:** validates the sender, exact local page and main frame, and checks all
+  arguments. Native selection supplies project paths; renderer requests use registered
+  project keys. Main manages runtime ownership, review receipts, Keychain access,
+  delivery and update coordination. It sends bounded, redacted projections to React.
+- **Utility process:** owns the actual Harness engine, SQLite and tools. Authenticated
+  owner-private Unix transport retains revision, approval, lease and replay checks.
+  Policy decisions remain in the host/service, never in the renderer.
 
-The isolated preload exposes projects(), chooseProject(), openProject(),
-initialProject(), command(), events(), review() and resolveReview(). Project paths originate in the native
-picker or a trusted launcher argument; renderer commands use registered project
-keys and cannot supply arbitrary paths. Main checks
-the exact local page URL, WebContents identity and main frame on every request. It
-validates the strict HU21 envelope, rejects renderer project/workspace overrides and
-binds its host-selected project. Tokens remain in main and the owner-private service
-file. Main strips rich CLI output and approval payloads from run responses, redacts known
-host credentials, and sends allowlisted durable activity to React. A separate
-Electron utility process owns the actual Harness, SQLite and tools.
-Its Unix socket uses the existing HU22–25 authentication, authorization and replay.
-No policy decision is delegated to the renderer.
+A repository, model output or compromised renderer cannot authorize an effect by
+inventing a button or IPC call. Main, preload, runtime and bundled resources remain
+trusted code. Same-user malicious processes are outside the local authentication
+boundary; file permissions do not replace operating-system user isolation.
 
-## Runtime and packaging evidence
+## Projects, sessions and recovery
 
-- Electron 44.4.3 includes Node 24.21.0 in both main and the utility process. This
-  satisfies the Harness Node >=22.13.0 requirement. React 19.3.0 is locked separately
-  under desktop/bun.lock; the library package has no new production dependencies.
-- The packaged macOS arm64 .app starts from a fresh external working directory and
-  temporary HOME, opens the real window, creates SQLite, streams an offline response
-  and cancels an active run. Assertions verify no require/process in the renderer,
-  only the declared bridge methods, a different runtime PID and rejected forged
-  project/workspace fields. Screenshot and machine report are emitted by the smoke.
-- Bun bundles the runtime dependencies and UI. SQLite uses Electron's node:sqlite;
-  no native addon recompilation is needed. The runtime version is embedded from the
-  root package metadata. Build transforms remove source-path-dependent createRequire
-  usage; installed execution does not need the checkout or a separate Node install.
-- OCI smoke on this Mac passed with Docker 29.8.0 and image
-  sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6.
-  Docker remains an external optional prerequisite; it is not bundled or certified
-  by the Electron smoke. The OCI backend preserves its separate governed policy.
+Each project has an independent runtime and durable conversation scope. Navigation
+reads state without starting a run. Asynchronous results are scoped to the selected
+view. A single application instance owns the project catalog; a duplicate launch
+focuses the existing window.
 
-## Threats and remaining limits
+Renderer reload recovers durable activity and decisions. Reopening a project only
+recovers stale transport after confirming that its prior owner is dead. Normal
+application shutdown drains accepted work. Crash recovery preserves pending approvals
+and reconciles effects without blindly replaying them; missing or ambiguous evidence
+must not be presented as a successful operation.
 
-A repository or model response is untrusted; neither may create controls or choose
-IPC channels. A compromised renderer must still pass the service's strict revision,
-identity, approval and expiry checks. Main/preload/runtime and bundled resources are
-trusted code and need distribution integrity and updates. A same-user malicious
-process is outside this local authentication boundary; file mode checks are not
-an operating-system user isolation substitute.
+Worktrees start from the source repository's committed state. Removal requires a
+fresh review of dirty files, integration state and locks; the branch and conversation
+history are retained. Git commit, push and PR delivery use reviewed state, operation
+journals and explicit reconciliation after a lost response.
 
-HU27 adds the native project picker, private recent-project catalog, per-project
-runtimes and conversation navigation. Selection queries state without starting runs.
-Responses are scoped to the selected view to prevent cross-project races. One app
-instance owns the catalog; duplicate launch focuses the existing window. Runtime
-startup failures fail closed; project reopening recovers transport only after
-proving the previous owner is dead. Recovery is serialized without a blocking wait.
-Closing the app drains accepted work; this may take until the configured timeout.
-Renderer reload during a running stream is verified in HU28; pending-approval
-process-crash recovery is verified in HU30. Active-effect crash recovery and full
-app close/reopen remain HU30 work. A missing
-provider key produces a runtime error; secure credential UI is HU33. Production
-configuration and OCI onboarding must not silently assume Docker is present.
+## Review and credentials
 
-The unsigned .app is approximately 310 MB on this Mac. Only darwin arm64 is tested;
-Intel/universal and other platforms are not supported by this evidence. Developer
-ID signing, hardened-runtime entitlement validation, notarization, Gatekeeper clean
-installation and updater integrity remain open. Per user instruction, prepare the
-packaging now and configure signing later; unsigned output does not satisfy HU34.
+Main issues bounded, single-use review receipts tied to project, session, run,
+revision, approval identity and expiry. The renderer sends the receipt and explicit
+decision; it cannot supply trusted signatures or invoke unrestricted approval resolution.
+File previews bind full source bytes where required, distinguish fragments from full
+replacements, and disable approval for incomplete, stale, protected or redacted input.
+OCI previews retain patch and verifier identity. An ordinary check receipt does not
+by itself bind success to the exact bytes of an earlier edit.
 
-## Reproduction
+Model choices persist by project. Active runs, approvals and recovery prevent unsafe
+model switching. Provider keys live in separate macOS Keychain accounts and travel
+through private host/runtime channels, not renderer state, command arguments or
+child-process environment variables. Known credentials are rejected at the SQLite
+boundary before persistence; this does not retroactively scrub historical data or
+promise detection of every possible encoding.
 
-See [desktop/README.md](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md).
-Development uses Bun; product processes use the Node runtime shipped with Electron.
-No live provider call occurs in fixture smoke mode.
+## Distribution and updates
 
-## Primary references
+Bun bundles application code and dependencies. Packaging copies build output and
+minimal metadata, excluding source, dependency caches and credentials. SQLite uses
+Electron's `node:sqlite`; a separate Node installation is unnecessary. Git, GitHub
+CLI and an OCI engine remain external prerequisites for their respective features.
 
-- [Electron security](https://www.electronjs.org/docs/latest/tutorial/security): sender validation, isolation and limited privileged bridges.
-- [Process sandboxing](https://www.electronjs.org/docs/latest/tutorial/sandbox): renderer and preload boundaries.
-- [Utility processes](https://www.electronjs.org/docs/latest/api/utility-process): separate Node-capable service process.
-- [Electron releases](https://releases.electronjs.org/?channel=stable): Electron 44.4.3 / Node 24.21.0, checked against the running artifact.
+The updater is integrated with main/UI and startup recovery. It checks signed
+manifests, validates downloaded bytes and native publisher identity, coordinates
+idle runtimes, acquires state leases, backs up registered state and performs a durable
+worker handoff. Recovery uses the exact recorded application/state receipts. Current
+SQLite clients participate in the lock protocol; arbitrary direct SQLite libraries
+and older clients are not certified by that protocol.
+
+The local build is unsigned and unnotarized. Production update trust is disabled
+until a real feed, signing key and publisher identity are configured. A positive
+signed install/update/rollback demonstration remains required before production
+distribution; fixture success is not a substitute.
+
+## Maintainer guides
+
+- [Desktop setup and reproducible checks](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md)
+- [Model selection and credential behavior](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/MODELS.md)
+- [Installation and platform limits](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/INSTALLATION.md)
+- [Update trust and recovery protocol](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/UPDATES.md)
+
+Automated Electron checks cover packaged offline behavior and process isolation.
+Live provider calls, real OCI execution, live GitHub authentication and signed
+production distribution require their own evidence. Historical acceptance snapshots
+remain in the [report archive](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md).

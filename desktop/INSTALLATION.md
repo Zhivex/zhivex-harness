@@ -6,7 +6,9 @@ No desactives Gatekeeper ni elimines la cuarentena para ocultar ese estado.
 
 El paquete contiene Electron, el runtime Node del producto, el helper de llavero
 y el helper nativo de bloqueo para actualizaciones. La actualización desde la
-interfaz todavía está en preparación; este candidato se reemplaza manualmente.
+interfaz está implementada, pero deshabilitada en la configuración distribuida
+por este checkout. Requiere un feed firmado y una identidad de editor configurados;
+este candidato local se reemplaza manualmente. Véase [UPDATES.md](UPDATES.md).
 No requiere instalar Node o Bun para abrir la aplicación. Arquitectura: Apple
 Silicon (arm64); objetivo mínimo de compilación: macOS 13. La evidencia adjunta
 identifica la versión de macOS donde se ejecutaron las pruebas; no equivale a
@@ -19,8 +21,9 @@ haber probado todas las versiones desde ese mínimo. Intel no está soportado.
    tareas y la aplicación antes de reemplazarla.
 3. Abrí la aplicación. Para este candidato sin firma, el bloqueo de Gatekeeper
    es una limitación pendiente de distribución, no un error que deba desactivarse.
-4. Elegí un repositorio y configurá la clave de OpenAI en Credenciales. La clave
-   se introduce en una ventana nativa y se guarda en el llavero de macOS.
+4. Abrí un repositorio, elegí el modelo y configurá la clave de su proveedor en
+   Credenciales. La clave se introduce en una ventana nativa y se guarda en el
+   llavero de macOS.
 
 La selección de repositorios usa el diálogo nativo y permisos normales de archivos;
 no se solicita acceso completo al disco. El llavero puede solicitar autorización o
@@ -32,8 +35,9 @@ configura autenticación GitHub.
 
 La aplicación incluye su runtime, pero no Docker, Podman ni imágenes OCI. Si no
 hay un motor OCI disponible, las operaciones que exigen aislamiento OCI no pueden
-iniciarse. Instalá y arrancá un motor compatible siguiendo docs/SUPPORT_MATRIX.md
-y docs/EXECUTION_ENVIRONMENTS.md del repositorio; ejecutá el diagnóstico del Harness
+iniciarse. Instalá y arrancá un motor compatible siguiendo la
+[matriz de soporte](../docs/SUPPORT_MATRIX.md) y la
+[guía de ejecución](../docs/EXECUTION_ENVIRONMENTS.md); ejecutá el diagnóstico del Harness
 antes de usar ese modo. No se sustituye silenciosamente OCI por ejecución directa.
 
 ## Desinstalar conservando datos

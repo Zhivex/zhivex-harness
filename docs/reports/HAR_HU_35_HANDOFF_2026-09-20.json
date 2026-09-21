@@ -1,9 +1,0 @@
-{
-  "node": "24.21.0",
-  "electron": "44.4.3",
-  "durableAcknowledgement": true,
-  "replacementBlockedWhileHostLives": true,
-  "sameWorkerCompletedAfterHostExit": true,
-  "fixtureBundleVerifier": true,
-  "pass": true
-}

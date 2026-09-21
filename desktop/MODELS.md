@@ -7,9 +7,11 @@ provisional en el registro del motor.
 ## Uso
 
 1. Abrí un repositorio. Se puede consultar el historial sin una API key.
-2. En el área de escritura elegí **Proveedor** y **Modelo**, y pulsá **Usar modelo**.
-   Se ofrece el modelo predeterminado del registro; **Otro modelo…** permite indicar
-   un ID habilitado en tu cuenta. La selección no certifica disponibilidad remota.
+2. Pulsá el nombre del modelo al pie del editor para abrir **Elegí el modelo**.
+   Buscá por nombre o proveedor, seleccioná una tarjeta y pulsá **Usar modelo**.
+   Para un ID específico, abrí **Configurar otro modelo**, elegí el proveedor y
+   **Otro modelo…**. **Volver** o Escape descartan los cambios sin confirmar.
+   La selección no certifica disponibilidad remota.
 3. En **Credenciales**, seleccioná el proveedor y guardá la clave en el diálogo
    seguro de macOS. El proyecto abierto se reconecta al terminar. Las claves se
    guardan en cuentas distintas del llavero, sin llegar al renderer, argumentos,

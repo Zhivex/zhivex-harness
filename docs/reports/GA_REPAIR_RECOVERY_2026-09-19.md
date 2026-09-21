@@ -218,7 +218,7 @@ Una sola entrega OpenAI en datos ya conocidos no acredita mejora general ni
 sustituye el holdout nuevo. La retención de release sigue vigente.
 
 El registry sigue publicando OpenAI 0.13.2. Se preparó un parche aislado del SDK
-en `upstream-fixes/openai-terminal-usage/`, fuera del paquete distribuido del
+en [la propuesta original del SDK](https://github.com/Zhivex/zhivex-harness/tree/c94a6c1cff9d6cbf0a3c66c05f7ce16df1d3cc38/upstream-fixes/openai-terminal-usage), fuera del paquete distribuido del
 Harness y sin modificar el checkout concurrente del SDK. Difiere el rechazo de
 un item incompleto hasta poder leer uso terminal válido; nunca emite la llamada
 incompleta. Once regresiones y el typecheck aislado pasan. El parche todavía

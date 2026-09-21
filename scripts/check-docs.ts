@@ -42,6 +42,9 @@ const markdownFiles = [
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
   ...await collectMarkdown(path.join(workspace, "docs")),
+  ...(await readdir(path.join(workspace, "desktop"), { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith(".md"))
+    .map(entry => path.join(workspace, "desktop", entry.name)),
   ...await collectMarkdown(path.join(workspace, "examples"))
 ].sort();
 

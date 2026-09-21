@@ -1,10 +1,10 @@
 # RC.13 security review dossier
 
 Historical RC.13 preparation dossier, superseded for promotion by the
-[RC.14 decision](RC14_DELEGATED_SECURITY_DECISION.md) and
-[stable release evidence](LIVE_CERTIFICATION.md#current-public-status).
+[RC.14 decision](../../RC14_DELEGATED_SECURITY_DECISION.md) and
+[stable release evidence](../../LIVE_CERTIFICATION.md#current-public-status).
 
-This dossier prepares the independent human review required by HAR-HU-03. It is not a completed security review and does not authorize GA. The machine-prepared `../security-reviews/rc13-review-draft.json` (source checkout) deliberately fails the passing-review schema: reviewer, date, coverage decisions, and findings must be supplied or confirmed by the human reviewer. Copied control-map text is a review starting point, not evidence that the reviewer assessed it. An empty findings array in the draft does not mean zero findings.
+This dossier prepares the independent human review required by HAR-HU-03. It is not a completed security review and does not authorize GA. The machine-prepared `rc13-review-draft.json` (source checkout) deliberately fails the passing-review schema: reviewer, date, coverage decisions, and findings must be supplied or confirmed by the human reviewer. Copied control-map text is a review starting point, not evidence that the reviewer assessed it. An empty findings array in the draft does not mean zero findings.
 
 ## Exact candidate
 
@@ -21,7 +21,7 @@ The release completed successfully. Meta, Qwen, and OpenAI each passed the compl
 
 ## Reviewer work
 
-1. Inspect the exact tag and published artifact; verify its hash and provenance. Review [the threat model](THREAT_MODEL.md), [control map](../contracts/security-controls.json), and [schema requirements](SECURITY_REVIEW_EVIDENCE.md).
+1. Inspect the exact tag and published artifact; verify its hash and provenance. Review [the threat model](../../THREAT_MODEL.md), [control map](../../../contracts/security-controls.json), and [schema requirements](../../SECURITY_REVIEW_EVIDENCE.md).
 2. Review all controls, trust boundaries, and authority-bearing tools enumerated in the draft. For every entry record the mitigation actually reviewed, regression evidence, and residual risk. Check approval replay/substitution, hostile repository instructions, protected files and symlinks, SQLite scope/concurrency, subprocess/OCI boundaries, MCP, delegation, credentials, and supply-chain identity.
 3. Include the RC.13 changes: personal profile filesystem protections; unsolicited terminal input and paste confirmation; attachment exclusion and digest checks; safe terminal output; interruption cleanup, optimistic revisions, and durable pending approvals. Inspect the corresponding tests and the implementation rather than relying solely on green CI.
 4. Record all findings, including resolved ones. Non-informational findings require owner, disposition, rationale, and HTTPS follow-up. Critical/high findings must be mitigated and resolved, not merely accepted. If a fix changes runtime code, create and certify a new immutable candidate before final review.

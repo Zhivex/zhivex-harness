@@ -1,5 +1,0 @@
-Qwen Chat can return complete tool-call fragments with `finish_reason: stop` for a named tool choice. The adapter previously discarded them and returned a normal final answer, preventing the Harness from registering its verifier.
-
-Buffer calls until normal stream completion, validate the entire batch before emission, and normalize complete calls to `tool-calls` while preserving the provider finish reason. Reject truncated/invalid batches and explicit late provider errors without emitting calls; preserve reported usage on typed errors. Require Core 1.22.0 and include a Qwen patch changeset.
-
-Validation: 2,425 tests in 173 files; types/examples, documentation and build pass. The compiled adapter passes the offline terminal-stop acceptance. The final commit c850ae0 also passed the installed-consumer smoke (51 entrypoints). The earlier commit 35e2bb4 passed synthetic Qwen live checks, and one full known Django repair through Harness plus independent grading (Harness 1/1, control 1/1). Those live results predate the additional late-error rejection guard in c850ae0; they are not GA or published-package certification.

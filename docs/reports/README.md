@@ -32,3 +32,22 @@ Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-
 - [HAR-HU-12 stable onboarding — September 20](HAR_HU_12_2026-09-20.md): published 1.0.0 installation, version/help/doctor, documentation guards and evidence limits.
 
 - [RC14 validation and publication hold — September 10](RC14_VALIDATION_2026-09-10.md): new live cohort, frozen source identity, validation boundaries and conditions to resume publication.
+
+## Consolidated desktop acceptance and archived working notes
+
+- [Acceptance audit, September 21](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.md) and [criterion-level evidence](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.json) preserve the final HU13–35 assessment and its limits. These are dated snapshots, not current user guides.
+- [Desktop guide](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md) documents current setup, behavior and validation commands.
+- [RC13 dossier](security/RC13_SECURITY_REVIEW.md) and [RC14 dossier](security/RC14_SECURITY_REVIEW.md) retain the preparatory drafts separately from the final review in `security-reviews/rc14-review.json`.
+
+Incremental HU plans, component reports and screenshots were consolidated out of
+the working tree. Their original bytes and the paths cited by the frozen acceptance
+JSON remain available in the [pre-cleanup report tree](https://github.com/Zhivex/zhivex-harness/tree/c94a6c1cff9d6cbf0a3c66c05f7ce16df1d3cc38/docs/reports).
+The same local Git commit preserves them before this branch is pushed.
+
+SDK patch proposals and PR drafting material belong to SDK development. Their
+[original patches and evidence](https://github.com/Zhivex/zhivex-harness/tree/c94a6c1cff9d6cbf0a3c66c05f7ce16df1d3cc38/upstream-fixes)
+are preserved in Git history, including any proposals not yet integrated upstream;
+removing the copies from this checkout does not assert that they were merged.
+The UI reference capture and transient redesign QA assets are likewise retained
+in that commit. Release, security, benchmark and unsuccessful evaluation evidence
+remain in this archive; this cleanup does not change their results.

@@ -100,9 +100,7 @@ recovers the dead owner, verifies identical approval and replay state, invalidat
 credentials, applies the approved edit exactly once and inspects its completed journal
 receipt. Fixtures use mock providers; no live API or certification claim is made.
 
-HU-25 adds the CLI service adapter; desktop and distribution remain separate acceptance
-items in `docs/reports/HAR_HU_22_35_PLAN.md`. Signing/notarization will be configured
-later at the user's request; an unsigned artifact cannot satisfy HU-34.
+The CLI service adapter and the [desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md) share this transport. Desktop signing, notarization and positive signed-update acceptance remain pending; the local unsigned build is not a production distribution.
 
 The CLI adapter now consumes this transport via opt-in `--service`; see
 [CLI.md](CLI.md#shared-local-service-experimental). It shares the direct CLI result
