@@ -170,7 +170,11 @@ Source: https://app.notion.com/p/3e1777b104f681149546e5dcf0557092?pvs=204
 - [ ] No se interrumpe una operación crítica para actualizar; se prueban descarga parcial y fallo de instalación.
 - [ ] La migración de estado cuenta con backup y recuperación compatible; una versión antigua rechaza esquemas incompatibles y el usuario dispone de diagnóstico sanitizado.
 
-Evidence: pending.
+Evidence: authenticated manifest and bounded download staging implemented and
+tested (10 tests / 105 assertions), not yet connected to desktop startup or UI.
+See HAR_HU_35_AUTHENTICATED_DOWNLOAD_2026-09-20.md. Native publisher verification,
+critical-operation coordination, installation recovery and state migration remain
+open; no HU35 acceptance criterion is closed by this foundation.
 
 ## Delivery order
 
