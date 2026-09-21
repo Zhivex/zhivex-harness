@@ -1,4 +1,4 @@
-import {randomUUID} from "node:crypto";
+import {createHash, randomUUID} from "node:crypto";
 import {constants} from "node:fs";
 import {lstat, mkdir, open, realpath, rename, unlink} from "node:fs/promises";
 import path from "node:path";
@@ -43,6 +43,19 @@ async function load(job: DesktopUpdateJob) {
  const journal = schema.parse(JSON.parse(file.contents.toString("utf8")));
  if (journal.id !== job.id || journal.userData !== job.userData) throw new Error();
  return {directory, journal};
+}
+
+/** Host/worker handoff identity. Never exposes paths or receipts to the renderer. */
+export async function inspectDesktopUpdateJob(job: DesktopUpdateJob) {
+ try {
+  const {journal} = await load(job);
+  if (journal.phase !== "completed") {
+   const status = await desktopStateTransactionStatus(job.userData, journal.state);
+   if (status !== "active" && journal.phase !== "finishing") throw new Error();
+  }
+  const identity = {schemaVersion: journal.schemaVersion, id: journal.id, userData: journal.userData, state: journal.state, application: journal.application};
+  return {phase: journal.phase, digest: createHash("sha256").update(JSON.stringify(identity)).digest("hex")};
+ } catch {throw new Error("UPDATE_JOB_INVALID");}
 }
 
 /** After state recovery is armed, before launch. The host supplies both receipts. */
