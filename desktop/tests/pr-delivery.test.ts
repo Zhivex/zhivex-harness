@@ -1,33 +1,49 @@
-import {test,expect} from "bun:test";
-import {mkdtemp,rm,readFile} from "node:fs/promises";
-import {PullRequestRejectedError,openPullRequestDelivery,type PullRequestInput,type PullRequestRecord,type PullRequestTransport} from "../src/pr-delivery.js";
-import type {PushSnapshot} from "../src/remote-delivery.js";
-const head="a".repeat(40),base="b".repeat(40),other="c".repeat(40);
-const input:PullRequestInput={destination:{remote:"origin",url:"https://github.com/fixture/repository.git",ref:"refs/heads/feat/task",baseRef:"refs/heads/main"},title:"Reviewed title",body:"Reviewed body",draft:true};
-async function fixture(){const directory=await mkdtemp("/tmp/har-pr-"),records:PullRequestRecord[]=[];let sends=0,lost=false,offline=false,race=false;
- const snapshot:PushSnapshot={branch:input.destination.ref,head,remoteHead:head,baseHead:base,destination:input.destination,fastForward:true,stagedPaths:[],commits:[{id:head,message:"reviewed change",files:[{path:"a.txt",before:"before\n",after:"after\n",beforeMode:"100644",afterMode:"100644",parent:base}]}]};
- const transport:PullRequestTransport={inspect:async()=>structuredClone(snapshot),list:async()=>{if(offline)throw new Error("OFFLINE");return structuredClone(records);},create:async proposal=>{sends++;if(offline)throw new Error("OFFLINE");const result:PullRequestRecord={number:records.length+1,url:`https://github.com/fixture/repository/pull/${records.length+1}`,head:race?other:head,base,headRef:"feat/task",baseRef:"main",title:proposal.title,body:proposal.body,draft:proposal.draft,state:"open"};records.push(result);if(lost)throw new Error("LOST_RESPONSE");return structuredClone(result);}};
- return{directory,records,snapshot,transport,manager:await openPullRequestDelivery(directory,transport),sends:()=>sends,lose:()=>{lost=true;},race:()=>{race=true;},offline:()=>{offline=true;},close:()=>rm(directory,{recursive:true,force:true})};}
-test("lost PR creation response reconciles one exact proposal without duplicates across restart",async()=>{const f=await fixture();try{
- const review=await f.manager.review(input);expect(review.title).toBe(input.title);expect(review.body).toBe(input.body);f.lose();const operation=await f.manager.create(review.ticketId);expect(operation.status).toBe("completed");expect(operation.result?.url).toBe("https://github.com/fixture/repository/pull/1");expect(await f.manager.create(review.ticketId)).toEqual(operation);const reopened=await openPullRequestDelivery(f.directory,f.transport);expect(await reopened.create(review.ticketId)).toEqual(operation);expect(f.sends()).toBe(1);expect(f.records).toHaveLength(1);await expect(reopened.review(input)).rejects.toThrow("PR_ALREADY_EXISTS");
- }finally{await f.close();}});
-test("existing PRs and changed remote snapshots refuse creation",async()=>{const f=await fixture();try{
- let review=await f.manager.review(input);f.snapshot.baseHead=other;await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_REVIEW_CHANGED");f.snapshot.baseHead=base;review=await f.manager.review(input);f.snapshot.remoteHead=other;await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_HEAD_NOT_PUBLISHED");f.snapshot.remoteHead=head;review=await f.manager.review(input);f.records.push({number:1,url:"https://github.com/fixture/repository/pull/1",head,base,headRef:"feat/task",baseRef:"main",title:"Other actor",body:"Other",draft:false,state:"open"});await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_REVIEW_CHANGED");expect(f.sends()).toBe(0);
- }finally{await f.close();}});
-test("a branch advancing during creation returns the PR for review without another request",async()=>{const f=await fixture();try{
- const review=await f.manager.review(input);f.race();const operation=await f.manager.create(review.ticketId);expect(operation.status).toBe("needs-review");expect(operation.result?.head).toBe(other);expect(operation.head).toBe(head);expect(await f.manager.reconcile(review.ticketId)).toEqual(operation);expect(f.sends()).toBe(1);
- }finally{await f.close();}});
-test("unknown creation outcome stays durable and never replays POST",async()=>{const f=await fixture();try{
- const transport:PullRequestTransport={...f.transport,create:async()=>{f.offline();return f.transport.create(input);}};const manager=await openPullRequestDelivery(f.directory,transport);const review=await manager.review(input);await expect(manager.create(review.ticketId)).rejects.toThrow("OFFLINE");expect(f.sends()).toBe(1);const saved=JSON.parse(await readFile(`${f.directory}/${review.ticketId}.json`,"utf8"));expect(saved.status).toBe("prepared");expect(JSON.stringify(saved)).not.toContain(input.body);await expect(manager.create(review.ticketId)).rejects.toThrow("OFFLINE");expect(f.sends()).toBe(1);
- }finally{await f.close();}});
-test("raw multiline secrets and unsafe history are rejected before review",async()=>{const f=await fixture();try{
- const manager=await openPullRequestDelivery(f.directory,f.transport,["private\nvalue"]);await expect(manager.review({...input,body:"private\nvalue"})).rejects.toThrow("PR_SECRET_DETECTED");f.snapshot.commits[0]!.files[0]!.path=".env";await expect(manager.review(input)).rejects.toThrow("PR_PATH_BLOCKED");expect(f.sends()).toBe(0);
- }finally{await f.close();}});
-test("closed historical PRs are excluded while a newly created closed PR still reconciles",async()=>{const f=await fixture();try{
- f.records.push({number:1,url:"https://github.com/fixture/repository/pull/1",head,base,headRef:"feat/task",baseRef:"main",title:input.title,body:input.body,draft:true,state:"closed"});
- const transport:PullRequestTransport={...f.transport,create:async proposal=>{await f.transport.create(proposal);f.records[1]!.state="closed";throw new Error("LOST_RESPONSE");}};const manager=await openPullRequestDelivery(f.directory,transport);const review=await manager.review(input);const result=await manager.create(review.ticketId);expect(result.status).toBe("completed");expect(result.result?.number).toBe(2);expect(result.knownNumbers).toEqual([1]);expect(await manager.create(review.ticketId)).toEqual(result);expect(f.sends()).toBe(1);
- }finally{await f.close();}});
+import { test, expect } from "bun:test";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { PullRequestRejectedError, openPullRequestDelivery, type PullRequestInput, type PullRequestRecord, type PullRequestTransport } from "../src/pr-delivery.js";
+import type { PushSnapshot } from "../src/remote-delivery.js";
+const head = "a".repeat(40), base = "b".repeat(40), other = "c".repeat(40);
+const input: PullRequestInput = { destination: { remote: "origin", url: "https://github.com/fixture/repository.git", ref: "refs/heads/feat/task", baseRef: "refs/heads/main" }, title: "Reviewed title", body: "Reviewed body", draft: true };
+async function fixture() {
+    const directory = await mkdtemp("/tmp/har-pr-"), records: PullRequestRecord[] = []; let sends = 0, lost = false, offline = false, race = false;
+    const snapshot: PushSnapshot = { branch: input.destination.ref, head, remoteHead: head, baseHead: base, destination: input.destination, fastForward: true, stagedPaths: [], commits: [{ id: head, message: "reviewed change", files: [{ path: "a.txt", before: "before\n", after: "after\n", beforeMode: "100644", afterMode: "100644", parent: base }] }] };
+    const transport: PullRequestTransport = { inspect: async () => structuredClone(snapshot), list: async () => { if (offline) throw new Error("OFFLINE"); return structuredClone(records); }, create: async proposal => { sends++; if (offline) throw new Error("OFFLINE"); const result: PullRequestRecord = { number: records.length + 1, url: `https://github.com/fixture/repository/pull/${records.length + 1}`, head: race ? other : head, base, headRef: "feat/task", baseRef: "main", title: proposal.title, body: proposal.body, draft: proposal.draft, state: "open" }; records.push(result); if (lost) throw new Error("LOST_RESPONSE"); return structuredClone(result); } };
+    return { directory, records, snapshot, transport, manager: await openPullRequestDelivery(directory, transport), sends: () => sends, lose: () => { lost = true; }, race: () => { race = true; }, offline: () => { offline = true; }, close: () => rm(directory, { recursive: true, force: true }) };
+}
+test("lost PR creation response reconciles one exact proposal without duplicates across restart", async () => {
+    const f = await fixture(); try {
+        const review = await f.manager.review(input); expect(review.title).toBe(input.title); expect(review.body).toBe(input.body); f.lose(); const operation = await f.manager.create(review.ticketId); expect(operation.status).toBe("completed"); expect(operation.result?.url).toBe("https://github.com/fixture/repository/pull/1"); expect(await f.manager.create(review.ticketId)).toEqual(operation); const reopened = await openPullRequestDelivery(f.directory, f.transport); expect(await reopened.create(review.ticketId)).toEqual(operation); expect(f.sends()).toBe(1); expect(f.records).toHaveLength(1); await expect(reopened.review(input)).rejects.toThrow("PR_ALREADY_EXISTS");
+    } finally { await f.close(); }
+});
+test("existing PRs and changed remote snapshots refuse creation", async () => {
+    const f = await fixture(); try {
+        let review = await f.manager.review(input); f.snapshot.baseHead = other; await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_REVIEW_CHANGED"); f.snapshot.baseHead = base; review = await f.manager.review(input); f.snapshot.remoteHead = other; await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_HEAD_NOT_PUBLISHED"); f.snapshot.remoteHead = head; review = await f.manager.review(input); f.records.push({ number: 1, url: "https://github.com/fixture/repository/pull/1", head, base, headRef: "feat/task", baseRef: "main", title: "Other actor", body: "Other", draft: false, state: "open" }); await expect(f.manager.create(review.ticketId)).rejects.toThrow("PR_REVIEW_CHANGED"); expect(f.sends()).toBe(0);
+    } finally { await f.close(); }
+});
+test("a branch advancing during creation returns the PR for review without another request", async () => {
+    const f = await fixture(); try {
+        const review = await f.manager.review(input); f.race(); const operation = await f.manager.create(review.ticketId); expect(operation.status).toBe("needs-review"); expect(operation.result?.head).toBe(other); expect(operation.head).toBe(head); expect(await f.manager.reconcile(review.ticketId)).toEqual(operation); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});
+test("unknown creation outcome stays durable and never replays POST", async () => {
+    const f = await fixture(); try {
+        const transport: PullRequestTransport = { ...f.transport, create: async () => { f.offline(); return f.transport.create(input); } }; const manager = await openPullRequestDelivery(f.directory, transport); const review = await manager.review(input); await expect(manager.create(review.ticketId)).rejects.toThrow("OFFLINE"); expect(f.sends()).toBe(1); const saved = JSON.parse(await readFile(`${f.directory}/${review.ticketId}.json`, "utf8")); expect(saved.status).toBe("prepared"); expect(JSON.stringify(saved)).not.toContain(input.body); await expect(manager.create(review.ticketId)).rejects.toThrow("OFFLINE"); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});
+test("raw multiline secrets and unsafe history are rejected before review", async () => {
+    const f = await fixture(); try {
+        const manager = await openPullRequestDelivery(f.directory, f.transport, ["private\nvalue"]); await expect(manager.review({ ...input, body: "private\nvalue" })).rejects.toThrow("PR_SECRET_DETECTED"); f.snapshot.commits[0]!.files[0]!.path = ".env"; await expect(manager.review(input)).rejects.toThrow("PR_PATH_BLOCKED"); expect(f.sends()).toBe(0);
+    } finally { await f.close(); }
+});
+test("closed historical PRs are excluded while a newly created closed PR still reconciles", async () => {
+    const f = await fixture(); try {
+        f.records.push({ number: 1, url: "https://github.com/fixture/repository/pull/1", head, base, headRef: "feat/task", baseRef: "main", title: input.title, body: input.body, draft: true, state: "closed" });
+        const transport: PullRequestTransport = { ...f.transport, create: async proposal => { await f.transport.create(proposal); f.records[1]!.state = "closed"; throw new Error("LOST_RESPONSE"); } }; const manager = await openPullRequestDelivery(f.directory, transport); const review = await manager.review(input); const result = await manager.create(review.ticketId); expect(result.status).toBe("completed"); expect(result.result?.number).toBe(2); expect(result.knownNumbers).toEqual([1]); expect(await manager.create(review.ticketId)).toEqual(result); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});
 
-test("definitive API rejection permits a new review without replaying the rejected operation",async()=>{const f=await fixture();try{
- let attempts=0;const transport:PullRequestTransport={...f.transport,create:async value=>{attempts++;if(attempts===1)throw new PullRequestRejectedError();return f.transport.create(value);}};const manager=await openPullRequestDelivery(f.directory,transport);const first=await manager.review(input);expect((await manager.create(first.ticketId)).status).toBe("rejected");expect((await manager.create(first.ticketId)).status).toBe("rejected");expect(attempts).toBe(1);const next=await manager.review(input);expect((await manager.create(next.ticketId)).status).toBe("completed");expect(attempts).toBe(2);expect(f.records).toHaveLength(1);
- }finally{await f.close();}});
+test("definitive API rejection permits a new review without replaying the rejected operation", async () => {
+    const f = await fixture(); try {
+        let attempts = 0; const transport: PullRequestTransport = { ...f.transport, create: async value => { attempts++; if (attempts === 1) throw new PullRequestRejectedError(); return f.transport.create(value); } }; const manager = await openPullRequestDelivery(f.directory, transport); const first = await manager.review(input); expect((await manager.create(first.ticketId)).status).toBe("rejected"); expect((await manager.create(first.ticketId)).status).toBe("rejected"); expect(attempts).toBe(1); const next = await manager.review(input); expect((await manager.create(next.ticketId)).status).toBe("completed"); expect(attempts).toBe(2); expect(f.records).toHaveLength(1);
+    } finally { await f.close(); }
+});
