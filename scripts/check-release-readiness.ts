@@ -3,6 +3,7 @@ import path from "node:path";
 import { readRegularFileNoFollow } from "../src/file-security.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 import { assertHarnessReleaseChannel, parseHarnessReleaseVersion } from "./release-policy.js";
+import { parseRepresentativeEvidenceAssemblyMatrix } from "./assemble-representative-evidence.js";
 
 interface CommandResult {
   exitCode: number;
@@ -70,6 +71,17 @@ const failures: string[] = [];
 const manifest = JSON.parse(
   await readReleaseText("package.json")
 ) as PackageManifest;
+
+try {
+  const matrix = parseRepresentativeEvidenceAssemblyMatrix(JSON.parse(
+    await readReleaseText("evaluations/representative-assembly-matrix.json")
+  ));
+  if (!matrix.releaseTags.includes(`v${manifest.version}`)) {
+    failures.push(`representative assembly matrix must pin models for v${manifest.version}`);
+  }
+} catch (error) {
+  failures.push(`invalid representative assembly matrix: ${error instanceof Error ? error.message : String(error)}`);
+}
 
 if (manifest.name !== PACKAGE_NAME) {
   failures.push(`package name must be ${PACKAGE_NAME}`);

@@ -312,7 +312,11 @@ export const runGovernedTimeToSafeFixProfile = async (
       timeoutMs: config.timeoutMs,
       compactionMaxMessages: request.profile === "optimized" ? 10 : 16,
       compactionMaxEstimatedInputTokens: request.profile === "optimized" ? 8_000 : 12_000,
-      compactionKeepRecentMessages: request.profile === "optimized" ? 4 : 6,
+      // Keep the latest call/result group literal; older tool output belongs in
+      // the bounded summary. Six verbose Qwen messages can exceed the entire
+      // 12k input budget even after the historical prefix has been compacted.
+      // The SDK expands this boundary to preserve correlated tool groups.
+      compactionKeepRecentMessages: request.profile === "optimized" ? 4 : 2,
       subagentProfiles: [],
       store: createInMemoryAgentRunStore(),
       env: config.env ?? process.env,

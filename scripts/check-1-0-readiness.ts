@@ -333,7 +333,13 @@ try {
   if (JSON.stringify(assemblyMatrix.expectedCases) !== JSON.stringify(evaluations.expectedCases)) {
     failures.push("representative evaluation expectedCases drifted from its assembly matrix");
   }
-  if (JSON.stringify(assemblyMatrix.expectedModels) !== JSON.stringify(evaluations.expectedModels)) {
+  // The shared assembly matrix also certifies later releases. Keep the 1.0
+  // evidence bound to its original model pins without rewriting its history.
+  const historicalTags = new Set(
+    (evaluations.expectedModels as { releaseTag: string }[]).map((pin) => pin.releaseTag)
+  );
+  if (JSON.stringify(assemblyMatrix.expectedModels.filter((pin) => historicalTags.has(pin.releaseTag))) !==
+    JSON.stringify(evaluations.expectedModels)) {
     failures.push("representative evaluation expectedModels drifted from its assembly matrix");
   }
 } catch (error) {
@@ -377,11 +383,13 @@ for (const candidate of candidates) {
     );
   }
 }
-if (assemblyMatrix && JSON.stringify(assemblyMatrix.releaseTags) !==
-  JSON.stringify([
-    ...candidates.map((candidate) => `v${String(candidate.version)}`),
-    `v${String(readiness.targetVersion)}`
-  ])) {
+const historicalReleaseTags = [
+  ...candidates.map((candidate) => `v${String(candidate.version)}`),
+  `v${String(readiness.targetVersion)}`
+];
+if (assemblyMatrix && JSON.stringify(
+  assemblyMatrix.releaseTags.filter((tag) => historicalReleaseTags.includes(tag))
+) !== JSON.stringify(historicalReleaseTags)) {
   failures.push("representative assembly releaseTags must cover the readiness candidate sequence and stable target");
 }
 const blockers = Array.isArray(readiness.blockers) ? readiness.blockers as JsonObject[] : [];

@@ -16,7 +16,8 @@
     "v1.0.0-rc.12",
     "v1.0.0-rc.13",
     "v1.0.0-rc.14",
-    "v1.0.0"
+    "v1.0.0",
+    "v1.1.0-rc.1"
   ],
   "expectedModels": [
     {
@@ -133,6 +134,14 @@
     },
     {
       "releaseTag": "v1.0.0",
+      "models": {
+        "meta": "muse-spark-1.2",
+        "qwen": "qwen3.8-max",
+        "openai": "gpt-5.6-luna"
+      }
+    },
+    {
+      "releaseTag": "v1.1.0-rc.1",
       "models": {
         "meta": "muse-spark-1.2",
         "qwen": "qwen3.8-max",
