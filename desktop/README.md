@@ -22,9 +22,11 @@ can browse history but cannot send a task. Cancel stops active work; it does not
 
 ## Conversations and changes
 
-Use the sidebar to find saved conversations. Conversations and pending approvals
-survive restarts. The top panels provide Git delivery (**Entrega Git**), isolated
-tasks (**Tareas aisladas**) and decision history (**Historial de decisiones**).
+Use the sidebar to find saved conversations. The **•••** menu lets you rename or
+archive a conversation locally; the **Archived** filter lets you restore it.
+Unsent drafts are saved per conversation and restored when you return. Conversations and pending approvals
+survive restarts. The top panels provide **Git delivery** and **Isolated tasks**; each run includes
+**Decision history**.
 Git delivery requires separate Git/GitHub authentication. Isolated tasks use
 worktrees from the current commit and do not copy uncommitted changes. Cleanup
 requires review and preserves the branch and conversations.

@@ -1,5 +1,6 @@
 import { constants as fsConstants } from "node:fs";
-import { lstat, mkdir, open, unlink } from "node:fs/promises";
+import { lstat, mkdir, open, unlink, rename } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 
@@ -7,6 +8,7 @@ import { z } from "zod";
 
 import {
   PROVIDERS,
+  providerAvailability,
   type HarnessConfigInput,
   type HarnessProvider
 } from "../runtime/config.js";
@@ -153,10 +155,10 @@ export const loadCliProfile = async (
   context: CliProfilePathContext = {}
 ): Promise<CliProfile> => {
   const profilePath = resolveCliProfilePath(name, context);
-  await validatePrivateDirectory(resolveCliProfileConfigDirectory(context));
-  await validatePrivateDirectory(path.dirname(profilePath));
   let file: Awaited<ReturnType<typeof readRegularFileNoFollow>>;
   try {
+    await validatePrivateDirectory(resolveCliProfileConfigDirectory(context));
+    await validatePrivateDirectory(path.dirname(profilePath));
     file = await readRegularFileNoFollow(profilePath, {
       label: `CLI profile ${name}`,
       maxBytes: MAX_CLI_PROFILE_BYTES,
@@ -219,7 +221,7 @@ export const createCliProfile = async (
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new HarnessConfigError(
-        `CLI profile already exists: ${profilePath}. Choose another --profile name.`
+        `CLI profile already exists: ${profilePath}. Use zhx init --profile ${name} --update, or choose another --profile name.`
       );
     }
     throw error;
@@ -246,6 +248,26 @@ export const createCliProfile = async (
   return { path: profilePath, profile };
 };
 
+/** Publish a complete, private replacement without truncating the current profile. */
+export const updateCliProfile = async (
+  name: string,
+  input: { provider: HarnessProvider; model: string },
+  context: CliProfilePathContext = {}
+) => {
+  await loadCliProfile(name, context);
+  const profilePath = resolveCliProfilePath(name, context);
+  const temporary = await createCliProfile(`update-${randomUUID()}`, input, context);
+  try {
+    await loadCliProfile(name, context);
+    await rename(temporary.path, profilePath);
+    return { path: profilePath, profile: temporary.profile };
+  } finally {
+    await unlink(temporary.path).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
+};
+
 export const applyCliProfile = async <T extends HarnessConfigInput & { profile?: string }>(
   options: T,
   context: CliProfilePathContext = {}
@@ -257,4 +279,21 @@ export const applyCliProfile = async <T extends HarnessConfigInput & { profile?:
     model: profile.model,
     ...options
   };
+};
+
+/** Shared defaults for the conversation and its diagnostic command. */
+export const resolveCliDefaults = async <T extends HarnessConfigInput & { profile?: string }>(
+  options: T, context: CliProfilePathContext = {}
+): Promise<T> => {
+  const env = context.env ?? process.env;
+  if (options.profile || options.provider || options.model || env.ZHIVEX_HARNESS_PROVIDER || env.ZHIVEX_HARNESS_MODEL) return options;
+  try {
+    await lstat(resolveCliProfilePath("default", context));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    const configured = providerAvailability(env).filter(provider => provider.configured);
+    return configured.length === 1 ? { ...options, provider: configured[0]!.id } : options;
+  }
+  // Preserve explicit profile identity for diagnostics and error recovery.
+  return { ...options, profile: "default" };
 };

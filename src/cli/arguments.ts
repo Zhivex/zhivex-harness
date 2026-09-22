@@ -37,6 +37,7 @@ export interface CliOptions {
   command: Command;
   helpTopic?: string;
   profile?: string;
+  updateProfile?: boolean;
   provider?: string;
   model?: string;
   workspace?: string;
@@ -49,6 +50,7 @@ export interface CliOptions {
   timeoutMs?: number;
   maxToolCalls?: number;
   maxToolErrors?: number;
+  unlimitedTokens?: boolean;
   maxInputTokens?: number;
   maxOutputTokens?: number;
   maxTotalTokens?: number;
@@ -158,6 +160,16 @@ const optionValue = (argv: string[], index: number, name: string) => {
 };
 
 export const parseCliArgs = (argv: string[]): CliOptions => {
+  const booleanOptions = new Set(["--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--update"]);
+  // Support shell-style --name=value without interpreting text after --.
+  const separator = argv.indexOf("--");
+  argv = argv.flatMap((arg, index) => {
+    const equals = arg.indexOf("=");
+    const name = arg.slice(0, equals);
+    return (separator < 0 || index < separator) && equals > 0 &&
+      name in CLI_OPTION_DEFINITIONS && !booleanOptions.has(name)
+      ? [name, arg.slice(equals + 1)] : [arg];
+  });
   let command: Command = "run";
   let commandWasExplicit = false;
   const positional: string[] = [];
@@ -174,6 +186,30 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   };
   let positionalOnly = false;
   const optionCounts = new Map<string, number>();
+
+  // Appending --help to a failing invocation must not validate its runtime inputs.
+  const helpIndex = argv.findIndex((arg, index) => (arg === "--help" || arg === "-h") &&
+    (argv.indexOf("--") < 0 || index < argv.indexOf("--")));
+  if (helpIndex >= 0) {
+    const words: string[] = [];
+    for (let index = 0; index < argv.length && argv[index] !== "--"; index++) {
+      const arg = argv[index]!;
+      if (arg.startsWith("-")) {
+        if (arg in CLI_OPTION_DEFINITIONS && !booleanOptions.has(arg) &&
+            argv[index + 1] && !argv[index + 1]!.startsWith("-")) index++;
+      } else words.push(arg);
+    }
+    const first = words[0];
+    const parts = first === "help" ? words.slice(1) :
+      first && COMMANDS.has(first as Command)
+        ? words.slice(0, ["runs", "sessions", "changes", "state"].includes(first) ? 2 : 1) : [];
+    try {
+      const topic = resolveHelpTopic(parts, parts.length > 0);
+      return { ...options, command: "help", ...(topic ? { helpTopic: topic } : {}) };
+    } catch (error) {
+      throw new CliUsageError(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -204,6 +240,12 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
 
     switch (argument) {
+      case "--update":
+        options.updateProfile = true;
+        break;
+      case "-":
+        positional.push(argument);
+        break;
       case "--profile":
         try {
           options.profile = validateCliProfileName(optionValue(argv, index, argument));
@@ -254,6 +296,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--context-config":
         options.contextConfigPath = optionValue(argv, index, argument);
         index += 1;
+        break;
+      case "--no-token-budget":
+        options.unlimitedTokens = true;
         break;
       case "--no-project-context":
         options.projectContext = false;
@@ -670,6 +715,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       throw new CliUsageError(`state ${stateCommand} received unexpected positional arguments.`);
     }
   } else if (options.command === "run" || options.command === "review") {
+    if (positional.includes("-") && positional.length !== 1) {
+      throw new CliUsageError("Use - alone to read the task from stdin, or provide a task argument.");
+    }
     const prompt = positional.join(" ").trim();
     if (prompt) {
       options.prompt = prompt;

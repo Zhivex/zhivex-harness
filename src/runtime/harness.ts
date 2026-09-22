@@ -6,7 +6,8 @@ import { runtimeCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-check
 import { MODEL_BUDGET_KEY, createModelBudget, workBudgetReached } from "./model-budget.js";
 import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY } from "../context/task-memory.js";
-import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources, summarizeHarnessMessages } from "../context/compaction.js";
+import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources } from "../context/compaction.js";
+import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { settleInterruptedRun } from "./run-interruption.js";
@@ -36,7 +37,7 @@ import {
   type AgentTelemetryObserver,
   type AgentTraceCollector
 } from "@zhivex-ai/agents/ops";
-import { wrapLanguageModel, serializeJsonValue, type ModelMessage } from "@zhivex-ai/core";
+import { wrapLanguageModel, serializeJsonValue, toToolSet, type ModelMessage } from "@zhivex-ai/core";
 import {
   createProviderModel,
   DEFAULT_PROVIDER_REGISTRY,
@@ -121,7 +122,7 @@ const createHarnessBinding = (
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
       toolContractVersion: TOOL_CONTRACT_VERSION,
-      compactionStrategy: `${COMPACTION_STRATEGY}:sdk-compaction-v1`,
+      compactionStrategy: `${COMPACTION_STRATEGY}:adaptive-tokens-v1`,
       workspace: config.workspace,
       provider: config.provider,
       model: config.model,
@@ -249,16 +250,9 @@ export interface HarnessRunOptions {
   maxTerminalVerificationRetries?: number;
 }
 
-export const estimateMessageTokens = (messages: readonly ModelMessage[]) =>
-  Math.max(1, Math.ceil(JSON.stringify(messages).length / 4));
+export const estimateMessageTokens = (messages: readonly ModelMessage[]) => estimateMessages(messages);
 
 export const compactHarnessMessages = (messages: readonly ModelMessage[]): ModelMessage[] => compactMessages(messages);
-
-const createHarnessCompactor = () => async ({ messages }: { messages: ModelMessage[] }) => {
-  const budget = Math.max(128, Math.min(4_000, Math.floor(JSON.stringify(messages).length / 2)));
-  const { summary, truncated } = summarizeHarnessMessages(messages, budget);
-  return { summary, metadata: { strategy: COMPACTION_STRATEGY, sourceMessages: messages.length, truncated } };
-};
 
 const createCostGuardrails = (config: HarnessConfig) => {
   if (!config.costBudget) {
@@ -472,11 +466,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     subagents: subagentRuntime.definitions,
     harness: binding,
     ...(executionEnvironment ? { executionEnvironment } : {}),
-    compaction: {
-      ...config.compaction,
-      estimateTokens: estimateMessageTokens,
-      compactor: createHarnessCompactor()
-    },
+    compaction: createAdaptiveCompaction(config.compaction, { tools }),
     policy: {
       timeoutMs: config.timeoutMs,
       allowLegacyHarnessResume: true,
@@ -980,7 +970,8 @@ const runHarnessInternal = async (
   let policyProgress: ReturnType<typeof createRepairProgress> | undefined;
   const approvalTimings: { durationMs: number; resolved: boolean }[] = [];
   if (harness.config.agentProfile === "repair") {
-    const limits = { inputTokens: harness.config.budget.maxInputTokens, outputTokens: harness.config.budget.maxOutputTokens };
+    const limits = { inputTokens: harness.config.budget.unlimitedTokens ? Infinity : harness.config.budget.maxInputTokens,
+      outputTokens: harness.config.budget.unlimitedTokens ? Infinity : harness.config.budget.maxOutputTokens };
     const metadata = ("state" in input ? input.state.metadata : input.metadata) ?? {};
     policyController = createRepairController(metadata, harness.config.execution.backend === "oci", {
       requireVerifiedDelivery: harness.config.requireVerifiedDelivery,
@@ -1001,8 +992,16 @@ const runHarnessInternal = async (
     const store = runtimeCheckpointStore(harness.store, runId, policyBudget, policyProgress, policyController);
     harness = { ...harness, store, agent: new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), tools, store,
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
-      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them." }) };
+      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
     input = { ...input, toolExecution: { parallel: false, stopOnError: false, validationErrorMode: "tool-result", unknownToolMode: "tool-result", ...input.toolExecution } };
+  }
+  if (input.compaction === undefined) {
+    input = { ...input, compaction: createAdaptiveCompaction(harness.config.compaction, {
+      tools: toToolSet(input.tools ?? harness.agent.tools) ?? {},
+      remainingInputTokens: () => harness.config.budget.unlimitedTokens ? Infinity :
+        Math.max(0, harness.config.budget.maxInputTokens - (policyBudget?.stats.inputTokens ??
+          ("state" in input ? input.state.usage?.inputTokens ?? 0 : 0)))
+    }) };
   }
   const reportDiagnostics = () => { try { options.onDiagnostics?.({ profile: harness.config.agentProfile, approvalTimings,
     ...(policyBudget ? { budget: policyBudget.stats, modelTimings: policyBudget.modelTimings, contextMetrics: policyBudget.contextMetrics } : {}),

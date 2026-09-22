@@ -11,6 +11,8 @@ export interface CredentialInput {
   secret(prompt: string): Promise<string>;
 }
 export type EntryFactory = (provider: string) => Promise<SecretEntry>;
+export type CredentialStatus = { source: "environment" | "temporary" | "keychain" | "missing" | "unavailable" | "blocked"; configured: boolean };
+export class CredentialSetupError extends Error {}
 export const credentialService = "ai.zhivex.harness.cli";
 export const validCredential = (value: string) => /^[\x21-\x7e]{1,8192}$/.test(value);
 
@@ -50,11 +52,51 @@ export class CliCredentials {
       return value == null ? undefined : this.validate(value);
     } catch { throw new Error("Secure storage is unavailable or locked. Unlock it, use a temporary key, or configure the environment."); }
   }
+  private readonly sources = new Map<string, CredentialStatus["source"]>();
+  source(provider: HarnessProvider) { return this.sources.get(provider) ?? "missing"; }
+  private endpointOverride(provider: HarnessProvider) {
+    const variables: Record<string, string[]> = {
+      openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
+      qwen: ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID"],
+    };
+    return (variables[provider] ?? []).some(name => this.environment[name]?.trim());
+  }
+  /** Presence only: never contacts a provider or returns a secret. */
+  async inspect(provider: HarnessProvider): Promise<CredentialStatus> {
+    if (this.environmentKey(provider)) return { source: "environment", configured: true };
+    if (this.endpointOverride(provider)) return { source: "blocked", configured: false };
+    if (this.temporary.has(provider)) return { source: "temporary", configured: true };
+    try { return await this.saved(provider) ? { source: "keychain", configured: true } : { source: "missing", configured: false }; }
+    catch { return { source: "unavailable", configured: false }; }
+  }
   async configure(provider: HarnessProvider, input: CredentialInput): Promise<boolean> {
+    for (;;) {
+      try { return await this.configureOnce(provider, input); }
+      catch (error) {
+        if (!(error instanceof CredentialSetupError) && !(error instanceof Error && error.name === "AbortError")) throw error;
+        this.write(error instanceof CredentialSetupError ? `${error.message}\n` : "Key entry cancelled.\n");
+        const action = await input.select("Credentials / Recovery", [
+          { value: "temporary", label: "Use a temporary key", detail: "Enter a key for this CLI session only" },
+          { value: "retry", label: "Retry credential setup" },
+          { value: "cancel", label: "Cancel setup" },
+        ]);
+        if (!action || action === "cancel") return false;
+        if (action === "temporary") {
+          // Storage mode changes only after an explicit selection.
+          try { return await this.configureOnce(provider, input, "temporary"); }
+          catch (retryError) {
+            if (!(retryError instanceof CredentialSetupError) && !(retryError instanceof Error && retryError.name === "AbortError")) throw retryError;
+            this.write("Temporary key entry was not completed. Try again or go back.\n");
+          }
+        }
+      }
+    }
+  }
+  private async configureOnce(provider: HarnessProvider, input: CredentialInput, mode?: "temporary"): Promise<boolean> {
     if (this.environmentKey(provider)) {
       this.write("An environment key takes precedence. Remove it from the launching shell to use managed credentials.\n");
     }
-    const action = await input.select(`Credentials / ${provider}`, [
+    const action = mode ?? await input.select(`Credentials / ${provider}`, [
       { value: "save", label: "Save or replace in system keychain" },
       { value: "temporary", label: "Temporary key for this CLI session" },
       { value: "delete", label: "Remove saved and temporary key" },
@@ -77,14 +119,15 @@ export class CliCredentials {
     let target: SecretEntry | undefined;
     if (action === "save") {
       try { target = await this.entry(provider); }
-      catch { this.write("Secure storage is unavailable. Choose temporary use or configure an environment key.\n"); return false; }
+      catch { throw new CredentialSetupError("Secure storage is unavailable. Unlock it and retry, or choose temporary use."); }
     }
     let secret = await input.secret("API key (hidden; Enter submits, Ctrl+C cancels): ");
     if (!secret) return false;
-    secret = this.validate(secret);
+    try { secret = this.validate(secret); }
+    catch { throw new CredentialSetupError("Invalid API key. Enter printable characters without whitespace."); }
     if (action === "save") {
       try { await target!.setPassword(secret); }
-      catch { throw new Error("API key was not saved: secure storage is unavailable or locked. No plaintext fallback was used."); }
+      catch { throw new CredentialSetupError("API key was not saved: secure storage is unavailable or locked. No plaintext fallback was used."); }
       this.temporary.delete(provider);
       this.write("API key saved in the system keychain.\n");
     } else {
@@ -95,14 +138,10 @@ export class CliCredentials {
     return true;
   }
   async providerEnvironment(provider: HarnessProvider, input: CredentialInput): Promise<NodeJS.ProcessEnv> {
-    if (this.environmentKey(provider)) return { ...this.environment };
+    if (this.environmentKey(provider)) { this.sources.set(provider, "environment"); return { ...this.environment }; }
     // Managed credentials must not be redirected by shell-defined endpoint overrides.
-    const endpointVariables: Record<string, string[]> = {
-      openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
-      qwen: ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID"],
-    };
-    if ((endpointVariables[provider] ?? []).some(name => this.environment[name]?.trim())) {
-      throw new Error("Managed keys require the provider's default endpoint. Remove endpoint overrides or supply an explicit environment key.");
+    if (this.endpointOverride(provider)) {
+      throw new CredentialSetupError("Managed keys require the provider's default endpoint. Remove endpoint overrides or supply an explicit environment key.");
     }
     let key = this.temporary.get(provider);
     if (!key) {
@@ -111,14 +150,15 @@ export class CliCredentials {
     }
     if (!key) {
       this.write(`No API key available for ${provider}.\n`);
-      if (!await this.configure(provider, input)) throw new Error("Credential setup cancelled. No provider request was sent.");
+      if (!await this.configure(provider, input)) throw new CredentialSetupError("Credential setup cancelled. No provider request was sent.");
       key = this.temporary.get(provider) ?? await this.saved(provider);
     }
-    if (!key) throw new Error("No API key available. No provider request was sent.");
+    if (!key) throw new CredentialSetupError("No API key available. No provider request was sent.");
+    this.sources.set(provider, this.temporary.has(provider) ? "temporary" : "keychain");
     const name = providerDescriptor(provider).credentialNames[0]!;
     return { ...this.environment, [name]: key };
   }
-  clear() { this.temporary.clear(); }
+  clear() { this.temporary.clear(); this.sources.clear(); }
 }
 
 /** Keep provider error payloads out of durable runs when they can contain a key. */

@@ -275,6 +275,9 @@ export const chat = async (options: CliOptions) => {
     ...(session.title ? { sessionTitle: session.title } : {}),
   }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
 
+  process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
+  process.stderr.write(options.yes ? "Automatic approvals are enabled.\n" : "Changes require your approval.\n");
+
   const showSessionState = async () => {
     await hasActiveTurn();
     const state = await latestState(await refreshSession());

@@ -12,6 +12,7 @@ Everyday commands:
   zhx --session <id>                Reopen a selected conversation
   zhx init [--profile <name>] [--provider <id>] [--model <id>]
   zhx run [options] "task"
+  zhx run [options] -              Read a UTF-8 task from stdin (up to 1 MiB)
   zhx review [options] "review task"
   zhx chat [options] [--continue|--session <id>]
   zhx providers [--json]
@@ -33,6 +34,7 @@ The long command zhivex-harness remains supported for compatibility.
 
 Options (automation and advanced configuration):
   --profile <name>                Explicit personal provider/model profile
+  --update                       Update an existing profile (init only)
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
   --route <role=provider[:model]> Route a subagent role; repeatable
@@ -69,6 +71,7 @@ Options (automation and advanced configuration):
   --max-steps <1-50>             Maximum agent steps (default: 12)
   --max-tool-calls <n>           Maximum tool calls (default: 32)
   --max-tool-errors <n>          Maximum failed tool calls (default: 4)
+  --no-token-budget             Disable cumulative token budgets for main run and subagents
   --max-input-tokens <n>         Maximum measured input tokens (default: 100000)
   --max-output-tokens <n>        Maximum measured output tokens (default: 30000)
   --max-total-tokens <n>         Maximum total tokens (default: 120000)

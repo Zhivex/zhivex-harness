@@ -85,7 +85,7 @@ identifies the last returned line so ordinary reads can continue from the next l
 not treat that clipped text as the entire source line. Search an exact file to locate
 relevant short excerpts instead of repeatedly reading a large file.
 
-Conversation compaction uses `bounded-evidence-v3`. It retains a redacted excerpt of
+Conversation compaction uses `bounded-evidence-v5`. It retains a redacted excerpt of
 the initial user objective, recent conversation excerpts, bounded local-tool path
 and digest evidence, and a separate short history of check exit codes, timeouts,
 and tool failures. These are recollections, not approvals or verification receipts.
@@ -94,6 +94,33 @@ noise. The latest three subsequent user excerpts are retained separately from
 assistant chatter, redacted and bounded to 512 characters each. They share the
 existing total summary budget and remain untrusted context. Interactive summaries
 can carry this structure across subsequent compactions.
+
+The latest successful `repair_plan` is retained separately from assistant chatter,
+with bounded hypothesis, expected behavior, next check, and safe relative paths.
+It remains model-authored recollection, never authorization or a verification receipt.
+Older v1-v4 summaries remain readable. Original requests remain recoverable with
+`read_task`; a summary is not a replacement for full acceptance criteria.
+
+Automatic compaction uses `adaptive-tokens-v1`. The configured recent-message count
+is an upper target: the runtime selects a smaller complete tail when its estimated
+size exceeds the token target. Calls/results and provider approval groups remain
+correlated; pending approvals and durable compaction records remain SDK-owned.
+The target is 65% of the trigger after allowing for system instructions, tools and
+the summary. A protected newest group that cannot fit still fails closed.
+
+Compaction and transport budgets share the same character-based estimator
+(characters / 3 plus envelope allowance), not a provider tokenizer. Tool schemas
+are measured separately from the configured message ceiling. Repair runs reduce
+the trigger as remaining cumulative input allowance shrinks, aiming to leave room
+for three requests; this does not increase budget ceilings. Unlimited-token mode
+keeps the configured context thresholds. Explicit per-run compaction overrides
+and `compaction: false` remain honored. No model context-window size is inferred.
+Schema serialization is cached by schema identity; messages and tool descriptions
+are measured anew. Transport accounting reuses its measurement for diagnostics.
+
+Discovery tools now default to ten matches for `search_files` and path-only
+`list_files` output. Request larger limits or `includeDigests: true` explicitly
+when needed. The underlying Workspace API defaults are unchanged.
 
 The summary additionally preserves up to eight deduplicated navigation references
 from successful local searches and reads, including nested `search_many` and
@@ -124,7 +151,7 @@ loop regressions. These checks do not measure model coding capability.
 
 ## Task continuity and repair policy (audit remediation)
 
-The `bounded-evidence-v4` summary remains lossy and bounded. Original operator
+The `bounded-evidence-v5` summary remains lossy and bounded. Original operator
 requests are stored separately in run metadata (`zhivexTaskSources`), redacted,
 deduplicated by digest and limited to 64 requests / 256000 UTF-8 bytes. Exceeding
 that bound is an explicit error. `read_task` reads 4000 characters at an offset

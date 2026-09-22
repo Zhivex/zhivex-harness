@@ -63,7 +63,8 @@ test("native missing-key null is treated as absence", async () => {
 test("unavailable storage never saves elsewhere and cannot leak backend errors", async () => {
   let output = "", asked = false;
   const store = new CliCredentials(async () => { throw new Error("sensitive backend detail"); }, {}, text => { output += text; });
-  const ui = { select: async () => "save", secret: async () => { asked = true; return "key"; } } as CredentialInput;
+  const choices = ["save", "cancel"];
+  const ui = { select: async () => choices.shift(), secret: async () => { asked = true; return "key"; } } as CredentialInput;
   expect(await store.configure("openai", ui)).toBe(false);
   expect(asked).toBe(false);
   expect(output).not.toContain("sensitive");
@@ -123,4 +124,45 @@ test("provider exceptions are scrubbed before generation and stream errors escap
   catch (error) { expect(String(error)).toContain("[REDACTED]"); expect(String(error)).not.toContain(secret); expect((error as Error).cause).toBeUndefined(); }
   try { for await (const _ of await model.stream!({messages:[]})) {} throw new Error("expected failure"); }
   catch (error) { expect(String(error)).toContain("[REDACTED]"); expect(String(error)).not.toContain(secret); expect((error as Error).cause).toBeUndefined(); }
+});
+
+
+test("failed keychain writes recover explicitly to a temporary key without leaking secrets", async () => {
+  let output = "";
+  const store = new CliCredentials(async () => ({
+    getPassword: async () => null,
+    setPassword: async () => { throw new Error("private-backend-secret"); },
+    deleteCredential: async () => false,
+  }), {}, text => { output += text; });
+  expect(await store.configure("qwen", fixture().ui(["save", "temporary"], "private-key"))).toBe(true);
+  expect(await store.inspect("qwen")).toEqual({ source: "temporary", configured: true });
+  expect((await store.providerEnvironment("qwen", fixture().ui([]))).DASHSCOPE_API_KEY).toBe("private-key");
+  expect(store.source("qwen")).toBe("temporary");
+  expect(output).not.toContain("private-key");
+  expect(output).not.toContain("private-backend-secret");
+});
+
+test("credential inspection distinguishes missing, saved, environment and blocked keys", async () => {
+  const f = fixture();
+  expect(await f.store.inspect("openai")).toEqual({ source: "missing", configured: false });
+  f.keys.set("openai", "saved-key");
+  expect(await f.store.inspect("openai")).toEqual({ source: "keychain", configured: true });
+  const env = fixture({ OPENAI_API_KEY: "env-key" });
+  expect(await env.store.inspect("openai")).toEqual({ source: "environment", configured: true });
+  expect(env.accesses()).toBe(0);
+  const blocked = fixture({ OPENAI_BASE_URL: "https://example.com" });
+  expect(await blocked.store.inspect("openai")).toEqual({ source: "blocked", configured: false });
+  expect(blocked.accesses()).toBe(0);
+});
+
+
+test("keychain setup can retry after unlock without changing storage mode", async () => {
+  let attempts = 0, saved = "";
+  const store = new CliCredentials(async () => {
+    if (++attempts === 1) throw new Error("locked");
+    return { getPassword: async () => saved, setPassword: async value => { saved = value; }, deleteCredential: async () => false };
+  }, {}, () => {});
+  expect(await store.configure("openai", fixture().ui(["save", "retry", "save"], "retry-key"))).toBe(true);
+  expect(saved).toBe("retry-key");
+  expect(await store.inspect("openai")).toEqual({ source: "keychain", configured: true });
 });

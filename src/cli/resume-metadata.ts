@@ -22,6 +22,7 @@ export const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput =>
   timeoutMs: config.timeoutMs,
   maxToolCalls: config.budget.maxToolCalls,
   maxToolErrors: config.budget.maxToolErrors,
+  ...(config.budget.unlimitedTokens !== undefined ? { unlimitedTokens: config.budget.unlimitedTokens } : {}),
   maxInputTokens: config.budget.maxInputTokens,
   maxOutputTokens: config.budget.maxOutputTokens,
   maxTotalTokens: config.budget.maxTotalTokens,

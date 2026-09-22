@@ -8,6 +8,11 @@ import {
   ShieldCheck,
   Square,
 } from "lucide-react";
+import {
+  readPreference,
+  writePreference,
+  eventPollDelay,
+} from "./local-preferences.js";
 import { ModelSelector } from "./ModelSelector.js";
 import { GitPanel } from "./GitPanel.js";
 import { useEffect, useRef, useState } from "react";
@@ -28,7 +33,7 @@ import { TaskPanel } from "./TaskPanel.js";
 const isRunning = (run: HarnessClientRun | undefined) =>
   Boolean(
     run &&
-      ["created", "running", "queued", "cancel_requested"].includes(run.status),
+    ["created", "running", "queued", "cancel_requested"].includes(run.status),
   );
 const command = async (key: string, value: Record<string, unknown>) => {
   const result = await window.harness.command(key, value);
@@ -37,6 +42,8 @@ const command = async (key: string, value: Record<string, unknown>) => {
 };
 
 export function App() {
+  const [credentialDialog, setCredentialDialog] = useState(false);
+  const [draftStored, setDraftStored] = useState(true);
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const promptInput = useRef<HTMLTextAreaElement>(null);
   const [modelEditing, setModelEditing] = useState(false);
@@ -65,6 +72,13 @@ export function App() {
     const data = await command(key, { method: "session.list" });
     if (data.kind !== "sessions") throw new Error();
     return data.sessions;
+  };
+  const updatePrompt = (value: string) => {
+    setPrompt(value);
+    if (context && session)
+      setDraftStored(
+        writePreference("draft", context.project.key, session.sessionId, value),
+      );
   };
   const reset = () => {
     generation.current++;
@@ -121,9 +135,7 @@ export function App() {
       })
       .catch(() => {
         if (!cancelled)
-          setError(
-            "Could not load providers. Reopen the application.",
-          );
+          setError("Could not load providers. Reopen the application.");
       });
     return () => {
       cancelled = true;
@@ -173,6 +185,7 @@ export function App() {
         setBusy(isRunning(loaded.run));
       }
       setSession(data.session);
+      setPrompt(readPreference("draft", key, id));
       setSessions((items) =>
         items.map((item) => (item.sessionId === id ? data.session : item)),
       );
@@ -214,6 +227,8 @@ export function App() {
     const key = context.project.key,
       id = session.sessionId,
       epoch = generation.current;
+    let emptyPages = 0,
+      failures = 0;
     let stopped = false,
       timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -225,6 +240,9 @@ export function App() {
         );
         if (stopped || epoch !== generation.current) return;
         setDisconnected(false);
+        failures = 0;
+        emptyPages =
+          page.events.length || page.cursorExpired ? 0 : emptyPages + 1;
         const next = applyActivityPage(activityRef.current, page);
         activityRef.current = next;
         setActivity(next);
@@ -266,12 +284,27 @@ export function App() {
           }
         }
       } catch {
-        if (!stopped && epoch === generation.current) setDisconnected(true);
+        if (!stopped && epoch === generation.current) {
+          failures++;
+          setDisconnected(true);
+        }
       }
-      if (!stopped) timer = setTimeout(poll, 100);
+      if (!stopped)
+        timer = setTimeout(
+          poll,
+          eventPollDelay(emptyPages, failures, document.hidden),
+        );
     };
+    const wake = () => {
+      if (!document.hidden) {
+        emptyPages = 0;
+        failures = 0;
+      }
+    };
+    document.addEventListener("visibilitychange", wake);
     void poll();
     return () => {
+      document.removeEventListener("visibilitychange", wake);
       stopped = true;
       clearTimeout(timer);
     };
@@ -314,10 +347,17 @@ export function App() {
         prompt: value,
       });
       if (result.kind !== "run") throw new Error();
-      if (epoch !== generation.current) return;
+      if (epoch !== generation.current) {
+        if (readPreference("draft", key, id) === value)
+          writePreference("draft", key, id, "");
+        return;
+      }
       setRun(result.run);
       setSession(result.session);
-      setPrompt("");
+      if (readPreference("draft", key, id) === value) {
+        setDraftStored(writePreference("draft", key, id, ""));
+        setPrompt("");
+      }
       const items = await refreshSessions(key);
       if (epoch === generation.current) setSessions(items);
     } catch {
@@ -365,13 +405,13 @@ export function App() {
   }
   const canSend = Boolean(
     session &&
-      context?.credentialConfigured !== false &&
-      !modelEditing &&
-      !busy &&
-      !loading &&
-      !reconcileRequired &&
-      !disconnected &&
-      prompt.trim(),
+    context?.credentialConfigured !== false &&
+    !modelEditing &&
+    !busy &&
+    !loading &&
+    !reconcileRequired &&
+    !disconnected &&
+    prompt.trim(),
   );
   return (
     <main
@@ -382,6 +422,42 @@ export function App() {
     >
       <Navigation
         hidden={sidebarHidden}
+        connection={
+          loading
+            ? "connecting"
+            : disconnected
+              ? "disconnected"
+              : context
+                ? "connected"
+                : "closed"
+        }
+        credentialDialog={credentialDialog}
+        setCredentialDialog={setCredentialDialog}
+        rename={async (id, title) => {
+          if (!context) return;
+          const key = context.project.key,
+            epoch = generation.current;
+          const current = await command(key, {
+            method: "session.get",
+            sessionId: id,
+          });
+          if (current.kind !== "session") throw new Error();
+          const result = await command(key, {
+            method: "session.rename",
+            sessionId: id,
+            title,
+            expectedRevision: current.session.revision,
+            idempotencyKey: crypto.randomUUID(),
+          });
+          if (result.kind !== "session") throw new Error();
+          if (epoch !== generation.current) return;
+          setSessions((items) =>
+            items.map((item) =>
+              item.sessionId === id ? result.session : item,
+            ),
+          );
+          if (session?.sessionId === id) setSession(result.session);
+        }}
         credentialsChanged={credentialsChanged}
         providers={providers}
         projects={projects}
@@ -401,9 +477,7 @@ export function App() {
           <button
             type="button"
             className="icon-button sidebar-toggle"
-            aria-label={
-              sidebarHidden ? "Show navigation" : "Hide navigation"
-            }
+            aria-label={sidebarHidden ? "Show navigation" : "Hide navigation"}
             aria-controls="sidebar"
             aria-expanded={!sidebarHidden}
             onClick={() => setSidebarHidden((value) => !value)}
@@ -462,7 +536,12 @@ export function App() {
           {!activity.order.length ? (
             <div className="welcome">
               <span className="welcome-mark">
-                <img src="./zhivex-logo.png" alt="Zhivex" width={56} height={56} />
+                <img
+                  src="./zhivex-logo.png"
+                  alt="Zhivex"
+                  width={56}
+                  height={56}
+                />
               </span>
               <span className="eyebrow">FROM IDEA TO CODE</span>
               <h2>
@@ -483,6 +562,27 @@ export function App() {
                   ? "Open a repository to get started. Research, implement, and review with your favorite model."
                   : "Explore your code, turn ideas into changes, and review each step before approving it."}
               </p>
+              {!context ||
+              !session ||
+              context.credentialConfigured === false ? (
+                <ol className="setup-steps" aria-label="Getting started">
+                  <li>{context ? "✓" : "1."} Open repository</li>
+                  <li>
+                    {context?.credentialConfigured ? "✓" : "2."} Choose model
+                    and configure key{" "}
+                    {context && context.credentialConfigured === false ? (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setCredentialDialog(true)}
+                      >
+                        Configure key
+                      </button>
+                    ) : null}
+                  </li>
+                  <li>{session ? "✓" : "3."} Create conversation</li>
+                </ol>
+              ) : null}
               {!context ? (
                 <button
                   type="button"
@@ -491,8 +591,7 @@ export function App() {
                     void selectProject(() => window.harness.chooseProject())
                   }
                 >
-                  Open repository{" "}
-                  <ArrowUpRight size={16} aria-hidden="true" />
+                  Open repository <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               ) : !session ? (
                 <button
@@ -500,8 +599,7 @@ export function App() {
                   disabled={loading}
                   onClick={() => void createSession()}
                 >
-                  New conversation{" "}
-                  <ArrowUpRight size={16} aria-hidden="true" />
+                  New conversation <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               ) : (
                 <div className="suggestions">
@@ -533,7 +631,7 @@ export function App() {
                       key={item.title}
                       disabled={loading}
                       onClick={() => {
-                        setPrompt(item.prompt);
+                        updatePrompt(item.prompt);
                         promptInput.current?.focus();
                       }}
                     >
@@ -573,9 +671,7 @@ export function App() {
           ) : null}
           {disconnected ? (
             <div role="alert" className="error">
-              <p>
-                Connection interrupted. Retrying the saved state.
-              </p>
+              <p>Connection interrupted. Retrying the saved state.</p>
               <button
                 type="button"
                 className="secondary"
@@ -630,7 +726,7 @@ export function App() {
                 ref={promptInput}
                 id="prompt"
                 value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
+                onChange={(event) => updatePrompt(event.target.value)}
                 onKeyDown={(event) => {
                   if (
                     event.key === "Enter" &&
@@ -712,10 +808,23 @@ export function App() {
               </div>
             </form>
           </div>
+          {!draftStored ? (
+            <p role="status">
+              Draft kept in memory. Local storage is unavailable; keep the app
+              open to preserve it.
+            </p>
+          ) : null}
           <div className="composer-caption">
             {context?.credentialConfigured === false ? (
               <span className="credential-hint">
-                Configure the provider key in Credentials to send messages.
+                Configure the provider key to send messages.{" "}
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setCredentialDialog(true)}
+                >
+                  Open credentials
+                </button>
               </span>
             ) : (
               <span>Enter to send · Shift + Enter for a new line</span>

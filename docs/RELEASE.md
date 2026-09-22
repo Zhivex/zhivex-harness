@@ -4,8 +4,8 @@
 
 ## Next candidate
 
-The source version is `1.1.0-rc.3`, targeting npm `next` after fresh certification.
-It is not published. See [candidate readiness](releases/1.1.0-rc.3.md).
+The source version is `1.1.0-rc.4`, targeting npm `next` after fresh certification.
+RC.3 is published on `next`; RC.4 is not published. See [candidate readiness](releases/1.1.0-rc.4.md).
 `release-status.json` continues to describe the independently verified 1.0.0
 publication; its evidence must not be reused as certification for this candidate.
 
@@ -26,6 +26,12 @@ git status --short
 ```
 
 `bun run release:check` performs documentation validation, typechecking, deterministic tests, the golden evaluation gate, the required real-OCI boundary gate, a dependency-externalized build, package-content validation, clean tarball installation, direct binary execution, public import, SDK execution-environment import, SQLite restart/resume, redacted inspection, exactly-once side-effect verification, dependency audit, untrusted lifecycle-script inspection, dry-run packing, and release metadata validation.
+
+Contributor builds use TypeScript 7.0.2. The separate `typescript-compiler-api`
+alias intentionally stays on TypeScript 6.0.3: architecture and Stable API
+signature checks depend on its JavaScript compiler API, which the TypeScript 7
+package root does not expose. Upgrade this alias only alongside a validated
+migration of both checks.
 
 CI repeats the deterministic and installed-package gates on Linux and macOS. Build output is ignored and must not create tracked changes.
 

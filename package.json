@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.1.0-rc.3",
+  "version": "1.1.0-rc.4",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -58,6 +58,7 @@
     "docs/CLIENT_PROTOCOL.md",
     "docs/CONTEXT_ENGINEERING.md",
     "docs/CREDENTIALS.md",
+    "docs/MODEL_CATALOG.md",
     "docs/DEPRECATIONS.md",
     "docs/DURABLE_OPERATIONS.md",
     "docs/EXECUTION_ENVIRONMENTS.md",
@@ -83,6 +84,8 @@
     "benchmarks/README.md"
   ],
   "scripts": {
+    "models:check": "bun run scripts/validate-model-catalog.ts",
+    "models:import": "bun run scripts/generate-console-models.ts",
     "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
     "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts ./src/service-cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
@@ -140,8 +143,8 @@
     "@zhivex-ai/core": "1.22.0",
     "@zhivex-ai/gemini": "0.12.1",
     "@zhivex-ai/meta": "0.2.6",
-    "@zhivex-ai/openai": "0.13.3",
-    "@zhivex-ai/qwen": "0.14.4",
+    "@zhivex-ai/openai": "0.13.4",
+    "@zhivex-ai/qwen": "0.15.0",
     "zod": "4.6.5"
   },
   "overrides": {

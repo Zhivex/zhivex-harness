@@ -1,4 +1,7 @@
-import {fillRendererFixture} from "./renderer-fixture-data.js";
+import {
+  fillRendererFixture,
+  selectRendererFixture,
+} from "./renderer-fixture-data.js";
 import assert from "node:assert/strict";
 import type { BrowserWindow } from "electron";
 import { writeFile } from "node:fs/promises";
@@ -16,7 +19,8 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   };
   const click = (selector: string) =>
     js(`document.querySelector(${JSON.stringify(selector)}).click()`);
-  const fill = (selector: string, value: string) => fillRendererFixture(window, selector, value);
+  const fill = (selector: string, value: string) =>
+    fillRendererFixture(window, selector, value);
   const capture = async (name: string) => {
     await js(
       "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))))",
@@ -42,10 +46,7 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
     "document.querySelector('#prompt').value.startsWith('Explore') && document.activeElement.id==='prompt'",
   );
   assert.equal(await js("document.querySelectorAll('[data-run]').length"), 0);
-  await fill(
-    '[aria-label="Search conversations"]',
-    "no-existent-conversation",
-  );
+  await fill('[aria-label="Search conversations"]', "no-existent-conversation");
   await wait(
     "document.querySelectorAll('[data-session]').length===0 && document.body.innerText.includes('No conversations found')",
   );
@@ -60,7 +61,7 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   await click("[data-action=open-models]");
   await wait("document.querySelector('.model-dialog').open");
   await fill('[aria-label="Search models"]', "qwen");
-  await wait("document.querySelectorAll('.model-card').length===1");
+  await wait("document.querySelectorAll('.model-card').length>1 && [...document.querySelectorAll('.model-card-provider')].every(el=>el.textContent.includes('Qwen'))");
   await click(".model-card");
   await wait("Boolean(document.querySelector('[data-action=apply-model]'))");
   await capture("model-search");
@@ -78,7 +79,7 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   assert(await js("document.activeElement.dataset.action==='open-models'"));
   await click("[data-action=open-models]");
   await wait(
-    "document.querySelector('.model-dialog').open && document.querySelectorAll('.model-card').length===4",
+    "document.querySelector('.model-dialog').open && document.querySelectorAll('.model-card').length>4 && document.querySelector('.model-others') && !document.querySelector('.model-others').open",
   );
   await capture("models-1120");
   window.setSize(720, 520);
@@ -117,7 +118,78 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
   await wait(
     "document.querySelectorAll('[data-run]').length===1 && document.body.innerText.includes('completed') && document.querySelector('#prompt').value===''",
   );
+  // Preserve drafts during refresh, navigation and renderer restart.
+  const original = await js("document.querySelector('main').dataset.sessionId");
+  await fill("#prompt", "Draft retained across navigation");
+  await click('[aria-label="Refresh conversation"]');
+  await wait(
+    "document.querySelector('#prompt').value==='Draft retained across navigation' && !document.querySelector('#prompt').disabled",
+  );
+  await click('[data-action="new-session"]');
+  await wait(
+    `document.querySelector('main').dataset.sessionId && document.querySelector('main').dataset.sessionId!==${JSON.stringify(original)} && !document.querySelector('#prompt').disabled`,
+  );
+  assert.equal(await js("document.querySelector('#prompt').value"), "");
+  await fill("#prompt", "Second independent draft");
+  await click(`[data-session="${original}"]`);
+  await wait(
+    "document.querySelector('#prompt').value==='Draft retained across navigation'",
+  );
+  const loaded = new Promise<void>((resolve) =>
+    window.webContents.once("did-finish-load", () => resolve()),
+  );
+  window.webContents.reload();
+  await loaded;
+  await wait("document.querySelector('[data-session]')?.disabled===false");
+  await click(`[data-session="${original}"]`);
+  await wait(
+    "document.querySelector('#prompt').value==='Draft retained across navigation'",
+  );
+  await js(
+    `document.querySelector('[data-session="${original}"]').parentElement.querySelector('details').open=true`,
+  );
+  await js(
+    `document.querySelector('[data-session="${original}"]').parentElement.querySelector('.session-actions button').click()`,
+  );
+  await fill(
+    '[aria-label="Conversation title"]',
+    "Renamed desktop conversation",
+  );
+  await js("document.querySelector('.rename-form').requestSubmit()");
+  await wait(
+    "document.querySelector('h1').textContent==='Renamed desktop conversation'",
+  );
+  await js(
+    `document.querySelector('[data-session="${original}"]').parentElement.querySelector('.session-actions button:last-child').click()`,
+  );
+  await wait(`!document.querySelector('[data-session="${original}"]')`);
+  await selectRendererFixture(
+    window,
+    '[aria-label="Filter conversations"]',
+    "archived",
+  );
+  await wait(`Boolean(document.querySelector('[data-session="${original}"]'))`);
+  await js(
+    `document.querySelector('[data-session="${original}"]').parentElement.querySelector('.session-actions button:last-child').click()`,
+  );
+  await selectRendererFixture(
+    window,
+    '[aria-label="Filter conversations"]',
+    "all",
+  );
+  await wait(`Boolean(document.querySelector('[data-session="${original}"]'))`);
+  await click('[data-action="open-credentials"]');
+  await wait("document.querySelector('.credential-dialog').open");
+  await capture("credentials-dialog");
+  await click('[aria-label="Close credentials"]');
+  await wait("!document.querySelector('.credential-dialog').open");
+  await fill("#prompt", "");
   return {
+    draftsAcrossRefreshAndReload: true,
+    isolatedDrafts: true,
+    renameConversation: true,
+    archiveRestore: true,
+    credentialDialog: true,
     suggestionsOnlyFill: true,
     searchConversations: true,
     sidebarToggle: true,

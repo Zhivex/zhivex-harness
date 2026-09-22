@@ -742,9 +742,11 @@ pre {
   font-size: 10px;
   color: var(--muted);
 }
+.model-others,
 .model-advanced {
   margin: 20px 0 12px;
 }
+.model-others > summary,
 .model-advanced > summary {
   font-size: 12px;
   color: #c9c0d7;
@@ -1090,3 +1092,38 @@ pre {
 }
 
 .brand-mark img, .welcome-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+
+/* Reading and navigation surfaces */
+.markdown-response { line-height: 1.7; overflow-wrap: anywhere; }
+.markdown-response > :first-child { margin-top: 0; }
+.markdown-response h1, .markdown-response h2, .markdown-response h3 { line-height: 1.3; margin: 1.2em 0 .6em; }
+.markdown-response h1 { font-size: 1.5em; }
+.markdown-response h2 { font-size: 1.3em; }
+.markdown-response a, .text-button { color: #c6b3ff; text-decoration: underline; }
+.markdown-response :not(pre) > code { background: #ffffff0c; padding: 2px 5px; border-radius: 4px; }
+.markdown-response blockquote { border-left: 3px solid #b6a0ff60; margin-left: 0; padding-left: 16px; color: #c6c0ce; }
+.code-block { border: 1px solid #b6a0ff30; border-radius: 8px; padding: 10px; margin: 12px 0; }
+.code-block button { font-size: 11px; padding: 5px 10px; }
+.code-block > span { font-size: 11px; margin-left: 8px; }
+.code-block pre { overflow-x: auto; white-space: pre; }
+.text-button { padding: 2px 4px; background: none; border: none; font-size: inherit; }
+.setup-steps { text-align: left; display: inline-block; list-style: none; padding: 0; color: #beb7ca; font-size: 12px; line-height: 2; margin: 0 0 16px; }
+.session-row { position: relative; }
+.session-row > .session-item { padding-right: 30px; }
+.session-actions { position: absolute; right: 0; top: 8px; font-size: 12px; z-index: 1; }
+.session-actions > summary { cursor: pointer; padding: 4px; list-style: none; }
+.session-actions[open] { padding: 4px; background: #211f26; border: 1px solid #b6a0ff40; border-radius: 6px; }
+.session-actions button { display: block; width: 100%; padding: 6px; font-size: 11px; }
+.rename-form { padding: 8px 0; }
+.rename-form button { font-size: 11px; padding: 6px; margin: 6px 4px 0 0; }
+.diff-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.diff-toolbar button { padding: 4px 8px; font-size: 11px; }
+.diff-lines { overflow: auto; max-height: 420px; font: 12px/1.7 monospace; border: 1px solid #ffffff18; }
+.diff-line { display: grid; grid-template-columns: 4em 4em 1.5em 1fr; min-width: max-content; }
+.diff-line code { white-space: pre; padding-right: 12px; }
+.line-number { text-align: right; padding-right: 10px; color: #aaa4b1; user-select: none; }
+.diff-added { background: #183d2b; }
+.diff-removed { background: #49282d; }
+.file-diff { min-width: 0; margin: 12px 0; }
+
+.model-others[open] > summary { margin-bottom: 12px; }

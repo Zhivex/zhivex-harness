@@ -3,7 +3,7 @@ import { captureTaskSources } from "./task-memory.js";
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { ModelMessage } from "@zhivex-ai/core";
 
-export const COMPACTION_STRATEGY = "bounded-evidence-v4";
+export const COMPACTION_STRATEGY = "bounded-evidence-v5";
 const PREFIX = "[Compacted conversation context]\n";
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -22,6 +22,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
   const steering: string[] = [];
   const evidence: string[] = [];
   const checks: string[] = [];
+  let workingPlan: { hypothesis: string; expectedBehavior: string; nextCheck: string; paths: string[] } | undefined;
   const locations: { kind: "read" | "search"; path: string; digest: string; startLine: number; endLine: number; clippedLine?: boolean }[] = [];
   let omitted = false;
   const add = (items: string[], value: string, maximum: number) => {
@@ -58,6 +59,13 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     locations.push(location);
     if (locations.length > 8) { locations.shift(); omitted = true; }
   };
+  const rememberPlan = (value: unknown) => {
+    const plan = record(value);
+    if (typeof plan.hypothesis !== "string" || typeof plan.expectedBehavior !== "string" || typeof plan.nextCheck !== "string") return;
+    workingPlan = { hypothesis: clean(plan.hypothesis, 512), expectedBehavior: clean(plan.expectedBehavior, 512),
+      nextCheck: clean(plan.nextCheck, 256), paths: Array.isArray(plan.paths)
+        ? plan.paths.slice(0, 8).map(safePath).filter((p): p is string => p !== undefined) : [] };
+  };
   for (const message of messages) {
     if (message.role === "system") continue;
     for (const part of message.parts) {
@@ -68,7 +76,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
         if (summaryPrefix) {
           try {
             const previous = record(JSON.parse(part.text.slice(summaryPrefix.length)));
-            if ([COMPACTION_STRATEGY, "bounded-evidence-v3", "bounded-evidence-v2", "bounded-evidence-v1"].includes(String(previous.strategy))) {
+            if ([COMPACTION_STRATEGY, "bounded-evidence-v4", "bounded-evidence-v3", "bounded-evidence-v2", "bounded-evidence-v1"].includes(String(previous.strategy))) {
               if (!objective && typeof previous.objective === "string") objective = clean(previous.objective, 768);
               for (const [key, target, count] of [["steering", steering, 3], ["recent", recent, 4], ["evidence", evidence, 12], ["checks", checks, 4]] as const) {
                 if (Array.isArray(previous[key])) for (const value of previous[key].slice(-count)) {
@@ -79,6 +87,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
                 for (const location of previous.locations.slice(-8)) addLocation(location);
               }
               omitted ||= previous.omitted === true;
+              rememberPlan(previous.workingPlan);
               continue;
             }
           } catch { /* Treat malformed recollections as ordinary untrusted text. */ }
@@ -130,7 +139,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
         const filePath = safePath(output.path);
         if (filePath) fields.path = filePath;
         if (name === "repair_plan" && !result.isError) {
-          add(recent, clean(`Working hypothesis: ${String(output.hypothesis ?? "")} Expected: ${String(output.expectedBehavior ?? "")} Next check: ${String(output.nextCheck ?? "")}`, 1000), 4);
+          rememberPlan(output);
         }
         const entry = `tool-result:${name} ${JSON.stringify(fields)}`;
         if (fields.exitCode !== undefined || fields.verificationExitCode !== undefined || fields.isError === true) add(checks, entry, 4);
@@ -138,7 +147,8 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
       }
     }
   }
-  const state = { strategy: COMPACTION_STRATEGY, objective, steering, recent, checks, evidence, locations, omitted };
+  const state = { strategy: COMPACTION_STRATEGY, objective, steering, recent, checks, evidence, locations,
+    ...(workingPlan ? { workingPlan } : {}), omitted };
   const encode = () => JSON.stringify(state);
   while (encode().length > maxCharacters && (recent.length || evidence.length || checks.length || steering.length || locations.length)) {
     state.omitted = true;
@@ -149,7 +159,12 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     else if (recent.length) recent.shift();
     else if (checks.length) checks.shift();
     else if (locations.length) locations.shift();
+    else if (state.workingPlan) delete state.workingPlan;
     else steering.shift();
+  }
+  if (encode().length > maxCharacters && state.workingPlan) {
+    state.omitted = true;
+    delete state.workingPlan;
   }
   while (encode().length > maxCharacters && state.objective.length) {
     state.omitted = true;

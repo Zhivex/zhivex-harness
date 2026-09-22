@@ -527,7 +527,7 @@ describe("Zhivex harness", () => {
       expect(result.state.compactions).toHaveLength(1);
       expect(result.state.compactions?.[0]).toMatchObject({
         reasons: expect.arrayContaining(["message-count"]),
-        metadata: { strategy: "bounded-evidence-v4" }
+        metadata: { strategy: "bounded-evidence-v5" }
       });
     } finally {
       await rm(root, { recursive: true, force: true });

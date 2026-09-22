@@ -25,11 +25,11 @@ import {
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   list_files: tool({
     name: "list_files",
-    description: "List regular files using a stable cursor. Omit cursor on the first call; on later pages pass only the exact nextCursor returned by the preceding matching request. Set includeDigests=false for fast path-only topology discovery; keep it true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
+    description: "List regular files using a stable cursor. Omit cursor on the first call; on later pages pass only the exact nextCursor returned by the preceding matching request. Defaults to fast path-only topology; set includeDigests=true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",
     schema: z.object({
       path: z.string().min(1).default("."),
       limit: z.number().int().min(1).max(500).default(200),
-      includeDigests: z.boolean().default(true),
+      includeDigests: z.boolean().default(false),
       cursor: z.string().min(1).max(2000).nullable().optional().describe(
         "Use null or omit on the first page. For a later page, pass only the exact nextCursor returned by the preceding matching list_files result. Never invent a cursor."
       )
@@ -81,7 +81,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
       query: z.string().min(1).max(200),
       path: z.string().min(1).default("."),
       caseSensitive: z.boolean().default(false),
-      limit: z.number().int().min(1).max(500).default(100),
+      limit: z.number().int().min(1).max(500).default(10),
       cursor: z.string().min(1).max(2000).nullable().optional().describe("Use null or omit for the first page; otherwise use the exact returned nextCursor.")
     }),
     metadata: readOnlyMetadata,

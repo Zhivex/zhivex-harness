@@ -25,7 +25,9 @@ try {
   assert.equal((await run(["init", "--profile", "first-use", "--provider", "openai", "--model", "gpt-5.6-luna", "--json"])).exitCode, 0);
   const doctor = await run(["doctor", "--profile", "first-use", "--json"]); assert.equal(doctor.exitCode, 0);
   const missing = await run(["doctor", "--profile", "first-use"], { OPENAI_API_KEY: "" });
-  assert.equal(missing.exitCode, 3); assert(missing.stdout.includes("Set OPENAI_API_KEY"));
+  assert.equal(missing.exitCode, 3);
+  assert.match(missing.stdout, /set OPENAI_API_KEY/i);
+  assert.match(missing.stdout, /Run zhx to configure a key/);
   const started = await run(["run", "--profile", "first-use", "--allow-check", "pilot", "--json", "Complete the guided example with an approved edit, pilot check and diff."]);
   assert.equal(started.exitCode, 0); const waiting = JSON.parse(started.stdout);
   assert.equal(waiting.status, "waiting_approval"); assert.equal(waiting.pendingApprovals[0].name, "apply_reviewed_edits");

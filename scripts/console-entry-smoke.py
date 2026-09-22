@@ -60,17 +60,30 @@ host = None
 try:
     setup = Console([], dict(env, CONSOLE_FIXTURE_REQUESTS=str(root / "setup-requests.jsonl"), CONSOLE_EXPECT_API_KEY="replacement-fixture"))
     try:
-        assert b"Welcome" in setup.read("Provider (")
-        setup.send("openai\n")
-        setup.read("Model [")
-        setup.send("\n")
+        intro = setup.read("Zhivex / Providers")
+        assert b"First-time setup" in intro and b"Welcome" not in intro
+        setup.read_selection()
+        # A typo stays in the selector and can be corrected in place.
+        setup.send("openaix")
+        setup.read("No matches")
+        setup.send("\x7f\r")
+        setup.read("OpenAI / Models")
+        setup.read_selection()
+        setup.send("\r")
         setup.read("Credentials / openai")
         setup.read_selection()
-        setup.send("\x1b[B\r")
+        setup.send("\r")
+        setup.read("Credentials / Recovery")
+        setup.read_selection()
+        setup.send("\r")
         setup.read("API key (hidden")
         setup.send("opaque-setup-fixture\r")
         hidden_output = setup.read("\n> ")
         assert b"opaque-setup-fixture" not in hidden_output
+        assert hidden_output.count(b"Welcome") == 1
+        assert b"Ready" in hidden_output and b"credential: temporary" in hidden_output
+        assert b"Changes require your approval" in hidden_output
+        assert b"Open zhx" not in hidden_output
         setup.send("/credentials\n")
         setup.read("Credentials / Provider")
         setup.read_selection()
@@ -92,23 +105,53 @@ try:
         assert set(saved) == {"schemaVersion", "provider", "model"}
         assert saved["provider"] == "openai"
     finally: setup.close()
-    fixture_env = dict(env, OPENAI_API_KEY="fixture-only", OPENAI_BASE_URL="https://api.openai.com/v1", CONSOLE_FIXTURE_REQUESTS=str(root / "requests.jsonl"))
-    denied = Console([], fixture_env)
+    # A lone environment credential selects its own provider, without touching keys.
+    detected = Console([], dict(env, ZHIVEX_HARNESS_CONFIG_DIR=str(root / "detected"), DASHSCOPE_API_KEY="fixture-only"))
     try:
-        denied.read("Use default profile openai/" + saved["model"] + "? [y/N]: ")
-        denied.send("n\n")
-        denied.read("Default profile was not selected")
-        assert denied.wait_exit() == 0
-        assert not (root / "requests.jsonl").exists()
-    finally: denied.close()
+        output = detected.read("\n> ")
+        assert b"qwen/" in output and b"credential: environment" in output, output
+        assert b"First-time setup" not in output and b"Credentials / openai" not in output
+        detected.send("/exit\n")
+        assert detected.wait_exit() == 0
+    finally: detected.close()
+    # Ambiguous credentials open the chooser; cancellation does not create a profile.
+    ambiguous = Console([], dict(env, ZHIVEX_HARNESS_CONFIG_DIR=str(root / "ambiguous"), DASHSCOPE_API_KEY="fixture-only", OPENAI_API_KEY="fixture-only"))
+    try:
+        ambiguous.read("Zhivex / Providers")
+        ambiguous.read_selection()
+        ambiguous.send("\x1b")
+        ambiguous.read("Setup cancelled")
+        assert ambiguous.wait_exit() == 0
+        assert not (root / "ambiguous/profiles/default.json").exists()
+    finally: ambiguous.close()
+    fixture_env = dict(env, OPENAI_API_KEY="fixture-only", OPENAI_BASE_URL="https://api.openai.com/v1", CONSOLE_FIXTURE_REQUESTS=str(root / "requests.jsonl"))
+    profile_path = root / "config/profiles/default.json"
+    # A persisted Qwen preference survives repeated bare launches without confirmation.
+    updated = subprocess.run(cli + ["init", "--update", "--provider", "qwen", "--json"],
+                             env=fixture_env, cwd=root, capture_output=True, text=True)
+    assert updated.returncode == 0, updated.stderr
+    qwen_profile = json.loads(updated.stdout)["profile"]
+    for args in ([], ["chat"]):
+        preferred = Console(args, dict(fixture_env, QWEN_API_KEY="fixture-only"))
+        try:
+            output = preferred.read("\n> ")
+            assert b"Use default profile" not in output
+            assert b"qwen" in output.lower(), output
+            assert json.loads(profile_path.read_text())["model"] == qwen_profile["model"]
+            preferred.send("/exit\n")
+            assert preferred.wait_exit() == 0
+            assert not (root / "requests.jsonl").exists()
+        finally: preferred.close()
+    diagnostic = subprocess.run(cli + ["doctor", "--json"], env=dict(fixture_env, QWEN_API_KEY="fixture-only"), cwd=root, capture_output=True, text=True)
+    assert diagnostic.returncode == 0, diagnostic.stderr
+    assert json.loads(diagnostic.stdout)["configuration"]["provider"] == "qwen"
+    profile_path.write_text(json.dumps(saved))
     direct = Console([], fixture_env)
     try:
-        direct.read("Use default profile openai/" + saved["model"] + "? [y/N]: ")
-        # Change the private file while the actual CLI is waiting for confirmation.
-        profile_path = root / "config/profiles/default.json"
+        output = direct.read("\n> ")
+        assert b"Welcome" in output and b"Use default profile" not in output
+        # Changes on disk do not replace the selection of an already opened console.
         profile_path.write_text(json.dumps(dict(saved, provider="qwen", model="qwen3.8-max")))
-        direct.send("yes\n")
-        assert b"Welcome" in direct.read("\n> ")
         direct.send("/conversation\t\n")
         # Selection opens the conversation picker without submitting a provider request.
         direct.read_selection()

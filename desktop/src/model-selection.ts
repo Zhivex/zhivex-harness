@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "../../src/internal/desktop/providers.js";
+import { bundledModelCatalog, catalogModels, type ModelCatalog, PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "../../src/internal/desktop/providers.js";
 import type { DesktopModelSelection, DesktopProvider } from "./bridge.js";
 
 export const modelSelectionSchema = z.object({
@@ -7,8 +7,9 @@ export const modelSelectionSchema = z.object({
     model: z.string().trim().min(1).max(160).regex(/^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/)
 }).strict();
 export const defaultModelSelection = (): DesktopModelSelection => ({provider: "openai", model: DEFAULT_PROVIDER_REGISTRY.descriptor("openai").defaultModel});
-export const desktopProviders = (): DesktopProvider[] => DEFAULT_PROVIDER_REGISTRY.descriptors.map(p => ({
-    id: p.id, name: p.name, defaultModel: p.defaultModel, support: p.support
+export const desktopProviders = (catalog: ModelCatalog = bundledModelCatalog): DesktopProvider[] => DEFAULT_PROVIDER_REGISTRY.descriptors.map(p => ({
+    id: p.id, name: p.name, defaultModel: catalog.providers.find(entry => entry.id === p.id)?.defaultModel ?? p.defaultModel, support: p.support,
+    models: catalogModels(catalog, p.id), catalogRevision: catalog.revision
 }));
 export function providerEnvironment(selection: DesktopModelSelection, secret?: string): NodeJS.ProcessEnv {
     const parsed = modelSelectionSchema.parse(selection);
