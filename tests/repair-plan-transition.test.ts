@@ -3,7 +3,7 @@ import {tool} from "@zhivex-ai/agents";
 import {createMockLanguageModel} from "@zhivex-ai/agents/testing";
 import {z} from "zod";
 import {wrapLanguageModel, type ModelGenerateInput, type ToolSet} from "@zhivex-ai/core";
-import {createRepairController,REPAIR_CONTROLLER_KEY} from "../src/repair-controller.js";
+import {createRepairController,REPAIR_CONTROLLER_KEY} from "../src/runtime/repair-controller.js";
 const execute=async(tools:ToolSet,name:string,input:unknown)=>{
  const t=tools[name]!;if(!('execute' in t))throw new Error('missing fixture execute');return t.execute!(input as never,{} as never);
 };
@@ -35,7 +35,7 @@ test("planning attempts remain bounded after restoring the controller",async()=>
  await expect(restored.middleware.wrapGenerate!({model:createMockLanguageModel(),input:{messages:[],tools:definitions}},async()=>({}))).rejects.toThrow("REPAIR_PLAN_MISSING");
 });
 
-import {createModelBudget,workBudgetReached} from "../src/model-budget.js";
+import {createModelBudget,workBudgetReached} from "../src/runtime/model-budget.js";
 test("missing-plan recovery uses reserved tokens after resume without increasing the total budget",async()=>{
  const c=createRepairController({},true);
  await expect(execute(c.wrapTools(definitions),"apply_reviewed_edits",{})).rejects.toThrow("REPAIR_PLAN_REQUIRED");

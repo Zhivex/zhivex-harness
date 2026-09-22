@@ -1,8 +1,8 @@
 import {expect, test} from "bun:test";
 import {mkdir, mkdtemp, realpath, rm, unlink, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
-import {SqliteDatabase} from "../src/sqlite-database.js";
-import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor, adoptExclusiveSqliteAccess, type SqliteAccessLease} from "../src/sqlite-access.js";
+import {SqliteDatabase} from "../src/persistence/sqlite-database.js";
+import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor, adoptExclusiveSqliteAccess, type SqliteAccessLease} from "../src/persistence/sqlite-access.js";
 const nativeTest = process.platform === "darwin" ? test : test.skip;
 async function fixture(run: (file: string) => Promise<void>) {const root = await realpath(await mkdtemp("/tmp/har-sqlite-access-")); try {await run(path.join(root, "operations.sqlite"));} finally {await rm(root, {recursive: true, force: true});}}
 nativeTest("all live core connections block exclusivity; exclusive owner blocks new connections", () => fixture(async file => {

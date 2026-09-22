@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/harness.js";
-import { createEditProposal } from "../src/edit-contracts.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
 
 for (const provider of ["meta", "openai"] as const) {
   for (const outputLimit of [4, 2]) {

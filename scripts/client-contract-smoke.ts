@@ -5,7 +5,7 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import type { HarnessClientCommand, HarnessClientRequest } from "../src/client-contract.js";
+import type { HarnessClientCommand, HarnessClientRequest } from "../src/client/index.js";
 const api: typeof import("../src/index.js") = await import(process.argv[2] ? pathToFileURL(process.argv[2]).href : "../src/index.js");
 const workspace = await mkdtemp(tmpdir()+"/har-client-smoke-");
 const hash = (s: string) => "sha256:"+createHash("sha256").update(s).digest("hex");

@@ -13,7 +13,7 @@ import {
   summarizeReleaseGates,
   writeLiveGateDiagnostic
 } from "../scripts/release-diagnostics.js";
-import { HarnessExecutionError, HarnessProviderError } from "../src/errors.js";
+import { HarnessExecutionError, HarnessProviderError } from "../src/runtime/errors.js";
 
 const artifactSha512 = `sha512-${Buffer.alloc(64, 1).toString("base64")}`;
 const workflowBinding = {

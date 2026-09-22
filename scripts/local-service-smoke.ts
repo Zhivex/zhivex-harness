@@ -4,7 +4,7 @@ import { mkdtemp,writeFile,rm,readFile } from "node:fs/promises";
 import { spawn,type ChildProcess } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
-import type { HarnessClientCommand,HarnessClientNegotiation } from "../src/client-contract.js";
+import type { HarnessClientCommand,HarnessClientNegotiation } from "../src/client/index.js";
 const entry=path.resolve(process.argv[2]??"dist/index.js");const api:typeof import("../src/index.js")=await import(pathToFileURL(entry).href);
 const testing=import.meta.resolve("@zhivex-ai/agents/testing");
 const root=await mkdtemp("/tmp/har-process-smoke-");const workspace=root+"/repo";

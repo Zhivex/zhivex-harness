@@ -51,6 +51,7 @@ jobs:
 
       - name: Validate desktop source and security regressions
         run: |
+          bun run architecture:check
           bun run --cwd desktop typecheck
           bun test desktop/tests
 

@@ -2,11 +2,11 @@ import {test, expect} from "bun:test";
 import {chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile} from "node:fs/promises";
 import path from "node:path";
 import type {AgentRunState} from "@zhivex-ai/agents";
-import {resolveHarnessConfig} from "../../src/config.js";
-import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {openCliSessionStore} from "../../src/sessions.js";
-import {openHarnessActivityStore} from "../../src/service-events.js";
-import {SqliteDatabase} from "../../src/sqlite-database.js";
+import {resolveHarnessConfig} from "../../src/runtime/config.js";
+import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/persistence/operations.js";
+import {openCliSessionStore} from "../../src/persistence/sessions.js";
+import {openHarnessActivityStore} from "../../src/client/service-events.js";
+import {SqliteDatabase} from "../../src/persistence/sqlite-database.js";
 import {createDesktopDatabaseBackup, verifyDesktopDatabaseBackup} from "../src/database-backup.js";
 
 async function fixture(run: (f: {root: string; config: ReturnType<typeof resolveHarnessConfig>; database: string; sessionId: string}) => Promise<void>) {

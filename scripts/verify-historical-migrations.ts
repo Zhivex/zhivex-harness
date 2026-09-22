@@ -14,11 +14,11 @@ import {
   migrateHarnessConfigInput,
   resolveHarnessConfig,
   type HarnessConfigInput
-} from "../src/config.js";
-import { inspectHarnessRun, openHarnessPersistence } from "../src/operations.js";
-import { openCliSessionStore, type CliSession } from "../src/sessions.js";
-import { createHarnessStateBackup } from "../src/state-backup.js";
-import { createHarness, runHarness } from "../src/harness.js";
+} from "../src/runtime/config.js";
+import { inspectHarnessRun, openHarnessPersistence } from "../src/persistence/operations.js";
+import { openCliSessionStore, type CliSession } from "../src/persistence/sessions.js";
+import { createHarnessStateBackup } from "../src/persistence/state-backup.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 interface HistoricalFixture {

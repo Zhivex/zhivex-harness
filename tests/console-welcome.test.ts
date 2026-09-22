@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { formatConsoleWelcome, ZHIVEX_TERMINAL_LOGO } from "../src/console-welcome.js";
-import { formatConsoleHelp, searchConsoleCommands } from "../src/console-commands.js";
+import { formatConsoleWelcome, ZHIVEX_TERMINAL_LOGO } from "../src/cli/console/console-welcome.js";
+import { formatConsoleHelp, searchConsoleCommands } from "../src/cli/console/console-commands.js";
 import { parseCliArgs } from "../src/cli.js";
 
 test("welcome escapes project metadata and adapts to narrow, colorless terminals", () => {

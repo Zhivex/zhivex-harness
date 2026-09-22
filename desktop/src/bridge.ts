@@ -1,5 +1,5 @@
-import type { HarnessClientResponse } from "../../src/client-contract.js";
-import type { HarnessActivityPage } from "../../src/service-events.js";
+import type { HarnessClientResponse } from "../../src/internal/desktop/protocol.js";
+import type { HarnessActivityPage } from "../../src/internal/desktop/protocol.js";
 export interface DesktopModelSelection { provider: string; model: string }
 export interface DesktopProvider { id: string; name: string; defaultModel: string; support: "certified" | "provisional" }
 export interface DesktopProject { modelSelection?: DesktopModelSelection | undefined; key: string; workspace: string; name: string; lastOpenedAt: number }

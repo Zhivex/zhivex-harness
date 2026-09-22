@@ -5,9 +5,9 @@ import path from "node:path";
 import {prepareDesktopStateTransaction, armDesktopStateTransaction} from "../src/state-transaction.js";
 import {prepareDesktopUpdateJob, inspectDesktopUpdateJob} from "../src/update-job.js";
 import {prepareDesktopUpdateHandoff, acknowledgeDesktopUpdateHandoff, waitForDesktopUpdateAcknowledgement, assertDesktopUpdateOwnersStopped, waitForDesktopUpdateOwners} from "../src/update-handoff.js";
-import {resolveHarnessConfig} from "../../src/config.js";
-import {acquireSqliteAccess} from "../../src/sqlite-access.js";
-import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
+import {resolveHarnessConfig} from "../../src/runtime/config.js";
+import {acquireSqliteAccess} from "../../src/persistence/sqlite-access.js";
+import {HARNESS_SQLITE_FILE} from "../../src/persistence/operations.js";
 async function setup(withDatabases = false) {
  const userData = await realpath(await mkdtemp("/tmp/har-handoff-"));
  const configs = [];

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "../../src/providers.js";
+import { PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "../../src/internal/desktop/providers.js";
 import type { DesktopModelSelection, DesktopProvider } from "./bridge.js";
 
 export const modelSelectionSchema = z.object({

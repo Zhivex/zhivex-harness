@@ -1,9 +1,9 @@
 import { test, expect } from "bun:test";
 import { createHash } from "node:crypto";
 import type { AgentRunState } from "@zhivex-ai/core";
-import { APPROVAL_DIFFS_KEY, captureApprovalDiffs, attachAppliedDiffs } from "../src/approval-diff.js";
-import type { ApprovalDecisionView } from "../src/approval-history.js";
-import type { HarnessClientRun } from "../src/client-contract.js";
+import { APPROVAL_DIFFS_KEY, captureApprovalDiffs, attachAppliedDiffs } from "../src/approvals/approval-diff.js";
+import type { ApprovalDecisionView } from "../src/approvals/approval-history.js";
+import type { HarnessClientRun } from "../src/client/index.js";
 const digest = (value: string | null) => value === null ? null : "sha256:" + createHash("sha256").update(value).digest("hex");
 const file = (before: string | null = "\ufeffantes\r\n", after: string | null = "después\r\n") => ({ path: "a.txt", before, after, expectedDigest: digest(before), afterDigest: digest(after) });
 const proposalId = "sha256:" + "a".repeat(64), approvalId = "approval", hash = "b".repeat(64);

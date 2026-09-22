@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { boundedBatches } from "../src/bounded-reads.js";
+import { boundedBatches } from "../src/workspace/bounded-reads.js";
 
 test("bounds concurrency, preserves input order, and starts no work after early termination", async () => {
   let active = 0;

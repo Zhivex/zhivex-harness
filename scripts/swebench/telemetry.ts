@@ -1,6 +1,6 @@
 import type { AgentRunState, AgentStep } from "@zhivex-ai/agents";
 import { createHash } from "node:crypto";
-import { normalizeHarnessError } from "../../src/errors.js";
+import { normalizeHarnessError } from "../../src/runtime/errors.js";
 const knownTools = new Set(["read_task", "repair_plan", "mutation_audit", "list_files", "read_file", "read_files", "search_files", "search_many", "apply_reviewed_replacement", "apply_reviewed_edits", "run_environment_shell", "run_environment_command", "run_environment_batch", "inspect_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits", "run_check", "git_diff", "propose_edits", "apply_patch", "load_skill"]);
 const safeToolName = (name: string) => knownTools.has(name) ? name : "other-tool";
 export const sanitizeOperationalError = (error: unknown) => {

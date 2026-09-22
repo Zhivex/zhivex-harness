@@ -8,13 +8,13 @@ import {
   HARNESS_ERROR_CODES,
   HarnessError,
   normalizeHarnessError
-} from "../src/errors.js";
+} from "../src/runtime/errors.js";
 import {
   TIME_TO_SAFE_FIX_CARRIERS,
   TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES,
   TIME_TO_SAFE_FIX_GOALS,
   TIME_TO_SAFE_FIX_PROFILES
-} from "../src/time-to-safe-fix.js";
+} from "../src/runtime/time-to-safe-fix.js";
 
 const SHA_256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const SHA_512_PATTERN = /^sha512-[A-Za-z0-9+/]+={0,2}$/;

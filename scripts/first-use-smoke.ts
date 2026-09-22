@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runPortableProcess } from "../src/process-runtime.js";
+import { runPortableProcess } from "../src/execution/process-runtime.js";
 const cli = path.resolve(process.argv[2] ?? "dist/cli.js");
 const root = await mkdtemp(path.join(os.tmpdir(), "har-first-use-"));
 const workspace = path.join(root, "example"); await mkdir(workspace);

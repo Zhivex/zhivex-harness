@@ -2,9 +2,9 @@ import { expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { Workspace } from "../src/workspace.js";
-import { createEditProposal } from "../src/edit-contracts.js";
-import { withWorkspaceMutation } from "../src/workspace-mutation-lock.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { withWorkspaceMutation } from "../src/workspace/workspace-mutation-lock.js";
 
 test("only one concurrent update may consume a shared baseline digest", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "workspace-cas-"));
@@ -24,7 +24,7 @@ test("only one concurrent update may consume a shared baseline digest", async ()
 
 test("workspace mutation ownership excludes another process and recovers after owner death", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "workspace-lock-crash-"));
-  const modulePath = path.resolve(import.meta.dir, "../src/workspace-mutation-lock.ts");
+  const modulePath = path.resolve(import.meta.dir, "../src/workspace/workspace-mutation-lock.ts");
   const source = `import {withWorkspaceMutation} from ${JSON.stringify(modulePath)};
     await withWorkspaceMutation(${JSON.stringify(root)}, async () => {
       console.log("OWNED"); await new Promise(resolve => setTimeout(resolve, 60000));

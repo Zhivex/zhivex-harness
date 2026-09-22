@@ -6,14 +6,14 @@ import { tool, type JsonValue } from "@zhivex-ai/core";
 import { z } from "zod";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { Workspace } from "../src/workspace.js";
-import { createHarness, runHarness, renderHarnessInstructions, type HarnessRunDiagnostics } from "../src/harness.js";
-import { TASK_SOURCE_KEY, taskSources } from "../src/task-memory.js";
-import { REPAIR_PROGRESS_KEY, createRepairProgress } from "../src/repair-progress.js";
-import { createEditProposal } from "../src/edit-contracts.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { createHarness, runHarness, renderHarnessInstructions, type HarnessRunDiagnostics } from "../src/runtime/harness.js";
+import { TASK_SOURCE_KEY, taskSources } from "../src/context/task-memory.js";
+import { REPAIR_PROGRESS_KEY, createRepairProgress } from "../src/runtime/repair-progress.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
 import { parseCliArgs } from "../src/cli.js";
-import { resolveHarnessConfig } from "../src/config.js";
-import type { HarnessOciRuntimeAdapter, HarnessExecutionSession } from "../src/execution-environment.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
+import type { HarnessOciRuntimeAdapter, HarnessExecutionSession } from "../src/execution/execution-environment.js";
 
 const fixture = async (body: (root: string) => Promise<void>) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhx-remediation-"));

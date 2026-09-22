@@ -4,7 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
-import { createHarness, runHarness } from '../src/harness.js';
+import { createHarness, runHarness } from '../src/runtime/harness.js';
 const finish={type:'finish' as const,finishReason:'tool-calls' as const,usage:{inputTokens:10,outputTokens:2,totalTokens:12}};
 const unknown=(id:string)=>[{type:'tool-call' as const,toolCall:{id,name:'unregistered_fixture',input:{}}},finish];
 for(const scenario of ['repair','strict','override','bounded'] as const)test(`unknown tool selection: ${scenario}`,async()=>{

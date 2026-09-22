@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { readRegularFileNoFollow } from "../src/file-security.js";
+import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 import { assertHarnessReleaseChannel, parseHarnessReleaseVersion } from "./release-policy.js";
 import { parseRepresentativeEvidenceAssemblyMatrix } from "./assemble-representative-evidence.js";

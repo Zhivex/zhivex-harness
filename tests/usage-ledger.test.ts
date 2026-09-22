@@ -3,8 +3,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { resolveHarnessConfig } from "../src/config.js";
-import { UsageLedger, usagePricingSchema, type UsageAccountingOptions } from "../src/usage-ledger.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { UsageLedger, usagePricingSchema, type UsageAccountingOptions } from "../src/runtime/usage-ledger.js";
 
 const roots: string[] = [], ledgers: UsageLedger[] = [];
 afterEach(async () => { for (const ledger of ledgers.splice(0)) ledger.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });

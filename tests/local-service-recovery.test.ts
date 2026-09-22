@@ -3,10 +3,10 @@ import {mkdtemp,mkdir,writeFile,readFile,rm} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {createHarness} from "../src/harness.js";
+import {createHarness} from "../src/runtime/harness.js";
 import {createMockLanguageModel} from "@zhivex-ai/agents/testing";
-import {recoverHarnessLocalService} from "../src/local-service.js";
-import {openCliSessionStore} from "../src/sessions.js";
+import {recoverHarnessLocalService} from "../src/client/local-service.js";
+import {openCliSessionStore} from "../src/persistence/sessions.js";
 test("concurrent dead-owner recovery serializes, preserves sessions and never removes a replacement live owner",async()=>{
  const root=await mkdtemp(path.join(tmpdir(),"har-recover-")),socket=path.join(root,"socket");await mkdir(socket,{mode:0o700});
  const harness=await createHarness({workspace:root,provider:"openai",modelInstance:createMockLanguageModel(),subagentProfiles:[]});

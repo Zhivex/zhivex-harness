@@ -10,7 +10,7 @@ import {
   HarnessExecutionError,
   HarnessProviderError,
   HarnessStateConflictError
-} from "../src/errors.js";
+} from "../src/runtime/errors.js";
 import {
   classifyTimeToSafeFixFailure,
   createTimeToSafeFixCases,
@@ -21,7 +21,7 @@ import {
   type TimeToSafeFixDriverResult,
   type TimeToSafeFixSample,
   type TimeToSafeFixTask
-} from "../src/time-to-safe-fix.js";
+} from "../src/runtime/time-to-safe-fix.js";
 
 const task = (id = "core-001-example"): TimeToSafeFixTask => timeToSafeFixTaskSchema.parse({
   task_id: id,

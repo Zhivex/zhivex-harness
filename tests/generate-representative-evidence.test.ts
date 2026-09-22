@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createTimeToSafeFixCases, timeToSafeFixTaskSchema } from "../src/time-to-safe-fix.js";
+import { createTimeToSafeFixCases, timeToSafeFixTaskSchema } from "../src/runtime/time-to-safe-fix.js";
 import {
   REPRESENTATIVE_DATASET_NAME,
   REPRESENTATIVE_DATASET_REVISION,

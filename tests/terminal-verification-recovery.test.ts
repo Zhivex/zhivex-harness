@@ -5,10 +5,10 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { wrapLanguageModel } from "@zhivex-ai/core";
-import { createHarness, runHarness } from "../src/harness.js";
-import { createEditProposal } from "../src/edit-contracts.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
 import { projectState } from "../scripts/swebench/telemetry.js";
-import type { HarnessOciRuntimeAdapter, OciRunRequest, HarnessExecutionSession } from "../src/execution-environment.js";
+import type { HarnessOciRuntimeAdapter, OciRunRequest, HarnessExecutionSession } from "../src/execution/execution-environment.js";
 
 // Exercise the real approval, journal, snapshot and terminal-receipt paths.
 // Only the OCI process result is simulated.

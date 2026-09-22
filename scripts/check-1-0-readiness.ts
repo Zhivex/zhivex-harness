@@ -10,9 +10,9 @@ import {
   CLI_SESSIONS_COMMANDS,
   CLI_STATE_COMMANDS
 } from "../src/cli.js";
-import { CLI_COMMAND_OPTION_CONTRACTS } from "../src/cli-options.js";
-import { CLI_OPTION_NAMES } from "../src/cli-options.js";
-import { readRegularFileNoFollow } from "../src/file-security.js";
+import { CLI_COMMAND_OPTION_CONTRACTS } from "../src/cli/cli-options.js";
+import { CLI_OPTION_NAMES } from "../src/cli/cli-options.js";
+import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
 import {
   assertStableApiSignatureSnapshot,
   buildStableApiSignatureSnapshot,

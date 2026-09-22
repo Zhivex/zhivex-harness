@@ -7,9 +7,9 @@ import {
   parseProvider,
   providerDescriptor,
   type HarnessProvider
-} from "../src/config.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import { createHarnessRouteModels, resolveHarnessModelRoutes } from "../src/routing.js";
+} from "../src/runtime/config.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { createHarnessRouteModels, resolveHarnessModelRoutes } from "../src/providers/routing.js";
 import { orchestrationPrompt, prepareReviewFixture } from "./live-orchestration-smoke.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 

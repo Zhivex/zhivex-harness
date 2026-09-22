@@ -4,7 +4,7 @@ import type {
   ToolSet
 } from "@zhivex-ai/agents";
 
-import type { TimeToSafeFixDriverResult } from "../src/time-to-safe-fix.js";
+import type { TimeToSafeFixDriverResult } from "../src/runtime/time-to-safe-fix.js";
 
 export type TimeToSafeFixEfficiency = NonNullable<TimeToSafeFixDriverResult["efficiency"]>;
 export type TimeToSafeFixApprovalRound = TimeToSafeFixEfficiency["approvalRounds"][number];

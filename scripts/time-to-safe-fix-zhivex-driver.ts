@@ -5,8 +5,8 @@ import path from "node:path";
 import {
   parseProvider,
   type HarnessProvider
-} from "../src/config.js";
-import type { HarnessExecutionConfig } from "../src/config.js";
+} from "../src/runtime/config.js";
+import type { HarnessExecutionConfig } from "../src/runtime/config.js";
 import { runDirectProfile } from "./time-to-safe-fix-direct-profile.js";
 import {
   readTimeToSafeFixDriverRequest,

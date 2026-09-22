@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { Workspace } from "../src/workspace.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const integerOption = (name: string, fallback: number, maximum: number, minimum = 1) => {
   const index = process.argv.indexOf(name);

@@ -9,7 +9,7 @@ import {
   resolveTerminalApprovals,
   sanitizeTerminalText,
   terminalSupportsColor
-} from "../src/terminal-ui.js";
+} from "../src/cli/terminal/terminal-ui.js";
 
 const approval = (
   name: string,

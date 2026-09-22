@@ -2,7 +2,7 @@ import {spawn} from "node:child_process";
 import {constants} from "node:fs";
 import {lstat, open, realpath} from "node:fs/promises";
 import path from "node:path";
-import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
+import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/internal/desktop/persistence.js";
 
 /** Host-only launch primitive. The private directory and bundled worker must be
  * staged outside the application before launch. Arguments contain paths/IDs only.

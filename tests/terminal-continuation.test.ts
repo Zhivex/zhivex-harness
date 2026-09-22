@@ -1,5 +1,5 @@
 import {expect,test} from "bun:test";
-import {terminalContinuationMessages} from "../src/terminal-continuation.js";
+import {terminalContinuationMessages} from "../src/cli/terminal/terminal-continuation.js";
 import type {ModelMessage} from "@zhivex-ai/core";
 test("terminal transcript gaps become explicit unknown results without fabricating success or modifying history",()=>{
  const messages:ModelMessage[]=[{role:"assistant",parts:[{type:"tool-call",toolCall:{id:"missing",name:"apply_patch",input:{}}},{type:"tool-call",toolCall:{id:"recorded",name:"read_file",input:{}}}]},{role:"tool",parts:[{type:"tool-result",toolResult:{toolCallId:"recorded",toolName:"read_file",output:{content:"actual"},isError:false}}]}];

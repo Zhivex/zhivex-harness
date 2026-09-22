@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/harness.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { sanitizeOperationalError } from "../scripts/swebench/telemetry.js";
 
 const usage = { inputTokens: 10, outputTokens: 2, totalTokens: 12 };

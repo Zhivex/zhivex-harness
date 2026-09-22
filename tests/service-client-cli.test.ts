@@ -1,10 +1,10 @@
 import { test, expect } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness } from "../src/harness.js";
-import { startHarnessLocalService } from "../src/local-service.js";
+import { createHarness } from "../src/runtime/harness.js";
+import { startHarnessLocalService } from "../src/client/local-service.js";
 import { parseCliArgs } from "../src/cli.js";
-import { parseCliJsonLineDocument, parseCliJsonDocument } from "../src/json-contracts.js";
+import { parseCliJsonLineDocument, parseCliJsonDocument } from "../src/client/json-contracts.js";
 
 test("service CLI options preserve host authority and literal prompts",()=>{
  expect(parseCliArgs(["run","--service","/private/host.json","--","--provider"])).toMatchObject({serviceFile:"/private/host.json",prompt:"--provider"});

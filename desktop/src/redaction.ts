@@ -1,5 +1,5 @@
 import { createRedactionPolicy } from "@zhivex-ai/agents";
-import type { HarnessClientResponse } from "../../src/client-contract.js";
+import type { HarnessClientResponse } from "../../src/internal/desktop/protocol.js";
 const knownSensitiveValues:string[]=[];
 export const rememberSensitiveValue=(value:string)=>{if(value&&!knownSensitiveValues.includes(value))knownSensitiveValues.push(value);};
 export const hostSensitiveValues=(env:NodeJS.ProcessEnv)=>{for(const [key,value] of Object.entries(env))if(/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)&&value)rememberSensitiveValue(value);return knownSensitiveValues;};

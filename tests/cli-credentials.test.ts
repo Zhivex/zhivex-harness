@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { PassThrough } from "node:stream";
-import { credentialModel, CliCredentials, type CredentialInput, type SecretEntry } from "../src/cli-credentials.js";
-import { ConsoleInput } from "../src/console-input.js";
+import { credentialModel, CliCredentials, type CredentialInput, type SecretEntry } from "../src/cli/cli-credentials.js";
+import { ConsoleInput } from "../src/cli/console/console-input.js";
 
 function fixture(environment: NodeJS.ProcessEnv = {}) {
   const keys = new Map<string, string>();
@@ -117,7 +117,7 @@ test("provider exceptions are scrubbed before generation and stream errors escap
     provider: "openai", modelId: "fixture",
     generate: async () => { throw new Error(`request failed: ${secret}`, {cause: {authorization:secret}}); },
     stream: async function* () { throw new Error(`stream failed: ${secret}`, {cause: {authorization:secret}}); },
-  } as unknown as ReturnType<typeof import("../src/config.js").createProviderModel>;
+  } as unknown as ReturnType<typeof import("../src/runtime/config.js").createProviderModel>;
   const model = await credentialModel({provider:"openai",model:"fixture"}, {OPENAI_API_KEY:secret}, () => underlying);
   try { await model.generate({messages:[]}); throw new Error("expected failure"); }
   catch (error) { expect(String(error)).toContain("[REDACTED]"); expect(String(error)).not.toContain(secret); expect((error as Error).cause).toBeUndefined(); }

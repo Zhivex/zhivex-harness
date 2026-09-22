@@ -6,7 +6,7 @@ import {
   assertHarnessModelCapabilities,
   inspectHarnessModelCapabilities,
   selectHarnessModel
-} from "../src/capabilities.js";
+} from "../src/providers/capabilities.js";
 
 describe("capability routing", () => {
   test("rejects an incompatible model before any run begins", () => {

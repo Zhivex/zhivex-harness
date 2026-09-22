@@ -1,14 +1,14 @@
 import {defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
 import type {DesktopModelSelection} from "./bridge.js";
-import {protectPersistenceSecret} from "../../src/persistence-secrets.js";
+import {protectPersistenceSecret} from "../../src/internal/desktop/persistence.js";
 import {desktopProviderModel} from "./provider-model.js";
 import { fixtureOciRuntime } from "./fixture-oci.js";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { hostSensitiveValues } from "./redaction.js";
-import { createHarness } from "../../src/harness.js";
-import { startHarnessLocalService, recoverHarnessLocalService } from "../../src/local-service.js";
+import { createHarness } from "../../src/internal/desktop/runtime.js";
+import { startHarnessLocalService, recoverHarnessLocalService } from "../../src/internal/desktop/runtime.js";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
 

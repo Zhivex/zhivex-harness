@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { chooseConsoleItem, formatComposer } from "../src/console-presentation.js";
+import { chooseConsoleItem, formatComposer } from "../src/cli/console/console-presentation.js";
 
 test("composer distinguishes approval policy and pending actions, and bounds hostile metadata", () => {
  const text=formatComposer({model:"openai/model",status:"approval pending · /pending",title:"injected\x1b[2J\nname",automaticApprovals:true,attachments:2},100,false);

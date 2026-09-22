@@ -3,9 +3,9 @@ import { chmod, mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile 
 import os from "node:os";
 import path from "node:path";
 
-import { createEditProposal } from "../src/edit-contracts.js";
-import { runPortableProcess } from "../src/process-runtime.js";
-import { Workspace } from "../src/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { runPortableProcess } from "../src/execution/process-runtime.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 

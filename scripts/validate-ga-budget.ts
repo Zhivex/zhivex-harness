@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
-import { createHarness, runHarness } from "../src/harness.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" ? value as Record<string, unknown> : {};

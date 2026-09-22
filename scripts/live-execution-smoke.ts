@@ -9,8 +9,8 @@ import {
   PROVIDERS,
   providerDescriptor,
   type HarnessProvider
-} from "../src/config.js";
-import { createHarness, runHarness } from "../src/harness.js";
+} from "../src/runtime/config.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const {

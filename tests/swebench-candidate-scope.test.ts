@@ -2,11 +2,11 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createHarness } from '../src/harness.js';
+import { createHarness } from '../src/runtime/harness.js';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
-import { createEditProposal } from '../src/edit-contracts.js';
+import { createEditProposal } from '../src/workspace/edit-contracts.js';
 import { captureRunCandidate } from '../scripts/swebench/candidate.js';
-import type { HarnessOciRuntimeAdapter, HarnessExecutionSession } from '../src/execution-environment.js';
+import type { HarnessOciRuntimeAdapter, HarnessExecutionSession } from '../src/execution/execution-environment.js';
 
 test('candidate capture uses the actual run scope instead of configuration defaults',async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'candidate-scope-'));let h;

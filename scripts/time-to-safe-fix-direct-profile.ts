@@ -12,20 +12,20 @@ import {
 import { serializeJsonValue } from "@zhivex-ai/core";
 import { z } from "zod";
 
-import type { HarnessExecutionConfig } from "../src/config.js";
+import type { HarnessExecutionConfig } from "../src/runtime/config.js";
 import {
   createHarnessOciExecutionEnvironment,
   type HarnessExecutionSession,
   type HarnessOciRuntimeAdapter
-} from "../src/execution-environment.js";
+} from "../src/execution/execution-environment.js";
 import {
   classifyTimeToSafeFixFailure,
   timeToSafeFixDriverResultSchema,
   type TimeToSafeFixDriverResult,
   type TimeToSafeFixFailureOrigin,
   type TimeToSafeFixFailureStage
-} from "../src/time-to-safe-fix.js";
-import { Workspace } from "../src/workspace.js";
+} from "../src/runtime/time-to-safe-fix.js";
+import { Workspace } from "../src/workspace/workspace.js";
 import type { TimeToSafeFixDriverRequest } from "./time-to-safe-fix-driver-contract.js";
 import { buildTimeToSafeFixEfficiency, selectAndInstrumentTools } from "./time-to-safe-fix-efficiency.js";
 

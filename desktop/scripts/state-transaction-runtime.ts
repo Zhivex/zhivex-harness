@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import {mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile} from "node:fs/promises";
 import path from "node:path";
-import {resolveHarnessConfig} from "../../src/config.js";
-import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {openCliSessionStore} from "../../src/sessions.js";
-import {openHarnessActivityStore} from "../../src/service-events.js";
-import {SqliteDatabase} from "../../src/sqlite-database.js";
+import {resolveHarnessConfig} from "../../src/runtime/config.js";
+import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/persistence/operations.js";
+import {openCliSessionStore} from "../../src/persistence/sessions.js";
+import {openHarnessActivityStore} from "../../src/client/service-events.js";
+import {SqliteDatabase} from "../../src/persistence/sqlite-database.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
 import {prepareDesktopStateTransaction, armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction} from "../src/state-transaction.js";
 

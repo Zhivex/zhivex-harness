@@ -3,7 +3,7 @@ import {constants} from "node:fs";
 import {lstat, mkdir, open, readdir, realpath, rename, unlink} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
-import {readRegularFileNoFollow} from "../../src/file-security.js";
+import {readRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
 import {createApplicationSwapper, type ApplicationSwap} from "./application-swap.js";
 import {activeDesktopStateTransaction, desktopStateTransactionStatus, desktopStateTransactionDatabasePaths, finishDesktopStateTransaction, restoreDesktopStateTransaction, type DesktopStateTransaction} from "./state-transaction.js";
 

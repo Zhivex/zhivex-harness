@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { applyActivityPage, emptyActivity } from "../src/activity.js";
 import { desktopRedactor } from "../src/redaction.js";
-import type { HarnessClientResponse } from "../../src/client-contract.js";
+import type { HarnessClientResponse } from "../../src/client/index.js";
 
 test("replayed and overlapping pages do not duplicate text or regress the cursor", () => {
     const events = [{ schemaVersion: 1 as const, eventId: "one", sequence: 1, sessionId: "s", runId: "r", at: 0, activity: { type: "text-delta", textDelta: "one " } }, { schemaVersion: 1 as const, eventId: "two", sequence: 2, sessionId: "s", runId: "r", at: 0, activity: { type: "text-delta", textDelta: "two " } }];

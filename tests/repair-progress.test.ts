@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { tool, type ToolSet } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createRepairProgress } from "../src/repair-progress.js";
+import { createRepairProgress } from "../src/runtime/repair-progress.js";
 import { measureContext } from "../scripts/swebench/context-metrics.js";
 
 const limits = { inputTokens: 1000, outputTokens: 100 };

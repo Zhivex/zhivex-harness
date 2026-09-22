@@ -4,8 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/harness.js";
-import { settleInterruptedRun } from "../src/run-interruption.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { settleInterruptedRun } from "../src/runtime/run-interruption.js";
 
 test("external interruption persists cancelled and emits one cancelled lifecycle finish", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-interrupt-"));
