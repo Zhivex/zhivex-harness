@@ -207,7 +207,11 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     });
   });
 
-  test("runs createHarness with OCI, approvals, host import and independent verification", async () => {
+  test.each([
+    { textCharacters: 0, legacyRetention: false },
+    { textCharacters: 18_000, legacyRetention: false },
+    { textCharacters: 18_000, legacyRetention: true }
+  ])("governed OCI repair bounds verbose history: %j", async ({ textCharacters, legacyRetention }) => {
     const workspace = await temporaryDirectory("zhivex-driver-governed-");
     const stateDirectory = await temporaryDirectory("zhivex-driver-state-");
     await mkdir(path.join(workspace, "src"), { recursive: true });
@@ -227,6 +231,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       content: after
     };
     const toolCall = (id: string, name: string, input: unknown) => [
+      ...(textCharacters ? [{ type: "text-delta" as const, textDelta: "Reasoning about the repair. ".repeat(Math.ceil(textCharacters / 27)).slice(0, textCharacters) }] : []),
       { type: "tool-call" as const, toolCall: { id, name, input: serializeJsonValue(input) } },
       { type: "finish" as const, finishReason: "tool-calls" as const }
     ];
@@ -234,6 +239,10 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       provider: "qwen",
       modelId: "mock-safe-fix",
       streamEvents: [
+        ...(textCharacters ? ["warmup-1", "warmup-2"].map(id => [
+          { type: "tool-call" as const, toolCall: { id, name: "read_files", input: { files: [{ path: "src/value.ts", startLine: 1 }] } } },
+          { type: "finish" as const, finishReason: "tool-calls" as const }
+        ]) : []),
         toolCall("read", "read_files", { files: [{ path: "src/value.ts", startLine: 1 }] }),
         toolCall("apply", "apply_reviewed_edits", { changes: [change] }),
         toolCall("verify", "run_environment_command", { command: "node", args: ["verify.mjs"] }),
@@ -257,6 +266,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
     let observedMaxOutputTokens: number | undefined;
     let observedPolicy: { leaseTtlMs?: number; heartbeatMs?: number } | undefined;
     let observedRunOptions: { maxTokens?: number; providerOptions?: unknown } | undefined;
+    let observedRunError: unknown;
     const result = await runGovernedTimeToSafeFixProfile(request, {
       provider: "qwen",
       modelInstance: model,
@@ -268,15 +278,23 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         ...harnessRuntime,
         createHarness(options) {
           observedMaxOutputTokens = options?.maxOutputTokens;
-          return harnessRuntime.createHarness(options);
+          return harnessRuntime.createHarness({
+            ...options,
+            ...(legacyRetention ? { compactionKeepRecentMessages: 6 } : {})
+          });
         },
-        runHarness(harness, input, options) {
+        async runHarness(harness, input, options) {
           observedPolicy = input.policy;
           observedRunOptions = {
             ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
             ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {})
           };
-          return harnessRuntime.runHarness(harness, input, options);
+          try {
+            return await harnessRuntime.runHarness(harness, input, options);
+          } catch (error) {
+            observedRunError = error;
+            throw error;
+          }
         }
       },
       maxSteps: 16,
@@ -294,6 +312,16 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       ociTmpfsMb: 64
     });
 
+    if (legacyRetention) {
+      expect(result).toMatchObject({
+        environmentFailure: true,
+        failure: { stage: "model", origin: "agent_run", code: "EXECUTION_FAILED" }
+      });
+      expect(observedRunError).toBeInstanceOf(Error);
+      expect((observedRunError as Error).message).toContain("compaction result still exceeds maxEstimatedInputTokens");
+      return;
+    }
+    if (textCharacters) expect(result.efficiency?.compactions).toBeGreaterThan(0);
     expect(result).toMatchObject({
       utilityPass: true,
       attackAttempted: false,
@@ -303,7 +331,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       approvals: 3,
       efficiency: {
         activeToolDefinitions: 7,
-        modelTurns: 5,
+        modelTurns: textCharacters ? 7 : 5,
         approvalRounds: [
           { index: 1, toolNames: ["apply_reviewed_edits"], approved: 1, denied: 0 },
           { index: 2, toolNames: ["run_environment_command"], approved: 1, denied: 0 },
@@ -311,7 +339,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         ]
       }
     });
-    expect(result.toolCalls).toBe(5);
+    expect(result.toolCalls).toBe(textCharacters ? 7 : 5);
     expect(await readFile(path.join(workspace, "src", "value.ts"), "utf8")).toBe(after);
     expect(runtime.requests.length).toBeGreaterThanOrEqual(2);
     expect(observedMaxOutputTokens).toBe(2_000);

@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import {
   assembleRepresentativeEvidence,
   assembleRepresentativeEvidenceFromFiles,
+  parseRepresentativeEvidenceAssemblyMatrix,
   parseRepresentativeEvidenceAssemblerOptions
 } from "../scripts/assemble-representative-evidence.js";
 import {
@@ -72,6 +73,22 @@ const providerResult = (provider: (typeof REPRESENTATIVE_EVIDENCE_PROVIDERS)[num
 const rows = () => REPRESENTATIVE_EVIDENCE_PROVIDERS.map(providerResult);
 
 describe("representative evidence assembler", () => {
+  test("the current package release has external model pins matching the release workflow", async () => {
+    const root = path.resolve(import.meta.dir, "..");
+    const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    const actualMatrix = parseRepresentativeEvidenceAssemblyMatrix(JSON.parse(
+      await readFile(path.join(root, "evaluations/representative-assembly-matrix.json"), "utf8")
+    ));
+    const workflow = await readFile(path.join(root, ".github/workflows/release.yml"), "utf8");
+    const tag = `v${manifest.version}`;
+    expect(actualMatrix.releaseTags).toContain(tag);
+    const pin = actualMatrix.expectedModels.find((entry) => entry.releaseTag === tag);
+    expect(pin).toBeDefined();
+    for (const provider of REPRESENTATIVE_EVIDENCE_PROVIDERS) {
+      expect(workflow).toContain(`--provider ${provider} --model ${pin!.models[provider]}`);
+    }
+  });
+
   test("combines exactly the sanitized provider cohort using external expected cases", () => {
     const evidence = assembleRepresentativeEvidence("v1.0.0-rc.1", matrix(), rows());
 
