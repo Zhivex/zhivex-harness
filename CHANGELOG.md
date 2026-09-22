@@ -4,10 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## 1.1.0-rc.1 - Unreleased
+## 1.1.0-rc.1 - 2026-09-22
 
-Candidate for the next compatible minor release; not published. The latest stable
-release remains 1.0.0. Desktop has its own private alpha version.
+Release candidate for the next compatible minor release, targeting the `next` channel.
+The latest stable release remains 1.0.0. Desktop has its own private alpha version.
 
 ### Desktop preview
 
