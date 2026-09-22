@@ -48,6 +48,7 @@ test("replacing the counter path after opening cannot redirect the write", () =>
       import { syncBuiltinESMExports } from 'node:module';
       const read = fs.readFileSync;
       fs.readFileSync = function(fd, ...args) {
+        if (typeof fd !== 'number') return read(fd, ...args);
         const counter = process.env.FIRST_USE_COUNTER;
         fs.renameSync(counter, counter + '.opened');
         fs.symlinkSync(counter + '.target', counter);
