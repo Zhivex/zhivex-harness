@@ -1,6 +1,7 @@
 import { app, type BrowserWindow } from "electron";
-import { readFile, writeFile, stat } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {readRegularFileNoFollow} from "../../src/file-security.js";
 import assert from "node:assert/strict";
 import type { ProjectRuntime } from "./runtime-host.js";
 
@@ -24,13 +25,14 @@ export async function verifyDesktopEffectCrashSmoke(window: BrowserWindow, runti
         await click('[data-action="review"]'); await wait('document.querySelector("[data-action=approve-review]")?.disabled === false'); await click('[data-action="approve-review"]');
         await wait('document.body.innerText.includes("Connection interrupted")'); assert(!runtime.isAlive());
         const marker = JSON.parse(await readFile(path.join(directory, "socket/effect-crash.json"), "utf8")); assert.equal(marker.runId, runId); assert.equal(marker.pid, runtime.context.runtimePid); assert(marker.beforeJournalCommit);
-        assert.equal(await readFile(file, "utf8"), after);
-        await writeFile(checkpoint, JSON.stringify({ projectKey, sessionId, runId, decisions, mtime: (await stat(file)).mtimeMs }));
+        const effect = await readRegularFileNoFollow(file, {label: "crash fixture effect", maxBytes: 4096});
+        assert.equal(effect.contents.toString("utf8"), after);
+        await writeFile(checkpoint, JSON.stringify({ projectKey, sessionId, runId, decisions, mtime: effect.stat.mtimeMs }));
     } else {
         const saved = JSON.parse(await readFile(checkpoint, "utf8")); ({ sessionId, runId } = saved); assert.equal(projectKey, saved.projectKey);
         await wait('document.querySelector("[data-session]")?.disabled === false'); await click(`[data-session="${sessionId}"]`);
         const recovered = await runtime.command({ method: "run.get", sessionId, runId, includeDiff: true }); assert(recovered.ok && recovered.data.kind === "run"); assert.equal(recovered.data.run.decisionTotal, 1); assert.equal(recovered.data.run.decisions?.[0]?.status, "unknown"); assert.equal(recovered.data.run.decisions?.[0]?.finalDiff, undefined);
-        assert.equal(await readFile(file, "utf8"), after); assert.equal((await stat(file)).mtimeMs, saved.mtime);
+        { const effect = await readRegularFileNoFollow(file, {label: "recovered fixture effect", maxBytes: 4096}); assert.equal(effect.contents.toString("utf8"), after); assert.equal(effect.stat.mtimeMs, saved.mtime); }
         await wait(`document.querySelector('[data-run="${runId}"] [data-action="decision-history"]') !== null`); await click(`[data-run="${runId}"] [data-action="decision-history"]`); await wait('document.querySelector("[data-decision-status=unknown]") !== null'); assert.equal(await js('document.querySelectorAll(".final-diff").length'), 0);
         assert.equal(recovered.data.run.status, "running");
         const duplicate = await runtime.command({ method: "approval.resolve", sessionId, runId, expectedRevision: recovered.data.run.revision, idempotencyKey: "effect-retry", decisions: saved.decisions }); assert(!duplicate.ok); assert.equal(duplicate.error.code, "INVALID_STATE");
@@ -41,7 +43,7 @@ export async function verifyDesktopEffectCrashSmoke(window: BrowserWindow, runti
         await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]'); await wait('document.body.innerText.includes("completed")');
         const latest = await runtime.command({ method: "session.get", sessionId }); assert(latest.ok && latest.data.kind === "session"); assert.equal(latest.data.session.runs.length, 2); assert.equal(latest.data.session.runs[0]!.runId, runId);
         const old = await runtime.command({ method: "run.get", sessionId, runId, includeDiff: true }); assert(old.ok && old.data.kind === "run"); assert.equal(old.data.run.decisionTotal, 1); assert.equal(old.data.run.decisions?.[0]?.status, "unknown"); assert.equal(old.data.run.decisions?.[0]?.finalDiff, undefined);
-        assert.equal(await readFile(file, "utf8"), after); assert.equal((await stat(file)).mtimeMs, saved.mtime);
+        { const effect = await readRegularFileNoFollow(file, {label: "recovered fixture effect", maxBytes: 4096}); assert.equal(effect.contents.toString("utf8"), after); assert.equal(effect.stat.mtimeMs, saved.mtime); }
     }
     await writeFile(path.join(directory, `${phase}-report.json`), JSON.stringify({ schemaVersion: 1, phase, packaged: app.isPackaged, appPid: process.pid, runtimePid: runtime.context.runtimePid, sessionId, runId, windowCloseRequested: true, effectBeforeJournalCrash: phase === "effect-crash", outcomeUnknown: phase === "effect-recovery", noAppliedDiff: phase === "effect-recovery", duplicateApprovalRejected: phase === "effect-recovery", explicitCancellation: phase === "effect-recovery", continuedWithoutReplay: phase === "effect-recovery", fixture: true }, null, 2));
     window.close();

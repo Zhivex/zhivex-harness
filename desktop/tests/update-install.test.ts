@@ -12,6 +12,8 @@ import {prepareDesktopUpdateJob, findDesktopUpdateRecoveryJob, inspectDesktopUpd
 import {prepareDesktopUpdateHandoff} from "../src/update-handoff.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
 
+const nativeTest = process.platform === "darwin" ? test : test.skip;
+
 async function fixture(run: (f: Awaited<ReturnType<typeof setup>>) => Promise<void>) {
  const f = await setup(); try {await run(f);} finally {await rm(f.root, {recursive: true, force: true});}
 }
@@ -47,7 +49,7 @@ function services(f: Awaited<ReturnType<typeof setup>>, log: string[]) {
   acknowledge: async () => {log.push("ack");},
  };
 }
-test("download-to-handoff journals recovery before exiting and keeps application admission blocked", () => fixture(async f => {
+nativeTest("download-to-handoff journals recovery before exiting and keeps application admission blocked", () => fixture(async f => {
  const life = lifecycle();
  await createDesktopUpdateInstaller(f.policy, life.host, services(f, life.log))(f.prepared);
  expect(f.commands).toEqual(["attach", "detach"]);
@@ -70,7 +72,7 @@ test("changed artifact is rejected before mounting and idle runtimes resume", ()
  expect(f.commands).toEqual([]); expect(life.log).toEqual(["block:true", "pause", "resume", "block:false"]);
  await checkDesktopStateFormat(f.userData);
 }));
-test("failed worker acknowledgement preserves recovery and never exits or reopens admission", () => fixture(async f => {
+nativeTest("failed worker acknowledgement preserves recovery and never exits or reopens admission", () => fixture(async f => {
  const life = lifecycle(); const deps = services(f, life.log); deps.acknowledge = async () => {throw new Error("fixture no ack");};
  await expect(createDesktopUpdateInstaller(f.policy, life.host, deps)(f.prepared)).rejects.toThrow("recovery-required");
  expect(life.blocked()).toBe(true); expect(life.log).not.toContain("quit"); expect(life.log).not.toContain("block:false");
@@ -80,4 +82,13 @@ test("backup failure after runtime closure reloads without arming recovery", () 
  const life = lifecycle(), deps = services(f, life.log); deps.backup = async () => {throw new Error("fixture backup failure");};
  await expect(createDesktopUpdateInstaller(f.policy, life.host, deps)(f.prepared)).rejects.toThrow("install-failed");
  expect(life.log).toContain("reload"); expect(life.blocked()).toBe(false); await checkDesktopStateFormat(f.userData);
+}));
+
+(process.platform !== "darwin" ? test : test.skip)("unsupported platforms refuse native handoff without arming recovery or quitting", () => fixture(async f => {
+ const life = lifecycle();
+ await expect(createDesktopUpdateInstaller(f.policy, life.host, services(f, life.log))(f.prepared)).rejects.toThrow("install-failed");
+ expect(life.log).not.toContain("launch"); expect(life.log).not.toContain("quit");
+ expect(life.log).toContain("reload"); expect(life.blocked()).toBe(false);
+ await checkDesktopStateFormat(f.userData);
+ expect(await readFile(path.join(f.policy.application, "version"), "utf8")).toBe("1.0.0");
 }));

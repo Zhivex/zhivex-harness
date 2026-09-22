@@ -1,5 +1,5 @@
 import {randomUUID} from "node:crypto";
-import {constants} from "node:fs";
+import {constants, type Stats} from "node:fs";
 import {cp, lstat, mkdir, open, realpath, rename, unlink, rm, readdir} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
@@ -12,7 +12,15 @@ type Journal = z.infer<typeof schema>;
 type Verify = (application: string, policy: {teamId: string; version: string}) => Promise<unknown>;
 export interface ApplicationSwap {application: string; id: string}
 async function exists(filename: string) {try {await lstat(filename); return true;} catch (e) {if ((e as NodeJS.ErrnoException).code === "ENOENT") return false; throw e;}}
-async function sync(directory: string) {const file = await open(directory, constants.O_RDONLY | constants.O_NOFOLLOW); try {await file.sync();} finally {await file.close();}}
+async function sync(filename: string, expected?: Stats) {
+ const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+ try {
+  const actual = await file.stat();
+  if (expected && (!actual.isFile() || actual.dev !== expected.dev || actual.ino !== expected.ino || actual.size !== expected.size || actual.mtimeMs !== expected.mtimeMs)) throw new Error("UPDATE_APPLICATION_FILE_CHANGED");
+  if (!expected && !actual.isDirectory()) throw new Error("UPDATE_APPLICATION_DIRECTORY_CHANGED");
+  await file.sync();
+ } finally {await file.close();}
+}
 async function save(directory: string, journal: Journal) {
  const temporary = path.join(directory, `.journal-${randomUUID()}`), file = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
  try {
@@ -53,7 +61,7 @@ async function checkTree(application: string, flush: boolean) {
    if (flush) await sync(filename);
   } else if (info.isFile()) {
    bytes += info.size; if (bytes > 2 * 1024 ** 3) throw new Error();
-   if (flush) {const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW); try {await file.sync();} finally {await file.close();}}
+   if (flush) await sync(filename, info);
   } else throw new Error();
  };
  await visit(application, 0);

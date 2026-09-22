@@ -1,3 +1,4 @@
+import {rendererFixtureData} from "../src/renderer-fixture-data.js";
 import {app,BrowserWindow,ipcMain} from "electron";
 import {mkdir,writeFile,readFile} from "node:fs/promises";
 import {execFileSync} from "node:child_process";
@@ -27,7 +28,7 @@ void app.whenReady().then(async()=>{
  const wait=async(s:string,ms=150000)=>{const until=Date.now()+ms;while(Date.now()<until){if(await js(s))return;await new Promise(r=>setTimeout(r,100));}throw new Error("LIVE_TIMEOUT");};
  const click=(s:string)=>js(`document.querySelector(${JSON.stringify(s)}).click()`);
  const send=async(prompt:string)=>{
-  await js(`(()=>{const el=document.querySelector('#prompt');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${JSON.stringify(prompt)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  await js(`(()=>{const el=document.querySelector('#prompt');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,${rendererFixtureData(prompt)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   await wait("document.querySelector('[data-action=start]')?.disabled===false",10000);await click('[data-action=start]');
  };
  await wait("document.querySelector('[data-action=new-session]')?.disabled===false",15000);
