@@ -46,7 +46,7 @@ jobs:
         run: node desktop/node_modules/electron/install.js
 
       - name: Audit desktop dependencies
-        run: bun audit
+        run: bun run ../scripts/audit-dependencies.ts
         working-directory: desktop
 
       - name: Validate desktop source and security regressions
@@ -118,7 +118,7 @@ jobs:
         run: bun run smoke:credentials
 
       - name: Audit dependencies
-        run: bun audit
+        run: bun run scripts/audit-dependencies.ts
 
       - name: Preload OCI execution image
         if: runner.os == 'Linux'

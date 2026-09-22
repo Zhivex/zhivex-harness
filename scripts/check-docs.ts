@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { validateCodeqlPins } from "./codeql-policy.js";
 import { checkOnboardingDocument, checkStableRoadmap } from "./onboarding-docs.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 import { parseHarnessReleaseVersion } from "./release-policy.js";
@@ -942,14 +943,13 @@ const codeqlWorkflow = await readFile(path.join(workspace, ".github", "workflows
 for (const required of [
   "security-events: write",
   "javascript-typescript",
-  "queries: security-extended",
-  "github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28",
-  "github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28"
+  "queries: security-extended"
 ]) {
   if (!codeqlWorkflow.includes(required)) {
     failures.push(`.github/workflows/codeql.yml is missing: ${required}.`);
   }
 }
+failures.push(...validateCodeqlPins(codeqlWorkflow));
 const dependabot = await readFile(path.join(workspace, ".github", "dependabot.yml"), "utf8");
 for (const required of ["package-ecosystem: bun", "package-ecosystem: github-actions"]) {
   if (!dependabot.includes(required)) failures.push(`.github/dependabot.yml is missing: ${required}.`);
