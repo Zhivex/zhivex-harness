@@ -219,3 +219,43 @@ describe("release workflow version source", () => {
     }
   });
 });
+
+test("release preflight precedes Docker and full validation; transfer supports recovery", async () => {
+  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8")) as {
+    jobs: Record<string, { needs?: string[]; if?: string; steps: { run?: string; with?: Record<string, unknown> }[] }>;
+  };
+  const steps = workflow.jobs.validate!.steps;
+  const preflight = steps.findIndex(step => step.run?.includes("--registry"));
+  expect(preflight).toBeGreaterThanOrEqual(0);
+  expect(preflight).toBeLessThan(steps.findIndex(step => step.run?.includes("docker pull")));
+  expect(preflight).toBeLessThan(steps.findIndex(step => step.run?.includes("bun run release:check")));
+  expect(steps.find(step => step.with?.name === "npm-release-${{ github.sha }}")?.with?.["retention-days"]).toBe(30);
+  expect(workflow.jobs.summary!.needs).toEqual(["validate", "certify-live", "representative-evaluation", "publish"]);
+  expect(workflow.jobs.summary!.if).toBe("${{ always() }}");
+  expect(workflow.jobs.publish!.needs).not.toContain("summary");
+});
+
+test("registry summary distinguishes verification, accepted bytes and uncertain transaction failures", async () => {
+  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8")) as {
+    jobs: Record<string, { steps: { name?: string; run?: string }[] }>;
+  };
+  const script = workflow.jobs.publish!.steps.find(step => step.name === "Summarize registry transaction")!.run!;
+  const directory = await mkdtemp(path.join(os.tmpdir(), "release-summary-"));
+  try {
+    for (const [registry, publication, verification, expected] of [
+      ["absent", "success", "success", "Published and verified"],
+      ["absent", "success", "failure", "verification pending"],
+      ["identical", "skipped", "failure", "verification pending"],
+      ["absent", "failure", "skipped", "acceptance unknown"],
+      ["", "skipped", "skipped", "not attempted"]
+    ]) {
+      const summary = path.join(directory, "summary.md");
+      await writeFile(summary, "");
+      const child = Bun.spawn(["bash", "-eu", "-c", script], { env: {
+        ...process.env, GITHUB_STEP_SUMMARY: summary, REGISTRY_STATE: registry!, PUBLICATION: publication!, VERIFICATION: verification!
+      }, stdout: "pipe", stderr: "pipe" });
+      expect(await child.exited).toBe(0);
+      expect(await readFile(summary, "utf8")).toContain(expected!);
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
