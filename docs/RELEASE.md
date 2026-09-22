@@ -4,8 +4,8 @@
 
 ## Next candidate
 
-The source version is `1.1.0-rc.1`, targeting npm `next` after fresh certification.
-It is not published. See [candidate readiness](releases/1.1.0-rc.1.md).
+The source version is `1.1.0-rc.2`, targeting npm `next` after fresh certification.
+It is not published. See [candidate readiness](releases/1.1.0-rc.2.md).
 `release-status.json` continues to describe the independently verified 1.0.0
 publication; its evidence must not be reused as certification for this candidate.
 

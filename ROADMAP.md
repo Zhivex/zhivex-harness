@@ -7,12 +7,12 @@ Version `1.0.0` is published on npm as `latest`. Status: published on npm as `la
 
 ## Next version: 1.1.0
 
-Source candidate: `1.1.0-rc.1` (unpublished). Scope: daily CLI usability,
+Source candidate: `1.1.0-rc.2` (unpublished). Scope: daily CLI usability,
 authenticated local service/replay and an experimental Desktop client. Stable
 contracts and state format 1 remain compatible. Desktop keeps its separate
 `0.1.0-alpha.1` version and private distribution status.
 
-See [candidate readiness](docs/releases/1.1.0-rc.1.md) for validation evidence and
+See [candidate readiness](docs/releases/1.1.0-rc.2.md) for validation evidence and
 remaining release gates. The 1.0.0 publication record is preserved separately.
 
 ## Planning principles
