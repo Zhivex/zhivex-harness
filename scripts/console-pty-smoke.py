@@ -24,8 +24,10 @@ env = {key: value for key, value in os.environ.items() if key in (
     "PATH", "HOME", "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "LANG", "LC_ALL")}
 env.update(OPENAI_API_KEY="fixture-only", OPENAI_BASE_URL="https://api.openai.com/v1",
            CONSOLE_FIXTURE_REQUESTS=root + "/requests.jsonl", TERM="xterm-256color")
+# This smoke exercises conversation behavior; console-entry-smoke covers onboarding.
+# Select the fixture provider explicitly so a clean profile never waits for setup.
 proc = subprocess.Popen(["node", "--import", str(repo / "tests/fixtures/console-fetch.mjs"),
-                         str(cli), "chat", "--workspace", root],
+                         str(cli), "chat", "--provider", "openai", "--workspace", root],
                         stdin=slave, stdout=slave, stderr=slave, env=env)
 os.close(slave)
 transcript = b""

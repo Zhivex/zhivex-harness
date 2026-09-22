@@ -4,6 +4,18 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.3 - 2026-09-22
+
+Release candidate targeting npm `next`; fresh protected certification is required
+before publication. Stable `latest` remains 1.0.0.
+
+- Group interactive tool activity into a bounded live line and summaries between assistant messages. Preserve individual failures, check receipts and approval requests; `/verbose` restores event detail.
+- Identify token-budget and step-limit failures without mislabeling them as provider stream failures or exposing arbitrary provider error payloads.
+- Enforce cumulative Qwen token budgets between responses for runs without subagents, including approval resume, without injecting a transport `maxTokens` parameter. An over-budget response cannot execute its requested tools or trigger another call.
+- Organize CLI, runtime, providers, persistence, tools and Desktop integration behind explicit module boundaries, with architecture checks and unchanged public API contracts.
+- Make the packaged conversation smoke select its fixture provider explicitly; onboarding is verified separately.
+- Add release preparation and early metadata validation, retain release tarballs for recovery, and distinguish publication from verification in workflow summaries.
+
 ## 1.1.0-rc.2 - 2026-09-22
 
 Release candidate superseding the unpublished RC.1, targeting npm `next`.
