@@ -185,8 +185,8 @@ jobs:
             STATE="Published and verified"
           elif [ "$PUBLICATION" = success ] || [ "$REGISTRY_STATE" = identical ]; then
             STATE="Publication recorded; verification pending. Rerun only the failed publish job using the retained tarball."
-          elif [ "$PUBLICATION" = failure ]; then
-            STATE="Registry transaction failed; acceptance unknown. Inspect registry integrity before retrying."
+          elif [ "$PUBLICATION" = failure ] || [ "$PUBLICATION" = cancelled ]; then
+            STATE="Registry transaction failed or was cancelled; acceptance unknown. Inspect registry integrity before retrying."
           else
             STATE="Publication not attempted in this job."
           fi

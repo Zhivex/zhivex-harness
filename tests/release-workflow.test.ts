@@ -247,6 +247,7 @@ test("registry summary distinguishes verification, accepted bytes and uncertain 
       ["absent", "success", "failure", "verification pending"],
       ["identical", "skipped", "failure", "verification pending"],
       ["absent", "failure", "skipped", "acceptance unknown"],
+      ["absent", "cancelled", "skipped", "acceptance unknown"],
       ["", "skipped", "skipped", "not attempted"]
     ]) {
       const summary = path.join(directory, "summary.md");
