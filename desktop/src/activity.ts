@@ -1,4 +1,4 @@
-import type { HarnessActivityPage, HarnessActivityRun } from "../../src/service-events.js";
+import type { HarnessActivityPage, HarnessActivityRun } from "../../src/internal/desktop/protocol.js";
 export interface ConversationActivity { cursor: number; runs: Record<string, HarnessActivityRun>; order: string[]; recovered: boolean }
 export const emptyActivity = (): ConversationActivity => ({ cursor: 0, runs: {}, order: [], recovered: false });
 /** Cursor and contents commit together. Replayed pages never append the same delta twice. */

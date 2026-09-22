@@ -5,11 +5,11 @@ import { utilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
-import { readHarnessLocalCredentials, requestHarnessLocalService } from "../../src/local-service.js";
+import { readHarnessLocalCredentials, requestHarnessLocalService } from "../../src/internal/desktop/runtime.js";
 import { ReviewTickets } from "./review-tickets.js";
 import { projectApprovalReview } from "./approval-review.js";
 import { desktopRedactor, hostSensitiveValues } from "./redaction.js";
-import { harnessClientRequestSchema } from "../../src/client-contract.js";
+import { harnessClientRequestSchema } from "../../src/internal/desktop/protocol.js";
 import type { DesktopContext, DesktopProject } from "./bridge.js";
 export async function launchProjectRuntime(project: DesktopProject, options: {credentialHelper?:string;fixtureCredentialHelper?:string; buildDirectory: string; directory: string; fixture: boolean; fixtureOci?: boolean; fixtureEffectCrash?: boolean; stateDirectory?: string; recover: boolean }) {
   const modelSelection = modelSelectionSchema.parse(project.modelSelection ?? defaultModelSelection());

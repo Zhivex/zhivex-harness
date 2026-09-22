@@ -1,6 +1,6 @@
 // Offline integration acceptance against the installed provider. No live network calls.
 import {createOpenAI} from '@zhivex-ai/openai';
-import {createHarness,runHarness} from '../src/harness.ts';
+import {createHarness,runHarness} from '../src/runtime/harness.ts';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';

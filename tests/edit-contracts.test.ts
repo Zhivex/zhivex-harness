@@ -8,7 +8,7 @@ import {
   mutationAuditEntrySchema,
   validateEditProposal,
   workspaceFilePathSchema
-} from "../src/edit-contracts.js";
+} from "../src/workspace/edit-contracts.js";
 
 const digest = `sha256:${"a".repeat(64)}`;
 

@@ -1,4 +1,4 @@
-import {createProviderModel} from "../../src/config.js";
+import {createProviderModel} from "../../src/internal/desktop/providers.js";
 import type {LanguageModel} from "@zhivex-ai/agents";
 import type {DesktopModelSelection} from "./bridge.js";
 import {modelSelectionSchema,providerEnvironment} from "./model-selection.js";

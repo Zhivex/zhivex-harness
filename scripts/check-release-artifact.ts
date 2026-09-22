@@ -5,7 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { readRegularFileNoFollow } from "../src/file-security.js";
+import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
 
 interface CommandResult {
   exitCode: number;

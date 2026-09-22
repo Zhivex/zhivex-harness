@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { createQwen } from "@zhivex-ai/qwen";
 import { tool, wrapLanguageModel } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createRepairController } from "../src/repair-controller.js";
+import { createRepairController } from "../src/runtime/repair-controller.js";
 
 test("Qwen serializes the controller's required repair plan on the Chat wire", async () => {
   let body: Record<string, unknown> | undefined;

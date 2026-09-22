@@ -20,7 +20,7 @@ import {
   resolveCliProfileConfigDirectory,
   resolveCliProfilePath,
   validateCliProfileName
-} from "../src/cli-profiles.js";
+} from "../src/cli/cli-profiles.js";
 
 const withConfigRoot = async <T>(operation: (
   context: { env: NodeJS.ProcessEnv }

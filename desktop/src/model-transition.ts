@@ -1,5 +1,5 @@
 import type { DesktopModelSelection } from "./bridge.js";
-import type { HarnessClientResponse } from "../../src/client-contract.js";
+import type { HarnessClientResponse } from "../../src/internal/desktop/protocol.js";
 interface Host {
     isAlive(): boolean;
     controlClose(action: "pause" | "resume"): Promise<boolean>;

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { TerminalMarkdown } from "../src/terminal-markdown.js";
+import { TerminalMarkdown } from "../src/cli/terminal/terminal-markdown.js";
 
 test("delivers partial lines during provider pauses and flushes without replay", async () => {
   let output = "";

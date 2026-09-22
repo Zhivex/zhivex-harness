@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { ProviderToolCallError } from "@zhivex-ai/core/provider";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { TokenUsage, StreamEvent } from "@zhivex-ai/core";
-import { createModelBudget } from "../src/model-budget.js";
+import { createModelBudget } from "../src/runtime/model-budget.js";
 
 const failure = (usage?: unknown, provider = "openai") => Object.assign(new ProviderToolCallError({
   provider, reason: "incomplete_arguments", diagnosticCode: "FIXTURE"

@@ -3,10 +3,10 @@ import { mkdtemp, writeFile, readFile, rm, symlink, readdir } from "node:fs/prom
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { Workspace } from "../src/workspace.js";
-import { createEditProposal } from "../src/edit-contracts.js";
-import { attachApprovalPreviews } from "../src/approval-preview.js";
-import type { HarnessClientRun } from "../src/client-contract.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { attachApprovalPreviews } from "../src/approvals/approval-preview.js";
+import type { HarnessClientRun } from "../src/client/index.js";
 const dirs: string[] = [];
 const digest = (s: string | Buffer) => `sha256:${createHash("sha256").update(s).digest("hex")}` as const;
 async function setup() { const dir = await mkdtemp(path.join(os.tmpdir(), "har-preview-")); dirs.push(dir); return { dir, workspace: await Workspace.open(dir) }; }

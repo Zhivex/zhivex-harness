@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ApprovalDecisionView } from "../../src/approval-history.js";
+import type { ApprovalDecisionView } from "../../src/internal/desktop/protocol.js";
 const labels: Record<ApprovalDecisionView["status"], string> = { rejected: "Rejected", approved: "Approved · no execution evidence", applied: "Applied", succeeded: "Completed", failed: "Failed", unknown: "Unconfirmed result" };
 export function DecisionHistory({ projectKey, sessionId, runId }: { projectKey: string; sessionId: string; runId: string }) {
     const [rows, setRows] = useState<ApprovalDecisionView[]>(), [next, setNext] = useState<number>(), [loading, setLoading] = useState(false), [error, setError] = useState(false);

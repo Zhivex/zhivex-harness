@@ -3,8 +3,8 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness } from "../src/harness.js";
-import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client-contract.js";
+import { createHarness } from "../src/runtime/harness.js";
+import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client/index.js";
 
 const fixture = async (options?: HarnessClientAdapterOptions) => {
   const workspace = await mkdtemp(tmpdir()+"/har-client-");

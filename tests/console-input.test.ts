@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { PassThrough, Writable } from "node:stream";
-import { ConsoleInput, completeConsoleCommand, MAX_CONSOLE_INPUT_BYTES } from "../src/console-input.js";
-import { resolveTerminalApprovals } from "../src/terminal-ui.js";
+import { ConsoleInput, completeConsoleCommand, MAX_CONSOLE_INPUT_BYTES } from "../src/cli/console/console-input.js";
+import { resolveTerminalApprovals } from "../src/cli/terminal/terminal-ui.js";
 
 const fixture = () => {
   const input = new PassThrough();

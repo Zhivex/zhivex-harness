@@ -6,7 +6,7 @@ import path from "node:path";
 import type { AgentRunState } from "@zhivex-ai/agents";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 
-import { resolveHarnessConfig } from "../src/config.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
 import {
   HARNESS_SQLITE_FILE,
   cancelHarnessRun,
@@ -14,7 +14,7 @@ import {
   inspectHarnessRun,
   listHarnessRuns,
   openHarnessPersistence
-} from "../src/operations.js";
+} from "../src/persistence/operations.js";
 
 const temporaryDirectories: string[] = [];
 

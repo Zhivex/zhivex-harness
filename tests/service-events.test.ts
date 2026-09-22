@@ -1,7 +1,7 @@
 import {test,expect} from "bun:test";
 import {mkdtemp,rm,readFile} from "node:fs/promises";
-import {resolveHarnessConfig} from "../src/config.js";
-import {openHarnessActivityStore} from "../src/service-events.js";
+import {resolveHarnessConfig} from "../src/runtime/config.js";
+import {openHarnessActivityStore} from "../src/client/service-events.js";
 
 test("cursor replay is durable and duplicate delivery has stable identities",async()=>{
  const root=await mkdtemp("/tmp/har-events-");const config=resolveHarnessConfig({workspace:root});

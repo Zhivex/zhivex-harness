@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { runPortableProcess } from "../src/process-runtime.js";
+import { runPortableProcess } from "../src/execution/process-runtime.js";
 import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 to authorize provider calls.");

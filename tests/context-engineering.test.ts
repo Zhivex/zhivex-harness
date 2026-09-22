@@ -13,9 +13,9 @@ import {
   loadHarnessProjectContext,
   loadHarnessSkill,
   renderHarnessContextInstructions
-} from "../src/context-engineering.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import { Workspace } from "../src/workspace.js";
+} from "../src/context/context-engineering.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const fixture = async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-context-"));

@@ -3,8 +3,8 @@ import { chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/pr
 import os from "node:os";
 import path from "node:path";
 
-import { createEditProposal } from "../src/edit-contracts.js";
-import { Workspace } from "../src/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 

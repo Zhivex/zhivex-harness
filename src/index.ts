@@ -22,7 +22,7 @@ export {
   providerAvailability,
   providerDescriptor,
   resolveHarnessConfig
-} from "./config.js";
+} from "./runtime/config.js";
 export type {
   BuiltInHarnessProvider,
   HarnessBudget,
@@ -53,15 +53,15 @@ export type {
   ProviderPresenceDiagnostic,
   ProviderRegistration,
   ProviderSupport
-} from "./config.js";
+} from "./runtime/config.js";
 
 export {
   createHarnessRouteModels,
   parseHarnessModelRoute,
   resolveHarnessModelRoutes,
   serializeHarnessModelRoutes
-} from "./routing.js";
-export type { HarnessModelRoute } from "./routing.js";
+} from "./providers/routing.js";
+export type { HarnessModelRoute } from "./providers/routing.js";
 
 export {
   CLI_EVENT_SCHEMA_VERSION,
@@ -70,21 +70,21 @@ export {
   serializeStreamResult,
   streamEventDocument,
   streamResultDocument
-} from "./cli-stream.js";
-export type { StreamRunResultSource } from "./cli-stream.js";
+} from "./cli/cli-stream.js";
+export type { StreamRunResultSource } from "./cli/cli-stream.js";
 
 export {
   CLI_COMMAND_OPTION_CONTRACTS,
   CLI_OPTION_DEFINITIONS,
   CLI_OPTION_NAMES,
   validateCliCommandOptions
-} from "./cli-options.js";
+} from "./cli/cli-options.js";
 export type {
   CliCommandOptionContract,
   CliCommandOptionContractKey,
   CliOptionDefinition,
   CliOptionName
-} from "./cli-options.js";
+} from "./cli/cli-options.js";
 
 export {
   cliChangeEnvelopeVerificationDocumentSchema,
@@ -111,7 +111,7 @@ export {
   cliStreamResultDocumentSchema,
   parseCliJsonDocument,
   parseCliJsonLineDocument
-} from "./json-contracts.js";
+} from "./client/json-contracts.js";
 export type {
   CliChangeEnvelopeVerificationDocument,
   CliInitDocument,
@@ -125,7 +125,7 @@ export type {
   CliSessionDocument,
   CliStreamErrorDocument,
   CliStreamResultDocument
-} from "./json-contracts.js";
+} from "./client/json-contracts.js";
 
 export {
   DEFAULT_APPROVAL_SUMMARY_CHARACTERS,
@@ -135,13 +135,13 @@ export {
   resolveTerminalApprovals,
   sanitizeTerminalText,
   terminalSupportsColor
-} from "./terminal-ui.js";
+} from "./cli/terminal/terminal-ui.js";
 export type {
   ApprovalFormatOptions,
   TerminalAppearanceOptions,
   TerminalApprovalResolverOptions,
   TerminalHeaderInput
-} from "./terminal-ui.js";
+} from "./cli/terminal/terminal-ui.js";
 
 export {
   HARNESS_SESSION_INDEX_FILE,
@@ -150,7 +150,7 @@ export {
   TERMINAL_SESSION_RUN_STATUSES,
   openCliSessionStore,
   openSessionStore
-} from "./sessions.js";
+} from "./persistence/sessions.js";
 
 export {
   HARNESS_STATE_BACKUP_MAX_BYTES,
@@ -162,11 +162,11 @@ export {
   inspectHarnessState,
   readHarnessStateBackup,
   stateBackupBundleSchema
-} from "./state-backup.js";
+} from "./persistence/state-backup.js";
 export type {
   HarnessStateBackupBundle,
   HarnessStateImportOptions
-} from "./state-backup.js";
+} from "./persistence/state-backup.js";
 export type {
   AppendSessionRunInput,
   CliSession,
@@ -181,7 +181,7 @@ export type {
   SessionRunStatus,
   UpdateSessionInput,
   UpdateSessionRunInput
-} from "./sessions.js";
+} from "./persistence/sessions.js";
 
 export {
   CliOciRuntimeAdapter,
@@ -193,7 +193,7 @@ export {
   describeOciCommand,
   executionFingerprintInput,
   harnessExecutionSession
-} from "./execution-environment.js";
+} from "./execution/execution-environment.js";
 export type {
   CreateHarnessOciEnvironmentOptions,
   EnvironmentPatchImportResult,
@@ -211,18 +211,18 @@ export type {
   OciPhaseLatencies,
   OciRunBatchRequest,
   OciRunRequest
-} from "./execution-environment.js";
+} from "./execution/execution-environment.js";
 
 export {
   assertHarnessModelCapabilities,
   inspectHarnessModelCapabilities,
   selectHarnessModel
-} from "./capabilities.js";
+} from "./providers/capabilities.js";
 export type {
   HarnessModelCandidate,
   HarnessModelCapabilityReport,
   HarnessModelSelection
-} from "./capabilities.js";
+} from "./providers/capabilities.js";
 
 export {
   HARNESS_MCP_CONFIG_SCHEMA_VERSION,
@@ -231,7 +231,7 @@ export {
   createHttpMcpClient,
   loadHarnessMcpConfiguration,
   normalizeHarnessMcpConfiguration
-} from "./mcp.js";
+} from "./integrations/mcp.js";
 export type {
   HarnessMcpClients,
   HarnessMcpConfiguration,
@@ -240,18 +240,18 @@ export type {
   HarnessMcpTransport,
   McpClient,
   McpListedTool
-} from "./mcp.js";
+} from "./integrations/mcp.js";
 
 export {
   HARNESS_SUBAGENT_PROFILE_DESCRIPTORS,
   createHarnessSubagents,
   runHarnessReviewGroup
-} from "./orchestration.js";
+} from "./runtime/orchestration.js";
 export type {
   HarnessReviewGroupResult,
   HarnessSubagentProfileDescriptor,
   HarnessSubagentRuntime
-} from "./orchestration.js";
+} from "./runtime/orchestration.js";
 
 export { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
 
@@ -267,13 +267,13 @@ export {
   HarnessWorkspaceError,
   harnessErrorDocument,
   normalizeHarnessError
-} from "./errors.js";
+} from "./runtime/errors.js";
 export type {
   HarnessErrorCategory,
   HarnessErrorCode,
   HarnessErrorDocument,
   HarnessErrorOptions
-} from "./errors.js";
+} from "./runtime/errors.js";
 
 export {
   CHANGE_ENVELOPE_DIGEST_ALGORITHM,
@@ -298,7 +298,7 @@ export {
   digestChangeEnvelopeArtifact,
   externalAttestationReferenceSchema,
   verifyChangeEnvelope
-} from "./change-envelope.js";
+} from "./workspace/change-envelope.js";
 export type {
   ChangeEnvelope,
   ChangeEnvelopeApproval,
@@ -311,7 +311,7 @@ export type {
   ChangeEnvelopeVerificationResult,
   CreateChangeEnvelopeInput,
   ExternalAttestationReference
-} from "./change-envelope.js";
+} from "./workspace/change-envelope.js";
 
 export {
   EDIT_CONTRACT_SCHEMA_VERSION,
@@ -335,7 +335,7 @@ export {
   restoreFileInputSchema,
   validateEditProposal,
   workspaceFilePathSchema
-} from "./edit-contracts.js";
+} from "./workspace/edit-contracts.js";
 export type {
   ApplyEditProposalInput,
   ApplyPatchResult,
@@ -352,7 +352,7 @@ export type {
   QuarantineFileResult,
   RestoreFileInput,
   RestoreFileResult
-} from "./edit-contracts.js";
+} from "./workspace/edit-contracts.js";
 
 export {
   HARNESS_INSTRUCTIONS,
@@ -362,7 +362,7 @@ export {
   createHarness,
   estimateMessageTokens,
   runHarness
-} from "./harness.js";
+} from "./runtime/harness.js";
 
 export {
   HARNESS_OPERATIONS_SCHEMA_VERSION,
@@ -374,20 +374,20 @@ export {
   listHarnessRuns,
   migrateLegacyFileRuns,
   openHarnessPersistence
-} from "./operations.js";
+} from "./persistence/operations.js";
 
-export { validateStateDirectory } from "./state-directory.js";
+export { validateStateDirectory } from "./persistence/state-directory.js";
 export type {
   HarnessMigrationResult,
   HarnessPersistence,
   HarnessRunQuery
-} from "./operations.js";
+} from "./persistence/operations.js";
 export type {
   CreateHarnessOptions,
   HarnessRunOptions,
   HarnessRunDiagnostics,
   ZhivexHarness
-} from "./harness.js";
+} from "./runtime/harness.js";
 
 export {
   DEFAULT_HARNESS_CONTEXT_MANIFEST,
@@ -411,7 +411,7 @@ export {
   loadHarnessProjectContext,
   loadHarnessSkill,
   renderHarnessContextInstructions
-} from "./context-engineering.js";
+} from "./context/context-engineering.js";
 export type {
   HarnessContextBundle,
   HarnessContextConfiguration,
@@ -424,9 +424,9 @@ export type {
   HarnessLoadedSkill,
   HarnessSkillIndexEntry,
   LoadHarnessProjectContextOptions
-} from "./context-engineering.js";
+} from "./context/context-engineering.js";
 
-export { Workspace } from "./workspace.js";
+export { Workspace } from "./workspace/workspace.js";
 export type {
   CommandResult,
   HarnessCheck,
@@ -440,7 +440,7 @@ export type {
   WorkspaceFile,
   WorkspaceTopologyFile,
   WorkspaceIndexDiagnostics
-} from "./workspace.js";
+} from "./workspace/workspace.js";
 
 export {
   DEFAULT_TIME_TO_SAFE_FIX_GOAL,
@@ -459,7 +459,7 @@ export {
   timeToSafeFixDriverResultSchema,
   timeToSafeFixLatencyStatistics,
   timeToSafeFixTaskSchema
-} from "./time-to-safe-fix.js";
+} from "./runtime/time-to-safe-fix.js";
 export type {
   TimeToSafeFixAggregate,
   TimeToSafeFixCarrier,
@@ -476,12 +476,12 @@ export type {
   TimeToSafeFixReport,
   TimeToSafeFixSample,
   TimeToSafeFixTask
-} from "./time-to-safe-fix.js";
+} from "./runtime/time-to-safe-fix.js";
 
-export { HARNESS_CLIENT_PROTOCOL_VERSION, harnessClientCommandSchema, harnessClientRequestSchema, createHarnessClientAdapter } from "./client-contract.js";
-export type { HarnessClientCommand, HarnessClientRequest, HarnessClientErrorCode, HarnessClientSession, HarnessClientRun, HarnessClientData, HarnessClientResponse, HarnessClientNegotiation, HarnessClientAdapter } from "./client-contract.js";
-export { startHarnessLocalService, recoverHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService, harnessLocalCredentialsSchema } from "./local-service.js";
-export type { HarnessLocalService, HarnessLocalServiceOptions, HarnessLocalCredentials } from "./local-service.js";
-export { openHarnessActivityStore } from "./service-events.js";
-export type { HarnessActivityEvent, HarnessActivitySnapshot, HarnessActivityPage, HarnessActivityStore, HarnessActivityOptions } from "./service-events.js";
-export type { HarnessClientAdapterOptions } from "./client-contract.js";
+export { HARNESS_CLIENT_PROTOCOL_VERSION, harnessClientCommandSchema, harnessClientRequestSchema, createHarnessClientAdapter } from "./client/index.js";
+export type { HarnessClientCommand, HarnessClientRequest, HarnessClientErrorCode, HarnessClientSession, HarnessClientRun, HarnessClientData, HarnessClientResponse, HarnessClientNegotiation, HarnessClientAdapter } from "./client/index.js";
+export { startHarnessLocalService, recoverHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService, harnessLocalCredentialsSchema } from "./client/local-service.js";
+export type { HarnessLocalService, HarnessLocalServiceOptions, HarnessLocalCredentials } from "./client/local-service.js";
+export { openHarnessActivityStore } from "./client/service-events.js";
+export type { HarnessActivityEvent, HarnessActivitySnapshot, HarnessActivityPage, HarnessActivityStore, HarnessActivityOptions } from "./client/service-events.js";
+export type { HarnessClientAdapterOptions } from "./client/index.js";

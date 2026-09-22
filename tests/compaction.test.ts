@@ -1,11 +1,11 @@
 import { serializeJsonValue } from "@zhivex-ai/core";
 import { expect, test } from "bun:test";
 import type { ModelMessage } from "@zhivex-ai/core";
-import { compactMessages, summarizeHarnessMessages } from "../src/compaction.js";
+import { compactMessages, summarizeHarnessMessages } from "../src/context/compaction.js";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { Workspace } from "../src/workspace.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const text = (value: string): ModelMessage => ({ role: "user", parts: [{ type: "text", text: value }] });
 const result = (name: string, output: Record<string, unknown>, isError = false): ModelMessage => ({

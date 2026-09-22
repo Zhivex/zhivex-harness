@@ -6,7 +6,7 @@ import path from "node:path";
 import {
   resolvePackageCheckCommand,
   resolvePackageManager
-} from "../src/package-manager.js";
+} from "../src/execution/package-manager.js";
 
 const fixture = async () => mkdtemp(path.join(os.tmpdir(), "zhivex-harness-package-manager-"));
 

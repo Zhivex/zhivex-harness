@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {mkdtemp, realpath, rm, writeFile, access} from "node:fs/promises";
 import path from "node:path";
-import {SqliteDatabase} from "../../src/sqlite-database.js";
-import {acquireSqliteAccess} from "../../src/sqlite-access.js";
+import {SqliteDatabase} from "../../src/persistence/sqlite-database.js";
+import {acquireSqliteAccess} from "../../src/persistence/sqlite-access.js";
 async function poll(check: () => Promise<boolean>) {const until = Date.now() + 8000; while (Date.now() < until) {if (await check()) return; await new Promise(r => setTimeout(r, 25));} throw new Error("FIXTURE_TIMEOUT");}
 async function peer() {
  const file = process.argv[3]!;

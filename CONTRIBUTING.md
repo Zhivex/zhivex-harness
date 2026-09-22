@@ -11,6 +11,8 @@ bun run dev
 `dev` builds and starts the console under Node, loading `.env` when present.
 `bun run start` opens the existing build without rebuilding or loading `.env`.
 See [Desktop development](desktop/DEVELOPMENT.md) for the separate app.
+See [Source architecture](docs/ARCHITECTURE.md) for module ownership, Desktop
+integration surfaces and the enforced dependency rules.
 
 ## Validation
 

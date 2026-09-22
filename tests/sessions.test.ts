@@ -8,7 +8,7 @@ import {
   HARNESS_SESSION_INDEX_FILE,
   openCliSessionStore,
   type CliSessionStore
-} from "../src/sessions.js";
+} from "../src/persistence/sessions.js";
 
 const temporaryDirectories: string[] = [];
 const openStores: CliSessionStore[] = [];

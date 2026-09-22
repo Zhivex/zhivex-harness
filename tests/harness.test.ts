@@ -6,9 +6,9 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { HARNESS_INSTRUCTIONS, compactHarnessMessages, createHarness, runHarness } from "../src/harness.js";
-import { Workspace } from "../src/workspace.js";
-import { createEditProposal } from "../src/edit-contracts.js";
+import { HARNESS_INSTRUCTIONS, compactHarnessMessages, createHarness, runHarness } from "../src/runtime/harness.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
 
 describe("Zhivex harness", () => {
   test("accepts explicit null cursors on first-page model tool calls", async () => {

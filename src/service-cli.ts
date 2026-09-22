@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { createHarness } from "./harness.js";
-import { startHarnessLocalService, recoverHarnessLocalService } from "./local-service.js";
+import { createHarness } from "./runtime/harness.js";
+import { startHarnessLocalService, recoverHarnessLocalService } from "./client/local-service.js";
 
 const main = async () => {
   const args = process.argv.slice(2);const values: Record<string,string> = {};let recover=false;

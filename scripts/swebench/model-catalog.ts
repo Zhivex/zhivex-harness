@@ -1,5 +1,5 @@
 import type { LanguageModelMiddleware, ModelGenerateInput } from "@zhivex-ai/core";
-import { LOCAL_TOOL_NAMES } from "../../src/tool-registry.js";
+import { LOCAL_TOOL_NAMES } from "../../src/tools/tool-registry.js";
 
 /** Observe the adapter boundary, after outer policy middleware. Never retain
  * messages, schemas, arguments, external names or provider payloads. */

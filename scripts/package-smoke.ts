@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os";
 import path from "node:path";
 
-import { runPortableProcess } from "../src/process-runtime.js";
+import { runPortableProcess } from "../src/execution/process-runtime.js";
 import {
   assertStableApiSignatureSnapshot,
   buildStableApiSignatureSnapshot,

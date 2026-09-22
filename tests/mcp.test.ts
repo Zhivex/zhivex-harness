@@ -12,8 +12,8 @@ import {
   createHarnessMcpTools,
   loadHarnessMcpConfiguration,
   normalizeHarnessMcpConfiguration
-} from "../src/mcp.js";
-import { createHarness, runHarness } from "../src/harness.js";
+} from "../src/integrations/mcp.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 
 const readOnlyConfiguration = () => normalizeHarnessMcpConfiguration({
   schemaVersion: 1,

@@ -3,8 +3,8 @@ import {mkdtemp,readFile,rm} from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import {randomUUID} from "node:crypto";
-import {protectPersistenceSecret} from "../../src/persistence-secrets.js";
-import {SqliteDatabase} from "../../src/sqlite-database.js";
+import {protectPersistenceSecret} from "../../src/persistence/persistence-secrets.js";
+import {SqliteDatabase} from "../../src/persistence/sqlite-database.js";
 test("known credentials are rejected before SQL, positional/named/numbered binds and blobs reach disk",async()=>{
  const dir=await mkdtemp(path.join(os.tmpdir(),"har-secret-db-"));const filename=path.join(dir,"state.sqlite");const db=new SqliteDatabase(filename);const secret='fixture-'+randomUUID()+'"\\tail';protectPersistenceSecret(secret);
  try{db.exec('PRAGMA journal_mode=WAL; CREATE TABLE records(value TEXT)');db.query('INSERT INTO records VALUES (?)').run('safe-before');
@@ -18,14 +18,14 @@ test("a rotated key remains protected for late results and old serialized state"
 
 test("prepared SQL is rechecked when a credential becomes known later",()=>{const db=new SqliteDatabase(':memory:');try{db.exec('CREATE TABLE records(value TEXT)');const secret=randomUUID();const prepared=db.query(`INSERT INTO records VALUES ('${secret}')`);protectPersistenceSecret(secret);expect(()=>prepared.run()).toThrow('PERSISTENCE_SECRET_REJECTED');expect(db.query('SELECT * FROM records').all()).toHaveLength(0);}finally{db.close();}});
 test("a provider echo cannot enter durable run state and a later safe run still completes",async()=>{
- const {createHarness,runHarness}=await import("../../src/harness.js");const {createMockLanguageModel}=await import("@zhivex-ai/agents/testing");const {readdir}=await import("node:fs/promises");
+ const {createHarness,runHarness}=await import("../../src/runtime/harness.js");const {createMockLanguageModel}=await import("@zhivex-ai/agents/testing");const {readdir}=await import("node:fs/promises");
  const dir=await mkdtemp(path.join(os.tmpdir(),"har-secret-runtime-"));const stateDirectory=path.join(dir,"state");const secret=randomUUID();protectPersistenceSecret(secret);let harness:Awaited<ReturnType<typeof createHarness>>|undefined;
  try{harness=await createHarness({workspace:dir,stateDirectory,storeBackend:"sqlite",projectContext:false,subagentProfiles:[],modelInstance:createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:secret},{type:"finish",finishReason:"stop"}],[{type:"text-delta",textDelta:"safe answer"},{type:"finish",finishReason:"stop"}]]})});
   let rejected=false;try{await runHarness(harness,{prompt:"Reply with a diagnostic"});}catch(error){rejected=true;expect(String(error)).not.toContain(secret);}expect(rejected).toBe(true);
   const safe=await runHarness(harness,{prompt:"Reply safely"});expect(safe.status).toBe("completed");
-  const {inspectHarnessRun}=await import("../../src/operations.js");const exported=await inspectHarnessRun(harness.store,harness.config,safe.state.runId);expect(JSON.stringify(exported)).not.toContain(secret);
-  const {cancelHarnessRun}=await import("../../src/operations.js");const page=await harness.store.list!({},harness.config.scope);for(const run of page.items)if(!["completed","failed","cancelled","timed_out"].includes(run.status))await cancelHarnessRun(harness.store,harness.config,run.runId,{final:true});
-  const {exportHarnessStateBackup}=await import("../../src/state-backup.js");const backup=path.join(dir,"backup.json");await exportHarnessStateBackup(harness.config,backup);expect((await readFile(backup)).includes(Buffer.from(secret))).toBe(false);
+  const {inspectHarnessRun}=await import("../../src/persistence/operations.js");const exported=await inspectHarnessRun(harness.store,harness.config,safe.state.runId);expect(JSON.stringify(exported)).not.toContain(secret);
+  const {cancelHarnessRun}=await import("../../src/persistence/operations.js");const page=await harness.store.list!({},harness.config.scope);for(const run of page.items)if(!["completed","failed","cancelled","timed_out"].includes(run.status))await cancelHarnessRun(harness.store,harness.config,run.runId,{final:true});
+  const {exportHarnessStateBackup}=await import("../../src/persistence/state-backup.js");const backup=path.join(dir,"backup.json");await exportHarnessStateBackup(harness.config,backup);expect((await readFile(backup)).includes(Buffer.from(secret))).toBe(false);
   const scan=async(directory:string):Promise<void>=>{for(const entry of await readdir(directory,{withFileTypes:true})){const filename=path.join(directory,entry.name);if(entry.isDirectory())await scan(filename);else if(entry.isFile())expect((await readFile(filename)).includes(Buffer.from(secret))).toBe(false);}};await scan(stateDirectory);
  }finally{await harness?.close();await rm(dir,{recursive:true,force:true});}
 });

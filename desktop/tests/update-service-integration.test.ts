@@ -3,9 +3,9 @@ import {mkdir, mkdtemp, rm} from "node:fs/promises";
 import path from "node:path";
 import {createMockLanguageModel} from "@zhivex-ai/agents/testing";
 import type {LanguageModel} from "@zhivex-ai/agents";
-import {createHarness} from "../../src/harness.js";
-import {startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService} from "../../src/local-service.js";
-import {exportHarnessStateBackup, readHarnessStateBackup} from "../../src/state-backup.js";
+import {createHarness} from "../../src/runtime/harness.js";
+import {startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService} from "../../src/client/local-service.js";
+import {exportHarnessStateBackup, readHarnessStateBackup} from "../../src/persistence/state-backup.js";
 import {createUpdateCoordinator} from "../src/update-coordinator.js";
 
 test("real local service preserves active work and blocks other client mutations during update preparation", async () => {

@@ -1,11 +1,11 @@
 import {expect, test} from "bun:test";
 import {mkdir, mkdtemp, readFile, realpath, rm, rename, symlink} from "node:fs/promises";
 import path from "node:path";
-import {resolveHarnessConfig} from "../src/config.js";
-import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../src/operations.js";
-import {openCliSessionStore} from "../src/sessions.js";
-import {SqliteDatabase} from "../src/sqlite-database.js";
-import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../src/state-backup.js";
+import {resolveHarnessConfig} from "../src/runtime/config.js";
+import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../src/persistence/operations.js";
+import {openCliSessionStore} from "../src/persistence/sessions.js";
+import {SqliteDatabase} from "../src/persistence/sqlite-database.js";
+import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../src/persistence/state-backup.js";
 async function fixture(run: (f: {root: string; config: ReturnType<typeof resolveHarnessConfig>; filename: string; original: Awaited<ReturnType<typeof createHarnessStateBackup>>}) => Promise<void>) {
  const root = await realpath(await mkdtemp("/tmp/har-archived-backup-")), workspace = path.join(root, "checkout"), stateDirectory = path.join(root, "state"); await mkdir(workspace);
  const config = resolveHarnessConfig({workspace, stateDirectory, provider: "openai", storeBackend: "sqlite"});

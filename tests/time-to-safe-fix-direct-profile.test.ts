@@ -5,12 +5,12 @@ import path from "node:path";
 
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { resolveHarnessConfig } from "../src/config.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
 import type {
   HarnessOciRuntimeAdapter,
   OciImageInspection,
   OciRunRequest
-} from "../src/execution-environment.js";
+} from "../src/execution/execution-environment.js";
 import { timeToSafeFixDriverRequestSchema } from "../scripts/time-to-safe-fix-driver-contract.js";
 import { runDirectProfile } from "../scripts/time-to-safe-fix-direct-profile.js";
 

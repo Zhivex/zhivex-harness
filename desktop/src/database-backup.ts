@@ -2,14 +2,14 @@ import {createHash} from "node:crypto";
 import {constants} from "node:fs";
 import {chmod, lstat, mkdir, mkdtemp, open, realpath, rm} from "node:fs/promises";
 import path from "node:path";
-import type {HarnessConfig} from "../../src/config.js";
-import {readRegularFileNoFollow, statRegularFileNoFollow} from "../../src/file-security.js";
-import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
-import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../../src/state-backup.js";
-import {validateStateDirectory} from "../../src/state-directory.js";
-import {SqliteDatabase} from "../../src/sqlite-database.js";
-import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
-import {validateRecordedWorkspace} from "../../src/recorded-workspace.js";
+import type {HarnessConfig} from "../../src/internal/desktop/providers.js";
+import {readRegularFileNoFollow, statRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
+import {HARNESS_SQLITE_FILE} from "../../src/internal/desktop/persistence.js";
+import {createHarnessStateBackup, createArchivedHarnessStateBackup} from "../../src/internal/desktop/persistence.js";
+import {validateStateDirectory} from "../../src/internal/desktop/persistence.js";
+import {SqliteDatabase} from "../../src/internal/desktop/persistence.js";
+import {exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/internal/desktop/persistence.js";
+import {validateRecordedWorkspace} from "../../src/internal/desktop/persistence.js";
 
 export const DESKTOP_DATABASE_BACKUP_LIMIT = 128 * 1024 * 1024;
 export interface DesktopDatabaseBackup {directory: string; size: number; sha256: string; logicalChecksum: string}

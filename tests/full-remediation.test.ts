@@ -6,13 +6,13 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { JsonValue, ModelMessage, ToolSet } from "@zhivex-ai/core";
-import { createHarness, runHarness, compactHarnessMessages } from "../src/harness.js";
-import { createModelBudget, MODEL_BUDGET_KEY } from "../src/model-budget.js";
-import { REPAIR_CONTROLLER_KEY } from "../src/repair-controller.js";
-import { inspectHarnessRun } from "../src/operations.js";
-import { RUNTIME_DIAGNOSTICS_KEY } from "../src/runtime-checkpoints.js";
-import { createHttpMcpClient, normalizeHarnessMcpConfiguration } from "../src/mcp.js";
-import type { HarnessOciRuntimeAdapter } from "../src/execution-environment.js";
+import { createHarness, runHarness, compactHarnessMessages } from "../src/runtime/harness.js";
+import { createModelBudget, MODEL_BUDGET_KEY } from "../src/runtime/model-budget.js";
+import { REPAIR_CONTROLLER_KEY } from "../src/runtime/repair-controller.js";
+import { inspectHarnessRun } from "../src/persistence/operations.js";
+import { RUNTIME_DIAGNOSTICS_KEY } from "../src/runtime/runtime-checkpoints.js";
+import { createHttpMcpClient, normalizeHarnessMcpConfiguration } from "../src/integrations/mcp.js";
+import type { HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
 
 for (const [prefix, name] of [["read_", "task"], ["repair_", "plan"], ["read_", "file"], ["run_environment_", "command"], ["load_", "skill"]] as const) {
   test(`rejects reserved MCP name ${prefix}${name}`, async () => {
@@ -159,9 +159,9 @@ test("MCP matches response among fragmented multiline SSE and notifications", as
 
 import { tool } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createRepairController } from "../src/repair-controller.js";
-import { createRepairProgress } from "../src/repair-progress.js";
-import { inspectRuntimeDiagnostics, inspectRuntimeManifest } from "../src/runtime-diagnostics.js";
+import { createRepairController } from "../src/runtime/repair-controller.js";
+import { createRepairProgress } from "../src/runtime/repair-progress.js";
+import { inspectRuntimeDiagnostics, inspectRuntimeManifest } from "../src/runtime/runtime-diagnostics.js";
 import { missingPackageLinks } from "../scripts/package-documentation.js";
 
 const execute = (tools: ToolSet, name: string, input: unknown) => {

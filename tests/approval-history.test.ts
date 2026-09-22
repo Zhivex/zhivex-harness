@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { AgentRunState, AgentToolCallJournalEntry } from "@zhivex-ai/core";
-import { APPROVAL_HISTORY_KEY, approvalInputDigest, approvalDecisionViews } from "../src/approval-history.js";
+import { APPROVAL_HISTORY_KEY, approvalInputDigest, approvalDecisionViews } from "../src/approvals/approval-history.js";
 const input = { check: "test", expectedScript: "bun test" };
 const row = { approvalId: "a", digest: "a".repeat(64), toolCallId: "provider-call", name: "run_check", inputDigest: approvalInputDigest(input), approved: true, decidedAt: 100, reviewedRevision: 2 };
 const state = (record = row) => ({ runId: "run", status: "completed", metadata: { [APPROVAL_HISTORY_KEY]: [record] } } as unknown as AgentRunState);

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { ProjectRuntime } from "./runtime-host.js";
-import type { HarnessClientRun } from "../../src/client-contract.js";
+import type { HarnessClientRun } from "../../src/internal/desktop/protocol.js";
 
 interface RestartCheckpoint {
     projectKey: string; sessionId: string; runId: string; revision: number; ticketId: string;

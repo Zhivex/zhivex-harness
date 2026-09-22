@@ -1,4 +1,4 @@
-import type { HarnessOciRuntimeAdapter } from "../../src/execution-environment.js";
+import type { HarnessOciRuntimeAdapter } from "../../src/internal/desktop/runtime.js";
 /** Test-only boundary adapter. It does not claim container isolation or Docker evidence. */
 export function fixtureOciRuntime(): HarnessOciRuntimeAdapter {
     return {

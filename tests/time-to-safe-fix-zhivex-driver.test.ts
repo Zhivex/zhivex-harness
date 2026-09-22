@@ -18,7 +18,7 @@ import type {
   OciImageInspection,
   OciRunBatchRequest,
   OciRunRequest
-} from "../src/execution-environment.js";
+} from "../src/execution/execution-environment.js";
 import {
   MAX_TIME_TO_SAFE_FIX_DRIVER_INPUT_BYTES,
   parseTimeToSafeFixDriverRequest,

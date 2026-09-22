@@ -19,7 +19,7 @@ import type {
 import type {
   HarnessClientRun,
   HarnessClientSession,
-} from "../../src/client-contract.js";
+} from "../../src/internal/desktop/protocol.js";
 import { ReviewPanel } from "./ReviewPanel.js";
 import { Conversation } from "./Conversation.js";
 import { applyActivityPage, emptyActivity } from "./activity.js";

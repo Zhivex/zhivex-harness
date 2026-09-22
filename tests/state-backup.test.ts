@@ -7,17 +7,17 @@ import path from "node:path";
 import type { AgentRunState } from "@zhivex-ai/agents";
 import { createFileAgentRunStore } from "@zhivex-ai/agents/ops";
 
-import { resolveHarnessConfig } from "../src/config.js";
-import { HARNESS_SQLITE_FILE, openHarnessPersistence } from "../src/operations.js";
-import { openCliSessionStore } from "../src/sessions.js";
-import { SqliteDatabase } from "../src/sqlite-database.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { HARNESS_SQLITE_FILE, openHarnessPersistence } from "../src/persistence/operations.js";
+import { openCliSessionStore } from "../src/persistence/sessions.js";
+import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
 import {
   createHarnessStateBackup,
   exportHarnessStateBackup,
   importHarnessStateBackup,
   inspectHarnessState,
   readHarnessStateBackup
-} from "../src/state-backup.js";
+} from "../src/persistence/state-backup.js";
 
 const temporaryDirectories: string[] = [];
 

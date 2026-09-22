@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { readRegularFileNoFollow } from "../src/file-security.js";
+import { readRegularFileNoFollow } from "../src/workspace/file-security.js";
 
 interface PackageManifest {
   name: string;

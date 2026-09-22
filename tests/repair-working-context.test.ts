@@ -3,8 +3,8 @@ import {tool} from "@zhivex-ai/agents";
 import {createMockLanguageModel} from "@zhivex-ai/agents/testing";
 import {z} from "zod";
 import type {ModelGenerateInput,ToolSet} from "@zhivex-ai/core";
-import {createRepairController} from "../src/repair-controller.js";
-import {createRepairProgress,REPAIR_PROGRESS_KEY} from "../src/repair-progress.js";
+import {createRepairController} from "../src/runtime/repair-controller.js";
+import {createRepairProgress,REPAIR_PROGRESS_KEY} from "../src/runtime/repair-progress.js";
 const execute=async(tools:ToolSet,name:string,input:unknown)=>{
  const t=tools[name]!;if(!('execute' in t))throw new Error('missing execute');return t.execute!(input as never,{} as never);
 };

@@ -1,7 +1,7 @@
 import {test,expect} from "bun:test";
-import {navigateConsole,consoleModelChoices} from "../src/console-navigation.js";
-import {providerAvailability} from "../src/config.js";
-import type {ConsoleInput} from "../src/console-input.js";
+import {navigateConsole,consoleModelChoices} from "../src/cli/console/console-navigation.js";
+import {providerAvailability} from "../src/runtime/config.js";
+import type {ConsoleInput} from "../src/cli/console/console-input.js";
 
 test("provider to models navigation preserves back stack and applies only a chosen model", async()=>{
  const pages:string[]=[];

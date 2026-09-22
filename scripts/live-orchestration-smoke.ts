@@ -9,10 +9,10 @@ import {
   PROVIDERS,
   providerDescriptor,
   type HarnessProvider
-} from "../src/config.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import { inspectHarnessRun } from "../src/operations.js";
-import { runPortableProcess } from "../src/process-runtime.js";
+} from "../src/runtime/config.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { inspectHarnessRun } from "../src/persistence/operations.js";
+import { runPortableProcess } from "../src/execution/process-runtime.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
 const {

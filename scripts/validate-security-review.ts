@@ -6,15 +6,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AgentApprovalRequest } from "@zhivex-ai/agents";
-import { Workspace } from "../src/workspace.js";
-import { createEditProposal } from "../src/edit-contracts.js";
-import { formatApproval } from "../src/terminal-ui.js";
-import { LOCAL_TOOL_NAMES } from "../src/tool-registry.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { formatApproval } from "../src/cli/terminal/terminal-ui.js";
+import { LOCAL_TOOL_NAMES } from "../src/tools/tool-registry.js";
 import { SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS } from "./security-review-evidence.js";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { createHarness, runHarness } from "../src/harness.js";
-import { resolveHarnessConfig } from "../src/config.js";
-import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../src/execution-environment.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { createHarnessOciExecutionEnvironment, type HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
 
 const emit = (id: string, passed: boolean, evidence: Record<string, unknown>) => {
   console.log(JSON.stringify({ id, passed, ...evidence }));

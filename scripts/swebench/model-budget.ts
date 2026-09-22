@@ -1,1 +1,1 @@
-export { createModelBudget } from "../../src/model-budget.js";
+export { createModelBudget } from "../../src/runtime/model-budget.js";

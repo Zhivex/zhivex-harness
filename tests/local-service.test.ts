@@ -3,8 +3,8 @@ import { request } from "node:http";
 import { mkdtemp, mkdir, lstat, rm, readFile, writeFile } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
-import { createHarness } from "../src/harness.js";
-import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService } from "../src/local-service.js";
+import { createHarness } from "../src/runtime/harness.js";
+import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService } from "../src/client/local-service.js";
 
 const setup = async (modelInstance?: LanguageModel) => {
   const root = await mkdtemp("/tmp/har-service-"); const workspace=root+"/repo"; await mkdir(workspace);
@@ -101,7 +101,7 @@ test("disconnect during streaming retains activity and drains accepted work on s
   const again=await f.call({method:"session.get",sessionId});if(during.ok&&again.ok)expect(again.data).toEqual(during.data);
   const firstCursor=page.nextCursor;release();
   await f.service.close();
-  const {openHarnessActivityStore}=await import("../src/service-events.js");const activity=await openHarnessActivityStore(f.harness.config);
+  const {openHarnessActivityStore}=await import("../src/client/service-events.js");const activity=await openHarnessActivityStore(f.harness.config);
   try{const missing=activity.replay(sessionId,firstCursor);expect(missing.events.some(e=>e.activity.status==="completed")).toBe(true);expect(missing.events.map(e=>e.activity.textDelta??"").join("")).toContain("after reconnect");}finally{activity.close();}
  }finally{release();await f.close();}
 });

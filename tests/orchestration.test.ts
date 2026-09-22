@@ -7,11 +7,11 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 
-import { createEditProposal } from "../src/edit-contracts.js";
-import { HarnessConfigError } from "../src/errors.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import { cancelHarnessRun, inspectHarnessRun } from "../src/operations.js";
-import { runHarnessReviewGroup } from "../src/orchestration.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { HarnessConfigError } from "../src/runtime/errors.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { cancelHarnessRun, inspectHarnessRun } from "../src/persistence/operations.js";
+import { runHarnessReviewGroup } from "../src/runtime/orchestration.js";
 
 const approveAll = (approvals: readonly { provider: string; id: string }[]) => approvals.map((approval) => ({
   provider: approval.provider,

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { DEFAULT_PROVIDER_REGISTRY } from "../src/config.js";
+import { DEFAULT_PROVIDER_REGISTRY } from "../src/runtime/config.js";
 import {
   parseHarnessModelRoute,
   resolveHarnessModelRoutes,
   serializeHarnessModelRoutes
-} from "../src/routing.js";
+} from "../src/providers/routing.js";
 
 describe("multi-provider model routing", () => {
   test("uses provider defaults and preserves explicit model ids", () => {

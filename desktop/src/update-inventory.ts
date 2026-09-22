@@ -1,14 +1,14 @@
 import {createHash} from "node:crypto";
 import {lstat, realpath, mkdir} from "node:fs/promises";
 import path from "node:path";
-import {resolveHarnessConfig} from "../../src/config.js";
+import {resolveHarnessConfig} from "../../src/internal/desktop/providers.js";
 import type {DesktopBackupConfig} from "./database-backup.js";
-import {validateStateDirectory} from "../../src/state-directory.js";
+import {validateStateDirectory} from "../../src/internal/desktop/persistence.js";
 import type {DesktopProject} from "./bridge.js";
 import type {ManagedTask} from "./task-worktrees.js";
 import {prepareDesktopStateTransaction} from "./state-transaction.js";
-import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/sqlite-access.js";
-import {HARNESS_SQLITE_FILE} from "../../src/operations.js";
+import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/internal/desktop/persistence.js";
+import {HARNESS_SQLITE_FILE} from "../../src/internal/desktop/persistence.js";
 
 export class UpdateInventoryError extends Error {
  constructor(readonly code: "UPDATE_INVENTORY_INVALID" | "UPDATE_STATE_WORKSPACE_UNAVAILABLE") {super(code);}

@@ -13,15 +13,15 @@ import type {
 } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { resolveHarnessConfig } from "../src/config.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment,
   type HarnessOciRuntimeAdapter
-} from "../src/execution-environment.js";
-import { createHarness, runHarness } from "../src/harness.js";
-import { inspectHarnessRun } from "../src/operations.js";
-import { Workspace } from "../src/workspace.js";
+} from "../src/execution/execution-environment.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
+import { inspectHarnessRun } from "../src/persistence/operations.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const APPROVED_RUN_ID = "hostile-demo-approved";
 const STALE_RUN_ID = "hostile-demo-stale";

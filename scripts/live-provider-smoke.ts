@@ -10,10 +10,10 @@ import {
   PROVIDER_DESCRIPTORS,
   providerDescriptor,
   type HarnessProvider
-} from "../src/config.js";
-import { createEditProposal } from "../src/edit-contracts.js";
-import { HarnessConfigError } from "../src/errors.js";
-import { createHarness, runHarness } from "../src/harness.js";
+} from "../src/runtime/config.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { HarnessConfigError } from "../src/runtime/errors.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 import {
   restoreSanitizedOperationalError,
   sanitizeOperationalError

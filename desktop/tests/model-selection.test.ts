@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
 import {openProjectRegistry} from "../src/projects.js";
 import {prepareModelTransition} from "../src/model-transition.js";
-import type {HarnessClientResponse} from "../../src/client-contract.js";
+import type {HarnessClientResponse} from "../../src/client/index.js";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
  expect(desktopProviders().map(p=>p.id).sort()).toEqual(["gemini","meta","openai","qwen"]);

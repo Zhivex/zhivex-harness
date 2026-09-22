@@ -3,9 +3,9 @@ import {constants} from "node:fs";
 import {link, open, unlink} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
-import {readRegularFileNoFollow} from "../../src/file-security.js";
+import {readRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
 import {inspectDesktopUpdateJob, type DesktopUpdateJob} from "./update-job.js";
-import {adoptExclusiveSqliteAccess, exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/sqlite-access.js";
+import {adoptExclusiveSqliteAccess, exclusiveSqliteAccessDescriptor, type SqliteAccessLease} from "../../src/internal/desktop/persistence.js";
 
 const pid = z.number().int().min(1).max(2147483647), uuid = z.string().uuid(), hash = z.string().regex(/^[a-f0-9]{64}$/);
 const stateEntry = z.object({databasePath: z.string().max(4096).refine(p => path.isAbsolute(p) && path.normalize(p) === p), descriptor: z.number().int().min(4).max(603)}).strict();

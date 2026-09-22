@@ -8,8 +8,8 @@ import { createAgentRunLedger, promoteAgentGoldenTrace } from "@zhivex-ai/agents
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { McpClient } from "@zhivex-ai/core";
 
-import { createEditProposal } from "../src/edit-contracts.js";
-import { createHarness, runHarness } from "../src/harness.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
+import { createHarness, runHarness } from "../src/runtime/harness.js";
 
 interface GoldenCase {
   name: string;

@@ -22,10 +22,10 @@ import {
   summarizeApproval,
   withTemporaryHarnessProfiles
 } from "../src/cli.js";
-import { applyCliProfile, createCliProfile, loadCliProfile, resolveCliProfilePath } from "../src/cli-profiles.js";
-import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/config.js";
-import { parseCliJsonDocument } from "../src/json-contracts.js";
-import { SqliteDatabase } from "../src/sqlite-database.js";
+import { applyCliProfile, createCliProfile, loadCliProfile, resolveCliProfilePath } from "../src/cli/cli-profiles.js";
+import { resolveHarnessConfig, type HarnessSubagentProfile } from "../src/runtime/config.js";
+import { parseCliJsonDocument } from "../src/client/json-contracts.js";
+import { SqliteDatabase } from "../src/persistence/sqlite-database.js";
 import { HARNESS_VERSION } from "../src/version.js";
 
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {

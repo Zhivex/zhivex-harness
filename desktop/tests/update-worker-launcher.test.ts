@@ -2,7 +2,7 @@ import {expect, test, beforeAll, afterAll} from "bun:test";
 import {chmod, lstat, mkdtemp, readFile, realpath, rm, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {launchDesktopUpdateWorker} from "../src/update-worker-launcher.js";
-import {acquireSqliteAccess} from "../../src/sqlite-access.js";
+import {acquireSqliteAccess} from "../../src/persistence/sqlite-access.js";
 
 const nativeTest = process.platform === "darwin" ? test : test.skip;
 const electron = path.resolve(import.meta.dir, "../node_modules/electron/dist/Electron.app/Contents/MacOS/Electron");

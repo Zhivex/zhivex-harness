@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "../src/console-context.js";
-import { createEmptyHarnessContextBundle } from "../src/context-engineering.js";
-import { Workspace } from "../src/workspace.js";
-import { resolveHarnessConfig } from "../src/config.js";
+import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "../src/cli/console/console-context.js";
+import { createEmptyHarnessContextBundle } from "../src/context/context-engineering.js";
+import { Workspace } from "../src/workspace/workspace.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
 
 describe("console context", () => {
   test("distinguishes available skills, retained loaded receipts, limits and truncated attachments", () => {

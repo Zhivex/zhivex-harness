@@ -9,8 +9,8 @@ import path from "node:path";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 
-import { resolveHarnessConfig } from "../src/config.js";
-import { createEditProposal } from "../src/edit-contracts.js";
+import { resolveHarnessConfig } from "../src/runtime/config.js";
+import { createEditProposal } from "../src/workspace/edit-contracts.js";
 import {
   cleanupHarnessExecutionArtifacts,
   createHarnessOciExecutionEnvironment,
@@ -21,10 +21,10 @@ import {
   type OciImageInspection,
   type OciRunBatchRequest,
   type OciRunRequest
-} from "../src/execution-environment.js";
-import { createExecutionEnvironmentTools, createWorkspaceTools, createHarness, runHarness } from "../src/harness.js";
-import { HarnessExecutionError } from "../src/errors.js";
-import { Workspace } from "../src/workspace.js";
+} from "../src/execution/execution-environment.js";
+import { createExecutionEnvironmentTools, createWorkspaceTools, createHarness, runHarness } from "../src/runtime/harness.js";
+import { HarnessExecutionError } from "../src/runtime/errors.js";
+import { Workspace } from "../src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 
@@ -1061,7 +1061,7 @@ test("read-only OCI preview binds content, modes and scope without acquiring or 
  const metadataPath=path.join(session.workspace.root,"..","environment.json"),metadata=await readFile(metadataPath,"utf8");
  const preview=await environment.previewPatch({runId:"preview-run",scope},patch.patchId);
  expect(preview.patchId).toBe(patch.patchId);expect(preview.entries.find(e=>e.path==="src/update.ts")).toMatchObject({afterContent:"\ufeffchanged\r\n",afterMode:0o755});
- const {attachApprovalPreviews}=await import("../src/approval-preview.js");
+ const {attachApprovalPreviews}=await import("../src/approvals/approval-preview.js");
  const reviewed=await attachApprovalPreviews({runId:"preview-run",revision:1,status:"waiting_approval",output:"",approvals:[{approvalId:"a",digest:"a".repeat(64),provider:"fixture",kind:"tool",expiresAt:100,action:{name:"verify_and_apply_environment_patch",arguments:JSON.stringify({patchId:patch.patchId,command:"node",args:["verify.mjs"]})}}]},workspace,{environment,scope});
  expect(reviewed.approvals[0]!.filePreview).toMatchObject({status:"complete",proposalId:patch.patchId,files:expect.arrayContaining([expect.objectContaining({path:"src/delete.ts",operation:"delete",after:null})])});
  expect(preview.entries.find(e=>e.path==="src/delete.ts")?.operation).toBe("delete");
@@ -1073,7 +1073,7 @@ test("read-only OCI preview binds content, modes and scope without acquiring or 
 });
 
 test("shared client reviews and verifies an exact OCI edit proposal with patch-bound journal evidence",async()=>{
- const {createHarnessClientAdapter}=await import("../src/client-contract.js");
+ const {createHarnessClientAdapter}=await import("../src/client/index.js");
  const {root,workspace}=await workspaceFixture(),runtime=new FakeOciRuntime();
  const inspected=await workspace.inspectFile("src/update.ts");
  const input={changes:[{path:"src/update.ts",expectedDigest:inspected.digest,content:"verified destination\n"}],command:"node",args:["verify.mjs"]};
