@@ -120,7 +120,7 @@
     "artifact:check": "bun run scripts/check-release-artifact.ts",
     "pack:inspect": "bun run build && bun pm pack --dry-run --ignore-scripts",
     "check": "bun run docs:check && bun run contract:check && bun run typecheck && bun run typecheck:tooling && bun test && bun run migration:check && bun run evaluate && bun run benchmark:workspace:ci && bun run benchmark:safe-fix:image:check && bun run benchmark:safe-fix:ci && bun run smoke:mcp && bun run smoke:mcp:official && bun run smoke:oci && bun run smoke:package",
-    "release:check": "bun run check && bun audit && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
+    "release:check": "bun run release:preflight && bun run check && bun run scripts/audit-dependencies.ts && bun pm untrusted && bun run pack:inspect && bun run scripts/check-release-readiness.ts",
     "release:status": "bun run scripts/check-registry-release-status.ts",
     "release:verify": "bun run scripts/verify-registry-release.ts",
     "benchmark:workspace:scale": "bun run scripts/benchmark-workspace.ts --files 10000 --directories 100 --file-bytes 4096 --page-size 100 --repetitions 5 --warmups 1",
@@ -130,7 +130,9 @@
     "typecheck:tooling": "tsc -p tsconfig.tooling.json",
     "service": "node dist/service-cli.js",
     "smoke:console": "bun run build && python3 scripts/console-pty-smoke.py && python3 scripts/console-entry-smoke.py",
-    "smoke:credentials": "node --experimental-strip-types scripts/credential-store-smoke.ts"
+    "smoke:credentials": "node --experimental-strip-types scripts/credential-store-smoke.ts",
+    "release:preflight": "bun run scripts/release-preflight.ts",
+    "release:prepare": "bun run scripts/prepare-release.ts"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.8.0",

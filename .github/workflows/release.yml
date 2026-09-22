@@ -62,6 +62,13 @@ jobs:
       - name: Install immutable dependencies with Bun
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Validate release identity before expensive gates
+        run: |
+          bun run release:preflight
+          bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "$RELEASE_CHANNEL" --registry
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Preload immutable-capable OCI execution image
         run: docker pull node:24-bookworm-slim
 
@@ -94,7 +101,7 @@ jobs:
             release-artifacts/*.tgz
             release-artifacts/SHA512SUMS
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
           compression-level: 0
 
   publish:
@@ -159,11 +166,31 @@ jobs:
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
 
       - name: Publish exact artifact with provenance
+        id: publication
         if: steps.registry.outputs.status == 'absent'
         run: npm publish "./$ARTIFACT" --access public --provenance --tag "$RELEASE_CHANNEL"
 
       - name: Verify registry integrity and provenance
+        id: verification
         run: bun run release:verify -- "$ARTIFACT" "$RELEASE_CHANNEL"
+
+      - name: Summarize registry transaction
+        if: ${{ always() }}
+        env:
+          REGISTRY_STATE: ${{ steps.registry.outputs.status }}
+          PUBLICATION: ${{ steps.publication.outcome }}
+          VERIFICATION: ${{ steps.verification.outcome }}
+        run: |
+          if [ "$VERIFICATION" = success ]; then
+            STATE="Published and verified"
+          elif [ "$PUBLICATION" = success ] || [ "$REGISTRY_STATE" = identical ]; then
+            STATE="Publication recorded; verification pending. Rerun only the failed publish job using the retained tarball."
+          elif [ "$PUBLICATION" = failure ] || [ "$PUBLICATION" = cancelled ]; then
+            STATE="Registry transaction failed or was cancelled; acceptance unknown. Inspect registry integrity before retrying."
+          else
+            STATE="Publication not attempted in this job."
+          fi
+          printf '%s\n' "### Registry transaction" "$STATE" >> "$GITHUB_STEP_SUMMARY"
 
   certify-live:
     name: Certify exact release tag with live providers
@@ -494,3 +521,32 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0
+
+  summary:
+    name: Release outcome
+    if: ${{ always() }}
+    needs: [validate, certify-live, representative-evaluation, publish]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Summarize release gates
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          VALIDATION: ${{ needs.validate.result }}
+          LIVE: ${{ needs.certify-live.result }}
+          REPRESENTATIVE: ${{ needs.representative-evaluation.result }}
+          PUBLICATION: ${{ needs.publish.result }}
+        run: |
+          {
+            printf '## Release %s → %s\n\n' "$RELEASE_TAG" "$RELEASE_CHANNEL"
+            printf 'Source: `%s`\n\n' "$SOURCE_COMMIT"
+            printf '| Gate | Result |\n|---|---|\n'
+            printf '| Validation | %s |\n| Live | %s |\n| Representative | %s |\n| Publication and verification | %s |\n' "$VALIDATION" "$LIVE" "$REPRESENTATIVE" "$PUBLICATION"
+            if [ "$PUBLICATION" = success ]; then
+              printf '\nRegistry integrity and provenance verified.\n'
+            else
+              printf '\nRelease incomplete. Inspect the failed gate and registry transaction summary before retrying; do not rebuild an accepted version.\n'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

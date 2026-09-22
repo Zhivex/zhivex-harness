@@ -82,9 +82,46 @@ The release workflow intentionally supplies no long-lived registry token. Do not
 
 Trusted Publishing currently requires npm CLI `11.5.1` or newer and Node `22.14.0` or newer. The workflow follows npm's current Node 24 guidance and uses npm only for the OIDC/provenance-aware registry transaction. Dependency management, tests, and packing use Bun as contributor tooling; the built CLI, public library, SQLite reopen, and installed artifact execute under Node.
 
+## Release preparation preflight
+
+Run `bun run release:preflight` to check the candidate's dated changelog and
+representative tag/model mapping before expensive gates. CI runs this check with
+`--allow-unreleased`: development headings remain valid, while dated candidates
+must include an exact certification mapping consistent with the release workflow.
+The protected release additionally checks tag, channel, source identity and registry
+absence before pulling the OCI image or running the deterministic suite.
+Dependency audits use the same bounded transient-outage retry policy as CI;
+vulnerabilities and other errors still fail immediately.
+
+From a clean `main` checkout at the intended remote commit, after CI and CodeQL:
+
+```bash
+# Read-only; replace the placeholder with the full reviewed main commit SHA.
+bun run release:prepare --sha <full-main-sha>
+# Explicitly confirm creation of the annotated tag and protected publication.
+bun run release:prepare --sha <full-main-sha> --publish
+```
+
+The command derives version and channel from `package.json`, requires the latest
+main push runs of CI and CodeQL to have passed for that exact SHA, and rejects
+an active release for the same SHA. It never moves existing tags: an existing
+annotated tag must resolve to the same commit. Creation uses an atomic ref create;
+a competing creation fails rather than overwriting it. Dispatch uses the exact tag
+to avoid a concurrent main update selecting a different workflow commit. The
+protected workflow retains all artifact, live, representative and OIDC gates.
+The default preflight does not certify live providers or publish anything.
+
+Validated tarballs and checksums are retained for 30 days for exact-byte recovery.
+The workflow summary reports every gate; the registry transaction summary separates
+verified publication, accepted publication pending verification, and a failed
+transaction whose registry acceptance is unknown. A failed publication command
+must not be interpreted as proof that npm did not accept the version. If the
+artifact has expired, stop and recover the original bytes and evidence rather than
+rebuilding an already accepted version.
+
 ## Tag and dispatch
 
-After review and merge, maintainers create an annotated `v<package.json version>` tag from the exact release commit and dispatch the protected workflow with that tag plus an explicit publication confirmation. The workflow YAML contains no release-version default: `package.json` is the source of version truth, and the required tag input is validated against it before publication. The canonical dispatch is bound to `main`; recovery is limited to the exact annotated version tag after proving it resolves to the expected commit and remains reachable from `origin/main`.
+After review and merge, maintainers create an annotated `v<package.json version>` tag from the exact release commit and dispatch the protected workflow with that tag plus an explicit publication confirmation. The workflow YAML contains no release-version default: `package.json` is the source of version truth, and the required tag input is validated against it before publication. Manual dispatch may use `main` only while it equals the tagged commit. The preparation command dispatches the exact annotated tag after proving it matches reviewed remote `main`; the workflow verifies the checkout equals its dispatch SHA and remains reachable from `origin/main`.
 
 The confirmation is intentional because registry versions are immutable, and the protected environment adds a second human approval boundary. Do not use a local registry session or manual upload as an alternate path.
 
