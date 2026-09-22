@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PassThrough } from "node:stream";
+import { PassThrough, Writable } from "node:stream";
 import { ConsoleInput, completeConsoleCommand, MAX_CONSOLE_INPUT_BYTES } from "../src/console-input.js";
 import { resolveTerminalApprovals } from "../src/terminal-ui.js";
 
@@ -17,6 +17,40 @@ const terminalFixture = () => {
   output.on("data", (chunk) => { rendered += chunk.toString(); });
   return { input, output, rendered: () => rendered, console: new ConsoleInput(input, output, true) };
 };
+
+test("initial selection stays visible when terminal writes complete asynchronously", async () => {
+  const oldTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const input = new PassThrough();
+  let rendered = "";
+  const output = new Writable({ write(chunk, _encoding, callback) {
+    rendered += chunk.toString();
+    setImmediate(callback);
+  } });
+  Object.assign(output, { columns: 80, rows: 24 });
+  const console = new ConsoleInput(input, output, true);
+  try {
+    for (const title of ["Menu", "Models"]) {
+      rendered = "";
+      const selection = console.select(title, [
+        { value: "first", label: "First option" },
+        { value: "second", label: "Second option" }
+      ]);
+      // Flush the bounded initial frame without sending any keyboard input.
+      for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve));
+      expect(rendered).toContain("First option");
+      expect(rendered).toContain("Second option");
+      expect(rendered.indexOf("Filter > ")).toBeLessThan(rendered.indexOf("First option"));
+      expect(rendered.lastIndexOf("\x1b[0J")).toBeLessThan(rendered.indexOf("First option"));
+      input.write("\r");
+      expect(await selection).toBe("first");
+      for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve));
+    }
+  } finally {
+    console.close();
+    if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm;
+  }
+});
 
 test("bracketed paste is a literal editable draft across UTF-8 and marker boundaries", async () => {
   const f = terminalFixture();

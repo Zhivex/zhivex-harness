@@ -42,7 +42,11 @@ export class ConsoleInput {
     // Filter before readline: bracketed paste must never be interpreted as keys.
     const source = terminal ? this.keyboard : input;
     this.display = new Writable({ write: (chunk, encoding, callback) => {
-      output.write(chunk, encoding, callback);
+      // The destination already queues writes. Waiting for its completion here
+      // creates a second queue: direct menu output can then overtake readline's
+      // pending clear-screen/prompt chunks and be erased on the first render.
+      output.write(chunk, encoding);
+      callback();
     } });
     Object.defineProperty(this.display, "columns", {
       get: () => (output as Writable & { columns?: number }).columns

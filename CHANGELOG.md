@@ -26,6 +26,9 @@ release remains 1.0.0. Desktop has its own private alpha version.
 
 ### Developer experience and documentation
 
+- Keep initial menu and model options visible on asynchronous terminals by preserving
+  readline prompt and menu write order; no extra arrow key is required to draw them.
+
 - Lead `zhx --help` with everyday actions; add command-specific help and `zhx help all` for the complete reference.
 - Show common slash actions first, retaining full-catalog search and `/help all`. Pending approval controls remain visible in the short help.
 - Shorten onboarding, separate user/integration/maintenance guides, and standardize maintained Desktop guides in English while quoting current UI labels.
