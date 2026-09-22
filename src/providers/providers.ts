@@ -1,3 +1,4 @@
+import { bundledDefaultModel } from "../models/catalog.js";
 import { createHash } from "node:crypto";
 
 import type { LanguageModel } from "@zhivex-ai/agents";
@@ -546,7 +547,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     descriptor: {
       id: "meta",
       name: "Meta Model API",
-      defaultModel: "muse-spark-1.2",
+      defaultModel: bundledDefaultModel("meta"),
       credentialNames: ["MODEL_API_KEY"],
       capabilities: HARNESS_PROVIDER_CAPABILITIES,
       support: "certified"
@@ -564,7 +565,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     descriptor: {
       id: "qwen",
       name: "Qwen / Alibaba Cloud Model Studio",
-      defaultModel: "qwen3.8-max",
+      defaultModel: bundledDefaultModel("qwen"),
       credentialNames: ["DASHSCOPE_API_KEY", "QWEN_API_KEY"],
       capabilities: HARNESS_PROVIDER_CAPABILITIES,
       support: "certified"
@@ -594,7 +595,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     descriptor: {
       id: "openai",
       name: "OpenAI",
-      defaultModel: "gpt-5.6-luna",
+      defaultModel: bundledDefaultModel("openai"),
       credentialNames: ["OPENAI_API_KEY"],
       capabilities: HARNESS_PROVIDER_CAPABILITIES,
       support: "certified"
@@ -612,7 +613,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     descriptor: {
       id: "gemini",
       name: "Google Gemini",
-      defaultModel: "gemini-3.6-flash",
+      defaultModel: bundledDefaultModel("gemini"),
       credentialNames: ["GEMINI_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
       capabilities: HARNESS_PROVIDER_CAPABILITIES,
       support: "provisional"

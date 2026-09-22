@@ -5,6 +5,7 @@ export const emptyActivity = (): ConversationActivity => ({ cursor: 0, runs: {},
 export function applyActivityPage(previous: ConversationActivity, page: HarnessActivityPage): ConversationActivity {
     if (page.nextCursor < previous.cursor) return previous;
     if (page.cursorExpired) { if (!page.snapshot) throw new Error("SNAPSHOT_REQUIRED"); return { cursor: page.nextCursor, runs: structuredClone(page.snapshot.runs), order: Object.keys(page.snapshot.runs), recovered: true }; }
+    if (!page.cursorExpired && page.nextCursor === previous.cursor && page.events.every(event => event.sequence <= previous.cursor)) return previous;
     const next = structuredClone(previous);
     for (const event of page.events) {
         if (event.sequence <= previous.cursor) continue;

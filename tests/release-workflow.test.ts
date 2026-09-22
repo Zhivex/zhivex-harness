@@ -63,6 +63,24 @@ describe("release workflow version source", () => {
     }
   });
 
+  test("full-suite jobs install Desktop renderer dependencies on every platform", async () => {
+    for (const [file, job, command] of [
+      ["ci.yml", "verify", "bun run check"],
+      ["release.yml", "validate", "bun run release:check"],
+    ] as const) {
+      const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows", file), "utf8")) as {
+        jobs: Record<string, { steps: { run?: string; if?: string }[] }>;
+      };
+      const steps = workflow.jobs[job]!.steps;
+      const testIndex = steps.findIndex(step => step.run?.includes(command));
+      const installIndex = steps.findIndex(step =>
+        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"));
+      expect(installIndex).toBeGreaterThanOrEqual(0);
+      expect(testIndex).toBeGreaterThan(installIndex);
+      expect(steps[installIndex]!.if).toBeUndefined();
+    }
+  });
+
   test("release artifact transfer actions are pinned to immutable commit SHAs", async () => {
     const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
 

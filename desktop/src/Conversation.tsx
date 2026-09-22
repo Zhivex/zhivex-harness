@@ -1,3 +1,4 @@
+import { MarkdownResponse } from "./MarkdownResponse.js";
 import { DecisionHistory } from "./DecisionHistory.js";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { ConversationActivity } from "./activity.js";
@@ -54,7 +55,7 @@ export function Conversation({
             <div className="assistant-message">
               <span className="eyebrow">HARNESS</span>
               {run.text ? (
-                <pre aria-label="Service response">{run.text}</pre>
+                <MarkdownResponse text={run.text} />
               ) : null}
               {run.tools ? (
                 <ul

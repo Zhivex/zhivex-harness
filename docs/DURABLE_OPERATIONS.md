@@ -202,3 +202,9 @@ ZHIVEX_HARNESS_OCI_TMPFS_MB
 `bun run evaluate` executes five deterministic golden cases: analysis-only, approved edit-and-test, denied approval, SQLite restart recovery, and provider switching. It checks terminal status, exact tool sequence, maximum steps, a 30-second per-case latency bound, denied-write safety, and exactly-once recovery. `bun run check` runs this gate before the installed-tarball smoke.
 
 The golden baseline is packaged at `evaluations/golden-expectations.json`. It is regression evidence, not live-provider certification. Provider behavior must still pass the opt-in, credentialed live gate described in [LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+
+To disable cumulative token ceilings explicitly, use `--no-token-budget` (library:
+`unlimitedTokens: true`). It applies to the main run and subagents and persists
+through resume. Token accounting and compaction continue; cost, time, steps, tools,
+approvals, and provider per-request limits remain enforced. Stored numeric token
+ceilings are inactive until `unlimitedTokens` is set back to `false`.

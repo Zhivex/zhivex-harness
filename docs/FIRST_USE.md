@@ -10,13 +10,19 @@ cd /path/to/your/project
 zhx
 ```
 
-When no default profile or provider credentials exist, `zhx` asks you to choose a
-provider and model. It stores that selection in a private user profile outside the
-repository. The console then offers a hidden API key prompt: save in the system
+When no default profile or explicit provider/model exists, `zhx` selects the only
+provider with an environment key. If none or several are available, it offers a
+searchable provider and model selector, with a recommended default and custom
+model entry. Escape goes back; cancelling setup leaves profiles unchanged.
+The selector saves your choice in a private user profile outside the repository;
+auto-detection from an environment key does not create a profile. The console then offers a hidden API key prompt: save in the system
 keychain or use only for this CLI session. Profiles themselves never contain keys.
 Use `/menu` → **Credentials** to replace or remove keys. See [Credentials](CREDENTIALS.md).
-On later bare `zhx` launches, the console shows the saved provider/model and asks
-for confirmation before activating the `default` profile or contacting a provider.
+On later bare `zhx` launches, the console uses the saved `default` provider/model
+automatically, without asking again. To always start with Qwen, run
+`zhx init --update --provider qwen`. Add `--model <id>` to select a model.
+Use `--provider` or `--profile` at launch, or the console's provider/model
+selector, for a temporary change.
 
 ## Environment keys for automation
 
@@ -40,9 +46,16 @@ secure mechanism for subsequent shells. Do not paste keys into conversations.
 If you already have credentials, explicitly select a provider with
 `zhx init --profile default`, or start with `zhx --provider qwen`.
 
-`zhx doctor` checks local configuration and environment key presence without contacting the
-provider. Missing credentials produce exit code 3. The first model request is
+`zhx doctor` uses the same default profile or single environment-provider detection
+as the conversation. It shows the selected provider/model and checks environment
+or keychain credential presence without contacting the provider. The human report
+focuses on the selected provider; JSON retains all provider checks. Missing or
+unavailable selected credentials produce exit code 3. The first model request is
 what tests actual account access.
+
+If secure storage fails, choose **Use a temporary key** or retry without restarting.
+When setup finishes, the console shows one welcome, the credential source and the
+approval policy before your first task.
 
 ## Work and continue
 

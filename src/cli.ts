@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 import { formatCliHelp } from "./cli/cli-help.js";
-import { formatConsoleWelcome } from "./cli/console/console-welcome.js";
-import { createInterface } from "node:readline/promises";
 import { realpathSync } from "node:fs";
-import { lstat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { providerAvailability } from "./runtime/config.js";
 import { HARNESS_VERSION } from "./version.js";
 import { harnessErrorDocument } from "./runtime/errors.js";
-import { applyCliProfile, loadCliProfile, resolveCliProfilePath } from "./cli/cli-profiles.js";
+import { applyCliProfile, resolveCliDefaults } from "./cli/cli-profiles.js";
 import { parseCliArgs } from "./cli/arguments.js";
 import { annotateCliStreamError, cliStreamErrorSequence, terminalErrorMessage } from "./cli/presentation.js";
-import { confirmDefaultProfileSelection, initializeCli, listProviders } from "./cli/setup.js";
+import { initializeCli, listProviders } from "./cli/setup.js";
 import { CLI_FULL_HELP_TEXT } from "./cli/help-text.js";
 import { doctor } from "./cli/doctor.js";
 import { chat } from "./cli/console.js";
@@ -20,7 +16,8 @@ import { manageRuns } from "./cli/run-management.js";
 import { manageSessions } from "./cli/session-management.js";
 import { manageChanges } from "./cli/changes.js";
 import { manageState } from "./cli/state.js";
-import { cliExitCodeForError } from "./cli/errors.js";
+import { cliExitCodeForError, cliRecoveryHint } from "./cli/errors.js";
+import { readStdinTask } from "./cli/task-input.js";
 
 export { runResultDocument } from "./cli/run-document.js";
 
@@ -33,37 +30,24 @@ export const main = async (argv = process.argv.slice(2)) => {
     (parsedOptions.command === "chat" ||
       (parsedOptions.command === "run" && parsedOptions.implicitCommand && !parsedOptions.prompt));
   if (openConsole) parsedOptions = { ...parsedOptions, command: "chat" };
+  if ((parsedOptions.command === "run" || parsedOptions.command === "review") && parsedOptions.prompt === "-") {
+    parsedOptions = { ...parsedOptions, prompt: await readStdinTask() };
+  }
   if (parsedOptions.serviceFile) {
     const { runServiceCli } = await import("./cli/service-client-cli.js");
     await runServiceCli(parsedOptions, annotateCliStreamError);
     return;
   }
+  if (["chat", "doctor"].includes(parsedOptions.command) &&
+      !parsedOptions.sessionId && !parsedOptions.continueSession) {
+    parsedOptions = await resolveCliDefaults(parsedOptions);
+  }
   if (openConsole && !parsedOptions.profile && !parsedOptions.provider && !parsedOptions.model &&
       !parsedOptions.sessionId && !parsedOptions.continueSession &&
       !process.env.ZHIVEX_HARNESS_PROVIDER && !process.env.ZHIVEX_HARNESS_MODEL) {
-    let exists = true;
-    try { await lstat(resolveCliProfilePath("default")); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") exists = false; else throw error; }
-    if (exists) {
-      const profile = await loadCliProfile("default");
-      const prompt = createInterface({ input: process.stdin, output: process.stdout });
-      try {
-        const selected = await confirmDefaultProfileSelection(profile, (question) => prompt.question(question));
-        if (!selected) {
-          process.stderr.write("Default profile was not selected. Reopen with --profile default or an explicit --provider and --model.\n");
-          return;
-        }
-        // Use the values shown to the operator, without reopening a mutable profile.
-        parsedOptions = { ...parsedOptions, ...selected };
-      } finally {
-        prompt.close();
-      }
-    }
-    else if (!providerAvailability().some(provider => provider.configured)) {
-      process.stdout.write(formatConsoleWelcome({ version: HARNESS_VERSION, workspace: parsedOptions.workspace ?? process.cwd() }) + "\nFirst-time setup — choose your provider and model.\n");
-      await initializeCli({ ...parsedOptions, command: "init", profile: "default" });
-      parsedOptions = { ...parsedOptions, profile: "default" };
-    }
+    process.stdout.write("First-time setup — choose your provider and model.\n");
+    if (!await initializeCli({ ...parsedOptions, command: "init", profile: "default" }, { onboarding: true })) return;
+    parsedOptions = { ...parsedOptions, profile: "default" };
   }
   const options = parsedOptions.command === "init"
     ? parsedOptions
@@ -132,7 +116,7 @@ if (isMainModule) {
       process.stderr.write(`${JSON.stringify(document)}\n`);
     } else {
       process.stderr.write(`Error: ${terminalErrorMessage(error)}\n`);
-      process.stderr.write("Recovery: run zhx doctor with the same profile/workspace; check credentials, provider availability and OCI image/runtime. Inspect persisted runs before retrying a mutation.\n");
+      process.stderr.write(`Recovery: ${cliRecoveryHint(error, process.argv.slice(2))}\n`);
     }
     process.exitCode = cliExitCodeForError(error);
   });
@@ -161,7 +145,6 @@ export { CLI_FULL_HELP_TEXT } from "./cli/help-text.js";
 export { summarizeApproval } from "./cli/presentation.js";
 export { withTemporaryHarnessProfiles } from "./cli/routing.js";
 export { providersDocument } from "./cli/setup.js";
-export { confirmDefaultProfileSelection } from "./cli/setup.js";
 export type { DoctorCheckStatus } from "./cli/doctor.js";
 export type { DoctorCheck } from "./cli/doctor.js";
 export type { DoctorReport } from "./cli/doctor.js";

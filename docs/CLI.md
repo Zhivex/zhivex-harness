@@ -1,5 +1,29 @@
 # CLI reference
 
+## Tasks, help and profile updates
+
+Append `--help` to a command even when it already includes a task or options:
+`zhx run --provider openai "task" --help`. Help does not load profiles, read stdin,
+or contact a provider. Value options also accept `--model=<id>` syntax.
+
+Use `zhx run -` or `zhx review -` to read a task explicitly from stdin:
+
+```sh
+git diff | zhx run -
+zhx review --profile daily - < review-task.txt
+zhx init --profile daily --update --model <id>
+```
+
+Stdin must contain nonempty UTF-8 text, up to 1 MiB. It preserves multiline content;
+`-` cannot be combined with another task argument. Piping does not approve actions.
+Without `-`, the task comes from positional arguments as before.
+
+`init --update` replaces an existing personal profile atomically, preserving its
+provider/model when omitted. Selecting a different provider defaults to that
+provider's model. Without `--update`, an existing profile is never overwritten.
+Bare interactive launches use the saved default profile without confirmation.
+Use `zhx init --update --provider qwen` to make Qwen the default for future launches.
+
 For setup, read [First use](FIRST_USE.md). `zhx --help` is the short guide;
 `zhx run --help` and `zhx sessions list --help` show only that command’s options.
 `zhx help all` retains the full reference. Inside the console, `/help` shows common
@@ -164,7 +188,7 @@ Profile schema `1` contains exactly `schemaVersion`, `provider`, and `model`. It
 
 Profile names use 1–64 letters, digits, dots, underscores, or hyphens. Directories must not be writable by group or others; files are created with mode `0600`, read through a no-follow descriptor, limited to 16 KiB, and rejected when linked, malformed, over-permissive, or already present. Explicit `zhx init` only creates a profile; the subsequent interactive console manages keys separately. Initialization reports only the accepted credential variable names and whether one is present.
 
-Interactive `zhx` and `zhx chat` offer the `default` profile when no profile, provider, model, provider/model environment override, or resumed session is selected. An existing default is activated only after the console displays its validated provider/model and the operator confirms it; denial exits without sending a provider request. The confirmed provider/model is retained for this invocation even if the saved profile changes while confirmation is pending. With no default profile and no configured provider credential, the console runs first-time provider/model setup and saves `default`; those answers explicitly select it for the current invocation. The interactive console then resolves credentials from the environment, a temporary key, or the system keychain, and offers hidden entry if needed. See [Credentials](CREDENTIALS.md). One-shot, JSON/JSONL, administrative commands and service connections do not activate profiles implicitly. `--profile <name>` is accepted only by `run`, `chat`, `review`, and `doctor`; it is intentionally rejected by `resume` because an existing run restores its exact persisted configuration. Precedence is `explicit CLI flag > explicitly confirmed or selected profile > ZHIVEX_HARNESS_* environment > built-in default`.
+Interactive `zhx`, `zhx chat`, and `zhx doctor` automatically use the saved `default` profile when no profile, provider, model, provider/model environment override, or resumed session is selected. The validated provider/model is retained for this invocation even if the saved profile changes after startup. With no default profile, a single configured environment provider is selected automatically. With none or several, the console offers searchable provider/model selection and saves `default`; those answers explicitly select it for the current invocation. Cancelling the selector leaves profiles unchanged. The interactive console then resolves credentials from the environment, a temporary key, or the system keychain, and offers hidden entry if needed. See [Credentials](CREDENTIALS.md). One-shot execution, other administrative commands and service connections do not activate profiles implicitly. `doctor`, including `--json`, follows the conversation defaults. `--profile <name>` is accepted only by `run`, `chat`, `review`, and `doctor`; it is intentionally rejected by `resume` because an existing run restores its exact persisted configuration. An explicit profile supplies provider/model defaults overridden by CLI flags. Otherwise, explicit provider/model flags or provider/model environment overrides bypass automatic profile selection; then the saved default profile wins over single-provider environment detection and built-in defaults.
 
 ## Interactive console
 
@@ -197,7 +221,7 @@ Provider/model changes apply only to the next run. The console blocks them while
 
 Human terminal mode renders redacted step/tool lifecycle lines and never prints tool inputs, outputs, provider payloads, or raw errors. Governed edits, checks, argv commands, and OCI shell scripts show their complete sanitized approval payload; unknown provider/MCP tools use a bounded summary with an explicit full view. `q`, EOF, or interruption leaves the entire approval batch pending.
 
-`doctor` is local and makes no provider or MCP request. It checks the active Node/Bun runtime, detected repository package manager, workspace, Git, supported package scripts, state-directory safety, provider credential presence, endpoint shape, provider configuration, the local MCP configuration file, and—when requested—the OCI runtime and preloaded image without returning secret or endpoint values.
+`doctor` is local and makes no provider or MCP request. It checks environment credentials first and otherwise inspects the selected provider keychain entry. Human output focuses on that provider and names the active profile, model, project and credential source; JSON retains all provider checks. Presence does not verify account access. It checks the active Node/Bun runtime, detected repository package manager, workspace, Git, supported package scripts, state-directory safety, provider credential presence, endpoint shape, provider configuration, the local MCP configuration file, and—when requested—the OCI runtime and preloaded image without returning secret or endpoint values.
 
 `--allow-check <script>` is repeatable and replaces the default check allowlist for that invocation. Values are declared `package.json` script names, never command text.
 
@@ -361,3 +385,18 @@ response and before executing its tools, including usage retained across approva
 resume. This local guard does not inject a `maxTokens` transport parameter for
 Qwen. A response can itself cross a token limit; the guard prevents its tools and
 subsequent model calls, rather than guaranteeing a pre-request input-token ceiling.
+
+### Runs without cumulative token budgets
+
+Use `zhx --no-token-budget` for the interactive console or
+`zhx run --no-token-budget "Your task"` for a single task. This explicitly disables
+cumulative input, output, and total token ceilings for the main run and all its
+subagents, including the repair controller's token closure reserve. Usage is still
+measured and persisted; the setting survives approval resume and conversation continuation.
+Numeric token settings remain stored but inactive while this mode is enabled.
+Default token budgets are unchanged for runs without this flag.
+
+Compaction, per-request model/provider limits, cost budgets, step/tool limits,
+timeouts, and approvals still apply. This is not an unlimited context window or
+an unlimited single response. Library callers use `unlimitedTokens: true` in
+`HarnessConfigInput`; `false` restores enforcement of the numeric token budgets.

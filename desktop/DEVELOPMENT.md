@@ -84,3 +84,26 @@ It does not certify the production main's complete setup flow, other models or
 endpoints. The overall limit is six minutes with no full-test retry. The report
 contains only outcomes and the failed phase, if any. Real Docker, live GitHub auth
 and signed distribution require separate verification.
+
+## Try the desktop improvements
+
+After building, launch `bun run --cwd desktop start` from the repository root.
+Use **Open repository**, choose a model, open **Credentials**, and create a conversation.
+The secure key entry still uses the native macOS dialog.
+
+- Write a draft, refresh, switch conversations, or restart the app and select the
+  same conversation: the draft should return. Drafts are saved locally in the app
+  profile; a storage failure displays a warning and retains an in-memory copy.
+- Open a conversation's **•••** menu to rename or archive it. The **Archived**
+  filter lets you restore it. Archiving is a local navigation preference and does
+  not cancel a run or delete its history.
+- Ask for an explanation with Markdown and code; use **Copy code** or open a web
+  link in the default browser. Images do not trigger remote downloads.
+- Request an edit and open **Review request**. Inspect the numbered diff, navigate
+  with **Next change**, or expand the complete before/after contents.
+- Open **Credentials** at a narrow window size: settings appear in a modal dialog
+  and Escape returns to the app.
+
+`bun run desktop/scripts/smoke.ts --models` covers draft recovery, renaming,
+archive/restore, the credentials dialog and model transitions with an offline
+fixture. `bun test desktop/tests` includes empty-poll and safe-rendering regressions.

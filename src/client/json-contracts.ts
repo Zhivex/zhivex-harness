@@ -70,6 +70,7 @@ const tokenUsageSchema = observationalDocument({
   speed: z.enum(["standard", "fast"]).optional()
 });
 const budgetConfigSchema = observationalDocument({
+  unlimitedTokens: z.boolean().optional(),
   maxSteps: nonnegativeInteger,
   maxToolCalls: nonnegativeInteger,
   maxToolErrors: nonnegativeInteger,

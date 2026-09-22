@@ -55,3 +55,19 @@ test("a dead runtime cannot authorize a model switch without recovering its stat
  await expect(prepareModelTransition({isAlive:()=>false,controlClose:async()=>false,close:async()=>{},command:async()=>{read=true;throw new Error();}})).rejects.toThrow("MODEL_STATE_UNAVAILABLE");
  expect(read).toBe(false);
 });
+
+test("desktop and CLI share catalog groups, defaults and model metadata", async () => {
+ const {bundledModelCatalog}=await import("../../src/models/catalog.js");
+ const {consoleModelChoices}=await import("../../src/cli/console/console-navigation.js");
+ for(const provider of desktopProviders()){
+  const choices=consoleModelChoices(provider.id,provider.defaultModel);
+  expect(provider.models!.map(m=>m.id).sort()).toEqual(choices.map(m=>m.value).sort());
+  expect(provider.models!.find(m=>m.id===provider.defaultModel)?.group).toBe("primary");
+  expect(provider.catalogRevision).toBe(bundledModelCatalog.revision);
+ }
+ const next=structuredClone(bundledModelCatalog);
+ const provider=next.providers[0]!;
+ provider.defaultModel=provider.models[0]!.id;
+ provider.models[0]!.group="primary";
+ expect(desktopProviders(next).find(p=>p.id===provider.id)!.defaultModel).toBe(provider.defaultModel);
+});

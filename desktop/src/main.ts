@@ -1,3 +1,5 @@
+import { loadModelCatalog } from "../../src/internal/desktop/providers.js";
+import { externalUrl } from "./external-url.js";
 import {verifyDesktopModelsSmoke} from "./smoke-models-verification.js";
 import {desktopProviders, defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
 import {prepareModelTransition, sameModel} from "./model-transition.js";
@@ -24,7 +26,7 @@ import { verifyDesktopEffectCrashSmoke } from "./smoke-effect-crash-verification
 import { openTaskWorktrees, type ManagedTask } from "./task-worktrees.js";
 import type { DesktopTask } from "./bridge.js";
 import { prepareDesktopShutdown } from "./shutdown.js";
-import { app, BrowserWindow, ipcMain, session, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, session, dialog, shell, clipboard } from "electron";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -120,6 +122,14 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     });
     const validateOrigin = (event: Electron.IpcMainInvokeEvent) => { if (closing || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== url) throw new Error("UNTRUSTED_SENDER"); };
     const validateSender = (event: Electron.IpcMainInvokeEvent) => {validateOrigin(event); if (updating) throw new Error("UPDATE_IN_PROGRESS"); if (modelChanging) throw new Error("MODEL_CHANGE_IN_PROGRESS");};
+    workIpc.handle("harness:open-external", async (_event, value: unknown) => {
+        const url = externalUrl(value); if (!url) throw new Error("INVALID_EXTERNAL_URL");
+        await shell.openExternal(url);
+    });
+    workIpc.handle("harness:copy-text", (_event, value: unknown) => {
+        if (typeof value !== "string" || value.length > 1048576) throw new Error("INVALID_CLIPBOARD_TEXT");
+        clipboard.writeText(value);
+    });
     const trustedUpdates = parseDesktopUpdateTrust(process.platform === "darwin" && process.arch === "arm64" ? updateTrust : {schemaVersion: 1, enabled: false});
     const updateFeed = createDesktopUpdateFeed(trustedUpdates, desktopMetadata.version);
     const installer = createDesktopUpdateInstaller({application: path.resolve(process.resourcesPath, "../.."), userData: app.getPath("userData"), teamId: trustedUpdates.enabled ? trustedUpdates.teamId : "", version: desktopMetadata.version}, {
@@ -154,7 +164,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
  workIpc.handle("harness:credential-probe",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return fixture?Promise.resolve("unsupported"):credentialStore(p).probe();});
  workIpc.handle("harness:credential-configure",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return credentials.change("configure",p);});
  workIpc.handle("harness:credential-delete",(event,...args:unknown[])=>{const p=credentialRequest(event,args);return credentials.change("delete",p);});
- workIpc.handle("harness:providers", (_event,...args:unknown[]) => {if(args.length)throw new Error("INVALID_PROVIDER_REQUEST");return desktopProviders();});
+ workIpc.handle("harness:providers", async (_event,...args:unknown[]) => {if(args.length)throw new Error("INVALID_PROVIDER_REQUEST");const snapshot = await loadModelCatalog();return desktopProviders(snapshot.catalog).map(p => ({...p, catalogSource: snapshot.source, catalogStale: snapshot.stale}));});
  workIpc.handle("harness:select-model", async (event,value:unknown) => {
     const payload = gitPayload(event,value,["projectKey","selection"]);
     const selection = modelSelectionSchema.parse(payload.selection);

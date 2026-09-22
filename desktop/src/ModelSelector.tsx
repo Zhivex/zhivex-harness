@@ -1,3 +1,4 @@
+import { modelDescription } from "../../src/internal/desktop/providers.js";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Search, Sparkles, X } from "lucide-react";
 import type {
@@ -8,7 +9,7 @@ import type {
 
 export function ModelSelector({
   context,
-  providers,
+  providers: initialProviders,
   disabled,
   changed,
   editing,
@@ -19,6 +20,8 @@ export function ModelSelector({
   editing: (value: boolean) => void;
   changed: (context: DesktopContext) => void;
 }) {
+  const [providers, setProviders] = useState(initialProviders);
+  useEffect(() => setProviders(initialProviders), [initialProviders]);
   const current = context?.modelSelection ?? {
     provider: "openai",
     model: providers.find((p) => p.id === "openai")?.defaultModel ?? "",
@@ -43,6 +46,7 @@ export function ModelSelector({
     ...new Set(
       [
         provider?.defaultModel,
+        ...(provider?.models?.map(m => m.id) ?? []),
         ...(current.provider === draft.provider ? [current.model] : []),
       ].filter((m): m is string => Boolean(m)),
     ),
@@ -93,11 +97,23 @@ export function ModelSelector({
       if (mounted.current) setSaving(false);
     }
   }
-  const choices = providers.filter((p) =>
-    `${p.name} ${p.defaultModel}`
-      .toLocaleLowerCase()
-      .includes(query.toLocaleLowerCase()),
-  );
+  const choices = providers.flatMap(p => (p.models ?? [{id:p.defaultModel, name:p.defaultModel,
+    group:"primary" as const, order:0, lifecycle:"unknown" as const, validation:"unverified" as const, capabilities:[]}])
+    .map(model => ({...model, provider:p.id, providerName:p.name})))
+    .filter(m => `${m.providerName} ${m.name} ${m.id}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const renderCards = (group: "primary" | "other") => choices.filter(m => m.group === group).map(m => (
+    <button key={`${m.provider}:${m.id}`} type="button" className="model-card"
+      aria-pressed={draft.provider === m.provider && draft.model === m.id}
+      disabled={disabled || saving}
+      onClick={() => {setDraft({provider:m.provider, model:m.id});setCustom(false);setError("");}}>
+      <span className="model-card-provider">{m.providerName}
+        {draft.provider === m.provider && draft.model === m.id ? <Check size={16} aria-hidden="true" /> : null}
+      </span>
+      <strong>{m.name}</strong>
+      {m.name !== m.id ? <span>{m.id}</span> : null}
+      <span className="model-card-note">{modelDescription(m)}</span>
+    </button>
+  ));
   return (
     <div className="model-selector" aria-busy={saving}>
       <button
@@ -108,7 +124,10 @@ export function ModelSelector({
         aria-haspopup="dialog"
         aria-label={`Choose model: ${current.model || "no selection"}`}
         disabled={disabled || !context}
-        onClick={() => dialog.current?.showModal()}
+        onClick={() => {
+          dialog.current?.showModal();
+          void window.harness.providers().then(next => {if (mounted.current) setProviders(next);}).catch(() => {});
+        }}
       >
         <Sparkles size={14} aria-hidden="true" />
         <span>{current.model || "Choose model"}</span>
@@ -148,42 +167,14 @@ export function ModelSelector({
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <div className="model-catalog">
-          {choices.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="model-card"
-              aria-pressed={
-                draft.provider === p.id && draft.model === p.defaultModel
-              }
-              disabled={disabled || saving}
-              onClick={() => {
-                setDraft({ provider: p.id, model: p.defaultModel });
-                setCustom(false);
-                setError("");
-              }}
-            >
-              <span className="model-card-provider">
-                {p.name}
-                {draft.provider === p.id && draft.model === p.defaultModel ? (
-                  <Check size={16} aria-hidden="true" />
-                ) : null}
-              </span>
-              <strong>{p.defaultModel}</strong>
-              <span className="model-card-note">
-                {p.support === "provisional"
-                  ? "Provisional support"
-                  : "Default model"}
-              </span>
-            </button>
-          ))}
-          {!choices.length ? (
-            <p className="muted">
-              No models match your search.
-            </p>
-          ) : null}
-        </div>
+        <h3>Primary models</h3>
+        <div className="model-catalog">{renderCards("primary")}</div>
+        <details className="model-others" open={query ? true : undefined}>
+          <summary>Other models ({choices.filter(m => m.group === "other").length})</summary>
+          <div className="model-catalog">{renderCards("other")}</div>
+        </details>
+        {!choices.length ? <p className="muted">No models match your search.</p> : null}
+        {providers.some(p => p.catalogStale) ? <p className="muted">Catalog update unavailable. Showing the last valid catalog.</p> : null}
         <details className="model-advanced">
           <summary>Configure another model</summary>
           <div className="model-fields">
@@ -252,7 +243,7 @@ export function ModelSelector({
           </div>
         </details>
         <p className="model-hint">
-          Availability depends on your account and saved credentials. Current: {current.model}.
+          Availability depends on your account and saved credentials. Current: {current.model}. Catalog: {providers[0]?.catalogRevision ?? "bundled"}.
         </p>
         {error ? (
           <p role="alert" className="error">

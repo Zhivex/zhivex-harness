@@ -20,7 +20,7 @@ const diagnosticsSchema = z.object({ schemaVersion: z.literal(1), profile: z.lit
 const manifestSchema = z.object({ schemaVersion: z.literal(1), policyVersion: z.literal("repair-v2-durable-closure"),
   role: z.string().max(128), profile: z.enum(["strict", "repair"]), backend: z.enum(["none", "oci"]),
   tools: z.array(z.string().max(128)).max(1024),
-  budget: z.object({ maxSteps: count, maxToolCalls: count, maxToolErrors: count, maxInputTokens: count, maxOutputTokens: count, includeChildRuns: z.boolean() }),
+  budget: z.object({ unlimitedTokens: z.boolean().optional(), maxSteps: count, maxToolCalls: count, maxToolErrors: count, maxInputTokens: count, maxOutputTokens: count, includeChildRuns: z.boolean() }),
   timeoutMs: count, closureController: z.boolean(), contextEnabled: z.boolean() });
 const redact = createRedactionPolicy({ includeEmails: true });
 /** Parse and project an allowlist; persisted user metadata is not trusted output. */

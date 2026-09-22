@@ -2,7 +2,7 @@ import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from "@z
 import { ProviderToolCallError } from "@zhivex-ai/core/provider";
 import { z } from "zod";
 import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
-import { measureContext } from "../context/context-metrics.js";
+import { estimateContextTokens, measureContext } from "../context/context-metrics.js";
 
 export const MODEL_BUDGET_KEY = "zhivexTransportBudget";
 const savedBudget = z.object({ inputTokens: z.number().int().nonnegative(), outputTokens: z.number().int().nonnegative(),
@@ -10,13 +10,7 @@ const savedBudget = z.object({ inputTokens: z.number().int().nonnegative(), outp
   usageComplete: z.boolean(), inFlight: z.boolean().default(false) });
 
 /** Conservative prediction, not a provider tokenizer or a billing guarantee. */
-export const estimateRequestTokens = (input: ModelGenerateInput) => {
-  const measured = measureContext(input);
-  if (measured.unmeasuredToolDefinitions) throw new Error("CONTEXT_ESTIMATE_UNAVAILABLE");
-  const characters = measured.systemCharacters + measured.userCharacters + measured.assistantCharacters +
-    measured.toolResultCharacters + measured.otherMessageCharacters + measured.toolDefinitionCharacters;
-  return Math.ceil(characters / 3) + 64;
-};
+export const estimateRequestTokens = (input: ModelGenerateInput) => estimateContextTokens(measureContext(input));
 
 export const workBudgetReached = (input: ModelGenerateInput,
   stats: { inputTokens: number; outputTokens: number; reservedInputTokens: number; reservedOutputTokens: number },
@@ -36,8 +30,8 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
   let omittedContextMeasurements = prior?.omittedContextMeasurements ?? 0;
   const stats = { inputTokens: 0, outputTokens: 0, cachedInputTokens: 0, modelCalls: 0,
     usageComplete: true, inFlight: false, ...restored,
-    stopReason: null as string | null, reservedInputTokens: Math.ceil(limits.inputTokens * reserve),
-    reservedOutputTokens: Math.ceil(limits.outputTokens * reserve), predictedInputTokens: 0, outputCapApplied: false };
+    stopReason: null as string | null, reservedInputTokens: Number.isFinite(limits.inputTokens) ? Math.ceil(limits.inputTokens * reserve) : 0,
+    reservedOutputTokens: Number.isFinite(limits.outputTokens) ? Math.ceil(limits.outputTokens * reserve) : 0, predictedInputTokens: 0, outputCapApplied: false };
   if (restored?.inFlight) stats.usageComplete = false;
   const modelTimings: { durationMs: number; firstTokenMs: number | null; completed: boolean }[] = prior?.modelTimings ?? [];
   const snapshot = () => ({ inputTokens: stats.inputTokens, outputTokens: stats.outputTokens,
@@ -45,7 +39,8 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
     usageComplete: stats.usageComplete, inFlight: stats.inFlight });
   const before = (input: ModelGenerateInput, provider: string) => {
     input.abortSignal?.throwIfAborted();
-    stats.predictedInputTokens = estimateRequestTokens(input);
+    const measured = measureContext(input);
+    stats.predictedInputTokens = estimateContextTokens(measured);
     const closure = options.closure?.() ?? false;
     const inputCeiling = limits.inputTokens - (closure ? 0 : stats.reservedInputTokens);
     const outputCeiling = limits.outputTokens - (closure ? 0 : stats.reservedOutputTokens);
@@ -60,7 +55,7 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
     stats.outputCapApplied = capSupported;
     if (capSupported) input.maxTokens = Math.max(1, Math.min(input.maxTokens ?? 2048, outputCeiling - stats.outputTokens));
     stats.modelCalls++; stats.inFlight = true;
-    if (contextMetrics.length < 128) contextMetrics.push(measureContext(input)); else omittedContextMeasurements++;
+    if (contextMetrics.length < 128) contextMetrics.push(measured); else omittedContextMeasurements++;
   };
   const record = (usage: TokenUsage | undefined) => {
     stats.inFlight = false;

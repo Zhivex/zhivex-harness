@@ -103,6 +103,8 @@ export type HarnessRequiredCapability = (typeof HARNESS_REQUIRED_CAPABILITIES)[n
 export type HarnessSubagentProfile = (typeof HARNESS_SUBAGENT_PROFILES)[number];
 
 export interface HarnessBudget {
+  /** Disable cumulative token ceilings; numeric ceilings remain stored but inactive. */
+  unlimitedTokens?: boolean;
   maxSteps: number;
   maxToolCalls: number;
   maxToolErrors: number;
@@ -195,6 +197,8 @@ export interface HarnessConfigInput {
   requireVerifiedDelivery?: boolean;
   maxToolCalls?: number;
   maxToolErrors?: number;
+  /** Disable cumulative token budgets for the main run and all subagents. */
+  unlimitedTokens?: boolean;
   maxInputTokens?: number;
   maxOutputTokens?: number;
   maxTotalTokens?: number;
@@ -613,7 +617,12 @@ export const resolveHarnessConfig = (
     1_000,
     24 * 60 * 60_000
   );
+  if (input.unlimitedTokens !== undefined && typeof input.unlimitedTokens !== "boolean") {
+    throw new HarnessConfigError("unlimitedTokens must be a boolean.");
+  }
+  const tokenMode = input.unlimitedTokens === undefined ? {} : { unlimitedTokens: input.unlimitedTokens };
   const budget: HarnessBudget = {
+    ...tokenMode,
     maxSteps,
     maxToolCalls: integerOption("maxToolCalls", input.maxToolCalls, process.env.ZHIVEX_HARNESS_MAX_TOOL_CALLS, DEFAULT_HARNESS_BUDGET.maxToolCalls, 0, 500),
     maxToolErrors: integerOption("maxToolErrors", input.maxToolErrors, process.env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS, DEFAULT_HARNESS_BUDGET.maxToolErrors, 0, 100),
@@ -655,6 +664,7 @@ export const resolveHarnessConfig = (
     throw new HarnessConfigError("compactionKeepRecentMessages must be smaller than compactionMaxMessages.");
   }
   const childBudget: HarnessBudget = {
+    ...tokenMode,
     maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, 30),
     maxToolCalls: integerOption("subagentMaxToolCalls", input.subagentMaxToolCalls, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS, DEFAULT_SUBAGENT_BUDGET.maxToolCalls, 0, 200),
     maxToolErrors: integerOption("subagentMaxToolErrors", input.subagentMaxToolErrors, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_ERRORS, DEFAULT_SUBAGENT_BUDGET.maxToolErrors, 0, 50),

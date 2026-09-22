@@ -312,15 +312,9 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       ociTmpfsMb: 64
     });
 
-    if (legacyRetention) {
-      expect(result).toMatchObject({
-        environmentFailure: true,
-        failure: { stage: "model", origin: "agent_run", code: "EXECUTION_FAILED" }
-      });
-      expect(observedRunError).toBeInstanceOf(Error);
-      expect((observedRunError as Error).message).toContain("compaction result still exceeds maxEstimatedInputTokens");
-      return;
-    }
+    // Six recent messages used to retain an oversized result and fail during
+    // compaction. Adaptive retention must now finish the same verified repair.
+    expect(observedRunError).toBeUndefined();
     if (textCharacters) expect(result.efficiency?.compactions).toBeGreaterThan(0);
     expect(result).toMatchObject({
       utilityPass: true,

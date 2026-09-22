@@ -127,7 +127,7 @@ export async function verifyDesktopModelsSmoke(
   window.webContents.reload();
   await refreshed;
   await wait(
-    "document.querySelector('main[data-ready=true]') && document.querySelectorAll('[data-session]').length===2",
+    "document.querySelector('main[data-ready=true]') && document.querySelectorAll('[data-session]').length===3",
   );
   await click(`[data-session="${sessionId}"]`);
   await wait("document.body.innerText.includes('Separate runtime')");

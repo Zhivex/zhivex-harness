@@ -40,13 +40,13 @@ export const CLI_OPTION_NAMES = [
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb", "--store", "--tenant", "--user", "--namespace", "--idempotency-key",
-  "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
+  "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
   "--max-output-tokens", "--max-total-tokens", "--subagent-max-steps", "--subagent-max-tool-calls",
   "--subagent-max-tool-errors", "--subagent-max-input-tokens", "--subagent-max-output-tokens",
   "--subagent-max-total-tokens", "--subagent-timeout-ms", "--max-parallel-reviews", "--max-cost-usd",
   "--input-cost-per-million", "--output-cost-per-million", "--allow-check", "--require-capability",
   "--subagent", "--reviewer", "--yes", "--approve", "--deny", "--json", "--jsonl", "--session",
-  "--continue", "--status", "--limit", "--cursor", "--before", "--reason", "--cascade", "--final",
+  "--continue", "--update", "--status", "--limit", "--cursor", "--before", "--reason", "--cascade", "--final",
   "--service", "--apply", "--help", "--version", "--search", "--pricing-file", "--usage-limit-usd"
 ] as const;
 
@@ -69,13 +69,14 @@ const execution = [
   "--oci-tmpfs-mb"
 ] as const;
 const budgets = [
-  "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
+  "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
   "--max-output-tokens", "--max-total-tokens", "--max-cost-usd", "--input-cost-per-million",
   "--output-cost-per-million", "--subagent-max-steps", "--subagent-max-tool-calls",
   "--subagent-max-tool-errors", "--subagent-max-input-tokens", "--subagent-max-output-tokens",
   "--subagent-max-total-tokens", "--subagent-timeout-ms"
 ] as const;
 const childBudgets = [
+  "--no-token-budget",
   "--subagent-max-steps", "--subagent-max-tool-calls", "--subagent-max-tool-errors",
   "--subagent-max-input-tokens", "--subagent-max-output-tokens", "--subagent-max-total-tokens",
   "--subagent-timeout-ms"
@@ -103,7 +104,7 @@ const contract = (
 };
 
 export const CLI_COMMAND_OPTION_CONTRACTS = {
-  init: contract([...provider, ...profile, "--json"]),
+  init: contract([...provider, ...profile, "--update", "--json"]),
   run: contract(["--service", "--session", ...agent, "--idempotency-key", "--yes", "--json", "--jsonl"]),
   review: contract([
     "--pricing-file", "--usage-limit-usd",

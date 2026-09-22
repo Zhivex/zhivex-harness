@@ -15,6 +15,7 @@ import path from "node:path";
 import {
   MAX_CLI_PROFILE_BYTES,
   applyCliProfile,
+  resolveCliDefaults,
   createCliProfile,
   loadCliProfile,
   resolveCliProfileConfigDirectory,
@@ -173,5 +174,21 @@ describe("CLI profiles", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+});
+
+
+test("conversation defaults use one available provider, preserve ambiguity and honor explicit configuration", async () => {
+  await withConfigRoot(async context => {
+    context.env.DASHSCOPE_API_KEY = "fixture";
+    expect(await resolveCliDefaults({}, context)).toEqual({ provider: "qwen" });
+    context.env.OPENAI_API_KEY = "fixture";
+    expect(await resolveCliDefaults({}, context)).toEqual({});
+    await createCliProfile("default", { provider: "meta", model: "saved-model" }, context);
+    expect(await applyCliProfile(await resolveCliDefaults({}, context), context)).toMatchObject({ provider: "meta", model: "saved-model", profile: "default" });
+    expect(await resolveCliDefaults({ provider: "qwen" }, context)).toEqual({ provider: "qwen" });
+    expect(await resolveCliDefaults({ model: "custom" }, context)).toEqual({ model: "custom" });
+    context.env.ZHIVEX_HARNESS_PROVIDER = "openai";
+    expect(await resolveCliDefaults({}, context)).toEqual({});
   });
 });

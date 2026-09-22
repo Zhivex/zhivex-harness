@@ -26,7 +26,9 @@ macOS uses Keychain. Linux explicitly requires Secret Service (for example an
 unlocked GNOME Keyring or compatible service with a D-Bus session). The optional
 `@napi-rs/keyring` native binding may be unavailable on a particular installation.
 A locked, unavailable or unsupported backend never falls back to a plaintext file
-or kernel keyring. Choose temporary use or supply an environment key instead.
+or kernel keyring. The recovery menu lets you explicitly choose temporary use,
+retry after unlocking storage, or cancel. A failed save never changes storage mode
+automatically; temporary recovery asks for the key again.
 `ZHIVEX_HARNESS_CREDENTIAL_STORE=disabled` disables native keychain access, useful
 for isolated tests and installations where keychain use is prohibited.
 
@@ -40,11 +42,19 @@ Environment keys take precedence over saved and temporary keys, including provid
 aliases. The CLI reports that precedence when managing a key while an environment
 key exists. Changing the saved key does not override the launching shell.
 
-One-shot commands (`run`, `review`, `resume`), JSON/JSONL, `doctor`, `providers`, and
-service connections retain their existing environment/host-owned behavior: they
-never prompt for keys or access the system keychain. `doctor` checks environment
-key presence only; it does not validate saved keys or contact providers. Use the
-interactive console to resume a conversation with a managed key.
+One-shot commands (`run`, `review`, `resume`), `providers`, and service connections
+retain their existing environment/host-owned behavior: they never prompt for keys
+or access the system keychain. Use the interactive console to resume a
+conversation with a managed key.
+
+`doctor` checks the selected provider using environment credentials first, then the
+system keychain, including with `--json`. It never asks for an API key, writes a key,
+or contacts the provider. The OS may require unlocking secure storage. It reports
+missing, unavailable, or endpoint-blocked managed credentials distinctly. Its
+selected-provider check includes the credential source and an explicit
+`accountAccess: "not-checked"`; the provider inventory still describes environment
+configuration. Temporary keys belong to their running console and cannot be seen
+by a separate doctor process.
 
 ## Boundaries
 

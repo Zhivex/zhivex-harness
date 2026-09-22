@@ -1,3 +1,5 @@
+import { CliCredentials, type CredentialStatus } from "./cli-credentials.js";
+import { sanitizeTerminalText } from "./terminal/terminal-ui.js";
 import { constants as fsConstants } from "node:fs";
 import { access, lstat, stat } from "node:fs/promises";
 import path from "node:path";
@@ -57,6 +59,7 @@ export interface DoctorReport {
 
 export interface DoctorContext {
   env?: NodeJS.ProcessEnv;
+  credentialStatus?: CredentialStatus;
   nodeVersion?: string;
   /** @deprecated Test-only compatibility injection for the secondary Bun runtime. */
   bunVersion?: string;
@@ -488,6 +491,7 @@ export const createDoctorReport = async (
     | "timeoutMs"
     | "maxToolCalls"
     | "maxToolErrors"
+    | "unlimitedTokens"
     | "maxInputTokens"
     | "maxOutputTokens"
     | "maxTotalTokens"
@@ -666,7 +670,9 @@ export const createDoctorReport = async (
     const invalidRegion = provider.id === "qwen" && provider.configuration.regionValid === false;
     const invalidEndpoint = !provider.configuration.endpointValid;
     const selected = provider.id === selectedProvider?.id;
-    const status: DoctorCheckStatus = invalidRegion || invalidEndpoint || !provider.configured
+    const credential = selected ? context.credentialStatus : undefined;
+    const configured = credential?.configured ?? provider.configured;
+    const status: DoctorCheckStatus = invalidRegion || invalidEndpoint || !configured
       ? selected
         ? "fail"
         : "warn"
@@ -677,6 +683,12 @@ export const createDoctorReport = async (
       ? `${provider.name} custom endpoint configuration is invalid.`
       : invalidRegion
       ? "Qwen region configuration is invalid."
+      : credential
+        ? credential.configured
+          ? `${provider.name} credential present (${credential.source}); account access has not been checked.${provider.support === "provisional" ? " Live support is provisional." : ""}`
+          : credential.source === "blocked"
+            ? `${provider.name} managed credentials require the default endpoint. Remove endpoint overrides or provide an environment key.`
+            : `${provider.name} credential ${credential.source === "unavailable" ? "could not be checked: keychain unavailable or locked" : "is missing"}. Run zhx to configure a key, or set ${provider.credentialNames.join(" or ")} for automation.`
       : provider.configured
         ? provider.support === "provisional"
           ? `${provider.name} credentials are present, but live support is provisional.`
@@ -685,7 +697,8 @@ export const createDoctorReport = async (
     checks.push(diagnostic(`provider:${provider.id}`, status, message, {
       provider: provider.id,
       selected,
-      configured: provider.configured,
+      configured,
+      ...(credential ? { credentialSource: credential.source, accountAccess: "not-checked" } : {}),
       support: provider.support,
       credentialNames: provider.credentialNames,
       capabilities: provider.capabilities,
@@ -737,14 +750,19 @@ export const formatDoctorReport = (report: DoctorReport) => {
   const symbols: Record<DoctorCheckStatus, string> = { pass: "✓", warn: "!", fail: "✗" };
   const lines = [
     `Zhivex Harness doctor v${report.harnessVersion}`,
-    ...report.checks.map((check) => `${symbols[check.status]} ${check.id}: ${check.message}`),
+    `Provider: ${report.configuration.provider} · Model: ${report.configuration.model}`,
+    `Project: ${report.configuration.workspace}`,
+    ...report.checks.filter(check => !check.id.startsWith("provider:") || check.details.selected === true).map((check) => `${symbols[check.status]} ${check.id}: ${check.message}`),
     report.ok ? "Doctor completed without blocking problems." : "Doctor found blocking problems."
   ];
-  return `${lines.join("\n")}\n`;
+  return `${lines.map(line => sanitizeTerminalText(line)).join("\n")}\n`;
 };
 
 export const doctor = async (options: CliOptions) => {
-  const report = await createDoctorReport(options);
+  const config = resolveHarnessConfig(options);
+  const credentialStatus = await new CliCredentials().inspect(config.provider);
+  const report = await createDoctorReport(options, { credentialStatus });
+  if (!options.json) process.stdout.write(`Profile: ${sanitizeTerminalText(options.profile ?? "explicit or environment defaults")}\n`);
   process.stdout.write(options.json ? `${JSON.stringify(report, null, 2)}\n` : formatDoctorReport(report));
   if (!report.ok) {
     process.exitCode = CLI_EXIT_CODES.doctorFailed;

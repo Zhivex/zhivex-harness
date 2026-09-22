@@ -4,10 +4,46 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.4 - 2026-09-22
+
+- Align the SDK batch with the latest stable packages verified on 2026-09-22:
+  Agents 1.8.0, Core 1.22.0, Gemini 0.12.1, Meta 0.2.6, OpenAI 0.13.4 and
+  Qwen 0.15.0. Keep the compatible TypeScript 6.0.3 compiler API for architecture
+  and Stable signature checks while building with TypeScript 7.0.2.
+
+- Use searchable provider/model selection during first use, detect a lone environment
+  provider, recover failed keychain setup with explicit temporary use or retry, and
+  show one ready screen with credential source and approval policy.
+- Make `doctor` follow conversation defaults and inspect the selected environment
+  or keychain credential without contacting the provider. Human diagnostics focus
+  on the selected provider; JSON retains the full provider inventory. One-shot
+  execution continues to require explicit profiles and environment credentials.
+
+- Retain recent conversation groups by estimated tokens, adapt repair compaction
+  to remaining input allowance, and preserve structured working plans across
+  repeated summaries. Keep SDK approval/checkpoint ownership and explicit overrides.
+- Unify context estimates, reuse transport measurements and cache tool-schema
+  serialization. Default discovery to ten search matches and path-only listings;
+  callers can explicitly request larger results and digests.
+
+- Add `--no-token-budget` / `unlimitedTokens: true` to disable cumulative token
+  budgets for main runs and subagents while preserving usage accounting,
+  compaction, per-request limits, and non-token execution controls.
+
+Unpublished release candidate targeting npm `next`, following published RC.3.
+Fresh protected certification is required before publication. Stable `latest`
+remains 1.0.0.
+
+- Make appended command help independent of task/configuration validation, group options with examples, and accept `--name=value` for value options.
+- Add explicit UTF-8 task input through `zhx run -` and `zhx review -`, bounded to 1 MiB and retaining approval requirements.
+- Add atomic personal profile updates with `zhx init --update`, reopen provider/model selection after declining the default profile, and give actionable usage/configuration recovery messages.
+- Share the curated model catalog across CLI and Desktop, with primary/other groups, explicit lifecycle and validation metadata, custom model IDs, and optional HTTPS catalog distribution with cached fallback.
+- Improve the separate Desktop alpha with rendered Markdown, file diffs, conversation navigation and local preferences, accessible panels and controlled external links. Desktop retains its independent private alpha version.
+
 ## 1.1.0-rc.3 - 2026-09-22
 
-Release candidate targeting npm `next`; fresh protected certification is required
-before publication. Stable `latest` remains 1.0.0.
+Published release candidate on npm `next`. The changes below describe RC.3;
+subsequent work belongs to RC.4. Stable `latest` remains 1.0.0.
 
 - Group interactive tool activity into a bounded live line and summaries between assistant messages. Preserve individual failures, check receipts and approval requests; `/verbose` restores event detail.
 - Identify token-budget and step-limit failures without mislabeling them as provider stream failures or exposing arbitrary provider error payloads.

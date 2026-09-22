@@ -1,3 +1,4 @@
+import { effectiveRuntimeBudget } from "../runtime/runtime-policy.js";
 import { inspectRuntimeDiagnostics, inspectRuntimeManifest } from "../runtime/runtime-diagnostics.js";
 import { inspectUsageLedger, USAGE_LEDGER_KEY } from "../runtime/usage-ledger.js";
 import { RUNTIME_DIAGNOSTICS_KEY } from "../runtime/runtime-checkpoints.js";
@@ -258,6 +259,7 @@ export const inspectHarnessRun = async (
         profile: "repair" | "strict";
         backend: "none" | "oci";
         budget: {
+            unlimitedTokens?: boolean | undefined;
             maxSteps: number;
             maxToolCalls: number;
             maxToolErrors: number;
@@ -334,7 +336,7 @@ export const inspectHarnessRun = async (
     schemaVersion: HARNESS_OPERATIONS_SCHEMA_VERSION,
     kind: "run-inspection" as const,
     run: runSummary(state),
-    budget: getAgentBudgetStatus(state, config.budget),
+    budget: getAgentBudgetStatus(state, effectiveRuntimeBudget(config.budget)),
     snapshot,
     trace: createAgentTraceArtifact(state, traceOptions),
     hierarchy,
