@@ -4,6 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.2 - 2026-09-22
+
+Release candidate superseding the unpublished RC.1, targeting npm `next`.
+
+- Register the exact candidate's external model pins and reject missing pins before live certification.
+- Preserve historical 1.0 certification checks while allowing later candidates in the shared matrix.
+- Bound the governed benchmark's retained history to the latest correlated tool group so verbose Qwen turns can compact within the existing 12,000-token input ceiling. Approval, isolation and independent verification requirements remain unchanged.
+- Add deterministic coverage for the previous compaction failure and current-version model pin drift.
+
+Fresh protected certification is required for this candidate before publication.
+
 ## 1.1.0-rc.1 - 2026-09-22
 
 Release candidate for the next compatible minor release, targeting the `next` channel.
