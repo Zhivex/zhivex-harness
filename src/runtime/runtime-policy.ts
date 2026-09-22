@@ -31,7 +31,8 @@ export const childRuntimeSafety = (config: HarnessConfig) => createProductionSaf
  */
 export const createCheckpointTokenCap = (
   limits: HarnessConfig["budget"],
-  usage: () => Promise<TokenUsage | undefined>
+  usage: () => Promise<TokenUsage | undefined>,
+  transportTokens = true
 ): LanguageModelMiddleware => {
   const observed = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   const cap = async (input: ModelGenerateInput) => {
@@ -46,7 +47,7 @@ export const createCheckpointTokenCap = (
     if (remainingInput <= 0) throw new Error("maxInputTokens budget exhausted");
     if (remainingOutput <= 0) throw new Error("maxOutputTokens budget exhausted");
     if (remainingTotal <= 0) throw new Error("maxTotalTokens budget exhausted");
-    input.maxTokens = Math.min(input.maxTokens ?? remainingOutput, remainingOutput, remainingTotal);
+    if (transportTokens) input.maxTokens = Math.min(input.maxTokens ?? remainingOutput, remainingOutput, remainingTotal);
   };
   const record = (reported: TokenUsage | undefined) => {
     observed.inputTokens += reported?.inputTokens ?? 0;

@@ -229,7 +229,7 @@ describe("terminal event rendering", () => {
 
     expect(toolCall).toBe("↳ tool · read_file");
     expect(toolResult).toBe("✓ tool · read_file");
-    expect(failure).toBe("✗ provider stream failed");
+    expect(failure).toBe("✗ run failed · cause unavailable (inspect run diagnostics)");
     expect(`${toolCall}${toolResult}${failure}`).not.toContain("DO_NOT_PRINT");
     expect(`${toolCall}${toolResult}${failure}`).not.toContain("SECRET_PROVIDER_FAILURE");
   });

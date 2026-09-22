@@ -965,11 +965,11 @@ const runHarnessInternal = async (
     input = { ...input, metadata: { ...input.metadata, [TASK_SOURCE_KEY]: sources } };
   }
   const runId = "state" in input ? input.state.runId : input.runId ?? `run_${randomUUID()}`;
-  if (harness.config.provider !== "qwen" && harness.config.orchestration.profiles.length === 0) {
+  if (harness.config.orchestration.profiles.length === 0) {
     const store = harness.store;
     const fallbackUsage = "state" in input ? input.state.usage : undefined;
     const tokenCap = createCheckpointTokenCap(harness.config.budget, async () =>
-      (await store.load(runId, harness.config.scope))?.usage ?? fallbackUsage);
+      (await store.load(runId, harness.config.scope))?.usage ?? fallbackUsage, harness.config.provider !== "qwen");
     harness = { ...harness, agent: new Agent({
       ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
       model: wrapLanguageModel(harness.agent.model, [tokenCap])

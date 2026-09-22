@@ -7,7 +7,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { createEditProposal } from "../src/workspace/edit-contracts.js";
 
-for (const provider of ["meta", "openai"] as const) {
+for (const provider of ["meta", "openai", "qwen"] as const) {
   for (const outputLimit of [4, 2]) {
     test(`${provider} recalculates output caps and stops at ${outputLimit} tokens`, async () => {
       const root = await mkdtemp(path.join(os.tmpdir(), "token-cap-"));
@@ -29,7 +29,9 @@ for (const provider of ["meta", "openai"] as const) {
           if (outputLimit === 4) expect(result.outputText).toBe("done");
         } catch (error) { failed = true; expect(String(error)).toContain("maxOutputTokens"); }
         expect(failed).toBe(outputLimit === 2);
-        expect(caps).toEqual(outputLimit === 4 ? [4, 2] : [2]);
+        expect(caps).toEqual(provider === "qwen"
+          ? (outputLimit === 4 ? [undefined, undefined] : [undefined])
+          : outputLimit === 4 ? [4, 2] : [2]);
       } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
     });
   }
@@ -55,7 +57,7 @@ for (const provider of ["meta", "openai"] as const) {
         approvals: waiting.state.pendingApprovals.map(a => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) });
       expect(result.status).toBe("completed");
       expect(result.usage?.outputTokens).toBe(4);
-      expect(caps).toEqual([5, 6]);
+      expect(caps).toEqual(provider === "qwen" ? [5, 7] : [5, 6]);
     } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
   });
 }
@@ -72,5 +74,26 @@ test("an over-budget response cannot execute its requested tool", async () => {
   try {
     await expect(runHarness(harness, { runId: "overrun", prompt: "List." })).rejects.toThrow("maxOutputTokens");
     expect((await store.load("overrun"))?.toolResults).toEqual([]);
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+ test("Qwen stops on cumulative input usage before executing over-budget tools", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "qwen-input-cap-"));
+  const store = createInMemoryAgentRunStore();
+  let calls = 0;
+  const model = createMockLanguageModel({ streamEvents: [1, 2, 3].map(index => [
+    { type: "tool-call" as const, toolCall: { id: `list-${index}`, name: "list_files", input: {} } },
+    { type: "finish" as const, finishReason: "tool-calls" as const,
+      usage: { inputTokens: 6, outputTokens: 1, totalTokens: 7 } }
+  ]) });
+  const stream = model.stream!;
+  model.stream = input => { calls++; expect(input.maxTokens).toBeUndefined(); return stream(input); };
+  const harness = await createHarness({ workspace: root, provider: "qwen", store,
+    subagentProfiles: [], maxInputTokens: 10, modelInstance: model });
+  try {
+    await expect(runHarness(harness, { runId: "qwen-overrun", prompt: "List." }))
+      .rejects.toThrow("maxInputTokens");
+    expect(calls).toBe(2);
+    expect((await store.load("qwen-overrun"))?.toolResults).toHaveLength(1);
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });

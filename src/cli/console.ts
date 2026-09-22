@@ -45,6 +45,7 @@ import {
 } from "./resume-metadata.js";
 import { createConfiguredHarness } from "./configured-harness.js";
 import {
+  flushToolActivity,
   approvalResponses,
   streamSink,
   summarizeApproval,
@@ -226,6 +227,7 @@ export const chat = async (options: CliOptions) => {
         }
       ));
     } catch {
+      flushToolActivity(tracker);
       tracker.markdown?.flush();
       const durable = await latestState(await refreshSession());
       session = await sessionStore.updateRun(session.sessionId, state.runId, {
@@ -238,6 +240,7 @@ export const chat = async (options: CliOptions) => {
       );
       return;
     }
+    flushToolActivity(tracker);
     tracker.markdown?.flush();
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
@@ -627,6 +630,7 @@ export const chat = async (options: CliOptions) => {
             }
           ));
         } catch (error) {
+          flushToolActivity(tracker);
           tracker.markdown?.flush();
           const durable = await latestState(await refreshSession());
           session = await sessionStore.updateRun(session.sessionId, runId, {
@@ -635,6 +639,7 @@ export const chat = async (options: CliOptions) => {
           if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
           throw error;
         }
+        flushToolActivity(tracker);
         tracker.markdown?.flush();
         if (!tracker.streamedText && result.outputText) {
           process.stdout.write(sanitizeTerminalText(result.outputText));

@@ -1,3 +1,4 @@
+import { ToolActivity } from "./terminal/tool-activity.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "../runtime/usage-ledger.js";
 import { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
@@ -123,6 +124,9 @@ export const printTerminalResult = (
   }
 };
 
+const toolActivities = new WeakMap<object, ToolActivity>();
+export const flushToolActivity = (tracker: object) => toolActivities.get(tracker)?.flush();
+
 export const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
   tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown },
@@ -132,6 +136,27 @@ export const streamSink = (
     tracker.sequence = (tracker.sequence ?? 0) + 1;
     process.stdout.write(`${serializeStreamEvent(event, tracker.sequence)}\n`);
     return;
+  }
+  if (!output.json && compact) {
+    let activity = toolActivities.get(tracker);
+    if (!activity) {
+      activity = new ToolActivity(text => { process.stderr.write(text); },
+        Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80);
+      toolActivities.set(tracker, activity);
+    }
+    if (event.type === "tool-call") {
+      tracker.markdown?.flush();
+      activity.start();
+      return;
+    }
+    if (event.type === "tool-result") {
+      activity.finish(event.toolResult.toolName);
+      // Checks and failures remain explicit, including nonzero check receipts.
+      if (!event.toolResult.isError && event.toolResult.toolName !== "run_check") return;
+      activity.flush();
+    } else if (!["provider-data", "finish", "agent-step-start", "agent-step-finish"].includes(event.type)) {
+      activity.flush();
+    }
   }
   if (!output.json && event.type === "text-delta") {
     tracker.streamedText = true;

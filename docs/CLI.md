@@ -346,3 +346,18 @@ blindly retry an uncertain command with a new idempotency key. The host persists
 CLI result projection for runs executed through this adapter; older runs without
 that projection can be inspected through run/session queries but are not synthesized
 into a new CLI result. Approval output remains untrusted repository text.
+
+### Compact tool activity
+
+Interactive chat groups tool activity between assistant messages into one summary.
+On a TTY, a single bounded line updates while tools run; redirected output receives
+plain summaries without cursor controls. `/verbose` restores individual events.
+Tool failures, check receipts, and approval requests remain individually visible.
+Budget and step-limit failures show their known runtime cause; arbitrary provider
+error payloads are not printed in activity events.
+
+Qwen runs without subagents enforce cumulative token usage after each model
+response and before executing its tools, including usage retained across approval
+resume. This local guard does not inject a `maxTokens` transport parameter for
+Qwen. A response can itself cross a token limit; the guard prevents its tools and
+subsequent model calls, rather than guaranteeing a pre-request input-token ceiling.

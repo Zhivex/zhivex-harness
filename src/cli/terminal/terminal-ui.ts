@@ -231,6 +231,21 @@ const paint = (text: string, code: number, color: boolean) =>
  * Produce a compact activity line from a redacted event subset. Tool inputs,
  * outputs, provider payloads, repository text, and raw errors are never read.
  */
+/** Only known runtime diagnostics are projected; provider payloads remain private. */
+export const terminalRunFailure = (error: unknown): string => {
+  const message = error instanceof Error ? error.message
+    : error && typeof error === "object" && "message" in error && typeof error.message === "string"
+      ? error.message : "";
+  const budget = /^Agent budget exceeded including child runs: (maxInputTokens|maxOutputTokens|maxTotalTokens|maxToolCalls|maxToolErrors|maxSteps) limit (\d+), actual (\d+)\.$/.exec(message);
+  if (budget) return `budget exceeded · ${budget[1]} · ${budget[3]} / ${budget[2]}`;
+  const cap = /^(maxInputTokens|maxOutputTokens|maxTotalTokens) budget (exceeded|exhausted)$/.exec(message);
+  if (cap) return `budget ${cap[2]} · ${cap[1]}`;
+  if (message === "Agent exhausted maxSteps before reaching a terminal response.") {
+    return "step limit reached before a final response";
+  }
+  return "run failed · cause unavailable (inspect run diagnostics)";
+};
+
 export const formatTerminalEvent = (
   event: AgentStreamEvent,
   options: TerminalAppearanceOptions = {}
@@ -269,7 +284,7 @@ export const formatTerminalEvent = (
       return `${paint("·", 90, color)} model stream` +
         (event.finishReason ? ` · ${sanitizeTerminalText(event.finishReason)}` : " · finished");
     case "error":
-      return `${paint("✗", 31, color)} provider stream failed`;
+      return `${paint("✗", 31, color)} ${terminalRunFailure(event.error)}`;
     case "agent-run-start":
       return `${paint("●", 36, color)} run · step ${event.currentStep}/${event.maxSteps}`;
     case "agent-step-start":
