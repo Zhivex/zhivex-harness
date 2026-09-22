@@ -107,11 +107,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Install desktop test dependencies
+        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+
       - name: Prepare desktop native tests on macOS
         if: runner.os == 'macOS'
-        run: |
-          bun install --cwd desktop --frozen-lockfile --ignore-scripts
-          node desktop/node_modules/electron/install.js
+        run: node desktop/node_modules/electron/install.js
 
       - name: Prepare isolated Linux credential store
         if: runner.os == 'Linux'
