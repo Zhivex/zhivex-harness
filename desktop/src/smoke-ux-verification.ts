@@ -1,4 +1,4 @@
-import {rendererFixtureData} from "./renderer-fixture-data.js";
+import {fillRendererFixture} from "./renderer-fixture-data.js";
 import assert from "node:assert/strict";
 import type { BrowserWindow } from "electron";
 import { writeFile } from "node:fs/promises";
@@ -15,11 +15,8 @@ export async function verifyDesktopUX(window: BrowserWindow, report: string) {
     throw new Error(`UX_TIMEOUT: ${code}`);
   };
   const click = (selector: string) =>
-    js(`document.querySelector(${rendererFixtureData(selector)}).click()`);
-  const fill = (selector: string, value: string) =>
-    js(
-      `(()=>{const el=document.querySelector(${rendererFixtureData(selector)});Object.getOwnPropertyDescriptor(el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(el,${rendererFixtureData(value)});el.dispatchEvent(new Event('input',{bubbles:true}));})()`,
-    );
+    js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const fill = (selector: string, value: string) => fillRendererFixture(window, selector, value);
   const capture = async (name: string) => {
     await js(
       "document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))))",

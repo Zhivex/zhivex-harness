@@ -1,4 +1,4 @@
-import {rendererFixtureData} from "./renderer-fixture-data.js";
+import {selectRendererFixture} from "./renderer-fixture-data.js";
 import { verifyDesktopUX } from "./smoke-ux-verification.js";
 import { app, type BrowserWindow } from "electron";
 import { writeFile } from "node:fs/promises";
@@ -24,11 +24,8 @@ export async function verifyDesktopModelsSmoke(
     throw new Error(`MODEL_UI_TIMEOUT: ${code}`);
   };
   const click = (selector: string) =>
-    js(`document.querySelector(${rendererFixtureData(selector)}).click()`);
-  const select = (selector: string, value: string) =>
-    js(
-      `(()=>{const el=document.querySelector(${rendererFixtureData(selector)});el.value=${rendererFixtureData(value)};el.dispatchEvent(new Event('change',{bubbles:true}));})()`,
-    );
+    js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const select = (selector: string, value: string) => selectRendererFixture(window, selector, value);
   await wait(
     "document.querySelector('main[data-ready=true]')?.dataset.projectKey && document.querySelector('[data-action=select-provider] option[value=qwen]')",
   );

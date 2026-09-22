@@ -1,11 +1,25 @@
 import {expect, test} from "bun:test";
-import {runInNewContext} from "node:vm";
-import {rendererFixtureData} from "../src/renderer-fixture-data.js";
+import type {BrowserWindow} from "electron";
+import {fillRendererFixture, selectRendererFixture} from "../src/renderer-fixture-data.js";
 
-test("renderer fixture data round-trips Unicode and hostile JavaScript without execution", () => {
- for (const value of ['";globalThis.injected=true;//', "</script><script>alert(1)</script>", "` ${globalThis.injected=true}", "á🚀\u2028\u2029\\\"\n"]) {
-  const context = {atob, TextDecoder, Uint8Array, injected: false};
-  expect(runInNewContext(rendererFixtureData(value), context)).toBe(value);
-  expect(context.injected).toBe(false);
+test("fixture interactions pass hostile values as CDP arguments, never executable code", async () => {
+ const calls: Array<{method: string; parameters: Record<string, unknown>}> = [];
+ let attached = false;
+ const window = {webContents: {debugger: {
+  isAttached: () => attached, attach: () => {attached = true;}, detach: () => {attached = false;},
+  sendCommand: async (method: string, parameters: Record<string, unknown>) => {
+   calls.push({method, parameters});
+   return method === "Runtime.evaluate" ? {result: {objectId: "fixture-global"}} : {result: {}};
+  }
+ }}} as unknown as BrowserWindow;
+ const value = '\";globalThis.injected=true;// 🚀\u2028\n', selector = '[data-value="hostile\\\"selector"]';
+ for (const operation of [fillRendererFixture, selectRendererFixture]) {
+  await operation(window, selector, value);
+  const call = calls.at(-1)!;
+  expect(call.method).toBe("Runtime.callFunctionOn");
+  expect(call.parameters.arguments).toEqual([{value: selector}, {value}]);
+  expect(call.parameters.functionDeclaration).not.toContain(value);
+  expect(call.parameters.functionDeclaration).not.toContain(selector);
+  expect(attached).toBe(false);
  }
 });
