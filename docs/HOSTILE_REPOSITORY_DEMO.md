@@ -87,7 +87,7 @@ The deterministic demo does not certify model-directed tool use. The billable li
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
 ```
 
-Provider evidence is date-, model-, endpoint-, account-, and credential-dependent. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
+Provider evidence is date-, model-, endpoint-, account-, and credential-dependent. See [LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Evidence limits
 

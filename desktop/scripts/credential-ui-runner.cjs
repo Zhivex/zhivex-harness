@@ -1,0 +1,16 @@
+const {app,BrowserWindow,ipcMain}=require('electron');const fs=require('node:fs');const path=require('node:path');
+const build=process.argv[2],report=process.argv[3];app.setPath('userData',path.join(report,'profile'));
+app.whenReady().then(async()=>{
+ let present=false,locked=false,configureCalls=0,probeCalls=0;
+ ipcMain.handle('harness:providers',()=>[{id:'openai',name:'OpenAI',defaultModel:'gpt-5.6-luna',support:'certified'},{id:'qwen',name:'Qwen',defaultModel:'qwen3.8-max',support:'certified'},{id:'meta',name:'Meta',defaultModel:'muse-spark-1.2',support:'certified'},{id:'gemini',name:'Gemini',defaultModel:'gemini-3.6-flash',support:'provisional'}]);ipcMain.handle('harness:initial-project',()=>null);ipcMain.handle('harness:projects',()=>[]);
+ ipcMain.handle('harness:credential-status',()=>locked?'locked':present?'present':'missing');
+ ipcMain.handle('harness:credential-configure',()=>{configureCalls++;if(configureCalls===1)return 'cancelled';present=true;return 'saved';});
+ ipcMain.handle('harness:credential-probe',()=>++probeCalls===1?'invalid-credential':'connected');
+ ipcMain.handle('harness:credential-delete',()=>{present=false;return 'deleted';});
+ const window=new BrowserWindow({width:1120,height:760,show:false,webPreferences:{preload:path.join(build,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});await window.loadFile(path.join(build,'index.html'));
+ const js=code=>window.webContents.executeJavaScript(code);await js('document.querySelector(".credential-settings").open=true');
+ const action=async(name,expected)=>{await js(`document.querySelector('[data-action="credential-${name}"]').click()`);for(let i=0;i<100;i++){if(await js(`document.querySelector('.credential-settings [role=status]')?.textContent.includes(${JSON.stringify(expected)}) && !document.querySelector('[data-action="credential-status"]').disabled`))return;await new Promise(r=>setTimeout(r,20));}throw Error('CREDENTIAL_UI_'+name);};
+ await action('status','No saved key');await action('configure','cancelled');await action('status','No saved key');await action('configure','saved');await action('status','saved');await action('probe','rejected');await action('configure','saved');await action('probe','Connection authorized');locked=true;await action('status','Unlock');locked=false;await action('status','saved');await action('delete','deleted');await action('status','No saved key');
+ const isolated=await js(`!document.querySelector('.credential-settings input,.credential-settings textarea') && !Object.keys(window.harness).some(key=>/read.*credential|credential.*read/i.test(key)) && localStorage.length===0 && typeof require==='undefined'`);if(!isolated)throw Error('CREDENTIAL_RENDERER_ISOLATION');
+ const evidence={packagedRenderer:build.includes('app.asar'),fixtureBackend:true,nativeKeychain:false,missing:true,cancelPreserves:true,saveAndRotate:true,invalidCredentialRecovery:true,lockedRecovery:true,delete:true,noSecretInputOrReadBridge:true,noRendererStorage:true};fs.writeFileSync(path.join(report,'report.json'),JSON.stringify(evidence,null,2));fs.writeFileSync(path.join(report,'credentials.png'),(await window.webContents.capturePage()).toPNG());app.exit(0);
+}).catch(error=>{console.error(error);app.exit(1)});

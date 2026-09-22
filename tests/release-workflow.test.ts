@@ -32,6 +32,37 @@ describe("release workflow version source", () => {
     expect(workflow).not.toMatch(/HARNESS_VERSION !== "\d+\.\d+\.\d+"/);
   });
 
+  test("CI and Dependabot cover the desktop dependency boundary", async () => {
+    const [workflow, dependabot] = await Promise.all([
+      readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8"),
+      readFile(path.join(workspace, ".github/dependabot.yml"), "utf8")
+    ]);
+
+    expect(workflow).toContain("desktop-security:");
+    expect(workflow).toContain("bun install --cwd desktop --frozen-lockfile --ignore-scripts");
+    expect(workflow).toContain("working-directory: desktop");
+    expect(workflow).toContain("bun test desktop/tests");
+    expect(workflow).toContain("bun run --cwd desktop package");
+    expect(workflow).toContain("bun run --cwd desktop smoke:packaged --empty-start");
+    expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/desktop/);
+  });
+
+  test("macOS CI prepares the Electron binary before native tests", async () => {
+    const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
+      jobs: Record<string, { steps: { name: string; run?: string; if?: string }[] }>;
+    };
+    for (const [job, testCommand] of [["desktop-security", "bun test desktop/tests"], ["verify", "bun run check"]] as const) {
+      const steps = workflow.jobs[job]!.steps;
+      const installIndex = steps.findIndex(step => step.run?.includes("node desktop/node_modules/electron/install.js"));
+      const testIndex = steps.findIndex(step => step.run?.includes(testCommand));
+      expect(installIndex).toBeGreaterThanOrEqual(0);
+      expect(testIndex).toBeGreaterThan(installIndex);
+      expect(steps.slice(0, installIndex + 1).some(step =>
+        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"))).toBe(true);
+      if (job === "verify") expect(steps[installIndex]!.if).toBe("runner.os == 'macOS'");
+    }
+  });
+
   test("release artifact transfer actions are pinned to immutable commit SHAs", async () => {
     const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
 

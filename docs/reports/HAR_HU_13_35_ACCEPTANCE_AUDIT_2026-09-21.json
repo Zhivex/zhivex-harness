@@ -1,0 +1,585 @@
+{
+  "date": "2026-09-21",
+  "source": "0191246",
+  "branch": "feat/harness-desktop",
+  "scope": "HAR-HU-13 through HAR-HU-35",
+  "published": false,
+  "pushed": false,
+  "rows": [
+    {
+      "hu": 13,
+      "title": "HAR-HU-13 — Completar el primer uso desde un entorno limpio",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Un entorno limpio permite elegir perfil/proveedor, validar credenciales sin mostrarlas y abrir un repositorio de ejemplo.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El recorrido completa una tarea con edición, aprobación, check y diff usando el paquete instalado.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Credencial ausente, proveedor no disponible y OCI ausente muestran una acción de recuperación; no se amplía soporte por inferencia.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_13_20_2026-09-20.md"
+    },
+    {
+      "hu": 14,
+      "title": "HAR-HU-14 — Establecer la baseline de calidad y fricción del producto",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Se predeclaran al menos 10 tareas de lectura, reparación y cambio funcional, separando desarrollo y evaluación nueva.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Cada intento registra versión, proveedor/modelo, límites, resultado independiente, latencia, uso y número de intervenciones.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Se publican fallos y tareas incompletas; el costo desconocido se marca como tal y se conserva el dataset para comparar mejoras.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_14_20_LIVE_2026-09-20.md"
+    },
+    {
+      "hu": 15,
+      "title": "HAR-HU-15 — Pulir la entrada y el streaming de la consola",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Entrada multilínea, pegado, historial y navegación por teclado funcionan sin enviar instrucciones accidentalmente.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El streaming distingue texto, actividad, espera de aprobación y finalización sin corromper la entrada.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Ctrl+C cancela con limpieza y vuelve al prompt; resize y errores del proveedor conservan el texto recuperable y sanitizan controles de terminal.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_15_2026-09-20.md"
+    },
+    {
+      "hu": 16,
+      "title": "HAR-HU-16 — Navegar y recuperar sesiones por proyecto",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "La CLI permite listar, buscar, renombrar y continuar sesiones filtradas por proyecto.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Tras reinicio muestra el estado durable real y las aprobaciones pendientes antes de continuar.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Sesiones de proyectos distintos no mezclan contexto; cancelar o continuar repetidamente no repite efectos.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_13_20_2026-09-20.md"
+    },
+    {
+      "hu": 17,
+      "title": "HAR-HU-17 — Inspeccionar y controlar el contexto de una tarea",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Se muestran archivos adjuntos, reglas/skills activas, límites y razones de exclusión.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Agregar o quitar contexto tiene efecto explícito sobre la siguiente solicitud; se detectan adjuntos modificados.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Rutas fuera del workspace y archivos secretos siguen excluidos; truncamiento y compacción quedan visibles.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_13_20_2026-09-20.md"
+    },
+    {
+      "hu": 18,
+      "title": "HAR-HU-18 — Revisar y aprobar cambios desde la terminal",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "La revisión muestra archivos añadidos, modificados y eliminados, comandos relevantes y resultado de verificaciones.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Aprobar o rechazar identifica exactamente el parche/acción y su alcance; workspace o parche obsoletos invalidan la aprobación.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Un rechazo o error conserva un resultado inspeccionable; ningún resumen declara éxito cuando faltan checks requeridos.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_13_20_2026-09-20.md"
+    },
+    {
+      "hu": 19,
+      "title": "HAR-HU-19 — Mostrar uso y aplicar presupuestos multi-provider",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Uso y costos se contabilizan por proveedor/modelo y se agregan sin doble conteo de subagentes o reanudaciones.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Precios ausentes o desactualizados y estimaciones se distinguen de consumo confirmado; se define y prueba la política de bloqueo para límites monetarios no calculables.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El presupuesto sobrevive a reinicios y se comprueba antes de nuevas llamadas; hay regresiones para rutas heterogéneas, fallo parcial y cierre de tarea.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_13_20_2026-09-20.md"
+    },
+    {
+      "hu": 20,
+      "title": "HAR-HU-20 — Validar la CLI en un piloto de trabajo diario",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Se ejecuta la cohorte predeclarada con el artefacto instalado y al menos dos repositorios representativos.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El informe compara corrección, tiempo, consumo e intervenciones con la baseline, conservando fallos y límites.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Se registran fricciones priorizadas y una decisión explícita de salida; no se declara paridad competitiva a partir de smoke tests.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_14_20_LIVE_2026-09-20.md"
+    },
+    {
+      "hu": 21,
+      "title": "HAR-HU-21 — Definir el contrato compartido de clientes",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Se especifican comandos de proyecto, sesión, run, aprobación, cancelación y consulta de estado con ejemplos de éxito y error.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Identidad, idempotencia, revisión esperada, capacidades y negociación de versión tienen semántica explícita.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Un cliente de prueba recorre la secuencia completa contra un adaptador del harness sin depender de la presentación terminal.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_21_2026-09-20.md"
+    },
+    {
+      "hu": 22,
+      "title": "HAR-HU-22 — Exponer el motor mediante un servicio local controlado",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "El servicio encapsula el runtime y valida cada comando sin delegar autorización a la interfaz.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El transporte local restringe acceso al usuario autorizado; si usa sockets de red, verifica autenticación y origen y no expone escucha pública.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Inicio, apagado, caída de cliente y cierre del proceso tienen comportamiento definido y no abandonan efectos sin estado durable.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_22_24_2026-09-20.md"
+    },
+    {
+      "hu": 23,
+      "title": "HAR-HU-23 — Persistir y reproducir la actividad de una sesión",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Los eventos tienen ID estable, secuencia, run/session y esquema versionado, con redacción y límites de retención.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Una suscripción con cursor recupera lo faltante y tolera duplicados; un cursor expirado obtiene snapshot y señal explícita.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Desconectar/reconectar durante streaming y aprobación reconstruye estado y texto sin duplicar herramientas ni efectos.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_22_24_2026-09-20.md"
+    },
+    {
+      "hu": 24,
+      "title": "HAR-HU-24 — Coordinar aprobaciones y cancelación entre clientes",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Dos clientes que responden a la misma aprobación producen una sola decisión efectiva; el segundo recibe conflicto legible.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Aprobaciones se vinculan a identidad, alcance y revisión; caducidad o cambios invalidan respuestas obsoletas.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Cancelar, reconectar y reanudar con fallos inyectados mantiene leases, estado y journal sin repetir efectos.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_22_24_2026-09-20.md"
+    },
+    {
+      "hu": 25,
+      "title": "HAR-HU-25 — Conectar la CLI al servicio preservando compatibilidad",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Un adaptador CLI usa comandos/eventos del servicio y mantiene los contratos públicos documentados.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "El modo no interactivo conserva códigos de salida y salida estructurada; se documenta cualquier cambio o deprecación.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "La misma sesión se inicia por CLI, consulta por otro cliente y recupera tras desconexión con pruebas sobre paquete instalado.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_25_2026-09-20.md"
+    },
+    {
+      "hu": 26,
+      "title": "HAR-HU-26 — Validar arquitectura y empaquetado del escritorio",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Un spike Electron + React abre una ventana y conversa con un proceso runtime separado mediante el contrato mínimo.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Se comprueban SQLite, cancelación, arranque y OCI en macOS; se documentan compatibilidad Node y límites de empaquetado.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Una decisión de arquitectura acepta o descarta la hipótesis con evidencia y amenazas; el renderer no recibe acceso general a filesystem ni credenciales.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_26_2026-09-20.md"
+    },
+    {
+      "hu": 27,
+      "title": "HAR-HU-27 — Abrir proyectos y navegar conversaciones",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "La interfaz permite seleccionar repositorio, ver proyectos recientes y crear/listar conversaciones por proyecto.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Elegir sesión recupera estado desde el servicio y muestra carga, vacío y errores con acciones útiles.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "La navegación funciona por teclado y los proyectos mantienen contexto separado sin ejecutar acciones al seleccionarlos.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_27_2026-09-20.md"
+    },
+    {
+      "hu": 28,
+      "title": "HAR-HU-28 — Conversar y observar el progreso de una tarea",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Chat muestra streaming, herramientas, checks y estados sin exponer secretos ni renderizar contenido activo inseguro.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Enviar y cancelar usa el contrato del servicio, con prevención de envíos duplicados y estados de error recuperables.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Reabrir una conversación reconstruye actividad y resultado mediante snapshot/replay, incluso después de una desconexión.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_28_2026-09-20.md"
+    },
+    {
+      "hu": 29,
+      "title": "HAR-HU-29 — Revisar diffs y resolver aprobaciones en escritorio",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Un visor presenta archivos, diff, comandos y evidencia de checks ligados al run y parche concretos.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Aprobar y rechazar muestran consecuencias y alcance; el servicio rechaza decisiones caducadas o conflictos con otro cliente.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Los estados pendiente, rechazado, fallido y aplicado son distinguibles; contenido de repositorio no puede accionar controles de aprobación.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_29_CLOSURE_2026-09-20.md"
+    },
+    {
+      "hu": 30,
+      "title": "HAR-HU-30 — Completar el flujo alpha y recuperar trabajo tras reinicio",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Un paquete de prueba permite abrir repositorio, pedir cambio, aprobar, verificar y revisar el diff final.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Se ensayan caída de renderer, desconexión, reinicio del servicio y cierre de ventana con una aprobación pendiente; se documenta cuándo continúa o pausa el trabajo.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "La misma sesión es coherente en CLI y escritorio; se publica una lista priorizada de fallos y el criterio de entrada a beta.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_30_CLOSURE_2026-09-20.md"
+    },
+    {
+      "hu": 31,
+      "title": "HAR-HU-31 — Aislar tareas en worktrees administrados",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "Crear tarea permite asignar worktree y rama con identidad persistida y estado visible.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Cambios sin commit del checkout original no se pierden ni se copian implícitamente; la política de estado inicial es explícita.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Limpiar worktree requiere revisar cambios no integrados; dos tareas concurrentes y un reinicio conservan sus entornos separados.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_31_CLOSURE_2026-09-20.md"
+    },
+    {
+      "hu": 32,
+      "title": "HAR-HU-32 — Crear commits y pull requests con autorización explícita",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "El usuario revisa archivos staged, mensaje, rama y destino antes de autorizar commit, push o creación de PR.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "La integración no incluye archivos ajenos ni secretos y usa credenciales existentes sin exponerlas al modelo.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Conflictos, remoto desactualizado y fallo de red conservan estado recuperable; reintentar no duplica commits o PRs y no habilita force-push implícito.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_32_PR_UI_2026-09-20.md"
+    },
+    {
+      "hu": 33,
+      "title": "HAR-HU-33 — Guardar credenciales en el almacén seguro del sistema",
+      "notionStatus": "Hecha",
+      "delivery": "Pendiente de publicación",
+      "requirements": [
+        {
+          "requirement": "La aplicación almacena y elimina claves mediante el almacén seguro de macOS; no aparecen en SQLite, logs, renderer ni exportaciones.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "La configuración muestra presencia y prueba acotada de conexión sin revelar el secreto.",
+          "localAcceptance": "verified_with_documented_scope"
+        },
+        {
+          "requirement": "Bloqueo del almacén, rotación y credencial inválida ofrecen recuperación; otros sistemas quedan sin soporte hasta validar su backend.",
+          "localAcceptance": "verified_with_documented_scope"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_33_CLOSURE_2026-09-20.md"
+    },
+    {
+      "hu": 34,
+      "title": "HAR-HU-34 — Distribuir un instalador macOS firmado y verificable",
+      "notionStatus": "En curso",
+      "delivery": "Por verificar",
+      "requirements": [
+        {
+          "requirement": "Un instalador macOS firmado y notarizado contiene runtime y dependencias compatibles con las arquitecturas declaradas.",
+          "localAcceptance": "deferred_native_signing_and_notarization"
+        },
+        {
+          "requirement": "Instalación limpia, apertura, SQLite y conexión al runtime pasan en el artefacto distribuido; ausencia de OCI muestra instrucciones claras.",
+          "localAcceptance": "verified_in_local_unsigned_installer_not_distributed"
+        },
+        {
+          "requirement": "Versión, hash y notas de release coinciden con la fuente; permisos requeridos y desinstalación que preserva datos están documentados.",
+          "localAcceptance": "verified_local_versions_hashes_notes_and_documentation"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_34_35_INTEGRATED_UPDATER_CHECK_2026-09-21.json"
+    },
+    {
+      "hu": 35,
+      "title": "HAR-HU-35 — Actualizar la aplicación con recuperación de estado",
+      "notionStatus": "En curso",
+      "delivery": "Por verificar",
+      "requirements": [
+        {
+          "requirement": "Las actualizaciones verifican firma e integridad y distinguen canal estable de prerelease.",
+          "localAcceptance": "manifest_verified_native_positive_update_unverified"
+        },
+        {
+          "requirement": "No se interrumpe una operación crítica para actualizar; se prueban descarga parcial y fallo de instalación.",
+          "localAcceptance": "local_coordination_and_failure_tests_verified_signed_journey_pending"
+        },
+        {
+          "requirement": "La migración de estado cuenta con backup y recuperación compatible; una versión antigua rechaza esquemas incompatibles y el usuario dispone de diagnóstico sanitizado.",
+          "localAcceptance": "backup_recovery_and_schema_gate_verified_signed_restart_journey_pending"
+        }
+      ],
+      "evidence": "docs/reports/HAR_HU_35_INTEGRATED_UPDATER_2026-09-21.md"
+    }
+  ],
+  "currentChecks": {
+    "docs": "passed: 111 files",
+    "contracts": "passed",
+    "toolingTypes": "passed",
+    "historicalMigrations": "passed",
+    "coreBuild": "passed",
+    "installedCliArtifact": "passed with offline providers",
+    "worktreesPackaged": {
+      "schemaVersion": 1,
+      "packaged": true,
+      "fixture": true,
+      "originalChangesPreserved": true,
+      "concurrentTaskIsolation": true,
+      "singleReviewedCommit": true,
+      "singleReviewedPush": true,
+      "singleReviewedPullRequest": true,
+      "verifiedPrLink": true,
+      "networkStoresRemoved": true,
+      "originalBranchUnchanged": true,
+      "wholeAppRestart": true,
+      "reviewedCleanup": true,
+      "workersExited": true,
+      "phases": [
+        {
+          "phase": "tasks-create",
+          "packaged": true,
+          "appPid": 6748,
+          "runtimePids": [
+            6794,
+            6832
+          ],
+          "tasks": [
+            "440f4f1a-ca20-460b-bdc8-93a9d301fe39",
+            "277f1db4-fe27-421c-b132-f878e7c9916e"
+          ],
+          "concurrentRuns": true,
+          "restartIsolation": false,
+          "reviewedCleanup": false,
+          "prUI": true,
+          "prResponseLossRecovered": true,
+          "prRecoveredAfterAppRestart": false,
+          "pushUI": true,
+          "lostPushResponseReconciledAfterReload": true,
+          "gitCommitUI": true,
+          "lostCommitResponseReconciledAfterReload": true,
+          "runtimeGitMutationBlocked": true,
+          "fixture": true
+        },
+        {
+          "phase": "tasks-reopen",
+          "packaged": true,
+          "appPid": 7472,
+          "runtimePids": [
+            7499,
+            7520
+          ],
+          "tasks": [
+            "440f4f1a-ca20-460b-bdc8-93a9d301fe39",
+            "277f1db4-fe27-421c-b132-f878e7c9916e"
+          ],
+          "concurrentRuns": false,
+          "restartIsolation": true,
+          "reviewedCleanup": true,
+          "prUI": false,
+          "prResponseLossRecovered": false,
+          "prRecoveredAfterAppRestart": true,
+          "pushUI": false,
+          "lostPushResponseReconciledAfterReload": false,
+          "gitCommitUI": false,
+          "lostCommitResponseReconciledAfterReload": false,
+          "runtimeGitMutationBlocked": false,
+          "fixture": true
+        }
+      ],
+      "evidenceDirectory": "/tmp/har-tasks-USYWyg/report"
+    },
+    "layoutReport": "/tmp/har-layout-XSfX5b/report.json",
+    "pilotAudit": {
+      "cohortSha256": "dcb3b770bb1c0ad0ef73deb2e833d3d8d982e577222cc19c89de6aae1f6fd866",
+      "baselineCorrect": 6,
+      "candidateCorrect": 6,
+      "evaluationAttempts": 20,
+      "developmentAttempts": 2,
+      "decision": "HOLD",
+      "newLiveCalls": 0
+    }
+  },
+  "completion": "not achieved: signed distribution and positive signed update/recovery remain unverified",
+  "deferredByUser": [
+    "Developer ID signing",
+    "notarization"
+  ]
+}

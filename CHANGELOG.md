@@ -4,7 +4,76 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.1.0-rc.1 - Unreleased
+
+Candidate for the next compatible minor release; not published. The latest stable
+release remains 1.0.0. Desktop has its own private alpha version.
+
+### Desktop preview
+
+- Add an experimental Electron client with durable conversations, project/worktree
+  navigation, model selection, native credential storage and governed approvals.
+- Add recoverable installation and verified update machinery. Production signing,
+  notarization and update trust configuration remain pending; automatic updates
+  remain disabled in the default alpha build.
+
+### Release validation and profile safety
+
+- Install the pinned Electron runtime explicitly before macOS native tests, including
+  the general validation job; keep other dependency lifecycle scripts disabled.
+- Bind default-profile confirmation to the displayed provider/model so a profile
+  changed while the prompt is open cannot redirect the current invocation.
+
+### Developer experience and documentation
+
+- Keep initial menu and model options visible on asynchronous terminals by preserving
+  readline prompt and menu write order; no extra arrow key is required to draw them.
+
+- Lead `zhx --help` with everyday actions; add command-specific help and `zhx help all` for the complete reference.
+- Show common slash actions first, retaining full-catalog search and `/help all`. Pending approval controls remain visible in the short help.
+- Shorten onboarding, separate user/integration/maintenance guides, and standardize maintained Desktop guides in English while quoting current UI labels.
+- Exclude maintainer-only documentation from npm using explicit guide entries and validate links inside the packed archive.
+
+Existing commands, aliases, machine output and persisted state remain compatible.
+These changes are assigned to 1.1.0-rc.1 and require fresh artifact-bound certification before publication.
+
+### Local service and replay
+
+- Add a private authenticated Unix transport and Node runtime owner with graceful drain and explicit dead-process recovery.
+- Persist redacted activity with stable event IDs, cursor replay, bounded retention and expired-cursor snapshots.
+- Coordinate approval revisions/expiry and active cancellation across clients; verify crash recovery and a single edit journal receipt against the installed artifact.
+
+### Shared client contract
+
+- Add an experimental versioned in-process adapter over existing sessions, runs, approvals and checkpoint cancellation. Strict command validation, connection-scoped idempotency and expected revisions are explicit.
+- Add a JSON Schema, integration documentation and an offline reference client tested against the installed package. No service listener, replay stream or multi-client coordination is introduced.
+
+### Daily CLI workflow
+
+- Add installed-package first-use coverage, recovery guidance and a runnable example.
+- Search project sessions and reconcile durable state and pending approvals before continuation.
+- Inspect attachment limits, retained skill receipts and context compaction; clarify exact approval scope and verification outcomes.
+- Persist per-provider/model usage across child calls and resumed runs. Optional dated pricing and per-run monetary limits block unknown or stale pricing and unknown usage; displayed costs remain estimates.
+- Prepare a frozen two-repository evaluation cohort and installed-artifact pilot driver. Complete the authorized live baseline and pilot (HAR-HU-14, 20): both artifacts scored 6/10; release recommendation remains HOLD.
+
+### Console input and streaming
+
+- Insert bracketed clipboard content as bounded, editable literal text; prevent
+  pasted commands and approval answers from executing accidentally.
+- Suppress input echo while a run is active, preserve drafts across terminal resize,
+  and deliver partial streamed lines during provider pauses and on error cleanup.
+- Extend the offline Node PTY demonstration with clipboard safety, cursor editing,
+  resize, provider failure and history recovery. JSON/JSONL and persisted state
+  contracts are unchanged.
+
+### Migration from 1.0.0
+
+- Existing CLI commands, JSON/JSONL output, public stable APIs and state format 1
+  remain compatible. Back up durable state before testing a prerelease.
+- Local service and shared client APIs remain experimental. Desktop remains a
+  separately versioned private alpha, outside the stable CLI/library guarantee.
+- Use the source development workflow until this candidate is published to npm
+  `next`; npm `latest` continues to install 1.0.0.
 
 ## 1.0.0 - 2026-09-20
 
@@ -636,3 +705,19 @@ No configuration, SQLite, approval, or execution-policy migration is required. E
 ### Added
 
 - Initial provider-portable coding harness MVP for Meta, Qwen, and OpenAI.
+
+### Experimental local service CLI
+
+- Added opt-in `--service` for run/resume/chat and session list/inspect/rename,
+  with durable event replay and existing versioned JSON/JSONL documents.
+- Persisted the shared CLI result projection and explicitly bound service run
+  admission to host scope. Added CLI/second-client crash recovery in installed smoke.
+
+### Experimental desktop chat
+
+- Added redacted per-run chat activity with durable prompts, bounded tool snapshots
+  and actual check exit codes. Session reads remain available during execution.
+- Preserved CLI JSONL compatibility; desktop strips rich engine/CLI/approval payloads,
+  deduplicates replay and reconciles lost responses before allowing another send.
+- Verified packaged macOS chat with duplicate submission, failed check, expired
+  snapshot, transport interruption, renderer reload and split-secret fixtures.

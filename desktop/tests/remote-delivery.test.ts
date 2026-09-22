@@ -1,0 +1,39 @@
+import { test, expect } from "bun:test";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
+import { openRemoteDelivery, type PushDestination, type PushSnapshot, type RemoteTransport } from "../src/remote-delivery.js";
+const git = (repo: string, args: string[]) => execFileSync("git", ["-C", repo, "-c", "core.hooksPath=/dev/null", ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+const destination: PushDestination = { remote: "origin", url: "https://github.com/fixture/repository.git", ref: "refs/heads/feat/reviewed", baseRef: "refs/heads/main" };
+async function fixture() {
+    const root = await mkdtemp("/tmp/har-remote-"), repo = root + "/repo", remote = root + "/remote.git"; await mkdir(repo); await mkdir(remote); git(remote, ["init", "--bare", "-q"]); git(repo, ["init", "-q", "-b", "main"]); git(repo, ["config", "user.name", "Fixture"]); git(repo, ["config", "user.email", "fixture@example.invalid"]); await writeFile(repo + "/a.txt", "base\n"); git(repo, ["add", "a.txt"]); git(repo, ["commit", "-qm", "base"]); const base = git(repo, ["rev-parse", "HEAD"]); git(repo, ["push", remote, "HEAD:refs/heads/main"]); git(repo, ["checkout", "-qb", "feat/reviewed"]); await writeFile(repo + "/a.txt", "reviewed\n"); git(repo, ["add", "a.txt"]); git(repo, ["commit", "-qm", "reviewed"]);
+    let sends = 0, loseResponse = false, offline = false, mutate: (state: PushSnapshot) => void = () => { };
+    const head = () => git(repo, ["rev-parse", "HEAD"]), readHead = () => { try { return git(remote, ["rev-parse", "--verify", destination.ref]); } catch { return null; } };
+    const transport: RemoteTransport = { readHead: async () => { if (offline) throw new Error("OFFLINE"); return readHead(); }, inspect: async () => { const state: PushSnapshot = { branch: "refs/heads/feat/reviewed", head: head(), destination, remoteHead: readHead(), baseHead: base, fastForward: true, stagedPaths: [], commits: [{ id: head(), message: "reviewed", files: [{ path: "a.txt", before: "base\n", after: "reviewed\n", beforeMode: "100644", afterMode: "100644", parent: base }] }] }; mutate(state); return state; }, push: async (commit, target) => { sends++; expect(target).toEqual(destination); if (offline) throw new Error("OFFLINE"); git(repo, ["push", remote, `${commit}:${target.ref}`]); if (loseResponse) throw new Error("LOST_RESPONSE"); } };
+    return { root, repo, remote, base, head, readHead, transport, manager: await openRemoteDelivery(root + "/state", transport), sends: () => sends, setLost: () => { loseResponse = true; }, setOffline: (value: boolean) => { offline = value; }, mutate: (fn: typeof mutate) => { mutate = fn; }, close: () => rm(root, { recursive: true, force: true }) };
+}
+test("reviewed exact-head push reconciles a lost response and never sends twice across restart", async () => {
+    const f = await fixture(); try {
+        const review = await f.manager.reviewPush(destination); expect(review.remoteHead).toBeNull(); expect(review.commits[0]!.files[0]!.after).toBe("reviewed\n"); f.setLost(); const result = await f.manager.push(review.ticketId); expect(result.status).toBe("completed"); expect(f.readHead()).toBe(f.head()); expect(await f.manager.push(review.ticketId)).toEqual(result); const reopened = await openRemoteDelivery(f.root + "/state", f.transport); expect(await reopened.push(review.ticketId)).toEqual(result); expect(f.sends()).toBe(1);
+        await writeFile(f.root + `/state/${result.id}.json`, JSON.stringify({ ...result, status: "prepared" })); expect((await reopened.reconcile(result.id)).status).toBe("completed"); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});
+test("changed destination, local history, remote state and staged files invalidate admission", async () => {
+    const f = await fixture(); try {
+        let review = await f.manager.reviewPush(destination); f.mutate(state => { state.commits[0]!.message = "changed"; }); await expect(f.manager.push(review.ticketId)).rejects.toThrow("REMOTE_REVIEW_CHANGED"); f.mutate(() => { }); review = await f.manager.reviewPush(destination); f.mutate(state => { state.destination = { ...destination, url: "https://github.com/other/repository.git" }; }); await expect(f.manager.push(review.ticketId)).rejects.toThrow("REMOTE_DESTINATION_CHANGED"); f.mutate(state => { state.fastForward = false; }); await expect(f.manager.reviewPush(destination)).rejects.toThrow("REMOTE_DIVERGED"); f.mutate(state => { state.stagedPaths = ["foreign.txt"]; }); await expect(f.manager.reviewPush(destination)).rejects.toThrow("REMOTE_STAGED_CHANGES"); expect(f.sends()).toBe(0);
+    } finally { await f.close(); }
+});
+test("offline ambiguous operations remain durable and retries only query", async () => {
+    const f = await fixture(); try {
+        const review = await f.manager.reviewPush(destination); f.setOffline(true); await expect(f.manager.push(review.ticketId)).rejects.toThrow("OFFLINE"); expect(f.sends()).toBe(1); expect(JSON.parse(await readFile(f.root + `/state/${review.ticketId}.json`, "utf8")).status).toBe("prepared"); await expect(f.manager.push(review.ticketId)).rejects.toThrow("OFFLINE"); expect(f.sends()).toBe(1); f.setOffline(false); await expect(f.manager.reconcile(review.ticketId)).rejects.toThrow("REMOTE_OUTCOME_UNCONFIRMED"); expect(f.readHead()).toBeNull(); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});
+test("secret history and credential-bearing or non-HTTPS destinations never reach push", async () => {
+    const f = await fixture(); try {
+        await expect(f.manager.reviewPush({ ...destination, url: "https://token@github.com/fixture/repository.git" })).rejects.toThrow(); await expect(f.manager.reviewPush({ ...destination, url: "file:///tmp/repo" })).rejects.toThrow(); f.mutate(state => { state.commits[0]!.files[0]!.path = ".env"; }); await expect(f.manager.reviewPush(destination)).rejects.toThrow("REMOTE_PATH_BLOCKED"); f.mutate(state => { state.commits[0]!.files[0]!.before = "host-private-fixture-value"; }); const secretManager = await openRemoteDelivery(f.root + "/secret-state", f.transport, ["host-private-fixture-value"]); await expect(secretManager.reviewPush(destination)).rejects.toThrow("REMOTE_SECRET_DETECTED"); f.mutate(state => { state.commits[0]!.files[0]!.after = "private\nmultiline\nfixture"; }); const multiline = await openRemoteDelivery(f.root + "/multiline-state", f.transport, ["private\nmultiline\nfixture"]); await expect(multiline.reviewPush(destination)).rejects.toThrow("REMOTE_SECRET_DETECTED"); expect(f.sends()).toBe(0);
+    } finally { await f.close(); }
+});
+test("a racing divergent remote is preserved by ordinary Git rejection", async () => {
+    const f = await fixture(); try {
+        const racer = git(f.repo, ["commit-tree", `${f.base}^{tree}`, "-p", f.base, "-m", "another client"]); const transport: RemoteTransport = { ...f.transport, push: async (head, target) => { git(f.repo, ["push", f.remote, `${racer}:${target.ref}`]); await f.transport.push(head, target); } }; const manager = await openRemoteDelivery(f.root + "/racing-state", transport); const review = await manager.reviewPush(destination); await expect(manager.push(review.ticketId)).rejects.toThrow("REMOTE_OUTCOME_UNCONFIRMED"); expect(f.readHead()).toBe(racer); expect(f.sends()).toBe(1); await expect(manager.push(review.ticketId)).rejects.toThrow("REMOTE_OUTCOME_UNCONFIRMED"); expect(f.sends()).toBe(1);
+    } finally { await f.close(); }
+});

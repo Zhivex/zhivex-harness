@@ -2,15 +2,18 @@
 Uses a process-local fetch fixture; never contacts or bills a provider.
 """
 import json
+import fcntl
 import os
 import pathlib
 import pty
 import select
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import time
+import termios
 
 repo = pathlib.Path(__file__).resolve().parent.parent
 cli = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else repo / "dist/cli.js"
@@ -68,6 +71,31 @@ def exit_chat():
 
 try:
     read_until("> ")
+    # Node is the installed CLI runtime. Exercise actual cursor insertion rather
+    # than Bun's readline shim, which ignores native Left/Right cursor edits.
+    send("\x1b[200~first\nsecond\x1b[201~")
+    read_until("second")
+    send("\x1b[A!\x1b[B?\n")
+    read_until("Fixture done")
+    read_until("> ")
+    edited = json.loads(pathlib.Path(root, "requests.jsonl").read_text().splitlines()[-1])
+    assert "first!\\nsecond?" in json.dumps(edited)
+    send("/new\n")
+    read_until("Created session")
+    read_until("> ")
+    pathlib.Path(root, "requests.jsonl").unlink()
+    # Real Node readline: resize and cursor navigation preserve a pasted draft.
+    send("\x1b[200~/approve\nLiteral clipboard\x1b[201~")
+    read_until("Literal clipboard")
+    assert not pathlib.Path(root, "requests.jsonl").exists()
+    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 45, 0, 0))
+    send("\x1b[D!\n")
+    read_until("Fixture done")
+    read_until("> ")
+    pasted = json.loads(pathlib.Path(root, "requests.jsonl").read_text().splitlines()[-1])
+    assert "/approve\\nLiteral clipboar!d" in json.dumps(pasted)
+    send("/new\n")
+    read_until("> ")
     send("/cont")
     read_until("/cont")
     send("\t")
@@ -106,6 +134,7 @@ try:
     while "SLOW_FIXTURE" not in pathlib.Path(root, "requests.jsonl").read_text():
         assert time.monotonic() < deadline
         time.sleep(0.02)
+    read_until("Cancellable partial")
     send("\x03")
     read_until("> ", 20)
     send("/status\n")
@@ -115,11 +144,33 @@ try:
     read_until("> ")
     send("/new\n")
     read_until("> ")
+    send("FAIL_STREAM_FIXTURE\n")
+    read_until("Recoverable partial\\u001b[2J")
+    # A partial line must be visible before the provider fails, with inert controls.
+    assert b"\x1b[2J" not in transcript
+    send("BUSY_INPUT_MUST_NOT_ECHO")
+    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 80, 0, 0))
+    read_until("> ")
+    assert b"BUSY_INPUT_MUST_NOT_ECHO" not in transcript
+    send("\x1b[A\n")
+    read_until("Fixture done")
+    read_until("> ")
+    recovered = json.loads(pathlib.Path(root, "requests.jsonl").read_text().splitlines()[-1])
+    assert "FAIL_STREAM_FIXTURE" in json.dumps(recovered)
+    send("/new\n")
+    read_until("> ")
     send("EDIT_FIXTURE\n")
     read_until("Approve?")
     assert not pathlib.Path(root, "result.txt").exists()
+    send("\x1b[200~y\n/approve\x1b[201~")
+    time.sleep(0.1)
+    assert not pathlib.Path(root, "result.txt").exists()
     send("\x03")
     read_until("> ")
+    send("/rename Daily pilot\n")
+    read_until("> ")
+    send("/sessions pilot\n")
+    assert b"Daily pilot" in read_until("> ")
     send("/pending\n")
     assert b"apply_reviewed_edits" in read_until("> ")
     assert not pathlib.Path(root, "result.txt").exists()
@@ -131,7 +182,9 @@ try:
                              str(cli), "chat", "--continue", "--workspace", root],
                             stdin=slave, stdout=slave, stderr=slave, env=env)
     os.close(slave)
-    read_until("> ")
+    restored = read_until("> ")
+    assert b"durable status: waiting_approval" in restored
+    assert b"apply_reviewed_edits" in restored
     send("/pending\n")
     assert b"apply_reviewed_edits" in read_until("> ")
     send("/approve\n")
@@ -142,7 +195,8 @@ try:
     read_until("Fixture done")
     read_until("> ")
     exit_chat()
-    print("PTY smoke passed: context, attachments, multiline, interruption, approval restart, edit, next turn, exit.")
+    assert b"\x1b[?2004l" in transcript
+    print("PTY smoke passed: literal paste, navigation, resize, context, attachments, multiline, interruption, partial stream failure, history recovery, paste-safe approvals, approval restart, edit, next turn, exit.")
 except BaseException:
     print(transcript.decode(errors="replace")[-6000:])
     raise

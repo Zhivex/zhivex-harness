@@ -13,6 +13,18 @@ updates:
       - dependencies
       - security
 
+  - package-ecosystem: bun
+    directory: /desktop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:15"
+      timezone: America/Argentina/Buenos_Aires
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -5,6 +5,7 @@ import {
   formatApproval,
   formatTerminalEvent,
   formatTerminalHeader,
+  formatVerificationSummary,
   resolveTerminalApprovals,
   sanitizeTerminalText,
   terminalSupportsColor
@@ -47,6 +48,17 @@ describe("terminal text safety", () => {
 });
 
 describe("approval cards", () => {
+  test("identifies exact decisions and classifies multi-file changes without claiming verification", () => {
+    const card = formatApproval(approval("verify_and_apply_reviewed_edits", JSON.stringify({ changes: [
+      { path: "new.ts", expectedDigest: null, content: "new" },
+      { path: "old.ts", expectedDigest: `sha256:${"a".repeat(64)}`, content: "changed" }
+    ] })));
+    expect(card).toContain("approval ");
+    expect(card).toContain("ADD new.ts");
+    expect(card).toContain("MODIFY old.ts");
+    expect(card).toContain("Verification: pending");
+    expect(formatApproval(approval("quarantine_file", JSON.stringify({ path: "old.ts" })))).toContain("REMOVE (recoverable quarantine) old.ts");
+  });
   test("shows the replacement after long oldText without requiring a second view", () => {
     const card = formatApproval(approval("apply_reviewed_replacement", JSON.stringify({
       path: "src/index.ts", expectedDigest: `sha256:${"a".repeat(64)}`,
@@ -187,6 +199,15 @@ describe("interactive approval resolution", () => {
 });
 
 describe("terminal event rendering", () => {
+  test("does not confuse tool transport success with a failed check or missing verification", () => {
+    const result = { toolCallId: "check", toolName: "run_check", isError: false,
+      output: { exitCode: 1, timedOut: false, stdout: "SECRET_OUTPUT" } };
+    expect(formatTerminalEvent({ type: "tool-result", toolResult: result } as never)).toBe("✗ check · run_check · exit 1");
+    expect(formatVerificationSummary([result])).toContain("0 passed, 1 failed");
+    expect(formatVerificationSummary([])).toContain("does not certify checks");
+    expect(formatVerificationSummary([{ ...result, output: { exitCode: 0, timedOut: true } }])).toContain("1 failed");
+    expect(formatVerificationSummary([result])).not.toContain("SECRET_OUTPUT");
+  });
   test("renders useful activity without tool payloads or raw errors", () => {
     const toolCall = formatTerminalEvent({
       type: "tool-call",

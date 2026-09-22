@@ -1,20 +1,83 @@
-# CLI contract
+# CLI reference
+
+For setup, read [First use](FIRST_USE.md). `zhx --help` is the short guide;
+`zhx run --help` and `zhx sessions list --help` show only that command’s options.
+`zhx help all` retains the full reference. Inside the console, `/help` shows common
+actions and approvals, while `/help all` includes advanced commands. Typing `/`
+shows common actions; typing a search term searches the full supported catalog.
+
+Session discovery: `zhx sessions list --workspace <project> --search <text>` filters
+literal title/ID substrings before applying `--limit`. In the console use
+`/sessions [text]`, `/rename <title>` and `/resume <sessionId>`; reopening shows
+the durable status and pending approval payloads before a new task is accepted.
+`/context` shows active rules, available skills, attachment selection, exclusion
+policy and compaction limits. Attach/detach affects the next request; old excerpts
+remain in conversation history until a new session. Modified attachments must be
+reattached. Credential presence in `doctor` does not validate credentials live.
+
+### Transport usage and monetary limits
+
+Console `/usage` and run JSON `usageLedger` expose usage by API provider/model.
+Calls are recorded before transport in the private operations SQLite database;
+SDK child rollups are not added a second time. Missing usage and interrupted calls
+remain incomplete across restarts. A run's original price snapshot and cap survive
+`resume`; a new chat turn starts a new run budget, not a cumulative session budget.
+
+Use `--pricing-file <file.json> --usage-limit-usd <amount>` for a per-run monetary
+limit across parent and child routes. The file is a schemaVersion 1 object with a
+`prices` array: each entry specifies `provider`, `model`, `inputUsdPerMillion`,
+`outputUsdPerMillion`, `source`, `asOf` and `expiresAt` (UTC ISO timestamps).
+Prices are operator-supplied estimates, never confirmed invoices. Missing/expired
+prices or unresolved usage block new budgeted calls. The next request reserves
+estimated input and capped output before transport; parallel calls share the cap.
+Input prediction is heuristic; it is not a provider tokenizer or billing guarantee.
+Actual usage above the estimate is retained and blocks further calls if exhausted.
+Cache discounts and special billing tiers are not modeled; configure conservative
+inclusive rates. Qwen routes without an explicit supported output cap are blocked
+under this monetary policy. Unpriced non-budgeted runs report unknown cost.
+Legacy `--max-cost-usd` pricing remains available with its existing homogeneous-route
+restriction; do not combine the two monetary policies.
+Resume of pre-ledger runs marks historical usage unknown. Importing only a run
+snapshot cannot reset an existing ledger budget: restore the complete state backup.
 
 The Zhivex Harness `1.0` release is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 
 ## Commands
 
+Start with `zhx`. Use `/help` inside the conversation. For scripting, use `zhx run`; `runs`, `state` and `changes` are advanced administration commands. `zhx chat` and the long executable name `zhivex-harness` remain compatible aliases.
+
 ### Interactive daily workflow
 
-The console completes slash-command prefixes with Tab. `/paste` captures a bounded
+The console opens with the Zhivex logo and a compact welcome panel. Project/model context sits beside the logo when space permits. Before each task, the composer shows the model, approval mode, pending approval state and attachment count. Long labels are bounded to the terminal width; full configuration remains available through `/status`. Type `/` to open the command menu; keep typing to search names and descriptions, use Up/Down to select, Tab to insert, and Enter to submit. Escape dismisses the menu. Enter on a partial command inserts its selection; a separate Enter submits it, including approval commands. Only commands supported by the connected runtime appear. Narrow terminals use a compact logo; `NO_COLOR` disables logo color. The console completes slash-command prefixes with Tab. `/paste` captures a bounded
 multiline draft: finish with `.end` on a separate line, review the preview, then type
 `send` at the separate confirmation prompt. Slash commands inside the draft remain
-literal model input. Use this mode for multiline clipboard content. Lines arriving
+literal model input. Use this mode when the terminal does not support bracketed
+paste. With bracketed paste, clipboard content is inserted as a literal editable
+draft; a separate Enter sends it. Pasted slash commands never execute console
+commands, and pasted answers never approve changes. Clipboard controls are escaped,
+and an oversized clipboard is discarded while retaining the existing draft.
+Lines arriving
 without an active question are discarded, including surplus lines after a task or
 approval answer; they are never queued as future approvals. Input history is not
-saved to disk or shared with approval questions. Up/Down recall the last 100 task
+saved to disk or shared with approval questions. At the edges of multiline input, Up/Down recall the last 100 task
 prompts in this process (at most 256 KiB); `/clear` and session switches clear them.
-Alt+Enter inserts a newline without submitting. Drafts are limited to 64 KiB.
+Ctrl+R searches that in-memory history. Type a filter, use Up/Down to choose, then Enter or Tab to restore the draft without sending it. Escape restores the original draft. Pasted slash commands keep their literal status when recalled. `?` on an empty draft shows keyboard shortcuts; press it again to type a literal question mark. Alt+Enter inserts a newline without submitting. Up/Down move between explicit lines before reaching history. Drafts are limited to 64 KiB.
+Left/Right and Home/End edit the draft in the supported Node terminal runtime;
+resizing the terminal preserves it. Ctrl+C discards the current draft (including
+an unfinished paste), or cancels the active operation and returns after cleanup.
+During an operation, typed input is ignored without echoing over the stream.
+
+Text streams progressively, including partial lines during provider pauses. Activity,
+approval requests and completion remain separate labelled events. Partial output is
+flushed before errors or returning to the prompt, and terminal controls from the
+provider are escaped. After a provider error, Up recalls the submitted task for
+editing/retry; history stays in memory only. Markdown styling is best effort when
+a provider pauses inside markup; text is never replayed to restyle it.
+
+Reproduce this flow offline with `bun run build` followed by
+`python3 scripts/console-pty-smoke.py` (Python 3 and Node on macOS/Linux). The PTY
+fixture covers paste, navigation, resize, partial provider failure, recovery,
+cancellation and approval safety without sending requests to a live provider.
 
 `/context` displays the exact active project manifest, rule/context paths, digests,
 and available skills. Skills are indexed for progressive loading; the list does not
@@ -49,7 +112,7 @@ Contributor validation: `bun run smoke:package` also runs a real PTY workflow
 against the installed CLI, including approval recovery after process restart.
 This Linux/macOS test requires Python 3 and injects a process-local fetch fixture;
 it makes no provider requests. Run `python3 scripts/console-pty-smoke.py` after a
-build to exercise the source artifact directly. Python is not a CLI dependency.
+build to exercise the source artifact directly. `bun run smoke:console` also covers first-run setup, saved profiles, machine output in a TTY and the local-service console with an offline provider fixture. Python is not a CLI dependency.
 
 ```text
 zhx
@@ -58,29 +121,29 @@ zhx run --route reviewer=gemini [options] "task"
 zhx run --jsonl [options] "task"
 zhx chat [--continue|--session <sessionId>]
 zhx sessions list|inspect|rename|fork|archive
-zhivex-harness run [options] "task"
-zhivex-harness review [options] "review task"
-zhivex-harness chat [options]
-zhivex-harness providers [--json]
-zhivex-harness doctor [options] [--json]
-zhivex-harness resume [options] <runId> --approve|--deny
-zhivex-harness runs list [--status <status>] [--limit <n>] [--cursor <cursor>]
-zhivex-harness runs inspect <runId>
-zhivex-harness runs export <runId>
-zhivex-harness runs cancel <runId> [--reason <text>] [--cascade] [--final]
-zhivex-harness runs cleanup --before <date|timestamp> [--status <status>] [--limit <n>]
-zhivex-harness changes create <input.json> --patch <artifact>
-zhivex-harness changes verify <envelope.json> --patch <artifact> [--preconditions <file>] [--now <ISO-8601 UTC>]
-zhivex-harness state status
-zhivex-harness state export <backup.json>
-zhivex-harness state import <backup.json> [--apply]
-zhivex-harness --version
-zhivex-harness --help
+zhx run [options] "task"
+zhx review [options] "review task"
+zhx chat [options]
+zhx providers [--json]
+zhx doctor [options] [--json]
+zhx resume [options] <runId> --approve|--deny
+zhx runs list [--status <status>] [--limit <n>] [--cursor <cursor>]
+zhx runs inspect <runId>
+zhx runs export <runId>
+zhx runs cancel <runId> [--reason <text>] [--cascade] [--final]
+zhx runs cleanup --before <date|timestamp> [--status <status>] [--limit <n>]
+zhx changes create <input.json> --patch <artifact>
+zhx changes verify <envelope.json> --patch <artifact> [--preconditions <file>] [--now <ISO-8601 UTC>]
+zhx state status
+zhx state export <backup.json>
+zhx state import <backup.json> [--apply]
+zhx --version
+zhx --help
 ```
 
 ## Command compatibility
 
-`zhx` and `zhivex-harness` point to the same installed executable. The short command is the primary interactive UX; the long command remains supported for existing scripts. Running `zhx` with no arguments in a TTY opens the console. An implicit prompt such as `zhx "inspect this repository"` and explicit `zhx run` remain one-shot executions.
+`zhx` and `zhivex-harness` point to the same installed executable. The short command is the primary interactive UX; the long command remains supported for existing scripts. Running `zhx` with no arguments in a TTY opens the console. `zhx --continue` and `zhx --session <id>` reopen conversations. `zhx --service <credentials.json>` also opens the console in a TTY; the service host owns provider/model/policy configuration. An implicit prompt such as `zhx "inspect this repository"` and explicit `zhx run` remain one-shot executions.
 
 Options are command-specific. The exported `CLI_COMMAND_OPTION_CONTRACTS` manifest is the machine source of truth for allowed, required, repeatable, and conflicting options. A known option used with the wrong command, a repeated scalar option, an invalid enum/range, or an unsupported option fails with `CLI_USAGE_INVALID` and exit code `2`; options are never silently ignored.
 
@@ -99,11 +162,21 @@ zhx --profile daily "inspect this repository"
 
 Profile schema `1` contains exactly `schemaVersion`, `provider`, and `model`. It cannot contain credentials, endpoints, approval policy, workspace/state scope, MCP, checks, OCI policy, routes, or subagents. Files are stored outside the repository under the platform user configuration directory (`~/Library/Application Support/zhivex-harness/profiles` on macOS, `${XDG_CONFIG_HOME:-~/.config}/zhivex-harness/profiles` on Linux, and `%APPDATA%/zhivex-harness/profiles` on Windows). `ZHIVEX_HARNESS_CONFIG_DIR` is an explicit absolute-path override for isolated automation and tests.
 
-Profile names use 1–64 letters, digits, dots, underscores, or hyphens. Directories must not be writable by group or others; files are created with mode `0600`, read through a no-follow descriptor, limited to 16 KiB, and rejected when linked, malformed, over-permissive, or already present. Initialization never asks for or stores an API key; it reports only the accepted credential variable names and whether one is present.
+Profile names use 1–64 letters, digits, dots, underscores, or hyphens. Directories must not be writable by group or others; files are created with mode `0600`, read through a no-follow descriptor, limited to 16 KiB, and rejected when linked, malformed, over-permissive, or already present. Explicit `zhx init` only creates a profile; the subsequent interactive console manages keys separately. Initialization reports only the accepted credential variable names and whether one is present.
 
-Profiles have no implicit active/default selection. `--profile <name>` is accepted only by `run`, `chat`, `review`, and `doctor`; it is intentionally rejected by `resume` because an existing run restores its exact persisted configuration. Precedence is `explicit CLI flag > explicitly selected profile > ZHIVEX_HARNESS_* environment > built-in default`.
+Interactive `zhx` and `zhx chat` offer the `default` profile when no profile, provider, model, provider/model environment override, or resumed session is selected. An existing default is activated only after the console displays its validated provider/model and the operator confirms it; denial exits without sending a provider request. The confirmed provider/model is retained for this invocation even if the saved profile changes while confirmation is pending. With no default profile and no configured provider credential, the console runs first-time provider/model setup and saves `default`; those answers explicitly select it for the current invocation. The interactive console then resolves credentials from the environment, a temporary key, or the system keychain, and offers hidden entry if needed. See [Credentials](CREDENTIALS.md). One-shot, JSON/JSONL, administrative commands and service connections do not activate profiles implicitly. `--profile <name>` is accepted only by `run`, `chat`, `review`, and `doctor`; it is intentionally rejected by `resume` because an existing run restores its exact persisted configuration. Precedence is `explicit CLI flag > explicitly confirmed or selected profile > ZHIVEX_HARNESS_* environment > built-in default`.
 
 ## Interactive console
+
+For the rationale and reference patterns, see [Console UX](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CLI_UX.md). `bun run dev` builds with Bun and launches the Node CLI so repository usage and the installed terminal editor behave consistently.
+
+`/menu` opens the navigation menu: Providers → Models, Models for the current provider, Conversations, Status, Pending approvals, Project context, Usage and Help. Up/Down moves through the list, typing filters it, Enter chooses, and Escape returns to the parent menu. Browsing or going back never changes the selected provider/model; choosing a model applies the pair together. Provider/model changes remain blocked while a run or approval is active.
+
+`/provider` (also `/providers`) opens Providers directly. `/model` (also `/models`) lists the active provider's models; a Custom model ID option supports IDs outside the snapshot. The offline catalog is derived from the Zhivex SDK's chat-and-tools recommendations, excludes dedicated live/audio/image transports, and records provider revisions and source hashes. It is not a live account entitlement list or model certification. Refresh with `bun scripts/generate-console-models.ts <sdk-checkout>`; the generated snapshot ships with the CLI and needs no sibling repository at runtime.
+
+`/resume` opens the searchable conversation menu; `/resume last` and `/resume <id>` remain shortcuts. `TERM=dumb` and non-TTY selection fall back to numbered lists. The service console offers navigation for conversations and session tools; provider/model policy remains with the service host.
+
+Activity is compact in the direct console: tool actions, approvals, errors and final run status remain visible; repeated provider and per-step transport notices are hidden. `/verbose` toggles full activity for that console process. One-shot and JSON/JSONL outputs retain their contracts.
 
 Each console session is a scoped, durable chain of immutable run IDs. The session index stores provider/model/status metadata and never stores prompts, model messages, tool payloads, or provider data; those remain in the governed run store. `zhx chat --continue` opens the latest session and `--session <id>` selects one explicitly.
 
@@ -240,3 +313,36 @@ Library callers select `agentProfile: "repair"` in `createHarness` and can obser
 bounded timings/accounting with `runHarness(..., { onDiagnostics })`. Telemetry
 observer exceptions do not alter the execution result. A stricter caller can
 explicitly override tool-error behavior or terminal receipt settings.
+
+## Shared local service (experimental)
+
+Use `--service /absolute/private/credentials.json` with `run`, `resume`, `chat`, or
+`sessions list|inspect|rename`. The host starts the service as described in
+[LOCAL_SERVICE.md](LOCAL_SERVICE.md). The CLI reads its private credential file;
+it never prints the token or starts another engine in service mode.
+
+```sh
+zhx run --service /private/service/project.json --json "Explain this repository"
+zhx run --service /private/service/project.json --session ses_example --jsonl "Continue"
+zhx resume run_example --service /private/service/project.json --session ses_example --approve --jsonl
+zhx sessions list --service /private/service/project.json --json
+zhx chat --service /private/service/project.json --continue
+```
+
+Runtime/provider/workspace policy flags are rejected in this mode because the host
+owns them. Commands without `--service` retain their existing direct behavior.
+`--session` on `run` or `resume` is specific to service mode. JSON uses the existing
+schemaVersion 1 documents (run JSON adds sessionId); JSONL retains monotonically
+sequenced run-event and run-stream-result records. Pending approval is exit 0,
+failed/cancelled/timed-out runs and transport/state errors exit 1, usage errors exit 2.
+Service sessions preserve full session documents. `/help` lists the service chat
+commands; host configuration commands remain available through direct mode.
+
+Streaming follows durable replay pages without running effects client-side. Ctrl+C
+requests cancellation with the run's current revision. Disconnecting the CLI does
+not shut down the service. After a service restart read the rotated credentials,
+inspect the session and explicitly resume its current pending approval. Do not
+blindly retry an uncertain command with a new idempotency key. The host persists the
+CLI result projection for runs executed through this adapter; older runs without
+that projection can be inspected through run/session queries but are not synthesized
+into a new CLI result. Approval output remains untrusted repository text.

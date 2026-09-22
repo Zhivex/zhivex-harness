@@ -98,6 +98,7 @@ describe("bounded orchestration", () => {
         workspace,
         modelInstance: parentModel,
         subagentModels: { explorer: explorerModel },
+        usageAccounting: {},
         subagentProfiles: ["explorer"],
         store
       });
@@ -115,6 +116,10 @@ describe("bounded orchestration", () => {
       });
       expect(output.state.childRuns?.[0]?.usage?.totalTokens).toBe(5);
       expect(getAgentBudgetStatus(output.state, harness.config.budget).consumption.totalTokens).toBe(12);
+      expect(harness.usageLedger?.summary(output.state.runId)).toMatchObject({ calls: 3, inputTokens: 7, outputTokens: 5, usageComplete: true });
+      expect(harness.usageLedger?.summary(output.state.runId).routes).toHaveLength(2);
+      expect(output.state.metadata?.zhivexUsageLedger).toMatchObject({ calls: 3 });
+      expect((await store.load(output.state.runId, harness.config.scope))?.metadata?.zhivexUsageLedger).toMatchObject({ calls: 3 });
       expect(await store.load(output.state.childRuns![0]!.runId, harness.config.scope)).toMatchObject({
         parentRunId: "parent-delegation",
         status: "completed"

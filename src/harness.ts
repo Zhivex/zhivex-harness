@@ -1,4 +1,5 @@
 import { assembleHarnessTools } from "./tool-registry.js";
+import { UsageLedger, USAGE_LEDGER_KEY, type UsageAccountingOptions } from "./usage-ledger.js";
 import { createCheckpointTokenCap, createRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
 import { createRepairController } from "./repair-controller.js";
 import { runtimeCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
@@ -202,6 +203,7 @@ export const renderHarnessInstructions = (names: readonly string[]) => {
 };
 
 export interface CreateHarnessOptions extends HarnessConfigInput {
+  usageAccounting?: UsageAccountingOptions;
   env?: NodeJS.ProcessEnv;
   providerRegistry?: HarnessProviderRegistry;
   modelInstance?: LanguageModel;
@@ -218,6 +220,7 @@ export interface CreateHarnessOptions extends HarnessConfigInput {
 }
 
 export interface ZhivexHarness {
+  usageLedger?: UsageLedger;
   config: HarnessConfig;
   workspace: Workspace;
   agent: Agent<LanguageModel>;
@@ -839,7 +842,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
       });
     }
   }
-  const model = options.modelInstance ?? createProviderModel(
+  let model = options.modelInstance ?? createProviderModel(
     config,
     options.env ?? process.env,
     options.providerRegistry
@@ -908,7 +911,12 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
   }
   const tools = assembleHarnessTools([createTaskTools(), workspaceTools, executionTools, contextTools], mcpTools);
   const persistence = options.store ? undefined : await openHarnessPersistence(config);
-  const store = options.store ?? persistence!.store;
+  const usageLedger = options.usageAccounting ? await UsageLedger.open(config, options.usageAccounting) : undefined;
+  const store = usageLedger ? usageLedger.store(options.store ?? persistence!.store) : options.store ?? persistence!.store;
+  const subagentModels = usageLedger
+    ? Object.fromEntries(Object.entries(options.subagentModels ?? {}).map(([role, model]) => [role, usageLedger.model(model)]))
+    : options.subagentModels;
+  if (usageLedger) model = usageLedger.model(model);
   const memory = options.memory ?? persistence?.memory;
   const traceCollector = createProductionTraceCollector({
     maxRuns: 100,
@@ -935,7 +943,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     parentBinding: binding,
     model,
     ...(executionEnvironment ? { executionEnvironment } : {}),
-    ...(options.subagentModels ? { models: options.subagentModels } : {}),
+    ...(subagentModels ? { models: subagentModels } : {}),
     tools,
     store,
     ...(memory ? { memory } : {}),
@@ -1006,11 +1014,13 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     await dispatchLifecycle({ type: "harness-created", provider: model.provider, model: model.modelId });
   } catch (error) {
     persistence?.close();
+    usageLedger?.close();
     throw error;
   }
   let closed = false;
 
   return {
+    ...(usageLedger ? { usageLedger } : {}),
     config,
     workspace,
     agent,
@@ -1027,6 +1037,7 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
       if (closed) return;
       closed = true;
       persistence?.close();
+      usageLedger?.close();
       await dispatchLifecycle({ type: "harness-closed" });
     }
   };
@@ -1426,6 +1437,22 @@ export const runHarness = async (
   harness: ZhivexHarness,
   input: AgentRunInput<LanguageModel>,
   options: HarnessRunOptions = {}
+): Promise<AgentRunOutput> => {
+  const runId = "state" in input ? input.state.runId : input.runId ?? `run_${randomUUID()}`;
+  const invocation = "state" in input ? input : { ...input, runId };
+  if (harness.usageLedger && "state" in input && input.state.metadata?.[USAGE_LEDGER_KEY]) harness.usageLedger.assertResume(runId);
+  const result = await (harness.usageLedger
+    ? harness.usageLedger.run(runId, () => runHarnessInternal(harness, invocation, options), "state" in input && !input.state.metadata?.[USAGE_LEDGER_KEY])
+    : runHarnessInternal(harness, invocation, options));
+  return harness.usageLedger ? { ...result, state: { ...result.state,
+    metadata: { ...result.state.metadata, [USAGE_LEDGER_KEY]: harness.usageLedger.summary(result.state.runId) }
+  } } : result;
+};
+
+const runHarnessInternal = async (
+  harness: ZhivexHarness,
+  input: AgentRunInput<LanguageModel>,
+  options: HarnessRunOptions
 ): Promise<AgentRunOutput> => {
   const invocationSignal = AbortSignal.timeout(input.timeoutMs ?? harness.config.timeoutMs);
   input = { ...input, abortSignal: input.abortSignal ? AbortSignal.any([input.abortSignal, invocationSignal]) : invocationSignal };

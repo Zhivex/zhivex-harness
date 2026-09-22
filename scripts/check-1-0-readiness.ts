@@ -5,7 +5,7 @@ import {
   CLI_CHANGES_COMMANDS,
   CLI_COMMANDS,
   CLI_EXIT_CODES,
-  CLI_HELP_TEXT,
+  CLI_FULL_HELP_TEXT,
   CLI_RUNS_COMMANDS,
   CLI_SESSIONS_COMMANDS,
   CLI_STATE_COMMANDS
@@ -224,7 +224,7 @@ const cliDocumentation = (
   })
 ).contents.toString("utf8");
 for (const option of CLI_OPTION_NAMES) {
-  if (!CLI_HELP_TEXT.includes(option)) failures.push(`CLI help omits declared option ${option}`);
+  if (!CLI_FULL_HELP_TEXT.includes(option)) failures.push(`CLI help omits declared option ${option}`);
   if (!cliDocumentation.includes(option)) failures.push(`docs/CLI.md omits declared option ${option}`);
 }
 const cli = contract.cli as JsonObject | undefined;

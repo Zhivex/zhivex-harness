@@ -4,6 +4,7 @@ import { sanitizeTerminalText } from "./terminal-ui.js";
 export class TerminalMarkdown {
   private pending = "";
   private code = false;
+  private timer: ReturnType<typeof setTimeout> | undefined;
   constructor(private readonly output: (text: string) => void, private readonly color: boolean) {}
   private style(text: string, color: number) {
     return this.color ? `\u001b[${color}m${text}\u001b[0m` : text;
@@ -28,8 +29,15 @@ export class TerminalMarkdown {
       this.pending = this.pending.slice(index + 1);
     }
     if (this.pending.length >= 2048) this.flush();
+    // Deliver text even when the provider pauses in the middle of a line.
+    if (this.pending && !this.timer) {
+      this.timer = setTimeout(() => this.flush(), 50);
+      this.timer.unref();
+    }
   }
   flush() {
+    clearTimeout(this.timer);
+    this.timer = undefined;
     if (this.pending) this.output(this.line(this.pending));
     this.pending = "";
   }

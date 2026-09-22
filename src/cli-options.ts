@@ -21,6 +21,10 @@ const repeatableOptions = new Set([
 ]);
 
 const conflicts: Readonly<Record<string, readonly string[]>> = {
+  "--usage-limit-usd": ["--max-cost-usd", "--input-cost-per-million", "--output-cost-per-million"],
+  "--max-cost-usd": ["--usage-limit-usd"],
+  "--input-cost-per-million": ["--usage-limit-usd"],
+  "--output-cost-per-million": ["--usage-limit-usd"],
   "--json": ["--jsonl"],
   "--jsonl": ["--json"],
   "--session": ["--continue"],
@@ -43,7 +47,7 @@ export const CLI_OPTION_NAMES = [
   "--input-cost-per-million", "--output-cost-per-million", "--allow-check", "--require-capability",
   "--subagent", "--reviewer", "--yes", "--approve", "--deny", "--json", "--jsonl", "--session",
   "--continue", "--status", "--limit", "--cursor", "--before", "--reason", "--cascade", "--final",
-  "--apply", "--help", "--version"
+  "--service", "--apply", "--help", "--version", "--search", "--pricing-file", "--usage-limit-usd"
 ] as const;
 
 export type CliOptionName = (typeof CLI_OPTION_NAMES)[number];
@@ -77,6 +81,7 @@ const childBudgets = [
   "--subagent-timeout-ms"
 ] as const;
 const agent = [
+  "--pricing-file", "--usage-limit-usd",
   ...provider, ...profile, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
   "--require-capability", "--subagent"
 ] as const;
@@ -99,23 +104,24 @@ const contract = (
 
 export const CLI_COMMAND_OPTION_CONTRACTS = {
   init: contract([...provider, ...profile, "--json"]),
-  run: contract([...agent, "--idempotency-key", "--yes", "--json", "--jsonl"]),
+  run: contract(["--service", "--session", ...agent, "--idempotency-key", "--yes", "--json", "--jsonl"]),
   review: contract([
+    "--pricing-file", "--usage-limit-usd",
     ...provider, ...profile, "--route", ...locator, "--context-config", "--no-project-context",
     ...childBudgets, "--max-parallel-reviews", "--require-capability", "--reviewer", "--json"
   ]),
-  chat: contract([...agent, "--yes", "--session", "--continue"]),
+  chat: contract(["--service", ...agent, "--yes", "--session", "--continue"]),
   providers: contract(["--json"]),
   doctor: contract([...provider, ...profile, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
-  resume: contract([...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
+  resume: contract(["--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
   "runs:list": contract([...locator, "--status", "--limit", "--cursor", "--json"]),
   "runs:inspect": contract([...locator, "--json"]),
   "runs:cancel": contract([...locator, "--reason", "--cascade", "--final", "--json"]),
   "runs:cleanup": contract([...locator, "--before", "--status", "--limit", "--json"], ["--before"]),
   "runs:export": contract([...locator, "--json"]),
-  "sessions:list": contract([...locator, "--limit", "--json"]),
-  "sessions:inspect": contract([...locator, "--json"]),
-  "sessions:rename": contract([...locator, "--json"]),
+  "sessions:list": contract(["--service", ...locator, "--limit", "--json", "--search"]),
+  "sessions:inspect": contract(["--service", ...locator, "--json"]),
+  "sessions:rename": contract(["--service", ...locator, "--json"]),
   "sessions:fork": contract([...locator, "--json"]),
   "sessions:archive": contract([...locator, "--json"]),
   "changes:create": contract(["--patch"], ["--patch"]),

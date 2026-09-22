@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
 import { TerminalMarkdown } from "../src/terminal-markdown.js";
 
+test("delivers partial lines during provider pauses and flushes without replay", async () => {
+  let output = "";
+  const renderer = new TerminalMarkdown((text) => { output += text; }, false);
+  renderer.write("Partial\u001b");
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  expect(output).toBe("Partial\\u001b");
+  renderer.write("[2J remainder");
+  renderer.flush();
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  expect(output).toBe("Partial\\u001b[2J remainder");
+});
+
 test("renders fragmented headings and fenced code without terminal injection", () => {
   let output = "";
   const renderer = new TerminalMarkdown((text) => { output += text; }, true);

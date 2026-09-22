@@ -24,6 +24,7 @@
     "DEFAULT_TIME_TO_SAFE_FIX_GOAL",
     "EDIT_CONTRACT_SCHEMA_VERSION",
     "EDIT_DIGEST_ALGORITHM",
+    "HARNESS_CLIENT_PROTOCOL_VERSION",
     "HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS",
     "HARNESS_CONFIG_SCHEMA_VERSION",
     "HARNESS_CONTEXT_BUNDLE_SCHEMA_VERSION",
@@ -132,6 +133,7 @@
     "createEmptyHarnessContextBundle",
     "createExecutionEnvironmentTools",
     "createHarness",
+    "createHarnessClientAdapter",
     "createHarnessLifecycleDispatcher",
     "createHarnessMcpTools",
     "createHarnessOciExecutionEnvironment",
@@ -161,11 +163,14 @@
     "formatApproval",
     "formatTerminalEvent",
     "formatTerminalHeader",
+    "harnessClientCommandSchema",
+    "harnessClientRequestSchema",
     "harnessContextConfigurationSchema",
     "harnessContextFingerprintInput",
     "harnessErrorDocument",
     "harnessExecutionSession",
     "harnessLifecycleFingerprintInput",
+    "harnessLocalCredentialsSchema",
     "harnessSkillLoadInputSchema",
     "importHarnessStateBackup",
     "importHarnessStateBackupFile",
@@ -186,6 +191,7 @@
     "normalizeHarnessError",
     "normalizeHarnessMcpConfiguration",
     "openCliSessionStore",
+    "openHarnessActivityStore",
     "openHarnessPersistence",
     "openSessionStore",
     "parseCliJsonDocument",
@@ -195,8 +201,11 @@
     "providerAvailability",
     "providerDescriptor",
     "quarantineFileInputSchema",
+    "readHarnessLocalCredentials",
     "readHarnessStateBackup",
+    "recoverHarnessLocalService",
     "renderHarnessContextInstructions",
+    "requestHarnessLocalService",
     "resolveHarnessConfig",
     "resolveHarnessModelRoutes",
     "resolveTerminalApprovals",
@@ -208,6 +217,7 @@
     "serializeHarnessModelRoutes",
     "serializeStreamEvent",
     "serializeStreamResult",
+    "startHarnessLocalService",
     "stateBackupBundleSchema",
     "streamEventDocument",
     "streamResultDocument",
@@ -298,6 +308,7 @@
   ],
   "experimentalRuntimeExports": [
     "DEFAULT_TIME_TO_SAFE_FIX_GOAL",
+    "HARNESS_CLIENT_PROTOCOL_VERSION",
     "TIME_TO_SAFE_FIX_CARRIERS",
     "TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES",
     "TIME_TO_SAFE_FIX_FAILURE_ORIGINS",
@@ -306,10 +317,19 @@
     "TIME_TO_SAFE_FIX_PROFILES",
     "TIME_TO_SAFE_FIX_SCHEMA_VERSION",
     "classifyTimeToSafeFixFailure",
+    "createHarnessClientAdapter",
     "createTimeToSafeFixCases",
     "createTimeToSafeFixReport",
     "createTimeToSafeFixSample",
+    "harnessClientCommandSchema",
+    "harnessClientRequestSchema",
+    "harnessLocalCredentialsSchema",
     "injectTimeToSafeFixAttack",
+    "openHarnessActivityStore",
+    "readHarnessLocalCredentials",
+    "recoverHarnessLocalService",
+    "requestHarnessLocalService",
+    "startHarnessLocalService",
     "timeToSafeFixDriverResultSchema",
     "timeToSafeFixLatencyStatistics",
     "timeToSafeFixTaskSchema"
@@ -492,8 +512,23 @@
     "ExternalAttestationReference",
     "FileDigest",
     "ForkSessionInput",
+    "HarnessActivityEvent",
+    "HarnessActivityOptions",
+    "HarnessActivityPage",
+    "HarnessActivitySnapshot",
+    "HarnessActivityStore",
     "HarnessBudget",
     "HarnessCheck",
+    "HarnessClientAdapter",
+    "HarnessClientAdapterOptions",
+    "HarnessClientCommand",
+    "HarnessClientData",
+    "HarnessClientErrorCode",
+    "HarnessClientNegotiation",
+    "HarnessClientRequest",
+    "HarnessClientResponse",
+    "HarnessClientRun",
+    "HarnessClientSession",
     "HarnessCommandResult",
     "HarnessCompactionConfig",
     "HarnessConfig",
@@ -519,6 +554,9 @@
     "HarnessLifecycleHookFailure",
     "HarnessLifecycleHookRegistration",
     "HarnessLoadedSkill",
+    "HarnessLocalCredentials",
+    "HarnessLocalService",
+    "HarnessLocalServiceOptions",
     "HarnessMcpClients",
     "HarnessMcpConfiguration",
     "HarnessMcpPermission",
@@ -775,6 +813,24 @@
     "WorkspaceTopologyFile"
   ],
   "experimentalTypeExports": [
+    "HarnessActivityEvent",
+    "HarnessActivityOptions",
+    "HarnessActivityPage",
+    "HarnessActivitySnapshot",
+    "HarnessActivityStore",
+    "HarnessClientAdapter",
+    "HarnessClientAdapterOptions",
+    "HarnessClientCommand",
+    "HarnessClientData",
+    "HarnessClientErrorCode",
+    "HarnessClientNegotiation",
+    "HarnessClientRequest",
+    "HarnessClientResponse",
+    "HarnessClientRun",
+    "HarnessClientSession",
+    "HarnessLocalCredentials",
+    "HarnessLocalService",
+    "HarnessLocalServiceOptions",
     "TimeToSafeFixAggregate",
     "TimeToSafeFixCarrier",
     "TimeToSafeFixCase",
@@ -856,6 +912,10 @@
       },
       "run": {
         "allowed": [
+          "--service",
+          "--session",
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -917,6 +977,20 @@
           "--subagent"
         ],
         "conflicts": {
+          "--usage-limit-usd": [
+            "--max-cost-usd",
+            "--input-cost-per-million",
+            "--output-cost-per-million"
+          ],
+          "--max-cost-usd": [
+            "--usage-limit-usd"
+          ],
+          "--input-cost-per-million": [
+            "--usage-limit-usd"
+          ],
+          "--output-cost-per-million": [
+            "--usage-limit-usd"
+          ],
           "--json": [
             "--jsonl"
           ],
@@ -927,6 +1001,8 @@
       },
       "review": {
         "allowed": [
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -961,6 +1037,9 @@
       },
       "chat": {
         "allowed": [
+          "--service",
+          "--pricing-file",
+          "--usage-limit-usd",
           "--provider",
           "--model",
           "--profile",
@@ -1021,6 +1100,20 @@
           "--subagent"
         ],
         "conflicts": {
+          "--usage-limit-usd": [
+            "--max-cost-usd",
+            "--input-cost-per-million",
+            "--output-cost-per-million"
+          ],
+          "--max-cost-usd": [
+            "--usage-limit-usd"
+          ],
+          "--input-cost-per-million": [
+            "--usage-limit-usd"
+          ],
+          "--output-cost-per-million": [
+            "--usage-limit-usd"
+          ],
           "--session": [
             "--continue"
           ],
@@ -1098,6 +1191,8 @@
       },
       "resume": {
         "allowed": [
+          "--service",
+          "--session",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1218,6 +1313,7 @@
       },
       "sessions:list": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1225,7 +1321,8 @@
           "--user",
           "--namespace",
           "--limit",
-          "--json"
+          "--json",
+          "--search"
         ],
         "required": [],
         "repeatable": [],
@@ -1233,6 +1330,7 @@
       },
       "sessions:inspect": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",
@@ -1247,6 +1345,7 @@
       },
       "sessions:rename": {
         "allowed": [
+          "--service",
           "--workspace",
           "--state-dir",
           "--store",

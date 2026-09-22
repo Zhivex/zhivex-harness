@@ -12,7 +12,9 @@ import { readRegularFileNoFollow } from "./file-security.js";
 import { HARNESS_OPERATIONS_SCHEMA_VERSION, HARNESS_SQLITE_FILE, openHarnessPersistence } from "./operations.js";
 import { HARNESS_SESSION_SCHEMA_VERSION, openCliSessionStore } from "./sessions.js";
 import { SqliteDatabase } from "./sqlite-database.js";
+import type { SqliteAccessLease } from "./sqlite-access.js";
 import { validateStateDirectory } from "./state-directory.js";
+import { validateRecordedWorkspace } from "./recorded-workspace.js";
 
 export const HARNESS_STATE_BACKUP_SCHEMA_VERSION = 1 as const;
 export const HARNESS_STATE_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
@@ -261,14 +263,18 @@ const validatedRunState = (value: Record<string, unknown>, label: string): Agent
   }
 };
 
-const readPayload = async (config: HarnessConfig): Promise<HarnessStateBackupPayload> => {
-  const databasePath = await prepareDatabase(config);
-  const binding = await bindingForConfig(config);
-  const database = new SqliteDatabase(databasePath, { create: false, strict: true });
-  database.exec("PRAGMA busy_timeout = 5000");
-  database.exec("PRAGMA foreign_keys = ON");
-  database.exec("BEGIN IMMEDIATE");
+const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, accessLease?: SqliteAccessLease): Promise<HarnessStateBackupPayload> => {
+  const databasePath = recordedWorkspace ? await locateExistingDatabase(config) : await prepareDatabase(config);
+  if (!databasePath) throw new HarnessStateConflictError("Archived state database is missing.");
+  const binding = recordedWorkspace ? {workspaceKey: stableKey("workspace", recordedWorkspace), scopeKey: stableKey("scope", scopeValue(config)), scopePrefix: scopePrefix(config)} : await bindingForConfig(config);
+  const database = new SqliteDatabase(databasePath, { create: false, strict: true, ...(recordedWorkspace ? {readonly: true} : {}), ...(accessLease ? {accessLease} : {}) });
+  let transactionStarted = false;
   try {
+    database.exec("PRAGMA busy_timeout = 5000");
+    database.exec("PRAGMA foreign_keys = ON");
+    database.exec(recordedWorkspace ? "BEGIN" : "BEGIN IMMEDIATE");
+    transactionStarted = true;
+    if (recordedWorkspace && database.query<{version: number}>("SELECT version FROM zhivex_cli_session_schema WHERE singleton=1").get()?.version !== HARNESS_SESSION_SCHEMA_VERSION) throw new HarnessStateConflictError("Archived session schema is incompatible.");
     const runRows = database.query<RunRow, []>(
       "SELECT run_id, state_json, updated_at_ms FROM zhivex_agent_runs ORDER BY run_id"
     ).all().flatMap((row) => {
@@ -360,9 +366,10 @@ const readPayload = async (config: HarnessConfig): Promise<HarnessStateBackupPay
       records: { runs, toolJournal: journal, idempotency, parents, memory, sessions, sessionRuns }
     });
     database.exec("COMMIT");
+    transactionStarted = false;
     return payload;
   } catch (error) {
-    database.exec("ROLLBACK");
+    if (transactionStarted) database.exec("ROLLBACK");
     throw error;
   } finally {
     database.close(false);
@@ -372,6 +379,16 @@ const readPayload = async (config: HarnessConfig): Promise<HarnessStateBackupPay
 export const createHarnessStateBackup = async (config: HarnessConfig): Promise<HarnessStateBackupBundle> => {
   const payload = await readPayload(config);
   return stateBackupBundleSchema.parse({ ...payload, checksum: checksumPayload(payload) });
+};
+
+/** Internal desktop archive reader: preserve the recorded workspace/scope binding
+ * when its checkout has been removed. Reads existing SQLite only; no migration,
+ * workspace creation, import or rebinding. Not exported by the public entrypoint.
+ */
+export const createArchivedHarnessStateBackup = async (config: HarnessConfig, options: {accessLease?: SqliteAccessLease} = {}): Promise<HarnessStateBackupBundle> => {
+  const workspace = await validateRecordedWorkspace(config.workspace, true);
+  const payload = await readPayload(config, workspace, options.accessLease);
+  return stateBackupBundleSchema.parse({...payload, checksum: checksumPayload(payload)});
 };
 
 const writePrivateBackup = async (target: string, contents: string) => {

@@ -1,11 +1,20 @@
 #!/usr/bin/env node
+import { formatCliHelp, resolveHelpTopic, shortCliHelp } from "./cli-help.js";
+import { CliCredentials, credentialModel } from "./cli-credentials.js";
 import { inspectRuntimeDiagnostics } from "./runtime-diagnostics.js";
+import { USAGE_LEDGER_KEY, usagePricingSchema, formatUsageLedger, inspectUsageLedger } from "./usage-ledger.js";
 import { TASK_SOURCE_KEY, taskSources } from "./task-memory.js";
 
+import { runResultDocument } from "./run-document.js";
+export { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal-markdown.js";
+import { navigateConsole } from "./console-navigation.js";
+import { formatComposer } from "./console-presentation.js";
+import { formatConsoleHelp } from "./console-commands.js";
+import { formatConsoleWelcome } from "./console-welcome.js";
 import { ConsoleInput } from "./console-input.js";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console-context.js";
-import { sanitizeTerminalText } from "./terminal-ui.js";
+import { sanitizeTerminalText, formatVerificationSummary } from "./terminal-ui.js";
 import { createInterface } from "node:readline/promises";
 import { randomUUID } from "node:crypto";
 import { constants as fsConstants, realpathSync } from "node:fs";
@@ -34,6 +43,7 @@ import {
   parseProvider,
   providerAvailability,
   providerDescriptor,
+  createProviderModel,
   resolveHarnessConfig,
   type HarnessConfig,
   type HarnessConfigInput,
@@ -49,9 +59,7 @@ import {
   type ZhivexHarness
 } from "./harness.js";
 import {
-  estimateAgentRunCost,
-  type AgentTelemetryObserver,
-  type TokenPricing
+  type AgentTelemetryObserver
 } from "@zhivex-ai/agents/ops";
 import {
   cancelHarnessRun,
@@ -112,7 +120,6 @@ import { Workspace } from "./workspace.js";
 import {
   formatApproval,
   formatTerminalEvent,
-  formatTerminalHeader,
   resolveTerminalApprovals,
   terminalSupportsColor
 } from "./terminal-ui.js";
@@ -131,6 +138,8 @@ import {
 import {
   applyCliProfile,
   createCliProfile,
+  loadCliProfile,
+  resolveCliProfilePath,
   validateCliProfileName
 } from "./cli-profiles.js";
 import {
@@ -186,7 +195,9 @@ type ChangesCommand = (typeof CLI_CHANGES_COMMANDS)[number];
 type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 
 export interface CliOptions {
+  serviceFile?: string;
   command: Command;
+  helpTopic?: string;
   profile?: string;
   provider?: string;
   model?: string;
@@ -250,6 +261,9 @@ export interface CliOptions {
   backupPath?: string;
   sessionId?: string;
   sessionTitle?: string;
+  sessionSearch?: string;
+  pricingFile?: string;
+  usageLimitUsd?: number;
   continueSession: boolean;
   implicitCommand: boolean;
   statuses?: AgentStatus[];
@@ -694,6 +708,21 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
+      case "--search":
+        options.sessionSearch = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--pricing-file":
+        options.pricingFile = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--usage-limit-usd": {
+        const value = Number(optionValue(argv, index, argument));
+        if (!Number.isFinite(value) || value <= 0) throw new CliUsageError("--usage-limit-usd must be positive USD.");
+        options.usageLimitUsd = value;
+        index += 1;
+        break;
+      }
       case "--max-cost-usd":
       case "--input-cost-per-million":
       case "--output-cost-per-million": {
@@ -775,6 +804,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--jsonl":
         options.jsonl = true;
         break;
+      case "--service":
+        options.serviceFile = optionValue(argv, index, argument);
+        index += 1;
+        break;
       case "--session":
         options.sessionId = optionValue(argv, index, argument);
         index += 1;
@@ -847,6 +880,16 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
   }
 
+  if (options.command === "help") {
+    try {
+      validateCliCommandOptions("help", optionCounts);
+      const topic = resolveHelpTopic(command === "help" ? positional : [command, ...positional], commandWasExplicit);
+      if (topic) options.helpTopic = topic;
+    } catch (error) {
+      throw new CliUsageError(error instanceof Error ? error.message : String(error));
+    }
+    return options;
+  }
   options.implicitCommand = !commandWasExplicit;
   if (options.json && options.jsonl) {
     throw new CliUsageError("You cannot combine --json and --jsonl.");
@@ -945,6 +988,16 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError(`${options.command} does not accept positional arguments.`);
   }
 
+  if (options.implicitCommand && options.command === "run" && !options.prompt &&
+      (options.continueSession || options.sessionId) && !options.json && !options.jsonl) options.command = "chat";
+
+  if (options.serviceFile) {
+    const allowed = new Set(["--service", "--session", "--idempotency-key", "--yes", "--json", "--jsonl", "--approve", "--deny", "--search", "--continue"]);
+    for (const arg of optionCounts.keys()) if (arg.startsWith("--") && !allowed.has(arg)) throw new CliUsageError(`Service mode does not accept ${arg}; runtime configuration belongs to the service host.`);
+  } else if (["run", "resume"].includes(options.command) && optionCounts.has("--session")) {
+    throw new CliUsageError("--session for run/resume requires --service.");
+  }
+
   const commandKey = options.command === "runs"
     ? `runs:${options.runsCommand}`
     : options.command === "sessions"
@@ -973,19 +1026,27 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   return options;
 };
 
-export const CLI_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
+export const CLI_HELP_TEXT = shortCliHelp(HARNESS_VERSION);
 
-Usage:
+export const CLI_FULL_HELP_TEXT = `Zhivex Harness v${HARNESS_VERSION}
+
+Everyday commands:
   zhx                              Start the interactive console
+  zhx --continue                   Reopen the latest conversation
+  zhx --session <id>                Reopen a selected conversation
   zhx init [--profile <name>] [--provider <id>] [--model <id>]
   zhx run [options] "task"
   zhx review [options] "review task"
   zhx chat [options] [--continue|--session <id>]
   zhx providers [--json]
   zhx doctor [options] [--json]
+
+Advanced operations and automation:
   zhx resume [options] <runId> --approve|--deny
   zhx runs list [--status <status>] [--limit <n>] [--json]
   zhx sessions list|inspect|rename|fork|archive
+  zhx sessions list --search <literal title or session ID>
+  zhx run --pricing-file <prices.json> --usage-limit-usd <amount> <task>
   zhx changes create <input.json> --patch <artifact>
   zhx changes verify <envelope.json> --patch <artifact> [--preconditions <file>]
   zhx state status
@@ -994,7 +1055,7 @@ Usage:
 
 The long command zhivex-harness remains supported for compatibility.
 
-Options:
+Options (automation and advanced configuration):
   --profile <name>                Explicit personal provider/model profile
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
@@ -1002,6 +1063,7 @@ Options:
   --session <id>                 Open a durable interactive session
   --continue                     Open the latest durable interactive session
   --workspace <path>             Target workspace (default: cwd)
+  --service <credentials.json>   Use the private local runtime (run/resume/chat/sessions)
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
   --context-config <path>        Project context/rules/skills manifest (default: .zhivex/harness.json)
@@ -1112,81 +1174,14 @@ const terminalApprovalResolver = (
   }
 };
 
-const costPricing = (harness: ZhivexHarness): TokenPricing | undefined => harness.config.costBudget
-  ? {
-      inputCostPer1kTokens: harness.config.costBudget.inputCostPer1kTokens,
-      outputCostPer1kTokens: harness.config.costBudget.outputCostPer1kTokens,
-      currency: "USD"
-    }
-  : undefined;
-
-export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness) => ({
-  schemaVersion: CLI_JSON_SCHEMA_VERSION,
-  kind: "run-result" as const,
-  runId: result.state.runId,
-  status: result.status,
-  provider: result.state.provider,
-  model: result.state.modelId,
-  output: result.outputText,
-  steps: result.steps.length,
-  toolCalls: result.toolResults.length,
-  mutations: harness.workspace.mutationAudit(),
-  pendingApprovals: result.state.pendingApprovals.map((approval) => ({
-    id: approval.id,
-    kind: approval.kind ?? "provider",
-    name: approval.name,
-    arguments: approval.arguments,
-    ...(approval.childRunId ? { childRunId: approval.childRunId } : {}),
-    ...(approval.childAgentId ? { childAgentId: approval.childAgentId } : {})
-  })),
-  children: (result.state.childRuns ?? []).map((child) => ({
-    runId: child.runId,
-    agentId: child.agentId,
-    toolName: child.toolName,
-    status: child.status,
-    steps: child.steps,
-    toolCalls: child.toolCalls,
-    toolErrors: child.toolErrors,
-    usage: child.usage
-  })),
-  usage: result.usage,
-  budget: getAgentBudgetStatus(result.state, harness.config.budget, result),
-  ...(harness.config.costBudget
-    ? {
-        costBudget: {
-          limitUsd: harness.config.costBudget.maxCostUsd,
-          estimate: estimateAgentRunCost(result.state, costPricing(harness))
-        }
-      }
-    : {}),
-  scope: result.state.scope,
-  capabilities: harness.capabilities,
-  orchestration: {
-    profiles: harness.config.orchestration.profiles,
-    childBudget: harness.config.orchestration.childBudget,
-    mcpServers: harness.mcpConfiguration.servers.map((server) => server.name)
-  },
-  execution: harness.executionEnvironment
-    ? {
-        backend: "oci" as const,
-        binding: result.state.executionEnvironment,
-        image: harness.executionEnvironment.image
-      }
-    : { backend: "none" as const },
-  store: {
-    backend: harness.config.storeBackend,
-    stateDirectory: harness.config.stateDirectory,
-    migration: harness.persistence?.migration
-  },
-  stateDirectory: harness.config.stateDirectory
-});
 
 const printTerminalResult = (
   result: AgentRunOutput,
   harness: ZhivexHarness,
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
 ) => {
+  tracker.markdown?.flush();
   const document = runResultDocument(result, harness);
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
@@ -1206,6 +1201,8 @@ const printTerminalResult = (
   process.stderr.write(
     `\nrun ${result.state.runId} · ${result.state.provider}/${result.state.modelId} · ${result.status} · ${result.steps.length} steps · ${harness.workspace.mutationAudit().length} mutations\n`
   );
+  if (result.state.metadata?.[USAGE_LEDGER_KEY]) process.stderr.write(formatUsageLedger(result.state.metadata[USAGE_LEDGER_KEY]) + "\n");
+  process.stderr.write(formatVerificationSummary(result.toolResults) + "\n");
   if (result.status === "waiting_approval") {
     for (const approval of result.state.pendingApprovals) {
       process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
@@ -1218,7 +1215,8 @@ const printTerminalResult = (
 
 const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown },
+  compact = false
 ) => async (event: AgentStreamEvent) => {
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
@@ -1235,6 +1233,7 @@ const streamSink = (
     return;
   }
   if (!output.json) {
+    if (compact && ["provider-data", "finish", "agent-step-start", "agent-step-finish"].includes(event.type)) return;
     tracker.markdown?.flush();
     const line = formatTerminalEvent(event, {
       color: terminalSupportsColor(Boolean(process.stderr.isTTY))
@@ -1285,10 +1284,12 @@ export const withTemporaryHarnessProfiles = async <T>(
 const createConfiguredHarness = async (
   options: CliOptions,
   extraProfiles: readonly HarnessSubagentProfile[] = [],
-  persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>
+  persistedRoutes?: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
+  credentials?: { store: CliCredentials; input: ConsoleInput }
 ) => {
   const routes = persistedRoutes ?? resolvedRouting(options);
   const resolvedConfig = resolveHarnessConfig(options);
+  if (options.usageLimitUsd !== undefined && resolvedConfig.costBudget) throw new CliUsageError("Choose one monetary policy: --usage-limit-usd or the legacy cost budget.");
   assertRoutePricingIsSafe(routes, resolvedConfig.costBudget);
   const profiles = [...new Set([
     ...(options.subagentProfiles ?? []),
@@ -1296,10 +1297,22 @@ const createConfiguredHarness = async (
     ...routes.keys()
   ])];
   const quietTelemetry = options.json || options.jsonl;
+  const providerEnv = credentials ? await credentials.store.providerEnvironment(resolvedConfig.provider, credentials.input) : undefined;
+  const routeModels: ReturnType<typeof createHarnessRouteModels> = {};
+  for (const [role, route] of routes) {
+    routeModels[role] = credentials
+      ? await credentialModel(route, await credentials.store.providerEnvironment(route.provider, credentials.input))
+      : createProviderModel(route, process.env);
+  }
   const harness = await createHarness({
     ...options,
+    usageAccounting: {
+      ...(options.pricingFile ? { pricing: usagePricingSchema.parse(JSON.parse((await readRegularFileNoFollow(path.resolve(options.pricingFile), { maxBytes: 128 * 1024, label: "Usage pricing" })).contents.toString("utf8"))) } : {}),
+      ...(options.usageLimitUsd !== undefined ? { limitUsd: options.usageLimitUsd } : {})
+    },
     subagentProfiles: profiles,
-    subagentModels: createHarnessRouteModels(routes),
+    subagentModels: routeModels,
+    ...(providerEnv ? { modelInstance: await credentialModel(resolvedConfig, providerEnv) } : {}),
     onTelemetryEvent: orchestrationObserver(quietTelemetry)
   });
   return { harness, routes };
@@ -1310,7 +1323,7 @@ const runOnce = async (options: CliOptions) => {
     throw new CliUsageError("Missing task. Example: zhivex-harness run \"fix the tests\".");
   }
   const { harness, routes } = await createConfiguredHarness(options);
-  const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+  const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
   let closeAttempted = false;
   try {
     const result = await runHarness(
@@ -1337,6 +1350,7 @@ const runOnce = async (options: CliOptions) => {
       closeAttempted = true;
       await harness.close().catch(() => undefined);
     }
+    tracker.markdown?.flush();
     throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
   }
 };
@@ -1360,6 +1374,7 @@ const reviewOnce = async (options: CliOptions) => {
     const document = {
       schemaVersion: CLI_JSON_SCHEMA_VERSION,
       kind: "review-group" as const,
+      ...(result.usageLedger ? { usageLedger: result.usageLedger } : {}),
       groupId: result.groupId,
       status: result.status,
       profiles: result.profiles,
@@ -1452,6 +1467,7 @@ const resumeRun = async (options: CliOptions) => {
 
     const harness = await createHarness({
       ...persistedResumeOptions,
+      usageAccounting: {},
       ...options,
       provider: state.provider as HarnessProvider,
       model: state.modelId,
@@ -1465,7 +1481,7 @@ const resumeRun = async (options: CliOptions) => {
       onTelemetryEvent: orchestrationObserver(options.json || options.jsonl)
     });
     const approve = options.approve;
-    const tracker: { streamedText: boolean; sequence?: number } = { streamedText: false };
+    const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
     let harnessCloseAttempted = false;
     try {
       const result = await runHarness(
@@ -1505,6 +1521,7 @@ const resumeRun = async (options: CliOptions) => {
       } catch {
         // Preserve the operation or first cleanup failure as the terminal cause.
       }
+      tracker.markdown?.flush();
       throw options.jsonl ? annotateCliStreamError(error, tracker.sequence) : error;
     }
   } finally {
@@ -1520,6 +1537,8 @@ const chat = async (options: CliOptions) => {
   const sessionStore = await openSessionStoreForConfig(baseConfig);
   const readline = new ConsoleInput(process.stdin, process.stdout);
   const attachments = new ConsoleAttachments();
+  const credentials = { store: new CliCredentials(), input: readline };
+  let credentialsRevision = credentials.store.revision;
   let activeController: AbortController | undefined;
   const interrupt = () => {
     if (activeController && !activeController.signal.aborted) {
@@ -1535,6 +1554,7 @@ const chat = async (options: CliOptions) => {
     try { return await operation(controller.signal); }
     finally { activeController = undefined; }
   };
+  let verbose = false;
   let runtimeOptions: CliOptions = { ...options };
   let routes = resolvedRouting(options);
   const selectedSession = options.sessionId
@@ -1580,7 +1600,8 @@ const chat = async (options: CliOptions) => {
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
     }
-    harness = (await createConfiguredHarness(runtimeOptions, [], routes)).harness;
+    harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
+    credentialsRevision = credentials.store.revision;
   } catch (error) {
     process.off("SIGINT", interrupt);
     readline.close();
@@ -1618,9 +1639,10 @@ const chat = async (options: CliOptions) => {
     nextRoutes: ReadonlyMap<HarnessSubagentProfile, HarnessModelRoute>,
     extraProfiles: readonly HarnessSubagentProfile[] = []
   ) => {
-    const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes);
+    const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes, credentials);
     await harness.close();
     harness = created.harness;
+    credentialsRevision = credentials.store.revision;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
   };
@@ -1660,7 +1682,7 @@ const chat = async (options: CliOptions) => {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
-    const tracker = { streamedText: false };
+    const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
@@ -1676,11 +1698,12 @@ const chat = async (options: CliOptions) => {
           )
         },
         {
-          onEvent: streamSink({ json: false, jsonl: false }, tracker),
+          onEvent: streamSink({ json: false, jsonl: false }, tracker, !verbose),
           resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
         }
       ));
     } catch {
+      tracker.markdown?.flush();
       const durable = await latestState(await refreshSession());
       session = await sessionStore.updateRun(session.sessionId, state.runId, {
         status: durable ? sessionStatus(durable.status) : "failed"
@@ -1692,6 +1715,7 @@ const chat = async (options: CliOptions) => {
       );
       return;
     }
+    tracker.markdown?.flush();
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
@@ -1705,6 +1729,7 @@ const chat = async (options: CliOptions) => {
   };
 
   const statusLine = async () => {
+    await hasActiveTurn();
     const current = await refreshSession();
     const latest = current.runs.at(-1);
     const routeText = routes.size === 0
@@ -1715,57 +1740,119 @@ const chat = async (options: CliOptions) => {
       `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}`;
   };
 
-  process.stderr.write(`${formatTerminalHeader({
+  process.stderr.write(formatConsoleWelcome({
     version: HARNESS_VERSION,
+    workspace: harness.config.workspace,
     provider: harness.config.provider,
     model: harness.config.model,
     sessionId: session.sessionId,
-    ...(session.title ? { sessionTitle: session.title } : {})
-  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)) })}\n` +
-    "Type /help for console commands.\n");
+    ...(session.title ? { sessionTitle: session.title } : {}),
+  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
+
+  const showSessionState = async () => {
+    await hasActiveTurn();
+    const state = await latestState(await refreshSession());
+    if (!state) return;
+    process.stderr.write(`Run ${sanitizeTerminalText(state.runId)} · durable status: ${state.status}\n`);
+    for (const approval of state.pendingApprovals) {
+      process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+    }
+  };
 
   try {
+    await showSessionState();
     for (;;) {
       try {
-        let prompt = (await readline.question("\n> ", true)).trim();
-        if (!prompt) {
+        process.stdout.write(formatComposer({
+          model: `${harness.config.provider}/${harness.config.model}`,
+          ...(session.title ? { title: session.title } : {}),
+          status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready",
+          attachments: attachments.list().length,
+          automaticApprovals: options.yes === true,
+        }, process.stdout.columns));
+        const submitted = await readline.question("\n> ", true);
+        const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
+        let prompt = literalInput ? submitted : submitted.trim();
+        if (!prompt.trim()) {
           continue;
         }
-        if (prompt === "/exit" || prompt === "/quit") {
+        let command = literalInput ? "" : prompt;
+        if (["/menu", "/provider", "/providers", "/model", "/models"].includes(command)) {
+          const selection = await navigateConsole(readline, {
+            entry: command === "/menu" ? "menu" : command.startsWith("/provider") ? "provider" : "model",
+            current: {provider:harness.config.provider,model:harness.config.model},
+            providers: providerAvailability(),
+            sessions: async () => (await sessionStore.list({limit:200})).map(item => ({value:item.sessionId,label:item.title??"Untitled conversation",detail:item.sessionId})),
+          });
+          if (!selection) continue;
+          if ("command" in selection) { command = selection.command; prompt = command; }
+          else {
+            const active = await hasActiveTurn();
+            if (active) { process.stderr.write(`Cannot switch models while run ${active.runId} is ${active.status}.\n`); continue; }
+            const portableMessages = compactHarnessMessages(messages);
+            await replaceHarness({...runtimeOptions,provider:parseProvider(selection.provider),model:selection.model},routes);
+            messages = portableMessages;
+            process.stderr.write(`Next turn: ${selection.provider}/${selection.model}; context was compacted.\n`);
+            continue;
+          }
+        }
+        if (command === "/credentials") {
+          const active = await hasActiveTurn();
+          if (active) { process.stderr.write("Finish or deny pending work before changing credentials.\n"); continue; }
+          const provider = await readline.select("Credentials / Provider", PROVIDERS.map(id => ({value:id,label:providerDescriptor(id).name})));
+          if (provider) await credentials.store.configure(provider, readline);
+          continue;
+        }
+        if (command === "/exit" || command === "/quit") {
           break;
         }
-        if (prompt === "/context") {
-          process.stdout.write(`${formatConsoleContext(harness.context)}\n`);
+        if (command === "/verbose") {
+          verbose = !verbose;
+          process.stdout.write(`Activity detail: ${verbose ? "full" : "compact"}.\n`);
           continue;
         }
-        if (prompt === "/attachments") {
+        if (command === "/context") {
+          process.stdout.write(`${formatConsoleContext(harness.context, { attachments: attachments.list(), config: harness.config, messages })}\n`);
+          continue;
+        }
+        if (command === "/usage") {
+          const state = await latestState(await refreshSession());
+          process.stdout.write(sanitizeTerminalText(JSON.stringify(inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]) ?? { message: "No transport ledger recorded for this run." }, null, 2)) + "\n");
+          continue;
+        }
+        if (command === "/sessions" || command.startsWith("/sessions ")) {
+          const summaries = await sessionStore.list({ search: command.slice(9).trim(), limit: 200 });
+          for (const summary of summaries) {
+            const selected = await sessionStore.get(summary.sessionId);
+            if (!selected) continue;
+            const durable = await latestState(selected);
+            process.stdout.write(sanitizeTerminalText(`${summary.sessionId} · ${summary.title ?? "(untitled)"} · ${summary.runCount} runs · ${durable?.status ?? "empty"}`) + "\n");
+          }
+          if (!summaries.length) process.stdout.write("No sessions match in this workspace and scope.\n");
+          continue;
+        }
+        if (command === "/attachments") {
           process.stdout.write(`${sanitizeTerminalText(JSON.stringify(attachments.list(), null, 2))}\n`);
           continue;
         }
-        if (prompt === "/detach" || prompt.startsWith("/detach ")) {
+        if (command === "/detach" || command.startsWith("/detach ")) {
           const file = prompt.slice(7).trim();
           if (file) attachments.remove(file); else attachments.clear();
           process.stderr.write("Attachment selection updated.\n");
           continue;
         }
-        if (prompt === "/attach" || prompt.startsWith("/attach ")) {
+        if (command === "/attach" || command.startsWith("/attach ")) {
           const file = prompt.slice(7).trim();
           if (!file) { process.stderr.write("Usage: /attach <workspace-relative path>\n"); continue; }
           const attached = await attachments.add(harness.workspace, file);
           process.stderr.write(`Attached ${sanitizeTerminalText(attached.path)} (${attached.startLine}-${attached.endLine}/${attached.totalLines} lines${attached.truncated ? "; excerpt" : ""}). Sent with your next task.\n`);
           continue;
         }
-        if (prompt === "/help") {
-          process.stderr.write(
-            "/provider [id] · /model [id] · /route [role=provider[:model]] · /status\n" +
-            "/diff · /review <task> · /resume <last|sessionId> · /pending · /approve · /deny · /compact\n" +
-            "/new [title] · /rename <title> · /clear · /exit\n" +
-            "/paste · /context · /attach <path> · /attachments · /detach [path]\n" +
-            "Tab completes commands; Up/Down recalls prompts; Alt+Enter inserts a newline. Ctrl+C stops the active operation or discards input.\n"
-          );
+        if (command === "/help" || command === "/help all") {
+          process.stderr.write(formatConsoleHelp("direct", command === "/help all"));
           continue;
         }
-        if (prompt === "/clear") {
+        if (command === "/clear") {
           messages = [];
           retainedTasks = [];
           attachments.clear();
@@ -1773,23 +1860,23 @@ const chat = async (options: CliOptions) => {
           process.stderr.write("Context cleared.\n");
           continue;
         }
-        if (prompt === "/status") {
+        if (command === "/status") {
           process.stderr.write(`${await statusLine()}\n`);
           continue;
         }
-        if (prompt === "/diff") {
+        if (command === "/diff") {
           const diff = await harness.workspace.gitDiff();
           const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
           process.stdout.write(formatConsoleDiff(output, terminalSupportsColor(Boolean(process.stdout.isTTY))) || "No workspace changes.\n");
           continue;
         }
-        if (prompt === "/compact") {
+        if (command === "/compact") {
           const beforeBytes = Buffer.byteLength(JSON.stringify(messages));
           messages = compactHarnessMessages(messages);
           process.stderr.write(`Context: ${beforeBytes} -> ${Buffer.byteLength(JSON.stringify(messages))} bytes. Full task sources remain in durable memory.\n`);
           continue;
         }
-        if (prompt === "/pending") {
+        if (command === "/pending") {
           const state = await latestState(await refreshSession());
           if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
             process.stderr.write("The current session has no pending approval.\n");
@@ -1800,18 +1887,12 @@ const chat = async (options: CliOptions) => {
           }
           continue;
         }
-        if (prompt === "/approve" || prompt === "/deny") {
+        if (command === "/approve" || command === "/deny") {
           await continuePendingApproval(prompt === "/approve");
           continue;
         }
-        if (prompt === "/provider" || prompt.startsWith("/provider ")) {
-          const value = prompt.slice("/provider".length).trim();
-          if (!value) {
-            process.stderr.write(`${providerAvailability().map((provider) =>
-              `${provider.id}${provider.id === harness.config.provider ? "*" : ""}`
-            ).join(" ")}\n`);
-            continue;
-          }
+        if (command === "/provider" || command.startsWith("/provider ")) {
+          let value = prompt.slice("/provider".length).trim();
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot switch provider while run ${active.runId} is ${active.status}.\n`);
@@ -1825,12 +1906,8 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
           continue;
         }
-        if (prompt === "/model" || prompt.startsWith("/model ")) {
-          const value = prompt.slice("/model".length).trim();
-          if (!value) {
-            process.stderr.write(`${harness.config.provider}/${harness.config.model}\n`);
-            continue;
-          }
+        if (command === "/model" || command.startsWith("/model ")) {
+          let value = prompt.slice("/model".length).trim();
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot switch model while run ${active.runId} is ${active.status}.\n`);
@@ -1842,7 +1919,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
           continue;
         }
-        if (prompt === "/route" || prompt.startsWith("/route ")) {
+        if (command === "/route" || command.startsWith("/route ")) {
           const value = prompt.slice("/route".length).trim();
           if (!value) {
             process.stderr.write(`${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
@@ -1871,7 +1948,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Routes: ${JSON.stringify(serializeHarnessModelRoutes(routes))}\n`);
           continue;
         }
-        if (prompt === "/new" || prompt.startsWith("/new ")) {
+        if (command === "/new" || command.startsWith("/new ")) {
           const active = await hasActiveTurn();
           if (active) {
             process.stderr.write(`Cannot leave session while run ${active.runId} is ${active.status}.\n`);
@@ -1883,7 +1960,7 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Created session ${session.sessionId}.\n`);
           continue;
         }
-        if (prompt === "/rename" || prompt.startsWith("/rename ")) {
+        if (command === "/rename" || command.startsWith("/rename ")) {
           const title = prompt.slice("/rename".length).trim();
           if (!title) {
             process.stderr.write("Usage: /rename <title>\n");
@@ -1893,8 +1970,16 @@ const chat = async (options: CliOptions) => {
           process.stderr.write(`Renamed session to ${session.title}.\n`);
           continue;
         }
-        if (prompt === "/resume" || prompt.startsWith("/resume ")) {
-          const selector = prompt.slice("/resume".length).trim() || "last";
+        if (command === "/resume" || command.startsWith("/resume ")) {
+          let selector = prompt.slice("/resume".length).trim();
+          if (!selector) {
+            const choices = await sessionStore.list({ limit: 200 });
+            const choice = await readline.select("Zhivex / Conversations", choices.map(item => ({
+              value: item.sessionId, label: item.title ?? "Untitled conversation", detail: `${item.sessionId} · ${item.runCount} turns`,
+            })));
+            if (!choice) continue;
+            selector = choice;
+          }
           const selected = selector === "last"
             ? await sessionStore.latest({ includeArchived: true })
             : await sessionStore.get(selector);
@@ -1903,6 +1988,7 @@ const chat = async (options: CliOptions) => {
             continue;
           }
           await restoreSession(selected);
+          await showSessionState();
           const active = await hasActiveTurn();
           process.stderr.write(
             active
@@ -1911,7 +1997,7 @@ const chat = async (options: CliOptions) => {
           );
           continue;
         }
-        if (prompt === "/review" || prompt.startsWith("/review ")) {
+        if (command === "/review" || command.startsWith("/review ")) {
           const reviewPrompt = prompt.slice("/review".length).trim();
           if (!reviewPrompt) {
             process.stderr.write("Usage: /review <task>\n");
@@ -1936,7 +2022,6 @@ const chat = async (options: CliOptions) => {
           }
           continue;
         }
-
         const active = await hasActiveTurn();
         if (active) {
           process.stderr.write(
@@ -1945,18 +2030,19 @@ const chat = async (options: CliOptions) => {
           continue;
         }
 
-        if (prompt === "/paste") {
+        if (credentialsRevision !== credentials.store.revision) await replaceHarness(runtimeOptions, routes);
+        if (!literalInput && prompt === "/paste") {
           prompt = await readline.multiline();
           if (!prompt.trim()) continue;
           process.stdout.write(`\nDraft:\n${sanitizeTerminalText(prompt)}\n`);
           // Drain the current input event before accepting a separate send decision.
           await new Promise<void>((resolve) => setImmediate(resolve));
           if ((await readline.question("Send this draft? Type send: ")).trim() !== "send") continue;
-        } else if (prompt.startsWith("/")) {
+        } else if (!literalInput && prompt.startsWith("/")) {
           process.stderr.write("Unknown command. Use /help, or /paste to send literal text starting with /.\n");
           continue;
         }
-        readline.rememberPrompt(prompt);
+        readline.rememberPrompt(prompt, literalInput || command === "/paste");
         prompt = await attachments.prompt(harness.workspace, prompt);
         const runId = `run_${randomUUID()}`;
         session = await sessionStore.appendRun(session.sessionId, {
@@ -1967,7 +2053,7 @@ const chat = async (options: CliOptions) => {
         });
         const turn = session.runs.at(-1)!;
 
-        const tracker = { streamedText: false };
+        const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
         let markedRunning = false;
         let result: AgentRunOutput;
         try {
@@ -2012,12 +2098,13 @@ const chat = async (options: CliOptions) => {
                   session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
                   markedRunning = true;
                 }
-                await streamSink({ json: false, jsonl: false }, tracker)(event);
+                await streamSink({ json: false, jsonl: false }, tracker, !verbose)(event);
               },
               resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
             }
           ));
         } catch (error) {
+          tracker.markdown?.flush();
           const durable = await latestState(await refreshSession());
           session = await sessionStore.updateRun(session.sessionId, runId, {
             status: durable ? sessionStatus(durable.status) : "failed"
@@ -2025,6 +2112,7 @@ const chat = async (options: CliOptions) => {
           if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
           throw error;
         }
+        tracker.markdown?.flush();
         if (!tracker.streamedText && result.outputText) {
           process.stdout.write(sanitizeTerminalText(result.outputText));
         }
@@ -2032,6 +2120,8 @@ const chat = async (options: CliOptions) => {
         messages = result.messages;
         retainedTasks = taskSources(result.state.metadata);
         attachments.clear();
+        process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
+        process.stderr.write(formatVerificationSummary(result.toolResults) + "\n");
         session = await sessionStore.updateRun(session.sessionId, runId, {
           status: sessionStatus(result.status)
         });
@@ -2053,6 +2143,7 @@ const chat = async (options: CliOptions) => {
     readline.close();
     await harness.close();
     sessionStore.close();
+    credentials.store.clear();
   }
 };
 
@@ -2061,6 +2152,17 @@ export const providersDocument = (env: NodeJS.ProcessEnv = process.env) => ({
   kind: "providers" as const,
   providers: providerAvailability(env)
 });
+
+export const confirmDefaultProfileSelection = async (
+  profile: { provider: HarnessProvider; model: string },
+  ask: (prompt: string) => Promise<string>
+) => {
+  const selected = { provider: profile.provider, model: profile.model };
+  const provider = sanitizeTerminalText(selected.provider);
+  const model = sanitizeTerminalText(selected.model);
+  const answer = (await ask(`Use default profile ${provider}/${model}? [y/N]: `)).trim().toLowerCase();
+  return answer === "y" || answer === "yes" ? selected : undefined;
+};
 
 const initializeCli = async (options: CliOptions) => {
   const profileName = options.profile ?? "default";
@@ -2128,11 +2230,11 @@ const initializeCli = async (options: CliOptions) => {
     `Provider: ${created.profile.provider} · Model: ${created.profile.model}`,
     availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
-      : `Set one provider credential in your environment: ${availability?.credentialNames.join(" or ") || "see zhx providers"}.`,
+      : `Open zhx to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
     "Next:",
     `  ${doctorCommand}`,
     `  ${runCommand}`,
-    "Profiles contain provider and model only; they are never activated implicitly."
+    "Profiles contain provider and model only. A later bare interactive console asks before using the default profile."
   ].join("\n") + "\n");
 };
 
@@ -2562,7 +2664,7 @@ const inspectExecutionEnvironment = async (
       shellAvailable: true
     });
   } catch (error) {
-    return diagnostic("execution-environment", "fail", "OCI execution was requested, but the runtime or preloaded image is unavailable.", {
+    return diagnostic("execution-environment", "fail", "OCI execution was requested, but the runtime or preloaded image is unavailable. Start Docker/Podman, preload the configured immutable image, then rerun zhx doctor; do not disable isolation to bypass this check.", {
       backend: "oci",
       runtime: execution.runtime,
       imageReference: execution.image,
@@ -2814,7 +2916,7 @@ export const createDoctorReport = async (
         ? provider.support === "provisional"
           ? `${provider.name} credentials are present, but live support is provisional.`
           : `${provider.name} credentials are present.`
-        : `${provider.name} credentials are missing.`;
+        : `${provider.name} credentials are missing. Set ${provider.credentialNames.join(" or ")} in the environment and rerun zhx doctor.`;
     checks.push(diagnostic(`provider:${provider.id}`, status, message, {
       provider: provider.id,
       selected,
@@ -2907,6 +3009,7 @@ const printRunsDocument = (document: unknown, json: boolean) => {
       `${String(run.runId)} · ${String(run.status)} · ${String(run.provider)}/${String(run.model)} · ${String(run.steps)} steps · ${String(run.toolCalls)} tools\n`
     );
     const diagnostics = inspectRuntimeDiagnostics(record.runtimeDiagnostics);
+    if (record.usageLedger) process.stdout.write(formatUsageLedger(record.usageLedger) + "\n");
     if (diagnostics) process.stdout.write(
       `repair: ${diagnostics.phase} · revision ${diagnostics.revision} · ${diagnostics.budget.inputTokens} input / ${diagnostics.budget.outputTokens} output tokens · ${diagnostics.budget.modelCalls} model calls` +
       `${diagnostics.budget.usageComplete ? "" : " · usage incomplete"}${diagnostics.budget.stopReason ? ` · ${diagnostics.budget.stopReason}` : ""}\n`
@@ -3008,20 +3111,37 @@ const printSessionDocument = (document: unknown, json: boolean) => {
 const manageSessions = async (options: CliOptions) => {
   const config = resolveHarnessConfig(options);
   const store = await openSessionStoreForConfig(config);
+  const refreshDurableStatus = async (selected: CliSession) => {
+    if (!selected.runs.length) return selected;
+    const persistence = await openHarnessPersistence(config);
+    try {
+      let refreshed = selected;
+      for (const run of selected.runs) {
+        const state = await persistence.store.load(run.runId, config.scope);
+        if (!state) throw new HarnessStateConflictError(`Run ${run.runId} referenced by session ${selected.sessionId} was not found; restore its durable state before continuing.`);
+        const status = sessionStatus(state.status);
+        if (status !== run.status) refreshed = await store.updateRun(selected.sessionId, run.runId, { status });
+      }
+      return refreshed;
+    } finally { persistence.close(); }
+  };
   try {
     let session: CliSession | undefined;
     let document: unknown;
     switch (options.sessionsCommand) {
       case "list": {
-        const summaries = await store.list(options.limit ? { limit: options.limit } : undefined);
-        const sessions = (await Promise.all(summaries.map((summary) => store.get(summary.sessionId))))
+        const summaries = await store.list({ ...(options.limit ? { limit: options.limit } : {}), ...(options.sessionSearch ? { search: options.sessionSearch } : {}) });
+        const indexed = (await Promise.all(summaries.map((summary) => store.get(summary.sessionId))))
           .filter((value): value is CliSession => Boolean(value));
+        const sessions = [];
+        for (const selected of indexed) sessions.push(await refreshDurableStatus(selected));
         document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session-list" as const, sessions };
         break;
       }
       case "inspect":
         session = await store.get(options.sessionId!);
         if (!session) throw new HarnessStateConflictError(`Session ${options.sessionId} was not found.`);
+        session = await refreshDurableStatus(session);
         document = { schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "session" as const, session };
         break;
       case "rename":
@@ -3188,7 +3308,44 @@ const manageState = async (options: CliOptions) => {
 };
 
 export const main = async (argv = process.argv.slice(2)) => {
-  const parsedOptions = parseCliArgs(argv);
+  let parsedOptions = parseCliArgs(argv);
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  const openConsole = interactive && !parsedOptions.json && !parsedOptions.jsonl &&
+    (parsedOptions.command === "chat" ||
+      (parsedOptions.command === "run" && parsedOptions.implicitCommand && !parsedOptions.prompt));
+  if (openConsole) parsedOptions = { ...parsedOptions, command: "chat" };
+  if (parsedOptions.serviceFile) {
+    const { runServiceCli } = await import("./service-client-cli.js");
+    await runServiceCli(parsedOptions, annotateCliStreamError);
+    return;
+  }
+  if (openConsole && !parsedOptions.profile && !parsedOptions.provider && !parsedOptions.model &&
+      !parsedOptions.sessionId && !parsedOptions.continueSession &&
+      !process.env.ZHIVEX_HARNESS_PROVIDER && !process.env.ZHIVEX_HARNESS_MODEL) {
+    let exists = true;
+    try { await lstat(resolveCliProfilePath("default")); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") exists = false; else throw error; }
+    if (exists) {
+      const profile = await loadCliProfile("default");
+      const prompt = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        const selected = await confirmDefaultProfileSelection(profile, (question) => prompt.question(question));
+        if (!selected) {
+          process.stderr.write("Default profile was not selected. Reopen with --profile default or an explicit --provider and --model.\n");
+          return;
+        }
+        // Use the values shown to the operator, without reopening a mutable profile.
+        parsedOptions = { ...parsedOptions, ...selected };
+      } finally {
+        prompt.close();
+      }
+    }
+    else if (!providerAvailability().some(provider => provider.configured)) {
+      process.stdout.write(formatConsoleWelcome({ version: HARNESS_VERSION, workspace: parsedOptions.workspace ?? process.cwd() }) + "\nFirst-time setup — choose your provider and model.\n");
+      await initializeCli({ ...parsedOptions, command: "init", profile: "default" });
+      parsedOptions = { ...parsedOptions, profile: "default" };
+    }
+  }
   const options = parsedOptions.command === "init"
     ? parsedOptions
     : await applyCliProfile(parsedOptions);
@@ -3197,7 +3354,7 @@ export const main = async (argv = process.argv.slice(2)) => {
       await initializeCli(options);
       return;
     case "help":
-      process.stdout.write(`${CLI_HELP_TEXT}\n`);
+      process.stdout.write(`${formatCliHelp(options.helpTopic, HARNESS_VERSION, CLI_FULL_HELP_TEXT)}\n`);
       return;
     case "version":
       process.stdout.write(`${HARNESS_VERSION}\n`);
@@ -3227,10 +3384,6 @@ export const main = async (argv = process.argv.slice(2)) => {
       await manageState(options);
       return;
     case "run":
-      if (options.implicitCommand && !options.prompt && process.stdin.isTTY && process.stdout.isTTY) {
-        await chat(options);
-        return;
-      }
       await runOnce(options);
       return;
     case "review":
@@ -3260,6 +3413,7 @@ if (isMainModule) {
       process.stderr.write(`${JSON.stringify(document)}\n`);
     } else {
       process.stderr.write(`Error: ${terminalErrorMessage(error)}\n`);
+      process.stderr.write("Recovery: run zhx doctor with the same profile/workspace; check credentials, provider availability and OCI image/runtime. Inspect persisted runs before retrying a mutation.\n");
     }
     process.exitCode = cliExitCodeForError(error);
   });

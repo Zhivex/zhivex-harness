@@ -84,6 +84,7 @@ export const formatApproval = (
     ? { text: completePayload, omitted: 0 }
     : boundedText(completePayload, maximumCharacters);
   const identity = [
+    approval.id ? `approval ${sanitizeTerminalText(approval.id)}` : undefined,
     approval.inputDigest ? `input ${sanitizeTerminalText(approval.inputDigest)}` : undefined,
     approval.serverLabel ? `server ${sanitizeTerminalText(approval.serverLabel)}` : undefined,
     approval.childAgentId ? `child ${sanitizeTerminalText(approval.childAgentId)}` : undefined
@@ -94,7 +95,19 @@ export const formatApproval = (
   const omissionNotice = payload.omitted > 0
     ? `\n[${payload.omitted} characters omitted; press v to view the complete payload]`
     : "";
-  return `${header}\n${payload.text}${omissionNotice}`;
+  const scope: string[] = [];
+  if (EXACT_REVIEW_TOOLS.has(approval.name)) {
+    try {
+      const args = JSON.parse(approval.arguments);
+      if (Array.isArray(args.changes)) for (const change of args.changes) {
+        if (typeof change?.path === "string") scope.push(`${change.expectedDigest === null ? "ADD" : "MODIFY"} ${change.path}`);
+      }
+      if (approval.name === "quarantine_file" && typeof args.path === "string") scope.push(`REMOVE (recoverable quarantine) ${args.path}`);
+      if (approval.name === "move_file") scope.push(`MOVE ${args.source} -> ${args.destination}`);
+      if (approval.name.includes("verify_and_apply")) scope.push("Verification: pending; approval authorizes the checks and conditional application, not a successful result.");
+    } catch { /* The complete unparseable payload remains visible below. */ }
+  }
+  return `${header}\n${scope.map(sanitizeTerminalText).map(line => `${line}\n`).join("")}${payload.text}${omissionNotice}`;
 };
 
 export interface TerminalApprovalResolverOptions {
@@ -191,6 +204,26 @@ export const terminalSupportsColor = (
   env.TERM !== "dumb" &&
   env.FORCE_COLOR !== "0";
 
+const verificationReceipt = (name: string, output: unknown) => {
+  if (!output || typeof output !== "object") return undefined;
+  const value = output as Record<string, unknown>;
+  const receipt = name === "run_check" || name === "run_environment_command" ? value
+    : name.startsWith("verify_and_apply_") && value.verification && typeof value.verification === "object"
+      ? value.verification as Record<string, unknown> : undefined;
+  if (!receipt || !Number.isSafeInteger(receipt.exitCode)) return undefined;
+  return { exitCode: receipt.exitCode as number, timedOut: receipt.timedOut === true };
+};
+
+export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
+  const receipts = results.flatMap(result => {
+    const receipt = verificationReceipt(result.toolName, result.output);
+    return receipt ? [{ ...receipt, failed: Boolean(result.isError) || receipt.timedOut || receipt.exitCode !== 0 }] : [];
+  });
+  if (!receipts.length) return "Verification: no check receipts recorded; completion does not certify checks.";
+  const failed = receipts.filter(receipt => receipt.failed).length;
+  return `Verification receipts: ${receipts.length - failed} passed, ${failed} failed/timed out. Only recorded commands are covered.`;
+};
+
 const paint = (text: string, code: number, color: boolean) =>
   color ? `\u001b[${code}m${text}\u001b[0m` : text;
 
@@ -208,10 +241,16 @@ export const formatTerminalEvent = (
       return undefined;
     case "tool-call":
       return `${paint("↳", 36, color)} tool · ${sanitizeTerminalText(event.toolCall.name)}`;
-    case "tool-result":
+    case "tool-result": {
+      const receipt = verificationReceipt(event.toolResult.toolName, event.toolResult.output);
+      if (receipt) {
+        const failed = event.toolResult.isError || receipt.timedOut || receipt.exitCode !== 0;
+        return `${paint(failed ? "✗" : "✓", failed ? 31 : 32, color)} check · ${sanitizeTerminalText(event.toolResult.toolName)} · exit ${receipt.exitCode}${receipt.timedOut ? " · timed out" : ""}`;
+      }
       return event.toolResult.isError
         ? `${paint("✗", 31, color)} tool · ${sanitizeTerminalText(event.toolResult.toolName)} · error`
         : `${paint("✓", 32, color)} tool · ${sanitizeTerminalText(event.toolResult.toolName)}`;
+    }
     case "tool-approval-request":
     case "agent-approval-request":
       return `${paint("!", 33, color)} approval · ` +

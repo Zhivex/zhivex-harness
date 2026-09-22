@@ -13,7 +13,7 @@ The 1.0 support scope is tracked in the [machine-readable support matrix](./docs
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published `1.0.x` patch receives routine fixes. The exact `v1.0.0` tag passed protected release-bound base, orchestration, routing and model-directed execution for Meta, Qwen and OpenAI on 2026-09-20; the complete representative matrix passed on its authorized second attempt. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md).
+Only the most recent published `1.0.x` patch receives routine fixes. The exact `v1.0.0` tag passed protected release-bound base, orchestration, routing and model-directed execution for Meta, Qwen and OpenAI on 2026-09-20; the complete representative matrix passed on its authorized second attempt. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Installation diagnostics
 

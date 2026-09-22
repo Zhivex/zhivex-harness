@@ -42,6 +42,9 @@ const markdownFiles = [
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
   ...await collectMarkdown(path.join(workspace, "docs")),
+  ...(await readdir(path.join(workspace, "desktop"), { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith(".md"))
+    .map(entry => path.join(workspace, "desktop", entry.name)),
   ...await collectMarkdown(path.join(workspace, "examples"))
 ].sort();
 
@@ -72,15 +75,16 @@ const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
 const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
 // Stable onboarding is distinct from archived release and migration evidence.
 if (/^1\.\d+\.\d+$/.test(manifest.version)) {
-  for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/CLI.md", "docs/SUPPORT_MATRIX.md",
+  for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/CLI.md", "docs/SUPPORT_MATRIX.md", "docs/FIRST_USE.md", "docs/FIRST_USE_EXAMPLE.md",
     ...markdownFiles.filter((file) => file.startsWith(path.join(workspace, "examples") + path.sep))
       .map((file) => path.relative(workspace, file))]) {
     failures.push(...checkOnboardingDocument(file, await readFile(path.join(workspace, file), "utf8"), manifest.version));
   }
   failures.push(...checkStableRoadmap(roadmap, manifest.version));
+  const firstUse = await readFile(path.join(workspace, "docs/FIRST_USE.md"), "utf8");
   for (const command of ["--version", "--help", "doctor"]) {
-    if (!readme.includes(`bunx @zhivex-ai/harness@${manifest.version} ${command}`)) {
-      failures.push(`README.md: missing stable Bun onboarding command ${command}`);
+    if (!firstUse.includes(`bunx @zhivex-ai/harness@${manifest.version} ${command}`)) {
+      failures.push(`docs/FIRST_USE.md: missing stable Bun onboarding command ${command}`);
     }
   }
 }

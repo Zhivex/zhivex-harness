@@ -1,0 +1,4 @@
+import type {IpcRenderer} from "electron";
+import type {CredentialStatus,CredentialProbe} from "./credential-store.js";
+declare module "./bridge.js" {interface DesktopBridge {credentialStatus(provider?:string):Promise<CredentialStatus>;configureCredential(provider?:string):Promise<CredentialStatus>;deleteCredential(provider?:string):Promise<CredentialStatus>;probeCredential(provider?:string):Promise<CredentialProbe>}}
+export function credentialBridge(ipc:IpcRenderer){return {credentialStatus:(provider="openai")=>ipc.invoke("harness:credential-status",provider),configureCredential:(provider="openai")=>ipc.invoke("harness:credential-configure",provider),deleteCredential:(provider="openai")=>ipc.invoke("harness:credential-delete",provider),probeCredential:(provider="openai")=>ipc.invoke("harness:credential-probe",provider)};}

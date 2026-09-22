@@ -1128,7 +1128,35 @@ export class Workspace {
     return temporary;
   }
 
-  async applyReplacement(input: ReplacementEdit): Promise<ApplyPatchResult> {
+  /** Read-only, complete UTF-8 preimages bound to the proposed content digests. */
+  async previewPatch(input: ApplyEditProposalInput) {
+    const proposal = validateEditProposal(input);
+    const files: Array<{path: string; expectedDigest: FileDigest | null; before: string | null; after: string; afterDigest: FileDigest}> = [];
+    let bytes = 0;
+    for (const change of proposal.changes) {
+      const safe = await this.safePath(change.path, { allowMissing: true });
+      let before: string | null = null;
+      if (change.expectedDigest === null) {
+        if (safe.exists) throw new HarnessWorkspaceError(`The patch target already exists: ${change.path}.`);
+      } else {
+        const file = await this.readStableFile(change.path, false);
+        if (file.digest !== change.expectedDigest) throw new HarnessWorkspaceError(`Stale patch rejected for ${change.path}.`);
+        try { before = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(file.contents); }
+        catch { throw new HarnessWorkspaceError("Preview requires valid UTF-8 text."); }
+      }
+      bytes += Buffer.byteLength(before ?? "") + Buffer.byteLength(change.content);
+      if (bytes > 4 * 1024 * 1024) throw new HarnessWorkspaceError("Preview exceeds the complete-content byte limit.");
+      files.push({path: change.path, expectedDigest: change.expectedDigest, before, after: change.content, afterDigest: digestBytes(Buffer.from(change.content))});
+    }
+    return {proposalId: proposal.proposalId, files};
+  }
+
+  async previewReplacement(input: ReplacementEdit) {
+    const changes = await this.replacementChanges(input);
+    return this.previewPatch({proposalId: createEditProposal({changes}).proposalId, changes});
+  }
+
+  private async replacementChanges(input: ReplacementEdit) {
     const edit = replacementEditSchema.parse(input);
     const file = await this.readStableFile(edit.path, false);
     if (file.digest !== edit.expectedDigest) throw new HarnessWorkspaceError(`Stale patch rejected for ${edit.path}.`);
@@ -1139,9 +1167,12 @@ export class Workspace {
     if (position < 0 || text.indexOf(edit.oldText, position + 1) >= 0) {
       throw new HarnessWorkspaceError("Replacement requires exactly one literal match; include more surrounding context.");
     }
-    const content = text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length);
+    return [{path: edit.path, expectedDigest: edit.expectedDigest, content: text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length)}];
+  }
+
+  async applyReplacement(input: ReplacementEdit): Promise<ApplyPatchResult> {
+    const changes = await this.replacementChanges(input);
     // applyPatch rechecks the digest at its existing atomic publication boundary.
-    const changes = [{ path: edit.path, expectedDigest: edit.expectedDigest, content }];
     return this.applyPatch({ proposalId: createEditProposal({ changes }).proposalId, changes });
   }
 

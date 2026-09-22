@@ -67,11 +67,27 @@ const inspectArtifact = async () => {
       entry.startsWith("package/docs/reports/") || entry.startsWith("package/benchmarks/baselines/")
     ), "release artifact includes repository-only development reports or benchmark baselines");
 
+    const repositoryOnly = [
+      "package/ROADMAP.md",
+      "package/docs/CLI_UX.md",
+      "package/docs/DESKTOP_ARCHITECTURE.md",
+      "package/docs/GA_READINESS.md",
+      "package/docs/GEMINI_1_0_DECISION.md",
+      "package/docs/LIVE_CERTIFICATION.md",
+      "package/docs/MAINTENANCE.md",
+      "package/docs/RC14_DELEGATED_SECURITY_DECISION.md",
+      "package/docs/RELEASE.md",
+      "package/docs/ROLLBACK.md",
+      "package/docs/SECURITY_REVIEW_EVIDENCE.md",
+      "package/docs/ga-readiness.json",
+    ];
+    assert(!entries.some(entry => repositoryOnly.includes(entry) || entry.startsWith("package/desktop/")),
+      "release artifact includes maintainer-only documentation or Desktop");
+
     const exactAllowed = new Set([
       "package/package.json",
       "package/LICENSE",
       "package/README.md",
-      "package/ROADMAP.md",
       "package/CHANGELOG.md",
       "package/SECURITY.md",
       "package/SUPPORT.md"
@@ -103,9 +119,6 @@ const inspectArtifact = async () => {
       "package/CHANGELOG.md",
       "package/SECURITY.md",
       "package/SUPPORT.md",
-      "package/docs/RELEASE.md",
-      "package/docs/GEMINI_1_0_DECISION.md",
-      "package/docs/SECURITY_REVIEW_EVIDENCE.md",
       "package/contracts/public-api.json",
       "package/contracts/stable-api-signatures.json",
       "package/contracts/security-controls.json",
@@ -123,6 +136,8 @@ const inspectArtifact = async () => {
       "package/fixtures/migrations/0.11.1.sqlite",
       "package/fixtures/migrations/README.md",
       "package/docs/EXTENSIBILITY.md",
+      "package/docs/FIRST_USE.md",
+      "package/docs/USAGE.md",
       "package/docs/CONTEXT_ENGINEERING.md",
       "package/docs/CHANGE_ENVELOPES.md",
       "package/evaluations/golden-expectations.json",

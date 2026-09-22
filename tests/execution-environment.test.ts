@@ -1049,3 +1049,46 @@ test("snapshot inventory rejects an ancestor replaced by an external symlink aft
   const environment = await createHarnessOciExecutionEnvironment({ config: config.execution, workspace, stateDirectory: config.stateDirectory, runtime: new FakeOciRuntime() });
   await expect(environment.acquire({ runId: "ancestor-swap" })).rejects.toThrow("symbolic link");
 });
+
+test("read-only OCI preview binds content, modes and scope without acquiring or altering artifacts",async()=>{
+ const {root,workspace}=await workspaceFixture();const config=resolveHarnessConfig({workspace:root,executionBackend:"oci"});if(config.execution.backend!=="oci")throw new Error();
+ const runtime=new FakeOciRuntime();const environment=await createHarnessOciExecutionEnvironment({config:config.execution,workspace,stateDirectory:config.stateDirectory,runtime});
+ const scope={tenantId:"tenant",namespace:"review"},session=await environment.acquire({runId:"preview-run",scope});
+ await writeFile(path.join(session.workspace.root,"src/update.ts"),"\ufeffchanged\r\n");await chmod(path.join(session.workspace.root,"src/update.ts"),0o755);
+ await unlink(path.join(session.workspace.root,"src/delete.ts"));
+ const patch=await session.inspectPatch();await session.release?.({status:"waiting_approval"});
+ const requests=runtime.requests.length;
+ const metadataPath=path.join(session.workspace.root,"..","environment.json"),metadata=await readFile(metadataPath,"utf8");
+ const preview=await environment.previewPatch({runId:"preview-run",scope},patch.patchId);
+ expect(preview.patchId).toBe(patch.patchId);expect(preview.entries.find(e=>e.path==="src/update.ts")).toMatchObject({afterContent:"\ufeffchanged\r\n",afterMode:0o755});
+ const {attachApprovalPreviews}=await import("../src/approval-preview.js");
+ const reviewed=await attachApprovalPreviews({runId:"preview-run",revision:1,status:"waiting_approval",output:"",approvals:[{approvalId:"a",digest:"a".repeat(64),provider:"fixture",kind:"tool",expiresAt:100,action:{name:"verify_and_apply_environment_patch",arguments:JSON.stringify({patchId:patch.patchId,command:"node",args:["verify.mjs"]})}}]},workspace,{environment,scope});
+ expect(reviewed.approvals[0]!.filePreview).toMatchObject({status:"complete",proposalId:patch.patchId,files:expect.arrayContaining([expect.objectContaining({path:"src/delete.ts",operation:"delete",after:null})])});
+ expect(preview.entries.find(e=>e.path==="src/delete.ts")?.operation).toBe("delete");
+ expect(runtime.requests.length).toBe(requests);expect(await readFile(metadataPath,"utf8")).toBe(metadata);
+ await expect(environment.previewPatch({runId:"preview-run",scope:{tenantId:"tenant",namespace:"other"}},patch.patchId)).rejects.toThrow();
+ await chmod(path.join(session.workspace.root,"src/update.ts"),0o644);await expect(environment.previewPatch({runId:"preview-run",scope},patch.patchId)).rejects.toThrow("changed after review");
+ await chmod(path.join(session.workspace.root,"src/update.ts"),0o755);await writeFile(path.join(root,"src/update.ts"),"host drift");await expect(environment.previewPatch({runId:"preview-run",scope},patch.patchId)).rejects.toThrow("changed after the environment snapshot");
+ await writeFile(path.join(session.workspace.root,"src/update.ts"),Buffer.from([0xff,0xfe]));await expect(session.inspectPatch()).rejects.toThrow("valid UTF-8");
+});
+
+test("shared client reviews and verifies an exact OCI edit proposal with patch-bound journal evidence",async()=>{
+ const {createHarnessClientAdapter}=await import("../src/client-contract.js");
+ const {root,workspace}=await workspaceFixture(),runtime=new FakeOciRuntime();
+ const inspected=await workspace.inspectFile("src/update.ts");
+ const input={changes:[{path:"src/update.ts",expectedDigest:inspected.digest,content:"verified destination\n"}],command:"node",args:["verify.mjs"]};
+ const model=createMockLanguageModel({streamEvents:[[{type:"tool-call",toolCall:{id:"verified-client-edit",name:"verify_and_apply_reviewed_edits",input}},{type:"finish",finishReason:"tool-calls"}],[{type:"text-delta",textDelta:"verified"},{type:"finish",finishReason:"stop"}]]});
+ const harness=await createHarness({workspace:root,provider:"openai",modelInstance:model,subagentProfiles:[],executionBackend:"oci",ociAllowedCommands:["node","bun"],ociRuntimeAdapter:runtime});
+ const adapter=await createHarnessClientAdapter(harness),hello=adapter.negotiate([1]);if(!hello.ok)throw new Error();let id=0;
+ const call=(command:Record<string,unknown>)=>adapter.dispatch({protocolVersion:1,requestId:`oci-review-${++id}`,connectionId:hello.connectionId,command:{...command,projectId:hello.projectId}});
+ try{
+  const created=await call({method:"session.create",idempotencyKey:"create"});if(!created.ok||created.data.kind!=="session")throw new Error();const session=created.data.session;
+  const pending=await call({method:"run.start",sessionId:session.sessionId,expectedRevision:session.revision,idempotencyKey:"start",prompt:"Verify the reviewed edit"});if(!pending.ok||pending.data.kind!=="run")throw new Error(JSON.stringify(pending));
+  const run=pending.data.run;expect(run.status).toBe("waiting_approval");
+  const reviewed=await call({method:"run.get",sessionId:session.sessionId,runId:run.runId,includeReview:true});if(!reviewed.ok||reviewed.data.kind!=="run")throw new Error();
+  expect(reviewed.data.run.approvals[0]?.filePreview).toMatchObject({status:"complete",files:[{path:"src/update.ts",expectedDigest:inspected.digest,after:"verified destination\n"}]});expect(runtime.requests).toHaveLength(0);
+  const done=await call({method:"approval.resolve",sessionId:session.sessionId,runId:run.runId,expectedRevision:run.revision,idempotencyKey:"approve",decisions:run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))});if(!done.ok||done.data.kind!=="run")throw new Error(JSON.stringify(done));
+  expect(done.data.run.decisions?.[0]).toMatchObject({status:"applied",evidence:{verifiedPatchId:expect.stringMatching(/^sha256:/),command:["node","verify.mjs"],exitCode:0,effects:[{path:"src/update.ts"}]}});
+  expect(await readFile(path.join(root,"src/update.ts"),"utf8")).toBe("verified destination\n");expect(runtime.requests).toHaveLength(1);
+ }finally{adapter.close();await harness.close();}
+});

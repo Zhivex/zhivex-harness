@@ -1,4 +1,5 @@
 import { childRuntimeSafety, runtimeManifest } from "./runtime-policy.js";
+import type { UsageLedger } from "./usage-ledger.js";
 import { createHash, randomUUID } from "node:crypto";
 
 import {
@@ -164,6 +165,7 @@ export const createHarnessSubagents = (options: {
 };
 
 export interface HarnessReviewGroupResult {
+  usageLedger?: ReturnType<UsageLedger["summary"]>;
   schemaVersion: 1;
   kind: "review-group";
   groupId: string;
@@ -176,6 +178,7 @@ export const runHarnessReviewGroup = async (
   runtime: {
     config: HarnessConfig;
     subagents: ReadonlyMap<HarnessSubagentProfile, AgentDefinition<LanguageModel>>;
+    usageLedger?: UsageLedger;
   },
   input: {
     prompt: string;
@@ -207,7 +210,7 @@ export const runHarnessReviewGroup = async (
     return { name: profile, agent };
   });
   const groupId = input.groupId ?? `review_${randomUUID()}`;
-  const result = await runAgentGroup(members, {
+  const operation = () => runAgentGroup(members, {
     prompt: input.prompt,
     ...(input.scope ? { scope: input.scope } : {}),
     ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
@@ -219,9 +222,11 @@ export const runHarnessReviewGroup = async (
     },
     stopOnError: false
   });
+  const result = await (runtime.usageLedger ? runtime.usageLedger.run(groupId, operation) : operation());
   return {
     schemaVersion: 1,
     kind: "review-group",
+    ...(runtime.usageLedger ? { usageLedger: runtime.usageLedger.summary(groupId) } : {}),
     groupId,
     status: result.status === "completed" ? "completed" : "failed",
     profiles: uniqueProfiles,
