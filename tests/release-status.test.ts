@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseReleaseStatus } from "../scripts/release-status.js";
+import { checkSourceReleaseStatus, parseReleaseStatus } from "../scripts/release-status.js";
 
 const status = {
   schemaVersion: 1,
@@ -150,4 +150,18 @@ describe("release status", () => {
       }
     })).toThrow();
   });
+});
+
+
+test("prepared stable source preserves previous verified publication without claiming a new one", () => {
+  const published = (version: string) => parseReleaseStatus({ ...status, version, tag: `v${version}` });
+  expect(checkSourceReleaseStatus("1.1.0", published("1.0.0"))).toEqual([]);
+  expect(checkSourceReleaseStatus("1.1.0", published("1.1.0"))).toEqual([]);
+  expect(checkSourceReleaseStatus("1.10.0", published("1.9.0"))).toEqual([]);
+  expect(checkSourceReleaseStatus("1.1.0", published("1.2.0"))).toHaveLength(1);
+  expect(checkSourceReleaseStatus("1.1.0", published("1.1.1"))).toHaveLength(1);
+  expect(checkSourceReleaseStatus("1.1.0-rc.10", published("1.0.0"))).toEqual([]);
+  const rc = parseReleaseStatus({ ...status, version: "1.1.0-rc.10", tag: "v1.1.0-rc.10", channel: "next" });
+  expect(checkSourceReleaseStatus("1.1.0", rc)).toHaveLength(1);
+  expect(checkSourceReleaseStatus("1.1.0-rc.10", rc)).toHaveLength(1);
 });

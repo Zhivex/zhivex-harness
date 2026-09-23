@@ -17,8 +17,10 @@ export function checkOnboardingDocument(file: string, contents: string, version:
   return failures;
 }
 
-export function checkStableRoadmap(contents: string, version: string): string[] {
+export function checkStableRoadmap(contents: string, version: string, status: "published" | "pending" = "published"): string[] {
   const row = contents.split(/\r?\n/).find((line) => line.startsWith(`| \`${version}\` |`));
-  return row?.includes('Published on npm as `latest`')
-    ? [] : [`ROADMAP.md: ${version} must be listed as published on npm as latest`];
+  const expected = status === "published" ? 'Published on npm as `latest`' : "Pending stable publication";
+  const conflicting = status === "published" ? "Pending stable publication" : 'Published on npm as `latest`';
+  return row?.includes(expected) && !row.includes(conflicting)
+    ? [] : [`ROADMAP.md: ${version} must be listed as ${expected}`];
 }
