@@ -542,6 +542,21 @@ const withQwenDurableToolCallIds = (model: LanguageModel): LanguageModel => wrap
   wrapStream: async ({ input }, next) => normalizeStreamToolCallIds(model, input, await next())
 }]);
 
+// OpenAI 0.13.4 infers native Responses tools from names in raw mode.
+// Harness apply_patch is a function, so raw serialization drops its receipt.
+// Envelope mode preserves function results; explicit native metadata still wins.
+const withOpenAIToolResultEnvelopes = (model: LanguageModel): LanguageModel => wrapLanguageModel(model, [{
+  name: "harness-openai-tool-result-envelopes-v1",
+  async wrapGenerate({ input }, next) {
+    input.toolResultFormat = "envelope";
+    return next();
+  },
+  async wrapStream({ input }, next) {
+    input.toolResultFormat = "envelope";
+    return next();
+  }
+}]);
+
 export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = Object.freeze([
   {
     descriptor: {
@@ -603,10 +618,10 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     diagnostics: { endpointEnvironmentVariable: "OPENAI_BASE_URL" },
     factory: ({ model, env, credentials }) => {
       const baseURL = env.OPENAI_BASE_URL?.trim();
-      return createOpenAI({
+      return withOpenAIToolResultEnvelopes(createOpenAI({
         apiKey: credentials.require(),
         ...(baseURL ? { baseURL } : {})
-      })(model);
+      })(model));
     }
   },
   {
@@ -634,5 +649,6 @@ export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = DEFAULT_PROVI
 
 export const providerModelInternals = {
   generatedToolCallId,
+  withOpenAIToolResultEnvelopes,
   withQwenDurableToolCallIds
 };
