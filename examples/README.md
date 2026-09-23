@@ -1,4 +1,4 @@
-# Examples for Zhivex Harness 1.0
+# Examples for Zhivex Harness 1.1
 
 ## Isolated Bun installation
 
@@ -14,7 +14,7 @@ bun add --exact --ignore-scripts @zhivex-ai/harness@1.1.0
 ./node_modules/.bin/zhx doctor --provider openai --json
 ```
 
-Version must print `1.0.0`; help lists commands. Doctor does not contact a provider. Without `OPENAI_API_KEY`, it reports the missing credential and exits with code `3`; inspect the JSON checks before proceeding. A directory without Git initialization can also produce a diagnostic warning. No paid model call is required for these checks. Both `zhx` and `zhivex-harness` are installed aliases; Bun manages installation, and their shebang runs Node.
+Version must print `1.1.0`; help lists commands. Doctor does not contact a provider. Without `OPENAI_API_KEY`, it reports the missing credential and exits with code `3`; inspect the JSON checks before proceeding. A directory without Git initialization can also produce a diagnostic warning. No paid model call is required for these checks. Both `zhx` and `zhivex-harness` are installed aliases; Bun manages installation, and their shebang runs Node.
 
 To continue in your actual project, use the [global installation and credential setup](../README.md#installation), then `zhx init --profile daily --provider openai` and `zhx doctor --profile daily`. Real tasks require the selected provider credential in the process environment. Profiles store provider/model choices, never credentials. See [CLI](../docs/CLI.md) and [support](../SUPPORT.md).
 
