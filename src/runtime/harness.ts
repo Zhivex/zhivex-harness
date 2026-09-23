@@ -491,7 +491,9 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     ...(contracts.length ? { outputGuardrails: [({ state, output }: import("@zhivex-ai/agents").AgentOutputGuardrailRequest) =>
       output.status === "completed" && contracts.some(contract => !(state.childRuns ?? []).some(child =>
         child.toolName === `delegate_${contract.profile}` && child.status === "completed" && child.outputText.includes(contract.requiredOutput)))
-        ? { triggered: true as const, reason: "DELEGATION_ACCEPTANCE_FAILED", metadata: { delegation: "acceptance" } } : undefined] } : {}),
+        ? { triggered: true as const, reason: "DELEGATION_ACCEPTANCE_FAILED", metadata: { delegation: "acceptance", acceptanceReason: contracts.some(contract => !(state.childRuns ?? []).some(child => child.toolName === `delegate_${contract.profile}`))
+          ? "parent_missing_child" : contracts.some(contract => !(state.childRuns ?? []).some(child => child.toolName === `delegate_${contract.profile}` && child.status === "completed"))
+            ? "parent_child_failed" : "parent_child_marker" } } : undefined] } : {}),
     harness: binding,
     ...(executionEnvironment ? { executionEnvironment } : {}),
     compaction: createAdaptiveCompaction(config.compaction, { tools }),

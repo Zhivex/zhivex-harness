@@ -136,3 +136,32 @@ test("delegation diagnostics preserve only the finite reason enum", () => {
   expect(JSON.stringify(details)).not.toContain("private");
   expect(sanitizedErrorDetails({ delegation: "private" }).chain).toEqual([]);
 });
+
+
+test("acceptance diagnostics allow finite causes and discard arbitrary labels", () => {
+  for (const acceptanceReason of ["parent_missing_child", "parent_child_failed", "parent_child_marker", "child_missing_read", "child_missing_marker", "child_missing_read_and_marker"] as const) {
+    expect(sanitizedErrorDetails({name:"GuardrailTriggeredError", metadata:{delegation:"acceptance", acceptanceReason, output:"private"}}).chain)
+      .toEqual([{kind:"GuardrailTriggeredError", delegation:"acceptance", acceptanceReason}]);
+  }
+  expect(sanitizedErrorDetails({name:"GuardrailTriggeredError", metadata:{acceptanceReason:"private"}}).chain)
+    .toEqual([{kind:"GuardrailTriggeredError"}]);
+});
+
+test("omitted delegation reports parent_missing_child without leaking output", async () => {
+  const root = await mkdtemp(join(tmpdir(), "contract-omission-"));
+  const harness = await createHarness({ provider: "qwen", workspace: root, env: {},
+    store: createInMemoryAgentRunStore(), subagentProfiles: ["reviewer"], delegationContracts: [contract],
+    modelInstance: createMockLanguageModel({streamEvents: [[
+      {type:"text-delta",textDelta:"private final response"}, {type:"finish",finishReason:"stop",usage}
+    ]]}) });
+  let terminal: unknown;
+  try {
+    const result = await runHarness(harness, {prompt:"Delegate review",scope:harness.config.scope}, {
+      onEvent: event => { if (event.type === "error") terminal = event.error; }
+    });
+    expect(result.status).toBe("failed");
+    const details = sanitizedErrorDetails(terminal);
+    expect(details.chain.some(entry => entry.acceptanceReason === "parent_missing_child")).toBe(true);
+    expect(JSON.stringify(details)).not.toContain("private");
+  } finally { await harness.close(); await rm(root,{recursive:true,force:true}); }
+});

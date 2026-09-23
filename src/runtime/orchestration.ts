@@ -147,7 +147,9 @@ export const createHarnessSubagents = (options: {
             ? undefined : { triggered: true as const, reason: "DELEGATION_CONTRACT_VIOLATION", metadata: { delegation: "contract" } };
         }],
         outputGuardrails: [({ output }) => output.status === "completed" && (!output.outputText.includes(contract.requiredOutput) || !output.toolResults.some(result => result.toolName === "read_file" && !result.isError))
-          ? { triggered: true as const, reason: "DELEGATION_ACCEPTANCE_FAILED", metadata: { delegation: "acceptance" } } : undefined]
+          ? { triggered: true as const, reason: "DELEGATION_ACCEPTANCE_FAILED", metadata: { delegation: "acceptance", acceptanceReason: !output.outputText.includes(contract.requiredOutput)
+            ? (output.toolResults.some(result => result.toolName === "read_file" && !result.isError) ? "child_missing_marker" : "child_missing_read_and_marker")
+            : "child_missing_read" } } : undefined]
       } : {}),
       maxSteps: options.config.orchestration.childBudget.maxSteps,
       tools: selectedTools,
