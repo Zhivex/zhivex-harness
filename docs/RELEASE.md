@@ -2,17 +2,24 @@
 
 `@zhivex-ai/harness@1.0.0` is the latest public npm release and `v1.0.0` its annotated tag. Its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. Publication used the protected workflow and the original validated tarball. The first representative attempt failed and did not publish; the authorized complete second attempt passed before publication. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## Next candidate
+## Next stable release
 
-The source version is `1.1.0-rc.10`, targeting npm `next` after fresh certification.
-The latest RC.9 attempt failed its base live gate before publication
-([workflow run](https://github.com/Zhivex/zhivex-harness/actions/runs/35887164419)).
-RC.10 restores Qwen `qwen3.8-max`, retains Meta `muse-spark-1.3` and OpenAI
-`gpt-6-luna`, and adds bounded Meta receipt-continuation recovery. Runtime defaults
-and the representative matrix use the same models. Saved selections and historical
-release mappings remain unchanged. All exact-artifact gates must pass anew.
+The source version is `1.1.0`, targeting npm `latest` after fresh certification.
+RC.10 is published to `next`. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35924224542)
+passed deterministic and exact-artifact validation, all live gates and the complete
+Meta/Qwen/OpenAI representative matrix. The first publication verification timed
+out waiting for the `next` dist-tag; the original tarball's integrity, dist-tag and
+SLSA provenance subsequently verified. Recovery reruns only the failed publication
+job and preserves the original bytes.
+
+The stable matrix retains Qwen `qwen3.8-max`, Meta `muse-spark-1.3` and OpenAI
+`gpt-6-luna`. Saved selections and historical mappings remain unchanged.
+All exact-artifact gates must pass anew for `v1.1.0`.
 `release-status.json` continues to describe the independently verified 1.0.0
-publication; its evidence must not be reused as certification for this candidate.
+publication until 1.1.0 is published and verified; RC evidence is not substituted
+for certification of the stable artifact. The exact SDK prerelease pins are the
+same batch validated by RC.10; this release does not claim those SDK packages
+have independently reached Stable.
 
 ## Deterministic gates
 

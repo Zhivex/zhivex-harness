@@ -101,3 +101,20 @@ export const releaseStatusSchema = z.discriminatedUnion("status", [
 export type ReleaseStatus = z.infer<typeof releaseStatusSchema>;
 
 export const parseReleaseStatus = (input: unknown): ReleaseStatus => releaseStatusSchema.parse(input);
+
+/** A prepared stable source may retain the previous verified latest record. */
+export function checkSourceReleaseStatus(version: string, status: ReleaseStatus): string[] {
+  const source = parseHarnessReleaseVersion(version);
+  if (source.prerelease) {
+    return status.status === "published" && status.channel === "latest"
+      ? [] : ["a prerelease source must preserve the published latest record in release-status.json"];
+  }
+  if (status.version === version) return [];
+  const recorded = parseHarnessReleaseVersion(status.version);
+  const sourceParts = version.split(".").map(Number);
+  const recordedParts = status.version.split(".").map(Number);
+  const firstDifference = sourceParts.findIndex((part, i) => part !== recordedParts[i]);
+  if (status.status === "published" && status.channel === "latest" && !recorded.prerelease &&
+      firstDifference >= 0 && sourceParts[firstDifference]! > recordedParts[firstDifference]!) return [];
+  return [`release-status.json version ${status.version} does not match or precede prepared source ${version}`];
+}

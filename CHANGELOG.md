@@ -4,6 +4,21 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0 - 2026-09-23
+
+Compatible minor release of the Node CLI and TypeScript library. The separate
+Desktop application remains private alpha; Gemini remains provisional.
+
+- Simplify first-use provider/model selection, credential setup, command help and recovery. Add UTF-8 task input, atomic profile updates and a shared searchable model catalog.
+- Improve conversation activity, context estimates and compaction while preserving working plans. Add explicit unlimited cumulative-token mode without disabling per-request limits, accounting or other execution controls.
+- Add authenticated local service transport, durable redacted event replay and application-owned read delegation with file scope and acceptance checks.
+- Integrate the exact SDK batch certified by RC.10, including redaction, failed-child accounting and OpenAI function receipt fixes. Preserve approvals and exactly-once host effects across resume.
+- Use Muse Spark 1.3, Qwen 3.8 Max and GPT-6 Luna for new selections and release certification. Add bounded Meta receipt-continuation recovery; preserve saved model selections and historical certification mappings.
+- Preserve Stable 1.x contracts and state format 1. Existing installations need no state migration; review new default models when creating profiles.
+
+RC.10 passed the full artifact, live and representative gates. Publication of this
+stable artifact requires its own protected certification and provenance verification.
+
 ## 1.1.0-rc.10 - 2026-09-23
 
 - Restore `qwen3.8-max` as the default for new CLI/Desktop selections and RC.10 certification. Keep saved models and historical release mappings unchanged.

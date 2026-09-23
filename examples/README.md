@@ -8,7 +8,7 @@ Requirements: Bun 1.4.0+, Node.js 22.13.0+, and Git on macOS or Linux. This inst
 harness_demo_dir=$(mktemp -d)
 cd "$harness_demo_dir"
 printf '{"name":"harness-first-run","private":true}\n' > package.json
-bun add --exact --ignore-scripts @zhivex-ai/harness@1.0.0
+bun add --exact --ignore-scripts @zhivex-ai/harness@1.1.0
 ./node_modules/.bin/zhx --version
 ./node_modules/.bin/zhx --help
 ./node_modules/.bin/zhx doctor --provider openai --json

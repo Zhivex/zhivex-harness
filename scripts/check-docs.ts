@@ -5,7 +5,7 @@ import { validateCodeqlPins } from "./codeql-policy.js";
 import { checkOnboardingDocument, checkStableRoadmap } from "./onboarding-docs.js";
 import { findReleaseChangelogHeading } from "./release-changelog.js";
 import { parseHarnessReleaseVersion } from "./release-policy.js";
-import { parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
+import { checkSourceReleaseStatus, parseReleaseStatus, type ReleaseStatus } from "./release-status.js";
 
 const workspace = path.resolve(import.meta.dir, "..");
 const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8")) as {
@@ -81,7 +81,6 @@ if (/^1\.\d+\.\d+$/.test(manifest.version)) {
       .map((file) => path.relative(workspace, file))]) {
     failures.push(...checkOnboardingDocument(file, await readFile(path.join(workspace, file), "utf8"), manifest.version));
   }
-  failures.push(...checkStableRoadmap(roadmap, manifest.version));
   const firstUse = await readFile(path.join(workspace, "docs/FIRST_USE.md"), "utf8");
   for (const command of ["--version", "--help", "doctor"]) {
     if (!firstUse.includes(`bunx @zhivex-ai/harness@${manifest.version} ${command}`)) {
@@ -171,13 +170,10 @@ if (!changelog.includes(`## ${manifest.version} -`)) {
 }
 if (releaseStatus) {
   const minor = `${releaseStatus.version.split(".").slice(0, 2).join(".")}.x`;
-  if (!packageRelease?.prerelease && releaseStatus.version !== manifest.version) {
-    failures.push(
-      `release-status.json version ${releaseStatus.version} does not match package version ${manifest.version}.`
-    );
-  }
-  if (packageRelease?.prerelease && (releaseStatus.status !== "published" || releaseStatus.channel !== "latest")) {
-    failures.push("a prerelease source must preserve the published latest record in release-status.json");
+  failures.push(...checkSourceReleaseStatus(manifest.version, releaseStatus));
+  if (/^1\.\d+\.\d+$/.test(manifest.version)) {
+    const published = releaseStatus.status === "published" && releaseStatus.version === manifest.version;
+    failures.push(...checkStableRoadmap(roadmap, manifest.version, published ? "published" : "pending"));
   }
   if (releaseStatus.status === "published") {
     for (const [file, contents, required] of [

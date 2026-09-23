@@ -7,7 +7,8 @@ Version `1.0.0` is published on npm as `latest`. Status: published on npm as `la
 
 ## Next version: 1.1.0
 
-Source candidate: `1.1.0-rc.2` (unpublished). Scope: daily CLI usability,
+Source version: `1.1.0` (stable publication pending). RC.10 passed its complete
+artifact, live and representative gates. Scope: daily CLI usability,
 authenticated local service/replay and an experimental Desktop client. Stable
 contracts and state format 1 remain compatible. Desktop keeps its separate
 `0.1.0-alpha.1` version and private distribution status.
@@ -65,6 +66,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Published on npm | L |
 | `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Published on npm | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Published on npm as `latest` | L |
+| `1.1.0` | Compatible minor | CLI, context, local service and governed delegation | Pending stable publication | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

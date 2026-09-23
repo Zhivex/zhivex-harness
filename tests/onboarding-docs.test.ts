@@ -19,3 +19,14 @@ describe("stable onboarding documentation", () => {
     expect(checkStableRoadmap("| `1.0.0` | Stable contract | Published on npm as `latest` |", "1.0.0")).toEqual([]);
   });
 });
+
+
+test("pending stable preparation cannot claim publication", () => {
+  const pending = "| `1.1.0` | Compatible minor | Pending stable publication |";
+  const published = "| `1.1.0` | Compatible minor | Published on npm as `latest` |";
+  expect(checkStableRoadmap(pending, "1.1.0", "pending")).toEqual([]);
+  expect(checkStableRoadmap(published, "1.1.0", "pending")).toHaveLength(1);
+  expect(checkStableRoadmap(pending, "1.1.0", "published")).toHaveLength(1);
+  expect(checkStableRoadmap(published, "1.1.0", "published")).toEqual([]);
+  expect(checkStableRoadmap(pending + " Published on npm as `latest`", "1.1.0", "pending")).toHaveLength(1);
+});

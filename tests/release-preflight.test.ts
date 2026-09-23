@@ -4,9 +4,12 @@ import { prepareRelease, type Command } from "../scripts/prepare-release.js";
 import { bundledDefaultModel } from "../src/models/catalog.js";
 import path from "node:path";
 
-test("Max candidate aligns runtime and certification while preserving Flash history", async () => {
+test("Stable promotion preserves RC10 models and Flash history", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
-  validateReleaseMetadata(input, false, "next");
+  validateReleaseMetadata(input, false, "latest");
+  expect(input.version).toBe("1.1.0");
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0")?.models)
+    .toEqual(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0-rc.10")?.models);
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models.qwen)
     .toBe(bundledDefaultModel("qwen"));
   expect(bundledDefaultModel("qwen")).toBe("qwen3.8-max");
