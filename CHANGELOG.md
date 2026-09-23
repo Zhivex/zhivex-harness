@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## 1.1.0-rc.9 - 2026-09-23
 
+- Upgrade Core to 1.23.0-next.2 and Agents to 1.9.0-next.2. All eight consumer redaction cases pass, including later rejection and file-store reopen. Qwen Flash orchestration remains intermittent, so RC certification is still blocked.
+
 - Default new Meta selections to Muse Spark 1.3 and use Responses for built-in Meta agent tool loops. Bind the transport migration to durable run identity; preserve saved model IDs and historical evidence. Certification remains pending.
 
 - Add application-owned read delegation contracts: models select task IDs while Harness preserves task text, enforces file scope and validates acceptance. Keep durable SDK execution and budgets; expose finite error classifications without logging task content.

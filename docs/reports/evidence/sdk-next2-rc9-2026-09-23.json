@@ -1,0 +1,352 @@
+{
+  "core": "1.23.0-next.2",
+  "agents": "1.9.0-next.2",
+  "redaction": [
+    {
+      "storage": "memory",
+      "mode": "generate",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false
+    },
+    {
+      "storage": "memory",
+      "mode": "generate",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false
+    },
+    {
+      "storage": "memory",
+      "mode": "stream",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "memory",
+      "mode": "stream",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "generate",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "generate",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "stream",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "stream",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": false,
+      "persistedTextContainsFixture": false,
+      "persistedMessagesContainFixture": false,
+      "persistedStepsContainFixture": false,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    }
+  ],
+  "base": {
+    "ok": true,
+    "gate": "live-provider-smoke",
+    "certifiedAt": "2026-09-23T15:42:46.225Z",
+    "providers": [
+      {
+        "ok": true,
+        "provider": "qwen",
+        "model": "qwen3.8-flash",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      },
+      {
+        "ok": true,
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      },
+      {
+        "ok": true,
+        "provider": "meta",
+        "model": "muse-spark-1.3",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      }
+    ]
+  },
+  "orchestration": [
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:41:58.807Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_c4733b78-6e22-424a-9ccf-bfa953b01ab8",
+          "childRunId": "run_94f5cb61-34ec-4025-860b-b84d1e8b534f",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3899
+        }
+      ]
+    },
+    {
+      "ok": false,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:42:31.594Z",
+      "providers": [
+        {
+          "ok": false,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "details": {
+              "chain": [
+                {
+                  "checkpoint": "orchestration_status",
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "delegation": "acceptance",
+                  "kind": "GuardrailTriggeredError"
+                }
+              ]
+            },
+            "fingerprint": "sha256:8bccb18c48a726c197f09ecb1aa8833914557545e569ebe772e41d09dcfc8747"
+          }
+        }
+      ]
+    }
+  ],
+  "remainingGates": "not_run_after_qwen_orchestration_failure",
+  "acceptanceDiagnosticCampaign": [
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:47:25.488Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_1b15a107-ce7f-4324-836e-08baa918c94b",
+          "childRunId": "run_041f207d-a7be-4b44-a570-1e9322e513e4",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3943
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:47:40.701Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_07cea470-133e-43dd-821d-9193e15335ff",
+          "childRunId": "run_a4062918-bbb0-4fe5-919d-9e2792fd4e71",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3781
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:47:55.376Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_c6c910ca-0155-46ae-9a17-337aeed3ae73",
+          "childRunId": "run_b3f5b30b-5d8e-412c-bd6a-35cbff1aa674",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3851
+        }
+      ]
+    }
+  ],
+  "acceptanceDiagnosticConclusion": "not_reproduced_in_three_cases_prior_failure_unresolved",
+  "finalAttributionCampaign": [
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:30.122Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_b8351651-ae1f-45cf-abfc-e008b902f452",
+          "childRunId": "run_dbfe36ff-d8d4-4f3b-9bd1-47962ccf3942",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 4112
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:44.463Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_a00c7f35-4dfb-40b3-b8d4-36ad85735745",
+          "childRunId": "run_8b8faa8a-72c2-4282-bab2-4911dacde372",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3854
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:58.338Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_6a23ae4d-7e0f-4235-b91a-ee1391f3968e",
+          "childRunId": "run_de19436b-f79c-4b09-9397-e36a6f87b9d0",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3813
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:51:14.453Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_450e1239-7948-4c2f-9a64-57250a08345f",
+          "childRunId": "run_15282848-1a79-4fc3-b9eb-49e6a484f8f2",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3917
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:51:31.879Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_ed02ecd9-b285-409c-9bef-cd4fb6305a30",
+          "childRunId": "run_57acf7d3-f68c-4bc3-9d5c-c0d17b06e737",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3932
+        }
+      ]
+    }
+  ],
+  "finalAttributionConclusion": "not_reproduced_in_five_additional_cases"
+}

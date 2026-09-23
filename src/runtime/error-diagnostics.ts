@@ -14,6 +14,7 @@ const budgetDiagnosticSchema = z.object({
   includeChildRuns: z.boolean().optional()
 });
 const checkpoints = ["request_status", "request_approval", "request_arguments", "request_persistence", "resume_state", "resume_arguments", "resume_status", "resume_output", "resume_effect", "resume_journal", "orchestration_status", "orchestration_output", "orchestration_delegation", "orchestration_child", "orchestration_budget", "orchestration_reopen"] as const;
+const acceptanceReasons = ["parent_missing_child", "parent_child_failed", "parent_child_marker", "child_missing_read", "child_missing_marker", "child_missing_read_and_marker"] as const;
 const approvalFields = ["proposalId", "change_count", "path", "content", "expectedDigest", "unknown_fields", "shape"] as const;
 const issueCodes = ["invalid_type", "too_big", "too_small", "invalid_format", "not_multiple_of", "unrecognized_keys", "invalid_union", "invalid_key", "invalid_element", "invalid_value", "custom"] as const;
 
@@ -24,6 +25,7 @@ export const errorDetailsSchema = z.strictObject({
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
+    acceptanceReason: z.enum(acceptanceReasons).optional(),
     delegation: z.enum(["contract", "path", "acceptance"]).optional(),
     approvalFields: z.array(z.enum(approvalFields)).max(approvalFields.length).optional(),
     budget: budgetDiagnosticSchema.strict().optional()
@@ -53,6 +55,10 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     const delegation = record.delegation ?? (record.name === "GuardrailTriggeredError" && record.metadata && typeof record.metadata === "object"
       ? (record.metadata as Record<string, unknown>).delegation : undefined);
     if (delegation === "contract" || delegation === "path" || delegation === "acceptance") entry.delegation = delegation;
+    if (record.name === "GuardrailTriggeredError" && record.metadata && typeof record.metadata === "object") {
+      const reason = (record.metadata as Record<string, unknown>).acceptanceReason;
+      if (acceptanceReasons.includes(reason as typeof acceptanceReasons[number])) entry.acceptanceReason = reason as typeof acceptanceReasons[number];
+    }
     if (checkpoints.includes(record.checkpoint as typeof checkpoints[number])) entry.checkpoint = record.checkpoint as typeof checkpoints[number];
     if (kinds.includes(record.name as typeof kinds[number])) entry.kind = record.name as typeof kinds[number];
     const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];

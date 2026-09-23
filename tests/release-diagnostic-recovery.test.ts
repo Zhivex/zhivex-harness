@@ -156,3 +156,11 @@ test("orchestration checkpoints survive recovery without retaining assertion con
   }
   expect(JSON.stringify(sanitizeOperationalError({checkpoint:"private model output"}))).not.toContain("private");
 });
+
+test("wrapped typed stream failures retain delegation reason at serialization", () => {
+  const cause = Object.assign(new Error("private output"), { name:"GuardrailTriggeredError", metadata:{delegation:"acceptance",payload:"private output"} });
+  const outer = Object.assign(new Error("private wrapper"), {checkpoint:"orchestration_status",cause});
+  const safe = sanitizeOperationalError(outer);
+  expect(safe.details?.chain).toEqual([{kind:"Error",checkpoint:"orchestration_status"},{kind:"GuardrailTriggeredError",delegation:"acceptance"}]);
+  expect(JSON.stringify(safe)).not.toContain("private");
+});
