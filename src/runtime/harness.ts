@@ -131,7 +131,7 @@ const createHarnessBinding = (
       providerTransportFingerprint,
       // Reject resuming pre-migration Meta runs across a protocol change.
       ...([model, ...Object.values(subagentModels ?? {})].some(candidate => candidate?.provider === "meta")
-        ? { metaTransportPolicy: "responses-v1" } : {}),
+        ? { metaTransportPolicy: "responses-continuation-recovery-v2" } : {}),
       subagentModels: Object.fromEntries(config.orchestration.profiles.map((profile) => [
         profile,
         inspectHarnessModelCapabilities(subagentModels?.[profile] ?? model)
