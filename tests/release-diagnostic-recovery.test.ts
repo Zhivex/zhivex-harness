@@ -8,6 +8,29 @@ import { parseTimeToSafeFixDiagnostic, restoreSanitizedOperationalError, sanitiz
 
 const root = path.resolve(import.meta.dir, "..");
 
+test("guardrail budget diagnostics retain finite counters without private metadata", () => {
+  const secret = "PRIVATE_CREDENTIAL_DO_NOT_LOG";
+  const error = Object.assign(new Error(secret), {
+    name: "GuardrailTriggeredError",
+    metadata: { budgetLimit: "maxToolCalls", limit: 1, actual: 0, required: 3,
+      remaining: 1, operation: "tool", includeChildRuns: false,
+      prompt: secret, responseBody: secret, nested: { authorization: secret } }
+  });
+  const original = sanitizeOperationalError(error);
+  expect(original.details?.chain).toEqual([{ kind: "GuardrailTriggeredError", budget: {
+    budgetLimit: "maxToolCalls", limit: 1, actual: 0, required: 3, remaining: 1,
+    operation: "tool", includeChildRuns: false
+  } }]);
+  expect(JSON.stringify(original)).not.toContain(secret);
+  expect(sanitizeOperationalError(restoreSanitizedOperationalError(original))).toEqual(original);
+  for (const invalid of [secret, -1, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1]) {
+    expect(sanitizedErrorDetails({ ...error, metadata: { ...error.metadata, required: invalid } }).chain)
+      .toEqual([{ kind: "GuardrailTriggeredError" }]);
+  }
+  expect(sanitizedErrorDetails({ ...error, metadata: { ...error.metadata, budgetLimit: secret } }).chain)
+    .toEqual([{ kind: "GuardrailTriggeredError" }]);
+});
+
 test("error details retain bounded structure without messages, paths, arbitrary codes or validation inputs", () => {
   const secret = "PRIVATE_CREDENTIAL_DO_NOT_LOG";
   const validation = z.strictObject({ count: z.number() }).safeParse({ count: secret, [secret]: secret });
