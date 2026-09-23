@@ -145,3 +145,14 @@ test("approval mismatch diagnostics classify fields without retaining argument c
   expect(JSON.stringify(details)).not.toContain("PRIVATE_PAYLOAD");
   expect(sanitizedErrorDetails({ approvalFields: ["PRIVATE_PAYLOAD", "content", "content"] }).chain).toEqual([{ approvalFields: ["content"] }]);
 });
+
+test("orchestration checkpoints survive recovery without retaining assertion content", () => {
+  for (const checkpoint of ["orchestration_status", "orchestration_output", "orchestration_delegation", "orchestration_child", "orchestration_budget", "orchestration_reopen"] as const) {
+    const error = Object.assign(new Error("private model output"), { checkpoint, cause: Object.assign(new Error("private assertion"), {name:"AssertionError"}) });
+    const safe = sanitizeOperationalError(error);
+    expect(safe.details?.chain?.[0]?.checkpoint).toBe(checkpoint);
+    expect(JSON.stringify(safe)).not.toContain("private");
+    expect(sanitizeOperationalError(restoreSanitizedOperationalError(safe))).toEqual(safe);
+  }
+  expect(JSON.stringify(sanitizeOperationalError({checkpoint:"private model output"}))).not.toContain("private");
+});

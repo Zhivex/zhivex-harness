@@ -1,3 +1,4 @@
+import { sanitizeOperationalError, restoreSanitizedOperationalError } from "./release-diagnostics.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -10,6 +11,7 @@ import {
   providerDescriptor,
   type HarnessProvider
 } from "../src/runtime/config.js";
+import { HarnessExecutionError } from "../src/runtime/errors.js";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { inspectHarnessRun } from "../src/persistence/operations.js";
 import { runPortableProcess } from "../src/execution/process-runtime.js";
@@ -91,22 +93,31 @@ const certifyProvider = async (
   let childRunId = "";
   let childToolCalls = 0;
   let totalTokens = 0;
+  let checkpoint = "orchestration_status";
+  let terminalError: unknown;
   try {
     const result = await runHarness(first, {
       ...providerRunInput(provider, orchestrationPrompt(provider)),
       scope: first.config.scope,
       idempotencyKey: `live-orchestration-${provider}`
-    });
+    }, { onEvent: (event) => {
+      if (event.type === "error") terminalError = restoreSanitizedOperationalError(sanitizeOperationalError(event.error));
+    } });
+    if (result.status === "failed" && (terminalError || result.error)) throw terminalError ?? result.error;
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+    checkpoint = "orchestration_output";
     assert.ok(result.outputText.includes(parentToken(provider)), result.outputText);
+    checkpoint = "orchestration_delegation";
     const delegations = result.toolResults.filter((entry) => entry.toolName === "delegate_reviewer");
     assert.equal(delegations.length, 1);
     assert.equal(delegations[0]?.isError, false);
+    checkpoint = "orchestration_child";
     assert.equal(result.state.childRuns?.length, 1);
     const child = result.state.childRuns?.[0];
     assert.ok(child?.runId);
     assert.equal(child.status, "completed");
     assert.ok(child.outputText?.includes(childToken(provider)), child.outputText);
+    checkpoint = "orchestration_budget";
     assert.ok(child.toolCalls <= 1, "The reviewer exceeded its one-tool certification budget.");
     assert.equal(child.toolErrors, 0);
     childToolCalls = child.toolCalls;
@@ -114,6 +125,8 @@ const certifyProvider = async (
     childRunId = child.runId;
     totalTokens = getAgentBudgetStatus(result.state, first.config.budget, result).consumption.totalTokens;
     assert.ok(totalTokens > 0);
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live orchestration certification failed.", { cause: error }), { checkpoint });
   } finally {
     await first.close();
   }
@@ -130,6 +143,8 @@ const certifyProvider = async (
     assert.equal(child?.parentRunId, parentRunId);
     assert.equal(inspection.hierarchy?.totalRuns, 2);
     assert.ok(JSON.stringify(inspection.hierarchy).includes(childRunId));
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live orchestration reopen failed.", { cause: error }), { checkpoint: "orchestration_reopen" });
   } finally {
     await reopened.close();
   }

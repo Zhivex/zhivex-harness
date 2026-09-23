@@ -6,7 +6,7 @@ Zhivex Harness is a local terminal assistant and TypeScript library. It supports
 OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
 approvals survive restarts.
 
-This development branch prepares `1.1.0-rc.8` (unpublished), with console, local
+This development branch prepares `1.1.0-rc.9` (unpublished), with console, local
 service and Desktop preview improvements. The commands below install stable 1.0.0.
 
 ## Quick start

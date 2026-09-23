@@ -557,6 +557,19 @@ const withOpenAIToolResultEnvelopes = (model: LanguageModel): LanguageModel => w
   }
 }]);
 
+// Keep agent tool loops on Meta's stateful Responses protocol in every caller.
+const withMetaResponses = (model: LanguageModel): LanguageModel => wrapLanguageModel(model, [{
+  name: "harness-meta-responses-v1",
+  async wrapGenerate({ input }, next) {
+    input.providerOptions = { ...input.providerOptions, apiMode: "responses" };
+    return next();
+  },
+  async wrapStream({ input }, next) {
+    input.providerOptions = { ...input.providerOptions, apiMode: "responses" };
+    return next();
+  }
+}]);
+
 export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = Object.freeze([
   {
     descriptor: {
@@ -570,10 +583,10 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     diagnostics: { endpointEnvironmentVariable: "META_BASE_URL" },
     factory: ({ model, env, credentials }) => {
       const baseURL = env.META_BASE_URL?.trim();
-      return createMeta({
+      return withMetaResponses(createMeta({
         apiKey: credentials.require(),
         ...(baseURL ? { baseURL } : {})
-      })(model);
+      })(model));
     }
   },
   {
@@ -648,6 +661,7 @@ export const DEFAULT_PROVIDER_REGISTRY = createProviderRegistry(BUILTIN_PROVIDER
 export const PROVIDER_DESCRIPTORS: readonly ProviderDescriptor[] = DEFAULT_PROVIDER_REGISTRY.descriptors;
 
 export const providerModelInternals = {
+  withMetaResponses,
   generatedToolCallId,
   withOpenAIToolResultEnvelopes,
   withQwenDurableToolCallIds
