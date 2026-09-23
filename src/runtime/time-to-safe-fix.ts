@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { z } from "zod";
+import { ToolNotRegisteredError } from "@zhivex-ai/core";
 import { errorDetailsSchema, sanitizedErrorDetails } from "./error-diagnostics.js";
 
 import {
@@ -37,6 +38,7 @@ export const TIME_TO_SAFE_FIX_FAILURE_ORIGINS = [
 export type TimeToSafeFixFailureOrigin = (typeof TIME_TO_SAFE_FIX_FAILURE_ORIGINS)[number];
 
 export const TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES = [
+  "TOOL_NOT_REGISTERED",
   "QWEN_DUPLICATE_TOOL_CALL_ID",
   "OPENAI_RESPONSES_TOOL_CALL_INVALID"
 ] as const;
@@ -241,6 +243,10 @@ const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticC
     diagnosticCode?: unknown;
     cause?: unknown;
   };
+  // The SDK preserves this finite code on serialized AgentRunError values too.
+  if (error instanceof ToolNotRegisteredError || record.diagnosticCode === "TOOL_NOT_REGISTERED") {
+    return "TOOL_NOT_REGISTERED";
+  }
   const openAIProviderFailure =
     record.category === "provider-tool-call" &&
     record.provider === "openai" &&
@@ -344,6 +350,8 @@ export const classifyTimeToSafeFixFailure = (
   } else if (structured && structured.category !== "execution") {
     code = structured.code;
     retryable = structured.retryable;
+  } else if (diagnosticCode === "TOOL_NOT_REGISTERED") {
+    code = "MODEL_EXECUTION_FAILED";
   } else if (providerToolCallRetryable !== undefined) {
     code = "MODEL_EXECUTION_FAILED";
     retryable = providerToolCallRetryable;

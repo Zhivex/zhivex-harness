@@ -1,3 +1,4 @@
+import { ToolNotRegisteredError } from "@zhivex-ai/core";
 import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -177,6 +178,16 @@ describe("time-to-safe-fix benchmark", () => {
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
     });
+  });
+
+  test("preserves unknown-tool failures without exporting the tool hash or message", () => {
+    const marker = "SENSITIVE_FIXTURE_NAME_HASH";
+    for (const cause of [new ToolNotRegisteredError(marker), { diagnosticCode: "TOOL_NOT_REGISTERED", message: marker }]) {
+      const result = classifyTimeToSafeFixFailure(new HarnessExecutionError("Run failed", { cause }), { stage: "model" });
+      expect(result).toMatchObject({ code: "MODEL_EXECUTION_FAILED", diagnosticCode: "TOOL_NOT_REGISTERED", retryable: false });
+      expect(JSON.stringify(result)).not.toContain(marker);
+    }
+    expect(classifyTimeToSafeFixFailure({ diagnosticCode: marker }).diagnosticCode).toBeUndefined();
   });
 
   test("retains an allowlisted provider diagnostic through a typed Harness cause", () => {

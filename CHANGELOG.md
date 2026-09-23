@@ -6,6 +6,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## 1.1.0-rc.10 - 2026-09-23
 
+- Preserve the SDK’s finite `TOOL_NOT_REGISTERED` diagnostic through release reporting without recording tool names, hashes, messages, or arguments.
 - Build representative-agent instructions and durable identity from the selected tool catalog, so the model is not instructed to call tools that the driver excludes.
 
 - Recover once when Meta Responses rejects a function receipt continuation because its response ID is unavailable. Replay the identical request after a bounded delay, preserve cancellation, and exclude hosted tools and unrelated HTTP errors. Host tools are not executed again.

@@ -2,7 +2,8 @@ import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
 const systemCodes = ["ENOENT", "EACCES", "EPERM", "ENOSPC", "EIO", "EISDIR", "ENOTDIR", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ABORT_ERR"] as const;
-const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError"] as const;
+const dependencyCodes = ["TOOL_NOT_REGISTERED"] as const;
+const kinds = ["ToolNotRegisteredError", "AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError"] as const;
 const budgetLimits = ["maxSteps", "maxToolCalls", "maxToolErrors", "maxInputTokens", "maxOutputTokens", "maxTotalTokens"] as const;
 const budgetDiagnosticSchema = z.object({
   budgetLimit: z.enum(budgetLimits),
@@ -22,7 +23,7 @@ export const errorDetailsSchema = z.strictObject({
   chain: z.array(z.strictObject({
     kind: z.enum(kinds).optional(),
     checkpoint: z.enum(checkpoints).optional(),
-    code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
+    code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes, ...dependencyCodes]).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
     acceptanceReason: z.enum(acceptanceReasons).optional(),
@@ -61,7 +62,7 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     }
     if (checkpoints.includes(record.checkpoint as typeof checkpoints[number])) entry.checkpoint = record.checkpoint as typeof checkpoints[number];
     if (kinds.includes(record.name as typeof kinds[number])) entry.kind = record.name as typeof kinds[number];
-    const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];
+    const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes, ...dependencyCodes];
     if (allowedCodes.includes(record.code)) entry.code = record.code as NonNullable<typeof entry.code>;
     const status = [record.status, record.statusCode].find((value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599);
     if (typeof status === "number") entry.status = status;
