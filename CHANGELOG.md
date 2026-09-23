@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.8 - 2026-09-22
+
+- Preserve OpenAI function tool receipts through approval resume using SDK result envelopes. Prevent function names such as `apply_patch` from being mistaken for native Responses tools and losing their output. Keep release assertions and fail-fast gates unchanged.
+
 ## 1.1.0-rc.7 - 2026-09-22
 
 - Select `gpt-6-luna` as the OpenAI default for new CLI/Desktop choices and pin it in RC7 release certification. Preserve explicitly saved models and historical certification mappings.
