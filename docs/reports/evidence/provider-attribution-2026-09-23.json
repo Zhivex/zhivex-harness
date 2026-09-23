@@ -1,0 +1,711 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "410e17c",
+  "runtimeCommit": "1e01ac6500b60601904e395436c7fd00a2306a91",
+  "date": "2026-09-23",
+  "scope": "Bounded local attribution, not release certification",
+  "instrumentationNotes": [
+    "First Chat and Responses captures used a broad marker-presence predicate for child receipt; omitted from public evidence because a prompt is not a receipt. Later captures restrict to tool-result roles.",
+    "First Responses capture lacked function-call counting and reasoning parsing; those unsupported fields are omitted, not interpreted as zero.",
+    "outputEqualsAllParentText was added before second Chat and later Responses runs; absent fields in earlier runs are unknown.",
+    "Final diagnostic source hashes below identify delivered scripts; earlier captures used the projection variants documented above. No runtime logic or budgets changed.",
+    "Qwen diagnostic stops at waiting approval; no approved mutation or resume.",
+    "Raw payloads only in memory, compared before disposal; no secrets or response content retained."
+  ],
+  "scripts": {
+    "scripts/diagnostics/trace-meta-orchestration.ts": "cce0587017ddc80f821fc2706524cae1ca1e86904664dbecbe45a9ddaaa450c6",
+    "scripts/diagnostics/trace-qwen-approval.ts": "94a7dd19abfe9a01c99ee99c2837e4933b6f91a532326d55e473cef6efcdf8a5"
+  },
+  "cases": [
+    {
+      "case": "meta-chat",
+      "evidence": {
+        "mode": "chat",
+        "model": "muse-spark-1.3",
+        "records": [
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": false,
+            "requestHasParentInstruction": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "tool_calls",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": false,
+            "requestHasParentInstruction": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 41,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "tool_calls",
+            "normalizedText": {
+              "characters": 41,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": false,
+            "requestHasParentInstruction": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 200,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "stop",
+            "normalizedText": {
+              "characters": 200,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": false,
+            "requestHasParentInstruction": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "stop",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          }
+        ],
+        "result": {
+          "completed": true,
+          "output": {
+            "characters": 72,
+            "parentMarker": true,
+            "childMarker": false
+          },
+          "outputEqualsLastNormalized": false,
+          "childCount": 1,
+          "children": [
+            {
+              "completed": true,
+              "output": {
+                "characters": 241,
+                "parentMarker": false,
+                "childMarker": true
+              },
+              "toolCalls": 1,
+              "toolErrors": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "meta-chat-2",
+      "evidence": {
+        "mode": "chat",
+        "model": "muse-spark-1.3",
+        "records": [
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": false,
+            "requestHasParentInstruction": true,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "tool_calls",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": false,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "tool_calls",
+            "normalizedText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": false,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 227,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "stop",
+            "normalizedText": {
+              "characters": 227,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": false,
+            "requestHasParentInstruction": true,
+            "requestHasChildReceipt": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 246,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "reasoning": {
+              "characters": 0,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "stop",
+            "normalizedText": {
+              "characters": 246,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          }
+        ],
+        "result": {
+          "completed": true,
+          "output": {
+            "characters": 282,
+            "parentMarker": false,
+            "childMarker": true
+          },
+          "outputEqualsLastNormalized": false,
+          "outputEqualsAllParentText": true,
+          "childCount": 1,
+          "children": [
+            {
+              "completed": true,
+              "output": {
+                "characters": 280,
+                "parentMarker": false,
+                "childMarker": true
+              },
+              "toolCalls": 1,
+              "toolErrors": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "meta-responses",
+      "evidence": {
+        "mode": "responses",
+        "model": "muse-spark-1.3",
+        "records": [
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 98,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 98,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          }
+        ],
+        "result": {
+          "completed": true,
+          "output": {
+            "characters": 72,
+            "parentMarker": true,
+            "childMarker": false
+          },
+          "outputEqualsLastNormalized": false,
+          "childCount": 1,
+          "children": [
+            {
+              "completed": true,
+              "output": {
+                "characters": 151,
+                "parentMarker": false,
+                "childMarker": true
+              },
+              "toolCalls": 1,
+              "toolErrors": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "meta-responses-2",
+      "evidence": {
+        "mode": "responses",
+        "model": "muse-spark-1.3",
+        "records": [
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": true,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 39,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 39,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 132,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "toolCalls": 0,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 132,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          }
+        ],
+        "result": {
+          "completed": true,
+          "output": {
+            "characters": 75,
+            "parentMarker": true,
+            "childMarker": false
+          },
+          "outputEqualsLastNormalized": false,
+          "outputEqualsAllParentText": true,
+          "childCount": 1,
+          "children": [
+            {
+              "completed": true,
+              "output": {
+                "characters": 185,
+                "parentMarker": false,
+                "childMarker": true
+              },
+              "toolCalls": 1,
+              "toolErrors": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "meta-responses-3",
+      "evidence": {
+        "mode": "responses",
+        "model": "muse-spark-1.3",
+        "records": [
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": true,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 59,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 59,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "toolCalls": 1,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 53,
+              "parentMarker": false,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "child",
+            "streaming": false,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": false,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 139,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "toolCalls": 0,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 139,
+              "parentMarker": false,
+              "childMarker": true
+            },
+            "wireEqualsNormalized": true
+          },
+          {
+            "role": "parent",
+            "streaming": true,
+            "responses": true,
+            "requestHasParentInstruction": false,
+            "requestHasChildReceipt": true,
+            "httpStatus": 200,
+            "wireText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "toolCalls": 0,
+            "finish": "completed",
+            "normalizedText": {
+              "characters": 36,
+              "parentMarker": true,
+              "childMarker": false
+            },
+            "wireEqualsNormalized": true
+          }
+        ],
+        "result": {
+          "completed": true,
+          "output": {
+            "characters": 95,
+            "parentMarker": true,
+            "childMarker": false
+          },
+          "outputEqualsLastNormalized": false,
+          "outputEqualsAllParentText": true,
+          "childCount": 1,
+          "children": [
+            {
+              "completed": true,
+              "output": {
+                "characters": 192,
+                "parentMarker": false,
+                "childMarker": true
+              },
+              "toolCalls": 1,
+              "toolErrors": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "qwen-approval-1",
+      "evidence": {
+        "waitingApproval": true,
+        "approvalPresent": true,
+        "exactArguments": true,
+        "captureFailures": 0,
+        "wireCalls": [
+          {
+            "tool": "propose_edits",
+            "matchesExpected": true
+          },
+          {
+            "tool": "apply_patch",
+            "matchesExpected": true,
+            "matchesApproval": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-approval-2",
+      "evidence": {
+        "waitingApproval": true,
+        "approvalPresent": true,
+        "exactArguments": true,
+        "captureFailures": 0,
+        "wireCalls": [
+          {
+            "tool": "propose_edits",
+            "matchesExpected": true
+          },
+          {
+            "tool": "apply_patch",
+            "matchesExpected": true,
+            "matchesApproval": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-approval-3",
+      "evidence": {
+        "waitingApproval": true,
+        "approvalPresent": true,
+        "exactArguments": true,
+        "captureFailures": 0,
+        "wireCalls": [
+          {
+            "tool": "propose_edits",
+            "matchesExpected": true
+          },
+          {
+            "tool": "apply_patch",
+            "matchesExpected": true,
+            "matchesApproval": true
+          }
+        ]
+      }
+    }
+  ],
+  "offline": {
+    "testsPassed": 44,
+    "testsFailed": 0,
+    "typecheckTooling": true,
+    "failedChildAccounting": {
+      "withoutLedger": {
+        "expected": 8,
+        "actual": 8,
+        "links": 1,
+        "executedTools": 0
+      },
+      "withLedger": {
+        "expected": 8,
+        "actual": 8,
+        "links": 1,
+        "executedTools": 0
+      }
+    }
+  },
+  "notion": {
+    "meta": "https://app.notion.com/p/3e4777b104f681f88997ec07d8b2f400",
+    "qwen": "https://app.notion.com/p/3e4777b104f681b9a8f0cfad243afd1f"
+  },
+  "releaseBlocked": true
+}
