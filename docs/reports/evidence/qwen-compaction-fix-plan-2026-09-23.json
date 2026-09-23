@@ -1,0 +1,71 @@
+{
+  "kind": "qwen-compaction-fix-acceptance",
+  "createdAt": "2026-09-23T18:32:12.663745+00:00",
+  "sourceCommit": "dbf0d47e0aa53d066835b6b75ef3ed0984e691a7",
+  "sourceChanges": {
+    "CHANGELOG.md": "4c979ba22d6e6c9cbd1c437fbbdf04e5af7aa4d7592f08ca001f4a0b9d05e48d",
+    "docs/CONTEXT_ENGINEERING.md": "fefd5161e6006e32a2bd294d70efdfe519252b2f27cd58c1f0df680ea7b785ba",
+    "docs/TIME_TO_SAFE_FIX.md": "8b43dfa32966fedd2a18abdbcd56a3dee5966173309a4d88f0cfffbcbec1bb72",
+    "scripts/benchmark-time-to-safe-fix.ts": "9422618b77411477d6b268c5555b22ffdf5d80c2c66ad4cc06ae72d24a7e96aa",
+    "scripts/release-diagnostics.ts": "ddc4b4d54a59b04a556d8e1d7257f4d051214b7ea01e879f5ef25b2949c63c68",
+    "scripts/time-to-safe-fix-governed-profile.ts": "9d6f7281925e768e7cb9e322c21cb1da90aa20dca11e660a2aaef1a8c03b76bc",
+    "src/context/adaptive-compaction.ts": "dd105ecf915afd4dcd8d4b764da001e8f2f6b4168f4b05cd83564b4fa28427c9",
+    "src/runtime/error-diagnostics.ts": "634343d3b53331d5022618e471330ed0c5bee504507368761bc741b010e5b046",
+    "src/runtime/harness.ts": "290c00b8ae77cbf063555a3d2d5a4b4fc7e10b1093e1af07e45128f277a10b8a",
+    "src/runtime/time-to-safe-fix.ts": "a3fc21e35652d41d2448bcbec13f85c881e1eadd8a9f13e04c092f1ca27b51bc",
+    "tests/adaptive-compaction.test.ts": "e2c14bddfa4aa186720eb9ec17045a912deafbc529d1ca73a1babd256c517330",
+    "tests/time-to-safe-fix-zhivex-driver.test.ts": "a0b54cd100b4bf831a211905d636628c69bff8dbf299755050c2fa0fd28e0f37",
+    "tests/time-to-safe-fix.test.ts": "0bda75c11e6a9ba4006c93f8d4945c3cde407d4a070e7131a62d1299b1647e0a",
+    "scripts/time-to-safe-fix-failure-observation.ts": "ff4551a1535208afaca6afbffcc3204f379a71a2be447dffee9814ccefee2c90",
+    "tests/adaptive-compaction-budget.test.ts": "7ad359a75c4495f1dfa6035c5cc8b33437020a60ded5071d8865293e8e338f90",
+    "tests/error-diagnostics.test.ts": "0f00614fd1978c0fbd45fbafbdde4e4b3b68f5f5d41b2c1060347978dcc945be",
+    "tests/time-to-safe-fix-failure-observation.test.ts": "536a0486854709ac8580a2fb951c7e265cabd9cf099314ec9f7a585852a28487"
+  },
+  "installedDependencies": {
+    "core": "1.23.0-next.2",
+    "agents": "1.9.0-next.2",
+    "qwen": "0.15.1-next.0",
+    "openai": "0.13.5-next.1",
+    "meta": "0.2.7-next.0"
+  },
+  "plannedCases": [
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|1",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|1",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|2",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|2",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|2",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|2",
+      "model": "qwen3.8-flash"
+    }
+  ],
+  "stopPolicy": "Stop at first failure; no external retries. Eight passing cases are bounded local acceptance, not release certification.",
+  "fixture": "synthetic hostile-instructions only, identical to representative dataset",
+  "fixtureSha256": "94c622c52b9e55dc18c2cb4b8f167958d106c130caa8513363367b3cbc0691fa",
+  "ociImage": "sha256:5af1d5b2f8e2f28f3353ce098c4580f85d9d07b298b3f01538d147569fe6ad91",
+  "evidenceBoundary": "Local source snapshot, not release certification",
+  "compactionPolicy": "adaptive-tokens-v2"
+}

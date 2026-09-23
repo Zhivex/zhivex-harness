@@ -101,12 +101,16 @@ It remains model-authored recollection, never authorization or a verification re
 Older v1-v4 summaries remain readable. Original requests remain recoverable with
 `read_task`; a summary is not a replacement for full acceptance criteria.
 
-Automatic compaction uses `adaptive-tokens-v1`. The configured recent-message count
+Automatic compaction uses `adaptive-tokens-v2`. The configured recent-message count
 is an upper target: the runtime selects a smaller complete tail when its estimated
 size exceeds the token target. Calls/results and provider approval groups remain
 correlated; pending approvals and durable compaction records remain SDK-owned.
 The target is 65% of the trigger after allowing for system instructions, tools and
-the summary. A protected newest group that cannot fit still fails closed.
+the summary. The summary is sized against the remaining budget using the actual
+serialized SDK envelope, including escaping, system messages and the complete
+retained tail. A protected newest group that cannot fit with a minimal summary
+still fails closed. This policy revision changes durable configuration identity;
+runs created under the previous policy cannot silently resume under this policy.
 
 Compaction and transport budgets share the same character-based estimator
 (characters / 3 plus envelope allowance), not a provider tokenizer. Tool schemas

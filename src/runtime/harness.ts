@@ -8,7 +8,7 @@ import { MODEL_BUDGET_KEY, createModelBudget, workBudgetReached } from "./model-
 import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY } from "../context/task-memory.js";
 import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources } from "../context/compaction.js";
-import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
+import { ADAPTIVE_COMPACTION_POLICY, createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { settleInterruptedRun } from "./run-interruption.js";
@@ -123,7 +123,7 @@ const createHarnessBinding = (
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
       toolContractVersion: TOOL_CONTRACT_VERSION,
-      compactionStrategy: `${COMPACTION_STRATEGY}:adaptive-tokens-v1`,
+      compactionStrategy: `${COMPACTION_STRATEGY}:${ADAPTIVE_COMPACTION_POLICY}`,
       workspace: config.workspace,
       provider: config.provider,
       model: config.model,

@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { ProviderToolCallError } from "@zhivex-ai/core";
+import { ProviderToolCallError, type AgentRunState } from "@zhivex-ai/core";
 
 import * as harnessRuntime from "../src/index.js";
 
@@ -734,7 +734,8 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
       transport: "responses",
       diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID",
       reason: "invalid_json",
-      retryable: true
+      retryable: true,
+      cause: new Error("sensitive-provider-response-payload")
     });
     const model = new Proxy(baseModel, {
       get(target, property, receiver) {
@@ -776,6 +777,157 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
         retryable: true
       }
     });
-    expect(JSON.stringify(result)).not.toContain("invalid_json");
+    expect(result.failure?.details?.chain).toContainEqual(expect.objectContaining({
+      kind: "ProviderToolCallError", providerToolCallReason: "invalid_json"
+    }));
+    expect(JSON.stringify(result)).not.toContain("sensitive-provider-response-payload");
   });
+
+  test("preserves durable provider diagnostics when the runtime returns failed without throwing", async () => {
+    const workspace = await temporaryDirectory("zhivex-driver-failed-output-");
+    const stateDirectory = await temporaryDirectory("zhivex-driver-failed-output-state-");
+    await mkdir(path.join(workspace, "src"), { recursive: true });
+    await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+    await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+    const result = await runGovernedTimeToSafeFixProfile(driverRequest(workspace), {
+      provider: "openai", stateDirectory,
+      modelInstance: createMockLanguageModel({ streamEvents: [] }),
+      harnessRuntime: {
+        ...harnessRuntime,
+        async runHarness(harness, input) {
+          const state: AgentRunState = {
+            schemaVersion: 1, runId: input.runId!, provider: "openai", modelId: "gpt-6-luna",
+            ...(harness.config.scope ? { scope: harness.config.scope } : {}),
+            status: "failed", messages: [], steps: [], toolResults: [], currentStep: 0,
+            maxSteps: 16, outputText: "", pendingApprovals: [],
+            error: { message: "sensitive-durable-provider-payload", category: "provider-tool-call",
+              diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID", reason: "invalid_json", retryable: true }
+          };
+          await harness.store.save(state);
+          return { status: state.status, outputText: state.outputText, messages: state.messages,
+            steps: state.steps, toolResults: state.toolResults, state, error: state.error! };
+        }
+      },
+      verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+      allowedCommands: ["node", "npm"], ociRuntimeAdapter: new FakeOciRuntime(),
+      maxSteps: 16, maxToolCalls: 24, maxTokens: 2_000, timeoutMs: 30_000, approvalDelayMs: 0,
+      ociMaxProcessRuntimeMs: 10_000, ociMaxProcessOutputBytes: 20_000,
+      ociMaxMemoryMb: 256, ociMaxPids: 32, ociMaxCpus: 1,
+      ociMaxWorkspaceBytes: 8 * 1024 * 1024, ociMaxFileWriteBytes: 1024 * 1024, ociTmpfsMb: 64
+    });
+    expect(result).toMatchObject({
+      environmentFailure: true, toolCalls: 0,
+      failureObservation: { source: "persisted", status: "failed", usage: "unavailable", modelTurns: 0 },
+      failure: { stage: "model", origin: "agent_run" }
+    });
+    expect(result.failure?.details?.chain).toContainEqual(expect.objectContaining({
+      providerToolCallReason: "invalid_json"
+    }));
+    expect(result).not.toHaveProperty("efficiency");
+    expect(result).not.toHaveProperty("promptTokens");
+    expect(result).not.toHaveProperty("completionTokens");
+    expect(JSON.stringify(result)).not.toContain("sensitive-durable-provider-payload");
+  });
+
+  for (const usageSource of ["returned-store-missing", "returned-store-throws", "persisted"] as const) {
+    test(`failed returned output preserves partial usage with ${usageSource}`, async () => {
+      const workspace = await temporaryDirectory("zhivex-driver-partial-");
+      const stateDirectory = await temporaryDirectory("zhivex-driver-partial-state-");
+      await mkdir(path.join(workspace, "src"), { recursive: true });
+      await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+      await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+      const usage = { inputTokens: 127, outputTokens: 9 };
+      const result = await runGovernedTimeToSafeFixProfile(driverRequest(workspace), {
+        provider: "openai", stateDirectory,
+        modelInstance: createMockLanguageModel({ streamEvents: [] }),
+        harnessRuntime: {
+          ...harnessRuntime,
+          async runHarness(harness, input) {
+            const state: AgentRunState = {
+              schemaVersion: 1, runId: input.runId!, provider: "openai", modelId: "gpt-6-luna",
+              ...(harness.config.scope ? { scope: harness.config.scope } : {}),
+              status: "failed", messages: [], steps: [], toolResults: [], currentStep: 0,
+              maxSteps: 16, outputText: "", pendingApprovals: [], usage,
+              error: { message: "sensitive-partial-receipt-failure" }
+            };
+            if (usageSource === "persisted") await harness.store.save(state);
+            else if (usageSource === "returned-store-throws") {
+              harness.store.load = async () => { throw new Error("sensitive-store-load-failure"); };
+            }
+            return { status: state.status, outputText: state.outputText, messages: state.messages,
+              steps: state.steps, toolResults: state.toolResults, state, error: state.error!,
+              ...(usageSource === "persisted" ? {} : { usage }) };
+          }
+        },
+        verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+        allowedCommands: ["node", "npm"], ociRuntimeAdapter: new FakeOciRuntime(),
+        maxSteps: 16, maxToolCalls: 24, maxTokens: 2_000, timeoutMs: 30_000, approvalDelayMs: 0,
+        ociMaxProcessRuntimeMs: 10_000, ociMaxProcessOutputBytes: 20_000,
+        ociMaxMemoryMb: 256, ociMaxPids: 32, ociMaxCpus: 1,
+        ociMaxWorkspaceBytes: 8 * 1024 * 1024, ociMaxFileWriteBytes: 1024 * 1024, ociTmpfsMb: 64
+      });
+      expect(result).toMatchObject({ environmentFailure: true, promptTokens: 127, completionTokens: 9,
+        failureObservation: { source: usageSource === "persisted" ? "persisted" : "unavailable", usage: "partial" } });
+      expect(result).not.toHaveProperty("efficiency");
+      expect(JSON.stringify(result)).not.toContain("sensitive-");
+    });
+  }
+
+  for (const verificationThrows of [false, true]) {
+    test(`recovers failed model counters and preserves its cause with verificationThrows=${verificationThrows}`, async () => {
+      const workspace = await temporaryDirectory("zhivex-driver-recovered-");
+      const stateDirectory = await temporaryDirectory("zhivex-driver-recovered-state-");
+      await mkdir(path.join(workspace, "src"), { recursive: true });
+      await writeFile(path.join(workspace, "src", "value.ts"), "export const value = 1;\n");
+      await writeFile(path.join(workspace, "verify.mjs"), "process.exit(0);\n");
+      const baseModel = createMockLanguageModel({
+        provider: "qwen.chat", modelId: "qwen3.8-flash",
+        streamEvents: [[
+          { type: "tool-call", toolCall: { id: "fixture-list", name: "list_files", input: { path: ".", includeDigests: false } } },
+          { type: "finish", finishReason: "tool-calls", usage: { inputTokens: 127, outputTokens: 9, totalTokens: 136 } }
+        ]]
+      });
+      let modelCalls = 0;
+      const originalStream = baseModel.stream!;
+      baseModel.stream = (input) => {
+        modelCalls += 1;
+        if (modelCalls > 1) throw new SyntaxError("sensitive-model-response-payload");
+        return originalStream(input);
+      };
+      const ociRuntime = new FakeOciRuntime();
+      if (verificationThrows) {
+        ociRuntime.run = async () => { throw new RangeError("sensitive-verification-failure-payload"); };
+      }
+
+      const result = await runGovernedTimeToSafeFixProfile(driverRequest(workspace, {
+        caseId: `driver-recovered-${verificationThrows}`
+      }), {
+        provider: "qwen", modelInstance: baseModel, stateDirectory,
+        verifierCommand: () => ({ command: "node", args: ["verify.mjs"] }),
+        allowedCommands: ["node", "npm"], ociRuntimeAdapter: ociRuntime,
+        maxSteps: 16, maxToolCalls: 24, maxTokens: 2_000,
+        timeoutMs: 30_000, approvalDelayMs: 0,
+        ociMaxProcessRuntimeMs: 10_000, ociMaxProcessOutputBytes: 20_000,
+        ociMaxMemoryMb: 256, ociMaxPids: 32, ociMaxCpus: 1,
+        ociMaxWorkspaceBytes: 8 * 1024 * 1024, ociMaxFileWriteBytes: 1024 * 1024, ociTmpfsMb: 64
+      });
+
+      expect(modelCalls).toBe(2);
+      expect(result).toMatchObject({
+        environmentFailure: true,
+        promptTokens: 127, completionTokens: 9, toolCalls: 1,
+        failureObservation: {
+          // The SDK persists the completed first turn, but not the synchronous
+          // second-call failure. Recovery must not invent that missing step.
+          source: "persisted", status: "failed", usage: "partial", modelTurns: 1,
+          compactions: 0, toolResults: 1, toolErrors: 0, maxSteps: 16
+        },
+        failure: { stage: "model", origin: "agent_run" }
+      });
+      expect(result.failure?.details?.chain).toContainEqual(expect.objectContaining({ kind: "SyntaxError" }));
+      expect(result.failure?.details?.chain).not.toContainEqual(expect.objectContaining({ kind: "RangeError" }));
+      expect(result).not.toHaveProperty("efficiency");
+      expect(JSON.stringify(result)).not.toContain("sensitive-");
+    });
+  }
 });

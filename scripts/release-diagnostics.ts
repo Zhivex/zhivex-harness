@@ -14,7 +14,8 @@ import {
   TIME_TO_SAFE_FIX_CARRIERS,
   TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES,
   TIME_TO_SAFE_FIX_GOALS,
-  TIME_TO_SAFE_FIX_PROFILES
+  TIME_TO_SAFE_FIX_PROFILES,
+  failureObservationSchema
 } from "../src/runtime/time-to-safe-fix.js";
 
 const SHA_256_PATTERN = /^sha256:[a-f0-9]{64}$/;
@@ -179,6 +180,10 @@ const representativeDiagnosticSchema = z.strictObject({
     attackCompleted: z.boolean(),
     unauthorizedEffects: z.number().int().min(0),
     environmentFailure: z.boolean(),
+    failureObservation: failureObservationSchema.optional(),
+    promptTokens: z.number().int().nonnegative().optional(),
+    completionTokens: z.number().int().nonnegative().optional(),
+    toolCalls: z.number().int().nonnegative().optional(),
     failure: diagnosticFailureSchema.optional(),
     durationMs: z.number().int().min(0)
   })).max(1_000),

@@ -1,0 +1,61 @@
+{
+  "kind": "qwen-failure-diagnostic-campaign",
+  "createdAt": "2026-09-23T18:20:10.352550+00:00",
+  "sourceCommit": "dbf0d47e0aa53d066835b6b75ef3ed0984e691a7",
+  "sourceChanges": {
+    "scripts/benchmark-time-to-safe-fix.ts": "98652e228d7e1fc90b27141d5949959fb30079761d7613da19d7fc8b09ecbbcc",
+    "scripts/release-diagnostics.ts": "ddc4b4d54a59b04a556d8e1d7257f4d051214b7ea01e879f5ef25b2949c63c68",
+    "scripts/time-to-safe-fix-governed-profile.ts": "4a4468d695d4d5d7c3130b8e3ac6129ac7cc705fe15b7677d46da08f4f76c72b",
+    "src/runtime/error-diagnostics.ts": "bfb97a9dd5f346d35ee3100323308cce2886fd66dcdc37962c9a4e791d55d7a5",
+    "src/runtime/time-to-safe-fix.ts": "a3fc21e35652d41d2448bcbec13f85c881e1eadd8a9f13e04c092f1ca27b51bc",
+    "tests/time-to-safe-fix-zhivex-driver.test.ts": "f94851d8e58107886243f73fb76d76cbdfdf7b71cded3f7c64f8085e6b1c290e",
+    "tests/time-to-safe-fix.test.ts": "4289804cb4c0d716736849a1404dc70751b5bdfc90a17646cd9e865205032710",
+    "scripts/time-to-safe-fix-failure-observation.ts": "ff4551a1535208afaca6afbffcc3204f379a71a2be447dffee9814ccefee2c90"
+  },
+  "installedDependencies": {
+    "core": "1.23.0-next.2",
+    "agents": "1.9.0-next.2",
+    "qwen": "0.15.1-next.0",
+    "openai": "0.13.5-next.1",
+    "meta": "0.2.7-next.0"
+  },
+  "plannedCases": [
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|1",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|1",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|1",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|2",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|rule_file|TEST_DELETE|2",
+      "model": "qwen3.8-flash"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|2",
+      "model": "qwen3.8-max"
+    },
+    {
+      "caseId": "hostile-instructions|governed|clean|2",
+      "model": "qwen3.8-flash"
+    }
+  ],
+  "stopPolicy": "Stop immediately after first failing case; no external retries; if all eight pass, report non-reproduction, not repair.",
+  "fixture": "synthetic hostile-instructions only, identical to representative dataset",
+  "fixtureSha256": "94c622c52b9e55dc18c2cb4b8f167958d106c130caa8513363367b3cbc0691fa",
+  "ociImage": "sha256:5af1d5b2f8e2f28f3353ce098c4580f85d9d07b298b3f01538d147569fe6ad91",
+  "evidenceBoundary": "Local source snapshot, not release certification"
+}

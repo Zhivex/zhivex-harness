@@ -508,6 +508,10 @@ const diagnosticSnapshot = (options: CliOptions, samples: TimeToSafeFixSample[],
         attackCompleted: sample.attackCompleted,
         unauthorizedEffects: sample.unauthorizedEffects,
         environmentFailure: sample.environmentFailure,
+        ...(sample.failureObservation ? { failureObservation: sample.failureObservation } : {}),
+        ...(sample.promptTokens !== undefined ? { promptTokens: sample.promptTokens } : {}),
+        ...(sample.completionTokens !== undefined ? { completionTokens: sample.completionTokens } : {}),
+        ...(sample.toolCalls !== undefined ? { toolCalls: sample.toolCalls } : {}),
         ...(sample.failure ? { failure: sample.failure } : {}),
         durationMs: Math.round(sample.durationMs)
       };
@@ -650,28 +654,33 @@ const run = async (options: CliOptions, progress: DiagnosticProgress) => {
           attackCompleted: aggregate.attackCompleted,
           environmentFailure: aggregate.environmentFailure,
           timeToSafeFix: aggregate.timeToSafeFix,
+          metricsCoverage: aggregate.metricsCoverage,
           totals: {
-            promptTokens: aggregate.promptTokens,
-            completionTokens: aggregate.completionTokens,
-            toolCalls: aggregate.toolCalls,
+            promptTokens: aggregate.metricsCoverage.promptTokens ? aggregate.promptTokens : null,
+            completionTokens: aggregate.metricsCoverage.completionTokens ? aggregate.completionTokens : null,
+            toolCalls: aggregate.metricsCoverage.toolCalls ? aggregate.toolCalls : null,
             approvals: aggregate.approvals
           },
           averagePerRun: {
-            totalTokens: aggregate.runs
+            totalTokens: aggregate.runs && aggregate.metricsCoverage.promptTokens === aggregate.runs &&
+                aggregate.metricsCoverage.completionTokens === aggregate.runs && aggregate.metricsCoverage.partialUsageRuns === 0
               ? (aggregate.promptTokens + aggregate.completionTokens) / aggregate.runs
-              : 0,
-            toolCalls: aggregate.runs ? aggregate.toolCalls / aggregate.runs : 0,
+              : null,
+            toolCalls: aggregate.runs && aggregate.metricsCoverage.toolCalls === aggregate.runs
+              ? aggregate.toolCalls / aggregate.runs : null,
             approvals: aggregate.runs ? aggregate.approvals / aggregate.runs : 0,
-            modelTurns: aggregate.runs
+            modelTurns: aggregate.runs && report.samples
+                .filter(sample => sample.profile === aggregate.profile).every(sample => sample.efficiency !== undefined)
               ? report.samples
                 .filter((sample) => sample.profile === aggregate.profile)
                 .reduce((total, sample) => total + (sample.efficiency?.modelTurns ?? 0), 0) / aggregate.runs
-              : 0,
-            approvalRounds: aggregate.runs
+              : null,
+            approvalRounds: aggregate.runs && report.samples
+                .filter(sample => sample.profile === aggregate.profile).every(sample => sample.efficiency !== undefined)
               ? report.samples
                 .filter((sample) => sample.profile === aggregate.profile)
                 .reduce((total, sample) => total + (sample.efficiency?.approvalRounds.length ?? 0), 0) / aggregate.runs
-              : 0
+              : null
           }
         })),
       matchedOverheadVsDirect: report.matchedOverheadVsDirect

@@ -554,6 +554,23 @@ describe("time-to-safe-fix benchmark", () => {
       .toThrow(/cannot exceed durationMs/);
   });
 
+  test("distinguishes unknown metrics and partial durable usage in aggregate coverage", () => {
+    const cases = createTimeToSafeFixCases({ tasks: [task()], profiles: ["governed"], carriers: ["rule_file"], repetitions: 1 });
+    const samples = cases.map((entry, index) => createTimeToSafeFixSample(entry, result({
+      promptTokens: index === 0 ? 123 : undefined,
+      completionTokens: undefined,
+      toolCalls: index === 0 ? 2 : undefined,
+      failureObservation: { source: index === 0 ? "persisted" : "unavailable", usage: index === 0 ? "partial" : "unavailable" }
+    })));
+    const report = createTimeToSafeFixReport({ samples, datasetName: "coverage", taskCount: 1,
+      profiles: ["governed"], carriers: ["rule_file"], repetitions: 1, plannedRuns: 2, smoke: true });
+    expect(report.aggregates.find(entry => entry.variant === "all")).toMatchObject({
+      promptTokens: 123, completionTokens: 0, toolCalls: 2,
+      metricsCoverage: { promptTokens: 1, completionTokens: 0, toolCalls: 1, partialUsageRuns: 1 }
+    });
+    expect(JSON.parse(JSON.stringify(samples[1]))).not.toHaveProperty("promptTokens");
+  });
+
   test("aggregates Wilson rates, safe latency, phases, and matched overhead", () => {
     const cases = createTimeToSafeFixCases({
       tasks: [task()],

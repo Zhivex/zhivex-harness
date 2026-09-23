@@ -8,6 +8,7 @@ import { tool, type AgentApprovalRequest, type AgentRunOutput, type LanguageMode
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { serializeJsonValue } from "@zhivex-ai/core";
 import { z } from "zod";
+import { observeTimeToSafeFixFailureState } from "./time-to-safe-fix-failure-observation.js";
 
 import type { HarnessProvider } from "../src/runtime/config.js";
 import type { HarnessOciRuntimeAdapter } from "../src/execution/execution-environment.js";
@@ -280,6 +281,8 @@ export const runGovernedTimeToSafeFixProfile = async (
   let harness: Awaited<ReturnType<TimeToSafeFixHarnessRuntime["createHarness"]>> | undefined;
   let instrumented: ReturnType<typeof selectAndInstrumentTools> | undefined;
   let output: AgentRunOutput | undefined;
+  let recovered: ReturnType<typeof observeTimeToSafeFixFailureState> | undefined;
+  let agentStartedAt: bigint | undefined;
   let verifierExitCode: number | undefined;
   let environmentFailure = false;
   let failureError: unknown;
@@ -347,7 +350,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     harness.agent.instructions = `${harness.agent.instructions ?? ""}\n\nBenchmark override: list_files is single-page and does not accept cursor.`;
     phasesMs.harnessCreate = elapsedMs(createStartedAt);
 
-    const agentStartedAt = process.hrtime.bigint();
+    agentStartedAt = process.hrtime.bigint();
     activeOrigin = "agent_run";
     output = await runtime.runHarness(harness, {
       runId,
@@ -411,12 +414,21 @@ export const runGovernedTimeToSafeFixProfile = async (
       failureOrigin = "agent_run";
     }
   } catch (error) {
+    if (agentStartedAt !== undefined) phasesMs.agent = elapsedMs(agentStartedAt);
     environmentFailure = !observedApprovals.some((approval) => !approval.approved);
     failureError = error;
     failureStage = activeOrigin === "agent_run" ? "model" : "environment";
     failureOrigin = activeOrigin;
   }
   if (harness) {
+    if (!output || output.status !== "completed") {
+      try {
+        recovered = observeTimeToSafeFixFailureState(await harness.store.load(runId, harness.config.scope));
+      } catch {
+        // A diagnostic read must not replace the original execution failure.
+        recovered = observeTimeToSafeFixFailureState(undefined);
+      }
+    }
     const verificationStartedAt = process.hrtime.bigint();
     try {
       activeOrigin = "verification";
@@ -436,9 +448,11 @@ export const runGovernedTimeToSafeFixProfile = async (
       }
     } catch (error) {
       environmentFailure = true;
-      failureError = error;
-      failureStage = "verification";
-      failureOrigin = "verification";
+      if (failureError === undefined) {
+        failureError = error;
+        failureStage = "verification";
+        failureOrigin = "verification";
+      }
     } finally {
       phasesMs.verification = elapsedMs(verificationStartedAt);
     }
@@ -492,6 +506,16 @@ export const runGovernedTimeToSafeFixProfile = async (
       )
     : undefined;
 
+  const promptTokens = output?.usage?.inputTokens ?? recovered?.promptTokens;
+  const completionTokens = output?.usage?.outputTokens ?? recovered?.completionTokens;
+  const toolCalls = output?.toolResults.length ?? recovered?.toolCalls;
+  const failureObservation = output?.status === "completed" ? undefined : {
+    ...(recovered?.observation ?? observeTimeToSafeFixFailureState(undefined).observation),
+    // Returned receipts remain useful when persistence is unavailable, but an
+    // interrupted run cannot establish complete billing from either source.
+    usage: promptTokens !== undefined || completionTokens !== undefined ? "partial" as const : "unavailable" as const
+  };
+
   try {
     return runtime.timeToSafeFixDriverResultSchema.parse({
       schemaVersion: 1,
@@ -505,16 +529,17 @@ export const runGovernedTimeToSafeFixProfile = async (
       durationMs,
       systemDurationMs: Math.max(0, durationMs - approvalWaitMs),
       approvalWaitMs,
-      promptTokens: output?.usage?.inputTokens ?? 0,
-      completionTokens: output?.usage?.outputTokens ?? 0,
-      toolCalls: output?.toolResults.length ?? 0,
+      ...(failureObservation ? { failureObservation } : {}),
+      ...(promptTokens !== undefined ? { promptTokens } : {}),
+      ...(completionTokens !== undefined ? { completionTokens } : {}),
+      ...(toolCalls !== undefined ? { toolCalls } : {}),
       approvals: observedApprovals.length,
-      efficiency: buildTimeToSafeFixEfficiency(
+      ...(output?.status === "completed" ? { efficiency: buildTimeToSafeFixEfficiency(
         output,
         Object.keys(harness?.agent.tools ?? {}).length,
         approvalRounds,
         instrumented?.timings ?? new Map()
-      ),
+      ) } : {}),
       phasesMs,
       notes: [
         `profile=${request.profile}`,

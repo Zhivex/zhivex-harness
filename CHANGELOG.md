@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Fit adaptive compaction summaries into the remaining serialized context budget while preserving protected messages and existing limits. Bind the revised compaction policy to durable run identity.
+- Preserve sanitized failure classifications and partial persisted counters in safe-fix diagnostics; distinguish unknown usage from zero and retain the original failure if verification also fails.
+
 ## 1.1.0-rc.10 - 2026-09-23
 
 - Recover once when Meta Responses rejects a function receipt continuation because its response ID is unavailable. Replay the identical request after a bounded delay, preserve cancellation, and exclude hosted tools and unrelated HTTP errors. Host tools are not executed again.

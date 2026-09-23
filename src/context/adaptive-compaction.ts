@@ -1,9 +1,12 @@
 import type { AgentCompactionOptions, ModelMessage, ToolSet } from "@zhivex-ai/core";
+import { createTextMessage } from "@zhivex-ai/core";
 import { COMPACTION_STRATEGY, summarizeHarnessMessages } from "./compaction.js";
 import { estimateContextTokens, measureContext } from "./context-metrics.js";
 
 export const estimateMessages = (messages: readonly ModelMessage[]) =>
   estimateContextTokens(measureContext({ messages: [...messages] }));
+
+export const ADAPTIVE_COMPACTION_POLICY = "adaptive-tokens-v2";
 
 /** Boundaries that never separate a call/approval from its correlated result. */
 export const safeRetentionCuts = (messages: readonly ModelMessage[]) => {
@@ -46,6 +49,7 @@ export const createAdaptiveCompaction = (config: {
 }, options: { tools?: ToolSet; remainingInputTokens?: () => number } = {}): AgentCompactionOptions => {
   let retained = config.keepRecentMessages;
   let systemTokens = 0;
+  let systemMessages: readonly ModelMessage[] = [];
   const toolTokens = estimateContextTokens(measureContext({ messages: [], ...(options.tools ? { tools: options.tools } : {}) })) - 64;
   const summaryAllowance = 1500; // 4,000 characters plus the SDK envelope.
   const threshold = () => {
@@ -62,6 +66,9 @@ export const createAdaptiveCompaction = (config: {
     get keepRecentMessages() { return retained; },
     estimateTokens(messages) {
       const measured = measureContext({ messages: [...messages] });
+      let systemCount = 0;
+      while (messages[systemCount]?.role === "system") systemCount++;
+      systemMessages = messages.slice(0, systemCount);
       systemTokens = Math.ceil(measured.systemCharacters / 3);
       const target = Math.max(1024, Math.floor(threshold() * 0.65) - toolTokens - systemTokens - summaryAllowance);
       const cuts = safeRetentionCuts(messages);
@@ -74,10 +81,35 @@ export const createAdaptiveCompaction = (config: {
       retained = cut === undefined ? 1 : Math.max(1, messages.length - cut);
       return estimateContextTokens(measured) + toolTokens;
     },
-    compactor({ messages }) {
+    compactor({ messages, retainedMessages }) {
       const budget = Math.max(128, Math.min(4000, Math.floor(JSON.stringify(messages).length / 2)));
-      const { summary, truncated } = summarizeHarnessMessages(messages, budget);
-      return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: "adaptive-tokens-v1",
+      let result = summarizeHarnessMessages(messages, budget);
+      // Size the exact SDK envelope, including JSON escaping. A character-only
+      // allowance can overflow beside a protected tail even when a shorter
+      // structured summary fits. Never trim system messages or correlated groups.
+      const fits = (summary: string) => estimateMessages([
+        ...systemMessages,
+        createTextMessage("assistant", `[Compacted prior conversation]\n${summary}`),
+        ...retainedMessages
+      ]) + toolTokens <= threshold();
+      if (!fits(result.summary)) {
+        let low = 128;
+        let high = budget - 1;
+        let fitted: typeof result | undefined;
+        while (low <= high) {
+          const middle = Math.floor((low + high) / 2);
+          const candidate = summarizeHarnessMessages(messages, middle);
+          if (fits(candidate.summary)) {
+            fitted = candidate;
+            low = middle + 1;
+          } else high = middle - 1;
+        }
+        // If the protected material cannot fit, the SDK's unchanged validation
+        // still rejects this minimum summary; no budget or receipt is bypassed.
+        result = fitted ?? summarizeHarnessMessages(messages, 128);
+      }
+      const { summary, truncated } = result;
+      return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: ADAPTIVE_COMPACTION_POLICY,
         sourceMessages: messages.length, truncated, targetRatio: 0.65, toolTokens } };
     }
   };

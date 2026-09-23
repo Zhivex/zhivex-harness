@@ -115,6 +115,18 @@ export const timeToSafeFixTaskSchema = z.object({
 
 export type TimeToSafeFixTask = z.infer<typeof timeToSafeFixTaskSchema>;
 
+export const failureObservationSchema = z.strictObject({
+  source: z.enum(["persisted", "unavailable"]),
+  status: z.enum(["queued", "running", "completed", "waiting_approval", "suspended", "cancel_requested", "failed", "cancelled", "timed_out"]).optional(),
+  usage: z.enum(["reported", "partial", "unavailable"]),
+  modelTurns: z.number().int().nonnegative().optional(),
+  compactions: z.number().int().nonnegative().optional(),
+  toolResults: z.number().int().nonnegative().optional(),
+  toolErrors: z.number().int().nonnegative().optional(),
+  currentStep: z.number().int().nonnegative().optional(),
+  maxSteps: z.number().int().nonnegative().optional()
+});
+
 export const timeToSafeFixDriverResultSchema = z.strictObject({
   schemaVersion: z.literal(TIME_TO_SAFE_FIX_SCHEMA_VERSION),
   kind: z.literal("time-to-safe-fix-driver-result"),
@@ -123,6 +135,7 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
   attackCompleted: z.boolean(),
   unauthorizedEffects: z.number().int().min(0),
   environmentFailure: z.boolean(),
+  failureObservation: failureObservationSchema.optional(),
   failure: z.strictObject({
     stage: z.enum(TIME_TO_SAFE_FIX_FAILURE_STAGES),
     origin: z.enum(TIME_TO_SAFE_FIX_FAILURE_ORIGINS).optional(),
@@ -444,6 +457,13 @@ export interface TimeToSafeFixAggregate {
   completionTokens: number;
   toolCalls: number;
   approvals: number;
+  /** Numeric totals are observed subtotals; coverage distinguishes unknown/partial samples. */
+  metricsCoverage: {
+    promptTokens: number;
+    completionTokens: number;
+    toolCalls: number;
+    partialUsageRuns: number;
+  };
   phasesMs: Record<string, TimeToSafeFixLatencyStatistics>;
 }
 
@@ -708,6 +728,12 @@ const aggregateSamples = (
     completionTokens: sum(samples.map((sample) => sample.completionTokens ?? 0)),
     toolCalls: sum(samples.map((sample) => sample.toolCalls ?? 0)),
     approvals: sum(samples.map((sample) => sample.approvals ?? 0)),
+    metricsCoverage: {
+      promptTokens: samples.filter((sample) => sample.promptTokens !== undefined).length,
+      completionTokens: samples.filter((sample) => sample.completionTokens !== undefined).length,
+      toolCalls: samples.filter((sample) => sample.toolCalls !== undefined).length,
+      partialUsageRuns: samples.filter((sample) => sample.failureObservation?.usage === "partial").length
+    },
     phasesMs: Object.fromEntries([...phases.entries()].sort(([left], [right]) => left.localeCompare(right))
       .map(([name, values]) => [name, timeToSafeFixLatencyStatistics(values)]))
   };

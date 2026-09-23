@@ -2,7 +2,23 @@ import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
 const systemCodes = ["ENOENT", "EACCES", "EPERM", "ENOSPC", "EIO", "EISDIR", "ENOTDIR", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ABORT_ERR"] as const;
-const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError"] as const;
+const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError", "ProviderToolCallError", "ProviderHTTPError", "ValidationError", "ParseError", "ToolNotRegisteredError"] as const;
+const providerToolCallReasons = ["empty_arguments", "invalid_json", "arguments_too_large", "incomplete_arguments", "inconsistent_metadata", "response_failed", "response_incomplete", "stream_truncated"] as const;
+const guardrailStages = ["input", "output", "tool-input", "tool-output"] as const;
+const compactionReasons = ["invalid_max_messages", "invalid_max_estimated_input_tokens", "invalid_keep_recent_messages", "missing_limits", "protected_messages", "empty_summary", "insufficient_reduction", "max_messages_exceeded", "max_estimated_input_tokens_exceeded"] as const;
+// Exact fixed SDK ValidationError messages only: substrings could misclassify
+// arbitrary provider text and must never be emitted as diagnostics.
+const compactionMessages = new Map<string, typeof compactionReasons[number]>([
+  ["Agent compaction maxMessages must be an integer greater than or equal to 2.", "invalid_max_messages"],
+  ["Agent compaction maxEstimatedInputTokens must be a positive integer.", "invalid_max_estimated_input_tokens"],
+  ["Agent compaction keepRecentMessages must be a positive integer.", "invalid_keep_recent_messages"],
+  ["Agent compaction requires maxMessages or maxEstimatedInputTokens.", "missing_limits"],
+  ["Agent compaction cannot satisfy its limits without removing protected messages.", "protected_messages"],
+  ["Agent compactor returned an empty summary.", "empty_summary"],
+  ["Agent compaction must reduce both message count and estimated input tokens.", "insufficient_reduction"],
+  ["Agent compaction result still exceeds maxMessages.", "max_messages_exceeded"],
+  ["Agent compaction result still exceeds maxEstimatedInputTokens.", "max_estimated_input_tokens_exceeded"]
+]);
 const budgetLimits = ["maxSteps", "maxToolCalls", "maxToolErrors", "maxInputTokens", "maxOutputTokens", "maxTotalTokens"] as const;
 const budgetDiagnosticSchema = z.object({
   budgetLimit: z.enum(budgetLimits),
@@ -25,6 +41,11 @@ export const errorDetailsSchema = z.strictObject({
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
+    providerToolCallReason: z.enum(providerToolCallReasons).optional(),
+    category: z.literal("provider-tool-call").optional(),
+    effectsPossible: z.boolean().optional(),
+    guardrailStage: z.enum(guardrailStages).optional(),
+    compactionReason: z.enum(compactionReasons).optional(),
     acceptanceReason: z.enum(acceptanceReasons).optional(),
     delegation: z.enum(["contract", "path", "acceptance"]).optional(),
     approvalFields: z.array(z.enum(approvalFields)).max(approvalFields.length).optional(),
@@ -66,7 +87,20 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     const status = [record.status, record.statusCode].find((value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599);
     if (typeof status === "number") entry.status = status;
     if (typeof record.retryable === "boolean") entry.retryable = record.retryable;
+    // The SDK's durable AgentRunError keeps category/reason but has no name.
+    if (record.name === "ProviderToolCallError" || record.category === "provider-tool-call") {
+      if (record.category === "provider-tool-call") entry.category = "provider-tool-call";
+      if (providerToolCallReasons.includes(record.reason as typeof providerToolCallReasons[number])) {
+        entry.providerToolCallReason = record.reason as typeof providerToolCallReasons[number];
+      }
+      if (typeof record.effectsPossible === "boolean") entry.effectsPossible = record.effectsPossible;
+    }
+    if (record.name === "ValidationError" && typeof record.message === "string") {
+      const reason = compactionMessages.get(record.message);
+      if (reason) entry.compactionReason = reason;
+    }
     if (record.name === "GuardrailTriggeredError") {
+      if (guardrailStages.includes(record.stage as typeof guardrailStages[number])) entry.guardrailStage = record.stage as typeof guardrailStages[number];
       const budget = budgetDiagnosticSchema.safeParse(record.metadata);
       if (budget.success) entry.budget = budget.data;
     }
