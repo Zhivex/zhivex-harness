@@ -1,4 +1,3 @@
-import { sanitizeOperationalError, restoreSanitizedOperationalError } from "./release-diagnostics.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -36,7 +35,7 @@ const parentToken = (provider: HarnessProvider) =>
   `ZHIVEX_HARNESS_${provider.toUpperCase()}_ORCHESTRATION_OK`;
 
 const childPrompt = (provider: HarnessProvider) =>
-  `Review review-target.txt with at most one read-only repository tool. Do not mutate the workspace. Include this exact token in your final response: ${childToken(provider)}.`;
+  `Review review-target.txt with at most one read-only repository tool. Do not mutate the workspace. Include this exact completion marker on its own line in your final response, without a label or prefix: ${childToken(provider)}.`;
 
 export const orchestrationPrompt = (provider: HarnessProvider) =>
   `Call delegate_reviewer exactly once with this exact JSON input: {"taskId":"release-review"}.
@@ -101,7 +100,8 @@ const certifyProvider = async (
       scope: first.config.scope,
       idempotencyKey: `live-orchestration-${provider}`
     }, { onEvent: (event) => {
-      if (event.type === "error") terminalError = restoreSanitizedOperationalError(sanitizeOperationalError(event.error));
+      // Keep the typed cause in memory; errorEvidence performs the only serialization.
+      if (event.type === "error") terminalError = event.error;
     } });
     if (result.status === "failed" && (terminalError || result.error)) throw terminalError ?? result.error;
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");

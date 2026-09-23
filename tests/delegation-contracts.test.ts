@@ -46,7 +46,7 @@ for (const mode of ["generate", "stream"] as const) {
   }
 }
 
-for (const outcome of ["success", "path", "acceptance", "budget", "no-read"] as const) {
+for (const outcome of ["success", "path", "acceptance", "budget", "no-read", "labeled-marker"] as const) {
   test(`governed task ${outcome}: durable linkage, scope and acceptance`, async () => {
     const root = await mkdtemp(join(tmpdir(), "contract-test-"));
     await writeFile(join(root, "target.txt"), "fixture");
@@ -59,7 +59,7 @@ for (const outcome of ["success", "path", "acceptance", "budget", "no-read"] as 
       { messages: [{ role: "assistant", parts: Array.from({ length: outcome === "budget" ? 2 : 1 }, (_, i) => ({
         type: "tool-call" as const, toolCall: { id: `read-${i}`, name: "read_file", input: { path: outcome === "path" ? "other.txt" : "target.txt" } }
       })) }], finishReason: "tool-calls", usage },
-      { messages: [{ role: "assistant", parts: [{ type: "text", text: outcome === "acceptance" ? "missing" : "ACCEPTED" }] }], text: outcome === "acceptance" ? "missing" : "ACCEPTED", finishReason: "stop", usage }
+      { messages: [{ role: "assistant", parts: [{ type: "text", text: outcome === "acceptance" ? "missing" : outcome === "labeled-marker" ? "Acceptance token: ACCEPTED" : "ACCEPTED" }] }], text: outcome === "acceptance" ? "missing" : outcome === "labeled-marker" ? "Acceptance token: ACCEPTED" : "ACCEPTED", finishReason: "stop", usage }
     ] });
     const child = { ...childMock, generate: async (input: Parameters<typeof childMock.generate>[0]) => {
       expect(Object.keys(input.tools ?? {})).toEqual(["read_file"]);
@@ -80,12 +80,18 @@ for (const outcome of ["success", "path", "acceptance", "budget", "no-read"] as 
       expect(Object.keys(harness.agent.tools ?? {})).toEqual([]);
       const run = runHarness(harness, { runId: "parent", prompt: "Delegate review", scope: harness.config.scope });
       if (outcome === "success") expect((await run).status).toBe("completed");
-      else if (outcome === "acceptance" || outcome === "no-read") expect((await run).status).toBe("failed");
+      else if (outcome === "acceptance" || outcome === "no-read" || outcome === "labeled-marker") expect((await run).status).toBe("failed");
       else await expect(run).rejects.toThrow();
       const persisted = await store.load("parent", harness.config.scope);
       expect(persisted?.childRuns).toHaveLength(1);
       expect(persisted?.childRuns?.[0]?.status).toBe(outcome === "success" ? "completed" : "failed");
       expect(getAgentBudgetStatus(persisted!, { includeChildRuns: true }).consumption.totalTokens).toBeGreaterThan(5);
+      if (outcome === "labeled-marker") {
+        const child = await store.load(persisted!.childRuns![0]!.runId, harness.config.scope);
+        // A marker formatted as a credential must not bypass redaction.
+        expect(child?.toolResults.some(result => result.toolName === "read_file" && !result.isError)).toBe(true);
+        expect(child?.error?.message).toBe("DELEGATION_ACCEPTANCE_FAILED");
+      }
       if (outcome === "budget") {
         const child = await store.load(persisted!.childRuns![0]!.runId, harness.config.scope);
         expect(child?.toolResults).toHaveLength(0);
