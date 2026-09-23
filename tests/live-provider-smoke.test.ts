@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
-import { liveOrchestrationSmokeInternals } from "../scripts/live-orchestration-smoke.js";
+import { liveOrchestrationSmokeInternals, reviewDelegationContract } from "../scripts/live-orchestration-smoke.js";
 import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 import { LIVE_ROUTING_DEFAULTS } from "../scripts/live-routing-smoke.js";
 
@@ -170,7 +170,12 @@ describe("live provider smoke contract", () => {
     const prompt = liveOrchestrationSmokeInternals.orchestrationPrompt("openai");
     expect(prompt).toContain("Call delegate_reviewer exactly once");
     expect(prompt).toContain("Do not call any other tool");
-    expect(prompt).toContain(liveOrchestrationSmokeInternals.childPrompt("openai"));
+    expect(prompt).toContain(JSON.stringify({ taskId: "release-review" }));
+    expect(reviewDelegationContract("openai")).toMatchObject({
+      profile: "reviewer", allowedReadPaths: ["review-target.txt"],
+      prompt: liveOrchestrationSmokeInternals.childPrompt("openai"),
+      requiredOutput: "ZHIVEX_HARNESS_OPENAI_CHILD_OK"
+    });
     expect(liveOrchestrationSmokeInternals.childPrompt("openai")).toContain("Review review-target.txt");
     expect(liveOrchestrationSmokeInternals.childPrompt("openai")).toContain("at most one read-only repository tool");
     expect(prompt).toContain(liveOrchestrationSmokeInternals.parentToken("openai"));

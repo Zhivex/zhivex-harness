@@ -1,3 +1,4 @@
+import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
 import { assembleHarnessTools } from "../tools/tool-registry.js";
 import { UsageLedger, USAGE_LEDGER_KEY, type UsageAccountingOptions } from "./usage-ledger.js";
 import { createCheckpointTokenCap, createRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
@@ -184,6 +185,9 @@ export const renderHarnessInstructions = (names: readonly string[]) => {
 };
 
 export interface CreateHarnessOptions extends HarnessConfigInput {
+  /** Application-owned least-privilege catalog for strict runs. */
+  toolNames?: readonly string[];
+  delegationContracts?: readonly HarnessDelegationContract[];
   usageAccounting?: UsageAccountingOptions;
   env?: NodeJS.ProcessEnv;
   providerRegistry?: HarnessProviderRegistry;
@@ -302,6 +306,14 @@ const createProviderCompatibleBudget = (config: HarnessConfig) => createRuntimeB
 
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options, options.providerRegistry);
+  const contracts = normalizeDelegationContracts(options.delegationContracts);
+  if (options.toolNames && config.agentProfile !== "strict") {
+    throw new HarnessConfigError("Explicit tool catalogs currently require the strict profile.");
+  }
+  if (contracts.length && (contracts.length !== config.orchestration.profiles.length ||
+      contracts.some(c => !config.orchestration.profiles.includes(c.profile)))) {
+    throw new HarnessConfigError("Every enabled profile must have exactly one delegation contract.");
+  }
   let workspace: Workspace;
   try {
     workspace = await Workspace.open(config.workspace);
@@ -412,7 +424,13 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     if (error instanceof HarnessError) throw error;
     throw new HarnessExecutionError("Harness MCP tool discovery failed.", { cause: error, retryable: true });
   }
-  const tools = assembleHarnessTools([createTaskTools(), workspaceTools, executionTools, contextTools], mcpTools);
+  const availableTools = assembleHarnessTools([createTaskTools(), workspaceTools, executionTools, contextTools], mcpTools);
+  if (options.toolNames?.some(name => !Object.hasOwn(availableTools, name))) {
+    throw new HarnessConfigError("The requested tool catalog contains unavailable tools.");
+  }
+  const tools = options.toolNames === undefined ? availableTools
+    : Object.fromEntries([...new Set(options.toolNames)].sort().map(name => [name, availableTools[name]!]));
+  if (contracts.length && !tools.read_file) throw new HarnessConfigError("Contract requires read_file in the catalog.");
   const persistence = options.store ? undefined : await openHarnessPersistence(config);
   const usageLedger = options.usageAccounting ? await UsageLedger.open(config, options.usageAccounting) : undefined;
   const store = usageLedger ? usageLedger.store(options.store ?? persistence!.store) : options.store ?? persistence!.store;
@@ -441,7 +459,10 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     lifecycleHooks,
     executionEnvironment
   );
+  if (contracts.length) binding.fingerprint = `sha256:${createHash("sha256").update(binding.fingerprint + delegationFingerprint(contracts)).digest("hex")}`;
+  if (options.toolNames) binding.fingerprint = `sha256:${createHash("sha256").update(binding.fingerprint + JSON.stringify(Object.keys(tools))).digest("hex")}`;
   const subagentRuntime = createHarnessSubagents({
+    contracts,
     config,
     parentBinding: binding,
     model,
@@ -459,11 +480,15 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
 
   const baseAgent = {
     id: `zhivex-harness-${config.provider}`,
-    model,
-    instructions: `${renderHarnessInstructions(Object.keys(tools))}${contextInstructions ? `\n\n${contextInstructions}` : ""}${enabledDelegations}`,
+    model: withDelegationContracts(model, contracts),
+    instructions: contracts.length ? `You coordinate application-owned read-only tasks. Delegate each requested task by its taskId without rewriting it. Do not inspect the repository yourself. After the child returns, answer the user using its result. Available tasks: ${contracts.map(c => `${c.taskId} via delegate_${c.profile}`).join(", ")}.` : `${renderHarnessInstructions(Object.keys(tools))}${contextInstructions ? `\n\n${contextInstructions}` : ""}${enabledDelegations}`,
     maxSteps: config.maxSteps,
-    tools,
+    tools: contracts.length ? {} : tools,
     subagents: subagentRuntime.definitions,
+    ...(contracts.length ? { outputGuardrails: [({ state, output }: import("@zhivex-ai/agents").AgentOutputGuardrailRequest) =>
+      output.status === "completed" && contracts.some(contract => !(state.childRuns ?? []).some(child =>
+        child.toolName === `delegate_${contract.profile}` && child.status === "completed" && child.outputText.includes(contract.requiredOutput)))
+        ? { triggered: true as const, reason: "DELEGATION_ACCEPTANCE_FAILED", metadata: { delegation: "acceptance" } } : undefined] } : {}),
     harness: binding,
     ...(executionEnvironment ? { executionEnvironment } : {}),
     compaction: createAdaptiveCompaction(config.compaction, { tools }),

@@ -233,11 +233,32 @@ Do not invent or calculate proposalId, do not skip propose_edits, and do not cal
 After the approved apply_patch result, reply exactly ${completionToken(provider)}.`;
 };
 
+// Keep the original exact assertion, but expose only which fixed contract field
+// differed. Never serialize actual or expected model arguments in diagnostics.
+const assertApprovalArguments = (actual: unknown, expected: ReturnType<typeof expectedApprovalArguments>) => {
+  try { assert.deepEqual(actual, expected); }
+  catch (error) {
+    const record = actual && typeof actual === "object" ? actual as Record<string, unknown> : {};
+    const changes = Array.isArray(record.changes) ? record.changes : [];
+    const change = changes[0] && typeof changes[0] === "object" ? changes[0] as Record<string, unknown> : {};
+    const wanted = expected.changes[0]!;
+    const fields = [
+      ...(record.proposalId !== expected.proposalId ? ["proposalId"] : []),
+      ...(changes.length !== expected.changes.length ? ["change_count"] : []),
+      ...(["path", "content", "expectedDigest"] as const).filter(key => change[key] !== wanted[key]),
+      ...(Object.keys(record).some(key => key !== "proposalId" && key !== "changes") ||
+        Object.keys(change).some(key => !["path", "content", "expectedDigest"].includes(key)) ? ["unknown_fields"] : [])
+    ];
+    throw Object.assign(error as Error, { approvalFields: fields.length ? fields : ["shape"] });
+  }
+};
+
 const createLiveHarness = async (args: PhaseArguments) => createHarness({
   provider: args.provider,
   model: args.model,
   workspace: args.workspace,
   stateDirectory: args.stateDirectory,
+  toolNames: ["propose_edits", "apply_patch"],
   maxSteps: 4,
   // This matrix preserves the 0.4 single-agent certification contract. The
   // 0.5 orchestration matrix is tracked separately so delegation cannot make
@@ -275,7 +296,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
     assert.ok(approval, "The provider did not request the apply_patch approval.");
     assert.equal(approval.kind, "local-tool");
     checkpoint = "request_arguments";
-    assert.deepEqual(JSON.parse(approval.arguments), expected);
+    assertApprovalArguments(JSON.parse(approval.arguments), expected);
     assert.equal(result.state.pendingApprovals.length, 1);
     await assert.rejects(readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"));
 
@@ -307,7 +328,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     const approval = state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
     assert.ok(approval, "The persisted run has no apply_patch approval.");
     checkpoint = "resume_arguments";
-    assert.deepEqual(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
+    assertApprovalArguments(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
     checkpoint = "resume_status";
 
     const result = await runHarness(harness, {
@@ -499,6 +520,7 @@ const errorEvidence = (
 };
 
 export const liveProviderSmokeInternals = {
+  assertApprovalArguments,
   assertLiveOptIn,
   certificationPrompt,
   errorEvidence,

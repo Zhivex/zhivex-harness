@@ -1,0 +1,823 @@
+{
+  "schemaVersion": 1,
+  "dateLocal": "2026-09-23",
+  "sourceCommit": "5b7273fd7e4edd36bfc1d1954a63138412d66c05",
+  "dependencyExperiment": "Isolated copy with exact next versions, core override pinned; original package.json and bun.lock unchanged.",
+  "packages": {
+    "agents": {
+      "version": "1.9.0-next.1",
+      "dependencies": {
+        "@zhivex-ai/core": "^1.23.0-next.1"
+      },
+      "entrypointSha256": "37a17618a0af53e855bf050c3065c626579d5be3629977a0e46d63a07a13582a",
+      "registryIntegrity": "sha512-vVjrnpvHy8TjAq0/Vja47qidrgQ7My3eq0dVvJM2SNHKL9P4RSGpo1qXmpXVnRHwXj/Le17sGAP1TYLTx0kL+A=="
+    },
+    "core": {
+      "version": "1.23.0-next.1",
+      "dependencies": {
+        "zod": "^4.6.3",
+        "ws": "^8.21.3"
+      },
+      "entrypointSha256": "018b4b6d162c747aa58ada1a7cd1ae02de793b627a6dd639e049e15330731df2",
+      "registryIntegrity": "sha512-cOKOFakmUJ4rSlznaUcOQYINdWVP6pGOa1FdsYUwTvEJaTn+2r8FcyjOq6a0iowe+1ubVEK3HyZKKrl7ebG3jA=="
+    },
+    "qwen": {
+      "version": "0.15.1-next.0",
+      "dependencies": {
+        "@zhivex-ai/core": "^1.23.0-next.0",
+        "zod": "^4.6.3"
+      },
+      "entrypointSha256": "5681d9b9e52684221d37ca7202a91e6fa20108e068f89aa3e6083b3ab2156b72",
+      "registryIntegrity": "sha512-dpNPWVovSYKRC2WzkiXlMa7gkvDRn6v/TTAyJMwfhvTJYzgSU/7Jz1Oa/fMt/vSTRY61AwqQ2kUnPHI1FPtW2g=="
+    },
+    "openai": {
+      "version": "0.13.5-next.1",
+      "dependencies": {
+        "@zhivex-ai/core": "^1.23.0-next.0",
+        "zod": "^4.6.3"
+      },
+      "entrypointSha256": "e858f56b07787e804d30d726057d6ad30f812933ec1df894f43eefa9f1b81b11",
+      "registryIntegrity": "sha512-JooCOw2KrzPNqs5e7cMpcTbJk3Gt8uyw+gNWklzAPdoAKAR00Z/pV4SOvnQHLjWUpL0dy0oE77SV0VJEz0ipqQ=="
+    },
+    "meta": {
+      "version": "0.2.7-next.0",
+      "dependencies": {
+        "@zhivex-ai/core": "^1.23.0-next.0",
+        "zod": "^4.6.3"
+      },
+      "entrypointSha256": "cbfa904177fe4996e9c13f8089819e7f48424b3670fb55ad4231fb5efb1450f8"
+    },
+    "gemini": {
+      "version": "0.12.2-next.0",
+      "dependencies": {
+        "@zhivex-ai/core": "^1.23.0-next.0",
+        "zod": "^4.6.3"
+      },
+      "entrypointSha256": "30d589075e4da19d6f97fd43a13cd1ae84e665246ba3e0824046b26f0b2a93d8"
+    }
+  },
+  "qwenEntrypointIdenticalToStable": true,
+  "cases": [
+    {
+      "schemaVersion": 1,
+      "kind": "controlled-qwen-orchestration",
+      "variant": "baseline",
+      "index": 0,
+      "sourceCommit": "5b7273fd7e4edd36bfc1d1954a63138412d66c05",
+      "model": "qwen3.8-flash",
+      "durationMs": 14724,
+      "config": {
+        "profile": "strict",
+        "budget": {
+          "maxSteps": 4,
+          "maxToolCalls": 4,
+          "maxToolErrors": 4,
+          "maxInputTokens": 100000,
+          "maxOutputTokens": 30000,
+          "maxTotalTokens": 120000,
+          "includeChildRuns": true
+        },
+        "childBudget": {
+          "maxSteps": 2,
+          "maxToolCalls": 1,
+          "maxToolErrors": 3,
+          "maxInputTokens": 30000,
+          "maxOutputTokens": 8000,
+          "maxTotalTokens": 36000,
+          "includeChildRuns": false
+        },
+        "timeoutMs": 900000,
+        "childTimeoutMs": 300000
+      },
+      "outcome": {
+        "status": "thrown",
+        "error": {
+          "code": "EXECUTION_FAILED",
+          "category": "execution",
+          "retryable": false,
+          "details": {
+            "chain": [
+              {
+                "code": "EXECUTION_FAILED",
+                "retryable": false
+              },
+              {
+                "kind": "GuardrailTriggeredError",
+                "budget": {
+                  "budgetLimit": "maxToolCalls",
+                  "limit": 1,
+                  "actual": 0,
+                  "required": 3,
+                  "remaining": 1,
+                  "operation": "tool",
+                  "includeChildRuns": false
+                }
+              }
+            ]
+          },
+          "fingerprint": "sha256:c21cddf655402b17c1c530c8d306466f158880c805755493bfca015904bd7dc8"
+        }
+      },
+      "runs": [
+        {
+          "role": "parent",
+          "status": "failed",
+          "steps": 1,
+          "maxSteps": 4,
+          "usage": {
+            "inputTokens": 4451,
+            "outputTokens": 239,
+            "totalTokens": 4690,
+            "cachedInputTokens": 0,
+            "reasoningTokens": 55
+          },
+          "childLinks": 1,
+          "compactions": 0,
+          "calls": [
+            {
+              "name": "delegate_reviewer",
+              "exactDelegation": false
+            }
+          ],
+          "executedTools": [],
+          "userContainsChildMarker": true,
+          "outputMarker": false
+        },
+        {
+          "role": "child",
+          "status": "failed",
+          "steps": 2,
+          "maxSteps": 2,
+          "usage": {
+            "inputTokens": 3507,
+            "outputTokens": 149,
+            "totalTokens": 3656,
+            "cachedInputTokens": 1024,
+            "reasoningTokens": 38
+          },
+          "childLinks": 0,
+          "compactions": 0,
+          "calls": [
+            {
+              "name": "list_files"
+            },
+            {
+              "name": "read_file"
+            },
+            {
+              "name": "mutation_audit"
+            }
+          ],
+          "executedTools": [
+            {
+              "name": "list_files",
+              "error": false
+            }
+          ],
+          "userContainsChildMarker": false,
+          "outputMarker": false
+        }
+      ],
+      "wires": [
+        {
+          "role": "parent",
+          "api": "responses",
+          "stream": true,
+          "previousResponse": false,
+          "inputChars": 4126,
+          "toolSchemaChars": 12472,
+          "toolCount": 18,
+          "tokenCap": null,
+          "requestContainsChildMarker": true,
+          "httpStatus": 200,
+          "argumentEvents": [
+            {
+              "stage": "arguments_done",
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": true,
+              "argumentChars": 747
+            },
+            {
+              "stage": "item_done",
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": true,
+              "argumentChars": 747
+            }
+          ],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 4451,
+            "output": 239,
+            "total": 4690,
+            "cached": 0,
+            "reasoning": 55
+          },
+          "terminalCalls": [
+            {
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": true,
+              "argumentChars": 747
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": true
+        },
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": false,
+          "inputChars": 984,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": false,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1694,
+            "output": 73,
+            "total": 1767,
+            "cached": 0,
+            "reasoning": 18
+          },
+          "terminalCalls": [
+            {
+              "name": "list_files",
+              "hasSystemOverride": false,
+              "argumentChars": 52
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        },
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": true,
+          "inputChars": 330,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": false,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1813,
+            "output": 76,
+            "total": 1889,
+            "cached": 1024,
+            "reasoning": 20
+          },
+          "terminalCalls": [
+            {
+              "name": "read_file",
+              "hasSystemOverride": false,
+              "argumentChars": 45
+            },
+            {
+              "name": "mutation_audit",
+              "hasSystemOverride": false,
+              "argumentChars": 2
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        }
+      ],
+      "fixtureUnchanged": true
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "controlled-qwen-orchestration",
+      "variant": "direct",
+      "index": 1,
+      "sourceCommit": "5b7273fd7e4edd36bfc1d1954a63138412d66c05",
+      "model": "qwen3.8-flash",
+      "durationMs": 26418,
+      "config": {
+        "profile": "strict",
+        "budget": {
+          "maxSteps": 4,
+          "maxToolCalls": 4,
+          "maxToolErrors": 4,
+          "maxInputTokens": 100000,
+          "maxOutputTokens": 30000,
+          "maxTotalTokens": 120000,
+          "includeChildRuns": true
+        },
+        "childBudget": {
+          "maxSteps": 2,
+          "maxToolCalls": 1,
+          "maxToolErrors": 3,
+          "maxInputTokens": 30000,
+          "maxOutputTokens": 8000,
+          "maxTotalTokens": 36000,
+          "includeChildRuns": false
+        },
+        "timeoutMs": 900000,
+        "childTimeoutMs": 300000
+      },
+      "outcome": {
+        "status": "completed",
+        "parentMarker": false,
+        "childMarker": true,
+        "outputChars": 2027,
+        "childLinks": 0,
+        "error": null
+      },
+      "runs": [
+        {
+          "role": "child",
+          "status": "completed",
+          "steps": 2,
+          "maxSteps": 2,
+          "usage": {
+            "inputTokens": 3336,
+            "outputTokens": 983,
+            "totalTokens": 4319,
+            "cachedInputTokens": 2048,
+            "reasoningTokens": 435
+          },
+          "childLinks": 0,
+          "compactions": 0,
+          "calls": [
+            {
+              "name": "read_file"
+            }
+          ],
+          "executedTools": [
+            {
+              "name": "read_file",
+              "error": false
+            }
+          ],
+          "userContainsChildMarker": true,
+          "outputMarker": true
+        }
+      ],
+      "wires": [
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": false,
+          "inputChars": 437,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": true,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1590,
+            "output": 53,
+            "total": 1643,
+            "cached": 1024,
+            "reasoning": 24
+          },
+          "terminalCalls": [
+            {
+              "name": "read_file",
+              "hasSystemOverride": false,
+              "argumentChars": 29
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        },
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": true,
+          "inputChars": 351,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": false,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1746,
+            "output": 930,
+            "total": 2676,
+            "cached": 1024,
+            "reasoning": 411
+          },
+          "terminalCalls": [],
+          "terminalHasChildMarker": true,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        }
+      ],
+      "fixtureUnchanged": true
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "controlled-qwen-orchestration",
+      "variant": "baseline",
+      "index": 2,
+      "sourceCommit": "5b7273fd7e4edd36bfc1d1954a63138412d66c05",
+      "model": "qwen3.8-flash",
+      "durationMs": 11287,
+      "config": {
+        "profile": "strict",
+        "budget": {
+          "maxSteps": 4,
+          "maxToolCalls": 4,
+          "maxToolErrors": 4,
+          "maxInputTokens": 100000,
+          "maxOutputTokens": 30000,
+          "maxTotalTokens": 120000,
+          "includeChildRuns": true
+        },
+        "childBudget": {
+          "maxSteps": 2,
+          "maxToolCalls": 1,
+          "maxToolErrors": 3,
+          "maxInputTokens": 30000,
+          "maxOutputTokens": 8000,
+          "maxTotalTokens": 36000,
+          "includeChildRuns": false
+        },
+        "timeoutMs": 900000,
+        "childTimeoutMs": 300000
+      },
+      "outcome": {
+        "status": "thrown",
+        "error": {
+          "code": "EXECUTION_FAILED",
+          "category": "execution",
+          "retryable": false,
+          "details": {
+            "chain": [
+              {
+                "code": "EXECUTION_FAILED",
+                "retryable": false
+              },
+              {
+                "kind": "GuardrailTriggeredError",
+                "budget": {
+                  "budgetLimit": "maxToolCalls",
+                  "limit": 1,
+                  "actual": 0,
+                  "required": 3,
+                  "remaining": 1,
+                  "operation": "tool",
+                  "includeChildRuns": false
+                }
+              }
+            ]
+          },
+          "fingerprint": "sha256:c21cddf655402b17c1c530c8d306466f158880c805755493bfca015904bd7dc8"
+        }
+      },
+      "runs": [
+        {
+          "role": "parent",
+          "status": "failed",
+          "steps": 1,
+          "maxSteps": 4,
+          "usage": {
+            "inputTokens": 4451,
+            "outputTokens": 114,
+            "totalTokens": 4565,
+            "cachedInputTokens": 4096,
+            "reasoningTokens": 35
+          },
+          "childLinks": 1,
+          "compactions": 0,
+          "calls": [
+            {
+              "name": "delegate_reviewer",
+              "exactDelegation": false
+            }
+          ],
+          "executedTools": [],
+          "userContainsChildMarker": true,
+          "outputMarker": false
+        },
+        {
+          "role": "child",
+          "status": "failed",
+          "steps": 2,
+          "maxSteps": 2,
+          "usage": {
+            "inputTokens": 3334,
+            "outputTokens": 195,
+            "totalTokens": 3529,
+            "cachedInputTokens": 2048,
+            "reasoningTokens": 49
+          },
+          "childLinks": 0,
+          "compactions": 0,
+          "calls": [
+            {
+              "name": "list_files"
+            },
+            {
+              "name": "read_file"
+            },
+            {
+              "name": "git_diff"
+            }
+          ],
+          "executedTools": [
+            {
+              "name": "list_files",
+              "error": false
+            }
+          ],
+          "userContainsChildMarker": false,
+          "outputMarker": false
+        }
+      ],
+      "wires": [
+        {
+          "role": "parent",
+          "api": "responses",
+          "stream": true,
+          "previousResponse": false,
+          "inputChars": 4126,
+          "toolSchemaChars": 12472,
+          "toolCount": 18,
+          "tokenCap": null,
+          "requestContainsChildMarker": true,
+          "httpStatus": 200,
+          "argumentEvents": [
+            {
+              "stage": "arguments_done",
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": false,
+              "argumentChars": 279
+            },
+            {
+              "stage": "item_done",
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": false,
+              "argumentChars": 279
+            }
+          ],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 4451,
+            "output": 114,
+            "total": 4565,
+            "cached": 4096,
+            "reasoning": 35
+          },
+          "terminalCalls": [
+            {
+              "name": "delegate_reviewer",
+              "exactDelegation": false,
+              "hasChildMarker": false,
+              "hasSystemOverride": false,
+              "argumentChars": 279
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": true
+        },
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": false,
+          "inputChars": 526,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": false,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1599,
+            "output": 82,
+            "total": 1681,
+            "cached": 1024,
+            "reasoning": 10
+          },
+          "terminalCalls": [
+            {
+              "name": "list_files",
+              "hasSystemOverride": false,
+              "argumentChars": 52
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        },
+        {
+          "role": "child",
+          "api": "responses",
+          "stream": false,
+          "previousResponse": true,
+          "inputChars": 330,
+          "toolSchemaChars": 4551,
+          "toolCount": 7,
+          "tokenCap": null,
+          "requestContainsChildMarker": false,
+          "httpStatus": 200,
+          "argumentEvents": [],
+          "terminal": "completed",
+          "providerUsage": {
+            "input": 1735,
+            "output": 113,
+            "total": 1848,
+            "cached": 1024,
+            "reasoning": 39
+          },
+          "terminalCalls": [
+            {
+              "name": "read_file",
+              "hasSystemOverride": false,
+              "argumentChars": 45
+            },
+            {
+              "name": "git_diff",
+              "hasSystemOverride": false,
+              "argumentChars": 2
+            }
+          ],
+          "terminalHasChildMarker": false,
+          "terminalHasParentMarker": false,
+          "argumentEventsAgree": null
+        }
+      ],
+      "fixtureUnchanged": true
+    }
+  ],
+  "offlineAccounting": [
+    {
+      "ledger": false,
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "GuardrailTriggeredError",
+              "budget": {
+                "budgetLimit": "maxToolCalls",
+                "limit": 1,
+                "actual": 0,
+                "required": 2,
+                "remaining": 1,
+                "operation": "tool",
+                "includeChildRuns": false
+              }
+            }
+          ]
+        },
+        "fingerprint": "sha256:25a2b252520fffd2648ac48e29edcf164b3a07d02769524314ef00b0ece011d8"
+      },
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "parentChildLinks": 1,
+      "childHasParentLink": true,
+      "parentAggregateTokens": 8,
+      "reportedCombinedTokens": 8,
+      "childExecutedTools": 0,
+      "accountingDefectObserved": false
+    },
+    {
+      "ledger": true,
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "GuardrailTriggeredError",
+              "budget": {
+                "budgetLimit": "maxToolCalls",
+                "limit": 1,
+                "actual": 0,
+                "required": 2,
+                "remaining": 1,
+                "operation": "tool",
+                "includeChildRuns": false
+              }
+            }
+          ]
+        },
+        "fingerprint": "sha256:25a2b252520fffd2648ac48e29edcf164b3a07d02769524314ef00b0ece011d8"
+      },
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "parentChildLinks": 1,
+      "childHasParentLink": true,
+      "parentAggregateTokens": 8,
+      "reportedCombinedTokens": 8,
+      "childExecutedTools": 0,
+      "accountingDefectObserved": false,
+      "ledgerTokens": {
+        "schemaVersion": 1,
+        "runId": "fixture-parent",
+        "calls": 2,
+        "routes": [
+          {
+            "provider": "mock-parent",
+            "model": "parent",
+            "calls": 1,
+            "inputTokens": 2,
+            "outputTokens": 1,
+            "unknownCalls": 0,
+            "estimatedUsd": null,
+            "priceStatuses": [
+              "missing"
+            ]
+          },
+          {
+            "provider": "mock-child",
+            "model": "child",
+            "calls": 1,
+            "inputTokens": 3,
+            "outputTokens": 2,
+            "unknownCalls": 0,
+            "estimatedUsd": null,
+            "priceStatuses": [
+              "missing"
+            ]
+          }
+        ],
+        "inputTokens": 5,
+        "outputTokens": 3,
+        "historicalUsageUnknown": false,
+        "usageComplete": true,
+        "estimatedUsd": null,
+        "limitUsd": null,
+        "costKind": "estimate-not-invoice"
+      }
+    }
+  ],
+  "liveAggregates": [
+    {
+      "caseIndex": 0,
+      "status": "failed",
+      "childLinks": 1,
+      "aggregate": 8346,
+      "individualSum": 8346,
+      "unknownUsageCount": 0
+    },
+    {
+      "caseIndex": 2,
+      "status": "failed",
+      "childLinks": 1,
+      "aggregate": 8094,
+      "individualSum": 8094,
+      "unknownUsageCount": 0
+    }
+  ],
+  "verification": {
+    "originalFixtures": {
+      "passed": 54,
+      "failed": 2,
+      "cause": "Native apply_patch result metadata without matching original call metadata rejected by new SDK."
+    },
+    "compatibleFixturesAndUnwrappedAdapter": {
+      "passed": 74,
+      "failed": 0,
+      "files": 6
+    },
+    "toolingTypecheck": "passed"
+  },
+  "limitations": [
+    "Three sequential local live cases are diagnostic, not a statistical reliability estimate or release certification.",
+    "Meta/Gemini installed but not live-tested. OpenAI checked with transport fixtures, not live.",
+    "No production configuration, dependency pins, tag or release changed."
+  ]
+}

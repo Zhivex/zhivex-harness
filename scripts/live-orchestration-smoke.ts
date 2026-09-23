@@ -37,10 +37,13 @@ const childPrompt = (provider: HarnessProvider) =>
   `Review review-target.txt with at most one read-only repository tool. Do not mutate the workspace. Include this exact token in your final response: ${childToken(provider)}.`;
 
 export const orchestrationPrompt = (provider: HarnessProvider) =>
-  `Call delegate_reviewer exactly once with this exact JSON input: ${JSON.stringify({
-    prompt: childPrompt(provider)
-  })}.
+  `Call delegate_reviewer exactly once with this exact JSON input: {"taskId":"release-review"}.
 Do not call any other tool. After the delegated result returns, reply exactly ${parentToken(provider)}.`;
+
+export const reviewDelegationContract = (provider: HarnessProvider) => ({
+  taskId: "release-review", profile: "reviewer" as const, prompt: childPrompt(provider),
+  allowedReadPaths: ["review-target.txt"], requiredOutput: childToken(provider)
+});
 
 const createLiveOrchestrationHarness = (args: {
   provider: HarnessProvider;
@@ -55,6 +58,7 @@ const createLiveOrchestrationHarness = (args: {
   maxSteps: 4,
   maxToolCalls: 4,
   subagentProfiles: ["reviewer"],
+  delegationContracts: [reviewDelegationContract(args.provider)],
   subagentMaxSteps: 2,
   subagentMaxToolCalls: 1,
   env: process.env
