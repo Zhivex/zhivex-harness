@@ -460,10 +460,10 @@ jobs:
         run: |
           REPORT=release-artifacts/representative-raw/qwen.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/qwen.json --summary
-          bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider qwen --model qwen3.8-max > release-artifacts/representative-rows/qwen.json
+          bun run scripts/generate-representative-evidence.ts --report "$REPORT" --release-tag "$RELEASE_TAG" --source-commit "$SOURCE_COMMIT" --artifact-sha512 "$ARTIFACT_SHA512" --driver-commit "$DRIVER_COMMIT" --oci-image-digest "$OCI_IMAGE_DIGEST" --workflow-run-url "$WORKFLOW_RUN_URL" --provider qwen --model qwen3.8-flash > release-artifacts/representative-rows/qwen.json
         env:
           ZHIVEX_SAFE_FIX_PROVIDER: qwen
-          ZHIVEX_SAFE_FIX_MODEL: qwen3.8-max
+          ZHIVEX_SAFE_FIX_MODEL: qwen3.8-flash
           ZHIVEX_SAFE_FIX_OCI_IMAGE: ${{ env.REPRESENTATIVE_IMAGE }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}

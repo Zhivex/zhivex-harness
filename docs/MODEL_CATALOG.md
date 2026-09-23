@@ -13,7 +13,7 @@ Each provider has a `defaultModel` and a list of models. IDs are scoped to their
 - `capabilities`: `chat`, `tools`, and optionally `vision`.
 - Optional `reason`, `replacement` (same-provider ID) and `retirementDate` (`YYYY-MM-DD`).
 
-To demote a model, set `group` to `other`, record a short `reason`, and optionally a `replacement`. If it is the default, first choose another primary model as `defaultModel`. Do not infer retirement from age or remove models merely because they are no longer recommended. Retain historical entries to explain existing selections. The shortlist preserves the previous defaults. Provider lifecycle is updated only with source evidence; Zhivex validation remains unverified until that exact route is tested.
+To demote a model, set `group` to `other`, record a short `reason`, and optionally a `replacement`. If it is the default, first choose another primary model as `defaultModel`. Do not infer retirement from age or remove models merely because they are no longer recommended. Retain historical entries to explain existing selections. The shortlist tracks the explicitly selected defaults. Provider lifecycle is updated only with source evidence; Zhivex validation remains unverified until that exact route is tested.
 
 Increment the human-readable `revision` for each publication. Defaults must reference primary, non-retired entries. IDs must be unique per provider and replacements must exist. Unsupported providers, unknown fields and control characters are rejected. This catalog does not install new provider adapters.
 
@@ -42,3 +42,7 @@ The source manifest is the administration interface for this first version. A pr
 Revision `2026-09-22.2` lists GPT-6 Astra, Sol and Luna, followed by GPT-5.6 Sol, Terra and Luna as primary choices. GPT-5.5, GPT-5.4, GPT-5.4 Mini and GPT-4o Mini remain under Other models; this editorial grouping does not claim provider deprecation. The default remains `gpt-5.6-luna`.
 
 The official [model catalog](https://developers.openai.com/api/docs/models), [GPT-6 Sol page](https://developers.openai.com/api/docs/models/gpt-6-sol) and [GPT-6 Luna page](https://developers.openai.com/api/docs/models/gpt-6-luna) were checked on 2026-09-22. The new API IDs are `gpt-6-sol` and `gpt-6-luna`; their documented capabilities include text, image input and function calling. Both recommend Responses for tools; Chat Completions function calling requires reasoning effort `none`. No authenticated generation or account entitlement check was performed, so their Zhivex validation stays `unverified`.
+
+## Qwen default — 2026-09-22
+
+Revision `2026-09-22.3` selects `qwen3.8-flash` as the bundled Qwen default for CLI, Desktop and live certification. Flash is Primary; `qwen3.8-max` remains available under Other models. Existing profiles and conversation model selections are preserved. Flash remains `unverified` until its exact release-bound route passes certification.

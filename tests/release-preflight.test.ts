@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
-import { validateReleaseMetadata, type ReleaseMetadata } from "../scripts/release-preflight.js";
+import { loadReleaseMetadata, validateReleaseMetadata, type ReleaseMetadata } from "../scripts/release-preflight.js";
 import { prepareRelease, type Command } from "../scripts/prepare-release.js";
+import { bundledDefaultModel } from "../src/models/catalog.js";
+import path from "node:path";
+
+test("Flash candidate aligns runtime and certification while preserving RC4 history", async () => {
+  const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
+  validateReleaseMetadata(input, false, "next");
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models.qwen)
+    .toBe(bundledDefaultModel("qwen"));
+  expect(bundledDefaultModel("qwen")).toBe("qwen3.8-flash");
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0-rc.4")?.models.qwen)
+    .toBe("qwen3.8-max");
+});
 
 function metadata(): ReleaseMetadata {
   return {

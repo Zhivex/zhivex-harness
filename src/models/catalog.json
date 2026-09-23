@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-22.2",
+  "revision": "2026-09-22.3",
   "providers": [
     {
       "id": "openai",
@@ -136,7 +136,7 @@
     },
     {
       "id": "qwen",
-      "defaultModel": "qwen3.8-max",
+      "defaultModel": "qwen3.8-flash",
       "models": [
         {
           "id": "qwen3.8-omni-flash",
@@ -165,8 +165,8 @@
         {
           "id": "qwen3.8-max",
           "name": "qwen3.8-max",
-          "group": "primary",
-          "order": 2,
+          "group": "other",
+          "order": 3,
           "lifecycle": "unknown",
           "validation": "unverified",
           "capabilities": [
@@ -177,8 +177,8 @@
         {
           "id": "qwen3.8-flash",
           "name": "qwen3.8-flash",
-          "group": "other",
-          "order": 3,
+          "group": "primary",
+          "order": 2,
           "lifecycle": "unknown",
           "validation": "unverified",
           "capabilities": [
