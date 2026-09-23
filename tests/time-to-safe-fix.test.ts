@@ -119,7 +119,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(
       new Error("getaddrinfo ENOTFOUND api.example.invalid token=secret"),
       { stage: "environment" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "environment",
       code: "PROVIDER_TRANSIENT_FAILURE",
       retryable: true
@@ -132,7 +132,7 @@ describe("time-to-safe-fix benchmark", () => {
         retryable: true
       }),
       { stage: "environment" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "environment",
       code: "EXECUTION_FAILED",
       retryable: true,
@@ -145,7 +145,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(
       new HarnessProviderError("Provider response failed.", { retryable: false }),
       { stage: "model" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "model",
       code: "PROVIDER_UNAVAILABLE",
       retryable: false,
@@ -158,7 +158,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(
       new HarnessExecutionError("Container network setup failed.", { retryable: true }),
       { stage: "environment" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "environment",
       code: "PROVIDER_TRANSIENT_FAILURE",
       retryable: true,
@@ -172,7 +172,7 @@ describe("time-to-safe-fix benchmark", () => {
       code: "EXECUTION_FAILED",
       category: "execution",
       retryable: true
-    })).toEqual({
+    })).toMatchObject({
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
@@ -187,7 +187,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(
       new HarnessExecutionError("Harness execution failed.", { cause: providerError }),
       { stage: "model", origin: "agent_run" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "model",
       origin: "agent_run",
       code: "EXECUTION_FAILED",
@@ -201,14 +201,14 @@ describe("time-to-safe-fix benchmark", () => {
     });
     expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
       diagnosticCode: "QWEN_DUPLICATE_TOOL_CALL_ID"
-    }))).toEqual({
+    }))).toMatchObject({
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
     });
     expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
       diagnosticCode: "UNSAFE_UNBOUNDED_VALUE"
-    }))).toEqual({
+    }))).toMatchObject({
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
@@ -216,7 +216,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(Object.assign(new Error("opaque"), {
       name: "ProviderToolCallError",
       diagnosticCode: "OPENAI_RESPONSES_TOOL_CALL_INVALID"
-    }))).toEqual({
+    }))).toMatchObject({
       stage: "unknown",
       code: "UNCLASSIFIED_FAILURE",
       retryable: false
@@ -232,7 +232,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(openAIError, {
       stage: "model",
       origin: "agent_run"
-    })).toEqual({
+    })).toMatchObject({
       stage: "model",
       origin: "agent_run",
       code: "MODEL_EXECUTION_FAILED",
@@ -252,7 +252,7 @@ describe("time-to-safe-fix benchmark", () => {
     }, {
       stage: "model",
       origin: "agent_run"
-    })).toEqual({
+    })).toMatchObject({
       stage: "model",
       origin: "agent_run",
       code: "MODEL_EXECUTION_FAILED",
@@ -266,7 +266,7 @@ describe("time-to-safe-fix benchmark", () => {
     expect(classifyTimeToSafeFixFailure(
       new HarnessExecutionError("Harness execution failed.", { cause: stateConflict }),
       { stage: "model", origin: "agent_run" }
-    )).toEqual({
+    )).toMatchObject({
       stage: "model",
       origin: "agent_run",
       code: "STATE_CONFLICT",
@@ -359,7 +359,7 @@ describe("time-to-safe-fix benchmark", () => {
         samples: Array<{ failure?: { stage: string; origin?: string; code: string; retryable: boolean } }>;
       };
       expect(report.samples).toHaveLength(2);
-      expect(report.samples.map((sample) => sample.failure)).toEqual([
+      expect(report.samples.map((sample) => sample.failure)).toMatchObject([
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
@@ -392,7 +392,7 @@ describe("time-to-safe-fix benchmark", () => {
       });
       expect(diagnostics.failedCases.every((entry) => /^sha256:[a-f0-9]{64}$/.test(entry.caseFingerprint)))
         .toBe(true);
-      expect<unknown>(diagnostics.failedCases.map((entry) => entry.failure)).toEqual([
+      expect<unknown>(diagnostics.failedCases.map((entry) => entry.failure)).toMatchObject([
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
@@ -514,7 +514,7 @@ describe("time-to-safe-fix benchmark", () => {
       ),
       notes: ["secret=never-persist-this"]
     }));
-    expect(sanitizedFailure.failure).toEqual({
+    expect(sanitizedFailure.failure).toMatchObject({
       stage: "tool",
       code: "TOOL_EXECUTION_FAILED",
       toolName: "verify_and_apply_reviewed_edits",

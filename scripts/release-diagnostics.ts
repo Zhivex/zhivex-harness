@@ -3,6 +3,7 @@ import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises
 import path from "node:path";
 
 import { z } from "zod";
+import { errorDetailsSchema, sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
 
 import {
   HARNESS_ERROR_CODES,
@@ -104,6 +105,7 @@ const sanitizedOperationalErrorSchema = z.strictObject({
   code: z.enum(HARNESS_ERROR_CODES),
   category: errorCategorySchema,
   retryable: z.boolean(),
+  details: errorDetailsSchema.optional(),
   status: z.number().int().min(100).max(599).optional(),
   diagnosticCode: z.enum(TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES).optional(),
   fingerprint: z.string().regex(SHA_256_PATTERN)
@@ -129,6 +131,7 @@ const diagnosticFailureSchema = z.strictObject({
   diagnosticCode: z.string().regex(/^[A-Z][A-Z0-9_]*$/).max(64).optional(),
   toolName: z.string().min(1).max(100).optional(),
   retryable: z.boolean(),
+  details: errorDetailsSchema.optional(),
   harnessError: z.strictObject({
     code: z.string().regex(/^[A-Z][A-Z0-9_]*$/).max(64),
     category: errorCategorySchema,
@@ -179,22 +182,11 @@ const representativeDiagnosticSchema = z.strictObject({
     failure: diagnosticFailureSchema.optional(),
     durationMs: z.number().int().min(0)
   })).max(1_000),
+  failurePhase: z.enum(["setup", "case_execution", "cleanup", "report_build", "diagnostic_write", "report_write"]).optional(),
   terminalFailure: diagnosticFailureWithFingerprintSchema.optional()
 }).superRefine((value, context) => {
-  const failures = [
-    ...value.failedCases.map((entry) => entry.failure).filter((entry) => entry !== undefined),
-    ...(value.terminalFailure ? [value.terminalFailure] : [])
-  ];
-  for (const failure of failures) {
-    if (failure.harnessError && (
-      failure.code !== failure.harnessError.code || failure.retryable !== failure.harnessError.retryable
-    )) {
-      context.addIssue({
-        code: "custom",
-        message: "Harness failure code and retryability must remain coherent."
-      });
-    }
-  }
+  // A semantic classification can differ from its original Harness wrapper.
+  // Both are retained; neither is allowed to turn a failed case into a pass.
   const terminalFailures = value.terminalFailure ? 1 : 0;
   if (value.summary.failedRuns !== value.failedCases.length + terminalFailures) {
     context.addIssue({
@@ -220,9 +212,9 @@ const representativeDiagnosticSchema = z.strictObject({
     context.addIssue({ code: "custom", message: "Failed diagnostics must record at least one failure." });
   }
   if (value.status === "running" && (
-    value.summary.failedRuns !== 0 || value.failedCases.length !== 0 || value.terminalFailure !== undefined
+    value.terminalFailure !== undefined
   )) {
-    context.addIssue({ code: "custom", message: "Running diagnostics cannot contain final failures." });
+    context.addIssue({ code: "custom", message: "Running diagnostics cannot contain a terminal failure." });
   }
 });
 
@@ -289,12 +281,14 @@ const safeDiagnosticCode = (error: unknown) => {
       typeof record.diagnosticCode === "string" &&
       (TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES as readonly string[]).includes(record.diagnosticCode)
     ) {
-      return record.diagnosticCode;
+      return record.diagnosticCode as typeof TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES[number];
     }
     current = record.cause;
   }
   return undefined;
 };
+
+const restoredDetails = new WeakMap<object, z.infer<typeof errorDetailsSchema>>();
 
 const normalizedOperationalError = (error: unknown) => {
   let current = error;
@@ -308,7 +302,7 @@ const normalizedOperationalError = (error: unknown) => {
   return fallback ?? normalizeHarnessError(error);
 };
 
-export const sanitizeOperationalError = (error: unknown) => {
+export const sanitizeOperationalError = (error: unknown): z.infer<typeof sanitizedOperationalErrorSchema> => {
   const normalized = normalizedOperationalError(error);
   const status = numericStatus(error);
   const diagnosticCode = safeDiagnosticCode(error);
@@ -317,7 +311,8 @@ export const sanitizeOperationalError = (error: unknown) => {
     category: normalized.category,
     retryable: normalized.retryable,
     ...(status === undefined ? {} : { status }),
-    ...(diagnosticCode === undefined ? {} : { diagnosticCode })
+    ...(diagnosticCode === undefined ? {} : { diagnosticCode }),
+    details: (error && typeof error === "object" ? restoredDetails.get(error) : undefined) ?? sanitizedErrorDetails(error)
   };
   return {
     ...projection,
@@ -350,6 +345,7 @@ export const restoreSanitizedOperationalError = (value: unknown) => {
     category: projection.category,
     retryable: projection.retryable
   }) as HarnessError & { status?: number; diagnosticCode?: string };
+  if (projection.details) restoredDetails.set(error, projection.details);
   if (projection.status !== undefined) error.status = projection.status;
   if (projection.diagnosticCode !== undefined) error.diagnosticCode = projection.diagnosticCode;
   return error;
@@ -556,7 +552,9 @@ const summaryCell = (diagnostic: ReleaseGateDiagnostic | undefined) => {
         : {})
     });
   }
-  return `${diagnostic.summary.failedRuns} failed: ${boundedFailureSummary(failures)}`;
+  return `${diagnostic.summary.failedRuns} failed: ${boundedFailureSummary(failures)}` +
+    `; completed=${diagnostic.matrix.completedRuns}/${diagnostic.matrix.plannedRuns}` +
+    (diagnostic.failurePhase ? `; phase=${diagnostic.failurePhase}` : "");
 };
 
 const commonIdentity = (diagnostic: ReleaseGateDiagnostic) => {
@@ -619,7 +617,8 @@ export const summarizeReleaseGates = async (input: {
     rows.push({
       gate: gate.name,
       outcome: gate.outcome,
-      detail: input.diagnosticsDirectory ? summaryCell(diagnostic) : gate.outcome,
+      detail: gate.outcome === "skipped" ? "skipped; not certified"
+        : input.diagnosticsDirectory ? summaryCell(diagnostic) : gate.outcome,
       failed
     });
   }

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { z } from "zod";
+import { errorDetailsSchema, sanitizedErrorDetails } from "./error-diagnostics.js";
 
 import {
   HARNESS_ERROR_CODES,
@@ -129,6 +130,7 @@ export const timeToSafeFixDriverResultSchema = z.strictObject({
     diagnosticCode: z.enum(TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES).optional(),
     toolName: z.string().min(1).max(100).regex(/^[A-Za-z0-9_.:+-]+$/).optional(),
     retryable: z.boolean(),
+    details: errorDetailsSchema.optional(),
     harnessError: z.strictObject({
       code: z.enum(HARNESS_ERROR_CODES),
       category: z.enum([
@@ -375,6 +377,7 @@ export const classifyTimeToSafeFixFailure = (
     ...(diagnosticCode ? { diagnosticCode } : {}),
     ...(options.toolName ? { toolName: options.toolName } : {}),
     retryable,
+    details: sanitizedErrorDetails(error),
     ...(structured ? { harnessError: structured } : {})
   };
 };
