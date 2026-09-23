@@ -64,3 +64,21 @@ verdes anteriores no satisfacen ese requisito.
 
 [Evidencia saneada](evidence/qwen-redaction-attribution-2026-09-23.json). Sólo
 booleanos, contadores y enums; sin payloads, headers, credenciales ni SQLite.
+
+## Ampliación después de integrar PR #103
+
+PR #103 se integró como 2d3100d con cabeza 4cb7706; el seguimiento 5336527
+quedó fuera del merge y se presenta desde una rama nueva basada en ese main.
+El registry sigue ofreciendo Core 1.23.0-next.1 / Agents 1.9.0-next.1.
+
+La reproducción ampliada confirma ocho casos: generate/stream, memoria/archivo
+reabierto, con/sin rechazo. En los ocho persisten el texto, mensajes y pasos con
+el fixture; en los cuatro rechazos vuelve a aparecer en outputText. Los chunks
+streaming anteriores al guardrail también contienen el fixture, pero son una
+observación separada: un guardrail terminal no promete censura de chunks previos.
+
+`bun run check:sdk-redaction` ejecuta el repro con `--require-fixed` y exige que
+texto final devuelto/persistido, mensajes y pasos persistidos estén saneados.
+Se añade al principio de release:check, después de metadata y antes de gates
+costosos. Con el SDK actual falla intencionalmente. No se puentea ese gate;
+una versión SDK reparada debe demostrarlo con los paquetes realmente instalados.

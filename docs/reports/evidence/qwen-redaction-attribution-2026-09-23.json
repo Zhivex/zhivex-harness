@@ -350,5 +350,105 @@
     }
   ],
   "sdkHU": "https://app.notion.com/p/3e4777b104f681ef9774cb65fc9450f5",
-  "releaseBlocked": true
+  "releaseBlocked": true,
+  "extendedReproduction": [
+    {
+      "storage": "memory",
+      "mode": "generate",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true
+    },
+    {
+      "storage": "memory",
+      "mode": "generate",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": true,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true
+    },
+    {
+      "storage": "memory",
+      "mode": "stream",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "memory",
+      "mode": "stream",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": true,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "generate",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "generate",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": true,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "stream",
+      "rejectAfterRedaction": false,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": false,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    },
+    {
+      "storage": "file-reopened",
+      "mode": "stream",
+      "rejectAfterRedaction": true,
+      "downstreamSawFixture": false,
+      "returnedTextContainsFixture": true,
+      "returnedStateTextContainsFixture": true,
+      "persistedTextContainsFixture": true,
+      "persistedMessagesContainFixture": true,
+      "persistedStepsContainFixture": true,
+      "streamedBeforeOutputGuardrailContainsFixture": true
+    }
+  ],
+  "extendedReproductionNotes": [
+    "Eight cases, generate/stream and memory/file-reopened, allow/reject after redaction.",
+    "All eight persist synthetic fixture in final text, messages and steps. Four reject cases return it in outputText.",
+    "Raw stream text precedes output guardrail; recorded separately, not claimed to violate an undocumented streaming guarantee.",
+    "check:sdk-redaction requires final returned/persisted text plus persisted messages/steps to be clean. It intentionally fails with current installed SDK."
+  ]
 }
