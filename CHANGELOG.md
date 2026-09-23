@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Add application-owned read delegation contracts: models select task IDs while Harness preserves task text, enforces file scope and validates acceptance. Keep durable SDK execution and budgets; expose finite error classifications without logging task content.
+- Allow trusted strict-mode applications to select a fingerprint-bound tool catalog and render only relevant tool instructions. Use scoped contracts/catalogs in live certification without weakening effect, approval, journal or marker checks.
+- Integrate the published SDK next batch with failed-child linkage/accounting and OpenAI function receipt fixes. Update native-tool fixtures to the consistent metadata contract.
+- Publication remains blocked: governed Flash orchestration passed three local executions, but the scoped base campaign failed one of three cases on exact approval arguments before mutation. These are local validation results, not a new RC certification.
+
 ## 1.1.0-rc.8 - 2026-09-22
 
 - Preserve OpenAI function tool receipts through approval resume using SDK result envelopes. Prevent function names such as `apply_patch` from being mistaken for native Responses tools and losing their output. Keep release assertions and fail-fast gates unchanged.

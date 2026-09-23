@@ -7,7 +7,7 @@ const input = (name: string, isError = false, native = false): ModelGenerateInpu
   providerOptions: { apiMode: "responses" },
   messages: [
     { role: "user", parts: [{ type: "text", text: "Use the approved result." }] },
-    { role: "assistant", parts: [{ type: "tool-call", toolCall: { id: "call_fixture", name, input: {} } }] },
+    { role: "assistant", parts: [{ type: "tool-call", toolCall: { id: "call_fixture", name, input: {}, ...(native ? { providerMetadata: { responsesToolType: "apply_patch" } } : {}) } }] },
     { role: "tool", parts: [{ type: "tool-result", toolResult: {
       toolCallId: "call_fixture", toolName: name, isError,
       ...(isError ? { error: { message: "fixture failure" } } : { output: native

@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-23",
+  "sourceBase": "5b7273fd7e4edd36bfc1d1954a63138412d66c05",
+  "kind": "local-working-tree-validation-not-release-certification",
+  "versions": {
+    "@zhivex-ai/agents": "1.9.0-next.1",
+    "@zhivex-ai/core": "1.23.0-next.1",
+    "@zhivex-ai/gemini": "0.12.2-next.0",
+    "@zhivex-ai/meta": "0.2.7-next.0",
+    "@zhivex-ai/openai": "0.13.5-next.1",
+    "@zhivex-ai/qwen": "0.15.1-next.0"
+  },
+  "finalImplementationHashes": {
+    "src/runtime/harness.ts": "5ea0b0b682b135752bec0ad4e7818a0e86b46d849b1fd83f58a56e9afe0db75b",
+    "src/runtime/orchestration.ts": "dcb73382abc03bb04c87b8f43c11378cb67a1128ac5ac0af403cd5dbf12d146d",
+    "src/runtime/delegation-contracts.ts": "fd5e39d0df364cedf12a53c1c585da7d994b315d56e48181b328b9f6be5e3b2a",
+    "src/runtime/error-diagnostics.ts": "47701d61a854aaa5227e8e4e81e37ae6acc95ff256b8de2dc60f8d3300e2edda",
+    "scripts/live-provider-smoke.ts": "b9c5449f3713c2bb655f2c4a819e8a6600dbb5283bbc806c0432b0a334197044",
+    "scripts/live-orchestration-smoke.ts": "1325cc76c3af66fc03dccc3b3503882513958e63e769a27e6ad9c702a646962a",
+    "scripts/live-routing-smoke.ts": "95e3ccf1d2adad71384696ada9005fd74bd879b90ebd6f422c90e554dc226436",
+    "package.json": "348dfb3eb273a9d46905ca78d650ccb6629938d5f07bec2341588d559c83b538",
+    "bun.lock": "84a16402ef4dd30101ac5f4f33ee6390fcb3e8bfa5f174bc8a3332d16503f15c"
+  },
+  "orchestrationCampaign": [
+    {
+      "case": "qwen-1.log",
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T12:04:44.640Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3869
+        }
+      ]
+    },
+    {
+      "case": "qwen-2.log",
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T12:05:39.296Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3792
+        }
+      ]
+    },
+    {
+      "case": "qwen-3.log",
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T12:07:49.365Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3829
+        }
+      ]
+    }
+  ],
+  "unscopedBaseFailure": {
+    "case": "qwen-base.log",
+    "ok": false,
+    "gate": "live-provider-smoke",
+    "certifiedAt": "2026-09-23T12:09:20.374Z",
+    "providers": [
+      {
+        "ok": false,
+        "provider": "qwen",
+        "model": "qwen3.8-flash",
+        "error": {
+          "code": "EXECUTION_FAILED",
+          "category": "execution",
+          "retryable": false,
+          "details": {
+            "chain": [
+              {
+                "checkpoint": "resume_output",
+                "code": "EXECUTION_FAILED",
+                "retryable": false
+              },
+              {
+                "kind": "AssertionError"
+              }
+            ]
+          },
+          "fingerprint": "sha256:f320cfefe84209d7f648ac9af4bb831e5f1492ef65213f40a97938073ea59b07"
+        }
+      }
+    ]
+  },
+  "scopedBaseCampaign": [
+    {
+      "case": "qwen-scoped-base-1.log",
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-23T12:13:27.896Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "toolExecutions": 1,
+          "journalEntries": 1
+        }
+      ]
+    },
+    {
+      "case": "qwen-scoped-base-2.log",
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-23T12:13:42.160Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "toolExecutions": 1,
+          "journalEntries": 1
+        }
+      ]
+    },
+    {
+      "case": "qwen-scoped-base-3.log",
+      "ok": false,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-23T12:13:45.789Z",
+      "providers": [
+        {
+          "ok": false,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "details": {
+              "chain": [
+                {
+                  "checkpoint": "request_arguments",
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "kind": "AssertionError"
+                }
+              ]
+            },
+            "fingerprint": "sha256:5dad70ecaa458462ec868196bc5b193dbe19394283d669ddd27b80d591d0be8e"
+          }
+        }
+      ]
+    }
+  ],
+  "resumeDiagnostic": {
+    "completed": true,
+    "markerPresent": true,
+    "functionCallOutputCarriesPatchReceipt": true,
+    "applyPatchExecutions": 1,
+    "applyPatchJournalCompleted": 1,
+    "usageTotalTokens": 14620
+  },
+  "notes": [
+    "Orchestration campaign ran before the additional successful-read acceptance check; all three had one successful read. Final acceptance enforcement additionally tested offline.",
+    "Scoped base campaign stopped at its third case after request_arguments mismatch. No write was approved in that case.",
+    "No representative matrix or other providers run after the Qwen base failure.",
+    "No new RC tag or publication.",
+    "Resume diagnostic original capture used an incorrect marker predicate; corrected by reading the persisted state against ZHIVEX_HARNESS_QWEN_LIVE_OK. Only corrected boolean retained."
+  ],
+  "finalContractSmoke": {
+    "ok": true,
+    "gate": "live-orchestration-smoke",
+    "certifiedAt": "2026-09-23T12:20:12.528Z",
+    "providers": [
+      {
+        "ok": true,
+        "provider": "qwen",
+        "model": "qwen3.8-flash",
+        "delegationExecutions": 1,
+        "childPersisted": true,
+        "processReopened": true,
+        "hierarchyRuns": 2,
+        "childToolCalls": 1,
+        "aggregateTokens": 3710
+      }
+    ]
+  },
+  "offlineVerification": {
+    "command": "bun run check",
+    "exitCode": 0,
+    "passed": 979,
+    "skipped": 1,
+    "failed": 0,
+    "installedPackageSmoke": "passed",
+    "ociSmoke": "passed",
+    "focusedFinalTests": 41
+  }
+}

@@ -485,3 +485,5 @@ export type { HarnessLocalService, HarnessLocalServiceOptions, HarnessLocalCrede
 export { openHarnessActivityStore } from "./client/service-events.js";
 export type { HarnessActivityEvent, HarnessActivitySnapshot, HarnessActivityPage, HarnessActivityStore, HarnessActivityOptions } from "./client/service-events.js";
 export type { HarnessClientAdapterOptions } from "./client/index.js";
+
+export type { HarnessDelegationContract } from "./runtime/delegation-contracts.js";

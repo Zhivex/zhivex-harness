@@ -14,6 +14,7 @@ const budgetDiagnosticSchema = z.object({
   includeChildRuns: z.boolean().optional()
 });
 const checkpoints = ["request_status", "request_approval", "request_arguments", "request_persistence", "resume_state", "resume_arguments", "resume_status", "resume_output", "resume_effect", "resume_journal"] as const;
+const approvalFields = ["proposalId", "change_count", "path", "content", "expectedDigest", "unknown_fields", "shape"] as const;
 const issueCodes = ["invalid_type", "too_big", "too_small", "invalid_format", "not_multiple_of", "unrecognized_keys", "invalid_union", "invalid_key", "invalid_element", "invalid_value", "custom"] as const;
 
 export const errorDetailsSchema = z.strictObject({
@@ -23,6 +24,8 @@ export const errorDetailsSchema = z.strictObject({
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
+    delegation: z.enum(["contract", "path", "acceptance"]).optional(),
+    approvalFields: z.array(z.enum(approvalFields)).max(approvalFields.length).optional(),
     budget: budgetDiagnosticSchema.strict().optional()
   })).max(5),
   validation: z.strictObject({
@@ -43,6 +46,13 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     seen.add(current);
     const record = current as Record<string, unknown>;
     const entry: (typeof chain)[number] = {};
+    if (Array.isArray(record.approvalFields)) {
+      const fields = approvalFields.filter(field => (record.approvalFields as unknown[]).includes(field));
+      if (fields.length) entry.approvalFields = fields;
+    }
+    const delegation = record.delegation ?? (record.name === "GuardrailTriggeredError" && record.metadata && typeof record.metadata === "object"
+      ? (record.metadata as Record<string, unknown>).delegation : undefined);
+    if (delegation === "contract" || delegation === "path" || delegation === "acceptance") entry.delegation = delegation;
     if (checkpoints.includes(record.checkpoint as typeof checkpoints[number])) entry.checkpoint = record.checkpoint as typeof checkpoints[number];
     if (kinds.includes(record.name as typeof kinds[number])) entry.kind = record.name as typeof kinds[number];
     const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];

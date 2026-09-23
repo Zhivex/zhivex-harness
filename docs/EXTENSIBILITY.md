@@ -8,7 +8,7 @@ Built-in registrations are Meta, Qwen, OpenAI, and Gemini. Each registration own
 
 Library callers can use `DEFAULT_PROVIDER_REGISTRY`, `BUILTIN_PROVIDER_REGISTRATIONS`, `createProviderRegistry`, or `DEFAULT_PROVIDER_REGISTRY.extend(...)`, then pass the registry to `resolveHarnessConfig`, `createProviderModel`, provider diagnostics, or `createHarness({ providerRegistry })`. Registration IDs, environment-variable names, defaults, diagnostics, and factories are validated before they become selectable.
 
-The coordinated SDK batch pins `@zhivex-ai/agents@1.8.0`, `@zhivex-ai/core@1.22.0`, `@zhivex-ai/meta@0.2.6`, `@zhivex-ai/qwen@0.15.0`, `@zhivex-ai/openai@0.13.4`, and `@zhivex-ai/gemini@0.12.1`. Qwen `0.11.x` normalizes missing, placeholder, and continuation tool-call identifiers inside the adapter; Harness retains its deterministic provider-boundary normalizer as defense in depth until the exact candidate passes the complete release-bound representative matrix. A Core override keeps one runtime contract identity across every adapter, while Core `1.13.0` corrects compaction usage accounting and interaction-group retention. OpenAI `0.11.2` preserves synthetic assistant history in Responses, so the harness no longer requires its compaction transport or accounting workarounds.
+The coordinated SDK batch pins `@zhivex-ai/agents@1.9.0-next.1`, `@zhivex-ai/core@1.23.0-next.1`, `@zhivex-ai/meta@0.2.7-next.0`, `@zhivex-ai/qwen@0.15.1-next.0`, `@zhivex-ai/openai@0.13.5-next.1`, and `@zhivex-ai/gemini@0.12.2-next.0`. Qwen `0.11.x` normalizes missing, placeholder, and continuation tool-call identifiers inside the adapter; Harness retains its deterministic provider-boundary normalizer as defense in depth until the exact candidate passes the complete release-bound representative matrix. A Core override keeps one runtime contract identity across every adapter, while Core `1.13.0` corrects compaction usage accounting and interaction-group retention. OpenAI `0.11.2` preserves synthetic assistant history in Responses, so the harness no longer requires its compaction transport or accounting workarounds.
 
 OpenAI is based on the GPT-5.6 family: `gpt-5.6-luna` is the default, with `gpt-5.6-terra` and `gpt-5.6-sol` available through `--model`. Availability remains organization-dependent while the upstream family is in limited preview, and the adapter uses the Responses API by default.
 
@@ -125,6 +125,63 @@ The resolved route plan is persisted without credentials in CLI resume metadata 
 - Cross-provider console context uses deterministic redacted compaction and omits tool/provider payloads; it is a portable summary, not a byte-identical transcript handoff.
 
 ## Budgets and cancellation
+
+### Application-owned read contracts (Beta)
+
+For exact read-only tasks, applications can provide `delegationContracts` to
+`createHarness`. Each enabled profile must have one contract; currently reviewer
+and explorer are supported. The parent sees only delegation tools accepting
+`{ taskId }`. Harness resolves that ID to the trusted prompt; model-generated
+`prompt`, `system`, unknown IDs and extra fields are rejected before delegation.
+
+```ts
+const harness = await createHarness({
+  provider: "qwen",
+  workspace,
+  subagentProfiles: ["reviewer"],
+  subagentMaxSteps: 2,
+  subagentMaxToolCalls: 1,
+  delegationContracts: [{
+    taskId: "review-target",
+    profile: "reviewer",
+    prompt: "Review target.txt for correctness.",
+    allowedReadPaths: ["target.txt"],
+    requiredOutput: "REVIEW_COMPLETE"
+  }]
+});
+await runHarness(harness, { prompt: 'Delegate taskId "review-target" and summarize the result.' });
+```
+
+Contract children expose only `read_file`, with exact canonical relative-path
+checks before execution and the normal filesystem protections. They receive
+explicit budgets and do not inherit broad repository-audit instructions. The
+child must perform a successful allowed read and return `requiredOutput`; the parent cannot complete successfully
+without completed, accepted children for all configured contracts. The token
+checks a protocol condition, not the semantic correctness of the review.
+
+Contracts are copied at construction and bound into parent/child fingerprints;
+resuming under a different contract is rejected. This mode retains SDK child
+linkage, usage, cancellation and persistence. It does not retry invalid proposals
+or increase a budget automatically. Callers without contracts keep the existing
+general-purpose delegation API, including approval-gated mutation profiles; the
+contract guarantees do not apply to that legacy mode. CLI configuration does not
+yet expose these application-owned contracts. The live orchestration smoke uses
+this mode, retains the one-tool budget and verifies both durable states on reopen.
+
+The SDK next batch fixes failed-child usage/linkage and OpenAI function receipt
+serialization. Harness retains the compatible OpenAI envelope middleware. Native
+Responses fixtures must label both their original call and result consistently.
+Strict applications may also supply `toolNames`, an explicit subset of the
+catalog. Unknown tools are rejected, instructions are rendered for the selected
+tools, and the selection is fingerprint-bound. This is trusted application
+configuration, not a capability granted to the model. Repair mode does not accept
+a subset because its controller requires its own tools. The base live smoke
+selects only `propose_edits` and `apply_patch`, retaining every approval, restart,
+exact-effect, journal and final-marker assertion.
+
+The Stable signature baseline changes only for the additive optional
+`CreateHarnessOptions.delegationContracts` and `toolNames` fields and the
+`createHarness` signature that includes them; existing callers remain compatible.
 
 Defaults per child are 8 steps, 16 tool calls, 3 tool errors, 30,000 input tokens, 8,000 output tokens, 36,000 total tokens, and a five-minute timeout. Override them with the `--subagent-*` options or matching `ZHIVEX_HARNESS_SUBAGENT_*` variables.
 

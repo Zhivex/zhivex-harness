@@ -1,3 +1,4 @@
+import { reviewDelegationContract } from "./live-orchestration-smoke.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
@@ -57,6 +58,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
       maxSteps: 4,
       maxToolCalls: 4,
       subagentProfiles: ["reviewer"],
+      delegationContracts: [reviewDelegationContract(parentProvider)],
       subagentMaxSteps: 2,
       subagentMaxToolCalls: 1,
       subagentModels: createHarnessRouteModels(routes, env),

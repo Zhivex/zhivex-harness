@@ -1,3 +1,4 @@
+import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -131,3 +132,16 @@ for (const script of ["live-provider-smoke", "live-orchestration-smoke", "live-e
     });
   }
 }
+
+
+test("approval mismatch diagnostics classify fields without retaining argument content", () => {
+  const expected = { proposalId: "fixture-id", changes: [{ path: "fixture.txt", content: "expected", expectedDigest: null }] };
+  let failure: unknown;
+  try {
+    liveProviderSmokeInternals.assertApprovalArguments({ proposalId: "fixture-id", changes: [{ path: "fixture.txt", content: "PRIVATE_PAYLOAD", expectedDigest: null }] }, expected);
+  } catch (error) { failure = error; }
+  const details = sanitizedErrorDetails(failure);
+  expect(details.chain[0]?.approvalFields).toEqual(["content"]);
+  expect(JSON.stringify(details)).not.toContain("PRIVATE_PAYLOAD");
+  expect(sanitizedErrorDetails({ approvalFields: ["PRIVATE_PAYLOAD", "content", "content"] }).chain).toEqual([{ approvalFields: ["content"] }]);
+});
