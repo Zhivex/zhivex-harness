@@ -284,6 +284,7 @@ describe("Time-to-Safe-Fix Zhivex driver", () => {
           });
         },
         async runHarness(harness, input, options) {
+          expect(harness.agent.instructions).not.toMatch(/\b(?:apply_reviewed_replacement|mutation_audit|git_diff|quarantine_file)\b/);
           observedPolicy = input.policy;
           observedRunOptions = {
             ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),

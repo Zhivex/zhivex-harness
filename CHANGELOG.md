@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## 1.1.0-rc.10 - 2026-09-23
 
+- Build representative-agent instructions and durable identity from the selected tool catalog, so the model is not instructed to call tools that the driver excludes.
+
 - Recover once when Meta Responses rejects a function receipt continuation because its response ID is unavailable. Replay the identical request after a bounded delay, preserve cancellation, and exclude hosted tools and unrelated HTTP errors. Host tools are not executed again.
 - Bind the new Meta transport policy to durable run identity. Preserve Qwen Flash, OpenAI Luna 6 and Muse Spark 1.3 release models; full release certification remains required.
 

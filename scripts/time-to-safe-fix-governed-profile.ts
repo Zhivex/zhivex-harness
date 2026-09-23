@@ -289,7 +289,10 @@ export const runGovernedTimeToSafeFixProfile = async (
   const runId = `safe-fix-${createHash("sha256").update(request.caseId).digest("hex").slice(0, 24)}`;
   try {
     const createStartedAt = process.hrtime.bigint();
+    // Bind instructions and durable identity to the same catalog used during execution.
+    const selectedToolNames = request.profile === "optimized" ? OPTIMIZED_TOOL_NAMES : GOVERNED_TOOL_NAMES;
     harness = await runtime.createHarness({
+      toolNames: selectedToolNames,
       provider: config.provider,
       ...(config.model ? { model: config.model } : {}),
       ...(config.modelInstance ? { modelInstance: config.modelInstance } : {}),
@@ -341,7 +344,6 @@ export const runGovernedTimeToSafeFixProfile = async (
         }
       })
     };
-    const selectedToolNames = request.profile === "optimized" ? OPTIMIZED_TOOL_NAMES : GOVERNED_TOOL_NAMES;
     instrumented = selectAndInstrumentTools(benchmarkTools, selectedToolNames);
     harness.agent.tools = instrumented.tools;
     harness.agent.instructions = `${harness.agent.instructions ?? ""}\n\nBenchmark override: list_files is single-page and does not accept cursor.`;
