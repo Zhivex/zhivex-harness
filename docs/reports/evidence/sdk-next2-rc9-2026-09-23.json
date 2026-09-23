@@ -245,5 +245,108 @@
       ]
     }
   ],
-  "acceptanceDiagnosticConclusion": "not_reproduced_in_three_cases_prior_failure_unresolved"
+  "acceptanceDiagnosticConclusion": "not_reproduced_in_three_cases_prior_failure_unresolved",
+  "finalAttributionCampaign": [
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:30.122Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_b8351651-ae1f-45cf-abfc-e008b902f452",
+          "childRunId": "run_dbfe36ff-d8d4-4f3b-9bd1-47962ccf3942",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 4112
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:44.463Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_a00c7f35-4dfb-40b3-b8d4-36ad85735745",
+          "childRunId": "run_8b8faa8a-72c2-4282-bab2-4911dacde372",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3854
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:50:58.338Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_6a23ae4d-7e0f-4235-b91a-ee1391f3968e",
+          "childRunId": "run_de19436b-f79c-4b09-9397-e36a6f87b9d0",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3813
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:51:14.453Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_450e1239-7948-4c2f-9a64-57250a08345f",
+          "childRunId": "run_15282848-1a79-4fc3-b9eb-49e6a484f8f2",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3917
+        }
+      ]
+    },
+    {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-23T15:51:31.879Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-flash",
+          "parentRunId": "run_ed02ecd9-b285-409c-9bef-cd4fb6305a30",
+          "childRunId": "run_57acf7d3-f68c-4bc3-9d5c-c0d17b06e737",
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3932
+        }
+      ]
+    }
+  ],
+  "finalAttributionConclusion": "not_reproduced_in_five_additional_cases"
 }
