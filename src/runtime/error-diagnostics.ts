@@ -2,12 +2,14 @@ import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
 const systemCodes = ["ENOENT", "EACCES", "EPERM", "ENOSPC", "EIO", "EISDIR", "ENOTDIR", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ABORT_ERR"] as const;
-const kinds = ["Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError"] as const;
+const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError"] as const;
+const checkpoints = ["request_status", "request_approval", "request_arguments", "request_persistence", "resume_state", "resume_arguments", "resume_status", "resume_output", "resume_effect", "resume_journal"] as const;
 const issueCodes = ["invalid_type", "too_big", "too_small", "invalid_format", "not_multiple_of", "unrecognized_keys", "invalid_union", "invalid_key", "invalid_element", "invalid_value", "custom"] as const;
 
 export const errorDetailsSchema = z.strictObject({
   chain: z.array(z.strictObject({
     kind: z.enum(kinds).optional(),
+    checkpoint: z.enum(checkpoints).optional(),
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional()
@@ -30,6 +32,7 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     seen.add(current);
     const record = current as Record<string, unknown>;
     const entry: (typeof chain)[number] = {};
+    if (checkpoints.includes(record.checkpoint as typeof checkpoints[number])) entry.checkpoint = record.checkpoint as typeof checkpoints[number];
     if (kinds.includes(record.name as typeof kinds[number])) entry.kind = record.name as typeof kinds[number];
     const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];
     if (allowedCodes.includes(record.code)) entry.code = record.code as NonNullable<typeof entry.code>;

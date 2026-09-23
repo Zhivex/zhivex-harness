@@ -34,6 +34,20 @@ test("safe cause details survive the child-process error round trip", () => {
   expect(restored.details?.chain[1]).toMatchObject({ code: "ECONNRESET", status: 503 });
 });
 
+test("live assertion checkpoints survive sanitization without copying arbitrary checkpoint text", () => {
+  const error = Object.assign(new Error("private model response"), {
+    checkpoint: "resume_output",
+    cause: Object.assign(new Error("private assertion values"), { name: "AssertionError" })
+  });
+  const original = sanitizeOperationalError(error);
+  expect(sanitizeOperationalError(restoreSanitizedOperationalError(original))).toEqual(original);
+  expect(original.details?.chain).toEqual([
+    { kind: "Error", checkpoint: "resume_output" }, { kind: "AssertionError" }
+  ]);
+  error.checkpoint = "PRIVATE_CREDENTIAL_DO_NOT_LOG";
+  expect(JSON.stringify(sanitizeOperationalError(error))).not.toContain("PRIVATE_CREDENTIAL_DO_NOT_LOG");
+});
+
 for (const failReportWrite of [false, true]) {
   test(`completed cases survive classified wrapper errors and report write failure=${failReportWrite}`, async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-diagnostic-recovery-"));

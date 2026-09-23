@@ -7,6 +7,12 @@ import { providerAvailability } from "../src/runtime/config.js";
 import type { ConsoleInput } from "../src/cli/console/console-input.js";
 
 const fixture = () => structuredClone(bundledModelCatalog);
+test("new OpenAI choices default to GPT-6 Luna while explicit older choices remain selectable", () => {
+  const provider = bundledModelCatalog.providers.find((entry) => entry.id === "openai")!;
+  expect(provider.defaultModel).toBe("gpt-6-luna");
+  expect(consoleModelChoices("openai", provider.defaultModel, "gpt-5.6-luna")[0]!.value).toBe("gpt-5.6-luna");
+  expect(provider.models.find((entry) => entry.id === "gpt-6-luna")?.validation).toBe("unverified");
+});
 test("catalog rejects ambiguous identities, missing defaults and invalid replacements", () => {
   for (const mutate of [
     (c: ReturnType<typeof fixture>) => { c.providers[1] = c.providers[0]!; },

@@ -12,7 +12,7 @@ import {
   type HarnessProvider
 } from "../src/runtime/config.js";
 import { createEditProposal } from "../src/workspace/edit-contracts.js";
-import { HarnessConfigError } from "../src/runtime/errors.js";
+import { HarnessConfigError, HarnessExecutionError } from "../src/runtime/errors.js";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import {
   restoreSanitizedOperationalError,
@@ -248,6 +248,7 @@ const createLiveHarness = async (args: PhaseArguments) => createHarness({
 
 const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> => {
   const harness = await createLiveHarness(args);
+  let checkpoint = "request_status";
   try {
     const expected = expectedApprovalArguments(args.provider);
     const result = await runHarness(harness, {
@@ -269,13 +270,16 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
           error: toolResult.error?.message
         })))}; error=${JSON.stringify(result.error?.message)}`
     );
+    checkpoint = "request_approval";
     const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
     assert.ok(approval, "The provider did not request the apply_patch approval.");
     assert.equal(approval.kind, "local-tool");
+    checkpoint = "request_arguments";
     assert.deepEqual(JSON.parse(approval.arguments), expected);
     assert.equal(result.state.pendingApprovals.length, 1);
     await assert.rejects(readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"));
 
+    checkpoint = "request_persistence";
     const persisted = await harness.store.load(result.state.runId, harness.config.scope);
     assert.equal(persisted?.status, "waiting_approval");
     assert.equal(persisted?.pendingApprovals[0]?.id, approval.id);
@@ -286,6 +290,8 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
       runId: result.state.runId,
       approvalId: approval.id
     };
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
   } finally {
     await harness.close();
   }
@@ -294,12 +300,15 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
 const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => {
   assert.ok(args.runId);
   const harness = await createLiveHarness(args);
+  let checkpoint = "resume_state";
   try {
     const state = await harness.store.load(args.runId, harness.config.scope);
     assert.equal(state?.status, "waiting_approval");
     const approval = state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
     assert.ok(approval, "The persisted run has no apply_patch approval.");
+    checkpoint = "resume_arguments";
     assert.deepEqual(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
+    checkpoint = "resume_status";
 
     const result = await runHarness(harness, {
       state,
@@ -314,7 +323,9 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     throwTransientRunFailure(result);
 
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+    checkpoint = "resume_output";
     assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
+    checkpoint = "resume_effect";
     const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
     assert.equal(writeResults.length, 1);
     assert.equal(writeResults[0]?.isError, false);
@@ -323,6 +334,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
       certificationContent(args.provider)
     );
 
+    checkpoint = "resume_journal";
     const journal = await harness.store.listToolCalls?.(args.runId, harness.config.scope);
     const writeEntries = journal?.filter((entry) => entry.toolName === "apply_patch") ?? [];
     assert.equal(writeEntries.length, 1);
@@ -335,6 +347,8 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
       toolExecutions: writeResults.length,
       journalEntries: writeEntries.length
     };
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
   } finally {
     await harness.close();
   }

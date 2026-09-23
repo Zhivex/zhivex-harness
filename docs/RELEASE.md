@@ -4,9 +4,9 @@
 
 ## Next candidate
 
-The source version is `1.1.0-rc.6`, targeting npm `next` after fresh certification.
+The source version is `1.1.0-rc.7`, targeting npm `next` after fresh certification.
 RC.3 is published on `next`; RC.4 failed its representative gate and did not publish.
-RC.5 failed after processing the representative matrix and did not publish. RC.6 retains Qwen Flash, stops subsequent release gates after failure, and preserves richer sanitized diagnostics. See [candidate readiness](releases/1.1.0-rc.6.md).
+RC.5 failed after processing the representative matrix and did not publish. RC.6 stopped at the OpenAI base gate without publishing. RC.7 selects GPT-6 Luna, retains Qwen Flash, and preserves fail-fast certification and sanitized diagnostics. See [candidate readiness](releases/1.1.0-rc.7.md).
 `release-status.json` continues to describe the independently verified 1.0.0
 publication; its evidence must not be reused as certification for this candidate.
 
