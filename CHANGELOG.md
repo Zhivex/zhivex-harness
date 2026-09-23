@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.5 - 2026-09-22
+
+Unpublished candidate targeting npm `next`, superseding the tagged but unpublished RC.4.
+
+- Use `qwen3.8-flash` as the default Qwen model in CLI/Desktop and the new release certification matrix. Keep Max selectable and preserve explicitly saved model choices and historical certification pins. Flash requires fresh release-bound certification.
+
 ## 1.1.0-rc.4 - 2026-09-22
 
 - Align the SDK batch with the latest stable packages verified on 2026-09-22:

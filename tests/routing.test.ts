@@ -19,6 +19,9 @@ describe("multi-provider model routing", () => {
       provider: "openai",
       model: "gpt-5.6-sol"
     });
+    expect(parseHarnessModelRoute("reviewer=qwen:qwen3.8-max")).toEqual({
+      profile: "reviewer", provider: "qwen", model: "qwen3.8-max"
+    });
   });
 
   test("rejects ambiguous, duplicate, and unknown routes", () => {
@@ -36,7 +39,7 @@ describe("multi-provider model routing", () => {
       "explorer=qwen",
       "reviewer=gemini:gemini-3.6-flash"
     ]))).toEqual({
-      explorer: { provider: "qwen", model: "qwen3.8-max" },
+      explorer: { provider: "qwen", model: "qwen3.8-flash" },
       reviewer: { provider: "gemini", model: "gemini-3.6-flash" }
     });
   });

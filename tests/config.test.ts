@@ -71,7 +71,7 @@ describe("provider configuration", () => {
       },
       context: { enabled: true }
     });
-    expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-max");
+    expect(resolveHarnessConfig({ provider: "qwen", workspace: "." }).model).toBe("qwen3.8-flash");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).model).toBe("gpt-5.6-luna");
     expect(resolveHarnessConfig({ provider: "gemini", workspace: "." }).model).toBe("gemini-3.6-flash");
     expect(resolveHarnessConfig({ provider: "openai", workspace: "." }).allowedChecks).toEqual([
