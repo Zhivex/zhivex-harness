@@ -5,8 +5,8 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.9.0-next.1",
-        "@zhivex-ai/core": "1.23.0-next.1",
+        "@zhivex-ai/agents": "1.9.0-next.2",
+        "@zhivex-ai/core": "1.23.0-next.2",
         "@zhivex-ai/gemini": "0.12.2-next.0",
         "@zhivex-ai/meta": "0.2.7-next.0",
         "@zhivex-ai/openai": "0.13.5-next.1",
@@ -26,7 +26,7 @@
     },
   },
   "overrides": {
-    "@zhivex-ai/core": "1.23.0-next.1",
+    "@zhivex-ai/core": "1.23.0-next.2",
   },
   "packages": {
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
@@ -103,9 +103,9 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.9.0-next.1", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0-next.1" } }, "sha512-vVjrnpvHy8TjAq0/Vja47qidrgQ7My3eq0dVvJM2SNHKL9P4RSGpo1qXmpXVnRHwXj/Le17sGAP1TYLTx0kL+A=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.9.0-next.2", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0-next.2" } }, "sha512-jN54Dc9Zv3Qf6Gu+GceWntSdobWgqsxLS5LOuVZYSEcE/p76od0+vva4t/P51Cid+MjZ3Y7EMfoBqNTDffsaKA=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.23.0-next.1", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-cOKOFakmUJ4rSlznaUcOQYINdWVP6pGOa1FdsYUwTvEJaTn+2r8FcyjOq6a0iowe+1ubVEK3HyZKKrl7ebG3jA=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.23.0-next.2", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-6LfWkHdqdDJdejQHfHMCr4SlvV1VNjEz7+7ujS0GgyKUWmkQMaDMBGWsFqwQFDvisczKu/uFqPmH5IN0w2d0+Q=="],
 
     "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.12.2-next.0", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0-next.0", "zod": "^4.6.3" } }, "sha512-VA803D1OIWX0fW0W8mJ0F4bwJOo2TlYIM9rwYVn5UF1aGD631yOK7ZobCQEBK0W/WPZ8BlmE4jadZn8i2qqVIw=="],
 
