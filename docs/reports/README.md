@@ -51,3 +51,8 @@ removing the copies from this checkout does not assert that they were merged.
 The UI reference capture and transient redesign QA assets are likewise retained
 in that commit. Release, security, benchmark and unsuccessful evaluation evidence
 remain in this archive; this cleanup does not change their results.
+
+Transient September 22–23 provider and SDK investigation notes and their local
+trial JSON were removed before RC.10. They remain available in the
+[pre-cleanup report tree](https://github.com/Zhivex/zhivex-harness/tree/dbf0d47/docs/reports).
+Their removal does not change failed outcomes or certify the next candidate.

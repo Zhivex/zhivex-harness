@@ -179,7 +179,7 @@ The checked option inventory includes `--provider`, `--model`, `--profile`, `--w
 
 ```bash
 zhx init
-zhx init --profile daily --provider qwen --model qwen3.8-flash
+zhx init --profile daily --provider qwen --model qwen3.8-max
 zhx doctor --profile daily
 zhx --profile daily "inspect this repository"
 ```

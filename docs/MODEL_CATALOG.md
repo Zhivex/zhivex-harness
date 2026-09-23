@@ -45,4 +45,4 @@ The official [model catalog](https://developers.openai.com/api/docs/models), [GP
 
 ## Qwen default — 2026-09-22
 
-Revision `2026-09-22.3` selects `qwen3.8-flash` as the bundled Qwen default for CLI, Desktop and live certification. Flash is Primary; `qwen3.8-max` remains available under Other models. Existing profiles and conversation model selections are preserved. Flash remains `unverified` until its exact release-bound route passes certification.
+Revision `2026-09-23.2` restores `qwen3.8-max` as the bundled Qwen default for CLI, Desktop and RC.10 live certification. Max is Primary; `qwen3.8-flash` remains available under Other models. Existing profiles and conversation model selections are preserved. Max remains `unverified` for this candidate until its exact release-bound route passes certification.

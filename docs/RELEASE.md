@@ -4,9 +4,13 @@
 
 ## Next candidate
 
-The source version is `1.1.0-rc.8`, targeting npm `next` after fresh certification.
-RC.3 is published on `next`; RC.4 failed its representative gate and did not publish.
-RC.5 failed after processing the representative matrix and did not publish. RC.6 stopped at the OpenAI base gate without publishing. RC.7 failed the OpenAI resume-output check without publishing. RC.8 preserves the OpenAI function receipt across approval resume, retaining GPT-6 Luna, Qwen Flash, fail-fast certification and sanitized diagnostics. See [candidate readiness](releases/1.1.0-rc.8.md).
+The source version is `1.1.0-rc.10`, targeting npm `next` after fresh certification.
+The latest RC.9 attempt failed its base live gate before publication
+([workflow run](https://github.com/Zhivex/zhivex-harness/actions/runs/35887164419)).
+RC.10 restores Qwen `qwen3.8-max`, retains Meta `muse-spark-1.3` and OpenAI
+`gpt-6-luna`, and adds bounded Meta receipt-continuation recovery. Runtime defaults
+and the representative matrix use the same models. Saved selections and historical
+release mappings remain unchanged. All exact-artifact gates must pass anew.
 `release-status.json` continues to describe the independently verified 1.0.0
 publication; its evidence must not be reused as certification for this candidate.
 
