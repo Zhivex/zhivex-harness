@@ -145,7 +145,7 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 
 | Provider | Default model | Support in `1.0.0` |
 | --- | --- | --- |
-| Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 1.0.0 release-bound base, delegation, and OCI execution certified |
+| Meta | `muse-spark-1.3` | `MODEL_API_KEY` · Responses tool loops; release certification pending for 1.3 |
 | Qwen | `qwen3.8-flash` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · RC.5 default; fresh Flash certification pending. Historical 1.0.0 evidence covers `qwen3.8-max`. |
 | OpenAI | `gpt-6-luna` | `OPENAI_API_KEY` · new default; fresh release-bound certification required |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |

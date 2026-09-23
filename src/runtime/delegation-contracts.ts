@@ -37,7 +37,7 @@ export const delegationPrompt = (contract: HarnessDelegationContract) =>
   `Application-owned task ${contract.taskId}:\n${contract.prompt}\nAllowed read paths: ${JSON.stringify(contract.allowedReadPaths)}.\nInclude this exact acceptance token in the final response: ${contract.requiredOutput}`;
 
 export const delegationFingerprint = (contracts: readonly HarnessDelegationContract[]) =>
-  createHash("sha256").update(JSON.stringify(contracts)).digest("hex");
+  createHash("sha256").update(JSON.stringify({ policy: "caller-output-v2", contracts })).digest("hex");
 
 /** Adapt the public task-ID contract to the SDK's durable subagent protocol.
  * Only validated IDs resolve to trusted prompts. SDK still owns approvals,

@@ -58,7 +58,7 @@ describe("provider configuration", () => {
   test("resolves stable defaults for every provider", () => {
     expect(resolveHarnessConfig({ provider: "meta", workspace: "." })).toMatchObject({
       schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
-      model: "muse-spark-1.2",
+      model: "muse-spark-1.3",
       storeBackend: "sqlite",
       scope: { tenantId: "local" },
       budget: { maxToolCalls: 32, maxTotalTokens: 120_000 },

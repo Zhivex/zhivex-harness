@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "sourceBase": "f7195378696d3b93cc90fab7d209cc8fc9f8a38a",
+  "candidate": "1.1.0-rc.9",
+  "scope": "Uncommitted candidate validation, not tagged artifact certification",
+  "sourceHashes": {
+    "src/models/catalog.json": "4a862aeedaea7b843615b766e364fbac9f92abdd41d2c81cede1501892d887bc",
+    "src/providers/providers.ts": "0f850543da4dffd37fd9035545bbf8e1108b748a7e11362e23e0d8e5b81ec2d1",
+    "src/runtime/harness.ts": "9d97092711c255ad2f933935ec2afcc09478c21b42a146c5d8637e65806f1c41",
+    "src/runtime/delegation-contracts.ts": "18e87a48b3f17518d2cec5ac3572513b93765b599d15d835199c7bbd550481d6",
+    "scripts/live-orchestration-smoke.ts": "bc031ac3aeca41b87689498620164fcec8151c33ace922573014c8068b312bfe"
+  },
+  "notes": [
+    "Checkpoints were added after initial failures. Terminal result errors preserved next; typed stream error projection added after caller-output Qwen failure. A diagnostic pass does not erase a campaign failure.",
+    "Final full check before the last stream-observer-only diagnostics change: 986 passed, 1 platform skip, 0 failed. Focused 46 tests and tooling typecheck cover final observer checkout.",
+    "Live OCI, mixed routing and representative matrix withheld after confirmed orchestration failure.",
+    "Release readiness requires clean main and therefore fails on this feature checkout; no tag, publication or automatic bypass."
+  ],
+  "cases": [
+    {
+      "case": "meta-base-1",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:19.833Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "meta-base-2",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:38.568Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "meta-base-3",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:56.795Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "meta-orchestration-1",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": false,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:17:27.499Z",
+        "providers": [
+          {
+            "ok": false,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "details": {
+                "chain": [
+                  {
+                    "kind": "AssertionError"
+                  }
+                ]
+              },
+              "fingerprint": "sha256:770e0cf58b7233b91bf8cc353326bf554e1a7270526eb52db6c33c892923ab3d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "orchestration-checkpoint",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": false,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:19:18.011Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 4752
+          },
+          {
+            "ok": false,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "details": {
+                "chain": [
+                  {
+                    "checkpoint": "orchestration_status",
+                    "code": "EXECUTION_FAILED",
+                    "retryable": false
+                  },
+                  {
+                    "kind": "AssertionError"
+                  }
+                ]
+              },
+              "fingerprint": "sha256:580a96f76886bf9ca7ccb241c8d657847b8a5b1a33333e33f6c45c851543f599"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "output-contract-meta-1",
+      "stage": "caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:21:35.105Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 4588
+          }
+        ]
+      }
+    },
+    {
+      "case": "output-contract-meta-2",
+      "stage": "caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:22:02.809Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 4772
+          }
+        ]
+      }
+    },
+    {
+      "case": "output-contract-meta-3",
+      "stage": "caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:22:20.832Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 4752
+          }
+        ]
+      }
+    },
+    {
+      "case": "output-contract-qwen-1",
+      "stage": "caller-output-v2",
+      "result": {
+        "ok": false,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:22:36.495Z",
+        "providers": [
+          {
+            "ok": false,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "details": {
+                "chain": [
+                  {
+                    "checkpoint": "orchestration_status",
+                    "code": "EXECUTION_FAILED",
+                    "retryable": false
+                  }
+                ]
+              },
+              "fingerprint": "sha256:6c08763da95228484a9a1fbf1a6de012d6bf67928420d2b4df40fcc1f55a068d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-base-1",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:16.220Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-base-2",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:24.968Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-base-3",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-provider-smoke",
+        "certifiedAt": "2026-09-23T14:16:35.116Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "approvalPersisted": true,
+            "processRestarted": true,
+            "toolExecutions": 1,
+            "journalEntries": 1
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-orchestration",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": false,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:17:54.232Z",
+        "providers": [
+          {
+            "ok": false,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "details": {
+                "chain": [
+                  {
+                    "kind": "AssertionError"
+                  }
+                ]
+              },
+              "fingerprint": "sha256:770e0cf58b7233b91bf8cc353326bf554e1a7270526eb52db6c33c892923ab3d"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-stream-cause",
+      "stage": "caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:23:46.485Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 4173
+          }
+        ]
+      }
+    },
+    {
+      "case": "qwen-terminal-cause",
+      "stage": "responses-before-caller-output-v2",
+      "result": {
+        "ok": true,
+        "gate": "live-orchestration-smoke",
+        "certifiedAt": "2026-09-23T14:20:18.212Z",
+        "providers": [
+          {
+            "ok": true,
+            "provider": "qwen",
+            "model": "qwen3.8-flash",
+            "delegationExecutions": 1,
+            "childPersisted": true,
+            "processReopened": true,
+            "hierarchyRuns": 2,
+            "childToolCalls": 1,
+            "aggregateTokens": 3658
+          }
+        ]
+      }
+    }
+  ],
+  "registry": {
+    "latest": "1.0.0",
+    "next": "1.1.0-rc.3",
+    "rc8Published": false,
+    "rc9Published": false
+  },
+  "releaseBlocked": true
+}
