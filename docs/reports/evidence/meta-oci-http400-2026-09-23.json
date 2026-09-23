@@ -1,0 +1,236 @@
+{
+  "sourceCommit": "6839623f7511222c31f26cd133773ff256eb0d3f",
+  "cases": {
+    "shape-1": {
+      "transport": [
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 1,
+          "status": 200,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 0,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": false,
+          "missingReceipt": false,
+          "hasPreviousResponseId": false
+        },
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 2,
+          "status": 200,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 1,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": true,
+          "missingReceipt": false,
+          "hasPreviousResponseId": true
+        },
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 3,
+          "status": 400,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 1,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": true,
+          "missingReceipt": false,
+          "hasPreviousResponseId": true
+        },
+        {
+          "diagnostic": "meta_http_rejection",
+          "requestIndex": 3,
+          "status": 400,
+          "flags": {
+            "schema": false,
+            "additionalProperties": false,
+            "required": false,
+            "strict": false,
+            "tool": false,
+            "function": false,
+            "call_id": false,
+            "output": false,
+            "previous_response_id": false,
+            "unsupported": false,
+            "invalid": true,
+            "name": false,
+            "description": false,
+            "temperature": false,
+            "max_tokens": false,
+            "max_output_tokens": false
+          },
+          "counts": {
+            "function_call": 0,
+            "function_call_output": 1,
+            "message": 0
+          },
+          "toolCount": 23
+        }
+      ],
+      "result": {
+        "ok": false,
+        "gate": "live-execution-smoke",
+        "certifiedAt": "2026-09-23T16:04:00.182Z",
+        "providers": [
+          {
+            "ok": false,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "status": 400,
+              "details": {
+                "chain": [
+                  {
+                    "code": "EXECUTION_FAILED",
+                    "retryable": false
+                  },
+                  {
+                    "status": 400
+                  }
+                ]
+              },
+              "fingerprint": "sha256:228f942168291f875f1e30e5e29c3f3f2556b07ad736dae6874e549abe8e85ca"
+            }
+          }
+        ]
+      }
+    },
+    "identity": {
+      "transport": [
+        {
+          "diagnostic": "meta_continuation_identity",
+          "requestIndex": 1,
+          "hasPrevious": false,
+          "previousWasReturned": false,
+          "receiptCount": 0,
+          "allReceiptsMatchReturnedCalls": false,
+          "allReturnedCallsHaveReceipts": false
+        },
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 1,
+          "status": 200,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 0,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": false,
+          "missingReceipt": false,
+          "hasPreviousResponseId": false
+        },
+        {
+          "diagnostic": "meta_continuation_identity",
+          "requestIndex": 2,
+          "hasPrevious": true,
+          "previousWasReturned": true,
+          "receiptCount": 1,
+          "allReceiptsMatchReturnedCalls": true,
+          "allReturnedCallsHaveReceipts": true
+        },
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 2,
+          "status": 200,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 1,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": true,
+          "missingReceipt": false,
+          "hasPreviousResponseId": true
+        },
+        {
+          "diagnostic": "meta_continuation_identity",
+          "requestIndex": 3,
+          "hasPrevious": true,
+          "previousWasReturned": true,
+          "receiptCount": 1,
+          "allReceiptsMatchReturnedCalls": true,
+          "allReturnedCallsHaveReceipts": true
+        },
+        {
+          "diagnostic": "meta_request_shape",
+          "requestIndex": 3,
+          "status": 400,
+          "tools": 23,
+          "calls": 0,
+          "receipts": 1,
+          "duplicateCallIds": false,
+          "duplicateReceiptIds": false,
+          "orphanReceipt": true,
+          "missingReceipt": false,
+          "hasPreviousResponseId": true
+        },
+        {
+          "diagnostic": "meta_http_rejection",
+          "requestIndex": 3,
+          "status": 400,
+          "flags": {
+            "schema": false,
+            "additionalProperties": false,
+            "required": false,
+            "strict": false,
+            "tool": false,
+            "function": false,
+            "call_id": false,
+            "output": false,
+            "previous_response_id": false,
+            "unsupported": false,
+            "invalid": true,
+            "name": false,
+            "description": false,
+            "temperature": false,
+            "max_tokens": false,
+            "max_output_tokens": false
+          },
+          "counts": {
+            "function_call": 0,
+            "function_call_output": 1,
+            "message": 0
+          },
+          "toolCount": 23
+        }
+      ],
+      "result": {
+        "ok": false,
+        "gate": "live-execution-smoke",
+        "certifiedAt": "2026-09-23T16:05:07.283Z",
+        "providers": [
+          {
+            "ok": false,
+            "provider": "meta",
+            "model": "muse-spark-1.3",
+            "error": {
+              "code": "EXECUTION_FAILED",
+              "category": "execution",
+              "retryable": false,
+              "status": 400,
+              "details": {
+                "chain": [
+                  {
+                    "code": "EXECUTION_FAILED",
+                    "retryable": false
+                  },
+                  {
+                    "status": 400
+                  }
+                ]
+              },
+              "fingerprint": "sha256:228f942168291f875f1e30e5e29c3f3f2556b07ad736dae6874e549abe8e85ca"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
