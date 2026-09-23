@@ -14,7 +14,7 @@
   "finalImplementationHashes": {
     "src/runtime/harness.ts": "5ea0b0b682b135752bec0ad4e7818a0e86b46d849b1fd83f58a56e9afe0db75b",
     "src/runtime/orchestration.ts": "dcb73382abc03bb04c87b8f43c11378cb67a1128ac5ac0af403cd5dbf12d146d",
-    "src/runtime/delegation-contracts.ts": "fd5e39d0df364cedf12a53c1c585da7d994b315d56e48181b328b9f6be5e3b2a",
+    "src/runtime/delegation-contracts.ts": "cca42658eb81e60bf5795d73d683f1e7d3ab1d25ac96b3a1ac712639b8782783",
     "src/runtime/error-diagnostics.ts": "47701d61a854aaa5227e8e4e81e37ae6acc95ff256b8de2dc60f8d3300e2edda",
     "scripts/live-provider-smoke.ts": "b9c5449f3713c2bb655f2c4a819e8a6600dbb5283bbc806c0432b0a334197044",
     "scripts/live-orchestration-smoke.ts": "1325cc76c3af66fc03dccc3b3503882513958e63e769a27e6ad9c702a646962a",
@@ -188,7 +188,8 @@
     "Scoped base campaign stopped at its third case after request_arguments mismatch. No write was approved in that case.",
     "No representative matrix or other providers run after the Qwen base failure.",
     "No new RC tag or publication.",
-    "Resume diagnostic original capture used an incorrect marker predicate; corrected by reading the persisted state against ZHIVEX_HARNESS_QWEN_LIVE_OK. Only corrected boolean retained."
+    "Resume diagnostic original capture used an incorrect marker predicate; corrected by reading the persisted state against ZHIVEX_HARNESS_QWEN_LIVE_OK. Only corrected boolean retained.",
+    "Final follow-up covers singular GenerateResult.message as well as messages; streaming behavior exercised live is unchanged. Hosted macOS timed out a grouped Desktop Git test; split into three independent scenarios preserving assertions, then full local check passed."
   ],
   "finalContractSmoke": {
     "ok": true,
@@ -211,11 +212,11 @@
   "offlineVerification": {
     "command": "bun run check",
     "exitCode": 0,
-    "passed": 979,
+    "passed": 983,
     "skipped": 1,
     "failed": 0,
     "installedPackageSmoke": "passed",
     "ociSmoke": "passed",
-    "focusedFinalTests": 41
+    "focusedFinalTests": 43
   }
 }

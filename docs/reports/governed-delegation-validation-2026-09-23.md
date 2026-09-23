@@ -53,7 +53,7 @@ Las regresiones cubren transporte generate/stream, rechazo de taskId desconocido
 system/prompt o campos extra, tarea exacta recibida por el hijo, ruta no autorizada,
 aceptación ausente, marcador sin lectura, presupuesto de lote, linkage/uso en
 fallo, copia de configuración, fingerprints y proyección segura de errores.
-`bun run check` final aprobado: 979 tests pasan, uno omitido por plataforma y cero fallos.
+`bun run check` final aprobado: 983 tests pasan, uno omitido por plataforma y cero fallos.
 Los gates completos incluyen typecheck, contratos de API, suite del Harness y
 Desktop, migraciones, evaluaciones, MCP, OCI y consumidor instalado.
 
@@ -68,3 +68,10 @@ comparación exacta, la aprobación y los efectos verificados.
 identifica las versiones y hashes del árbol implementado. Los datos históricos
 del diagnóstico inicial permanecen separados en los informes del 22 y 23 de
 septiembre. No se adjuntan SQLite, prompts/respuestas live, headers ni credenciales.
+
+## Cierre de revisión
+
+Se cubren tanto `GenerateResult.message` como `messages` y el transporte streaming.
+La primera CI remota detectó un timeout de 5 segundos en un test Desktop que
+agrupaba tres escenarios Git. Se separaron manteniendo sus assertions; la suite
+completa local volvió a pasar con 983 aprobados, uno omitido y cero fallos.

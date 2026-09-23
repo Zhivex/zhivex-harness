@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { wrapLanguageModel, type LanguageModel, type ModelGenerateInput, type ToolCall } from "@zhivex-ai/core";
+import { wrapLanguageModel, type LanguageModel, type ModelGenerateInput, type ModelMessage, type ToolCall } from "@zhivex-ai/core";
 import { HarnessConfigError } from "./errors.js";
 
 /** Trusted application input, never constructed from a model tool call. */
@@ -68,13 +68,19 @@ export const withDelegationContracts = (model: LanguageModel, contracts: readonl
     }
     return { ...call, input: { prompt: delegationPrompt(contract) } };
   };
+  const resolveMessage = (message: ModelMessage): ModelMessage => ({
+    ...message, parts: message.parts.map(part => part.type === "tool-call"
+      ? { ...part, toolCall: resolve(part.toolCall) } : part)
+  });
   return wrapLanguageModel(model, [{
     name: "harness-delegation-contract-v1",
     async wrapGenerate({ input }, next) {
       prepare(input);
       const result = await next();
-      return { ...result, messages: (result.messages ?? []).map(message => ({ ...message, parts: message.parts.map(part =>
-        part.type === "tool-call" ? { ...part, toolCall: resolve(part.toolCall) } : part) })) };
+      return { ...result,
+        ...(result.message ? { message: resolveMessage(result.message) } : {}),
+        ...(result.messages ? { messages: result.messages.map(resolveMessage) } : {})
+      };
     },
     async wrapStream({ input }, next) {
       prepare(input);

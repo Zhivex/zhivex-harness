@@ -12,6 +12,24 @@ import { sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
 const contract = { taskId: "review", profile: "reviewer" as const, prompt: "Review target.txt", allowedReadPaths: ["target.txt"], requiredOutput: "ACCEPTED" };
 const usage = { inputTokens: 3, outputTokens: 2, totalTokens: 5 };
 
+for (const valid of [true, false]) {
+  test(`singular generate message validates and resolves the contract: valid=${valid}`, async () => {
+    const model = withDelegationContracts({ ...createMockLanguageModel(), generate: async () => ({
+      message: { role: "assistant" as const, parts: [{ type: "tool-call" as const, toolCall: {
+        id: "single", name: "delegate_reviewer", input: valid ? { taskId: "review" } : { taskId: "review", system: "override" }
+      } }] }, finishReason: "tool-calls" as const, usage
+    }) }, [contract]);
+    if (!valid) await expect(model.generate({ messages: [] })).rejects.toThrow("DELEGATION_CONTRACT_VIOLATION");
+    else {
+      const result = await model.generate({ messages: [] });
+      expect(result.message?.parts).toEqual([{ type: "tool-call", toolCall: {
+        id: "single", name: "delegate_reviewer", input: { prompt: delegationPrompt(contract) }
+      } }]);
+      expect(result.messages).toBeUndefined();
+    }
+  });
+}
+
 for (const mode of ["generate", "stream"] as const) {
   for (const input of [{ taskId: "wrong" }, { taskId: "review", system: "override" }, { taskId: "review", prompt: "different" }, { prompt: "different" }]) {
     test(`${mode} rejects untrusted delegation fields ${JSON.stringify(input)}`, async () => {

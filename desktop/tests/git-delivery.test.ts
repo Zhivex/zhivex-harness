@@ -14,11 +14,33 @@ test("reviewed commit binds the whole staged selection and preserves unstaged an
         await writeFile(f.root + `/delivery/${first.id}.json`, JSON.stringify({ ...first, status: "prepared" })); expect((await reopened.reconcile(first.id)).status).toBe("completed"); expect(git(f.repo, ["rev-list", "--count", "HEAD"])).toBe("2");
     } finally { await f.close(); }
 });
-test("foreign staged files, changed review and index locks never produce a commit", async () => {
+// Keep independent Git scenarios below Bun's per-test deadline on hosted macOS.
+// Each case still verifies that no commit was produced.
+test("foreign staged files never produce a commit", async () => {
     const f = await fixture(); try {
-        await writeFile(f.repo + "/a.txt", "one\n"); await writeFile(f.repo + "/b.txt", "foreign\n"); git(f.repo, ["add", "a.txt", "b.txt"]); await expect(f.manager.reviewCommit({ paths: ["a.txt"], message: "bad" })).rejects.toThrow("GIT_STAGED_SELECTION_MISMATCH");
-        const review = await f.manager.reviewCommit({ paths: ["a.txt", "b.txt"], message: "both" }); await writeFile(f.repo + "/a.txt", "changed\n"); git(f.repo, ["add", "a.txt"]); await expect(f.manager.commit(review.ticketId)).rejects.toThrow("GIT_REVIEW_CHANGED"); await expect(f.manager.commit(review.ticketId)).rejects.toThrow("GIT_REVIEW_REQUIRED");
-        const current = await f.manager.reviewCommit({ paths: ["a.txt", "b.txt"], message: "both" }); await writeFile(f.repo + "/.git/index.lock", "other owner"); await expect(f.manager.commit(current.ticketId)).rejects.toThrow(); expect(await readFile(f.repo + "/.git/index.lock", "utf8")).toBe("other owner"); expect(git(f.repo, ["rev-list", "--count", "HEAD"])).toBe("1");
+        await writeFile(f.repo + "/a.txt", "one\n"); await writeFile(f.repo + "/b.txt", "foreign\n"); git(f.repo, ["add", "a.txt", "b.txt"]);
+        await expect(f.manager.reviewCommit({ paths: ["a.txt"], message: "bad" })).rejects.toThrow("GIT_STAGED_SELECTION_MISMATCH");
+        expect(git(f.repo, ["rev-list", "--count", "HEAD"])).toBe("1");
+    } finally { await f.close(); }
+});
+test("changed review invalidates its ticket without producing a commit", async () => {
+    const f = await fixture(); try {
+        await writeFile(f.repo + "/a.txt", "one\n"); await writeFile(f.repo + "/b.txt", "foreign\n"); git(f.repo, ["add", "a.txt", "b.txt"]);
+        const review = await f.manager.reviewCommit({ paths: ["a.txt", "b.txt"], message: "both" });
+        await writeFile(f.repo + "/a.txt", "changed\n"); git(f.repo, ["add", "a.txt"]);
+        await expect(f.manager.commit(review.ticketId)).rejects.toThrow("GIT_REVIEW_CHANGED");
+        await expect(f.manager.commit(review.ticketId)).rejects.toThrow("GIT_REVIEW_REQUIRED");
+        expect(git(f.repo, ["rev-list", "--count", "HEAD"])).toBe("1");
+    } finally { await f.close(); }
+});
+test("an existing index lock is preserved and never produces a commit", async () => {
+    const f = await fixture(); try {
+        await writeFile(f.repo + "/a.txt", "changed\n"); await writeFile(f.repo + "/b.txt", "foreign\n"); git(f.repo, ["add", "a.txt", "b.txt"]);
+        const current = await f.manager.reviewCommit({ paths: ["a.txt", "b.txt"], message: "both" });
+        await writeFile(f.repo + "/.git/index.lock", "other owner");
+        await expect(f.manager.commit(current.ticketId)).rejects.toThrow();
+        expect(await readFile(f.repo + "/.git/index.lock", "utf8")).toBe("other owner");
+        expect(git(f.repo, ["rev-list", "--count", "HEAD"])).toBe("1");
     } finally { await f.close(); }
 });
 test("secret paths, known values, binary previews and conflicts are rejected before projection", async () => {
