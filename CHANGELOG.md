@@ -6,8 +6,11 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## 1.1.0-rc.10 - 2026-09-23
 
+- Restore `qwen3.8-max` as the default for new CLI/Desktop selections and RC.10 certification. Keep saved models and historical release mappings unchanged.
+- Remove transient provider/SDK investigation reports and their local trial evidence; retain them in Git history.
+
 - Recover once when Meta Responses rejects a function receipt continuation because its response ID is unavailable. Replay the identical request after a bounded delay, preserve cancellation, and exclude hosted tools and unrelated HTTP errors. Host tools are not executed again.
-- Bind the new Meta transport policy to durable run identity. Preserve Qwen Flash, OpenAI Luna 6 and Muse Spark 1.3 release models; full release certification remains required.
+- Bind the new Meta transport policy to durable run identity. Use Qwen 3.8 Max, OpenAI Luna 6 and Muse Spark 1.3 release models; full release certification remains required.
 
 ## 1.1.0-rc.9 - 2026-09-23
 

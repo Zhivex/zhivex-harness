@@ -15,16 +15,16 @@ test("existing providers map only their own Keychain credential into the runtime
  for(const bad of [{provider:"deepseek",model:"test"},{provider:"qwen",model:""},{provider:"qwen",model:"x\ny"},{provider:"qwen",model:"test",baseURL:"https://untrusted.test"}]) expect(modelSelectionSchema.safeParse(bad).success).toBe(false);
 });
 
-test("Qwen defaults to Flash across Desktop and CLI while Max stays selectable", async () => {
+test("Qwen defaults to Max across Desktop and CLI while saved Flash stays selectable", async () => {
  const {consoleModelChoices}=await import("../../src/cli/console/console-navigation.js");
  const {providerDescriptor}=await import("../../src/runtime/config.js");
  const qwen=desktopProviders().find(p=>p.id==="qwen")!;
- expect(qwen.defaultModel).toBe("qwen3.8-flash");
+ expect(qwen.defaultModel).toBe("qwen3.8-max");
  expect(providerDescriptor("qwen").defaultModel).toBe(qwen.defaultModel);
  expect(qwen.models!.find(m=>m.id===qwen.defaultModel)?.group).toBe("primary");
- expect(qwen.models!.find(m=>m.id==="qwen3.8-max")?.group).toBe("other");
- const choices=consoleModelChoices("qwen",qwen.defaultModel,"qwen3.8-max");
- expect(choices.find(m=>m.value==="qwen3.8-max")?.detail).toContain("Current");
+ expect(qwen.models!.find(m=>m.id==="qwen3.8-flash")?.group).toBe("other");
+ const choices=consoleModelChoices("qwen",qwen.defaultModel,"qwen3.8-flash");
+ expect(choices.find(m=>m.value==="qwen3.8-flash")?.detail).toContain("Current");
  expect(choices.find(m=>m.value===qwen.defaultModel)?.detail).toContain("Recommended default");
 });
 test("model choice survives reopen and project visits without changing another project",async()=>{
@@ -34,7 +34,7 @@ test("model choice survives reopen and project visits without changing another p
   const registry=await openProjectRegistry(`${root}/index`);
   const one=await registry.select(`${root}/one`),two=await registry.select(`${root}/two`);
   expect(one.modelSelection??defaultModelSelection()).toEqual(defaultModelSelection());
-  const selection={provider:"qwen",model:"qwen3.8-max"};
+  const selection={provider:"qwen",model:"qwen3.8-flash"};
   await registry.setModel(one.key,selection);
   await Promise.all([registry.select(one.workspace),registry.select(two.workspace)]);
   const reopened=await openProjectRegistry(`${root}/index`);

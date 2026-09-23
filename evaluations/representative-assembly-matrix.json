@@ -225,7 +225,7 @@
       "releaseTag": "v1.1.0-rc.10",
       "models": {
         "meta": "muse-spark-1.3",
-        "qwen": "qwen3.8-flash",
+        "qwen": "qwen3.8-max",
         "openai": "gpt-6-luna"
       }
     }
