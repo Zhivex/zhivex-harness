@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.10 - 2026-09-23
+
+- Recover once when Meta Responses rejects a function receipt continuation because its response ID is unavailable. Replay the identical request after a bounded delay, preserve cancellation, and exclude hosted tools and unrelated HTTP errors. Host tools are not executed again.
+- Bind the new Meta transport policy to durable run identity. Preserve Qwen Flash, OpenAI Luna 6 and Muse Spark 1.3 release models; full release certification remains required.
+
 ## 1.1.0-rc.9 - 2026-09-23
 
 - Upgrade Core to 1.23.0-next.2 and Agents to 1.9.0-next.2. All eight consumer redaction cases pass, including later rejection and file-store reopen. Qwen Flash orchestration remains intermittent, so RC certification is still blocked.

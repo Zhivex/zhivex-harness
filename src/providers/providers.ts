@@ -1,3 +1,4 @@
+import { createMetaContinuationFetch } from "./meta-continuation.js";
 import { bundledDefaultModel } from "../models/catalog.js";
 import { createHash } from "node:crypto";
 
@@ -585,6 +586,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
       const baseURL = env.META_BASE_URL?.trim();
       return withMetaResponses(createMeta({
         apiKey: credentials.require(),
+        fetch: createMetaContinuationFetch(),
         ...(baseURL ? { baseURL } : {})
       })(model));
     }
