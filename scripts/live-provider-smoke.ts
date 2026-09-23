@@ -397,6 +397,7 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
       }
   > = [];
   for (const provider of providers) {
+    if (env.ZHIVEX_HARNESS_LIVE_FAIL_FAST === "1" && evidence.some((entry) => entry.ok === false)) break;
     const model = env[modelEnvironmentName(provider)]?.trim() || providerDescriptor(provider).defaultModel;
     if (!providerHasCredentials(provider, env)) {
       evidence.push({ ok: false, provider, model, error: providerCredentialFailure(provider) });

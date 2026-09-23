@@ -208,6 +208,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       ZHIVEX_HARNESS_LIVE: "1"
+      ZHIVEX_HARNESS_LIVE_FAIL_FAST: "1"
       ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai
       WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
@@ -255,7 +256,6 @@ jobs:
 
       - name: Preload enforced execution image
         id: live_oci_preload
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate oci-preload
@@ -264,7 +264,6 @@ jobs:
 
       - name: Certify deterministic OCI boundary
         id: live_oci
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate oci
@@ -275,7 +274,6 @@ jobs:
 
       - name: Certify base provider behavior
         id: live_base
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate base
@@ -294,7 +292,6 @@ jobs:
 
       - name: Certify bounded reviewer orchestration
         id: live_orchestration
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate orchestration
@@ -313,7 +310,6 @@ jobs:
 
       - name: Certify mixed-provider routing
         id: live_routing
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate routing
@@ -332,7 +328,6 @@ jobs:
 
       - name: Certify model-directed execution
         id: live_execution
-        continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
           --gate execution
@@ -374,8 +369,8 @@ jobs:
 
   representative-evaluation:
     name: Certify representative repository matrix
-    needs: validate
-    if: ${{ needs.validate.result == 'success' }}
+    needs: [validate, certify-live]
+    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: live-certification
@@ -442,7 +437,6 @@ jobs:
 
       - name: Evaluate Meta against the complete pinned matrix
         id: representative_meta
-        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/meta.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/meta.json --summary
@@ -456,7 +450,6 @@ jobs:
 
       - name: Evaluate Qwen against the complete pinned matrix
         id: representative_qwen
-        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/qwen.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/qwen.json --summary
@@ -473,7 +466,6 @@ jobs:
 
       - name: Evaluate OpenAI against the complete pinned matrix
         id: representative_openai
-        continue-on-error: true
         run: |
           REPORT=release-artifacts/representative-raw/openai.json
           bun run scripts/benchmark-time-to-safe-fix.ts --dataset "$REPRESENTATIVE_DATASET" --dataset-name "$REPRESENTATIVE_DATASET_NAME" --dataset-revision "$REPRESENTATIVE_DATASET_REVISION" --tasks 7 --repetitions 1 --profiles governed --carriers rule_file --seed 7 --driver-zhivex --driver-timeout-ms 300000 --out "$REPORT" --diagnostics-out release-artifacts/representative-diagnostics/openai.json --summary

@@ -12,6 +12,24 @@ const workflowPaths = [
 ] as const;
 
 describe("release workflow version source", () => {
+  test("release stops remaining paid gates while preserving aggregate enforcement and diagnostics", async () => {
+    const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
+    expect(workflow).not.toContain("continue-on-error:");
+    expect(workflow).toContain('ZHIVEX_HARNESS_LIVE_FAIL_FAST: "1"');
+    expect(workflow).toContain("needs: [validate, certify-live]");
+    expect(workflow).toContain("needs.certify-live.result == 'success'");
+    for (const name of ["Evaluate Meta", "Evaluate Qwen", "Evaluate OpenAI"]) {
+      const block = workflow.match(new RegExp(`- name: ${name}[^\\n]*\\n([\\s\\S]*?)(?=\\n      - name:)`))?.[0];
+      expect(block).toBeDefined();
+      expect(block).not.toContain("if:"); // GitHub's implicit success() skips after failure.
+    }
+    for (const name of ["Enforce complete representative result", "Upload sanitized representative diagnostics", "Enforce complete live certification result", "Upload sanitized live diagnostics"]) {
+      expect(workflow).toContain(`- name: ${name}\n        if: \${{ always() }}`);
+    }
+    const manual = await readFile(path.join(workspace, ".github/workflows/live-certification.yml"), "utf8");
+    expect(manual).not.toContain("ZHIVEX_HARNESS_LIVE_FAIL_FAST");
+    expect(manual).toContain("continue-on-error: true");
+  });
   for (const workflowPath of workflowPaths) {
     test(`${workflowPath} requires a tag without duplicating the package version`, async () => {
       const workflow = await readFile(path.join(workspace, workflowPath), "utf8");
@@ -142,7 +160,7 @@ describe("release workflow version source", () => {
   });
 
   for (const workflowPath of workflowPaths) {
-    test(`${workflowPath} completes every live gate before enforcing the aggregate result`, async () => {
+    test(`${workflowPath} enforces the aggregate result with the intended gate continuation policy`, async () => {
       const workflow = await readFile(path.join(workspace, workflowPath), "utf8");
 
       for (const gate of [
@@ -159,7 +177,11 @@ describe("release workflow version source", () => {
         const block = workflow.match(new RegExp(
           `id: ${gate}\\n([\\s\\S]*?)(?=\\n      - name:)`
         ))?.[0];
-        expect(block).toContain("continue-on-error: true");
+        if (workflowPath.endsWith("/release.yml")) {
+          expect(block).not.toContain("continue-on-error:");
+        } else {
+          expect(block).toContain("continue-on-error: true");
+        }
         expect(block).toContain("bun run scripts/run-release-gate.ts");
         expect(block).toContain(`--gate ${diagnosticGate}`);
         expect(block).toContain(

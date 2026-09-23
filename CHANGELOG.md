@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Stop release gates and remaining providers after a confirmed failure while retaining exhaustive manual diagnostics.
+- Preserve completed certification cases across report failures and record bounded, sanitized error structure and finalization phases.
+
 ## 1.1.0-rc.5 - 2026-09-22
 
 Unpublished candidate targeting npm `next`, superseding the tagged but unpublished RC.4.

@@ -176,7 +176,7 @@ describe("release diagnostics", () => {
       expect(result.rows[2]).toEqual({
         gate: "openai",
         outcome: "skipped",
-        detail: "diagnostic unavailable",
+        detail: "skipped; not certified",
         failed: true
       });
       const summary = await readFile(summaryPath, "utf8");
