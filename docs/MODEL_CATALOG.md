@@ -39,7 +39,7 @@ The source manifest is the administration interface for this first version. A pr
 
 ## OpenAI catalog refresh — 2026-09-22
 
-Revision `2026-09-22.2` lists GPT-6 Astra, Sol and Luna, followed by GPT-5.6 Sol, Terra and Luna as primary choices. GPT-5.5, GPT-5.4, GPT-5.4 Mini and GPT-4o Mini remain under Other models; this editorial grouping does not claim provider deprecation. The default remains `gpt-5.6-luna`.
+Revision `2026-09-22.2` lists GPT-6 Astra, Sol and Luna, followed by GPT-5.6 Sol, Terra and Luna as primary choices. GPT-5.5, GPT-5.4, GPT-5.4 Mini and GPT-4o Mini remain under Other models; this editorial grouping does not claim provider deprecation. Revision `2026-09-22.4` selects `gpt-6-luna` as the default for new CLI/Desktop choices. Explicitly saved model selections remain unchanged; release certification requires fresh evidence.
 
 The official [model catalog](https://developers.openai.com/api/docs/models), [GPT-6 Sol page](https://developers.openai.com/api/docs/models/gpt-6-sol) and [GPT-6 Luna page](https://developers.openai.com/api/docs/models/gpt-6-luna) were checked on 2026-09-22. The new API IDs are `gpt-6-sol` and `gpt-6-luna`; their documented capabilities include text, image input and function calling. Both recommend Responses for tools; Chat Completions function calling requires reasoning effort `none`. No authenticated generation or account entitlement check was performed, so their Zhivex validation stays `unverified`.
 

@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.0-rc.7 - 2026-09-22
+
+- Select `gpt-6-luna` as the OpenAI default for new CLI/Desktop choices and pin it in RC7 release certification. Preserve explicitly saved models and historical certification mappings.
+- Identify failed base live-smoke checkpoints with allowlisted labels and assertion kinds, without retaining raw assertion values or model responses.
+
 ## 1.1.0-rc.6 - 2026-09-22
 
 - Stop release gates and remaining providers after a confirmed failure while retaining exhaustive manual diagnostics.

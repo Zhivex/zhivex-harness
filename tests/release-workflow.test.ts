@@ -137,7 +137,7 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("--tasks 7 --repetitions 1 --profiles governed --carriers rule_file");
     expect(workflow).toContain("--provider meta --model muse-spark-1.2");
     expect(workflow).toContain("--provider qwen --model qwen3.8-flash");
-    expect(workflow).toContain("--provider openai --model gpt-5.6-luna");
+    expect(workflow).toContain("--provider openai --model gpt-6-luna");
     expect(workflow).toContain("scripts/assemble-representative-evidence.ts");
     expect(workflow).toContain("path: release-artifacts/representative-evidence-*.json");
     expect(workflow).toContain("--diagnostics-out release-artifacts/representative-diagnostics/");

@@ -147,7 +147,7 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 | --- | --- | --- |
 | Meta | `muse-spark-1.2` | `MODEL_API_KEY` · 1.0.0 release-bound base, delegation, and OCI execution certified |
 | Qwen | `qwen3.8-flash` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · RC.5 default; fresh Flash certification pending. Historical 1.0.0 evidence covers `qwen3.8-max`. |
-| OpenAI | `gpt-5.6-luna` | `OPENAI_API_KEY` · 1.0.0 release-bound base, delegation, routing, and OCI execution certified |
+| OpenAI | `gpt-6-luna` | `OPENAI_API_KEY` · new default; fresh release-bound certification required |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
 
 Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
