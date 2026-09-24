@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.1.1 - 2026-09-23
+
+- Update the RC.10 SDK batch to its stable releases: Agents 1.9.0, Core 1.23.0, Gemini 0.12.2, Meta 0.2.7, OpenAI 0.13.5 and Qwen 0.15.1. Preserve approvals and exactly-once host effects across resume; the updated artifact still requires release certification.
+- Include bounded approval-denial evidence in benchmark and release diagnostics: tool, rejection rule, approval round and preceding compactions, without raw arguments or model text. Distinguish lexical command matches from direct protected-test edits.
+- Publish directly to `latest` after fresh exact-artifact certification. Preserve the failed `v1.1.0` tag and its evidence.
+- Archive superseded audit reports and intermediate diagnostic plans in Git history.
+
 ## 1.1.0 - 2026-09-23
 
 Compatible minor release of the Node CLI and TypeScript library. The separate
@@ -12,7 +19,7 @@ Desktop application remains private alpha; Gemini remains provisional.
 - Simplify first-use provider/model selection, credential setup, command help and recovery. Add UTF-8 task input, atomic profile updates and a shared searchable model catalog.
 - Improve conversation activity, context estimates and compaction while preserving working plans. Add explicit unlimited cumulative-token mode without disabling per-request limits, accounting or other execution controls.
 - Add authenticated local service transport, durable redacted event replay and application-owned read delegation with file scope and acceptance checks.
-- Integrate the exact SDK batch certified by RC.10, including redaction, failed-child accounting and OpenAI function receipt fixes. Preserve approvals and exactly-once host effects across resume.
+- Integrate the SDK prerelease batch certified by RC.10, including redaction, failed-child accounting and OpenAI function receipt fixes. Preserve approvals and exactly-once host effects across resume.
 - Use Muse Spark 1.3, Qwen 3.8 Max and GPT-6 Luna for new selections and release certification. Add bounded Meta receipt-continuation recovery; preserve saved model selections and historical certification mappings.
 - Preserve Stable 1.x contracts and state format 1. Existing installations need no state migration; review new default models when creating profiles.
 

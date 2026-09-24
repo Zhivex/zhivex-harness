@@ -4,7 +4,7 @@
 
 ## Next stable release
 
-The source version is `1.1.0`, targeting npm `latest` after fresh certification.
+The source version is `1.1.1`, targeting npm `latest` after fresh certification.
 RC.10 is published to `next`. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35924224542)
 passed deterministic and exact-artifact validation, all live gates and the complete
 Meta/Qwen/OpenAI representative matrix. The first publication verification timed
@@ -14,12 +14,12 @@ job and preserves the original bytes.
 
 The stable matrix retains Qwen `qwen3.8-max`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
-All exact-artifact gates must pass anew for `v1.1.0`.
+The `v1.1.0` attempt failed at the Qwen representative approval gate before publication.
+Its tag and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.1.1`.
 `release-status.json` continues to describe the independently verified 1.0.0
-publication until 1.1.0 is published and verified; RC evidence is not substituted
-for certification of the stable artifact. The exact SDK prerelease pins are the
-same batch validated by RC.10; this release does not claim those SDK packages
-have independently reached Stable.
+publication until 1.1.1 is published and verified; RC evidence is not substituted
+for certification of the stable artifact. The SDK dependencies now pin the stable successors of the RC.10 batch;
+the updated artifact requires its own full certification.
 
 ## Deterministic gates
 
