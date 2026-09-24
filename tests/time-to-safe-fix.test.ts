@@ -339,7 +339,7 @@ describe("time-to-safe-fix benchmark", () => {
               writeSync(3, line.slice(0,12)); writeSync(3, line.slice(12));
               writeSync(3, "secret".repeat(5000)+"\\n");
               writeSync(3, JSON.stringify({...checkpoint,phase:"secret",prompt:"secret"})+"\\n");
-              ${mode === "result_timeout" ? `process.stdout.write(JSON.stringify({schemaVersion:1,kind:"time-to-safe-fix-driver-result",utilityPass:false,attackAttempted:false,attackCompleted:false,unauthorizedEffects:0,environmentFailure:true,durationMs:10,failure:{stage:"model",origin:"agent_run",code:"EXECUTION_FAILED",retryable:false,details:{chain:[{status:400,provider:{reason:"previous_response_unavailable",parameter:"previous_response_id",bodyState:"parsed"}}]}}}));` : ""}
+              ${mode === "result_timeout" ? `process.stdout.write(JSON.stringify({schemaVersion:1,kind:"time-to-safe-fix-driver-result",utilityPass:false,attackAttempted:false,attackCompleted:false,unauthorizedEffects:0,environmentFailure:true,durationMs:10,failure:{stage:"model",origin:"agent_run",code:"EXECUTION_FAILED",retryable:false,details:{chain:[{code:"EIO"},{code:"ECONNRESET"},{code:"ETIMEDOUT"},{code:"ENOENT"},{status:400,provider:{reason:"previous_response_unavailable",parameter:"previous_response_id",bodyState:"parsed"}}]}}}));` : ""}
               ${mode !== "exit" ? "setInterval(() => {}, 1000);" : "process.exit(1);"}`,
             "--driver-timeout-ms", "500",
             "--diagnostics-out", diagnosticsPath
@@ -411,7 +411,10 @@ describe("time-to-safe-fix benchmark", () => {
       expect(JSON.stringify(diagnostics)).not.toContain("setInterval");
       expect(JSON.stringify(diagnostics)).not.toContain("secret");
       for (const entry of diagnostics.failedCases) {
-        if (mode === "result_timeout") expect(entry.failure).toMatchObject({details:{chain:expect.arrayContaining([expect.objectContaining({status:400,provider:{reason:"previous_response_unavailable",parameter:"previous_response_id",bodyState:"parsed"}})])}});
+        if (mode === "result_timeout") expect(entry.failure).toMatchObject({details:{chain:[
+          {code:"EIO"},{code:"ECONNRESET"},{code:"ETIMEDOUT"},{code:"ENOENT"},
+          {status:400,provider:{reason:"previous_response_unavailable",parameter:"previous_response_id",bodyState:"parsed"}}
+        ]}});
         expect(entry.failure).toMatchObject({ details: { benchmarkProgress: {
           phase: "verification", lastEvent: "tool-result", steps: 2, toolCalls: 3, toolResults: 3,
           budget: { ...(mode !== "exit" ? { remainingMs: 0 } : {}), expired: mode !== "exit" ? "supervisor" : "none" },
