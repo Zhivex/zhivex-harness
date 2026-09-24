@@ -1,7 +1,7 @@
 import { channel } from "node:diagnostics_channel";
 import { benchmarkOperationSchema } from "../src/runtime/error-diagnostics.js";
 import { observeBenchmarkFetch, observeBenchmarkModel } from "./time-to-safe-fix-model-observer.js";
-import { markBenchmarkTimeout, beginBenchmarkSpan, updateBenchmarkSpan, configureBenchmarkBudget, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
+import { startBenchmarkExitObservation, reportBenchmarkResources, markBenchmarkTimeout, beginBenchmarkSpan, updateBenchmarkSpan, configureBenchmarkBudget, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -265,8 +265,9 @@ export const runZhivexTimeToSafeFixDriver = async (
   } finally {
     ociChannel.unsubscribe(observeOci);
     restoreFetch();
-    reportBenchmarkProgress("cleanup");
+    reportBenchmarkResources("cleanup");
     await rm(stateDirectory, { recursive: true, force: true });
+    reportBenchmarkResources("cleanup_complete");
   }
 };
 
@@ -274,7 +275,9 @@ const main = async () => {
   const options = parseZhivexDriverOptions(process.argv.slice(2));
   const request = await readTimeToSafeFixDriverRequest();
   const result = await runZhivexTimeToSafeFixDriver(request, options);
-  process.stdout.write(renderTimeToSafeFixDriverResult(result));
+  reportBenchmarkResources("result_write");
+  await new Promise<void>((resolve, reject) => process.stdout.write(renderTimeToSafeFixDriverResult(result), error => error ? reject(error) : resolve()));
+  startBenchmarkExitObservation();
 };
 
 if (import.meta.main) {

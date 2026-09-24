@@ -482,7 +482,10 @@ const externalDriver = async (
   child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
   const diagnosticError = (error: Error, deadlineExceeded = false) => {
     const age = Math.max(0, Math.round(performance.now() - checkpointAt));
+    let priorFailure;
+    try { priorFailure = timeToSafeFixDriverResultSchema.parse(JSON.parse(stdout)).failure; } catch { /* Incomplete stdout is never evidence. */ }
     return Object.assign(error, {
+      ...(priorFailure ? { cause: { code: priorFailure.code, retryable: priorFailure.retryable, cause: priorFailure.details?.chain.reduceRight<unknown>((cause, entry) => ({ ...entry, cause }), undefined) } } : {}),
       ...(checkpoint ? { benchmarkProgress: { ...checkpoint,
         ...(checkpoint.budget ? { budget: { ...checkpoint.budget, remainingMs: deadlineExceeded ? 0 : Math.max(0, checkpoint.budget.remainingMs - age), expired: deadlineExceeded ? "supervisor" : checkpoint.budget.expired } } : {}),
         spans: checkpoint.spans?.map(span => span.outcome === "running" ? { ...span, durationMs: span.durationMs + age } : span),

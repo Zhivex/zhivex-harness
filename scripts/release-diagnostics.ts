@@ -632,8 +632,11 @@ export const summarizeReleaseGates = async (input: {
     if (diagnostic?.kind !== "time-to-safe-fix-diagnostics") continue;
     for (const entry of diagnostic.failedCases.slice(0, 50)) {
       const progress = entry.failure?.details?.benchmarkProgress;
+      const providerFailure = progress?.lastProviderFailure ?? progress?.spans?.filter(span => span.provider).at(-1);
+      const reason = providerFailure?.provider ? `HTTP ${providerFailure.httpStatus}: ${providerFailure.provider.reason} (${providerFailure.provider.parameter}; body=${providerFailure.provider.bodyState})` : providerFailure?.failureKind ? `${providerFailure.operation}: ${providerFailure.failureKind}` : entry.failure?.details?.chain.find(item => item.provider)?.provider?.reason ?? "unavailable";
+      const resources = progress?.resourceObservation === "unsupported" ? "unavailable in this runtime" : progress?.resources?.map(item => `${item.type}:${item.count}`).join(", ") || "unavailable";
       const active = progress?.spans?.filter(span => span.outcome === "running").map(span => `${span.operation} #${span.id} (${span.durationMs}ms)`).join(", ") || progress?.phase || "unavailable";
-      caseRows.push(`| ${cell(gate)} | ${cell(entry.caseId)} | ${cell(entry.failure?.code ?? "unknown")} | ${cell(active)} | ${progress?.idleMs ?? "unknown"} | ${progress?.budget?.expired ?? "unknown"} / ${progress?.budget?.remainingMs ?? "unknown"}ms | [artifacts](${diagnostic.binding!.workflowRunUrl}#artifacts) |`);
+      caseRows.push(`| ${cell(gate)} | ${cell(entry.caseId)} | ${cell(entry.failure?.code ?? "unknown")} | ${cell(active)} | ${cell(reason)} | ${cell(resources)} | ${progress?.idleMs ?? "unknown"} | ${progress?.budget?.expired ?? "unknown"} / ${progress?.budget?.remainingMs ?? "unknown"}ms | [artifacts](${diagnostic.binding!.workflowRunUrl}#artifacts) |`);
     }
   }
   const markdown = [
@@ -643,7 +646,7 @@ export const summarizeReleaseGates = async (input: {
     "| --- | --- | --- |",
     ...rows.map((row) => `| ${row.gate} | ${row.outcome} | ${row.detail} |`),
     "",
-    ...(caseRows.length ? ["### Failed cases", "", "| Provider | Case | Failure | Last active operation | Idle ms | Expired limit / remaining | Evidence |", "| --- | --- | --- | --- | --- | --- | --- |", ...caseRows, ""] : [])
+    ...(caseRows.length ? ["### Failed cases", "", "| Provider | Case | Failure | Last active operation | Provider rejection | Active resource types | Idle ms | Expired limit / remaining | Evidence |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- |", ...caseRows, ""] : [])
   ].join("\n");
   if (input.summaryPath) await appendFile(input.summaryPath, markdown, "utf8");
   for (const row of rows.filter((entry) => entry.failed)) {

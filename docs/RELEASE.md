@@ -191,3 +191,23 @@ Failed normal driver results retain their final checkpoint as well as hard-kill
 failures. Actions includes a bounded per-case table with the last active operation,
 inactivity, expired budget and a link to the run's diagnostic artifacts. The trace
 is a bounded observation history, not a raw request log or a complete profiler.
+
+Provider failure diagnostics apply to every provider using the shared model/HTTP
+observer, including Meta, Qwen, OpenAI and Gemini. Rejected HTTP responses retain
+only a fixed reason, allowlisted parameter, and body inspection state. Parsing is
+limited to 8 KiB and 250 ms, preserves the original response for the SDK, and never
+logs bodies, headers, URLs or messages. Unknown provider formats remain explicitly
+unknown; these labels are classifications, not verbatim server explanations.
+The most recent provider rejection survives span eviction and a later stream error.
+Wrapped runtime errors also project the same structured provider fields into their
+sanitized cause chain, including live gates outside the representative benchmark.
+
+Driver lifecycle checkpoints distinguish `cleanup`, `cleanup_complete`,
+`result_write`, `result_written` and `exit_pending`. After stdout is flushed, an
+unreferenced one-second observer reports whether the process is still alive; it
+cannot keep the process alive itself. Node reports bounded resource-type counts
+without handle contents. Bun currently does not implement the resource inventory,
+so it explicitly reports `unsupported` rather than claiming no resources remain.
+A supervisor timeout after a valid failed result retains the original sanitized
+failure chain as well as the supervisor timeout; it never turns that run into a pass.
+The Actions failed-case table includes the provider rejection and resource inventory.
