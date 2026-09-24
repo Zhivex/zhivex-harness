@@ -311,7 +311,9 @@ describe("time-to-safe-fix benchmark", () => {
     }
   });
 
-  test("persists an external driver deadline as a retryable timeout", async () => {
+  test.each(["timeout", "exit"] as const)("preserves external driver checkpoints on %s", async (mode) => {
+    const expectedCode = mode === "timeout" ? "TIMEOUT" : "UNCLASSIFIED_FAILURE";
+    const retryable = mode === "timeout";
     const benchmarkScript = path.resolve(import.meta.dir, "..", "scripts", "benchmark-time-to-safe-fix.ts");
     const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-diagnostics-"));
     const diagnosticsPath = path.join(directory, "diagnostics.json");
@@ -337,7 +339,7 @@ describe("time-to-safe-fix benchmark", () => {
               writeSync(3, line.slice(0,12)); writeSync(3, line.slice(12));
               writeSync(3, "secret".repeat(5000)+"\\n");
               writeSync(3, JSON.stringify({...checkpoint,phase:"secret",prompt:"secret"})+"\\n");
-              setInterval(() => {}, 1000);`,
+              ${mode === "timeout" ? "setInterval(() => {}, 1000);" : "process.exit(1);"}`,
             "--driver-timeout-ms", "500",
             "--diagnostics-out", diagnosticsPath
           ], {
@@ -369,8 +371,8 @@ describe("time-to-safe-fix benchmark", () => {
       };
       expect(report.samples).toHaveLength(2);
       expect(report.samples.map((sample) => sample.failure)).toMatchObject([
-        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
-        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
+        { stage: "environment", origin: "external_driver", code: expectedCode, retryable },
+        { stage: "environment", origin: "external_driver", code: expectedCode, retryable }
       ]);
       const diagnostics = JSON.parse(await readFile(diagnosticsPath, "utf8")) as {
         schemaVersion: number;
@@ -402,15 +404,15 @@ describe("time-to-safe-fix benchmark", () => {
       expect(diagnostics.failedCases.every((entry) => /^sha256:[a-f0-9]{64}$/.test(entry.caseFingerprint)))
         .toBe(true);
       expect<unknown>(diagnostics.failedCases.map((entry) => entry.failure)).toMatchObject([
-        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true },
-        { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
+        { stage: "environment", origin: "external_driver", code: expectedCode, retryable },
+        { stage: "environment", origin: "external_driver", code: expectedCode, retryable }
       ]);
       expect(JSON.stringify(diagnostics)).not.toContain("setInterval");
       expect(JSON.stringify(diagnostics)).not.toContain("secret");
       for (const entry of diagnostics.failedCases) {
         expect(entry.failure).toMatchObject({ details: { benchmarkProgress: {
           phase: "verification", lastEvent: "tool-result", steps: 2, toolCalls: 3, toolResults: 3,
-          budget: { remainingMs: 0, expired: "supervisor" },
+          budget: { ...(mode === "timeout" ? { remainingMs: 0 } : {}), expired: mode === "timeout" ? "supervisor" : "none" },
           spans: expect.arrayContaining([expect.objectContaining({ operation: "oci_execute", outcome: "running" })])
         } } });
       }
