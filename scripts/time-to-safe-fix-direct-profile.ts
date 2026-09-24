@@ -1,3 +1,4 @@
+import { markBenchmarkTimeout, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -297,6 +298,7 @@ export const runDirectProfile = async (
   let releaseStatus: "completed" | "failed" = "failed";
   let activeOrigin: TimeToSafeFixFailureOrigin = "harness_create";
   try {
+    reportBenchmarkProgress("harness_create");
     const host = await Workspace.open(request.workspace);
     const acquireStartedAt = performance.now();
     const environment = await createHarnessOciExecutionEnvironment({
@@ -336,6 +338,7 @@ export const runDirectProfile = async (
     let output: AgentRunOutput | undefined;
     let agentFailure: unknown;
     try {
+      reportBenchmarkProgress("agent_run");
       const streamed = agent.stream({
         prompt: directPrompt(request),
         maxSteps: config.maxSteps ?? 24,
@@ -347,9 +350,11 @@ export const runDirectProfile = async (
         toolExecution: { parallel: false, stopOnError: true }
       });
       for await (const _event of streamed.eventStream) {
+        reportBenchmarkProgress("agent_run", _event.type);
         // Drain the stream so all model/tool phases execute before strict scoring.
       }
       output = await streamed.collect();
+      if (output.status === "timed_out") markBenchmarkTimeout("agent");
     } catch (error) {
       agentFailure = error;
     }
@@ -357,12 +362,14 @@ export const runDirectProfile = async (
 
     const verificationStartedAt = performance.now();
     activeOrigin = "verification";
+    reportBenchmarkProgress("verification");
     const verifier = await config.verifierCommand(request);
     const verification = await session.runCommand(verifier.command, verifier.args);
     phasesMs.verification = performance.now() - verificationStartedAt;
 
     const importStartedAt = performance.now();
     activeOrigin = "patch_import";
+    reportBenchmarkProgress("evidence");
     const patch = await session.inspectPatch();
     const changedPaths = patch.entries.map((entry) => entry.path);
     activeOrigin = "evidence";
@@ -437,6 +444,7 @@ export const runDirectProfile = async (
   } catch (error) {
     return strictFailure(startedAt, phasesMs, error, activeOrigin);
   } finally {
+    reportBenchmarkProgress("cleanup");
     await Promise.resolve(session?.release?.({ status: releaseStatus })).catch(() => {});
   }
 };

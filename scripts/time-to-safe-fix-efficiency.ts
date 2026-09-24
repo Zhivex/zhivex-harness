@@ -1,3 +1,4 @@
+import { beginBenchmarkSpan, updateBenchmarkSpan, benchmarkToolName } from "./time-to-safe-fix-progress.js";
 import type {
   AgentRunOutput,
   ToolDefinition,
@@ -32,15 +33,19 @@ export const selectAndInstrumentTools = (
       ...callable,
       async execute(input, context) {
         const startedAt = performance.now();
+        const span = beginBenchmarkSpan(benchmarkToolName(name));
+        let failed = false;
         const timing = timings.get(name) ?? { calls: 0, errors: 0, totalMs: 0, maxMs: 0 };
         timing.calls += 1;
         timings.set(name, timing);
         try {
           return await callable.execute(input, context);
         } catch (error) {
+          failed = true;
           timing.errors += 1;
           throw error;
         } finally {
+          updateBenchmarkSpan(span, { outcome: failed ? "failed" : "completed" });
           const durationMs = performance.now() - startedAt;
           timing.totalMs += durationMs;
           timing.maxMs = Math.max(timing.maxMs, durationMs);

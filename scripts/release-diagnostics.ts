@@ -554,6 +554,10 @@ const summaryCell = (diagnostic: ReleaseGateDiagnostic | undefined) => {
   }
   return `${diagnostic.summary.failedRuns} failed: ${boundedFailureSummary(failures)}` +
     `; completed=${diagnostic.matrix.completedRuns}/${diagnostic.matrix.plannedRuns}` +
+    diagnostic.failedCases.slice(0, 5).map(entry => {
+      const progress = entry.failure?.details?.benchmarkProgress;
+      return progress ? `; progress=${progress.phase}/${progress.lastEvent} phaseMs=${progress.phaseElapsedMs} idleMs=${progress.idleMs} steps=${progress.steps} tools=${progress.toolResults}/${progress.toolCalls}` : "";
+    }).join("") +
     (diagnostic.failurePhase ? `; phase=${diagnostic.failurePhase}` : "");
 };
 
@@ -622,13 +626,24 @@ export const summarizeReleaseGates = async (input: {
       failed
     });
   }
+  const caseRows: string[] = [];
+  const cell = (value: string) => value.replace(/[|\r\n<>`]/g, " ").slice(0, 180);
+  for (const [gate, diagnostic] of diagnostics) {
+    if (diagnostic?.kind !== "time-to-safe-fix-diagnostics") continue;
+    for (const entry of diagnostic.failedCases.slice(0, 50)) {
+      const progress = entry.failure?.details?.benchmarkProgress;
+      const active = progress?.spans?.filter(span => span.outcome === "running").map(span => `${span.operation} #${span.id} (${span.durationMs}ms)`).join(", ") || progress?.phase || "unavailable";
+      caseRows.push(`| ${cell(gate)} | ${cell(entry.caseId)} | ${cell(entry.failure?.code ?? "unknown")} | ${cell(active)} | ${progress?.idleMs ?? "unknown"} | ${progress?.budget?.expired ?? "unknown"} / ${progress?.budget?.remainingMs ?? "unknown"}ms | [artifacts](${diagnostic.binding!.workflowRunUrl}#artifacts) |`);
+    }
+  }
   const markdown = [
     `## ${input.title}`,
     "",
     "| Gate | Step outcome | Sanitized diagnostic |",
     "| --- | --- | --- |",
     ...rows.map((row) => `| ${row.gate} | ${row.outcome} | ${row.detail} |`),
-    ""
+    "",
+    ...(caseRows.length ? ["### Failed cases", "", "| Provider | Case | Failure | Last active operation | Idle ms | Expired limit / remaining | Evidence |", "| --- | --- | --- | --- | --- | --- | --- |", ...caseRows, ""] : [])
   ].join("\n");
   if (input.summaryPath) await appendFile(input.summaryPath, markdown, "utf8");
   for (const row of rows.filter((entry) => entry.failed)) {

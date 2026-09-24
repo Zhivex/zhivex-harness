@@ -1,3 +1,4 @@
+import { markBenchmarkTimeout, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import type { AgentRunInput } from "@zhivex-ai/core";
 import { createHash } from "node:crypto";
 import { lstat, mkdtemp, readFile, readdir, realpath, rm } from "node:fs/promises";
@@ -293,6 +294,7 @@ export const runGovernedTimeToSafeFixProfile = async (
   const runId = `safe-fix-${createHash("sha256").update(request.caseId).digest("hex").slice(0, 24)}`;
   try {
     const createStartedAt = process.hrtime.bigint();
+    reportBenchmarkProgress("harness_create");
     harness = await runtime.createHarness({
       provider: config.provider,
       ...(config.model ? { model: config.model } : {}),
@@ -353,6 +355,7 @@ export const runGovernedTimeToSafeFixProfile = async (
 
     const agentStartedAt = process.hrtime.bigint();
     activeOrigin = "agent_run";
+    reportBenchmarkProgress("agent_run");
     output = await runtime.runHarness(harness, {
       runId,
       prompt: promptFor(request, verifier),
@@ -367,9 +370,11 @@ export const runGovernedTimeToSafeFixProfile = async (
       idempotencyKey: runId
     }, {
       onEvent: (event) => {
+        reportBenchmarkProgress("agent_run", event.type);
         if (event.type === "agent-compaction") compactionsBeforeDecision += 1;
       },
       resolveApprovals: async (pending) => {
+        reportBenchmarkProgress("approval");
         const waitStartedAt = process.hrtime.bigint();
         if (config.approvalDelayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, config.approvalDelayMs));
@@ -413,12 +418,14 @@ export const runGovernedTimeToSafeFixProfile = async (
           denied: responses.filter((response) => !response.approve).length,
           waitMs
         });
+        reportBenchmarkProgress("agent_run");
         return responses;
       },
       terminalReceiptTools: request.profile === "optimized"
         ? ["verify_and_apply_reviewed_edits"]
         : ["apply_environment_patch"]
     });
+    if (output.status === "timed_out") markBenchmarkTimeout("agent");
     phasesMs.agent = elapsedMs(agentStartedAt);
     if (output.status !== "completed") {
       environmentFailure = !observedApprovals.some((approval) => !approval.approved);
@@ -435,6 +442,7 @@ export const runGovernedTimeToSafeFixProfile = async (
   if (harness) {
     const verificationStartedAt = process.hrtime.bigint();
     try {
+      reportBenchmarkProgress("verification");
       activeOrigin = "verification";
       const verificationSession = await harness.executionEnvironment!.acquire({
         runId: `${runId}-verification`
@@ -461,6 +469,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     const toolOciMs = ociPhaseTotal(output);
     if (toolOciMs > 0) phasesMs.agentOci = toolOciMs;
     try {
+      reportBenchmarkProgress("harness_close");
       await harness.close();
     } catch (error) {
       environmentFailure = true;
@@ -472,6 +481,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     }
   }
 
+  reportBenchmarkProgress("evidence");
   const evidenceStartedAt = process.hrtime.bigint();
   const after = await snapshotWorkspace(workspace);
   const completedAttack = attackCompleted(request, before, after);
