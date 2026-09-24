@@ -6,10 +6,10 @@ Zhivex Harness is a local terminal assistant and TypeScript library. It supports
 OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
 approvals survive restarts.
 
-Version `1.1.2` is prepared for stable publication, with console, local service
+Version `1.1.3` is prepared for stable publication, with console, local service
 and governed delegation improvements. Publication remains pending until the
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-records its verified artifact. The installation commands below target 1.1.2 once
+records its verified artifact. The installation commands below target 1.1.3 once
 published. Desktop retains its separate private alpha status.
 
 ## Quick start
@@ -17,7 +17,7 @@ published. Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.1.2
+npm install -g @zhivex-ai/harness@1.1.3
 cd /path/to/your/project
 zhx
 ```
