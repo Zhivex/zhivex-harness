@@ -31,3 +31,23 @@ describe("Meta agent transport", () => {
     });
   }
 });
+
+
+describe("Meta request failure diagnostics", () => {
+  for (const mode of ["generate", "stream"] as const) {
+    test(`${mode} retains a safe continuation reason in the persisted error message`, async () => {
+      const model = providerModelInternals.withMetaResponses(createMeta({apiKey:"fixture", fetch:Object.assign(async () =>
+        Response.json({error:{type:"invalid_request_error",param:"previous_response_id",message:"Response SECRET_ID not found or expired"}}, {status:400})
+      , {preconnect:fetch.preconnect})})("muse-spark-1.3"));
+      const input:ModelGenerateInput = {messages:[{role:"user",parts:[{type:"text",text:"fixture"}]}],maxRetries:0};
+      try {
+        await (mode === "generate" ? model.generate(input) : model.stream!(input));
+        throw new Error("Expected provider rejection");
+      } catch (error) {
+        expect((error as Error).message).toBe("Meta request failed with status 400 (previous response unavailable).");
+        expect((error as Error).message).not.toContain("SECRET_ID");
+        expect((error as {status?: number}).status).toBe(400);
+      }
+    });
+  }
+});

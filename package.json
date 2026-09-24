@@ -145,7 +145,7 @@
     "@zhivex-ai/gemini": "0.12.2",
     "@zhivex-ai/meta": "0.2.7",
     "@zhivex-ai/openai": "0.13.5",
-    "@zhivex-ai/qwen": "0.15.1",
+    "@zhivex-ai/qwen": "0.15.2",
     "zod": "4.6.5"
   },
   "overrides": {

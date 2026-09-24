@@ -125,6 +125,7 @@ export const printTerminalResult = (
 };
 
 const toolActivities = new WeakMap<object, ToolActivity>();
+const lastTerminalFailures = new WeakMap<object, string>();
 export const flushToolActivity = (tracker: object) => toolActivities.get(tracker)?.flush();
 
 export const streamSink = (
@@ -146,7 +147,7 @@ export const streamSink = (
     }
     if (event.type === "tool-call") {
       tracker.markdown?.flush();
-      activity.start();
+      activity.start(event.toolCall.name);
       return;
     }
     if (event.type === "tool-result") {
@@ -173,6 +174,10 @@ export const streamSink = (
     const line = formatTerminalEvent(event, {
       color: terminalSupportsColor(Boolean(process.stderr.isTTY))
     });
+    if (event.type === "error" && line) {
+      if (lastTerminalFailures.get(tracker) === line) return;
+      lastTerminalFailures.set(tracker, line);
+    } else if (event.type === "agent-run-start") lastTerminalFailures.delete(tracker);
     if (line) process.stderr.write(`\n${line}\n`);
   }
 };

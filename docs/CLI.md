@@ -95,8 +95,8 @@ Text streams progressively, including partial lines during provider pauses. Acti
 approval requests and completion remain separate labelled events. Partial output is
 flushed before errors or returning to the prompt, and terminal controls from the
 provider are escaped. After a provider error, Up recalls the submitted task for
-editing/retry; history stays in memory only. Markdown styling is best effort when
-a provider pauses inside markup; text is never replayed to restyle it.
+editing/retry; history stays in memory only. Markdown emphasis and inline-code styling remain active across token pauses. Text is
+coalesced into short frames and never replayed to restyle it.
 
 Reproduce this flow offline with `bun run build` followed by
 `python3 scripts/console-pty-smoke.py` (Python 3 and Node on macOS/Linux). The PTY
@@ -200,7 +200,7 @@ For the rationale and reference patterns, see [Console UX](https://github.com/Zh
 
 `/resume` opens the searchable conversation menu; `/resume last` and `/resume <id>` remain shortcuts. `TERM=dumb` and non-TTY selection fall back to numbered lists. The service console offers navigation for conversations and session tools; provider/model policy remains with the service host.
 
-Activity is compact in the direct console: tool actions, approvals, errors and final run status remain visible; repeated provider and per-step transport notices are hidden. `/verbose` toggles full activity for that console process. One-shot and JSON/JSONL outputs retain their contracts.
+Activity is compact in the direct console: tool actions appear only as a temporary TTY status; approvals, errors and final run status remain visible; repeated provider and per-step transport notices are hidden. `/verbose` toggles full activity for that console process. One-shot and JSON/JSONL outputs retain their contracts.
 
 Each console session is a scoped, durable chain of immutable run IDs. The session index stores provider/model/status metadata and never stores prompts, model messages, tool payloads, or provider data; those remain in the governed run store. `zhx chat --continue` opens the latest session and `--session <id>` selects one explicitly.
 
@@ -373,9 +373,10 @@ into a new CLI result. Approval output remains untrusted repository text.
 
 ### Compact tool activity
 
-Interactive chat groups tool activity between assistant messages into one summary.
-On a TTY, a single bounded line updates while tools run; redirected output receives
-plain summaries without cursor controls. `/verbose` restores individual events.
+Interactive chat keeps successful tool bookkeeping out of the conversation.
+On a TTY, one temporary line shows Reading files, Exploring the project, or Thinking
+and is erased before the next assistant text. Redirected compact output omits this
+status entirely. `/verbose` restores individual tool events.
 Tool failures, check receipts, and approval requests remain individually visible.
 Budget and step-limit failures show their known runtime cause; arbitrary provider
 error payloads are not printed in activity events.
@@ -400,3 +401,19 @@ Compaction, per-request model/provider limits, cost budgets, step/tool limits,
 timeouts, and approvals still apply. This is not an unlimited context window or
 an unlimited single response. Library callers use `unlimitedTokens: true` in
 `HarnessConfigInput`; `false` restores enforcement of the numeric token budgets.
+
+### Conversation preview
+
+![Interactive conversation with temporary tool activity](./images/cli-conversation.png)
+
+This image is rendered from the real CLI's PTY screen with an offline provider
+fixture and real read-only workspace tools. It is a presentation test, not live
+Qwen certification. Reproduce it after `bun run build` with Python 3, `pyte==0.8.2`
+and Pillow installed:
+
+```sh
+python3 scripts/capture-console-ux.py /tmp/cli-conversation.png
+```
+
+The capture writes a PNG and its raw ANSI transcript next to it; both contain only
+the disposable fixture session. No provider request leaves the process.

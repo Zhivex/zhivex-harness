@@ -236,6 +236,8 @@ export const terminalRunFailure = (error: unknown): string => {
   const message = error instanceof Error ? error.message
     : error && typeof error === "object" && "message" in error && typeof error.message === "string"
       ? error.message : "";
+  const provider = /^(Meta|Qwen|OpenAI|Gemini) request failed with status ([45]\d{2})(?: \((previous response unavailable|context length exceeded|tools rejected|input rejected|output token limit rejected|previous response rejected|reason unavailable)\))?\.$/.exec(message);
+  if (provider) return `${provider[1]} request failed · HTTP ${provider[2]}${provider[3] ? ` · ${provider[3]}` : ""}`;
   const budget = /^Agent budget exceeded including child runs: (maxInputTokens|maxOutputTokens|maxTotalTokens|maxToolCalls|maxToolErrors|maxSteps) limit (\d+), actual (\d+)\.$/.exec(message);
   if (budget) return `budget exceeded · ${budget[1]} · ${budget[3]} / ${budget[2]}`;
   const cap = /^(maxInputTokens|maxOutputTokens|maxTotalTokens) budget (exceeded|exhausted)$/.exec(message);

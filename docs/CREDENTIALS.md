@@ -67,3 +67,19 @@ region/workspace overrides are rejected before reading the keychain. To intentio
 use a custom endpoint, supply its credential explicitly through the environment.
 Credential storage is separate from live provider validation; the first model
 request checks account access and may be billable.
+
+## QwenCloud Token Plan
+
+Harness includes `@zhivex-ai/qwen` 0.15.2. For an interactive Token Plan session,
+set `QWEN_BASE_URL=https://token-plan.maas.qwencloudapi.com/compatible-mode/v1`
+and supply your dedicated Token Plan key through `DASHSCOPE_API_KEY` (or
+`QWEN_API_KEY`). Start `zhx chat --provider qwen --model qwen3.8-max`, or select
+`qwen3.8-flash`. Enter/export credentials privately; never paste them into chat
+or commit them. Leave `QWEN_WORKSPACE_ID` unset for this endpoint.
+
+The endpoint is explicit: Harness does not infer billing mode from a key prefix.
+A custom endpoint requires an environment credential, not a managed keychain key.
+Use standard pay-as-you-go credentials for backend/scheduled workloads. See the
+[official Token Plan quickstart](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-quickstart)
+for matching key types and endpoints. Account entitlements are provider-controlled;
+local transport tests do not certify access to a paid plan.

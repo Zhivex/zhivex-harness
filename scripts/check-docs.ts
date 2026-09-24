@@ -143,7 +143,7 @@ const expectedCurrentSdkDependencies = {
   "@zhivex-ai/gemini": "0.12.2",
   "@zhivex-ai/meta": "0.2.7",
   "@zhivex-ai/openai": "0.13.5",
-  "@zhivex-ai/qwen": "0.15.1"
+  "@zhivex-ai/qwen": "0.15.2"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {

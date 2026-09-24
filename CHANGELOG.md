@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Update Qwen to 0.15.2 for the current QwenCloud Token Plan endpoint and supported Max/Flash models; document explicit credential and endpoint pairing.
+- Keep successful tool activity out of the interactive transcript, retain transient TTY status and `/verbose`, and preserve Markdown formatting across streaming pauses.
+- Repair safe owner-controlled SQLite lock permissions on macOS and exclude newly created local state from ordinary Git adds without deleting existing sessions.
+- Show bounded Meta HTTP failure reasons and suppress duplicate terminal errors. The reported live HTTP 400 remains unconfirmed; no blanket retry is added.
+
 ## 1.1.1 - 2026-09-23
 
 - Update the RC.10 SDK batch to its stable releases: Agents 1.9.0, Core 1.23.0, Gemini 0.12.2, Meta 0.2.7, OpenAI 0.13.5 and Qwen 0.15.1. Preserve approvals and exactly-once host effects across resume; the updated artifact still requires release certification.
