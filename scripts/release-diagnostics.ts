@@ -554,6 +554,10 @@ const summaryCell = (diagnostic: ReleaseGateDiagnostic | undefined) => {
   }
   return `${diagnostic.summary.failedRuns} failed: ${boundedFailureSummary(failures)}` +
     `; completed=${diagnostic.matrix.completedRuns}/${diagnostic.matrix.plannedRuns}` +
+    diagnostic.failedCases.slice(0, 5).map(entry => {
+      const progress = entry.failure?.details?.benchmarkProgress;
+      return progress ? `; progress=${progress.phase}/${progress.lastEvent} phaseMs=${progress.phaseElapsedMs} idleMs=${progress.idleMs} steps=${progress.steps} tools=${progress.toolResults}/${progress.toolCalls}` : "";
+    }).join("") +
     (diagnostic.failurePhase ? `; phase=${diagnostic.failurePhase}` : "");
 };
 

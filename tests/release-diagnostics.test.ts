@@ -157,7 +157,10 @@ describe("release diagnostics", () => {
     const summaryPath = path.join(directory, "summary.md");
     try {
       await writeFile(path.join(directory, "meta.json"), `${JSON.stringify(diagnostic("passed", "meta"))}\n`);
-      await writeFile(path.join(directory, "qwen.json"), `${JSON.stringify(diagnostic("failed", "qwen"))}\n`);
+      const failed = diagnostic("failed", "qwen");
+      const checkpoint = { phase: "agent_run", lastEvent: "tool-call", elapsedMs: 300000, phaseElapsedMs: 290000, idleMs: 120000, steps: 3, toolCalls: 2, toolResults: 1 };
+      Object.assign(failed.failedCases[0]!.failure, { details: { chain: [], benchmarkProgress: checkpoint } });
+      await writeFile(path.join(directory, "qwen.json"), `${JSON.stringify(failed)}\n`);
       const result = await summarizeReleaseGates({
         title: "Representative repository certification",
         diagnosticsDirectory: directory,
@@ -173,6 +176,7 @@ describe("release diagnostics", () => {
       expect(result.rows[1]).toMatchObject({ gate: "qwen", outcome: "failure", failed: true });
       expect(result.rows[1]?.detail).toContain("PROVIDER_UNAVAILABLE [category=provider, retryable=true]");
       expect(result.rows[1]?.detail).toContain("fingerprints: sha256:");
+      expect(result.rows[1]?.detail).toContain("progress=agent_run/tool-call phaseMs=290000 idleMs=120000 steps=3 tools=1/2");
       expect(result.rows[2]).toEqual({
         gate: "openai",
         outcome: "skipped",

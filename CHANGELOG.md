@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Preserve bounded benchmark stage/event checkpoints across driver timeouts and display them in release summaries; reserve cleanup time within the existing deadline without accepting incomplete certification.
+
 ## 1.1.2 - 2026-09-24
 
 - Update Qwen to 0.15.2 for the current QwenCloud Token Plan endpoint and supported Max/Flash models; document explicit credential and endpoint pairing.

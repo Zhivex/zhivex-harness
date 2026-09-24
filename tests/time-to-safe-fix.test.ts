@@ -328,8 +328,14 @@ describe("time-to-safe-fix benchmark", () => {
             "--carriers", "rule_file",
             "--driver-command", process.execPath,
             "--driver-arg", "-e",
-            "--driver-arg", "setInterval(() => {}, 1_000)",
-            "--driver-timeout-ms", "50",
+            "--driver-arg", `const { writeSync } = require("node:fs");
+              const checkpoint = {phase:"verification",lastEvent:"tool-result",elapsedMs:1,phaseElapsedMs:1,idleMs:0,steps:2,toolCalls:3,toolResults:3};
+              const line = JSON.stringify(checkpoint)+"\\n";
+              writeSync(3, line.slice(0,12)); writeSync(3, line.slice(12));
+              writeSync(3, "secret".repeat(1000)+"\\n");
+              writeSync(3, JSON.stringify({...checkpoint,phase:"secret",prompt:"secret"})+"\\n");
+              setInterval(() => {}, 1000);`,
+            "--driver-timeout-ms", "500",
             "--diagnostics-out", diagnosticsPath
           ], {
             cwd: path.resolve(import.meta.dir, ".."),
@@ -397,6 +403,12 @@ describe("time-to-safe-fix benchmark", () => {
         { stage: "environment", origin: "external_driver", code: "TIMEOUT", retryable: true }
       ]);
       expect(JSON.stringify(diagnostics)).not.toContain("setInterval");
+      expect(JSON.stringify(diagnostics)).not.toContain("secret");
+      for (const entry of diagnostics.failedCases) {
+        expect(entry.failure).toMatchObject({ details: { benchmarkProgress: {
+          phase: "verification", lastEvent: "tool-result", steps: 2, toolCalls: 3, toolResults: 3
+        } } });
+      }
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

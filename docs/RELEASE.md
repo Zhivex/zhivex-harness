@@ -163,3 +163,14 @@ Do not dispatch or approve publication when any of these is true:
 Current npm requirements should be revalidated against the official [Trusted Publishing guide](https://docs.npmjs.com/trusted-publishers/), [provenance guide](https://docs.npmjs.com/generating-provenance-statements/), and [Bun packaging documentation](https://bun.com/docs/pm/cli/publish) before any registry mutation.
 
 Representative diagnostics checkpoint completed cases atomically after each case. A later report or cleanup failure retains those results and adds a terminal failure with its exact phase; it does not reset the matrix to zero. Semantic failure classifications and their original Harness wrappers are retained independently. Error details contain only a bounded chain of allowlisted error kinds/system codes, HTTP status numbers and retryability, plus validation issue counts and allowlisted issue types. Messages, validation paths/inputs, arbitrary codes, headers, response bodies and stacks are never copied. Fingerprints identify the sanitized structure, not a unique raw exception.
+
+Representative drivers emit bounded checkpoints on a separate pipe to the benchmark
+supervisor. A hard timeout retains the last phase (runtime/provider setup, harness
+creation, agent, approval, verification, close, evidence or cleanup), last allowlisted
+event, elapsed/phase time and step/tool counters in `failure.details.benchmarkProgress`.
+The release summary displays that checkpoint. It is the last observed activity,
+not proof of the underlying cause. Raw event payloads and stderr are never copied.
+Malformed, oversized or unknown checkpoint fields are ignored. The built-in driver
+reserves up to 30 seconds inside the unchanged outer deadline for timeout handling,
+verification and cleanup; the supervisor still fails and kills the driver at its
+hard deadline if it cannot finish. Historical diagnostics without checkpoints remain valid.

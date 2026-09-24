@@ -1,3 +1,4 @@
+import { reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -191,6 +192,7 @@ export const runZhivexTimeToSafeFixDriver = async (
   options: DriverOptions,
   env: NodeJS.ProcessEnv = process.env
 ) => {
+  reportBenchmarkProgress("runtime_load");
   const harnessRuntime = await loadTimeToSafeFixHarnessRuntime(env);
   const cwd = await realpath(process.cwd());
   const workspace = await realpath(request.workspace);
@@ -199,6 +201,7 @@ export const runZhivexTimeToSafeFixDriver = async (
   try {
     const resolved = harnessRuntime.resolveHarnessConfig(driverConfigInput(options, workspace));
     if (resolved.execution.backend !== "oci") throw new Error("Driver requires enforced OCI execution.");
+    reportBenchmarkProgress("provider_create");
     const model = harnessRuntime.createProviderModel(resolved, env);
     const verifierCommand = (candidate: TimeToSafeFixDriverRequest) => verifierFor(options, candidate);
     if (request.profile === "direct") {
@@ -238,6 +241,7 @@ export const runZhivexTimeToSafeFixDriver = async (
       ociTmpfsMb: options.ociTmpfsMb
     });
   } finally {
+    reportBenchmarkProgress("cleanup");
     await rm(stateDirectory, { recursive: true, force: true });
   }
 };

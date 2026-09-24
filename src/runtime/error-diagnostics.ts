@@ -27,8 +27,20 @@ export const benchmarkApprovalDiagnosticSchema = z.strictObject({
   compactionsBeforeDecision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 });
 
+export const benchmarkProgressSchema = z.strictObject({
+  phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup"]),
+  lastEvent: z.enum(["none", "agent-step-start", "agent-step-finish", "tool-call", "tool-result", "text-delta", "agent-compaction", "error", "finish"]),
+  elapsedMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  idleMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  phaseElapsedMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  steps: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  toolCalls: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  toolResults: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
+});
+
 export const errorDetailsSchema = z.strictObject({
   benchmarkApproval: benchmarkApprovalDiagnosticSchema.optional(),
+  benchmarkProgress: benchmarkProgressSchema.optional(),
   chain: z.array(z.strictObject({
     kind: z.enum(kinds).optional(),
     checkpoint: z.enum(checkpoints).optional(),
@@ -51,6 +63,7 @@ export const errorDetailsSchema = z.strictObject({
 export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetailsSchema> => {
   const chain: z.infer<typeof errorDetailsSchema>["chain"] = [];
   let benchmarkApproval: z.infer<typeof benchmarkApprovalDiagnosticSchema> | undefined;
+  let benchmarkProgress: z.infer<typeof benchmarkProgressSchema> | undefined;
   const seen = new Set<object>();
   let current = error;
   let validation: z.infer<typeof errorDetailsSchema>["validation"];
@@ -61,6 +74,10 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     if (!benchmarkApproval) {
       const parsed = benchmarkApprovalDiagnosticSchema.safeParse(record.benchmarkApproval);
       if (parsed.success) benchmarkApproval = parsed.data;
+    }
+    if (!benchmarkProgress) {
+      const parsed = benchmarkProgressSchema.safeParse(record.benchmarkProgress);
+      if (parsed.success) benchmarkProgress = parsed.data;
     }
     const entry: (typeof chain)[number] = {};
     if (Array.isArray(record.approvalFields)) {
@@ -95,5 +112,5 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     }
     current = record.cause;
   }
-  return { chain, ...(benchmarkApproval ? { benchmarkApproval } : {}), ...(validation ? { validation } : {}) };
+  return { chain, ...(benchmarkProgress ? { benchmarkProgress } : {}), ...(benchmarkApproval ? { benchmarkApproval } : {}), ...(validation ? { validation } : {}) };
 };

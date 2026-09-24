@@ -1,3 +1,4 @@
+import { benchmarkProgressSchema } from "../src/runtime/error-diagnostics.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -115,7 +116,7 @@ const optionValue = (args: readonly string[], index: number, name: string) => {
   return value;
 };
 
-const parseOptions = (args: readonly string[]): CliOptions => {
+export const parseOptions = (args: readonly string[]): CliOptions => {
   let dataset = defaultDataset;
   let datasetName = "zhivex-time-to-safe-fix-smoke";
   let datasetRevision: string | undefined;
@@ -156,8 +157,11 @@ const parseOptions = (args: readonly string[]): CliOptions => {
     throw new Error("--driver-zhivex cannot be combined with --driver-command or --driver-arg.");
   }
   if (builtInDriver) {
+    if (driverTimeoutMs < 2000) throw new Error("Built-in driver requires at least 2000ms for execution and diagnostic cleanup.");
+    const cleanupReserveMs = Math.min(30_000, Math.max(1000, Math.floor(driverTimeoutMs / 10)));
     driverCommand = process.execPath;
-    driverArgs.push("run", path.join(root, "scripts", "time-to-safe-fix-zhivex-driver.ts"));
+    driverArgs.push("run", path.join(root, "scripts", "time-to-safe-fix-zhivex-driver.ts"),
+      "--timeout-ms", String(driverTimeoutMs - cleanupReserveMs));
   }
   const resolvedOut = out ? path.resolve(out) : undefined;
   const resolvedDiagnosticsOut = diagnosticsOut ? path.resolve(diagnosticsOut) : undefined;
@@ -436,8 +440,30 @@ const externalDriver = async (
   };
   const child = spawn(options.driverCommand, options.driverArgs, {
     cwd: workspace,
-    stdio: ["pipe", "pipe", "pipe"],
-    env: process.env
+    stdio: ["pipe", "pipe", "pipe", "pipe"],
+    env: { ...process.env, ZHIVEX_BENCHMARK_PROGRESS: "1" }
+  });
+  let checkpoint: ReturnType<typeof benchmarkProgressSchema.parse> | undefined;
+  let checkpointAt = performance.now();
+  let pendingProgress = "";
+  let discardProgress = false;
+  // A dedicated bounded channel: stdout remains the result and stderr is never evidence.
+  const progressPipe = child.stdio[3];
+  if (progressPipe && "on" in progressPipe) progressPipe.on("data", (chunk: Buffer) => {
+    for (const byte of chunk) {
+      if (byte === 10) {
+        if (!discardProgress) {
+          try {
+            const parsed = benchmarkProgressSchema.safeParse(JSON.parse(pendingProgress));
+            if (parsed.success) { checkpoint = parsed.data; checkpointAt = performance.now(); }
+          } catch { /* Ignore malformed or untrusted progress, never copy raw text. */ }
+        }
+        pendingProgress = ""; discardProgress = false;
+      } else if (!discardProgress) {
+        if (pendingProgress.length >= 1024) { pendingProgress = ""; discardProgress = true; }
+        else pendingProgress += String.fromCharCode(byte);
+      }
+    }
   });
   let stdout = "";
   let stderr = "";
@@ -454,7 +480,13 @@ const externalDriver = async (
   };
   child.stdout.on("data", (chunk: Buffer) => { stdout = append(stdout, chunk); });
   child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
-  const timeoutError = () => new Error(`Driver timed out after ${options.driverTimeoutMs}ms.`);
+  const timeoutError = () => {
+    const age = Math.max(0, Math.round(performance.now() - checkpointAt));
+    return Object.assign(new Error(`Driver timed out after ${options.driverTimeoutMs}ms.`), {
+      ...(checkpoint ? { benchmarkProgress: { ...checkpoint,
+        idleMs: age, elapsedMs: checkpoint.elapsedMs + age, phaseElapsedMs: checkpoint.phaseElapsedMs + age } } : {})
+    });
+  };
   const timer = setTimeout(() => {
     timedOut = true;
     child.kill("SIGKILL");
