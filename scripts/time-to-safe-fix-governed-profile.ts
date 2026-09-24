@@ -1,4 +1,4 @@
-import { reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
+import { markBenchmarkTimeout, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import type { AgentRunInput } from "@zhivex-ai/core";
 import { createHash } from "node:crypto";
 import { lstat, mkdtemp, readFile, readdir, realpath, rm } from "node:fs/promises";
@@ -425,6 +425,7 @@ export const runGovernedTimeToSafeFixProfile = async (
         ? ["verify_and_apply_reviewed_edits"]
         : ["apply_environment_patch"]
     });
+    if (output.status === "timed_out") markBenchmarkTimeout("agent");
     phasesMs.agent = elapsedMs(agentStartedAt);
     if (output.status !== "completed") {
       environmentFailure = !observedApprovals.some((approval) => !approval.approved);

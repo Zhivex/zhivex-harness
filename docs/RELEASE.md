@@ -174,3 +174,20 @@ Malformed, oversized or unknown checkpoint fields are ignored. The built-in driv
 reserves up to 30 seconds inside the unchanged outer deadline for timeout handling,
 verification and cleanup; the supervisor still fails and kills the driver at its
 hard deadline if it cannot finish. Historical diagnostics without checkpoints remain valid.
+
+Benchmark checkpoints also retain up to 24 operation spans and 16 phase transitions.
+Spans distinguish model generate/stream calls, time to first text delta, transport
+attempts (HTTP status and parent model-call number), allowlisted tool execution,
+and OCI image inspection, container creation, execution/attestation, export and
+cleanup. Transport timing ends at response headers; stream timing includes body
+consumption. Multiple transport attempts are observable, but their count alone
+does not prove an SDK retry. Tool names outside the allowlist become `other_tool`.
+
+Each checkpoint includes configured supervisor/agent/tool budgets, remaining total
+time, and a timeout scope only when the supervisor, agent status or OCI result
+confirms it. Setup time and repeated agent resumes may still exhaust the outer
+budget first. Active spans continue aging in the supervisor after the last event.
+Failed normal driver results retain their final checkpoint as well as hard-kill
+failures. Actions includes a bounded per-case table with the last active operation,
+inactivity, expired budget and a link to the run's diagnostic artifacts. The trace
+is a bounded observation history, not a raw request log or a complete profiler.

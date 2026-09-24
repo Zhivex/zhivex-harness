@@ -1,4 +1,4 @@
-import { reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
+import { markBenchmarkTimeout, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -354,6 +354,7 @@ export const runDirectProfile = async (
         // Drain the stream so all model/tool phases execute before strict scoring.
       }
       output = await streamed.collect();
+      if (output.status === "timed_out") markBenchmarkTimeout("agent");
     } catch (error) {
       agentFailure = error;
     }

@@ -1,3 +1,4 @@
+import { observeOciPhase } from "./oci-observability.js";
 import { withWorkspaceMutation } from "../workspace/workspace-mutation-lock.js";
 import { boundedBatches } from "../workspace/bounded-reads.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -604,6 +605,10 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
   }
 
   async inspectImage(image: string): Promise<OciImageInspection> {
+    return observeOciPhase("oci_inspect", () => this.inspectImageUnobserved(image));
+  }
+
+  private async inspectImageUnobserved(image: string): Promise<OciImageInspection> {
     const version = await this.cli(["version", "--format", "{{.Server.Version}}"]);
     const inspected = await this.cli(["image", "inspect", image, "--format", "{{json .}}"]);
     const document = JSON.parse(inspected.stdout) as { Id?: unknown; RepoDigests?: unknown };
@@ -669,13 +674,21 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  private async destroySession(session: PersistentOciSession) {
+  private async destroySession(...args: Parameters<CliOciRuntimeAdapter["destroySessionUnobserved"]>) {
+    return observeOciPhase("oci_cleanup", () => this.destroySessionUnobserved(...args));
+  }
+
+  private async destroySessionUnobserved(session: PersistentOciSession) {
     if (this.sessions.get(session.key) === session) this.sessions.delete(session.key);
     await this.forceRemove(session.name);
     await this.removeVolume(session.volumeName);
   }
 
-  private async createSession(
+  private async createSession(...args: Parameters<CliOciRuntimeAdapter["createSessionUnobserved"]>) {
+    return observeOciPhase("oci_create", () => this.createSessionUnobserved(...args));
+  }
+
+  private async createSessionUnobserved(
     request: OciRunRequest | OciRunBatchRequest,
     requestFingerprint: FileDigest,
     snapshotSeal: FileDigest,
@@ -795,7 +808,11 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
     }
   }
 
-  private async runInSession(
+  private async runInSession(...args: Parameters<CliOciRuntimeAdapter["runInSessionUnobserved"]>) {
+    return observeOciPhase("oci_execute", () => this.runInSessionUnobserved(...args));
+  }
+
+  private async runInSessionUnobserved(
     request: OciRunBatchRequest,
     session: PersistentOciSession,
     sessionReused: boolean
@@ -911,7 +928,7 @@ export class CliOciRuntimeAdapter implements HarnessOciRuntimeAdapter {
       const stagedRoot = path.join(path.dirname(request.snapshotRoot), `.workspace-sync-${randomUUID()}`);
       try {
         await privateDirectory(stagedRoot);
-        await this.cli(["cp", `${session.name}:/workspace/.`, stagedRoot], 60_000);
+        await observeOciPhase("oci_export", () => this.cli(["cp", `${session.name}:/workspace/.`, stagedRoot], 60_000));
         const validated = await validateSynchronizedSnapshot(
           stagedRoot,
           request.snapshotRoot,

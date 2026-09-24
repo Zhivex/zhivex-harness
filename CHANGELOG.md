@@ -6,6 +6,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Add bounded model/HTTP-attempt, tool and OCI timing spans, phase history, timeout budgets and per-case Actions evidence links.
 - Preserve bounded benchmark stage/event checkpoints across driver timeouts and display them in release summaries; reserve cleanup time within the existing deadline without accepting incomplete certification.
 
 ## 1.1.2 - 2026-09-24

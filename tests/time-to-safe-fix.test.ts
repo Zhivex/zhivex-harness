@@ -329,10 +329,13 @@ describe("time-to-safe-fix benchmark", () => {
             "--driver-command", process.execPath,
             "--driver-arg", "-e",
             "--driver-arg", `const { writeSync } = require("node:fs");
-              const checkpoint = {phase:"verification",lastEvent:"tool-result",elapsedMs:1,phaseElapsedMs:1,idleMs:0,steps:2,toolCalls:3,toolResults:3};
+              const checkpoint = {phase:"verification",lastEvent:"tool-result",elapsedMs:1,phaseElapsedMs:1,idleMs:0,steps:2,toolCalls:3,toolResults:3,
+                budget:{supervisorMs:500,agentMs:400,toolMs:100,remainingMs:499,expired:"none"},
+                spans:Array.from({length:24},(_,id)=>({id,operation:"oci_execute",startedMs:0,durationMs:1,outcome:"running"})),
+                history:Array.from({length:16},()=>({phase:"agent_run",atMs:0}))};
               const line = JSON.stringify(checkpoint)+"\\n";
               writeSync(3, line.slice(0,12)); writeSync(3, line.slice(12));
-              writeSync(3, "secret".repeat(1000)+"\\n");
+              writeSync(3, "secret".repeat(5000)+"\\n");
               writeSync(3, JSON.stringify({...checkpoint,phase:"secret",prompt:"secret"})+"\\n");
               setInterval(() => {}, 1000);`,
             "--driver-timeout-ms", "500",
@@ -406,7 +409,9 @@ describe("time-to-safe-fix benchmark", () => {
       expect(JSON.stringify(diagnostics)).not.toContain("secret");
       for (const entry of diagnostics.failedCases) {
         expect(entry.failure).toMatchObject({ details: { benchmarkProgress: {
-          phase: "verification", lastEvent: "tool-result", steps: 2, toolCalls: 3, toolResults: 3
+          phase: "verification", lastEvent: "tool-result", steps: 2, toolCalls: 3, toolResults: 3,
+          budget: { remainingMs: 0, expired: "supervisor" },
+          spans: expect.arrayContaining([expect.objectContaining({ operation: "oci_execute", outcome: "running" })])
         } } });
       }
     } finally {

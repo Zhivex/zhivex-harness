@@ -27,7 +27,21 @@ export const benchmarkApprovalDiagnosticSchema = z.strictObject({
   compactionsBeforeDecision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 });
 
+export const benchmarkOperationSchema = z.enum(["generate", "stream", "http", "read_file", "read_files", "list_files", "search_files", "search_many", "apply_patch", "apply_reviewed_edits", "apply_environment_patch", "run_environment_command", "run_check", "verify_and_apply_reviewed_edits", "other_tool", "oci_inspect", "oci_create", "oci_execute", "oci_export", "oci_cleanup"]);
+export const benchmarkSpanSchema = z.strictObject({
+  id: z.number().int().nonnegative(), parentId: z.number().int().nonnegative().optional(),
+  operation: benchmarkOperationSchema,
+  startedMs: z.number().int().nonnegative(), durationMs: z.number().int().nonnegative(),
+  outcome: z.enum(["running", "completed", "failed", "cancelled"]),
+  firstTokenMs: z.number().int().nonnegative().optional(),
+  httpStatus: z.number().int().min(100).max(599).optional(),
+  attempt: z.number().int().positive().optional()
+});
+
 export const benchmarkProgressSchema = z.strictObject({
+  spans: z.array(benchmarkSpanSchema).max(24).optional(),
+  history: z.array(z.strictObject({ phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup"]), atMs: z.number().int().nonnegative() })).max(16).optional(),
+  budget: z.strictObject({ supervisorMs: z.number().int().positive(), agentMs: z.number().int().positive(), toolMs: z.number().int().positive(), remainingMs: z.number().int().nonnegative(), expired: z.enum(["none", "supervisor", "agent", "tool"]) }).optional(),
   phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup"]),
   lastEvent: z.enum(["none", "agent-step-start", "agent-step-finish", "tool-call", "tool-result", "text-delta", "agent-compaction", "error", "finish"]),
   elapsedMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),

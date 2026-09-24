@@ -441,7 +441,7 @@ const externalDriver = async (
   const child = spawn(options.driverCommand, options.driverArgs, {
     cwd: workspace,
     stdio: ["pipe", "pipe", "pipe", "pipe"],
-    env: { ...process.env, ZHIVEX_BENCHMARK_PROGRESS: "1" }
+    env: { ...process.env, ZHIVEX_BENCHMARK_PROGRESS: "1", ZHIVEX_BENCHMARK_DEADLINE_MS: String(options.driverTimeoutMs) }
   });
   let checkpoint: ReturnType<typeof benchmarkProgressSchema.parse> | undefined;
   let checkpointAt = performance.now();
@@ -460,7 +460,7 @@ const externalDriver = async (
         }
         pendingProgress = ""; discardProgress = false;
       } else if (!discardProgress) {
-        if (pendingProgress.length >= 1024) { pendingProgress = ""; discardProgress = true; }
+        if (pendingProgress.length >= 16384) { pendingProgress = ""; discardProgress = true; }
         else pendingProgress += String.fromCharCode(byte);
       }
     }
@@ -484,6 +484,8 @@ const externalDriver = async (
     const age = Math.max(0, Math.round(performance.now() - checkpointAt));
     return Object.assign(new Error(`Driver timed out after ${options.driverTimeoutMs}ms.`), {
       ...(checkpoint ? { benchmarkProgress: { ...checkpoint,
+        ...(checkpoint.budget ? { budget: { ...checkpoint.budget, remainingMs: 0, expired: "supervisor" } } : {}),
+        spans: checkpoint.spans?.map(span => span.outcome === "running" ? { ...span, durationMs: span.durationMs + age } : span),
         idleMs: age, elapsedMs: checkpoint.elapsedMs + age, phaseElapsedMs: checkpoint.phaseElapsedMs + age } } : {})
     });
   };
@@ -502,7 +504,9 @@ const externalDriver = async (
     if (signal) return reject(new Error(`Driver terminated by ${signal}.`));
     if (code !== 0) return reject(new Error(`Driver exited ${code}: ${stderr.trim().slice(0, 2_000)}`));
     try {
-      resolve(timeToSafeFixDriverResultSchema.parse(JSON.parse(stdout)));
+      const result = timeToSafeFixDriverResultSchema.parse(JSON.parse(stdout));
+      if (result.failure && checkpoint) result.failure.details = { ...result.failure.details, chain: result.failure.details?.chain ?? [], benchmarkProgress: checkpoint };
+      resolve(result);
     } catch (error) {
       reject(new Error(`Driver returned invalid JSON evidence: ${error instanceof Error ? error.message : String(error)}`));
     }

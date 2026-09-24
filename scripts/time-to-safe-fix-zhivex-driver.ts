@@ -1,4 +1,7 @@
-import { reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
+import { channel } from "node:diagnostics_channel";
+import { benchmarkOperationSchema } from "../src/runtime/error-diagnostics.js";
+import { observeBenchmarkFetch, observeBenchmarkModel } from "./time-to-safe-fix-model-observer.js";
+import { markBenchmarkTimeout, beginBenchmarkSpan, updateBenchmarkSpan, configureBenchmarkBudget, reportBenchmarkProgress } from "./time-to-safe-fix-progress.js";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -192,17 +195,36 @@ export const runZhivexTimeToSafeFixDriver = async (
   options: DriverOptions,
   env: NodeJS.ProcessEnv = process.env
 ) => {
+  const outer = Number(process.env.ZHIVEX_BENCHMARK_DEADLINE_MS);
+  configureBenchmarkBudget(Number.isSafeInteger(outer) && outer > 0 ? outer : options.timeoutMs, options.timeoutMs, options.ociMaxProcessRuntimeMs);
   reportBenchmarkProgress("runtime_load");
   const harnessRuntime = await loadTimeToSafeFixHarnessRuntime(env);
   const cwd = await realpath(process.cwd());
   const workspace = await realpath(request.workspace);
   if (cwd !== workspace) throw new Error("Driver request workspace must match the child process working directory.");
   const stateDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-safe-fix-entry-state-"));
+  const restoreFetch = observeBenchmarkFetch();
+  const ociChannel = channel("zhivex.harness.oci.phase");
+  const ociSpans = new Map<number, number>();
+  const observeOci = (message: unknown) => {
+    if (!message || typeof message !== "object") return;
+    const { id, operation, outcome, timedOut } = message as Record<string, unknown>;
+    const parsed = benchmarkOperationSchema.safeParse(operation);
+    if (!Number.isSafeInteger(id) || !parsed.success || !parsed.data.startsWith("oci_")) return;
+    if (outcome === "running") ociSpans.set(id as number, beginBenchmarkSpan(parsed.data));
+    else if (outcome === "completed" || outcome === "failed") {
+      const span = ociSpans.get(id as number);
+      if (span !== undefined) updateBenchmarkSpan(span, { outcome });
+      if (timedOut === true) markBenchmarkTimeout("tool");
+      ociSpans.delete(id as number);
+    }
+  };
+  ociChannel.subscribe(observeOci);
   try {
     const resolved = harnessRuntime.resolveHarnessConfig(driverConfigInput(options, workspace));
     if (resolved.execution.backend !== "oci") throw new Error("Driver requires enforced OCI execution.");
     reportBenchmarkProgress("provider_create");
-    const model = harnessRuntime.createProviderModel(resolved, env);
+    const model = observeBenchmarkModel(harnessRuntime.createProviderModel(resolved, env));
     const verifierCommand = (candidate: TimeToSafeFixDriverRequest) => verifierFor(options, candidate);
     if (request.profile === "direct") {
       return await runDirectProfile(request, {
@@ -241,6 +263,8 @@ export const runZhivexTimeToSafeFixDriver = async (
       ociTmpfsMb: options.ociTmpfsMb
     });
   } finally {
+    ociChannel.unsubscribe(observeOci);
+    restoreFetch();
     reportBenchmarkProgress("cleanup");
     await rm(stateDirectory, { recursive: true, force: true });
   }

@@ -171,6 +171,8 @@ describe("release diagnostics", () => {
           { name: "openai", outcome: "skipped" }
         ]
       });
+      expect(result.markdown).toContain("### Failed cases");
+      expect(result.markdown).toContain("/actions/runs/123#artifacts");
       expect(result.ok).toBe(false);
       expect(result.rows[0]).toEqual({ gate: "meta", outcome: "success", detail: "1/1 passed", failed: false });
       expect(result.rows[1]).toMatchObject({ gate: "qwen", outcome: "failure", failed: true });
