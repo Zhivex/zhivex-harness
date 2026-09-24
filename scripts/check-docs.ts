@@ -175,7 +175,9 @@ if (releaseStatus) {
     const published = releaseStatus.status === "published" && releaseStatus.version === manifest.version;
     failures.push(...checkStableRoadmap(roadmap, manifest.version, published ? "published" : "pending"));
   }
-  if (releaseStatus.status === "published") {
+  // The recorded release may lag npm while its historical evidence remains
+  // intact. Only require current-release wording when the record matches source.
+  if (releaseStatus.status === "published" && releaseStatus.version === manifest.version) {
     for (const [file, contents, required] of [
       ["README.md", readme, `Version \`${releaseStatus.version}\` is the current public npm release`],
       ["ROADMAP.md", roadmap, "Status: published on npm as `latest`"],

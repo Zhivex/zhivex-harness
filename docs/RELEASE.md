@@ -1,10 +1,10 @@
 # Release process
 
-`@zhivex-ai/harness@1.0.0` is the latest public npm release and `v1.0.0` its annotated tag. Its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. Publication used the protected workflow and the original validated tarball. The first representative attempt failed and did not publish; the authorized complete second attempt passed before publication. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
+`@zhivex-ai/harness@1.1.1` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
 ## Next stable release
 
-The source version is `1.1.3`, targeting npm `latest` after fresh certification.
+The source version is `1.1.4`, targeting npm `latest` after fresh certification.
 RC.10 is published to `next`. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35924224542)
 passed deterministic and exact-artifact validation, all live gates and the complete
 Meta/Qwen/OpenAI representative matrix. The first publication verification timed
@@ -15,9 +15,9 @@ job and preserves the original bytes.
 The stable matrix retains Qwen `qwen3.8-max`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
 The `v1.1.0` attempt failed at the Qwen representative approval gate before publication.
-Its tag and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.1.3`.
-`release-status.json` continues to describe the independently verified 1.0.0
-publication until 1.1.3 is published and verified; RC evidence is not substituted
+The `v1.1.2` and `v1.1.3` attempts failed at the Meta representative matrix before publication. Their tags and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.1.4`.
+`release-status.json` still describes the independently verified 1.0.0
+publication and must be refreshed after 1.1.4 is published and verified; RC evidence is not substituted
 for certification of the stable artifact. The SDK dependencies now pin the stable successors of the RC.10 batch;
 the updated artifact requires its own full certification.
 

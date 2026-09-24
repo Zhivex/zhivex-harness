@@ -4,10 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.1.4 - 2026-09-24
 
 - Preserve provider-independent rejection reasons in sanitized diagnostics and Actions summaries, with bounded response inspection and separate transport/stream failures.
 - Distinguish cleanup completion, result flushing and pending process exit; retain a completed provider failure when the supervisor later times out.
+- Preserve all five bounded entries in a completed driver failure after a supervisor timeout, including a provider diagnostic at the end of the chain.
 
 ## 1.1.3 - 2026-09-24
 
