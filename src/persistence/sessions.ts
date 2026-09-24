@@ -6,6 +6,7 @@ import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { AgentStoreScope } from "@zhivex-ai/agents/ops";
 
 import { SqliteDatabase } from "./sqlite-database.js";
+import { protectStateFromGit } from "./state-gitignore.js";
 import { validateStateDirectory } from "./state-directory.js";
 import { HarnessConfigError, HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/errors.js";
 
@@ -290,6 +291,7 @@ const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) 
   }
   await chmod(requestedStateDirectory, 0o700);
   const canonicalStateDirectory = await realpath(requestedStateDirectory);
+  await protectStateFromGit(workspace, canonicalStateDirectory);
   const databasePath = path.join(canonicalStateDirectory, HARNESS_SESSION_INDEX_FILE);
 
   let databaseEntry;

@@ -1,4 +1,5 @@
 import { effectiveRuntimeBudget } from "../runtime/runtime-policy.js";
+import { protectStateFromGit } from "./state-gitignore.js";
 import { inspectRuntimeDiagnostics, inspectRuntimeManifest } from "../runtime/runtime-diagnostics.js";
 import { inspectUsageLedger, USAGE_LEDGER_KEY } from "../runtime/usage-ledger.js";
 import { RUNTIME_DIAGNOSTICS_KEY } from "../runtime/runtime-checkpoints.js";
@@ -517,6 +518,7 @@ export const openHarnessPersistence = async (
 ): Promise<HarnessPersistence> => {
   await validateStateDirectory(config.workspace, config.stateDirectory);
   await ensurePrivateStateDirectory(config.stateDirectory);
+  await protectStateFromGit(config.workspace, config.stateDirectory);
 
   if (config.storeBackend === "file") {
     const store = createFileAgentRunStore({ directory: config.stateDirectory, scope: config.scope });

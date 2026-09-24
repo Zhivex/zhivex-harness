@@ -2,6 +2,8 @@
 
 Zhivex Harness durable operations make local runs inspectable and recoverable across process restarts. The default store is runtime-portable SQLite at `<workspace>/.zhivex-harness/runs/operations.sqlite`, backed by `node:sqlite`; `--store file` remains a migration fallback. The `0.10.x` runtime change does not alter the SQLite file or table format.
 
+Before creating session or run state, Harness writes a local `.gitignore` that excludes all contents of `.zhivex-harness/` (or the configured custom state directory), including SQLite journals and file-store records. This protects untracked files from ordinary `git add`; it cannot override `git add --force` or untrack files already committed. If state was previously tracked, add `.zhivex-harness/` to the repository's root `.gitignore` and use `git rm --cached` on the tracked state files to keep local data while removing it from future commits. Existing Git history is unchanged and must be assessed separately.
+
 ## Scope and identity
 
 Every durable key is isolated by:

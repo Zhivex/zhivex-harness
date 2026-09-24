@@ -55,6 +55,7 @@
     "LICENSE",
     "docs/CHANGE_ENVELOPES.md",
     "docs/CLI.md",
+    "docs/images/cli-conversation.png",
     "docs/CLIENT_PROTOCOL.md",
     "docs/CONTEXT_ENGINEERING.md",
     "docs/CREDENTIALS.md",
@@ -145,7 +146,7 @@
     "@zhivex-ai/gemini": "0.12.2",
     "@zhivex-ai/meta": "0.2.7",
     "@zhivex-ai/openai": "0.13.5",
-    "@zhivex-ai/qwen": "0.15.1",
+    "@zhivex-ai/qwen": "0.15.2",
     "zod": "4.6.5"
   },
   "overrides": {

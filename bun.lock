@@ -10,7 +10,7 @@
         "@zhivex-ai/gemini": "0.12.2",
         "@zhivex-ai/meta": "0.2.7",
         "@zhivex-ai/openai": "0.13.5",
-        "@zhivex-ai/qwen": "0.15.1",
+        "@zhivex-ai/qwen": "0.15.2",
         "zod": "4.6.5",
       },
       "devDependencies": {
@@ -113,7 +113,7 @@
 
     "@zhivex-ai/openai": ["@zhivex-ai/openai@0.13.5", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-LvOh7vJki9v77tB+QuJv/GCmhKQSfFmnsetuRkr9llVyQ6J3sMTx3uP8p3u7TAmONsCtGhPhRo02xLzZWecgUQ=="],
 
-    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.15.1", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-6FWfzY88DLsYyvDkSGi4B2lY2E5IZaakHY3aOjhaem9jJNHIE55RneKg5smUmQiz2x+DEA4wW+IKa1J0EX+06Q=="],
+    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.15.2", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-5Ix3Wi6mEo2+NZY+YQe66KpN/0MkcwOSMfIZlI7sEC/dEnlBadyMYRHLLYJEpoQytWi1oJjTRcBQAc14ErsFYw=="],
 
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 

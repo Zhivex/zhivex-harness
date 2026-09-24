@@ -1,5 +1,5 @@
 import {expect, test} from "bun:test";
-import {mkdir, mkdtemp, realpath, rm, unlink, symlink, writeFile} from "node:fs/promises";
+import {chmod, link, lstat, mkdir, mkdtemp, realpath, rm, unlink, symlink, writeFile} from "node:fs/promises";
 import path from "node:path";
 import {SqliteDatabase} from "../src/persistence/sqlite-database.js";
 import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor, adoptExclusiveSqliteAccess, type SqliteAccessLease} from "../src/persistence/sqlite-access.js";
@@ -55,4 +55,32 @@ nativeTest("transfer requires exclusive access with no borrowed connections; ado
   expect(() => adoptExclusiveSqliteAccess(file, exclusive.fd)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
   expect(() => adoptExclusiveSqliteAccess(file, 3)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
  } finally {exclusive.close();}
+}));
+
+nativeTest("existing owner-controlled lock permissions are repaired without replacing its inode", () => fixture(async file => {
+ const lock = path.join(path.dirname(file), ".operations.sqlite.access-lock");
+ await writeFile(lock, "", {mode: 0o600}); await chmod(lock, 0o644);
+ const before = await lstat(lock);
+ const db = new SqliteDatabase(file);
+ try {
+  const after = await lstat(lock);
+  expect(after.mode & 0o777).toBe(0o600); expect(after.ino).toBe(before.ino);
+  db.exec("CREATE TABLE value(n INTEGER); INSERT INTO value VALUES(7)");
+  expect(() => acquireSqliteAccess(file, true)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ } finally {db.close();}
+ const reopened = new SqliteDatabase(file);
+ try {expect(reopened.query<{n: number}>("SELECT n FROM value").get()!.n).toBe(7);} finally {reopened.close();}
+}));
+nativeTest("permission repair rejects nonempty locks without changing their mode", () => fixture(async file => {
+ const lock = path.join(path.dirname(file), ".operations.sqlite.access-lock");
+ await writeFile(lock, "unexpected", {mode: 0o644}); await chmod(lock, 0o644);
+ expect(() => acquireSqliteAccess(file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ expect((await lstat(lock)).mode & 0o777).toBe(0o644);
+}));
+nativeTest("permission repair rejects hard-linked locks without changing their mode", () => fixture(async file => {
+ const lock = path.join(path.dirname(file), ".operations.sqlite.access-lock");
+ await writeFile(lock, "", {mode: 0o644}); await chmod(lock, 0o644);
+ await link(lock, path.join(path.dirname(file), "alias"));
+ expect(() => acquireSqliteAccess(file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
+ expect((await lstat(lock)).mode & 0o777).toBe(0o644);
 }));

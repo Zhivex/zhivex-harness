@@ -15,4 +15,4 @@ test("network commands isolate repository configuration and use one non-forced r
         git(repo, ["remote", "set-url", "origin", "https://github.com/other/repository.git"]); await expect(transport.push(head, destination)).rejects.toThrow("REMOTE_DESTINATION_CHANGED"); expect(await readFile(trace, "utf8")).toBe(argumentsText);
         const transportRoot = argumentsText.split("\n")[1]!; await transport.close(); transport = undefined; await expect(access(transportRoot)).rejects.toThrow();
     } finally { process.env.PATH = originalPath; if (transport) await transport.close(); await rm(root, { recursive: true, force: true }); }
-});
+}, 30_000); // Multiple real Git subprocesses need headroom on shared macOS runners.

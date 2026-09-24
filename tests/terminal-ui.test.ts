@@ -250,3 +250,11 @@ describe("terminal event rendering", () => {
     })).toBe("Zhivex Harness 0.11.0 · openai/gpt-test\nsession session-1");
   });
 });
+
+
+test("provider failures expose bounded HTTP diagnostics without raw payloads", () => {
+  const render = (message:string) => formatTerminalEvent({type:"error",error:{message}} as never);
+  expect(render("Meta request failed with status 400.")).toBe("✗ Meta request failed · HTTP 400");
+  expect(render("Meta request failed with status 400 (previous response unavailable).")).toBe("✗ Meta request failed · HTTP 400 · previous response unavailable");
+  expect(render("Meta request failed with status 400 (SECRET_PAYLOAD).")).not.toContain("SECRET_PAYLOAD");
+});

@@ -1,41 +1,32 @@
-/** A bounded activity line; transcript entries are committed only at message boundaries. */
+/** Ephemeral TTY status. Tool bookkeeping never becomes conversation text. */
 export class ToolActivity {
-  private completed = 0;
   private active = 0;
   private visible = false;
-  private dirty = false;
-  private reads = 0;
-  private searches = 0;
-  private other = 0;
+  private label = "Working";
 
   constructor(private write: (text: string) => void, private tty: boolean,
     private columns: () => number = () => 80) {}
 
-  start() { this.active++; this.dirty = true; this.render(); }
-  finish(name: string) {
-    this.active = Math.max(0, this.active - 1);
-    this.completed++;
-    if (["read_file", "read_files"].includes(name)) this.reads++;
-    else if (["search_files", "search_many"].includes(name)) this.searches++;
-    else this.other++;
-    this.dirty = true;
+  start(name?: string) {
+    this.active++;
+    this.label = ["read_file", "read_files"].includes(name ?? "") ? "Reading files"
+      : ["search_files", "search_many", "list_files"].includes(name ?? "") ? "Exploring the project"
+      : name === "run_check" ? "Running checks" : "Working";
     this.render();
   }
-  private line() {
-    return `tools · ${this.completed} completed` +
-      (this.active ? ` · ${this.active} running` : "") +
-      ` · ${this.reads} reads · ${this.searches} searches · ${this.other} other`;
+  finish(_name: string) {
+    this.active = Math.max(0, this.active - 1);
+    this.label = this.active ? this.label : "Thinking";
+    this.render();
   }
   private render() {
     if (!this.tty) return;
     if (!this.visible) this.write("\n");
-    this.write(`\r\x1b[2K${this.line().slice(0, Math.max(1, this.columns() - 1))}`);
+    this.write(`\r\x1b[2K${`${this.label}…`.slice(0, Math.max(1, this.columns() - 1))}`);
     this.visible = true;
   }
   flush() {
-    if (!this.dirty) return;
-    this.write(this.visible ? "\n" : `\n${this.line()}\n`);
-    this.completed = this.reads = this.searches = this.other = 0;
-    this.visible = this.dirty = false;
+    if (this.visible) this.write("\r\x1b[2K");
+    this.visible = false;
   }
 }

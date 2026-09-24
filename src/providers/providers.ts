@@ -1,4 +1,5 @@
 import { createMetaContinuationFetch } from "./meta-continuation.js";
+import { annotateMetaRequestError } from "./meta-errors.js";
 import { bundledDefaultModel } from "../models/catalog.js";
 import { createHash } from "node:crypto";
 
@@ -563,11 +564,11 @@ const withMetaResponses = (model: LanguageModel): LanguageModel => wrapLanguageM
   name: "harness-meta-responses-v1",
   async wrapGenerate({ input }, next) {
     input.providerOptions = { ...input.providerOptions, apiMode: "responses" };
-    return next();
+    try { return await next(); } catch (error) { return annotateMetaRequestError(error); }
   },
   async wrapStream({ input }, next) {
     input.providerOptions = { ...input.providerOptions, apiMode: "responses" };
-    return next();
+    try { return await next(); } catch (error) { return annotateMetaRequestError(error); }
   }
 }]);
 
