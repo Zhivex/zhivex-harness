@@ -35,7 +35,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await click('[data-action="open-project"]'); await wait('document.querySelector("[role=alert]") !== null && document.querySelector("[data-action=open-project]").disabled === false'); assert.equal(await js('document.querySelector("main").dataset.projectKey'), firstKey);
     await click('[data-action="open-project"]'); await wait(`document.querySelector("main").dataset.projectKey !== ${JSON.stringify(firstKey)} && Boolean(document.querySelector("main").dataset.projectKey)`);
     const secondKey = await js('document.querySelector("main").dataset.projectKey'); const second = await runtimes.get(secondKey)!;
-    await wait('document.querySelectorAll("[data-session]").length === 0'); assert.equal(await js('document.querySelector("[data-action=start]").disabled'), true);
+    await wait('document.querySelectorAll("[data-session]").length === 0 && document.querySelector("[data-action=new-session]").disabled === false'); assert.equal(await js('document.querySelector("[data-action=start]").disabled'), true);
     const foreign = await second.command({ method: "session.get", sessionId }); assert(!foreign.ok); assert.equal(foreign.error.code, "NOT_FOUND");
     await click('[data-action="new-session"]'); await wait('Boolean(document.querySelector("main").dataset.sessionId)'); const secondSession = await js('document.querySelector("main").dataset.sessionId'); assert.notEqual(secondSession, sessionId);
     await click(`[data-project="${firstKey}"]`); await wait(`document.querySelector("main").dataset.projectKey === ${JSON.stringify(firstKey)} && document.querySelectorAll("[data-session]").length === 1`);

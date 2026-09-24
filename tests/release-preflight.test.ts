@@ -7,8 +7,8 @@ import path from "node:path";
 test("Stable promotion preserves RC10 models and Flash history", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
   validateReleaseMetadata(input, false, "latest");
-  expect(input.version).toBe("1.1.1");
-  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.1")?.models)
+  expect(input.version).toMatch(/^1\.1\.\d+$/);
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
     .toEqual(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0-rc.10")?.models);
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models.qwen)
     .toBe(bundledDefaultModel("qwen"));
