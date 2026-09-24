@@ -1,4 +1,4 @@
-import { benchmarkProgressSchema } from "../src/runtime/error-diagnostics.js";
+import { benchmarkProgressSchema, errorDetailsSchema } from "../src/runtime/error-diagnostics.js";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -482,7 +482,10 @@ const externalDriver = async (
   child.stderr.on("data", (chunk: Buffer) => { stderr = append(stderr, chunk); });
   const diagnosticError = (error: Error, deadlineExceeded = false) => {
     const age = Math.max(0, Math.round(performance.now() - checkpointAt));
+    let priorFailure;
+    try { priorFailure = timeToSafeFixDriverResultSchema.parse(JSON.parse(stdout)).failure; } catch { /* Incomplete stdout is never evidence. */ }
     return Object.assign(error, {
+      ...(priorFailure?.details ? { priorFailureDetails: priorFailure.details } : {}),
       ...(checkpoint ? { benchmarkProgress: { ...checkpoint,
         ...(checkpoint.budget ? { budget: { ...checkpoint.budget, remainingMs: deadlineExceeded ? 0 : Math.max(0, checkpoint.budget.remainingMs - age), expired: deadlineExceeded ? "supervisor" : checkpoint.budget.expired } } : {}),
         spans: checkpoint.spans?.map(span => span.outcome === "running" ? { ...span, durationMs: span.durationMs + age } : span),
@@ -614,6 +617,17 @@ const run = async (options: CliOptions, progress: DiagnosticProgress) => {
           stage: "environment",
           origin: options.driverCommand ? "external_driver" : "driver_setup"
         });
+        const priorDetails = error && typeof error === "object" && "priorFailureDetails" in error
+          ? errorDetailsSchema.safeParse(error.priorFailureDetails)
+          : undefined;
+        if (priorDetails?.success) {
+          failure.details = {
+            ...priorDetails.data,
+            // The prior chain is already bounded and sanitized. Keep all of its
+            // entries while retaining the supervisor's current progress.
+            benchmarkProgress: failure.details?.benchmarkProgress ?? priorDetails.data.benchmarkProgress
+          };
+        }
         result = timeToSafeFixDriverResultSchema.parse({
           schemaVersion: 1,
           kind: "time-to-safe-fix-driver-result",

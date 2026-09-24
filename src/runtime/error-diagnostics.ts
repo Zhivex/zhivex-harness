@@ -1,3 +1,4 @@
+import { providerDiagnostic, providerDiagnosticSchema } from "./provider-diagnostics.js";
 import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
@@ -35,14 +36,19 @@ export const benchmarkSpanSchema = z.strictObject({
   outcome: z.enum(["running", "completed", "failed", "cancelled"]),
   firstTokenMs: z.number().int().nonnegative().optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
+  provider: providerDiagnosticSchema.optional(),
+  failureKind: z.enum(["transport", "abort", "stream", "unknown"]).optional(),
   attempt: z.number().int().positive().optional()
 });
 
 export const benchmarkProgressSchema = z.strictObject({
+  lastProviderFailure: benchmarkSpanSchema.optional(),
+  resourceObservation: z.enum(["node", "unsupported"]).optional(),
+  resources: z.array(z.strictObject({ type: z.enum(["Timeout", "TCPWrap", "TCPSocketWrap", "TLSWrap", "PipeWrap", "PipeConnectWrap", "ProcessWrap", "FSReqCallback", "FSReqPromise", "GetAddrInfoReqWrap", "Immediate", "other"]), count: z.number().int().nonnegative() })).max(12).optional(),
   spans: z.array(benchmarkSpanSchema).max(24).optional(),
-  history: z.array(z.strictObject({ phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup"]), atMs: z.number().int().nonnegative() })).max(16).optional(),
+  history: z.array(z.strictObject({ phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup", "cleanup_complete", "result_write", "result_written", "exit_pending"]), atMs: z.number().int().nonnegative() })).max(16).optional(),
   budget: z.strictObject({ supervisorMs: z.number().int().positive(), agentMs: z.number().int().positive(), toolMs: z.number().int().positive(), remainingMs: z.number().int().nonnegative(), expired: z.enum(["none", "supervisor", "agent", "tool"]) }).optional(),
-  phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup"]),
+  phase: z.enum(["startup", "runtime_load", "provider_create", "harness_create", "agent_run", "approval", "verification", "harness_close", "evidence", "cleanup", "cleanup_complete", "result_write", "result_written", "exit_pending"]),
   lastEvent: z.enum(["none", "agent-step-start", "agent-step-finish", "tool-call", "tool-result", "text-delta", "agent-compaction", "error", "finish"]),
   elapsedMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
   idleMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
@@ -59,6 +65,7 @@ export const errorDetailsSchema = z.strictObject({
     kind: z.enum(kinds).optional(),
     checkpoint: z.enum(checkpoints).optional(),
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
+    provider: providerDiagnosticSchema.optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
     acceptanceReason: z.enum(acceptanceReasons).optional(),
@@ -110,7 +117,12 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];
     if (allowedCodes.includes(record.code)) entry.code = record.code as NonNullable<typeof entry.code>;
     const status = [record.status, record.statusCode].find((value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599);
-    if (typeof status === "number") entry.status = status;
+    if (typeof status === "number") {
+      entry.status = status;
+      entry.provider = providerDiagnostic(record.responseBody ?? record.body, status);
+    }
+    const provider = providerDiagnosticSchema.safeParse(record.provider);
+    if (provider.success) entry.provider = provider.data;
     if (typeof record.retryable === "boolean") entry.retryable = record.retryable;
     if (record.name === "GuardrailTriggeredError") {
       const budget = budgetDiagnosticSchema.safeParse(record.metadata);

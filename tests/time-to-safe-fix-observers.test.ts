@@ -77,3 +77,31 @@ test("stream failure keeps the original exception even when iterator cleanup als
   const stream = await model.stream!({ messages: [] });
   await expect(stream[Symbol.asyncIterator]().next()).rejects.toBe(original);
 });
+
+test("HTTP rejection survives stream error and span eviction for any model provider", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = Object.assign(async () => new Response(JSON.stringify({error:{status:"INVALID_ARGUMENT",param:"tools",message:"SECRET"}}), {status:400}), {preconnect:original.preconnect});
+  const restore = observeBenchmarkFetch();
+  const model = observeBenchmarkModel({provider:"gemini",modelId:"fixture",capabilities:{},
+    stream: async () => (async function* () { await fetch("https://private.invalid"); yield {type:"error",error:new Error("SECRET")}; })()
+  } as unknown as LanguageModel);
+  try {
+    for await (const _ of await model.stream!({messages:[]})) { /* consume */ }
+    for (let i=0;i<30;i++) { const id=beginBenchmarkSpan("oci_cleanup"); updateBenchmarkSpan(id,{outcome:"completed"}); }
+    expect(benchmarkSnapshot().lastProviderFailure).toMatchObject({operation:"http",httpStatus:400,provider:{reason:"invalid_request",parameter:"tools",bodyState:"parsed"}});
+    expect(JSON.stringify(benchmarkSnapshot())).not.toContain("SECRET");
+  } finally {restore();globalThis.fetch=original;}
+});
+
+test("transport rejection retains the HTTP boundary and original error", async () => {
+  const original = globalThis.fetch;
+  const failure = new TypeError("SECRET network");
+  globalThis.fetch = Object.assign(async () => {throw failure;}, {preconnect:original.preconnect});
+  const restore=observeBenchmarkFetch();
+  const model=observeBenchmarkModel({provider:"openai",modelId:"fixture",capabilities:{},generate:async()=>fetch("https://private.invalid")} as unknown as LanguageModel);
+  try {
+    await expect(model.generate({messages:[]})).rejects.toBe(failure);
+    expect(benchmarkSnapshot().lastProviderFailure).toMatchObject({operation:"http",outcome:"failed",failureKind:"transport"});
+    expect(benchmarkSnapshot().lastProviderFailure?.httpStatus).toBeUndefined();
+  } finally {restore();globalThis.fetch=original;}
+});

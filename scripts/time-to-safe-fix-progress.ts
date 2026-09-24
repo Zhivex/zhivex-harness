@@ -29,11 +29,14 @@ export function beginBenchmarkSpan(operation: z.infer<typeof benchmarkOperationS
   reportBenchmarkProgress(state.phase);
   return id;
 }
-export function updateBenchmarkSpan(id: number, values: Partial<Pick<z.infer<typeof benchmarkSpanSchema>, "outcome" | "firstTokenMs" | "httpStatus">>) {
+export function updateBenchmarkSpan(id: number, values: Partial<Pick<z.infer<typeof benchmarkSpanSchema>, "outcome" | "firstTokenMs" | "httpStatus" | "provider" | "failureKind">>) {
   const span = spans.get(id);
   if (!span) return;
-  const parsed = benchmarkSpanSchema.safeParse({ ...span, ...values, durationMs: elapsed() - span.startedMs });
-  if (parsed.success) spans.set(id, parsed.data);
+  const parsed = benchmarkSpanSchema.safeParse({ ...span, ...values, durationMs: values.outcome ? elapsed() - span.startedMs : span.durationMs });
+  if (parsed.success) {
+    spans.set(id, parsed.data);
+    if (parsed.data.provider || (parsed.data.failureKind && (parsed.data.operation === "http" || (!state.lastProviderFailure?.provider && state.lastProviderFailure?.parentId !== id)))) state = { ...state, lastProviderFailure: parsed.data };
+  }
   reportBenchmarkProgress(state.phase);
 }
 export function benchmarkToolName(name: string) {
@@ -63,4 +66,24 @@ export function reportBenchmarkProgress(phase: Progress["phase"], eventType?: st
     lastTextAt = now;
   }
   try { writeSync(3, `${JSON.stringify(benchmarkSnapshot())}\n`); } catch { /* Observability cannot change run behavior. */ }
+}
+
+// Public Node API exposes resource types only, never endpoints or handle contents.
+export function reportBenchmarkResources(phase: Progress["phase"]): void {
+  const allowed = new Set(["Timeout", "TCPWrap", "TCPSocketWrap", "TLSWrap", "PipeWrap", "PipeConnectWrap", "ProcessWrap", "FSReqCallback", "FSReqPromise", "GetAddrInfoReqWrap", "Immediate"]);
+  const counts = new Map<string, number>();
+  for (const raw of process.getActiveResourcesInfo()) {
+    const type = allowed.has(raw) ? raw : "other";
+    counts.set(type, (counts.get(type) ?? 0) + 1);
+  }
+  const parsed = benchmarkProgressSchema.shape.resources.parse([...counts].map(([type, count]) => ({ type, count })));
+  state = { ...state, resourceObservation: process.versions.bun ? "unsupported" : "node", resources: parsed };
+  reportBenchmarkProgress(phase);
+}
+export function startBenchmarkExitObservation(): void {
+  reportBenchmarkResources("result_written");
+  // This observer must never keep a completed child alive itself.
+  const timer = setInterval(() => reportBenchmarkResources("exit_pending"), 1000);
+  timer.unref();
+  process.once("beforeExit", () => clearInterval(timer));
 }

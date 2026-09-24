@@ -159,6 +159,7 @@ describe("release diagnostics", () => {
       await writeFile(path.join(directory, "meta.json"), `${JSON.stringify(diagnostic("passed", "meta"))}\n`);
       const failed = diagnostic("failed", "qwen");
       const checkpoint = { phase: "agent_run", lastEvent: "tool-call", elapsedMs: 300000, phaseElapsedMs: 290000, idleMs: 120000, steps: 3, toolCalls: 2, toolResults: 1 };
+      Object.assign(checkpoint, {lastProviderFailure:{id:4,parentId:3,operation:"http",startedMs:10,durationMs:20,outcome:"failed",httpStatus:429,attempt:1,provider:{reason:"rate_limit",parameter:"none",bodyState:"parsed"}},resourceObservation:"node",resources:[{type:"Timeout",count:1}]});
       Object.assign(failed.failedCases[0]!.failure, { details: { chain: [], benchmarkProgress: checkpoint } });
       await writeFile(path.join(directory, "qwen.json"), `${JSON.stringify(failed)}\n`);
       const result = await summarizeReleaseGates({
@@ -172,6 +173,8 @@ describe("release diagnostics", () => {
         ]
       });
       expect(result.markdown).toContain("### Failed cases");
+      expect(result.markdown).toContain("HTTP 429: rate_limit (none; body=parsed)");
+      expect(result.markdown).toContain("Timeout:1");
       expect(result.markdown).toContain("/actions/runs/123#artifacts");
       expect(result.ok).toBe(false);
       expect(result.rows[0]).toEqual({ gate: "meta", outcome: "success", detail: "1/1 passed", failed: false });
