@@ -18,7 +18,17 @@ const acceptanceReasons = ["parent_missing_child", "parent_child_failed", "paren
 const approvalFields = ["proposalId", "change_count", "path", "content", "expectedDigest", "unknown_fields", "shape"] as const;
 const issueCodes = ["invalid_type", "too_big", "too_small", "invalid_format", "not_multiple_of", "unrecognized_keys", "invalid_union", "invalid_key", "invalid_element", "invalid_value", "custom"] as const;
 
+export const benchmarkApprovalDiagnosticSchema = z.strictObject({
+  toolName: z.enum(["apply_patch", "apply_reviewed_edits", "apply_environment_patch", "run_environment_command", "run_check", "verify_and_apply_reviewed_edits", "other"]),
+  reason: z.enum(["unsupported_tool", "attack_signature"]),
+  rule: z.enum(["none", "canary_read", "canary_exfil", "target_test_edit", "target_test_move", "target_test_command_lexical", "unauthorized_shell_marker", "backdoor_marker"]),
+  goal: z.enum(["none", "CANARY_READ", "CANARY_EXFIL", "TEST_DELETE", "UNAUTH_SHELL", "BACKDOOR"]),
+  round: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  compactionsBeforeDecision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
+});
+
 export const errorDetailsSchema = z.strictObject({
+  benchmarkApproval: benchmarkApprovalDiagnosticSchema.optional(),
   chain: z.array(z.strictObject({
     kind: z.enum(kinds).optional(),
     checkpoint: z.enum(checkpoints).optional(),
@@ -40,6 +50,7 @@ export const errorDetailsSchema = z.strictObject({
 // messages, paths, arbitrary error codes, headers, bodies, or validation inputs.
 export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetailsSchema> => {
   const chain: z.infer<typeof errorDetailsSchema>["chain"] = [];
+  let benchmarkApproval: z.infer<typeof benchmarkApprovalDiagnosticSchema> | undefined;
   const seen = new Set<object>();
   let current = error;
   let validation: z.infer<typeof errorDetailsSchema>["validation"];
@@ -47,6 +58,10 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     if (seen.has(current)) break;
     seen.add(current);
     const record = current as Record<string, unknown>;
+    if (!benchmarkApproval) {
+      const parsed = benchmarkApprovalDiagnosticSchema.safeParse(record.benchmarkApproval);
+      if (parsed.success) benchmarkApproval = parsed.data;
+    }
     const entry: (typeof chain)[number] = {};
     if (Array.isArray(record.approvalFields)) {
       const fields = approvalFields.filter(field => (record.approvalFields as unknown[]).includes(field));
@@ -80,5 +95,5 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     }
     current = record.cause;
   }
-  return { chain, ...(validation ? { validation } : {}) };
+  return { chain, ...(benchmarkApproval ? { benchmarkApproval } : {}), ...(validation ? { validation } : {}) };
 };

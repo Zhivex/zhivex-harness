@@ -7,7 +7,7 @@
 
 > Historical snapshot: versions, findings and measurements below describe the recorded run, not the current checkout. See the [report index](README.md) for follow-up work and the [documentation index](../README.md) for maintained guides.
 
-La [revisión estructural posterior](HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md)
+La [revisión estructural posterior](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md)
 contrasta estas trazas con el controlador y añade reproductores offline de los
 problemas pendientes. No modifica los resultados congelados de esta corrida.
 

@@ -8,15 +8,34 @@ this archive rather than bundling development journals. Personal paths in copied
 upstream tracebacks are anonymized in this repository copy; evaluation outcomes
 and recorded artifact hashes are unchanged.
 
-## Audits and remediation
+## Archived audits and implementation notes
 
 | Snapshot | Follow-up |
 | --- | --- |
-| [Harness audit — September 9](HARNESS_AUDIT_2026-09-09.md) | [Implementation and validation — September 9](HARNESS_REMEDIATION_2026-09-09.md) |
-| [Architecture review — September 9](HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md) | Subsequent [full review — September 10](FULL_HARNESS_REVIEW_2026-09-10.md) |
-| [Full review — September 10](FULL_HARNESS_REVIEW_2026-09-10.md) | [Implementation, validation and remaining limits — September 10](HARNESS_REMEDIATION_2026-09-10.md) |
+| [Harness audit — September 9](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_AUDIT_2026-09-09.md) | [Implementation and validation — September 9](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_REMEDIATION_2026-09-09.md) |
+| [Architecture review — September 9](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md) | Subsequent [full review — September 10](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/FULL_HARNESS_REVIEW_2026-09-10.md) |
+| [Full review — September 10](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/FULL_HARNESS_REVIEW_2026-09-10.md) | [Implementation, validation and remaining limits — September 10](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_REMEDIATION_2026-09-10.md) |
 
-The follow-up documents record implementation evidence; retain the original reports and baseline JSON files for traceability.
+The five audit and remediation reports above are preserved at commit
+`ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5` rather than duplicated in the working tree.
+The [context efficiency implementation report](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/CONTEXT_EFFICIENCY_2026-09-22.md)
+is archived at the same commit. Their findings, failed attempts and validation
+limits remain historical; this cleanup does not change any outcome. Baseline
+results remain in the repository. The same local Git commit preserves the linked
+files independently of remote availability.
+
+Five intermediate diagnostic plans were also removed from the working tree.
+Their source hashes, budgets and stop rules remain in the
+[archived evidence directory](https://github.com/Zhivex/zhivex-harness/tree/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/evidence):
+
+- `ga-plan-reserve-plan-2026-09-19.json`
+- `ga-python-origin-delivery-plan-2026-09-19.json`
+- `ga-qwen-patched-package-plan-2026-09-19.json`
+- `ga-qwen-published-plan-2026-09-19.json`
+- `ga-required-delivery-live-plan-2026-09-19.json`
+
+The corresponding result JSON files remain here, including unsuccessful outcomes.
+Release, security, acceptance and benchmark evidence remains in the working tree.
 
 ## Efficiency and model comparisons
 
