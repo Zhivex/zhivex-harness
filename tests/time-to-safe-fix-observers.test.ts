@@ -67,3 +67,13 @@ test("history and span retention stay bounded and preserve active operations", (
   expect(snapshot.budget).toMatchObject({ supervisorMs: 300000, agentMs: 270000, toolMs: 10000, expired: "agent" });
   updateBenchmarkSpan(active, { outcome: "completed" });
 });
+
+
+test("stream failure keeps the original exception even when iterator cleanup also fails", async () => {
+  const original = new Error("original-private-error");
+  const model = observeBenchmarkModel({ provider: "fixture", modelId: "fixture", capabilities: {},
+    stream: async () => ({ [Symbol.asyncIterator]: () => ({ next: async () => { throw original; }, return: async () => { throw new Error("cleanup-private-error"); } }) })
+  } as unknown as LanguageModel);
+  const stream = await model.stream!({ messages: [] });
+  await expect(stream[Symbol.asyncIterator]().next()).rejects.toBe(original);
+});

@@ -50,7 +50,13 @@ export function observeBenchmarkModel(model: LanguageModel): LanguageModel {
           } catch (error) { failed = true; throw error; }
           finally {
             updateBenchmarkSpan(id, { outcome: failed ? "failed" : completed ? "completed" : "cancelled" });
-            if (!completed) await context.run(call, () => iterator.return?.());
+            if (!completed) {
+              try { await context.run(call, () => iterator.return?.()); }
+              catch (error) {
+                updateBenchmarkSpan(id, { outcome: "failed" });
+                if (!failed) throw error;
+              }
+            }
           }
         })();
       } catch (error) { updateBenchmarkSpan(id, { outcome: "failed" }); throw error; }
