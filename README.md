@@ -6,10 +6,10 @@ Zhivex Harness is a local terminal assistant and TypeScript library. It supports
 OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
 approvals survive restarts.
 
-Version `1.1.3` is prepared for stable publication, with console, local service
+Version `1.1.4` is prepared for stable publication, with console, local service
 and governed delegation improvements. Publication remains pending until the
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-records its verified artifact. The installation commands below target 1.1.3 once
+records its verified artifact. The installation commands below target 1.1.4 once
 published. Desktop retains its separate private alpha status.
 
 ## Quick start
@@ -17,7 +17,7 @@ published. Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.1.3
+npm install -g @zhivex-ai/harness@1.1.4
 cd /path/to/your/project
 zhx
 ```
@@ -72,8 +72,8 @@ Gemini remains provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
 
 [Browse documentation](docs/README.md).
 
-Version `1.0.0` is the current public npm release. Source checkout changes can be
+Version `1.1.1` is the current public npm release. Source checkout changes can be
 newer than the published package. Consult the [changelog](CHANGELOG.md) and
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-for release identity; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)
+for the recorded 1.0.0 release; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)
 records validation scope and limitations.

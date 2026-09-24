@@ -5,7 +5,7 @@
 Install Node.js 22.13.0 or newer and Git. Then:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.1.3
+npm install -g @zhivex-ai/harness@1.1.4
 cd /path/to/your/project
 zhx
 ```
@@ -80,16 +80,16 @@ For command execution, configure [OCI isolation](EXECUTION_ENVIRONMENTS.md).
 With Bun 1.4.0 or newer and a supported Node runtime:
 
 ```sh
-bun add --global @zhivex-ai/harness@1.1.3
+bun add --global @zhivex-ai/harness@1.1.4
 zhx
 ```
 
 For a disposable version/help/environment check without a global installation:
 
 ```sh
-bunx @zhivex-ai/harness@1.1.3 --version
-bunx @zhivex-ai/harness@1.1.3 --help
-bunx @zhivex-ai/harness@1.1.3 doctor
+bunx @zhivex-ai/harness@1.1.4 --version
+bunx @zhivex-ai/harness@1.1.4 --help
+bunx @zhivex-ai/harness@1.1.4 doctor
 ```
 
 For source development, use the [contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md).

@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `1.0.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable public release state is recorded in the repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), outside immutable npm artifacts.
+Zhivex Harness `1.1.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable `release-status.json` record preserves the verified 1.0.0 release; check npm for the current published version.
 
 The 1.0 support scope is tracked in the [machine-readable support matrix](./docs/support-matrix.json) and its [human-readable view](./docs/SUPPORT_MATRIX.md). Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) for the published 1.x line.
 
