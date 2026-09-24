@@ -4,8 +4,6 @@ import { sanitizeTerminalText } from "./terminal-ui.js";
 export class TerminalMarkdown {
   private pending = "";
   private code = false;
-  private inlineCode = false;
-  private bold = false;
   private heading = false;
   private lineStart = true;
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -13,7 +11,7 @@ export class TerminalMarkdown {
 
   private drain(final = false) {
     let rendered = "", activeStyle = 0;
-    const emit = (text: string, style = this.code || this.inlineCode ? 36 : this.bold || this.heading ? 1 : 0) => {
+    const emit = (text: string, style = this.code ? 36 : this.heading ? 1 : 0) => {
       if (this.color && style !== activeStyle) {
         if (activeStyle) rendered += "\x1b[0m";
         if (style) rendered += `\x1b[${style}m`;
@@ -47,12 +45,20 @@ export class TerminalMarkdown {
         this.lineStart = true; this.heading = false; continue;
       }
       if (this.color && !this.code) {
-        if (!this.inlineCode && this.pending === "*" && !final) break;
-        if (!this.inlineCode && this.pending.startsWith("**")) {
-          this.bold = !this.bold; this.pending = this.pending.slice(2); continue;
-        }
-        if (this.pending[0] === "`") {
-          this.inlineCode = !this.inlineCode; this.pending = this.pending.slice(1); continue;
+        if (this.pending === "*" && !final) break;
+        const marker = this.pending.startsWith("**") ? "**" : this.pending[0] === "`" ? "`" : undefined;
+        if (marker) {
+          const end = this.pending.indexOf(marker, marker.length);
+          const newline = this.pending.indexOf("\n");
+          if (end > marker.length && (newline < 0 || end < newline)) {
+            emit(this.pending.slice(marker.length, end), marker === "`" ? 36 : 1);
+            this.pending = this.pending.slice(end + marker.length);
+            continue;
+          }
+          // Hold only a bounded candidate span. Interrupted/unmatched syntax is
+          // emitted literally at flush, newline or the size cap, never lost.
+          if (!final && newline < 0 && this.pending.length < 2048) break;
+          emit(marker); this.pending = this.pending.slice(marker.length); continue;
         }
       }
       const point = String.fromCodePoint(this.pending.codePointAt(0)!);

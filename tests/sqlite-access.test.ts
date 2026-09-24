@@ -71,12 +71,16 @@ nativeTest("existing owner-controlled lock permissions are repaired without repl
  const reopened = new SqliteDatabase(file);
  try {expect(reopened.query<{n: number}>("SELECT n FROM value").get()!.n).toBe(7);} finally {reopened.close();}
 }));
-nativeTest("permission repair rejects nonempty and hard-linked locks without changing their mode", () => fixture(async file => {
+nativeTest("permission repair rejects nonempty locks without changing their mode", () => fixture(async file => {
  const lock = path.join(path.dirname(file), ".operations.sqlite.access-lock");
  await writeFile(lock, "unexpected", {mode: 0o644}); await chmod(lock, 0o644);
  expect(() => acquireSqliteAccess(file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
  expect((await lstat(lock)).mode & 0o777).toBe(0o644);
- await writeFile(lock, ""); await link(lock, path.join(path.dirname(file), "alias"));
+}));
+nativeTest("permission repair rejects hard-linked locks without changing their mode", () => fixture(async file => {
+ const lock = path.join(path.dirname(file), ".operations.sqlite.access-lock");
+ await writeFile(lock, "", {mode: 0o644}); await chmod(lock, 0o644);
+ await link(lock, path.join(path.dirname(file), "alias"));
  expect(() => acquireSqliteAccess(file)).toThrow("SQLITE_ACCESS_UNAVAILABLE");
  expect((await lstat(lock)).mode & 0o777).toBe(0o644);
 }));

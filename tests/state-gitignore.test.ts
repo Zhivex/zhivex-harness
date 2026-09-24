@@ -52,3 +52,21 @@ for(const alias of ["symlink","hardlink"] as const)test(`rejects ${alias} ignore
  await expect(protectStateFromGit(root,state)).rejects.toThrow("safe .gitignore");
  expect(await readFile(target,"utf8")).toBe("unchanged");
 }));
+
+for(const size of [65535,65536]) test(`state ignore at ${size} bytes can reopen after protection`,()=>fixture(async root=>{
+ const state=path.join(root,"state");await mkdir(state);
+ const ignore=path.join(state,".gitignore");const original="#".repeat(size);
+ await writeFile(ignore,original);
+ await protectStateFromGit(root,state);const protectedContent=await readFile(ignore,"utf8");
+ expect(protectedContent).toStartWith(original+"\n");
+ await protectStateFromGit(root,state);
+ expect(await readFile(ignore,"utf8")).toBe(protectedContent);
+}));
+
+test("oversized user ignore files are rejected without appending",()=>fixture(async root=>{
+ const state=path.join(root,"state");await mkdir(state);
+ const ignore=path.join(state,".gitignore"), original="#".repeat(65537);
+ await writeFile(ignore,original);
+ await expect(protectStateFromGit(root,state)).rejects.toThrow("safe .gitignore");
+ expect(await readFile(ignore,"utf8")).toBe(original);
+}));

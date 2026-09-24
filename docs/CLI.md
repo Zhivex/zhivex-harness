@@ -95,8 +95,9 @@ Text streams progressively, including partial lines during provider pauses. Acti
 approval requests and completion remain separate labelled events. Partial output is
 flushed before errors or returning to the prompt, and terminal controls from the
 provider are escaped. After a provider error, Up recalls the submitted task for
-editing/retry; history stays in memory only. Markdown emphasis and inline-code styling remain active across token pauses. Text is
-coalesced into short frames and never replayed to restyle it.
+editing/retry; history stays in memory only. Markdown emphasis and inline code wait for a matching closing marker within a bounded
+span. Unclosed markers are preserved literally when interrupted, at a newline, or
+at the size limit. Ordinary text is coalesced into short frames and never replayed.
 
 Reproduce this flow offline with `bun run build` followed by
 `python3 scripts/console-pty-smoke.py` (Python 3 and Node on macOS/Linux). The PTY

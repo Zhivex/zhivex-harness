@@ -55,6 +55,7 @@
     "LICENSE",
     "docs/CHANGE_ENVELOPES.md",
     "docs/CLI.md",
+    "docs/images/cli-conversation.png",
     "docs/CLIENT_PROTOCOL.md",
     "docs/CONTEXT_ENGINEERING.md",
     "docs/CREDENTIALS.md",
