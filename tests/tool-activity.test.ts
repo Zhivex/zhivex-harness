@@ -1,14 +1,15 @@
-import { expect, test } from "bun:test";
+import { expect, jest, spyOn, test } from "bun:test";
 import { ToolActivity } from "../src/cli/terminal/tool-activity.js";
 import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
 
-test("completed tools stay out of non-TTY conversation output", () => {
+test("completed tools produce one grouped summary without terminal controls", () => {
   let output = "";
   const activity = new ToolActivity(text => { output += text; }, false);
   for (let i = 0; i < 24; i++) { activity.start(); activity.finish("read_file"); }
   expect(output).toBe("");
   activity.flush(); activity.flush();
-  expect(output).toBe("");
+  expect(output).toContain("reads: 24");
+  expect(output).not.toContain("\x1b");
 });
 
 test("TTY activity stays on one narrow line and is erased at boundaries", () => {
@@ -16,9 +17,9 @@ test("TTY activity stays on one narrow line and is erased at boundaries", () => 
   const activity = new ToolActivity(text => { writes.push(text); }, true, () => 20);
   activity.start(); activity.start(); activity.finish("search_many"); activity.flush();
   expect(writes.slice(1, -1).every(text => text.startsWith("\r\x1b[2K") && text.length <= 24)).toBe(true);
-  expect(writes.at(-1)).toBe("\r\x1b[2K");
+  expect(writes.join("")).toContain("searches: 1");
   activity.finish("read_file"); activity.flush();
-  expect(writes.at(-1)).toBe("\r\x1b[2K");
+  expect(writes.join("")).toContain("reads: 1");
 });
 
 test("runtime limits are classified without exposing arbitrary provider errors", () => {
@@ -44,16 +45,23 @@ test("compact stream keeps conversation, approvals and failed checks visible", a
       await send({ type: "tool-call", toolCall: { id: `${i}`, name: "read_file", input: { secret: "PRIVATE" } } });
       await send({ type: "tool-result", toolResult: { toolCallId: `${i}`, toolName: "read_file", isError: false, output: "PRIVATE" } });
     }
+    await send({ type: "agent-step-start", stepIndex: 2 });
+    await send({ type: "agent-compaction", compaction: { messageCountBefore: 20, messageCountAfter: 8 } });
+    expect(output).not.toContain("✓ Activity");
+    expect(output).not.toContain("context ·");
+    await send({ type: "tool-call", toolCall: { id: "search", name: "search_many", input: {} } });
+    await send({ type: "tool-result", toolResult: { toolCallId: "search", toolName: "search_many", isError: false } });
     await send({ type: "text-delta", textDelta: "Here is the answer.\n" });
     await send({ type: "tool-call", toolCall: { id: "check", name: "run_check", input: {} } });
     await send({ type: "tool-result", toolResult: { toolCallId: "check", toolName: "run_check", isError: false, output: { exitCode: 1, timedOut: false } } });
     await send({ type: "tool-approval-request", approval: { id: "a", name: "apply_patch" } });
     flushToolActivity(tracker);
     expect(output).toContain("Reading sources.");
-    expect(output).not.toContain("completed");
+    expect(output).toContain("✓ Activity · reads: 24 · searches: 1\n");
+    expect(output.match(/✓ Activity/g)).toHaveLength(1);
     expect(output).toContain("Here is the answer.");
     expect(output).toContain("exit 1");
-    expect(output).toContain("apply_patch");
+    expect(output).not.toContain("approval ·");
     expect(output).not.toContain("tool · read_file");
     expect(output).not.toContain("PRIVATE");
   } finally { stdout.mockRestore(); stderr.mockRestore(); }
@@ -71,6 +79,7 @@ test("duplicate error events render once per run while JSONL retains both", asyn
     const error = {type:"error",error:new Error("Meta request failed with status 400.")} as never;
     const sink = streamSink({json:false,jsonl:false},tracker);
     await sink(error); await sink(error);
+    await sink({type:"agent-run-finish",status:"failed",state:{error:{message:"Meta request failed with status 400."}}} as never);
     expect(output.match(/HTTP 400/g)).toHaveLength(1);
     await sink({type:"agent-run-start",currentStep:0,maxSteps:12} as never);
     await sink(error);
@@ -79,4 +88,57 @@ test("duplicate error events render once per run while JSONL retains both", asyn
     await jsonSink(error); await jsonSink(error);
     expect(jsonl.trim().split("\n")).toHaveLength(2);
   } finally {stderr.mockRestore();stdout.mockRestore();}
+});
+
+
+test("repeated model steps leave one activity summary at the conversation boundary", () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, true);
+  for (let i = 0; i < 30; i++) { activity.start("read_file"); activity.finish("read_file"); activity.phase("Waiting for model response", i); }
+  activity.flush();
+  expect(output).not.toContain("\n\n");
+  expect(output.match(/✓ Activity/g)).toHaveLength(1);
+  expect(output).toContain("reads: 30");
+});
+
+
+test("waiting for the model stays visible and flush stops the heartbeat", async () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, true, () => 100);
+  activity.phase("Waiting for model response", 3);
+  expect(output).toContain("Waiting for model response");
+  expect(output).not.toContain("step 3");
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  expect(output).toContain("1s");
+  activity.flush();
+  const stopped = output;
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  expect(output).toBe(stopped);
+});
+
+test("an early heartbeat still displays elapsed seconds before a short response completes", () => {
+  jest.useFakeTimers();
+  let now = 0, output = "";
+  const clock = spyOn(Date, "now").mockImplementation(() => now);
+  const activity = new ToolActivity(text => { output += text; }, true);
+  try {
+    activity.phase("Waiting for model response");
+    now = 999;
+    jest.advanceTimersByTime(1000);
+    expect(output).not.toContain(" · 1s");
+    now = 1249;
+    jest.advanceTimersByTime(250);
+    expect(output).toContain(" · 1s");
+  } finally {
+    activity.flush();
+    clock.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+test("failed tools never appear as completed and unknown tool names remain private", () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, false);
+  activity.start("SECRET_TOOL"); activity.finish("SECRET_TOOL", false); activity.flush();
+  expect(output).toBe("");
 });

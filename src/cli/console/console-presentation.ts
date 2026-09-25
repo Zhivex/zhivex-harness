@@ -13,10 +13,11 @@ export const formatComposer = (input: {
   status: string;
   attachments?: number;
   automaticApprovals?: boolean;
+  approvalMode?: "ask" | "auto" | "restricted";
 }, columns = 80, color = terminalSupportsColor(Boolean(process.stdout.isTTY))) => {
   const width = Math.max(20, Math.min(columns || 80, 100));
   const details = [input.model, input.status,
-    input.automaticApprovals ? "auto approvals" : "review approvals",
+    input.approvalMode === "restricted" ? "restricted approvals" : input.automaticApprovals ? "auto approvals" : "review approvals",
     input.attachments ? `${input.attachments} attached` : undefined,
     input.title].filter(Boolean).join(" · ");
   const line = consoleLabel(details, width);

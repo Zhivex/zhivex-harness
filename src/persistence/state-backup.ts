@@ -1,3 +1,4 @@
+import { workspaceCheckpointSchema, workspaceRestoreOperationSchema } from "./workspace-checkpoints.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { chmod, link, lstat, open, realpath, unlink } from "node:fs/promises";
@@ -103,6 +104,15 @@ const sessionRunRecordSchema = z.object({
   metadataBytes: z.number().int().nonnegative()
 }).strict();
 
+const checkpointRecordSchema = z.discriminatedUnion("kind", [
+  z.object({ id: z.string().uuid(), workspaceKey: bindingKeySchema, scopeKey: bindingKeySchema,
+    kind: z.literal("checkpoint"), body: workspaceCheckpointSchema }).strict(),
+  z.object({ id: z.string().uuid(), workspaceKey: bindingKeySchema, scopeKey: bindingKeySchema,
+    kind: z.literal("restore"), body: workspaceRestoreOperationSchema }).strict()
+]);
+interface CheckpointRow { id: string; workspace_key: string; scope_key: string; kind: string; body: string }
+const checkpointTableSql = "CREATE TABLE IF NOT EXISTS zhivex_workspace_checkpoints (id TEXT PRIMARY KEY, workspace_key TEXT NOT NULL, scope_key TEXT NOT NULL, kind TEXT NOT NULL, body TEXT NOT NULL)";
+
 const stateBackupPayloadSchema = z.object({
   schemaVersion: z.literal(HARNESS_STATE_BACKUP_SCHEMA_VERSION),
   kind: z.literal("state-backup"),
@@ -123,7 +133,9 @@ const stateBackupPayloadSchema = z.object({
     parents: z.array(parentRecordSchema),
     memory: z.array(memoryRecordSchema),
     sessions: z.array(sessionRecordSchema),
-    sessionRuns: z.array(sessionRunRecordSchema)
+    sessionRuns: z.array(sessionRunRecordSchema),
+    workspaceCheckpoints: z.array(checkpointRecordSchema).max(100).optional(),
+    budgetLedgers: z.array(runRecordSchema).optional()
   }).strict()
 }).strict();
 
@@ -166,6 +178,38 @@ const stateMatchesScope = (config: HarnessConfig, state: unknown) => {
   return scope.tenantId === config.scope.tenantId &&
     (scope.userId ?? undefined) === (config.scope.userId ?? undefined) &&
     (scope.namespace ?? undefined) === (config.scope.namespace ?? undefined);
+};
+
+const budgetScopePrefix = (config: HarnessConfig) =>
+  `__zhivex_budget__:${encodeURIComponent(config.scope.tenantId)}:${encodeURIComponent(config.scope.userId ?? "*")}:`;
+const coordinatorIds = (runs: readonly { state: unknown }[]) => new Set(runs.flatMap(({ state }) => {
+  const id = (state as { budgetCoordinatorId?: unknown }).budgetCoordinatorId;
+  return typeof id === "string" ? [id] : [];
+}));
+const validateBudgetLedger = (config: HarnessConfig, run: z.infer<typeof runRecordSchema>, identities: ReadonlySet<string>) => {
+  const state = validatedRunState(run.state, `Budget ledger ${run.key}`);
+  const identity = state.metadata?.budgetIdentity;
+  if (state.scope?.namespace !== "__zhivex_budget__" || state.scope?.tenantId !== config.scope.tenantId ||
+    (state.scope?.userId ?? undefined) !== (config.scope.userId ?? undefined) || state.provider !== "zhivex" || state.modelId !== "budget-coordinator" ||
+    state.metadata?.budgetCoordinator !== true || typeof identity !== "string" || !identities.has(identity) ||
+    !/^budget_[a-f0-9]{64}$/.test(state.runId) || run.key !== `${budgetScopePrefix(config)}${state.runId}`) {
+    throw new HarnessStateConflictError("Budget ledger is not bound to an exported run and durable scope.");
+  }
+  assertTerminalState(state, `Budget ledger ${run.key}`);
+  const allocations = state.metadata?.allocations;
+  if (!allocations || typeof allocations !== "object" || Array.isArray(allocations)) throw new HarnessStateConflictError("Invalid budget ledger allocations.");
+  for (const [id, value] of Object.entries(allocations)) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(id) || !value || typeof value !== "object" || Array.isArray(value) || value.status !== "confirmed") {
+      throw new HarnessStateConflictError("Budget ledger retains unresolved reservations or unknown consumption.");
+    }
+    const tokens = value.tokens;
+    if (!tokens || typeof tokens !== "object" || Array.isArray(tokens) ||
+      ![tokens.inputTokens, tokens.outputTokens, tokens.totalTokens].every((amount) => typeof amount === "number" && Number.isSafeInteger(amount) && amount >= 0) ||
+      (tokens.totalTokens as number) < (tokens.inputTokens as number) + (tokens.outputTokens as number)) {
+      throw new HarnessStateConflictError("Invalid budget ledger token receipt.");
+    }
+  }
+  return identity;
 };
 
 const bindingForConfig = async (config: HarnessConfig) => ({
@@ -246,10 +290,20 @@ const assertTerminalState = (state: unknown, label: string) => {
   if (!state || typeof state !== "object" || Array.isArray(state)) {
     throw new HarnessStateConflictError(`${label} is not a terminal run.`);
   }
-  const candidate = state as { runId?: unknown; status?: unknown; pendingApprovals?: unknown };
+  const candidate = state as { runId?: unknown; status?: unknown; pendingApprovals?: unknown; compactionAttempts?: unknown; childRuns?: unknown; unknownCompactionUsage?: unknown };
   if (typeof candidate.runId !== "string" || !terminalRunStatuses.has(String(candidate.status))) {
     throw new HarnessStateConflictError(`${label} is not a terminal run.`);
   }
+  const unresolvedAuxiliary = (value: unknown): boolean => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const entry = value as Record<string, unknown>;
+    return entry.unknownCompactionUsage === true ||
+      (Array.isArray(entry.compactionAttempts) && entry.compactionAttempts.some((attempt) =>
+        !attempt || typeof attempt !== "object" || (attempt as { status?: unknown }).status !== "confirmed")) ||
+      (Array.isArray(entry.childRuns) && entry.childRuns.some(unresolvedAuxiliary)) ||
+      (entry.resumeState !== undefined && unresolvedAuxiliary(entry.resumeState));
+  };
+  if (unresolvedAuxiliary(candidate)) throw new HarnessStateConflictError(`${label} retains unresolved auxiliary model consumption.`);
   if (Array.isArray(candidate.pendingApprovals) && candidate.pendingApprovals.length > 0) {
     throw new HarnessStateConflictError(`${label} retains approval authority and cannot be backed up.`);
   }
@@ -275,9 +329,10 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
     database.exec(recordedWorkspace ? "BEGIN" : "BEGIN IMMEDIATE");
     transactionStarted = true;
     if (recordedWorkspace && database.query<{version: number}>("SELECT version FROM zhivex_cli_session_schema WHERE singleton=1").get()?.version !== HARNESS_SESSION_SCHEMA_VERSION) throw new HarnessStateConflictError("Archived session schema is incompatible.");
-    const runRows = database.query<RunRow, []>(
+    const allRunRows = database.query<RunRow, []>(
       "SELECT run_id, state_json, updated_at_ms FROM zhivex_agent_runs ORDER BY run_id"
-    ).all().flatMap((row) => {
+    ).all();
+    const runRows = allRunRows.flatMap((row) => {
       const state = validatedRunState(parseJsonRecord(row.state_json, `Run ${row.run_id}`), `Run ${row.run_id}`);
       return stateMatchesScope(config, state) ? [{ row, state }] : [];
     });
@@ -285,7 +340,26 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
       assertTerminalState(state, `Run ${row.run_id}`);
       return { key: row.run_id, state, updatedAt: row.updated_at_ms };
     });
-    const runKeys = new Set(runs.map((run) => run.key));
+    const identities = coordinatorIds(runs);
+    const budgetLedgers = allRunRows.flatMap((row) => {
+      const state = parseJsonRecord(row.state_json, `Run ${row.run_id}`);
+      const metadata = state.metadata as Record<string, unknown> | undefined;
+      if (typeof metadata?.budgetIdentity !== "string" || !identities.has(metadata.budgetIdentity)) {
+        const scope = state.scope as Record<string, unknown> | undefined;
+        if (scope?.namespace === "__zhivex_budget__" && scope.tenantId === config.scope.tenantId &&
+          (scope.userId ?? undefined) === (config.scope.userId ?? undefined)) {
+          throw new HarnessStateConflictError("An unlinked shared budget ledger cannot be safely assigned to this backup scope; retain the original database.");
+        }
+        return [];
+      }
+      const record = { key: row.run_id, state, updatedAt: row.updated_at_ms };
+      validateBudgetLedger(config, record, identities);
+      return [record];
+    });
+    if (new Set(budgetLedgers.map((run) => (run.state.metadata as Record<string, unknown>).budgetIdentity)).size !== identities.size || budgetLedgers.length !== identities.size) {
+      throw new HarnessStateConflictError("An exported run has a missing or duplicate shared budget ledger.");
+    }
+    const runKeys = new Set([...runs, ...budgetLedgers].map((run) => run.key));
     const activeLeases = database.query<LeaseRow, []>(
       "SELECT run_key, expires_at_ms FROM zhivex_agent_runs_leases"
     ).all().filter((row) => runKeys.has(row.run_key) && row.expires_at_ms > Date.now()).length;
@@ -357,14 +431,23 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
       role: row.role, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at,
       completedAt: row.completed_at, metadataBytes: row.metadata_bytes
     }));
+    const hasCheckpoints = database.query<{ name: string }>("SELECT name FROM sqlite_master WHERE type='table' AND name='zhivex_workspace_checkpoints'").get();
+    const workspaceCheckpoints = hasCheckpoints ? database.query<CheckpointRow>("SELECT * FROM zhivex_workspace_checkpoints WHERE workspace_key=? AND scope_key=? ORDER BY id")
+      .all(binding.workspaceKey, binding.scopeKey).map((row) => ({ id: row.id, workspaceKey: row.workspace_key,
+        scopeKey: row.scope_key, kind: row.kind, body: JSON.parse(row.body) as unknown })) : [];
     const payload = stateBackupPayloadSchema.parse({
       schemaVersion: HARNESS_STATE_BACKUP_SCHEMA_VERSION,
       kind: "state-backup",
       createdAt: new Date().toISOString(),
       binding,
       schemas: { operations: HARNESS_OPERATIONS_SCHEMA_VERSION, sessions: HARNESS_SESSION_SCHEMA_VERSION },
-      records: { runs, toolJournal: journal, idempotency, parents, memory, sessions, sessionRuns }
+      records: { runs, toolJournal: journal, idempotency, parents, memory, sessions, sessionRuns, ...(workspaceCheckpoints.length ? { workspaceCheckpoints } : {}), ...(budgetLedgers.length ? { budgetLedgers } : {}) }
     });
+    for (const record of payload.records.workspaceCheckpoints ?? []) {
+      if (record.kind === "restore" && record.body.stage !== "completed") {
+        throw new HarnessStateConflictError("State backup refuses an unfinished workspace restore operation.");
+      }
+    }
     database.exec("COMMIT");
     transactionStarted = false;
     return payload;
@@ -451,7 +534,7 @@ export const exportHarnessStateBackup = async (config: HarnessConfig, target: st
     kind: "state-export" as const,
     path: path.resolve(target),
     checksum: bundle.checksum,
-    counts: Object.fromEntries(Object.entries(bundle.records).map(([name, rows]) => [name, rows.length]))
+    counts: Object.fromEntries(Object.entries(bundle.records).map(([name, rows]) => [name, rows?.length ?? 0]))
   };
 };
 
@@ -508,6 +591,15 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
       throw new HarnessStateConflictError(`Run ${run.key} does not match its bound scope and runId.`);
     }
   }
+  const identities = coordinatorIds(bundle.records.runs);
+  const ledgerIdentities = new Set<string>();
+  const ledgerKeys = new Set<string>();
+  for (const ledger of bundle.records.budgetLedgers ?? []) {
+    const identity = validateBudgetLedger(config, ledger, identities);
+    if (ledgerIdentities.has(identity) || ledgerKeys.has(ledger.key) || runKeys.has(ledger.key)) throw new HarnessStateConflictError("Duplicate shared budget ledger.");
+    ledgerIdentities.add(identity); ledgerKeys.add(ledger.key);
+  }
+  if (ledgerIdentities.size !== identities.size) throw new HarnessStateConflictError("An imported run is missing its shared budget ledger.");
   const journalKeys = new Set<string>();
   for (const entry of bundle.records.toolJournal) {
     const journalKey = `${entry.runKey}\u0000${entry.toolCallId}`;
@@ -573,6 +665,29 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
     turnIds.add(run.turnId);
     sessionOrdinals.add(ordinalKey);
     sessionRunIds.add(sessionRunKey);
+  }
+  const checkpointIds = new Set<string>();
+  for (const record of bundle.records.workspaceCheckpoints ?? []) {
+    if (checkpointIds.has(record.id) || record.id !== record.body.id || record.workspaceKey !== expected.workspaceKey || record.scopeKey !== expected.scopeKey) {
+      throw new HarnessStateConflictError("Invalid checkpoint identity or workspace/scope binding.");
+    }
+    checkpointIds.add(record.id);
+    const checkpoint = record.kind === "checkpoint" ? record.body : record.body.checkpoint;
+    const turn = bundle.records.sessionRuns.find((run) => run.turnId === checkpoint.turnId && run.sessionId === checkpoint.sessionId);
+    if (!turn || !terminalSessionStatuses.has(turn.status)) throw new HarnessStateConflictError("Checkpoint targets a missing terminal turn.");
+    if (new Set(checkpoint.files.map((file) => file.path)).size !== checkpoint.files.length || checkpoint.files.some((file) =>
+      `sha256:${createHash("sha256").update(file.content).digest("hex")}` !== file.digest || Buffer.byteLength(file.content) > 65536)) {
+      throw new HarnessStateConflictError("Checkpoint content identity is invalid.");
+    }
+    if (record.kind === "restore") {
+      const operation = record.body;
+      // Portable import cannot recreate in-flight filesystem state or grant old approval authority.
+      if (operation.stage !== "completed") throw new HarnessStateConflictError("State backup refuses an unfinished workspace restore operation.");
+      const fork = bundle.records.sessions.find((session) => session.sessionId === operation.forkSessionId);
+      if (!fork || fork.parentSessionId !== checkpoint.sessionId || fork.forkedFromTurnId !== checkpoint.turnId) {
+        throw new HarnessStateConflictError("Restore operation targets a missing conversation fork.");
+      }
+    }
   }
   for (const run of bundle.records.sessionRuns) {
     if (run.sourceTurnId && !turnIds.has(run.sourceTurnId)) {
@@ -663,18 +778,20 @@ export const importHarnessStateBackup = async (
 
   try {
     const expectedKeys = {
-      runs: new Set(bundle.records.runs.map((row) => row.key)),
+      runs: new Set([...bundle.records.runs, ...(bundle.records.budgetLedgers ?? [])].map((row) => row.key)),
       toolJournal: new Set(bundle.records.toolJournal.map((row) => `${row.runKey}\u0000${row.toolCallId}`)),
       idempotency: new Set(bundle.records.idempotency.map((row) => row.key)),
       parents: new Set(bundle.records.parents.map((row) => row.runKey)),
       memory: new Set(bundle.records.memory.map((row) => row.key)),
       sessions: new Set(bundle.records.sessions.map((row) => row.sessionId)),
-      sessionRuns: new Set(bundle.records.sessionRuns.map((row) => row.turnId))
+      sessionRuns: new Set(bundle.records.sessionRuns.map((row) => row.turnId)),
+      workspaceCheckpoints: new Set((bundle.records.workspaceCheckpoints ?? []).map((row) => row.id))
     };
+    const expectedBudgetKeys = new Set((bundle.records.budgetLedgers ?? []).map((row) => row.key));
     const destinationRunRows = availableTables.has("zhivex_agent_runs")
       ? database.query<RunRow, []>(
           "SELECT run_id, state_json, updated_at_ms FROM zhivex_agent_runs ORDER BY run_id"
-        ).all().filter((row) => stateMatchesScope(config, parseJsonRecord(row.state_json, `Run ${row.run_id}`)))
+        ).all().filter((row) => expectedBudgetKeys.has(row.run_id) || stateMatchesScope(config, parseJsonRecord(row.state_json, `Run ${row.run_id}`)))
       : [];
     const destinationRunKeys = new Set(destinationRunRows.map((row) => row.run_id));
     const destinationSessionRows = availableTables.has("zhivex_cli_sessions")
@@ -683,6 +800,9 @@ export const importHarnessStateBackup = async (
       : [];
     const destinationSessionIds = new Set(destinationSessionRows.map((row) => row.session_id));
     const destinationKeys = {
+      workspaceCheckpoints: new Set(availableTables.has("zhivex_workspace_checkpoints")
+        ? database.query<CheckpointRow>("SELECT * FROM zhivex_workspace_checkpoints WHERE workspace_key=? AND scope_key=?")
+          .all(bundle.binding.workspaceKey, bundle.binding.scopeKey).map((row) => row.id) : []),
       runs: destinationRunKeys,
       toolJournal: new Set(availableTables.has("zhivex_agent_runs_tool_journal")
         ? database.query<JournalRow, []>(
@@ -737,7 +857,7 @@ export const importHarnessStateBackup = async (
         "State import requires an empty destination or an exactly identical prior import."
       );
     }
-    for (const run of bundle.records.runs) insertOrCompare(
+    for (const run of [...bundle.records.runs, ...(bundle.records.budgetLedgers ?? [])]) insertOrCompare(
       "zhivex_agent_runs", "run_id = ?", [run.key], "state_json, updated_at_ms",
       [JSON.stringify(run.state), run.updatedAt],
       "INSERT INTO zhivex_agent_runs (run_id, state_json, updated_at_ms) VALUES (?, ?, ?)",
@@ -787,6 +907,16 @@ export const importHarnessStateBackup = async (
       [run.turnId, run.sourceTurnId, run.sessionId, run.ordinal, run.runId, run.provider, run.model, run.role,
         run.status, run.createdAt, run.updatedAt, run.completedAt, run.metadataBytes]
     );
+    if ((bundle.records.workspaceCheckpoints?.length ?? 0) > 0 && !options.dryRun && !availableTables.has("zhivex_workspace_checkpoints")) {
+      database.exec(checkpointTableSql);
+      availableTables.add("zhivex_workspace_checkpoints");
+    }
+    for (const record of bundle.records.workspaceCheckpoints ?? []) insertOrCompare(
+      "zhivex_workspace_checkpoints", "id=?", [record.id], "workspace_key, scope_key, kind, body",
+      [record.workspaceKey, record.scopeKey, record.kind, JSON.stringify(record.body)],
+      "INSERT INTO zhivex_workspace_checkpoints(id,workspace_key,scope_key,kind,body) VALUES(?,?,?,?,?)",
+      [record.id, record.workspaceKey, record.scopeKey, record.kind, JSON.stringify(record.body)]
+    );
     if (options.dryRun) database.exec("ROLLBACK");
     else database.exec("COMMIT");
     return {
@@ -818,6 +948,6 @@ export const inspectHarnessState = async (config: HarnessConfig) => {
     kind: "state-status" as const,
     compatible: true,
     schemas: payload.schemas,
-    counts: Object.fromEntries(Object.entries(payload.records).map(([name, rows]) => [name, rows.length]))
+    counts: Object.fromEntries(Object.entries(payload.records).map(([name, rows]) => [name, rows?.length ?? 0]))
   };
 };

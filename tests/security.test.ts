@@ -38,6 +38,19 @@ afterEach(async () => {
 });
 
 describe("security regressions", () => {
+  test("safe reads neither create missing files nor change existing permissions", async () => {
+    const root = await temporaryDirectory("zhivex-harness-read-only-");
+    const target = path.join(root, "artifact.bin");
+    const options = { label: "Artifact", maxBytes: 1024 };
+    await expect(readRegularFileNoFollow(target, options)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readdir(root)).toEqual([]);
+    await writeFile(target, "trusted bytes\n");
+    await chmod(target, 0o640);
+    const result = await readRegularFileNoFollow(target, options);
+    expect(result.contents.toString("utf8")).toBe("trusted bytes\n");
+    expect(result.stat.mode & 0o777).toBe(0o640);
+  });
+
   test("binds stable reads to a regular non-symlink file descriptor", async () => {
     const root = await temporaryDirectory("zhivex-harness-stable-read-");
     const regularPath = path.join(root, "artifact.bin");

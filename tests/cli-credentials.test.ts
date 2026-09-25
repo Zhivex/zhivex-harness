@@ -34,8 +34,8 @@ test("temporary keys stay out of persistent storage and provider accounts remain
   await f.store.configure("openai", f.ui(["temporary"]));
   expect((await f.store.providerEnvironment("openai", f.ui([]))).OPENAI_API_KEY).toBe("opaque-test-key");
   expect(f.keys.size).toBe(0);
-  await f.store.configure("qwen", f.ui(["save"], "qwen-key"));
-  expect(f.keys.get("qwen")).toBe("qwen-key");
+  await f.store.configure("qwen", f.ui(["save", "api", "singapore", false], "qwen-key"));
+  expect(JSON.parse(f.keys.get("qwen")!).key).toBe("qwen-key");
   expect(f.keys.has("openai")).toBe(false);
   expect(f.output()).not.toContain("opaque-test-key");
   expect(f.output()).not.toContain("qwen-key");
@@ -134,7 +134,7 @@ test("failed keychain writes recover explicitly to a temporary key without leaki
     setPassword: async () => { throw new Error("private-backend-secret"); },
     deleteCredential: async () => false,
   }), {}, text => { output += text; });
-  expect(await store.configure("qwen", fixture().ui(["save", "temporary"], "private-key"))).toBe(true);
+  expect(await store.configure("qwen", fixture().ui(["save", "api", "singapore", false, "temporary", "api", "singapore", false], "private-key"))).toBe(true);
   expect(await store.inspect("qwen")).toEqual({ source: "temporary", configured: true });
   expect((await store.providerEnvironment("qwen", fixture().ui([]))).DASHSCOPE_API_KEY).toBe("private-key");
   expect(store.source("qwen")).toBe("temporary");
@@ -165,4 +165,37 @@ test("keychain setup can retry after unlock without changing storage mode", asyn
   expect(await store.configure("openai", fixture().ui(["save", "retry", "save"], "retry-key"))).toBe(true);
   expect(saved).toBe("retry-key");
   expect(await store.inspect("openai")).toEqual({ source: "keychain", configured: true });
+});
+
+
+test("Qwen saved destination survives restart and overrides require explicit selection", async () => {
+  const f = fixture({ QWEN_BASE_URL: "https://untrusted.example", QWEN_REGION: "beijing" });
+  await f.store.configure("qwen", f.ui(["save", "api", "beijing", false], "bound-key"));
+  f.store.clear();
+  await expect(f.store.providerEnvironment("qwen", f.ui([false]))).rejects.toThrow("cancelled");
+  const env = await f.store.providerEnvironment("qwen", f.ui([true]));
+  expect(env.QWEN_BASE_URL).toBe("https://dashscope.aliyuncs.com/compatible-mode/v1");
+  expect(env.QWEN_REGION).toBeUndefined();
+  expect(env.DASHSCOPE_API_KEY).toBe("bound-key");
+  expect(f.output()).not.toContain("bound-key");
+});
+
+test("Qwen explicitly configured connection replaces environment credentials only in this session", async () => {
+  const f = fixture({ QWEN_API_KEY: "shell-key", QWEN_WORKSPACE_ID: "shell-workspace" });
+  await f.store.configure("qwen", f.ui(["temporary", "token-plan"], "plan-key"));
+  const env = await f.store.providerEnvironment("qwen", f.ui([]));
+  expect(env.QWEN_BASE_URL).toBe("https://token-plan.maas.qwencloudapi.com/compatible-mode/v1");
+  expect(env.QWEN_API_KEY).toBeUndefined();
+  expect(env.QWEN_WORKSPACE_ID).toBeUndefined();
+  expect(env.DASHSCOPE_API_KEY).toBe("plan-key");
+  f.store.clear();
+  expect((await f.store.providerEnvironment("qwen", f.ui([]))).QWEN_API_KEY).toBe("shell-key");
+});
+
+test("Qwen cancelled setup preserves previous destination and key", async () => {
+  const f = fixture();
+  await f.store.configure("qwen", f.ui(["temporary", "token-plan"], "plan-key"));
+  expect(await f.store.configure("qwen", f.ui(["save", "api", "singapore", "cancel"]))).toBe(false);
+  expect((await f.store.providerEnvironment("qwen", f.ui([]))).DASHSCOPE_API_KEY).toBe("plan-key");
+  expect(f.keys.size).toBe(0);
 });

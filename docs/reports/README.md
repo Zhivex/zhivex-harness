@@ -75,3 +75,16 @@ Transient September 22–23 provider and SDK investigation notes and their local
 trial JSON were removed before RC.10. They remain available in the
 [pre-cleanup report tree](https://github.com/Zhivex/zhivex-harness/tree/dbf0d47/docs/reports).
 Their removal does not change failed outcomes or certify the next candidate.
+
+## Archived candidate preparation and design material
+
+The nine 1.1.0 RC.1–RC.9 preparation notes are preserved in the
+[release-note archive](https://github.com/Zhivex/zhivex-harness/tree/d3d059f3259b46e58724f9de3503b7dcb5c28a5e/docs/releases).
+Their pending states and recorded failures describe those historical candidates.
+For maintained release procedures and evidence, use [Release](../RELEASE.md) and
+[Live certification](../LIVE_CERTIFICATION.md).
+
+The exploratory rebranding analysis, concepts and screenshots are preserved in
+the [design archive](https://github.com/Zhivex/zhivex-harness/tree/d3d059f3259b46e58724f9de3503b7dcb5c28a5e/output/ux-rebranding).
+Both archives remain available in that local Git commit independently of remote
+availability. Removing their working-tree copies does not change validation outcomes.

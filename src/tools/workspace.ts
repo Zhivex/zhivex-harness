@@ -1,3 +1,4 @@
+import { dependencyReadSchema, readDependency } from "./dependency-read.js";
 import { replacementEditSchema } from "../workspace/replacement-edits.js";
 import { tool } from "@zhivex-ai/agents";
 import { serializeJsonValue } from "@zhivex-ai/core";
@@ -23,6 +24,17 @@ import {
 } from "./shared.js";
 
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
+  read_dependency: tool({
+    name: "read_dependency",
+    description: "Inspect one installed dependency's package.json (version and exports) or .d.ts/.d.mts/.d.cts declarations. Requires separate approval. Read-only, bounded, no links or source execution. Ordinary read_file cannot access node_modules.",
+    schema: dependencyReadSchema,
+    requiresApproval: true,
+    approvalMode: "interrupt",
+    approvalVersion: APPROVAL_VERSION,
+    metadata: readOnlyMetadata,
+    execute: async (input, context) => serializeJsonValue(await readDependency(
+      (harnessExecutionSession(context)?.workspace ?? workspace).root, input))
+  }),
   list_files: tool({
     name: "list_files",
     description: "List regular files using a stable cursor. Omit cursor on the first call; on later pages pass only the exact nextCursor returned by the preceding matching request. Defaults to fast path-only topology; set includeDigests=true when size and content digests are required. Build artifacts, dependencies, Git internals, and harness state are ignored.",

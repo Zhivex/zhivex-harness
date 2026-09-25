@@ -5,12 +5,12 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.9.0",
-        "@zhivex-ai/core": "1.23.0",
-        "@zhivex-ai/gemini": "0.12.2",
-        "@zhivex-ai/meta": "0.2.7",
-        "@zhivex-ai/openai": "0.13.5",
-        "@zhivex-ai/qwen": "0.15.2",
+        "@zhivex-ai/agents": "1.10.0",
+        "@zhivex-ai/core": "1.24.0",
+        "@zhivex-ai/gemini": "0.12.3",
+        "@zhivex-ai/meta": "0.2.8",
+        "@zhivex-ai/openai": "0.13.6",
+        "@zhivex-ai/qwen": "0.15.3",
         "zod": "4.6.5",
       },
       "devDependencies": {
@@ -26,7 +26,7 @@
     },
   },
   "overrides": {
-    "@zhivex-ai/core": "1.23.0",
+    "@zhivex-ai/core": "1.24.0",
   },
   "packages": {
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
@@ -103,17 +103,17 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.9.0", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0" } }, "sha512-VPXWD2qzs4mbYvShuaQpW8Cl1hOGsfa8scz0cpRR4NCOR5xc0tvYe04q3WJQNa3WlR6EP/kJM5mL4IHHfh7ZCQ=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.10.0", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0" } }, "sha512-0OrRzrt5hI4Af4EHN4+E1UnmU4/P0o+XZMzbPHNwrvHKf6ER0Rn+oXGMg+bIXCe0O/ZHMzMuoDnsI7eb2ubzjw=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.23.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-DXp0u5UaCEbj+qdSDmkPa+ExpU+gy7915KUpNi2dgsEWEwjhVv9V1RL1F/kYEs+H361DL8am8/jqo612UqRKpg=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.24.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-haWc9nd9pteZO4o8s60WhHVymr1TBwjIwQ3t7krljL2FCqMaxgWqgLQvFBh0iZ/7N+xaChYYkvqXU6V42Ctzpg=="],
 
-    "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.12.2", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-bgqVNjeKSVIOvqG2p7AM/kwNIKv0i2nSkxK4lLPVKtjd/+Sl4ZzTMPkxMtWxq0jpC/aVrilUvZtYLAFROVDSmg=="],
+    "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.12.3", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-l1CRgsEqfMNAALtTM7u7Dmac5yrunJ1s96qTT2H9bOcc/FvpoioMvm1j3DejUWsWQ/FT1YE4UDdaHqE0i9fQmQ=="],
 
-    "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.7", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-5KkeFVUy8q3yrk2yHftnjlt+rp3CRO87tu2OVpUjE7M9ecfVVC9vnGy/hiPG4WsO9bjwBVwfHtM8cplqn0edPg=="],
+    "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.8", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-sMi0fPmGk4az5IBYVkfBRsep5QecuXXz+Ht1MrhOJKkGw4T/YtCaq2lZLpG6vkANFdQnEsrVuYJZwa0//RVkdA=="],
 
-    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.13.5", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-LvOh7vJki9v77tB+QuJv/GCmhKQSfFmnsetuRkr9llVyQ6J3sMTx3uP8p3u7TAmONsCtGhPhRo02xLzZWecgUQ=="],
+    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.13.6", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-cyj0u28Z5aiyEEsM+by7maweUjWN7vrynZ24Ijrr1BG5UecwCUbhPn6L2rI084tiiJuoDNcqVi0cORk4WNqpWA=="],
 
-    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.15.2", "", { "dependencies": { "@zhivex-ai/core": "^1.23.0", "zod": "^4.6.3" } }, "sha512-5Ix3Wi6mEo2+NZY+YQe66KpN/0MkcwOSMfIZlI7sEC/dEnlBadyMYRHLLYJEpoQytWi1oJjTRcBQAc14ErsFYw=="],
+    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.15.3", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-hSpRAOL0GtSJ8n0fQeJfHzwtvWmysk5ctaVCfMqxgLd8PNiAD7LT+fg3o/2Jj4gdLMZ1cZRj2pVNAxasQbbweQ=="],
 
     "bun-types": ["bun-types@1.4.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w=="],
 

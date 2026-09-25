@@ -188,7 +188,7 @@ const inspectArtifact = async () => {
     );
     assert.deepEqual(
       packedManifest.bin,
-      { "zhivex-harness": "./dist/cli.js", zhx: "./dist/zhx.js" },
+      { "zhivex-harness": "./dist/cli.js", zhx: "./dist/zhx.js", "zhx-acp": "./dist/acp-cli.js" },
       "packed CLI aliases are incorrect"
     );
     assert.deepEqual(

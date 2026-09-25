@@ -33,6 +33,8 @@ type ChangesCommand = (typeof CLI_CHANGES_COMMANDS)[number];
 type StateCommand = (typeof CLI_STATE_COMMANDS)[number];
 
 export interface CliOptions {
+  compactionModel?: string;
+  compactionProvider?: string;
   serviceFile?: string;
   command: Command;
   helpTopic?: string;
@@ -51,6 +53,7 @@ export interface CliOptions {
   maxToolCalls?: number;
   maxToolErrors?: number;
   unlimitedTokens?: boolean;
+  compactionMaxEstimatedInputTokens?: number;
   maxInputTokens?: number;
   maxOutputTokens?: number;
   maxTotalTokens?: number;
@@ -115,6 +118,7 @@ export interface CliOptions {
   final: boolean;
   apply: boolean;
   yes: boolean;
+  approvalMode?: "ask" | "auto" | "restricted";
   approve?: boolean;
   json: boolean;
   jsonl: boolean;
@@ -160,7 +164,7 @@ const optionValue = (argv: string[], index: number, name: string) => {
 };
 
 export const parseCliArgs = (argv: string[]): CliOptions => {
-  const booleanOptions = new Set(["--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--update"]);
+  const booleanOptions = new Set(["--token-budget", "--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--update"]);
   // Support shell-style --name=value without interpreting text after --.
   const separator = argv.indexOf("--");
   argv = argv.flatMap((arg, index) => {
@@ -297,6 +301,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         options.contextConfigPath = optionValue(argv, index, argument);
         index += 1;
         break;
+      case "--token-budget":
+        options.unlimitedTokens = false;
+        break;
       case "--no-token-budget":
         options.unlimitedTokens = true;
         break;
@@ -388,6 +395,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--timeout-ms":
       case "--max-tool-calls":
       case "--max-tool-errors":
+      case "--context-tokens":
       case "--max-input-tokens":
       case "--max-output-tokens":
       case "--max-total-tokens":
@@ -406,6 +414,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         if (argument === "--timeout-ms") options.timeoutMs = value;
         if (argument === "--max-tool-calls") options.maxToolCalls = value;
         if (argument === "--max-tool-errors") options.maxToolErrors = value;
+        if (argument === "--context-tokens") options.compactionMaxEstimatedInputTokens = value;
         if (argument === "--max-input-tokens") options.maxInputTokens = value;
         if (argument === "--max-output-tokens") options.maxOutputTokens = value;
         if (argument === "--max-total-tokens") options.maxTotalTokens = value;
@@ -449,6 +458,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         break;
       case "--pricing-file":
         options.pricingFile = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--compaction-model":
+        options.compactionModel = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--compaction-provider":
+        options.compactionProvider = parseProvider(optionValue(argv, index, argument));
         index += 1;
         break;
       case "--usage-limit-usd": {
@@ -515,6 +532,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         }
         options.reviewers ??= [];
         options.reviewers.push(value);
+        index += 1;
+        break;
+      }
+      case "--approval-mode": {
+        const mode = optionValue(argv, index, argument);
+        if (mode !== "ask" && mode !== "auto" && mode !== "restricted") throw new CliUsageError("--approval-mode must be ask, auto or restricted.");
+        options.approvalMode = mode;
+        options.yes = mode === "auto";
         index += 1;
         break;
       }

@@ -216,3 +216,27 @@ describe("durable operations", () => {
     await expect(openHarnessPersistence(config)).rejects.toThrow("workspace or filesystem root");
   });
 });
+
+test("file and sqlite persistence isolate coordinator ledgers while supporting durable admission", async () => {
+  const { createAgentBudgetCoordinator } = await import("@zhivex-ai/core");
+  for (const storeBackend of ["file", "sqlite"] as const) {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-workspace-"));
+    const stateDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-state-"));
+    temporaryDirectories.push(workspace, stateDirectory);
+    const config = resolveHarnessConfig({ workspace, stateDirectory, storeBackend, tenantId: "budget-tenant", namespace: "work" });
+    let persistence = await openHarnessPersistence(config);
+    const options = { scope: config.scope, budgetId: "scoped-ledger", limits: { inputTokens: 10, outputTokens: 10, totalTokens: 20 } };
+    try {
+      const coordinator = createAgentBudgetCoordinator({ ...options, store: persistence.store });
+      await coordinator.reserve("call", { inputTokens: 10, outputTokens: 10, totalTokens: 20 });
+      await coordinator.settle("call", { inputTokens: 8, outputTokens: 2, totalTokens: 10 });
+      expect((await persistence.store.list?.({}, config.scope))?.items).toEqual([]);
+      await expect(persistence.store.load(`budget_${"a".repeat(64)}`, { ...config.scope, namespace: "__zhivex_budget__", tenantId: "other" })).rejects.toThrow("scope");
+      await expect(persistence.store.load("ordinary-run", { ...config.scope, namespace: "__zhivex_budget__" })).rejects.toThrow("identity");
+      persistence.close();
+      persistence = await openHarnessPersistence(config);
+      const restored = createAgentBudgetCoordinator({ ...options, store: persistence.store });
+      await expect(restored.reserve("next", { inputTokens: 3, outputTokens: 0, totalTokens: 3 })).rejects.toThrow("exceeds inputTokens");
+    } finally { persistence.close(); }
+  }
+});

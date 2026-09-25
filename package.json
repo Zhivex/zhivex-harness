@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.1.4",
+  "version": "1.2.0-rc.1",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -38,7 +38,8 @@
   ],
   "bin": {
     "zhivex-harness": "./dist/cli.js",
-    "zhx": "./dist/zhx.js"
+    "zhx": "./dist/zhx.js",
+    "zhx-acp": "./dist/acp-cli.js"
   },
   "exports": {
     ".": {
@@ -84,14 +85,16 @@
     "fixtures",
     "evaluations/*.json",
     "evaluations/*.jsonl",
-    "benchmarks/README.md"
+    "benchmarks/README.md",
+    "docs/ACP.md",
+    "docs/WORKSPACE_CHECKPOINTS.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",
     "models:import": "bun run scripts/generate-console-models.ts",
     "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
-    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts ./src/service-cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
+    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/cli.ts ./src/service-cli.ts ./src/acp-cli.ts --outdir ./dist --target node --packages external && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "architecture:check": "bun run scripts/check-architecture.ts",
     "docs:check": "bun run scripts/check-docs.ts",
@@ -143,16 +146,16 @@
     "release:prepare": "bun run scripts/prepare-release.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.9.0",
-    "@zhivex-ai/core": "1.23.0",
-    "@zhivex-ai/gemini": "0.12.2",
-    "@zhivex-ai/meta": "0.2.7",
-    "@zhivex-ai/openai": "0.13.5",
-    "@zhivex-ai/qwen": "0.15.2",
+    "@zhivex-ai/agents": "1.10.0",
+    "@zhivex-ai/core": "1.24.0",
+    "@zhivex-ai/gemini": "0.12.3",
+    "@zhivex-ai/meta": "0.2.8",
+    "@zhivex-ai/openai": "0.13.6",
+    "@zhivex-ai/qwen": "0.15.3",
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.23.0"
+    "@zhivex-ai/core": "1.24.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/server": "2.0.0",

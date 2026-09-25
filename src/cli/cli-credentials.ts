@@ -1,3 +1,4 @@
+import { decodeQwenCredential, qwenEndpoint, selectQwenConnection } from "./qwen-connection.js";
 import { providerDescriptor, type HarnessProvider } from "../runtime/config.js";
 import { PROVIDERS } from "../providers/providers.js";
 
@@ -9,6 +10,7 @@ export interface SecretEntry {
 export interface CredentialInput {
   select<T>(title: string, items: readonly { value: T; label: string; detail?: string }[]): Promise<T | undefined>;
   secret(prompt: string): Promise<string>;
+  question?(prompt: string): Promise<string>;
 }
 export type EntryFactory = (provider: string) => Promise<SecretEntry>;
 export type CredentialStatus = { source: "environment" | "temporary" | "keychain" | "missing" | "unavailable" | "blocked"; configured: boolean };
@@ -35,6 +37,8 @@ export const nativeCredentialEntry: EntryFactory = async provider => {
 export class CliCredentials {
   private readonly temporary = new Map<string, string>();
   revision = 0;
+  private qwenManaged = false;
+  private qwenOverrideAccepted = false;
   constructor(private readonly entry: EntryFactory = nativeCredentialEntry,
     private readonly environment: NodeJS.ProcessEnv = process.env,
     private readonly write: (text: string) => void = text => { process.stderr.write(text); }) {}
@@ -49,9 +53,13 @@ export class CliCredentials {
   private async saved(provider: HarnessProvider): Promise<string | undefined> {
     try {
       const value = await (await this.entry(provider)).getPassword();
-      return value == null ? undefined : this.validate(value);
+      if (value == null) return undefined;
+      this.validate(provider === "qwen" ? decodeQwenCredential(value).key : value);
+      return value;
     } catch { throw new Error("Secure storage is unavailable or locked. Unlock it, use a temporary key, or configure the environment."); }
   }
+  private readonly destinations = new Map<string, string>();
+  destination(provider: HarnessProvider) { return this.destinations.get(provider) ?? "environment-defined or provider default"; }
   private readonly sources = new Map<string, CredentialStatus["source"]>();
   source(provider: HarnessProvider) { return this.sources.get(provider) ?? "missing"; }
   private endpointOverride(provider: HarnessProvider) {
@@ -63,8 +71,8 @@ export class CliCredentials {
   }
   /** Presence only: never contacts a provider or returns a secret. */
   async inspect(provider: HarnessProvider): Promise<CredentialStatus> {
-    if (this.environmentKey(provider)) return { source: "environment", configured: true };
-    if (this.endpointOverride(provider)) return { source: "blocked", configured: false };
+    if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) return { source: "environment", configured: true };
+    if (this.endpointOverride(provider) && !(provider === "qwen" && this.qwenOverrideAccepted)) return { source: "blocked", configured: false };
     if (this.temporary.has(provider)) return { source: "temporary", configured: true };
     try { return await this.saved(provider) ? { source: "keychain", configured: true } : { source: "missing", configured: false }; }
     catch { return { source: "unavailable", configured: false }; }
@@ -93,7 +101,7 @@ export class CliCredentials {
     }
   }
   private async configureOnce(provider: HarnessProvider, input: CredentialInput, mode?: "temporary"): Promise<boolean> {
-    if (this.environmentKey(provider)) {
+    if (provider !== "qwen" && this.environmentKey(provider)) {
       this.write("An environment key takes precedence. Remove it from the launching shell to use managed credentials.\n");
     }
     const action = mode ?? await input.select(`Credentials / ${provider}`, [
@@ -111,10 +119,14 @@ export class CliCredentials {
       try { await (await this.entry(provider)).deleteCredential(); this.write("Saved key removed (or already absent).\n"); }
       catch { this.write("Saved key could not be removed: secure storage is unavailable or locked.\n"); }
       this.temporary.delete(provider);
+      if (provider === "qwen") { this.qwenManaged = false; this.qwenOverrideAccepted = false; }
       this.revision++;
       this.write("Temporary key cleared. Environment credentials are unchanged.\n");
       return true;
     }
+    const connection = provider === "qwen" ? await selectQwenConnection(input) : undefined;
+    if (provider === "qwen" && !connection) return false;
+    if (connection) this.write(`Selected Qwen destination: ${qwenEndpoint(connection)}\nThis connection will replace Qwen environment settings for this CLI session.\n`);
     // Open the backend before requesting a secret; failure never silently changes storage mode.
     let target: SecretEntry | undefined;
     if (action === "save") {
@@ -125,6 +137,7 @@ export class CliCredentials {
     if (!secret) return false;
     try { secret = this.validate(secret); }
     catch { throw new CredentialSetupError("Invalid API key. Enter printable characters without whitespace."); }
+    if (connection) secret = JSON.stringify({ version: 1, key: secret, connection });
     if (action === "save") {
       try { await target!.setPassword(secret); }
       catch { throw new CredentialSetupError("API key was not saved: secure storage is unavailable or locked. No plaintext fallback was used."); }
@@ -134,13 +147,14 @@ export class CliCredentials {
       this.temporary.set(provider, secret);
       this.write("API key is available only for this CLI session.\n");
     }
+    if (connection) { this.qwenManaged = true; this.qwenOverrideAccepted = true; }
     this.revision++;
     return true;
   }
   async providerEnvironment(provider: HarnessProvider, input: CredentialInput): Promise<NodeJS.ProcessEnv> {
-    if (this.environmentKey(provider)) { this.sources.set(provider, "environment"); return { ...this.environment }; }
+    if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) { this.destinations.delete(provider); this.sources.set(provider, "environment"); return { ...this.environment }; }
     // Managed credentials must not be redirected by shell-defined endpoint overrides.
-    if (this.endpointOverride(provider)) {
+    if (provider !== "qwen" && this.endpointOverride(provider)) {
       throw new CredentialSetupError("Managed keys require the provider's default endpoint. Remove endpoint overrides or supply an explicit environment key.");
     }
     let key = this.temporary.get(provider);
@@ -154,11 +168,30 @@ export class CliCredentials {
       key = this.temporary.get(provider) ?? await this.saved(provider);
     }
     if (!key) throw new CredentialSetupError("No API key available. No provider request was sent.");
+    if (provider === "qwen") {
+      const record = decodeQwenCredential(key);
+      const endpoint = qwenEndpoint(record.connection);
+      if (this.endpointOverride(provider) && !this.qwenOverrideAccepted) {
+        const useManaged = await input.select("Qwen / Environment conflicts with saved connection", [
+          { value: false, label: "Cancel; keep environment settings" },
+          { value: true, label: "Use saved connection for this session", detail: endpoint },
+        ]);
+        if (!useManaged) throw new CredentialSetupError("Qwen connection selection cancelled. No provider request was sent.");
+        this.qwenOverrideAccepted = true;
+      }
+      const env = { ...this.environment };
+      for (const name of ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID", "QWEN_API_KEY", "DASHSCOPE_API_KEY"]) delete env[name];
+      this.destinations.set(provider, endpoint);
+      env.QWEN_BASE_URL = endpoint;
+      env.DASHSCOPE_API_KEY = record.key;
+      this.sources.set(provider, this.temporary.has(provider) ? "temporary" : "keychain");
+      return env;
+    }
     this.sources.set(provider, this.temporary.has(provider) ? "temporary" : "keychain");
     const name = providerDescriptor(provider).credentialNames[0]!;
     return { ...this.environment, [name]: key };
   }
-  clear() { this.temporary.clear(); this.sources.clear(); }
+  clear() { this.destinations.clear(); this.temporary.clear(); this.sources.clear(); this.qwenManaged = false; this.qwenOverrideAccepted = false; }
 }
 
 /** Keep provider error payloads out of durable runs when they can contain a key. */

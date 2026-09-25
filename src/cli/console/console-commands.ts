@@ -2,6 +2,7 @@
 export const CONSOLE_COMMAND_CATALOG = [
   ["/menu", "Open navigation menu", true],
   ["/help", "Show commands; /help all shows everything", true],
+  ["/connection", "Inspect credentials and optionally test selected model access", false],
   ["/credentials", "Manage provider keys in the system keychain or this session", false],
   ["/provider", "Select a provider", false],
   ["/model", "Select a model", false],
@@ -13,7 +14,10 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/pending", "Inspect pending approvals", true],
   ["/approve", "Approve the pending actions", true],
   ["/deny", "Deny the pending actions", true],
+  ["/approvals", "Change approval mode for this CLI session", false],
+  ["/continue", "Continue an interrupted task with retained results in a new run", false],
   ["/compact", "Compact conversation context", false],
+  ["/compaction", "Choose a compaction model or inspect recommendations", false],
   ["/new", "Start a new conversation", true],
   ["/rename", "Rename the current conversation", true],
   ["/clear", "Clear conversation context", false],
@@ -25,6 +29,7 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/attachments", "List selected attachments", false],
   ["/detach", "Remove selected attachments", false],
   ["/sessions", "Find saved conversations", true],
+  ["/limits", "Inspect or change the step limit for next turns", false],
   ["/usage", "Inspect transport usage", false],
   ["/cancel", "Cancel the active run", true],
 ] as const;
@@ -34,7 +39,7 @@ export const consoleCommands = (mode: ConsoleMode = "direct") =>
   CONSOLE_COMMAND_CATALOG.filter(([name, , service]) => mode === "service" ? service : name !== "/cancel");
 
 const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/diff", "/exit"]);
-const approvals = new Set(["/pending", "/approve", "/deny"]);
+const approvals = new Set(["/approvals", "/pending", "/approve", "/deny"]);
 
 export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct") => {
   const search = query.replace(/^\//, "").toLowerCase();
@@ -44,6 +49,9 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 };
 
 const argumentsFor: Readonly<Record<string, string>> = {
+  "/limits": "[1-50]",
+  "/compaction": "[provider:model|off|recommend]",
+  "/approvals": "[ask|auto|restricted]",
   "/provider": "[id]", "/model": "[id]", "/route": "[role=provider[:model] | clear [role]]",
   "/review": "<task>", "/resume": "[last|sessionId]", "/new": "[title]",
   "/rename": "<title>", "/attach": "<path>", "/detach": "[path]", "/sessions": "[search]",

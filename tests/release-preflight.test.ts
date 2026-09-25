@@ -4,24 +4,21 @@ import { prepareRelease, type Command } from "../scripts/prepare-release.js";
 import { bundledDefaultModel } from "../src/models/catalog.js";
 import path from "node:path";
 
-test("Stable promotion preserves RC10 models and Flash history", async () => {
+test("RC certification selects Flash without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
-  validateReleaseMetadata(input, false, "latest");
-  expect(input.version).toMatch(/^1\.1\.\d+$/);
+  validateReleaseMetadata(input, false, "next");
+  expect(input.version).toBe("1.2.0-rc.1");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
-    .toEqual(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0-rc.10")?.models);
-  expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models.qwen)
-    .toBe(bundledDefaultModel("qwen"));
+    .toEqual({meta: "muse-spark-1.3", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.4")?.models.qwen).toBe("qwen3.8-max");
   expect(bundledDefaultModel("qwen")).toBe("qwen3.8-max");
-  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.0-rc.9")?.models.qwen)
-    .toBe("qwen3.8-flash");
 });
 
 function metadata(): ReleaseMetadata {
   return {
     version: "1.1.0-rc.3", changelog: "## 1.1.0-rc.3 - 2026-09-22",
     matrix: { releaseTags: ["v1.1.0-rc.3"], expectedModels: [{ releaseTag: "v1.1.0-rc.3", models: { meta: "m", qwen: "q", openai: "o" } }] },
-    workflow: { jobs: { "representative-evaluation": { steps: [["meta", "m"], ["qwen", "q"], ["openai", "o"]].map(([provider, model]) => ({ id: `representative_${provider}`, env: { ZHIVEX_SAFE_FIX_PROVIDER: provider!, ZHIVEX_SAFE_FIX_MODEL: model! }, run: `evidence --provider ${provider} --model ${model} > report` })) } } }
+    workflow: { jobs: { "certify-live": { env: { ZHIVEX_HARNESS_LIVE_META_MODEL: "m", ZHIVEX_HARNESS_LIVE_QWEN_MODEL: "q", ZHIVEX_HARNESS_LIVE_OPENAI_MODEL: "o" } }, "representative-evaluation": { steps: [["meta", "m"], ["qwen", "q"], ["openai", "o"]].map(([provider, model]) => ({ id: `representative_${provider}`, env: { ZHIVEX_SAFE_FIX_PROVIDER: provider!, ZHIVEX_SAFE_FIX_MODEL: model! }, run: `evidence --provider ${provider} --model ${model} > report` })) } } }
   };
 }
 test("dated candidate binds channel and all representative models", () => {
@@ -83,4 +80,10 @@ test("same annotated tag supports recovery without recreating it", async () => {
   const f = fixture({ tagSha: sha }); await prepareRelease({ sha, version: "1.1.0-rc.3", publish: true, run: f.run });
   expect(f.calls.some(args => args.includes("POST"))).toBe(false);
   expect(f.calls.at(-1)?.[1]).toBe("workflow");
+});
+
+test("release rejects divergent live and representative certification models", () => {
+  const input = metadata();
+  input.workflow.jobs["certify-live"]!.env!.ZHIVEX_HARNESS_LIVE_QWEN_MODEL = "other";
+  expect(() => validateReleaseMetadata(input)).toThrow("Live workflow model disagrees");
 });

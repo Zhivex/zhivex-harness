@@ -43,7 +43,7 @@ export const safeRetentionCuts = (messages: readonly ModelMessage[]) => {
  */
 export const createAdaptiveCompaction = (config: {
   maxMessages: number; maxEstimatedInputTokens: number; keepRecentMessages: number;
-}, options: { tools?: ToolSet; remainingInputTokens?: () => number } = {}): AgentCompactionOptions => {
+}, options: { tools?: ToolSet; remainingInputTokens?: () => number; compactor?: AgentCompactionOptions["compactor"]; auxiliary?: AgentCompactionOptions["auxiliary"] } = {}): AgentCompactionOptions => {
   let retained = config.keepRecentMessages;
   let systemTokens = 0;
   const toolTokens = estimateContextTokens(measureContext({ messages: [], ...(options.tools ? { tools: options.tools } : {}) })) - 64;
@@ -57,6 +57,7 @@ export const createAdaptiveCompaction = (config: {
       Math.max(systemTokens + summaryAllowance + 1024, remaining / 3 - toolTokens)));
   };
   return {
+    ...(options.auxiliary ? { auxiliary: options.auxiliary } : {}),
     maxMessages: config.maxMessages,
     get maxEstimatedInputTokens() { return threshold(); },
     get keepRecentMessages() { return retained; },
@@ -74,11 +75,11 @@ export const createAdaptiveCompaction = (config: {
       retained = cut === undefined ? 1 : Math.max(1, messages.length - cut);
       return estimateContextTokens(measured) + toolTokens;
     },
-    compactor({ messages }) {
+    compactor: options.compactor ?? (({ messages }) => {
       const budget = Math.max(128, Math.min(4000, Math.floor(JSON.stringify(messages).length / 2)));
       const { summary, truncated } = summarizeHarnessMessages(messages, budget);
       return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: "adaptive-tokens-v1",
         sourceMessages: messages.length, truncated, targetRatio: 0.65, toolTokens } };
-    }
+    })
   };
 };

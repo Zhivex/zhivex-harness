@@ -38,6 +38,9 @@ export const navigateConsole = async (
         ...(!options.service ? [
           {value:"provider",label:"Providers",detail:"Browse providers and their models"},
           {value:"model",label:"Models",detail:`Browse ${options.current.provider} models`},
+          {value:"/limits",label:"Execution limits",detail:"Steps available per turn"},
+          {value:"/approvals",label:"Approval mode",detail:"Ask, auto, or restricted for this session"},
+          {value:"/connection",label:"Test connection",detail:"Optional small request to the selected model"},
           {value:"/credentials",label:"Credentials",detail:"System keychain or temporary API keys"},
         ] : []),
         {value:"sessions",label:"Conversations",detail:"Find and resume a saved conversation"},

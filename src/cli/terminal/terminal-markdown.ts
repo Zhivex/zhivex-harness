@@ -36,7 +36,13 @@ export class TerminalMarkdown {
         }
         if (!this.code) {
           const heading = /^#{1,6} /.exec(this.pending);
-          if (heading) { this.heading = true; this.pending = this.pending.slice(heading[0].length); }
+          if (heading) {
+            this.heading = true;
+            this.pending = this.pending.slice(heading[0].length);
+            this.lineStart = false;
+            // Recheck empty buffers and split Unicode after consuming the prefix.
+            continue;
+          }
         }
         this.lineStart = false;
       }

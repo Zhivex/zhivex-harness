@@ -131,13 +131,65 @@ try:
                              env=fixture_env, cwd=root, capture_output=True, text=True)
     assert updated.returncode == 0, updated.stderr
     qwen_profile = json.loads(updated.stdout)["profile"]
-    for args in ([], ["chat"]):
+    for args in ([], ["chat"], ["chat", "--token-budget"], ["chat", "--context-tokens", "100000"], ["chat", "--approval-mode", "auto"], ["chat", "--approval-mode", "restricted"]):
         preferred = Console(args, dict(fixture_env, QWEN_API_KEY="fixture-only"))
         try:
             output = preferred.read("\n> ")
             assert b"Use default profile" not in output
+            if "--approval-mode" in args:
+                assert (b"Restricted mode:" if args[-1] == "restricted" else b"Automatic approvals are enabled") in output
             assert b"qwen" in output.lower(), output
             assert json.loads(profile_path.read_text())["model"] == qwen_profile["model"]
+            preferred.send("/context\n")
+            context_output = preferred.read("Active retained conversation:") + preferred.read("\n> ")
+            expected = b"Cumulative token limits per run:" if "--token-budget" in args else b"Cumulative token budget: unlimited"
+            assert expected in context_output, context_output
+            if "--context-tokens" in args:
+                assert b"100000 estimated tokens" in context_output
+            preferred.send("/limits 30\n")
+            preferred.read("Step limit updated: 30")
+            preferred.read("\n> ")
+            preferred.send("/approvals restricted\n")
+            preferred.read("Approval mode: restricted")
+            preferred.read("\n> ")
+            preferred.send("/approvals\n")
+            preferred.read_selection()
+            preferred.send("auto\n")
+            preferred.read("Approval mode: auto")
+            preferred.read("\n> ")
+            if not args:
+                preferred.send("/credentials\n")
+                preferred.read_selection()
+                preferred.send("Qwen\n")
+                preferred.read_selection()
+                preferred.send("Temporary\n")
+                preferred.read_selection()
+                preferred.send("Standard\n")
+                preferred.read_selection()
+                preferred.send("Singapore\n")
+                preferred.read_selection()
+                preferred.send("DashScope\n")
+                preferred.read("API key (hidden; Enter submits, Ctrl+C cancels): ")
+                preferred.send("qwen-hidden-fixture\n")
+                key_output = preferred.read("API key is available only for this CLI session.")
+                assert b"qwen-hidden-fixture" not in key_output
+                preferred.read("\n> ")
+                preferred.send("/connection\n")
+                preferred.read("Connection: qwen/")
+                preferred.read_selection()
+                preferred.send("\n")
+                preferred.read("\n> ")
+                assert not (root / "requests.jsonl").exists()
+                preferred.send("/connection\n")
+                preferred.read("Connection: qwen/")
+                preferred.read_selection()
+                preferred.send("Send a small\n")
+                preferred.read("Connection verified:")
+                preferred.read("\n> ")
+                probe = json.loads((root / "requests.jsonl").read_text())
+                assert probe.get("max_completion_tokens", probe.get("max_tokens")) == 16 and not probe.get("tools"), probe
+                assert probe["messages"] == [{"role": "user", "content": "Reply OK."}], probe
+                (root / "requests.jsonl").unlink()
             preferred.send("/exit\n")
             assert preferred.wait_exit() == 0
             assert not (root / "requests.jsonl").exists()
@@ -163,6 +215,18 @@ try:
         direct.read("Keyboard shortcuts")
         direct.send("\x03")
         direct.read("Input interrupted")
+        direct.read("\n> ")
+        direct.send("WAIT_FIXTURE\n")
+        direct.read("Waiting for model response")
+        direct.read(" · 1s")
+        direct.read("Fixture done")
+        direct.read("\n> ")
+        direct.send("FAIL_STREAM_FIXTURE\n")
+        direct.read("Recoverable partial")
+        direct.read("\n> ")
+        direct.send("/continue\n")
+        direct.read("Continuing in a new run")
+        direct.read("Fixture done")
         direct.read("\n> ")
         direct.send("history needle\n")
         direct.read("Fixture done")
@@ -209,6 +273,18 @@ try:
         direct.read_selection()
         direct.send("\x1b")
         direct.read("\n> ")
+        direct.send("EDIT_FIXTURE\n")
+        approval_card = direct.read("Permission required")
+        assert b"approval approval_" not in approval_card and b"input sha256:" not in approval_card
+        direct.read_selection()
+        direct.send("View technical\n")
+        direct.read("Complete approval payload:")
+        direct.read("Permission required")
+        direct.read_selection()
+        direct.send("Allow once\n")
+        direct.read("Fixture done")
+        direct.read("\n> ")
+        assert (root / "result.txt").read_text() == "approved fixture edit\n"
         direct.send("/verbose\n")
         direct.read("Activity detail: full")
         direct.read("\n> ")

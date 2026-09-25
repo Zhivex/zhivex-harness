@@ -20,6 +20,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
 - [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).
 - [Local service](LOCAL_SERVICE.md) and [client protocol](CLIENT_PROTOCOL.md).
+- [Experimental ACP text sessions](ACP.md) and [workspace checkpoint restoration](WORKSPACE_CHECKPOINTS.md).
 - [Durable operations](DURABLE_OPERATIONS.md), [repository editing](REPOSITORY_EDITING.md) and [change envelopes](CHANGE_ENVELOPES.md).
 - [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).
 

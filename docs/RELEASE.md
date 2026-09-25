@@ -2,9 +2,9 @@
 
 `@zhivex-ai/harness@1.1.1` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## Next stable release
+## Next release candidate
 
-The source version is `1.1.4`, targeting npm `latest` after fresh certification.
+The source version is `1.2.0-rc.1`, targeting npm `next` after fresh certification.
 RC.10 is published to `next`. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35924224542)
 passed deterministic and exact-artifact validation, all live gates and the complete
 Meta/Qwen/OpenAI representative matrix. The first publication verification timed
@@ -12,13 +12,13 @@ out waiting for the `next` dist-tag; the original tarball's integrity, dist-tag 
 SLSA provenance subsequently verified. Recovery reruns only the failed publication
 job and preserves the original bytes.
 
-The stable matrix retains Qwen `qwen3.8-max`, Meta `muse-spark-1.3` and OpenAI
+The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
 The `v1.1.0` attempt failed at the Qwen representative approval gate before publication.
-The `v1.1.2` and `v1.1.3` attempts failed at the Meta representative matrix before publication. Their tags and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.1.4`.
+The `v1.1.2` and `v1.1.3` attempts failed at the Meta representative matrix before publication. Their tags and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.2.0-rc.1`.
 `release-status.json` still describes the independently verified 1.0.0
-publication and must be refreshed after 1.1.4 is published and verified; RC evidence is not substituted
-for certification of the stable artifact. The SDK dependencies now pin the stable successors of the RC.10 batch;
+publication and remains preserved during RC preparation; RC evidence is not substituted
+for certification of the stable artifact. The SDK dependencies now pin Core 1.24.0, Agents 1.10.0 and the coordinated stable provider batch;
 the updated artifact requires its own full certification.
 
 ## Deterministic gates
@@ -52,6 +52,9 @@ CI repeats the deterministic and installed-package gates on Linux and macOS. Bui
 Provider behavior is certified separately because it is credential-, account-, model-, endpoint-, and date-dependent:
 
 ```bash
+export ZHIVEX_HARNESS_LIVE_META_MODEL=muse-spark-1.3
+export ZHIVEX_HARNESS_LIVE_QWEN_MODEL=qwen3.8-flash
+export ZHIVEX_HARNESS_LIVE_OPENAI_MODEL=gpt-6-luna
 ZHIVEX_HARNESS_LIVE=1 bun run scripts/live-provider-smoke.ts
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:orchestration
 ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:routing

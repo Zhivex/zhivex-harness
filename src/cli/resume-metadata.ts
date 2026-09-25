@@ -36,6 +36,7 @@ export const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput =>
   compactionMaxMessages: config.compaction.maxMessages,
   compactionMaxEstimatedInputTokens: config.compaction.maxEstimatedInputTokens,
   compactionKeepRecentMessages: config.compaction.keepRecentMessages,
+  ...(config.compaction.model ? { compactionModel: config.compaction.model.model, compactionProvider: config.compaction.model.provider } : {}),
   allowedChecks: [...config.allowedChecks],
   requiredCapabilities: [...config.requiredCapabilities],
   subagentProfiles: [...config.orchestration.profiles],

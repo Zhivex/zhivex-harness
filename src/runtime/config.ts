@@ -115,6 +115,7 @@ export interface HarnessBudget {
 }
 
 export interface HarnessCompactionConfig {
+  model?: { provider: string; model: string };
   maxMessages: number;
   maxEstimatedInputTokens: number;
   keepRecentMessages: number;
@@ -208,6 +209,9 @@ export interface HarnessConfigInput {
   compactionMaxMessages?: number;
   compactionMaxEstimatedInputTokens?: number;
   compactionKeepRecentMessages?: number;
+  /** Explicit utility route. Omit for deterministic, zero-call compaction. */
+  compactionModel?: string;
+  compactionProvider?: string;
   allowedChecks?: readonly string[];
   requiredCapabilities?: readonly string[];
   subagentProfiles?: readonly string[];
@@ -656,6 +660,7 @@ export const resolveHarnessConfig = (
     throw new HarnessConfigError("Token pricing requires maxCostUsd.");
   }
   const compaction: HarnessCompactionConfig = {
+    ...(input.compactionModel ? { model: { provider: input.compactionProvider ?? provider, model: input.compactionModel } } : {}),
     maxMessages: integerOption("compactionMaxMessages", input.compactionMaxMessages, process.env.ZHIVEX_HARNESS_COMPACTION_MAX_MESSAGES, DEFAULT_HARNESS_COMPACTION.maxMessages, 4, 10_000),
     maxEstimatedInputTokens: integerOption("compactionMaxEstimatedInputTokens", input.compactionMaxEstimatedInputTokens, process.env.ZHIVEX_HARNESS_COMPACTION_MAX_INPUT_TOKENS, DEFAULT_HARNESS_COMPACTION.maxEstimatedInputTokens, 1_000, 10_000_000),
     keepRecentMessages: integerOption("compactionKeepRecentMessages", input.compactionKeepRecentMessages, process.env.ZHIVEX_HARNESS_COMPACTION_KEEP_RECENT, DEFAULT_HARNESS_COMPACTION.keepRecentMessages, 2, 1_000)
@@ -663,6 +668,9 @@ export const resolveHarnessConfig = (
   if (compaction.keepRecentMessages >= compaction.maxMessages) {
     throw new HarnessConfigError("compactionKeepRecentMessages must be smaller than compactionMaxMessages.");
   }
+  if (input.compactionProvider && !input.compactionModel) throw new HarnessConfigError("compactionProvider requires compactionModel.");
+  if (compaction.model && (!/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,159}$/.test(compaction.model.model) ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(compaction.model.provider))) throw new HarnessConfigError("Invalid compaction model route.");
   const childBudget: HarnessBudget = {
     ...tokenMode,
     maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, 30),

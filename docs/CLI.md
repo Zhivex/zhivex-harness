@@ -203,6 +203,8 @@ For the rationale and reference patterns, see [Console UX](https://github.com/Zh
 
 Activity is compact in the direct console: tool actions appear only as a temporary TTY status; approvals, errors and final run status remain visible; repeated provider and per-step transport notices are hidden. `/verbose` toggles full activity for that console process. One-shot and JSON/JSONL outputs retain their contracts.
 
+The agent is instructed to give brief progress updates unless the requested output format or silent execution prevents them; their frequency depends on the model. Model text is shown in compact mode too. Direct CLI runs and continuations return unknown tool names as error receipts so the model can select an exposed tool. Unknown tools are never executed or aliased, and error/step budgets and approval requirements still apply. Library callers retain their configured tool-error policy.
+
 Each console session is a scoped, durable chain of immutable run IDs. The session index stores provider/model/status metadata and never stores prompts, model messages, tool payloads, or provider data; those remain in the governed run store. `zhx chat --continue` opens the latest session and `--session <id>` selects one explicitly.
 
 ```text
@@ -390,18 +392,43 @@ subsequent model calls, rather than guaranteeing a pre-request input-token ceili
 
 ### Runs without cumulative token budgets
 
-Use `zhx --no-token-budget` for the interactive console or
-`zhx run --no-token-budget "Your task"` for a single task. This explicitly disables
-cumulative input, output, and total token ceilings for the main run and all its
-subagents, including the repair controller's token closure reserve. Usage is still
-measured and persisted; the setting survives approval resume and conversation continuation.
-Numeric token settings remain stored but inactive while this mode is enabled.
-Default token budgets are unchanged for runs without this flag.
+New local interactive sessions (`zhx` or `zhx chat`) have no cumulative token
+ceiling by default. Automatic compaction continues, and usage is measured and
+persisted. This avoids ending a repository analysis solely because repeated
+requests have consumed 100,000 input tokens.
 
-Compaction, per-request model/provider limits, cost budgets, step/tool limits,
-timeouts, and approvals still apply. This is not an unlimited context window or
-an unlimited single response. Library callers use `unlimitedTokens: true` in
-`HarnessConfigInput`; `false` restores enforcement of the numeric token budgets.
+`zhx run`, `zhx review`, SDK callers and service hosts retain their bounded
+defaults. Use `--token-budget` in the local console to opt into those budgets.
+Explicit numeric token flags or token-limit environment variables also enable
+bounded console execution unless `--no-token-budget` is explicitly supplied.
+Saved conversations retain their stored policy, including older bounded sessions;
+start a new session to use the new default.
+
+`--no-token-budget` disables cumulative input, output and total token ceilings for
+the main run and children, including token closure reserves. Numeric settings remain
+stored but inactive. Step/tool limits, timeouts, monetary limits and approvals still
+apply. Library callers use `unlimitedTokens: true`; `false` restores token limits.
+
+`--context-tokens <n>` sets the estimated context compaction threshold independently
+of cumulative usage. The default is 40,000. It can be adjusted for the selected model;
+it does not change the provider's actual context window. The local catalog does not
+yet declare verified model context windows, so the harness does not infer larger
+windows from model names. Saved sessions preserve this threshold.
+
+`/context` shows the estimated retained conversation size (excluding additional
+request instructions and tool schemas), compaction settings and budget mode.
+`/usage` shows the latest run's cumulative input/output usage and remaining budget
+separately from the transport ledger. Unknown usage is not reported as zero.
+
+Examples:
+
+```sh
+zhx
+zhx --token-budget --max-input-tokens 200000 --max-total-tokens 230000
+zhx --context-tokens 100000
+zhx run --max-input-tokens 200000 --max-total-tokens 230000 "Analyze the repository"
+zhx run --no-token-budget "Analyze the repository"
+```
 
 ### Conversation preview
 
@@ -418,3 +445,143 @@ python3 scripts/capture-console-ux.py /tmp/cli-conversation.png
 
 The capture writes a PNG and its raw ANSI transcript next to it; both contain only
 the disposable fixture session. No provider request leaves the process.
+
+### Approval modes
+
+Local `zhx` and `zhx run` accept `--approval-mode ask|auto|restricted`:
+
+- `ask` (default): ordinary permitted reads run directly; approval-gated actions
+  prompt in a terminal and remain pending without a terminal.
+- `auto`: approves actions within the existing workspace, command and execution
+  policies. `--yes` remains its alias. Neither option removes protected paths.
+- `restricted`: rejects approval requests without prompting; the agent can use
+  already permitted tools and report what it could not complete.
+
+`--approval-mode` and `--yes` cannot be combined. Service clients cannot override
+host approval configuration with this option.
+
+`read_dependency` is a separate approval-gated read tool for installed packages.
+It accepts a package name, a package-relative `package.json` or TypeScript
+declaration file (`.d.ts`, `.d.mts`, `.d.cts`), and a starting line. Package
+manifests expose versions and exports; arbitrary source, scripts and writes are
+not allowed. Reads are capped at 1 MiB input and 200 lines / 16,000 characters
+output. Symbolic links, directory links and multiply linked files are rejected;
+linked package-manager layouts may therefore require another inspection route.
+
+Dependency access asks even in automatic mode: approve once, approve metadata
+and declaration reads for that package during this task, reject, or leave
+pending. Task grants are held only by the current approval resolver, scoped by
+provider and child agent; another task or process restart asks again. They do not
+grant execution or writes. Without a terminal an unapproved dependency request
+remains pending; restricted mode rejects it.
+
+In the local console and `run` command, tool execution errors, including protected reads and denied approvals, return
+evidence to the model so it can choose another permitted strategy. Existing
+tool-error, step and time budgets bound recovery. Validation and security
+checks still reject the underlying action. Strict SDK/service defaults remain fail-fast;
+library hosts can opt into recovery with `toolExecution: { stopOnError: false }`.
+
+```sh
+zhx --approval-mode ask
+zhx --approval-mode auto
+zhx run --approval-mode restricted "Analyze this repository without additional permissions"
+```
+
+### Interactive connection and approval settings
+
+Use `/menu` → Credentials to configure Qwen Standard API or QwenCloud Token Plan,
+with the matching region and hidden key. `/connection` optionally tests the current
+model with a small billable request. See [credentials](CREDENTIALS.md).
+
+`/approvals` opens the mode picker; `/approvals ask`, `/approvals auto`, and
+`/approvals restricted` switch directly. The composer and `/status` show the active
+mode. Auto approves gated actions but still asks for dependency access. Restricted
+denies gated actions. Mode changes apply only to this CLI process and are blocked
+while work is active or awaiting approval; use `/pending`, `/approve`, or `/deny`
+first. Service-connected consoles retain host-controlled policy.
+
+### Conversation presentation and step limits
+
+The local console groups transient tool activity on one line and shows approval
+cards with a keyboard picker. Check approvals retain the exact script and workspace;
+IDs and input hashes are available through **View technical details**. Reviewed
+edits retain their complete payload. Cancelling the picker leaves the batch pending.
+`/verbose` retains the detailed event view; JSONL output retains its event contract.
+
+New local conversations default to 50 model iterations per turn. Explicit
+`--max-steps` and `ZHIVEX_HARNESS_MAX_STEPS` take precedence. Saved runs retain their
+limits; automation and service defaults remain 12. `/limits` opens a picker and
+`/limits 30` changes the limit for subsequent turns (1–50). Active runs and pending
+approvals must be resolved first. More steps can increase API costs; other budgets
+still apply. A failed run reaching its step limit now shows the persisted cause
+and the current/maximum counts. Continue with a new message after adjusting the
+limit; this does not rewrite the failed run or certify unfinished work.
+
+Compact activity remains visible while the model is silent: the terminal shows
+its current step and elapsed wait, followed by grouped counts of completed tool
+operations. Successful reads and searches remain in the transcript instead of
+being erased. Tool arguments, file contents, and private reasoning are not printed
+in these progress summaries. Checks and errors retain their separate receipts.
+
+### Interactive continuity and session permissions
+
+New local `chat` sessions default to 50 model steps, 200 tool calls, 20 tool
+errors and 60 minutes per run. Explicit CLI/environment limits and saved run
+policies take precedence; automation and service defaults are unchanged.
+`/usage` shows all these ceilings separately from cumulative token usage.
+
+After an interrupted or failed turn, `/continue` starts a new run with retained
+messages and recorded results. The previous run keeps its actual terminal status
+for diagnostics. Pending approvals must be resolved first. Missing tool receipts
+are marked as unknown outcomes: continuation must inspect state before proposing
+another action. Continuation is explicit, including when the previous run reached
+a configured token or cost budget; it starts a fresh per-run budget.
+
+In the approval picker, **Allow this exact check for this session** remembers the
+workspace, provider, child agent, check name and exact expected script. A changed
+script prompts again; executor script validation still applies. Dependency reads
+can be allowed for a task or the CLI session, restricted to the selected package's
+metadata and type declarations. Grants live only in the CLI process and are not
+saved with conversations. Leaving a batch pending discards its new grants.
+
+Three consecutive failed calls with the same tool request stop the local turn;
+a different request or successful tool result resets the counter. This tolerates
+ordinary exploratory errors while bounding unproductive loops. New chat turns
+allow two SDK transport retries with 500 ms initial backoff. This does not restart
+an agent run or automatically replay executed tools or interrupted streams.
+
+Context remains a separate limit. Use `--context-tokens 100000` when the selected
+model and endpoint support the full request plus output reserve. The current
+catalog has no verified context-window metadata, so the fallback remains 40000
+estimated conversation tokens; no model capacity is guessed. Qwen reasoning
+fragments are normalized losslessly before estimation, followed by adaptive
+compaction at safe tool/approval boundaries. Oversized protected groups still
+require operator intervention; they are never silently discarded.
+## Configurable model-assisted compaction
+
+Automatic compaction remains deterministic unless explicitly selected. Use
+`--compaction-model <id>` and optionally `--compaction-provider <provider>` on
+`zhx run` or `zhx chat`. The provider defaults to the primary provider. Example:
+
+```sh
+zhx chat --provider openai --compaction-provider openai --compaction-model gpt-6-luna
+```
+
+In the direct console, `/compaction` shows the selection, `/compaction recommend`
+shows evidence-backed advice, `/compaction provider:model` selects a route, and
+`/compaction off` restores deterministic compaction. Changes require no active or
+pending turn and apply to subsequent turns in this CLI session. A paused run keeps
+its exact original route. Custom model IDs are accepted; account access and summary
+quality are not implied. Recommendations check credential presence, not live access.
+Advice reserves 8,000 input and 1,024 output tokens and reports price scope, evidence
+dates and unknown/stale metadata; it never changes the selected model automatically.
+
+The selected provider receives bounded redacted user/assistant excerpts and
+deterministic evidence. Tool/provider payloads are excluded from semantic input.
+Calls use the run's budgets and per-model usage ledger, including rejected summaries
+and partial usage. Unknown usage stops continuation. Use per-route `--pricing-file`
+and `--usage-limit-usd` for monetary caps; the legacy single-price cost budget cannot
+be combined with a utility model. Manual `/compact` remains deterministic.
+
+The experimental `zhx-acp` binary exposes text sessions to ACP clients; see
+[ACP](ACP.md) for supported methods and limitations.

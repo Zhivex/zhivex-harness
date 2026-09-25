@@ -30,7 +30,7 @@ export const usagePricingSchema = z.strictObject({
   }
 });
 export type UsagePricing = z.infer<typeof usagePricingSchema>;
-export interface UsageAccountingOptions { pricing?: UsagePricing; limitUsd?: number }
+export interface UsageAccountingOptions { pricing?: UsagePricing; limitUsd?: number; requireCompleteUsage?: boolean }
 const summaryView = z.object({ calls: z.number().int().nonnegative(), inputTokens: rate, outputTokens: rate,
   usageComplete: z.boolean(), estimatedUsd: rate.nullable(), limitUsd: rate.nullable() });
 const ledgerView = summaryView.extend({ schemaVersion: z.literal(1), runId: z.string().max(256),
@@ -149,6 +149,10 @@ export class UsageLedger {
     const id = randomUUID();
     this.database.exec("BEGIN IMMEDIATE");
     try {
+      if (policy.requireCompleteUsage) {
+        const unresolved = this.database.query<{ n: number }>("SELECT COUNT(*) AS n FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2 AND status = 'unknown'").get(this.key, runId);
+        if (policy.historicalUsageUnknown || (unresolved?.n ?? 0) > 0) throw new Error("USAGE_UNCERTAIN: reconcile unknown utility usage before further execution.");
+      }
       if (policy.limitUsd !== undefined) {
         const rows = this.database.query<CallRow>("SELECT * FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2").all(this.key, runId);
         if (rows.some(r => r.status === "unknown" || (r.status === "confirmed" && r.estimate_usd === null))) throw new Error("USAGE_UNCERTAIN: inspect unresolved calls before further monetary-budget execution.");
@@ -167,7 +171,9 @@ export class UsageLedger {
       ? (usage.inputTokens! * call.price.inputUsdPerMillion + usage.outputTokens! * call.price.outputUsdPerMillion) / 1e6 : null;
     // Compare-and-set prevents duplicate finish/error events from counting twice.
     this.database.query(`UPDATE zhivex_usage_calls SET status = ?1, input_tokens = ?2, output_tokens = ?3, estimate_usd = ?4
-      WHERE id = ?5 AND status = 'pending'`).run(confirmed ? "confirmed" : "unknown", confirmed ? usage.inputTokens : null, confirmed ? usage.outputTokens : null, estimate, call.id);
+      WHERE id = ?5 AND status = 'pending'`).run(confirmed ? "confirmed" : "unknown",
+        Number.isSafeInteger(usage?.inputTokens) && usage!.inputTokens! >= 0 ? usage!.inputTokens : null,
+        Number.isSafeInteger(usage?.outputTokens) && usage!.outputTokens! >= 0 ? usage!.outputTokens : null, estimate, call.id);
   }
   model(model: LanguageModel): LanguageModel {
     const ledger = this;

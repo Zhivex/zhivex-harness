@@ -10,4 +10,6 @@ The schema-1 observational parsers preserve unknown additive fields and distingu
 
 Beta APIs may change in a minor with changelog and migration guidance. Experimental APIs may change without a deprecation window and must not be the sole supported route for a stable operation. Human-readable terminal text and error messages are not contracts; command identity, exit codes, structured document schemas, and `HarnessError.code/category/retryable` are.
 
+The semantic compactor, compaction recommendations, declarative tool policy, progress monitor, ACP text-session adapter, and workspace checkpoint restoration APIs are experimental. ACP implements the documented text-session subset; it does not claim full editor interoperability. Deterministic compaction and the existing client protocol remain available. See [ACP limitations](ACP.md), [context behavior](CONTEXT_ENGINEERING.md), and [checkpoint constraints](WORKSPACE_CHECKPOINTS.md).
+
 Before `1.0.0-rc.1`, maintainers classified every current runtime and type export as stable, beta, or experimental. The gate rejects unreviewed additions, removals, omissions, and membership in more than one tier so future stability changes remain deliberate. Root aliases remain available during 1.x; any future beta subpath must be additive until the next major release.

@@ -4,6 +4,43 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.1 - 2026-09-25
+
+- Prepare the next-channel candidate with Meta `muse-spark-1.3`, Qwen `qwen3.8-flash` and OpenAI `gpt-6-luna` across live and representative certification. Fresh exact-artifact certification and publication remain pending.
+- Remove archived candidate notes and exploratory design assets from the working tree; preserve links to their Git history.
+
+- Integrate the coordinated stable SDK batch (Core 1.24 / Agents 1.10): SDK-owned auxiliary compaction reservations and durable receipts, catalog recommendation contracts, and opt-in MCP HTTP/OAuth transport. Preserve the existing MCP protocol by default.
+
+- Add opt-in model-assisted compaction with explicit provider/model selection, shared token budgets, and durable usage accounting; retain deterministic compaction by default.
+- Enrich the model catalog with sourced context/output limits, pricing evidence, and conservative compaction recommendations available through `/compaction`.
+- Load scoped repository instructions after authorized reads, detect repeated unproductive cycles, and execute approved independent local reads concurrently with mutation barriers.
+- Add experimental declarative tool policies, allowlisted MCP resources, an ACP text-session stdio adapter (`zhx-acp`), and reviewable workspace checkpoint restore APIs with crash recovery and portable backups.
+
+- Normalize fragmented Qwen reasoning losslessly in saved histories and new streams so repeated event envelopes do not exhaust compaction limits.
+
+
+- Prevent long `runHarness` streams from exhausting the SDK replay history; retain a bounded tail with full live delivery and observe completion rejections immediately.
+
+
+- Keep compact chat progress visible during model waits and retain grouped summaries of completed tools.
+
+
+- Local chat now defaults to 50 steps with `/limits` controls, exposes persisted step exhaustion, and uses compact approval cards with keyboard choices and stable activity rows.
+
+
+- Interactive Qwen service/region credentials, explicit endpoint conflict handling, optional `/connection` probe, and session-scoped `/approvals` menu.
+
+
+- Add local ask/auto/restricted approval modes and approval-gated, bounded dependency metadata/type reads with task-scoped consent.
+- Let local CLI runs recover from tool execution failures within existing error budgets and explain protected-path failures in terminal diagnostics.
+
+- Default new local interactive sessions to continued execution without cumulative token ceilings; preserve explicit limits, saved policies and bounded automation/SDK/service defaults.
+- Add `--token-budget` and `--context-tokens`, and distinguish retained context from cumulative usage and remaining budget in console diagnostics.
+
+- Check estimated request input against remaining cumulative input and total tokens before contacting the provider.
+- Update single-agent compaction thresholds with consumption from the current invocation; strict runs switch to an evidence-based final answer near their token budget.
+- Preserve reported usage in failed checkpoints when an over-budget response is rejected before its tools execute.
+
 ## 1.1.4 - 2026-09-24
 
 - Preserve provider-independent rejection reasons in sanitized diagnostics and Actions summaries, with bounded response inspection and separate transport/stream failures.
@@ -859,3 +896,9 @@ No configuration, SQLite, approval, or execution-policy migration is required. E
   deduplicates replay and reconciles lost responses before allowing another send.
 - Verified packaged macOS chat with duplicate submission, failed check, expired
   snapshot, transport interruption, renderer reload and split-secret fixtures.
+
+- Local CLI continuity: align interactive tool/error/time limits with 50-step
+  turns; add `/continue` with retained results, exact session approvals for checks
+  and bounded dependency reads, a repeated-tool-failure circuit breaker and two
+  transport retries. Explicit policies, saved run receipts and automation defaults
+  remain authoritative.

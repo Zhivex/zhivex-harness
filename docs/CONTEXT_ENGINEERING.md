@@ -115,6 +115,20 @@ the trigger as remaining cumulative input allowance shrinks, aiming to leave roo
 for three requests; this does not increase budget ceilings. Unlimited-token mode
 keeps the configured context thresholds. Explicit per-run compaction overrides
 and `compaction: false` remain honored. No model context-window size is inferred.
+
+For single-agent runs, the remaining balance updates after each provider response,
+including within the same invocation. Before sending another request, the harness
+checks estimated input against the remaining input and total budgets. Estimates
+are heuristic; reported usage remains authoritative and can still exceed a limit.
+Failed checkpoints include that reported usage even when the response's tools
+were rejected.
+
+In the `strict` profile, requests approaching the last 30% of the token budget
+switch to a final answer with no new tools. The answer must distinguish collected
+evidence from unfinished work. This is a best-effort closure reserve, not a
+guarantee that every task completes within its budget. The `repair` profile keeps
+its existing verification controller. Unlimited-token mode disables these token
+stops and closure transitions.
 Schema serialization is cached by schema identity; messages and tool descriptions
 are measured anew. Transport accounting reuses its measurement for diagnostics.
 
@@ -262,3 +276,42 @@ Repair mode returns an unknown tool selection to the model as `TOOL_NOT_REGISTER
 For required-delivery OCI runs, reaching the predicted work-budget boundary without a verifier transitions into the same durable two-attempt planning path before rejecting another exploration request. That request exposes only `repair_plan` and `read_task`. The estimate includes the working-state message and current tool catalogue; the budget gate recalculates after narrowing. This spends only the existing closure reserve, keeps total input/output ceilings, and neither executes nor approves a repair. Optional inspection runs do not gain access to the reserve.
 
 Closure-reserve eligibility from this boundary is durable across checkpoints and remains active after recording the verifier, so planning can lead to an edit. A repair with an existing verifier can enter the same reserve. This does not replenish tokens, grant tool approval, or establish that a candidate satisfies the task.
+
+### Qwen reasoning fragments
+
+The harness losslessly joins adjacent plain Qwen `reasoning_content` fragments
+before estimating saved histories and when collecting new model streams. This
+removes repeated JSON envelopes without truncating reasoning text, tool calls,
+or results. Signed or unknown provider data forms a boundary and is preserved
+unchanged. Streaming aggregation flushes at 16 KiB of characters or the next
+non-reasoning event. Oversized irreducible groups still fail closed; the CLI
+identifies this as a context-compaction failure rather than an unknown cause.
+## Hierarchical context and hybrid compaction
+
+The pinned SDK `next` prerelease owns paid-compaction admission and durable attempt receipts. Harness supplies an explicit route fingerprint and reserves 32,000 input tokens plus 1,024 output tokens before the callback runs. The serialized utility input is capped below 31,000 UTF-8 bytes, leaving framing allowance; this conservative bound can reject a call when a tight budget cannot reserve it. Small sources use deterministic evidence and a zero-usage receipt. Confirmed usage survives summary rejection; interrupted or unknown attempts block paid retries. The separate Harness ledger remains responsible for per-route monetary limits and partial provider usage.
+
+The SDK shared budget coordinator is available to library callers through an explicit run policy; it is not enabled automatically. Harness persistence supports its reserved namespace without widening tenant/user access. Portable backups include linked coordinator ledgers and reject unresolved reservations or unknown compaction attempts, so restoring a backup cannot silently reset the shared consumption. Backups created before these optional records remain readable.
+
+Successful `read_file` and `read_files` calls discover ancestor `AGENTS.md` files
+inside the workspace, excluding the already loaded root. Discovery is bounded,
+rejects links/protected paths, and records both present and absent file identities
+in SDK-owned checkpoints. Applicable guidance is supplied on subsequent requests,
+with its scope and provenance; it cannot change permissions or verification.
+Changed instructions fail revalidation rather than silently changing a resumed run.
+Project context can still be disabled with `--no-project-context`.
+
+Primary runs now monitor repeated tool-result cycles and long repeated text across
+compaction and resume. Three unchanged cycles request a new hypothesis; five stop
+before the next model call. Changed results break repetition. Bounded persisted
+hashes contain no source text. Reads are not replaced with cached evidence.
+Trusted independent local reads use up to four SDK workers; writes, checks,
+approvals, MCP and delegation remain barriers. This is not a latency benchmark.
+
+Optional semantic compaction supplements deterministic evidence with an untrusted
+recollection from an explicitly chosen model. Selection, credentials and usage are
+separate from the primary model. See [CLI](CLI.md#configurable-model-assisted-compaction)
+and [model catalog](MODEL_CATALOG.md). Tool metadata, approval state and verification
+receipts remain outside the summarizer's authority. These runtime strategy changes
+alter durable fingerprints: finish old paused runs with their original artifact.
+Named child agents keep their existing bounded runtime; these new primary-run
+context/progress/compaction integrations do not claim a child-runtime migration.

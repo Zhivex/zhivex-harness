@@ -50,6 +50,10 @@ export const SECURITY_REVIEW_AUTHORITY_BEARING_TOOLS = [
     controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
   },
   {
+    id: "read_dependency",
+    controlThreats: ["malicious-repository-context", "compromised-model-or-provider", "approval-replay-or-substitution"]
+  },
+  {
     id: "read_file",
     controlThreats: ["malicious-repository-context", "compromised-model-or-provider"]
   },

@@ -21,6 +21,10 @@ const repeatableOptions = new Set([
 ]);
 
 const conflicts: Readonly<Record<string, readonly string[]>> = {
+  "--approval-mode": ["--yes"],
+  "--yes": ["--approval-mode"],
+  "--token-budget": ["--no-token-budget"],
+  "--no-token-budget": ["--token-budget"],
   "--usage-limit-usd": ["--max-cost-usd", "--input-cost-per-million", "--output-cost-per-million"],
   "--max-cost-usd": ["--usage-limit-usd"],
   "--input-cost-per-million": ["--usage-limit-usd"],
@@ -34,18 +38,19 @@ const conflicts: Readonly<Record<string, readonly string[]>> = {
 };
 
 export const CLI_OPTION_NAMES = [
+  "--compaction-model", "--compaction-provider",
   "--provider", "--model", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
   "--agent-profile", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb", "--store", "--tenant", "--user", "--namespace", "--idempotency-key",
-  "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
+  "--token-budget", "--context-tokens", "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
   "--max-output-tokens", "--max-total-tokens", "--subagent-max-steps", "--subagent-max-tool-calls",
   "--subagent-max-tool-errors", "--subagent-max-input-tokens", "--subagent-max-output-tokens",
   "--subagent-max-total-tokens", "--subagent-timeout-ms", "--max-parallel-reviews", "--max-cost-usd",
   "--input-cost-per-million", "--output-cost-per-million", "--allow-check", "--require-capability",
-  "--subagent", "--reviewer", "--yes", "--approve", "--deny", "--json", "--jsonl", "--session",
+  "--subagent", "--reviewer", "--approval-mode", "--yes", "--approve", "--deny", "--json", "--jsonl", "--session",
   "--continue", "--update", "--status", "--limit", "--cursor", "--before", "--reason", "--cascade", "--final",
   "--service", "--apply", "--help", "--version", "--search", "--pricing-file", "--usage-limit-usd"
 ] as const;
@@ -69,7 +74,7 @@ const execution = [
   "--oci-tmpfs-mb"
 ] as const;
 const budgets = [
-  "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
+  "--token-budget", "--context-tokens", "--no-token-budget", "--max-steps", "--timeout-ms", "--max-tool-calls", "--max-tool-errors", "--max-input-tokens",
   "--max-output-tokens", "--max-total-tokens", "--max-cost-usd", "--input-cost-per-million",
   "--output-cost-per-million", "--subagent-max-steps", "--subagent-max-tool-calls",
   "--subagent-max-tool-errors", "--subagent-max-input-tokens", "--subagent-max-output-tokens",
@@ -82,6 +87,7 @@ const childBudgets = [
   "--subagent-timeout-ms"
 ] as const;
 const agent = [
+  "--compaction-model", "--compaction-provider",
   "--pricing-file", "--usage-limit-usd",
   ...provider, ...profile, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
   "--require-capability", "--subagent"
@@ -105,13 +111,13 @@ const contract = (
 
 export const CLI_COMMAND_OPTION_CONTRACTS = {
   init: contract([...provider, ...profile, "--update", "--json"]),
-  run: contract(["--service", "--session", ...agent, "--idempotency-key", "--yes", "--json", "--jsonl"]),
+  run: contract(["--service", "--session", ...agent, "--idempotency-key", "--approval-mode", "--yes", "--json", "--jsonl"]),
   review: contract([
     "--pricing-file", "--usage-limit-usd",
     ...provider, ...profile, "--route", ...locator, "--context-config", "--no-project-context",
     ...childBudgets, "--max-parallel-reviews", "--require-capability", "--reviewer", "--json"
   ]),
-  chat: contract(["--service", ...agent, "--yes", "--session", "--continue"]),
+  chat: contract(["--service", ...agent, "--approval-mode", "--yes", "--session", "--continue"]),
   providers: contract(["--json"]),
   doctor: contract([...provider, ...profile, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
   resume: contract(["--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),

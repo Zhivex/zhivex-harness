@@ -75,6 +75,7 @@
     "NODE_ENGINE_RANGE",
     "PROVIDERS",
     "PROVIDER_DESCRIPTORS",
+    "SEMANTIC_COMPACTION_VERSION",
     "SESSION_RUN_STATUSES",
     "TERMINAL_RUN_STATUSES",
     "TERMINAL_SESSION_RUN_STATUSES",
@@ -88,6 +89,7 @@
     "Workspace",
     "appendUserMessage",
     "applyEditProposalInputSchema",
+    "applyHarnessToolPolicy",
     "assertHarnessModelCapabilities",
     "cancelHarnessRun",
     "canonicalizeChangeEnvelope",
@@ -128,6 +130,7 @@
     "compactHarnessMessages",
     "computeChangeEnvelopeDigest",
     "computeChangeEnvelopeEvidenceDigest",
+    "createAcpConnection",
     "createChangeEnvelope",
     "createEditProposal",
     "createEmptyHarnessContextBundle",
@@ -140,9 +143,12 @@
     "createHarnessRouteModels",
     "createHarnessStateBackup",
     "createHarnessSubagents",
+    "createHarnessToolPolicy",
     "createHttpMcpClient",
+    "createProgressMonitor",
     "createProviderModel",
     "createProviderRegistry",
+    "createSemanticCompactor",
     "createTimeToSafeFixCases",
     "createTimeToSafeFixReport",
     "createTimeToSafeFixSample",
@@ -172,6 +178,7 @@
     "harnessLifecycleFingerprintInput",
     "harnessLocalCredentialsSchema",
     "harnessSkillLoadInputSchema",
+    "harnessToolPolicySchema",
     "importHarnessStateBackup",
     "importHarnessStateBackupFile",
     "injectTimeToSafeFixAttack",
@@ -194,6 +201,7 @@
     "openHarnessActivityStore",
     "openHarnessPersistence",
     "openSessionStore",
+    "openWorkspaceCheckpointStore",
     "parseCliJsonDocument",
     "parseCliJsonLineDocument",
     "parseHarnessModelRoute",
@@ -203,6 +211,7 @@
     "quarantineFileInputSchema",
     "readHarnessLocalCredentials",
     "readHarnessStateBackup",
+    "recommendCompactionModels",
     "recoverHarnessLocalService",
     "renderHarnessContextInstructions",
     "requestHarnessLocalService",
@@ -217,6 +226,7 @@
     "serializeHarnessModelRoutes",
     "serializeStreamEvent",
     "serializeStreamResult",
+    "serveAcpStdio",
     "startHarnessLocalService",
     "stateBackupBundleSchema",
     "streamEventDocument",
@@ -309,6 +319,7 @@
   "experimentalRuntimeExports": [
     "DEFAULT_TIME_TO_SAFE_FIX_GOAL",
     "HARNESS_CLIENT_PROTOCOL_VERSION",
+    "SEMANTIC_COMPACTION_VERSION",
     "TIME_TO_SAFE_FIX_CARRIERS",
     "TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES",
     "TIME_TO_SAFE_FIX_FAILURE_ORIGINS",
@@ -316,19 +327,28 @@
     "TIME_TO_SAFE_FIX_GOALS",
     "TIME_TO_SAFE_FIX_PROFILES",
     "TIME_TO_SAFE_FIX_SCHEMA_VERSION",
+    "applyHarnessToolPolicy",
     "classifyTimeToSafeFixFailure",
+    "createAcpConnection",
     "createHarnessClientAdapter",
+    "createHarnessToolPolicy",
+    "createProgressMonitor",
+    "createSemanticCompactor",
     "createTimeToSafeFixCases",
     "createTimeToSafeFixReport",
     "createTimeToSafeFixSample",
     "harnessClientCommandSchema",
     "harnessClientRequestSchema",
     "harnessLocalCredentialsSchema",
+    "harnessToolPolicySchema",
     "injectTimeToSafeFixAttack",
     "openHarnessActivityStore",
+    "openWorkspaceCheckpointStore",
     "readHarnessLocalCredentials",
+    "recommendCompactionModels",
     "recoverHarnessLocalService",
     "requestHarnessLocalService",
+    "serveAcpStdio",
     "startHarnessLocalService",
     "timeToSafeFixDriverResultSchema",
     "timeToSafeFixLatencyStatistics",
@@ -498,6 +518,9 @@
     "CliStreamErrorDocument",
     "CliStreamResultDocument",
     "CommandResult",
+    "CompactionModelAssessment",
+    "CompactionModelRecommendations",
+    "CompactionRecommendationRequest",
     "CreateChangeEnvelopeInput",
     "CreateHarnessOciEnvironmentOptions",
     "CreateHarnessOptions",
@@ -560,7 +583,9 @@
     "HarnessLocalServiceOptions",
     "HarnessMcpClients",
     "HarnessMcpConfiguration",
+    "HarnessMcpHttpOptions",
     "HarnessMcpPermission",
+    "HarnessMcpResourceClient",
     "HarnessMcpServerConfig",
     "HarnessMcpTransport",
     "HarnessMigrationResult",
@@ -588,6 +613,8 @@
     "HarnessSubagentProfile",
     "HarnessSubagentProfileDescriptor",
     "HarnessSubagentRuntime",
+    "HarnessToolPolicy",
+    "HarnessToolPolicyDecision",
     "ListFilesOptions",
     "ListFilesResult",
     "ListSessionsQuery",
@@ -605,6 +632,8 @@
     "OciRunBatchRequest",
     "OciRunRequest",
     "OpenSessionStoreOptions",
+    "ProgressMonitorState",
+    "ProgressSignal",
     "ProviderAvailability",
     "ProviderCapability",
     "ProviderCredentials",
@@ -649,8 +678,10 @@
     "TimeToSafeFixTask",
     "UpdateSessionInput",
     "UpdateSessionRunInput",
+    "WorkspaceCheckpoint",
     "WorkspaceFile",
     "WorkspaceIndexDiagnostics",
+    "WorkspaceRestoreOperation",
     "WorkspaceTopologyFile",
     "ZhivexHarness"
   ],
@@ -815,6 +846,9 @@
     "WorkspaceTopologyFile"
   ],
   "experimentalTypeExports": [
+    "CompactionModelAssessment",
+    "CompactionModelRecommendations",
+    "CompactionRecommendationRequest",
     "HarnessActivityEvent",
     "HarnessActivityOptions",
     "HarnessActivityPage",
@@ -833,6 +867,12 @@
     "HarnessLocalCredentials",
     "HarnessLocalService",
     "HarnessLocalServiceOptions",
+    "HarnessMcpHttpOptions",
+    "HarnessMcpResourceClient",
+    "HarnessToolPolicy",
+    "HarnessToolPolicyDecision",
+    "ProgressMonitorState",
+    "ProgressSignal",
     "TimeToSafeFixAggregate",
     "TimeToSafeFixCarrier",
     "TimeToSafeFixCase",
@@ -847,7 +887,9 @@
     "TimeToSafeFixRatioStatistics",
     "TimeToSafeFixReport",
     "TimeToSafeFixSample",
-    "TimeToSafeFixTask"
+    "TimeToSafeFixTask",
+    "WorkspaceCheckpoint",
+    "WorkspaceRestoreOperation"
   ],
   "cli": {
     "commands": [
@@ -917,6 +959,8 @@
         "allowed": [
           "--service",
           "--session",
+          "--compaction-model",
+          "--compaction-provider",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -946,6 +990,8 @@
           "--oci-max-workspace-bytes",
           "--oci-max-file-write-bytes",
           "--oci-tmpfs-mb",
+          "--token-budget",
+          "--context-tokens",
           "--no-token-budget",
           "--max-steps",
           "--timeout-ms",
@@ -968,6 +1014,7 @@
           "--require-capability",
           "--subagent",
           "--idempotency-key",
+          "--approval-mode",
           "--yes",
           "--json",
           "--jsonl"
@@ -986,6 +1033,12 @@
             "--input-cost-per-million",
             "--output-cost-per-million"
           ],
+          "--token-budget": [
+            "--no-token-budget"
+          ],
+          "--no-token-budget": [
+            "--token-budget"
+          ],
           "--max-cost-usd": [
             "--usage-limit-usd"
           ],
@@ -994,6 +1047,12 @@
           ],
           "--output-cost-per-million": [
             "--usage-limit-usd"
+          ],
+          "--approval-mode": [
+            "--yes"
+          ],
+          "--yes": [
+            "--approval-mode"
           ],
           "--json": [
             "--jsonl"
@@ -1043,6 +1102,8 @@
       "chat": {
         "allowed": [
           "--service",
+          "--compaction-model",
+          "--compaction-provider",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1072,6 +1133,8 @@
           "--oci-max-workspace-bytes",
           "--oci-max-file-write-bytes",
           "--oci-tmpfs-mb",
+          "--token-budget",
+          "--context-tokens",
           "--no-token-budget",
           "--max-steps",
           "--timeout-ms",
@@ -1093,6 +1156,7 @@
           "--allow-check",
           "--require-capability",
           "--subagent",
+          "--approval-mode",
           "--yes",
           "--session",
           "--continue"
@@ -1111,6 +1175,12 @@
             "--input-cost-per-million",
             "--output-cost-per-million"
           ],
+          "--token-budget": [
+            "--no-token-budget"
+          ],
+          "--no-token-budget": [
+            "--token-budget"
+          ],
           "--max-cost-usd": [
             "--usage-limit-usd"
           ],
@@ -1119,6 +1189,12 @@
           ],
           "--output-cost-per-million": [
             "--usage-limit-usd"
+          ],
+          "--approval-mode": [
+            "--yes"
+          ],
+          "--yes": [
+            "--approval-mode"
           ],
           "--session": [
             "--continue"
@@ -1164,6 +1240,8 @@
           "--oci-max-workspace-bytes",
           "--oci-max-file-write-bytes",
           "--oci-tmpfs-mb",
+          "--token-budget",
+          "--context-tokens",
           "--no-token-budget",
           "--max-steps",
           "--timeout-ms",
@@ -1194,7 +1272,14 @@
           "--require-capability",
           "--subagent"
         ],
-        "conflicts": {}
+        "conflicts": {
+          "--token-budget": [
+            "--no-token-budget"
+          ],
+          "--no-token-budget": [
+            "--token-budget"
+          ]
+        }
       },
       "resume": {
         "allowed": [
