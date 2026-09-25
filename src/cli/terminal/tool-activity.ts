@@ -49,7 +49,8 @@ export class ToolActivity {
     this.started = Date.now();
     this.render();
     if (this.tty && !this.timer) {
-      this.timer = setInterval(() => this.render(), 1_000);
+      // A timer can fire just before a whole second; refresh before the next second.
+      this.timer = setInterval(() => this.render(), 250);
       this.timer.unref();
     }
   }

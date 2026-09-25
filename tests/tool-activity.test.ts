@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, jest, spyOn, test } from "bun:test";
 import { ToolActivity } from "../src/cli/terminal/tool-activity.js";
 import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
 
@@ -114,6 +114,26 @@ test("waiting for the model stays visible and flush stops the heartbeat", async 
   const stopped = output;
   await new Promise(resolve => setTimeout(resolve, 1050));
   expect(output).toBe(stopped);
+});
+
+test("an early heartbeat still displays elapsed seconds before a short response completes", () => {
+  jest.useFakeTimers();
+  let now = 0, output = "";
+  const clock = spyOn(Date, "now").mockImplementation(() => now);
+  const activity = new ToolActivity(text => { output += text; }, true);
+  try {
+    activity.phase("Waiting for model response");
+    now = 999;
+    jest.advanceTimersByTime(1000);
+    expect(output).not.toContain(" · 1s");
+    now = 1249;
+    jest.advanceTimersByTime(250);
+    expect(output).toContain(" · 1s");
+  } finally {
+    activity.flush();
+    clock.mockRestore();
+    jest.useRealTimers();
+  }
 });
 
 test("failed tools never appear as completed and unknown tool names remain private", () => {
