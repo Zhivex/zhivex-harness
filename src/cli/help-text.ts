@@ -37,6 +37,8 @@ Options (automation and advanced configuration):
   --update                       Update an existing profile (init only)
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
+  --compaction-model <id>        Opt into model-assisted compaction with this model
+  --compaction-provider <id>     Compaction provider (defaults to the primary provider)
   --route <role=provider[:model]> Route a subagent role; repeatable
   --session <id>                 Open a durable interactive session
   --continue                     Open the latest durable interactive session
@@ -71,7 +73,9 @@ Options (automation and advanced configuration):
   --max-steps <1-50>             Maximum agent steps (default: 12)
   --max-tool-calls <n>           Maximum tool calls (default: 32)
   --max-tool-errors <n>          Maximum failed tool calls (default: 4)
-  --no-token-budget             Disable cumulative token budgets for main run and subagents
+  --no-token-budget             Disable cumulative token budgets (default for new local chat)
+  --token-budget                Enable cumulative token budgets (default for run/review)
+  --context-tokens <n>           Context compaction threshold, not cumulative usage (default: 40000)
   --max-input-tokens <n>         Maximum measured input tokens (default: 100000)
   --max-output-tokens <n>        Maximum measured output tokens (default: 30000)
   --max-total-tokens <n>         Maximum total tokens (default: 120000)
@@ -91,7 +95,8 @@ Options (automation and advanced configuration):
   --subagent-timeout-ms <n>      Independent child timeout (default: 300000)
   --reviewer <profile>           Read-only review group member; repeatable
   --max-parallel-reviews <1-4>   Review group concurrency ceiling (default: 2)
-  --yes                          Automatically approve writes and checks
+  --approval-mode <mode>        ask (default), auto, or restricted (deny approvals)
+  --yes                          Alias for automatic approvals within existing permissions
   --json                         Emit structured final output
   --jsonl                        Stream redacted JSON Lines, then the final result
   --cursor <cursor>              Continue a paginated run listing

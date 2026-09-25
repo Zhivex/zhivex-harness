@@ -134,6 +134,7 @@ try {
     "package/dist/index.d.ts",
     "package/dist/cli.js",
     "package/dist/zhx.js",
+    "package/dist/acp-cli.js",
     "package/dist/hostile-repository-demo.js",
     "package/dist/verify-historical-migrations.js"
   ]) {
@@ -260,11 +261,15 @@ void create;
   assert.equal(installedManifest.engines?.node, ">=22.13.0");
   assert.deepEqual(installedManifest.bin, {
     "zhivex-harness": "./dist/cli.js",
-    zhx: "./dist/zhx.js"
+    zhx: "./dist/zhx.js",
+    "zhx-acp": "./dist/acp-cli.js"
   });
 
   const installedCli = path.join(consumer, "node_modules", ".bin", "zhivex-harness");
   const installedShortCli = path.join(consumer, "node_modules", ".bin", "zhx");
+  const acpHelp = await run([path.join(consumer, "node_modules", ".bin", "zhx-acp"), "--help"], { cwd: consumer });
+  assert(acpHelp.stderr.includes("Experimental ACP v1 text-session subset"), "installed ACP entrypoint is unavailable");
+  assert.equal(acpHelp.stdout, "", "installed ACP help contaminated the protocol output");
   for (const cli of [installedCli, installedShortCli]) {
     const version = await run([cli, "--version"], { cwd: consumer });
     assert(version.stdout.includes(manifest.version), `installed ${path.basename(cli)} version does not match package.json`);

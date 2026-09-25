@@ -1,3 +1,5 @@
+import { Workspace } from "../src/workspace/workspace.js";
+import { openWorkspaceCheckpointStore } from "../src/persistence/workspace-checkpoints.js";
 import { afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
@@ -391,4 +393,112 @@ describe("WAL-safe logical state backup", () => {
     expect(result).toMatchObject({ dryRun: true, inserted: {}, identical: 0 });
     await expect(lstat(sqlitePath)).rejects.toThrow();
   });
+});
+
+
+test("portable backups preserve checkpoint captures and completed restores, rejecting unfinished restore authority", async () => {
+  const { source, target } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  const run = terminalState("checkpoint-run", source.scope);
+  await persistence.store.save(run);
+  persistence.close();
+  const sessions = await openCliSessionStore({ workspace: source.workspace, stateDirectory: source.stateDirectory, scope: source.scope });
+  const workspace = await Workspace.open(source.workspace);
+  const checkpoints = await openWorkspaceCheckpointStore(workspace, sessions);
+  let checkpointId: string;
+  let operationId: string;
+  try {
+    const session = await sessions.create({ initialRun: { runId: run.runId, provider: run.provider, model: run.modelId, status: "completed" } });
+    await writeFile(path.join(source.workspace, "captured.txt"), "original");
+    const capture = await checkpoints.capture({ sessionId: session.sessionId, turnId: session.runs[0]!.turnId, paths: ["captured.txt"] });
+    checkpointId = capture.id;
+    await writeFile(path.join(source.workspace, "captured.txt"), "agent change");
+    const prepared = await checkpoints.prepareRestore(capture.id, { "captured.txt": (await workspace.readFile("captured.txt")).digest });
+    operationId = prepared.operation.id;
+    await expect(createHarnessStateBackup(source)).rejects.toThrow("unfinished workspace restore");
+    await checkpoints.applyRestore(prepared.operation.id, prepared.operation.proposalId);
+  } finally { checkpoints.close(); sessions.close(); }
+  const bundle = await createHarnessStateBackup(source);
+  expect(bundle.records.workspaceCheckpoints).toHaveLength(2);
+  await importHarnessStateBackup(target, bundle, { dryRun: true });
+  await importHarnessStateBackup(target, bundle);
+  await importHarnessStateBackup(target, bundle); // identical imports retain journal and snapshot bytes
+  const restoredSessions = await openCliSessionStore({ workspace: target.workspace, stateDirectory: target.stateDirectory, scope: target.scope });
+  const restored = await openWorkspaceCheckpointStore(workspace, restoredSessions);
+  try {
+    expect(restored.getCheckpoint(checkpointId!).files[0]?.content).toBe("original");
+    expect(restored.getOperation(operationId!).stage).toBe("completed");
+  } finally { restored.close(); restoredSessions.close(); }
+  const invalid = structuredClone(bundle);
+  invalid.records.workspaceCheckpoints![0]!.scopeKey = "0".repeat(64);
+  await expect(importHarnessStateBackup(target, withChecksum(invalid))).rejects.toThrow("binding");
+  const unfinished = structuredClone(bundle);
+  const operation = unfinished.records.workspaceCheckpoints!.find((entry) => entry.kind === "restore")!;
+  if (operation.kind === "restore") operation.body.stage = "prepared";
+  await expect(importHarnessStateBackup(target, withChecksum(unfinished))).rejects.toThrow("unfinished");
+});
+
+test("portable backups preserve shared budget receipts and auxiliary usage without resetting spent tokens", async () => {
+  const { createAgentBudgetCoordinator } = await import("@zhivex-ai/core");
+  const { source, target } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  const limits = { inputTokens: 100, outputTokens: 100, totalTokens: 200 };
+  const coordinator = createAgentBudgetCoordinator({ store: persistence.store, scope: source.scope, budgetId: "backup-budget", limits });
+  await coordinator.reserve("paid-compaction", { inputTokens: 80, outputTokens: 20, totalTokens: 100 });
+  await coordinator.settle("paid-compaction", { inputTokens: 70, outputTokens: 10, totalTokens: 80 });
+  const run: AgentRunState = { ...terminalState("budget-run", source.scope), budgetCoordinatorId: coordinator.id,
+    compactionRouteFingerprint: "fixture-route-v1", usage: { inputTokens: 70, outputTokens: 10, totalTokens: 80 },
+    compactionAttempts: [{ id: "compaction-1", beforeStep: 1, sourceDigest: `sha256:${"a".repeat(64)}`, createdAt: 1000,
+      status: "confirmed", usage: { inputTokens: 70, outputTokens: 10, totalTokens: 80 }, estimatedCost: { amount: 0.001, currency: "USD" },
+      route: { provider: "test", modelId: "small", fingerprint: "fixture-route-v1", reservation: { inputTokens: 80, outputTokens: 20, totalTokens: 100 } } }] };
+  await persistence.store.save(run);
+  persistence.close();
+  const bundle = await createHarnessStateBackup(source);
+  expect(bundle.records.budgetLedgers).toHaveLength(1);
+  expect(bundle.records.runs[0]?.state.compactionAttempts).toEqual(run.compactionAttempts);
+  await importHarnessStateBackup(target, bundle);
+  const restored = await openHarnessPersistence(target);
+  try {
+    const loaded = await restored.store.load(run.runId, target.scope);
+    expect(loaded?.usage).toEqual(run.usage);
+    expect(loaded?.compactionAttempts).toEqual(run.compactionAttempts);
+    const resumed = createAgentBudgetCoordinator({ store: restored.store, scope: target.scope, budgetId: "backup-budget", limits });
+    await expect(resumed.reserve("new-call", { inputTokens: 31, outputTokens: 1, totalTokens: 32 })).rejects.toThrow("exceeds inputTokens");
+    await expect(resumed.reserve("paid-compaction", { inputTokens: 1, outputTokens: 1, totalTokens: 2 })).rejects.toThrow("already reserved");
+  } finally { restored.close(); }
+  const missing = structuredClone(bundle);
+  delete missing.records.budgetLedgers;
+  await expect(importHarnessStateBackup(target, withChecksum(missing))).rejects.toThrow("missing its shared budget ledger");
+});
+
+test("backup fails closed for in-flight auxiliary calls and unresolved shared budget allocations", async () => {
+  const { createAgentBudgetCoordinator } = await import("@zhivex-ai/core");
+  const { source } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  const coordinator = createAgentBudgetCoordinator({ store: persistence.store, scope: source.scope, budgetId: "unfinished-budget",
+    limits: { inputTokens: 100, outputTokens: 100, totalTokens: 200 } });
+  await coordinator.reserve("in-flight", { inputTokens: 10, outputTokens: 10, totalTokens: 20 });
+  const run: AgentRunState = { ...terminalState("unfinished-run", source.scope), budgetCoordinatorId: coordinator.id };
+  await persistence.store.save(run);
+  try {
+    await expect(createHarnessStateBackup(source)).rejects.toThrow("unresolved reservations");
+    await coordinator.settle("in-flight", { inputTokens: 5, outputTokens: 5, totalTokens: 10 });
+    run.compactionAttempts = [{ id: "unknown-compaction", beforeStep: 1, sourceDigest: `sha256:${"b".repeat(64)}`, createdAt: 1000,
+      status: "unknown", route: { provider: "test", modelId: "small", fingerprint: "route", reservation: { inputTokens: 10, outputTokens: 10, totalTokens: 20 } } }];
+    await persistence.store.save({ ...run, revision: 1 }, { expectedRevision: 0 });
+    await expect(createHarnessStateBackup(source)).rejects.toThrow("unresolved auxiliary");
+  } finally { persistence.close(); }
+});
+
+test("export refuses to silently omit orphan budget ledgers after their run is removed", async () => {
+  const { createAgentBudgetCoordinator } = await import("@zhivex-ai/core");
+  const { source } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  try {
+    const coordinator = createAgentBudgetCoordinator({ store: persistence.store, scope: source.scope, budgetId: "orphan-budget",
+      limits: { inputTokens: 10, outputTokens: 10, totalTokens: 20 } });
+    await coordinator.reserve("paid", { inputTokens: 1, outputTokens: 1, totalTokens: 2 });
+    await coordinator.settle("paid", { inputTokens: 1, outputTokens: 1, totalTokens: 2 });
+    await expect(createHarnessStateBackup(source)).rejects.toThrow("unlinked shared budget ledger");
+  } finally { persistence.close(); }
 });

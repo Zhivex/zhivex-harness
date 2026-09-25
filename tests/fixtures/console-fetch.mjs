@@ -5,6 +5,14 @@ let editRequested = existsSync(process.env.CONSOLE_FIXTURE_REQUESTS) &&
 let slowRequested = false;
 let failedRequested = false;
 globalThis.fetch = async (url, options) => {
+  if (String(url) === 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions') {
+    if (new Headers(options.headers).get('authorization') !== 'Bearer qwen-hidden-fixture') throw new Error('Qwen managed credential was not selected');
+    const body = JSON.parse(options.body);
+    appendFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, JSON.stringify(body) + '\n');
+    return Response.json({ id: 'qwen-probe', object: 'chat.completion', model: body.model,
+      choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 3, completion_tokens: 1, total_tokens: 4 } });
+  }
   if (!String(url).startsWith('https://api.openai.com/v1/')) throw new Error('Unexpected fixture endpoint');
   if (process.env.CONSOLE_EXPECT_API_KEY) {
     if (process.env.OPENAI_API_KEY) throw new Error('Managed key leaked to process environment');
@@ -14,6 +22,7 @@ globalThis.fetch = async (url, options) => {
   }
   const body = JSON.parse(options.body);
   appendFileSync(process.env.CONSOLE_FIXTURE_REQUESTS, JSON.stringify(body) + '\n');
+  if (JSON.stringify(body).includes("WAIT_FIXTURE")) await new Promise(resolve => setTimeout(resolve, 1500));
   const slow = !slowRequested && JSON.stringify(body).includes('SLOW_FIXTURE');
   if (slow) slowRequested = true;
   const fail = !failedRequested && JSON.stringify(body).includes('FAIL_STREAM_FIXTURE');

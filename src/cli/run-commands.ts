@@ -46,13 +46,14 @@ export const runOnce = async (options: CliOptions) => {
       harness,
       {
         prompt: options.prompt,
+        toolExecution: { parallel: false, stopOnError: false },
         scope: harness.config.scope,
         metadata: createHarnessResumeMetadata(harness.config, routes),
         ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {})
       },
       {
         onEvent: streamSink(options, tracker),
-        resolveApprovals: terminalApprovalResolver(options.yes)
+        resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes)
       }
     );
     closeAttempted = true;
@@ -204,6 +205,7 @@ export const resumeRun = async (options: CliOptions) => {
         harness,
         {
           state,
+          toolExecution: { parallel: false, stopOnError: false },
           approvals: approvalResponses(
             state.pendingApprovals,
             approve,
@@ -212,11 +214,7 @@ export const resumeRun = async (options: CliOptions) => {
         },
         {
           onEvent: streamSink(options, tracker),
-          resolveApprovals: async (approvals) => approvalResponses(
-            approvals,
-            approve,
-            approve ? "Approved by resume --approve." : "Denied by resume --deny."
-          )
+          resolveApprovals: terminalApprovalResolver(approve ? "auto" : "restricted")
         }
       );
       await updateIndexedSessionRun(harness.config, result.state.runId, result.status);

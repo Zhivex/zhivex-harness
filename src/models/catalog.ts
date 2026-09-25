@@ -3,6 +3,15 @@ import bundled from "./catalog.json";
 
 const modelId = z.string().min(1).max(160).regex(/^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/);
 const text = z.string().min(1).max(300).regex(/^[^\x00-\x1f\x7f-\x9f]*$/);
+const evidence = z.object({
+  sourceUrl: z.url().max(1000).refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  }, "Evidence requires an HTTPS URL without credentials"),
+  checkedAt: z.iso.date(),
+}).strict();
+const tokenLimit = z.number().int().positive().max(1_000_000_000);
+const price = z.number().finite().nonnegative().max(1_000_000);
 export const catalogModelSchema = z.object({
   id: modelId,
   name: text,
@@ -14,7 +23,39 @@ export const catalogModelSchema = z.object({
   reason: text.optional(),
   replacement: modelId.optional(),
   retirementDate: z.iso.date().optional(),
-}).strict();
+  limits: z.object({
+    contextWindowTokens: tokenLimit,
+    // Some providers publish a separate input limit instead of a shared window.
+    contextWindowType: z.enum(["combined", "input"]),
+    maxOutputTokens: tokenLimit,
+    maxInputTokens: tokenLimit.optional(),
+    evidence,
+  }).strict().optional(),
+  pricing: z.object({
+    currency: z.literal("USD"),
+    inputPerMillionTokens: price,
+    outputPerMillionTokens: price,
+    cachedInputPerMillionTokens: price.optional(),
+    // A single rate must not be extrapolated to a provider's higher context tier.
+    maxInputTokens: tokenLimit.optional(),
+    scope: text,
+    evidence,
+  }).strict().optional(),
+  compaction: z.object({
+    suitability: z.enum(["candidate", "evaluated", "unsuitable", "unknown"]),
+    reason: text,
+    // Candidate is an editorial inference, never a claim of measured quality.
+    evidence,
+  }).strict().optional(),
+}).strict().superRefine((model, ctx) => {
+  if (!model.limits) return;
+  if (model.limits.maxInputTokens !== undefined && model.limits.maxInputTokens > model.limits.contextWindowTokens) {
+    ctx.addIssue({code: "custom", message: "maxInputTokens exceeds context window"});
+  }
+  if (model.limits.contextWindowType === "combined" && model.limits.maxOutputTokens > model.limits.contextWindowTokens) {
+    ctx.addIssue({code: "custom", message: "maxOutputTokens exceeds combined context window"});
+  }
+});
 export const modelCatalogSchema = z.object({
   schemaVersion: z.literal(1),
   revision: z.string().min(1).max(80).regex(/^[a-zA-Z0-9._-]+$/),
@@ -57,6 +98,7 @@ export function catalogModels(catalog: ModelCatalog, provider: string, current?:
 export function modelDescription(model: CatalogModel): string {
   return [model.lifecycle === "deprecated" ? "In retirement" : model.lifecycle === "retired" ? "Retired" : "",
     model.validation === "unverified" ? "Unverified" : "Verified in Zhivex",
+    model.limits ? `Context: ${model.limits.contextWindowTokens.toLocaleString("en-US")} tokens (${model.limits.contextWindowType}) · Output: ${model.limits.maxOutputTokens.toLocaleString("en-US")}` : "Context: unknown",
     model.reason, model.replacement ? `Suggested replacement: ${model.replacement}` : "",
     model.retirementDate ? `Retirement: ${model.retirementDate}` : ""].filter(Boolean).join(" · ");
 }

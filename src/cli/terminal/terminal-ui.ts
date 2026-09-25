@@ -1,3 +1,4 @@
+import { checkApprovalGrant } from "./session-grants.js";
 import type {
   AgentApprovalRequest,
   AgentApprovalResponse,
@@ -84,8 +85,8 @@ export const formatApproval = (
     ? { text: completePayload, omitted: 0 }
     : boundedText(completePayload, maximumCharacters);
   const identity = [
-    approval.id ? `approval ${sanitizeTerminalText(approval.id)}` : undefined,
-    approval.inputDigest ? `input ${sanitizeTerminalText(approval.inputDigest)}` : undefined,
+    detail === "full" && approval.id ? `approval ${sanitizeTerminalText(approval.id)}` : undefined,
+    detail === "full" && approval.inputDigest ? `input ${sanitizeTerminalText(approval.inputDigest)}` : undefined,
     approval.serverLabel ? `server ${sanitizeTerminalText(approval.serverLabel)}` : undefined,
     approval.childAgentId ? `child ${sanitizeTerminalText(approval.childAgentId)}` : undefined
   ].filter((value): value is string => value !== undefined);
@@ -107,11 +108,23 @@ export const formatApproval = (
       if (approval.name.includes("verify_and_apply")) scope.push("Verification: pending; approval authorizes the checks and conditional application, not a successful result.");
     } catch { /* The complete unparseable payload remains visible below. */ }
   }
+  if (detail === "summary" && approval.kind === "local-tool" && approval.name === "run_check") {
+    try {
+      const args = JSON.parse(approval.arguments);
+      if (typeof args.check === "string" && typeof args.expectedScript === "string" &&
+          Object.keys(args).every(key => ["check", "expectedScript"].includes(key))) {
+        return `Run check: ${sanitizeTerminalText(args.check)}${identity.length ? ` · ${identity.join(" · ")}` : ""}\n\n  ${sanitizeTerminalText(args.expectedScript)}\n`;
+      }
+    } catch { /* Keep the complete original payload visible below. */ }
+  }
   return `${header}\n${scope.map(sanitizeTerminalText).map(line => `${line}\n`).join("")}${payload.text}${omissionNotice}`;
 };
 
 export interface TerminalApprovalResolverOptions {
   ask(question: string): Promise<string>;
+  select?: import("../cli-credentials.js").CredentialInput["select"];
+  workspace?: string;
+  sessionGrants?: Set<string>;
   write(text: string): void;
   maxSummaryCharacters?: number;
   approvedReason?: string;
@@ -138,8 +151,14 @@ export const resolveTerminalApprovals = async (
   options: TerminalApprovalResolverOptions
 ): Promise<readonly AgentApprovalResponse[] | undefined> => {
   const responses: AgentApprovalResponse[] = [];
+  const staged = new Set(options.sessionGrants);
   for (let index = 0; index < approvals.length; index += 1) {
     const approval = approvals[index]!;
+    const grant = options.sessionGrants && options.workspace ? checkApprovalGrant(approval, options.workspace) : undefined;
+    if (grant && staged.has(grant)) {
+      responses.push({ provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Exact check approved for this CLI session." });
+      continue;
+    }
     options.write(
       `\nApproval required ${index + 1}/${approvals.length}:\n` +
       `${formatApproval(approval, {
@@ -150,10 +169,17 @@ export const resolveTerminalApprovals = async (
       })}\n`
     );
 
+    if (options.workspace) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
     for (;;) {
       let answer: string;
       try {
-        const received = await options.ask("Approve? [y]es/[n]o/[v]iew/[q]uit (default: no) ");
+        const received = options.select ? await options.select("Permission required", [
+          { value: "n", label: "Reject" },
+          { value: "y", label: "Allow once", detail: "Only the action shown above" },
+          ...(grant ? [{ value: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
+          { value: "v", label: "View technical details" },
+          { value: "q", label: "Leave pending" },
+        ]) : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
         if (typeof received !== "string") return undefined;
         answer = normalizedDecision(received);
       } catch (error) {
@@ -168,7 +194,8 @@ export const resolveTerminalApprovals = async (
       if (answer === "q" || answer === "quit") {
         return undefined;
       }
-      if (answer === "y" || answer === "yes") {
+      if (answer === "y" || answer === "yes" || (answer === "s" && grant)) {
+        if (answer === "s" && grant) staged.add(grant);
         responses.push({
           provider: approval.provider,
           approvalRequestId: approval.id,
@@ -189,6 +216,7 @@ export const resolveTerminalApprovals = async (
       options.write("Choose y, n, v, or q.\n");
     }
   }
+  for (const key of staged) options.sessionGrants?.add(key);
   return responses;
 };
 
@@ -211,7 +239,14 @@ const verificationReceipt = (name: string, output: unknown) => {
     : name.startsWith("verify_and_apply_") && value.verification && typeof value.verification === "object"
       ? value.verification as Record<string, unknown> : undefined;
   if (!receipt || !Number.isSafeInteger(receipt.exitCode)) return undefined;
-  return { exitCode: receipt.exitCode as number, timedOut: receipt.timedOut === true };
+  const command = receipt.command;
+  const prefix = Array.isArray(command) ? JSON.stringify(command.slice(0, -1)) : "";
+  const supported = ['["bun","--no-env-file","run"]', '["npm","--ignore-scripts","run"]',
+    '["pnpm","--ignore-scripts","run"]', '["yarn","run"]'];
+  const last = Array.isArray(command) ? command.at(-1) : undefined;
+  const check = name === "run_check" && supported.includes(prefix) &&
+    typeof last === "string" && /^[A-Za-z0-9:_-]{1,100}$/.test(last) ? last : undefined;
+  return { exitCode: receipt.exitCode as number, timedOut: receipt.timedOut === true, check };
 };
 
 export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
@@ -240,6 +275,14 @@ export const terminalRunFailure = (error: unknown): string => {
   if (provider) return `${provider[1]} request failed · HTTP ${provider[2]}${provider[3] ? ` · ${provider[3]}` : ""}`;
   const budget = /^Agent budget exceeded including child runs: (maxInputTokens|maxOutputTokens|maxTotalTokens|maxToolCalls|maxToolErrors|maxSteps) limit (\d+), actual (\d+)\.$/.exec(message);
   if (budget) return `budget exceeded · ${budget[1]} · ${budget[3]} / ${budget[2]}`;
+  const denied = /^Tool "(read_file|read_files|list_files|search_files|search_many)" failed: The path is protected by the harness policy: (node_modules|\.git|\.zhivex-harness|dist|coverage|\.next|\.turbo)$/.exec(message);
+  if (denied) return `read denied · protected path ${denied[2]}`;
+  if (message === "Agent compaction result still exceeds maxEstimatedInputTokens." ||
+      message === "Agent compaction cannot satisfy its limits without removing protected messages.") {
+    return "context could not fit after compaction · retained messages exceed the input limit";
+  }
+  const streamOverflow = /^Stream replay buffer exceeded its limit of (\d+) events\.$/.exec(message);
+  if (streamOverflow) return `event replay limit reached · ${streamOverflow[1]} events`;
   const cap = /^(maxInputTokens|maxOutputTokens|maxTotalTokens) budget (exceeded|exhausted)$/.exec(message);
   if (cap) return `budget ${cap[2]} · ${cap[1]}`;
   if (message === "Agent exhausted maxSteps before reaching a terminal response.") {
@@ -262,7 +305,7 @@ export const formatTerminalEvent = (
       const receipt = verificationReceipt(event.toolResult.toolName, event.toolResult.output);
       if (receipt) {
         const failed = event.toolResult.isError || receipt.timedOut || receipt.exitCode !== 0;
-        return `${paint(failed ? "✗" : "✓", failed ? 31 : 32, color)} check · ${sanitizeTerminalText(event.toolResult.toolName)} · exit ${receipt.exitCode}${receipt.timedOut ? " · timed out" : ""}`;
+        return `${paint(failed ? "✗" : "✓", failed ? 31 : 32, color)} check · ${receipt.check ?? sanitizeTerminalText(event.toolResult.toolName)} · exit ${receipt.exitCode}${receipt.timedOut ? " · timed out" : ""}`;
       }
       return event.toolResult.isError
         ? `${paint("✗", 31, color)} tool · ${sanitizeTerminalText(event.toolResult.toolName)} · error`
@@ -299,6 +342,12 @@ export const formatTerminalEvent = (
       return `${paint("↺", 36, color)} context · ${event.compaction.messageCountBefore} → ` +
         `${event.compaction.messageCountAfter} messages`;
     case "agent-run-finish":
+      if (event.status === "failed") {
+        const cause = terminalRunFailure(event.state.error);
+        return `${paint("✗", 31, color)} ${cause}` +
+          (cause === "step limit reached before a final response"
+            ? ` (${event.state.currentStep}/${event.state.maxSteps}). Session retained; use /limits to adjust the next turn, then ask to continue.` : "");
+      }
       return `${paint(event.status === "completed" ? "✓" : "●", event.status === "completed" ? 32 : 33, color)} ` +
         `run · ${sanitizeTerminalText(event.status)} · ` +
         `${sanitizeTerminalText(event.state.provider)}/${sanitizeTerminalText(event.state.modelId)}`;

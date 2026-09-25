@@ -31,7 +31,7 @@ const resolveSource = (file: string, target: string) => path.posix.normalize(pat
 
 export const architectureViolations = (file: string, source: string): string[] => {
   const violations: string[] = [];
-  if (/^src\/[^/]+\.tsx?$/.test(file) && !["src/index.ts", "src/cli.ts", "src/service-cli.ts", "src/version.ts"].includes(file)) {
+  if (/^src\/[^/]+\.tsx?$/.test(file) && !["src/index.ts", "src/cli.ts", "src/service-cli.ts", "src/acp-cli.ts", "src/version.ts"].includes(file)) {
     violations.push(`${file}: place implementation modules in their responsibility folder`);
   }
   for (const dependency of sourceDependencies(source)) {

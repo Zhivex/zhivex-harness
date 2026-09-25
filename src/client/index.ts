@@ -14,3 +14,5 @@ export type { HarnessClientNegotiation } from "./protocol.js";
 export type { HarnessClientAdapterOptions } from "./protocol.js";
 export type { HarnessClientAdapter } from "./protocol.js";
 export { createHarnessClientAdapter } from "./adapter.js";
+export { createAcpConnection } from "./acp.js";
+export { serveAcpStdio } from "./acp-stdio.js";

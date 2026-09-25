@@ -30,3 +30,24 @@ export const runtimeCheckpointStore = (store: AgentRunStore, runId: string,
     return typeof value === "function" ? value.bind(target) : value;
   }
 });
+
+/** Include billed responses rejected before the SDK accepts their tool calls.
+ * Reconcile on SDK writes so revision ownership stays with the SDK. */
+export const tokenUsageCheckpointStore = (store: AgentRunStore, runId: string,
+  observed: () => import("@zhivex-ai/core").TokenUsage) => new Proxy(store, {
+  get(target, key) {
+    if (key === "save") return async (...args: Parameters<AgentRunStore["save"]>) => {
+      const [state] = args;
+      if (state.runId === runId && state.status === "failed") {
+        const usage = observed();
+        state.usage = { ...state.usage,
+          inputTokens: Math.max(state.usage?.inputTokens ?? 0, usage.inputTokens ?? 0),
+          outputTokens: Math.max(state.usage?.outputTokens ?? 0, usage.outputTokens ?? 0),
+          totalTokens: Math.max(state.usage?.totalTokens ?? 0, usage.totalTokens ?? 0) };
+      }
+      return target.save(...args);
+    };
+    const value: unknown = Reflect.get(target, key, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  }
+});

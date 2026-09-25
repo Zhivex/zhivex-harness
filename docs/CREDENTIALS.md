@@ -40,7 +40,7 @@ outside the CLI support contract; adding this binding does not certify Windows.
 
 Environment keys take precedence over saved and temporary keys, including provider
 aliases. The CLI reports that precedence when managing a key while an environment
-key exists. Changing the saved key does not override the launching shell.
+key exists. For Qwen, explicitly configuring a connection selects its managed credential for the current CLI session, overriding Qwen shell settings. On a new launch, environment keys take precedence again.
 
 One-shot commands (`run`, `review`, `resume`), `providers`, and service connections
 retain their existing environment/host-owned behavior: they never prompt for keys
@@ -62,11 +62,27 @@ Keys are kept outside profiles, repositories, run metadata and chat history. Man
 keys are passed only to provider model clients, not to `process.env`, MCP or command
 execution environments. Do not paste a key into a normal conversation.
 
-Managed keys require default provider endpoints. Shell-defined base URL or Qwen
-region/workspace overrides are rejected before reading the keychain. To intentionally
-use a custom endpoint, supply its credential explicitly through the environment.
-Credential storage is separate from live provider validation; the first model
-request checks account access and may be billable.
+Managed keys for other providers require default endpoints. Qwen keys are bound to
+an explicitly selected service and region. When shell endpoint settings conflict,
+the console offers to use the saved destination for this session or cancel. It never
+sends a managed key to an arbitrary shell-defined endpoint. Custom endpoints still
+require explicit environment credentials.
+
+## Qwen interactive setup
+
+Open `/credentials` → Qwen → save or temporary → Standard API or QwenCloud Token
+Plan. Standard API asks for region and, where needed, a workspace ID. Then enter
+the hidden key. Service/region/workspace and key are stored together in the system
+keychain (or only in memory for temporary use); no key enters the profile.
+Existing raw Qwen keychain entries retain the historical Singapore API destination.
+Changing service requires entering the matching key; the CLI does not infer it
+from a key prefix. Cancellation preserves the previous connection.
+
+Select the model with `/model`, then use `/connection` for an optional small,
+potentially billable request. It sends no repository content or tools, allows 16
+output tokens, disables retries, and times out after 15 seconds. A successful test
+only verifies access to that model. Setup itself does not validate account access.
+Regional destinations follow the [official Model Studio region documentation](https://www.alibabacloud.com/help/en/model-studio/regions).
 
 ## QwenCloud Token Plan
 
@@ -78,7 +94,7 @@ and supply your dedicated Token Plan key through `DASHSCOPE_API_KEY` (or
 or commit them. Leave `QWEN_WORKSPACE_ID` unset for this endpoint.
 
 The endpoint is explicit: Harness does not infer billing mode from a key prefix.
-A custom endpoint requires an environment credential, not a managed keychain key.
+The interactive setup also supports this fixed Token Plan endpoint with managed keys. Arbitrary custom endpoints require environment credentials.
 Use standard pay-as-you-go credentials for backend/scheduled workloads. See the
 [official Token Plan quickstart](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-quickstart)
 for matching key types and endpoints. Account entitlements are provider-controlled;

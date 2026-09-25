@@ -2,13 +2,14 @@ import { expect, test } from "bun:test";
 import { ToolActivity } from "../src/cli/terminal/tool-activity.js";
 import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
 
-test("completed tools stay out of non-TTY conversation output", () => {
+test("completed tools produce one grouped summary without terminal controls", () => {
   let output = "";
   const activity = new ToolActivity(text => { output += text; }, false);
   for (let i = 0; i < 24; i++) { activity.start(); activity.finish("read_file"); }
   expect(output).toBe("");
   activity.flush(); activity.flush();
-  expect(output).toBe("");
+  expect(output).toContain("24 completed");
+  expect(output).not.toContain("\x1b");
 });
 
 test("TTY activity stays on one narrow line and is erased at boundaries", () => {
@@ -16,9 +17,9 @@ test("TTY activity stays on one narrow line and is erased at boundaries", () => 
   const activity = new ToolActivity(text => { writes.push(text); }, true, () => 20);
   activity.start(); activity.start(); activity.finish("search_many"); activity.flush();
   expect(writes.slice(1, -1).every(text => text.startsWith("\r\x1b[2K") && text.length <= 24)).toBe(true);
-  expect(writes.at(-1)).toBe("\r\x1b[2K");
+  expect(writes.join("")).toContain("1 completed");
   activity.finish("read_file"); activity.flush();
-  expect(writes.at(-1)).toBe("\r\x1b[2K");
+  expect(writes.join("")).toContain("1 completed");
 });
 
 test("runtime limits are classified without exposing arbitrary provider errors", () => {
@@ -50,10 +51,10 @@ test("compact stream keeps conversation, approvals and failed checks visible", a
     await send({ type: "tool-approval-request", approval: { id: "a", name: "apply_patch" } });
     flushToolActivity(tracker);
     expect(output).toContain("Reading sources.");
-    expect(output).not.toContain("completed");
+    expect(output).toContain("24 completed");
     expect(output).toContain("Here is the answer.");
     expect(output).toContain("exit 1");
-    expect(output).toContain("apply_patch");
+    expect(output).not.toContain("approval ·");
     expect(output).not.toContain("tool · read_file");
     expect(output).not.toContain("PRIVATE");
   } finally { stdout.mockRestore(); stderr.mockRestore(); }
@@ -71,6 +72,7 @@ test("duplicate error events render once per run while JSONL retains both", asyn
     const error = {type:"error",error:new Error("Meta request failed with status 400.")} as never;
     const sink = streamSink({json:false,jsonl:false},tracker);
     await sink(error); await sink(error);
+    await sink({type:"agent-run-finish",status:"failed",state:{error:{message:"Meta request failed with status 400."}}} as never);
     expect(output.match(/HTTP 400/g)).toHaveLength(1);
     await sink({type:"agent-run-start",currentStep:0,maxSteps:12} as never);
     await sink(error);
@@ -79,4 +81,34 @@ test("duplicate error events render once per run while JSONL retains both", asyn
     await jsonSink(error); await jsonSink(error);
     expect(jsonl.trim().split("\n")).toHaveLength(2);
   } finally {stderr.mockRestore();stdout.mockRestore();}
+});
+
+
+test("repeated TTY activity leaves useful summaries without blank lines", () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, true);
+  for (let i = 0; i < 30; i++) { activity.start("read_file"); activity.finish("read_file"); activity.flush(); }
+  expect(output).not.toContain("\n\n");
+  expect(output.match(/1 completed/g)).toHaveLength(30);
+});
+
+
+test("waiting for the model stays visible and flush stops the heartbeat", async () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, true, () => 100);
+  activity.phase("Waiting for model response", 3);
+  expect(output).toContain("step 3");
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  expect(output).toContain("1s");
+  activity.flush();
+  const stopped = output;
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  expect(output).toBe(stopped);
+});
+
+test("failed tools never appear as completed and unknown tool names remain private", () => {
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, false);
+  activity.start("SECRET_TOOL"); activity.finish("SECRET_TOOL", false); activity.flush();
+  expect(output).toBe("");
 });

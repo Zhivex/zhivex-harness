@@ -63,6 +63,7 @@ const EXECUTION_ARTIFACT_DIRECTORY_PATTERN = /^[a-f0-9]{24}$/;
 const STAGED_EXECUTION_ARTIFACT_DIRECTORY_PATTERN =
   /^\.cleanup-([a-f0-9]{24})-[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
 const BUILT_IN_TOOL_NAMES = new Set([
+  "read_dependency",
   "read_task",
   "repair_plan",
   "list_files",

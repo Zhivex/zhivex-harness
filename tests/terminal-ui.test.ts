@@ -53,7 +53,7 @@ describe("approval cards", () => {
       { path: "new.ts", expectedDigest: null, content: "new" },
       { path: "old.ts", expectedDigest: `sha256:${"a".repeat(64)}`, content: "changed" }
     ] })));
-    expect(card).toContain("approval ");
+    expect(card).not.toContain("approval-verify_and_apply");
     expect(card).toContain("ADD new.ts");
     expect(card).toContain("MODIFY old.ts");
     expect(card).toContain("Verification: pending");
@@ -257,4 +257,38 @@ test("provider failures expose bounded HTTP diagnostics without raw payloads", (
   expect(render("Meta request failed with status 400.")).toBe("✗ Meta request failed · HTTP 400");
   expect(render("Meta request failed with status 400 (previous response unavailable).")).toBe("✗ Meta request failed · HTTP 400 · previous response unavailable");
   expect(render("Meta request failed with status 400 (SECRET_PAYLOAD).")).not.toContain("SECRET_PAYLOAD");
+});
+
+
+test("terminal-only maxSteps failure exposes persisted cause without an error event", () => {
+  const line = formatTerminalEvent({type:"agent-run-finish",status:"failed",state:{
+    provider:"qwen",modelId:"qwen3.8-flash",currentStep:12,maxSteps:12,
+    error:{message:"Agent exhausted maxSteps before reaching a terminal response."}
+  }} as never);
+  expect(line).toContain("12/12");
+  expect(line).toContain("/limits");
+  expect(line).toStartWith("✗");
+  expect(formatTerminalEvent({type:"agent-run-finish",status:"failed",state:{error:{message:"PRIVATE_API_PAYLOAD"}}} as never)).not.toContain("PRIVATE_API_PAYLOAD");
+});
+
+test("compact check card keeps exact script while identity remains in technical details", () => {
+  const request = approval("run_check",JSON.stringify({check:"typecheck",expectedScript:"next typegen && tsc --noEmit"}), {inputDigest:"sha256:private-id"});
+  expect(formatApproval(request)).toBe("Run check: typecheck\n\n  next typegen && tsc --noEmit\n");
+  expect(formatApproval(request,{detail:"full"})).toContain("sha256:private-id");
+});
+
+test("approval picker cancellation preserves the complete pending batch", async () => {
+  const answers = ["y", undefined];
+  const result = await resolveTerminalApprovals([approval("run_check", "{}"),approval("run_check", "{}")], {
+    ask:async()=>{throw new Error("text prompt must not run");},write:()=>{},
+    select:async()=>answers.shift() as never,workspace:"/fixture"
+  });
+  expect(result).toBeUndefined();
+});
+
+
+test("check receipts name the validation without displaying arbitrary commands", () => {
+  const event = (command: string[]) => ({type:"tool-result",toolResult:{toolName:"run_check",output:{command,exitCode:0}}}) as never;
+  expect(formatTerminalEvent(event(["bun","--no-env-file","run","typecheck"]))).toContain("check · typecheck · exit 0");
+  expect(formatTerminalEvent(event(["curl","PRIVATE_URL"]))).not.toContain("PRIVATE_URL");
 });

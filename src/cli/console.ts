@@ -1,4 +1,7 @@
-import { CliCredentials } from "./cli-credentials.js";
+import { terminalContinuationMessages } from "./terminal/terminal-continuation.js";
+import { consoleProgressGuard } from "./console/console-progress.js";
+import { consoleBudgetOptions, restoreConsoleOptions, formatConsoleBudget } from "./console/console-budget.js";
+import { CliCredentials, credentialModel } from "./cli-credentials.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger, inspectUsageLedger } from "../runtime/usage-ledger.js";
 import { TASK_SOURCE_KEY, taskSources } from "../context/task-memory.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
@@ -8,7 +11,7 @@ import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { ConsoleInput } from "./console/console-input.js";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console/console-context.js";
-import { sanitizeTerminalText, formatVerificationSummary } from "./terminal/terminal-ui.js";
+import { sanitizeTerminalText, formatVerificationSummary, terminalRunFailure } from "./terminal/terminal-ui.js";
 import { randomUUID } from "node:crypto";
 import { type AgentRunOutput } from "@zhivex-ai/agents";
 import {
@@ -57,6 +60,7 @@ export const chat = async (options: CliOptions) => {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error("Chat mode requires an interactive terminal. Use run for automation.");
   }
+  options = consoleBudgetOptions(options);
   const baseConfig = resolveHarnessConfig(options);
   const sessionStore = await openSessionStoreForConfig(baseConfig);
   const readline = new ConsoleInput(process.stdin, process.stdout);
@@ -79,6 +83,7 @@ export const chat = async (options: CliOptions) => {
     finally { activeController = undefined; }
   };
   let verbose = false;
+  const sessionGrants = new Set<string>();
   let runtimeOptions: CliOptions = { ...options };
   let routes = resolvedRouting(options);
   const selectedSession = options.sessionId
@@ -114,12 +119,9 @@ export const chat = async (options: CliOptions) => {
     const restored = await latestState(session);
     if (restored) {
       const persisted = readHarnessResumeConfig(restored);
-      runtimeOptions = {
-        ...runtimeOptions,
-        ...persistedCliOptions(persisted),
-        provider: restored.provider,
-        model: restored.modelId
-      };
+      runtimeOptions = restoreConsoleOptions(runtimeOptions, {
+        ...persistedCliOptions(persisted), provider: restored.provider, model: restored.modelId
+      });
       routes = readHarnessResumeRoutes(restored);
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
@@ -188,7 +190,7 @@ export const chat = async (options: CliOptions) => {
     const state = await latestState(selected);
     const persisted = state ? readHarnessResumeConfig(state) : undefined;
     const nextOptions = state
-      ? { ...runtimeOptions, ...persistedCliOptions(persisted), provider: state.provider, model: state.modelId }
+      ? restoreConsoleOptions(runtimeOptions, { ...persistedCliOptions(persisted), provider: state.provider, model: state.modelId })
       : runtimeOptions;
     const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
     await replaceHarness(nextOptions, nextRoutes);
@@ -214,6 +216,7 @@ export const chat = async (options: CliOptions) => {
         harness,
         {
           state,
+          toolExecution: { parallel: false, stopOnError: false },
           abortSignal,
           approvals: approvalResponses(
             state.pendingApprovals,
@@ -223,7 +226,7 @@ export const chat = async (options: CliOptions) => {
         },
         {
           onEvent: streamSink({ json: false, jsonl: false }, tracker, !verbose),
-          resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+          resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, (question) => readline.question(question), { select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants })
         }
       ));
     } catch {
@@ -258,12 +261,14 @@ export const chat = async (options: CliOptions) => {
     await hasActiveTurn();
     const current = await refreshSession();
     const latest = current.runs.at(-1);
+    const failedState = latest?.status === "failed" ? await latestState(current) : undefined;
     const routeText = routes.size === 0
       ? "default"
       : [...routes.values()].map((route) => `${route.profile}=${route.provider}:${route.model}`).join(", ");
     return `session ${current.sessionId} · ${harness.config.provider}/${harness.config.model}` +
-      ` · ${messages.length} messages · routes ${routeText}` +
-      `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}`;
+      ` · steps ${harness.config.maxSteps} · approvals ${options.approvalMode ?? (options.yes ? "auto" : "ask")} · ${messages.length} messages · routes ${routeText}` +
+      `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}` +
+      (failedState ? `\nLast failure: ${terminalRunFailure(failedState.error)} (${failedState.currentStep}/${failedState.maxSteps} steps).` : "");
   };
 
   process.stderr.write(formatConsoleWelcome({
@@ -276,7 +281,7 @@ export const chat = async (options: CliOptions) => {
   }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
 
   process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
-  process.stderr.write(options.yes ? "Automatic approvals are enabled.\n" : "Changes require your approval.\n");
+  process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled; dependency access still requires permission.\n" : "Changes require your approval.\n");
 
   const showSessionState = async () => {
     await hasActiveTurn();
@@ -298,6 +303,7 @@ export const chat = async (options: CliOptions) => {
           status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready",
           attachments: attachments.list().length,
           automaticApprovals: options.yes === true,
+          ...(options.approvalMode ? { approvalMode: options.approvalMode } : {}),
         }, process.stdout.columns));
         const submitted = await readline.question("\n> ", true);
         const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
@@ -325,6 +331,62 @@ export const chat = async (options: CliOptions) => {
             continue;
           }
         }
+        if (await handleConsoleCompaction(command, { config: harness.config, options: runtimeOptions,
+          hasActiveTurn, replaceOptions: next => replaceHarness(next, routes),
+          inspectCredential: provider => credentials.store.inspect(provider) })) continue;
+        if (command === "/limits" || command.startsWith("/limits ")) {
+          const requested = command.slice("/limits".length).trim();
+          process.stderr.write(`Step limit: ${harness.config.maxSteps} model iterations per turn.\n`);
+          if (await hasActiveTurn()) { process.stderr.write("Finish or deny pending work before changing limits.\n"); continue; }
+          const next = requested || await readline.select("Step limit / Next turns", [
+            { value: "", label: "Keep current limit" },
+            { value: "12", label: "12 steps", detail: "Short tasks" },
+            { value: "30", label: "30 steps", detail: "Medium tasks" },
+            { value: "50", label: "50 steps", detail: "Long tasks; potentially higher API cost" },
+          ]);
+          if (!next) continue;
+          if (!/^\d+$/.test(next) || Number(next) < 1 || Number(next) > 50) { process.stderr.write("Use /limits with a step count from 1 to 50.\n"); continue; }
+          await replaceHarness({ ...runtimeOptions, maxSteps: Number(next) }, routes);
+          process.stderr.write(`Step limit updated: ${harness.config.maxSteps} for next turns.\n`);
+          continue;
+        }
+        if (command === "/approvals" || command.startsWith("/approvals ")) {
+          if (await hasActiveTurn()) { process.stderr.write("Finish or deny pending work before changing approval mode.\n"); continue; }
+          const requested = command.slice("/approvals".length).trim();
+          const mode = requested || await readline.select("Approval mode / This CLI session", [
+            { value: "ask", label: "Ask", detail: "Review gated actions before execution" },
+            { value: "auto", label: "Auto", detail: "Approve gated actions automatically; dependency reads still ask" },
+            { value: "restricted", label: "Restricted", detail: "Deny actions requiring approval" },
+          ]);
+          if (!mode) continue;
+          if (mode !== "ask" && mode !== "auto" && mode !== "restricted") { process.stderr.write("Use /approvals ask|auto|restricted.\n"); continue; }
+          options.approvalMode = mode;
+          options.yes = mode === "auto";
+          process.stderr.write(`Approval mode: ${mode} (this CLI session).${mode === "auto" ? " Dependency reads still require permission." : ""}\n`);
+          continue;
+        }
+        if (command === "/connection") {
+          if (await hasActiveTurn()) { process.stderr.write("Finish or deny pending work before testing the connection.\n"); continue; }
+          const env = await credentials.store.providerEnvironment(harness.config.provider, readline);
+          process.stderr.write(`Connection: ${harness.config.provider}/${harness.config.model} · ${credentials.store.source(harness.config.provider)}\n`);
+          if (harness.config.provider === "qwen") {
+            // Never print arbitrary environment URLs, which may contain embedded secrets.
+            process.stderr.write(`Qwen destination: ${credentials.store.destination("qwen")}\n`);
+          }
+          const testConnection = await readline.select("Connection / Verify model access", [
+            { value: false, label: "Back without a request" },
+            { value: true, label: "Send a small test request", detail: "May be billable; no workspace files or tools are sent" },
+          ]);
+          if (testConnection) {
+            const model = await credentialModel(harness.config, env);
+            await abortable(async signal => {
+              await model.generate({ messages: [{ role: "user", parts: [{ type: "text", text: "Reply OK." }] }], maxTokens: 16,
+                maxRetries: 0, timeoutMs: 15_000, abortSignal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) });
+            });
+            process.stderr.write("Connection verified: the selected model accepted a request. Tool support and other models were not tested.\n");
+          }
+          continue;
+        }
         if (command === "/credentials") {
           const active = await hasActiveTurn();
           if (active) { process.stderr.write("Finish or deny pending work before changing credentials.\n"); continue; }
@@ -346,7 +408,11 @@ export const chat = async (options: CliOptions) => {
         }
         if (command === "/usage") {
           const state = await latestState(await refreshSession());
-          process.stdout.write(sanitizeTerminalText(JSON.stringify(inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]) ?? { message: "No transport ledger recorded for this run." }, null, 2)) + "\n");
+          const ledger = inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]);
+          const usage = ledger ? (ledger.usageComplete ? { inputTokens: ledger.inputTokens, outputTokens: ledger.outputTokens,
+            totalTokens: ledger.inputTokens + ledger.outputTokens } : undefined) : state?.usage;
+          process.stdout.write(formatConsoleBudget(harness.config, usage) + "\n");
+          process.stdout.write(sanitizeTerminalText(JSON.stringify(ledger ?? { message: "No transport ledger recorded for this run." }, null, 2)) + "\n");
           continue;
         }
         if (command === "/sessions" || command.startsWith("/sessions ")) {
@@ -560,7 +626,15 @@ export const chat = async (options: CliOptions) => {
         }
 
         if (credentialsRevision !== credentials.store.revision) await replaceHarness(runtimeOptions, routes);
-        if (!literalInput && prompt === "/paste") {
+        if (!literalInput && prompt === "/continue") {
+          const previous = await latestState(await refreshSession());
+          if (!previous || !messages.length || previous.status === "completed") {
+            process.stderr.write("No interrupted run to continue. Submit a new request.\n");
+            continue;
+          }
+          prompt = "Continue the previous unfinished task using the retained conversation and recorded results. Inspect current state before any action whose outcome is unknown. Do not repeat completed actions. Report remaining blockers if no progress is possible.";
+          process.stderr.write("Continuing in a new run with the current limits; previous results retained.\n");
+        } else if (!literalInput && prompt === "/paste") {
           prompt = await readline.multiline();
           if (!prompt.trim()) continue;
           process.stdout.write(`\nDraft:\n${sanitizeTerminalText(prompt)}\n`);
@@ -583,6 +657,7 @@ export const chat = async (options: CliOptions) => {
         const turn = session.runs.at(-1)!;
 
         const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
+        const progress = consoleProgressGuard();
         let markedRunning = false;
         let result: AgentRunOutput;
         try {
@@ -591,7 +666,10 @@ export const chat = async (options: CliOptions) => {
             messages.length === 0
               ? {
                   runId,
-                  abortSignal,
+                  toolExecution: { parallel: false, stopOnError: false },
+                  abortSignal: AbortSignal.any([abortSignal, progress.signal]),
+                  maxRetries: 2,
+                  retryBackoffMs: 500,
                   prompt,
                   scope: harness.config.scope,
                   metadata: {
@@ -607,8 +685,11 @@ export const chat = async (options: CliOptions) => {
                 }
               : {
                   runId,
-                  abortSignal,
-                  messages: appendUserMessage(messages, prompt),
+                  toolExecution: { parallel: false, stopOnError: false },
+                  abortSignal: AbortSignal.any([abortSignal, progress.signal]),
+                  maxRetries: 2,
+                  retryBackoffMs: 500,
+                  messages: appendUserMessage(terminalContinuationMessages(messages), prompt),
                   scope: harness.config.scope,
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
@@ -623,13 +704,14 @@ export const chat = async (options: CliOptions) => {
                 },
             {
               onEvent: async (event) => {
+                progress.observe(event);
                 if (!markedRunning && event.type === "agent-run-start") {
                   session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
                   markedRunning = true;
                 }
                 await streamSink({ json: false, jsonl: false }, tracker, !verbose)(event);
               },
-              resolveApprovals: terminalApprovalResolver(options.yes, (question) => readline.question(question))
+              resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, (question) => readline.question(question), { select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants })
             }
           ));
         } catch (error) {
@@ -642,6 +724,7 @@ export const chat = async (options: CliOptions) => {
           if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
           throw error;
         }
+        if (progress.signal.aborted) process.stderr.write("Repeated identical tool failures; stopped to avoid a loop. Correct the cause before /continue.\n");
         flushToolActivity(tracker);
         tracker.markdown?.flush();
         if (!tracker.streamedText && result.outputText) {
@@ -656,6 +739,7 @@ export const chat = async (options: CliOptions) => {
         session = await sessionStore.updateRun(session.sessionId, runId, {
           status: sessionStatus(result.status)
         });
+        if (result.status === "failed" || result.status === "cancelled") process.stderr.write("Progress saved. Use /continue to start another run from these results, or /limits to adjust next turns.\n");
         if (result.status === "waiting_approval") {
           process.stderr.write(
             `Run ${result.state.runId} is paused; use /pending, /approve, or /deny here.\n`
@@ -666,7 +750,7 @@ export const chat = async (options: CliOptions) => {
         const aborted = error instanceof Error && error.name === "AbortError";
         process.stderr.write(aborted
           ? "\nInput interrupted. Session retained; use /pending to inspect approvals.\n"
-          : `\n${sanitizeTerminalText(terminalErrorMessage(error))}\nSession retained; use /status or /pending.\n`);
+          : `\n${sanitizeTerminalText(terminalErrorMessage(error))}\nSession retained; use /status, /pending, or /continue.\n`);
       }
     }
   } finally {
@@ -677,3 +761,4 @@ export const chat = async (options: CliOptions) => {
     credentials.store.clear();
   }
 };
+import { handleConsoleCompaction } from "./console/console-compaction.js";

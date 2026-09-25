@@ -1,5 +1,6 @@
 import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from "@zhivex-ai/core";
 import { createBudgetGuard, createProductionSafetyPolicy } from "@zhivex-ai/agents";
+import { estimateRequestTokens } from "./model-budget.js";
 import type { HarnessConfig } from "./config.js";
 
 /** Project stored settings into the active SDK policy without inactive ceilings. */
@@ -38,29 +39,48 @@ export const childRuntimeSafety = (config: HarnessConfig) => createProductionSaf
 export const createCheckpointTokenCap = (
   limits: HarnessConfig["budget"],
   usage: () => Promise<TokenUsage | undefined>,
-  transportTokens = true
-): LanguageModelMiddleware => {
-  const observed = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
-  const cap = async (input: ModelGenerateInput) => {
+  transportTokens = true,
+  options: { initialUsage?: TokenUsage; closeOnBudget?: boolean; additionalUsage?: () => Promise<TokenUsage> } = {}
+): LanguageModelMiddleware & { observed: TokenUsage; auxiliary(): LanguageModelMiddleware } => {
+  const observed = { inputTokens: options.initialUsage?.inputTokens ?? 0,
+    outputTokens: options.initialUsage?.outputTokens ?? 0,
+    totalTokens: options.initialUsage?.totalTokens ?? ((options.initialUsage?.inputTokens ?? 0) + (options.initialUsage?.outputTokens ?? 0)) };
+  const cap = async (input: ModelGenerateInput, auxiliary = false) => {
     if (limits.unlimitedTokens) return;
     const persisted = await usage();
     for (const key of ["inputTokens", "outputTokens", "totalTokens"] as const) {
       const value = persisted?.[key] ?? (key === "totalTokens" ? (persisted?.inputTokens ?? 0) + (persisted?.outputTokens ?? 0) : 0);
       observed[key] = Math.max(observed[key], value);
     }
-    const remainingOutput = limits.maxOutputTokens - observed.outputTokens;
-    const remainingInput = limits.maxInputTokens - observed.inputTokens;
-    const remainingTotal = limits.maxTotalTokens - observed.totalTokens;
+    const additional = await options.additionalUsage?.();
+    const remainingOutput = limits.maxOutputTokens - observed.outputTokens - (additional?.outputTokens ?? 0);
+    const remainingInput = limits.maxInputTokens - observed.inputTokens - (additional?.inputTokens ?? 0);
+    const remainingTotal = limits.maxTotalTokens - observed.totalTokens - (additional?.totalTokens ?? 0);
     if (remainingInput <= 0) throw new Error("maxInputTokens budget exhausted");
     if (remainingOutput <= 0) throw new Error("maxOutputTokens budget exhausted");
     if (remainingTotal <= 0) throw new Error("maxTotalTokens budget exhausted");
-    if (transportTokens) input.maxTokens = Math.min(input.maxTokens ?? remainingOutput, remainingOutput, remainingTotal);
+    let predicted = estimateRequestTokens(input);
+    // Reserve the last 30% for an evidence-based answer, with no new tool work.
+    if (!auxiliary && options.closeOnBudget && (observed.inputTokens + predicted > limits.maxInputTokens * 0.7 ||
+        observed.outputTokens >= limits.maxOutputTokens * 0.7 ||
+        observed.totalTokens + predicted > limits.maxTotalTokens * 0.7)) {
+      delete input.tools;
+      delete input.toolChoice;
+      input.messages = [...input.messages, { role: "system", parts: [{ type: "text",
+        text: "The run is approaching its cumulative token budget. Finish now using only the evidence already collected. State what was established and what remains unverified; do not claim that unfinished work is complete. No further tools are available." }] }];
+      predicted = estimateRequestTokens(input);
+    }
+    if (predicted > remainingInput) throw new Error("maxInputTokens budget exhausted");
+    if (predicted >= remainingTotal) throw new Error("maxTotalTokens budget exhausted");
+    if (transportTokens || auxiliary) input.maxTokens = Math.min(input.maxTokens ?? remainingOutput, remainingOutput, remainingTotal - predicted);
   };
-  const record = (reported: TokenUsage | undefined) => {
+  const record = (reported: TokenUsage | undefined, enforce = true) => {
     observed.inputTokens += reported?.inputTokens ?? 0;
     observed.outputTokens += reported?.outputTokens ?? 0;
-    observed.totalTokens += reported?.totalTokens ?? ((reported?.inputTokens ?? 0) + (reported?.outputTokens ?? 0));
-    if (limits.unlimitedTokens) return;
+    const sum = (reported?.inputTokens ?? 0) + (reported?.outputTokens ?? 0);
+    observed.totalTokens += Number.isSafeInteger(reported?.totalTokens) && reported!.totalTokens! >= 0
+      ? Math.max(reported!.totalTokens!, sum) : sum;
+    if (limits.unlimitedTokens || !enforce) return;
     // Reject an over-budget response before the SDK can execute its tools.
     if (observed.inputTokens > limits.maxInputTokens) throw new Error("maxInputTokens budget exceeded");
     if (observed.outputTokens > limits.maxOutputTokens) throw new Error("maxOutputTokens budget exceeded");
@@ -68,6 +88,11 @@ export const createCheckpointTokenCap = (
   };
   return {
     name: "harness-checkpoint-token-cap",
+    observed,
+    auxiliary: () => ({ name: "harness-utility-token-cap", async wrapGenerate(context, next) {
+      // The SDK must receive the receipt before rejecting a paid compaction.
+      await cap(context.input, true); const result = await next(); record(result.usage, false); return result;
+    } }),
     async wrapGenerate(context, next) {
       await cap(context.input); const result = await next(); record(result.usage); return result;
     },

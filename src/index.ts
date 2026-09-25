@@ -235,6 +235,7 @@ export {
 export type {
   HarnessMcpClients,
   HarnessMcpConfiguration,
+  HarnessMcpHttpOptions,
   HarnessMcpPermission,
   HarnessMcpServerConfig,
   HarnessMcpTransport,
@@ -487,3 +488,15 @@ export type { HarnessActivityEvent, HarnessActivitySnapshot, HarnessActivityPage
 export type { HarnessClientAdapterOptions } from "./client/index.js";
 
 export type { HarnessDelegationContract } from "./runtime/delegation-contracts.js";
+export { createSemanticCompactor, SEMANTIC_COMPACTION_VERSION } from "./context/semantic-compaction.js";
+export { recommendCompactionModels } from "./models/compaction-recommendations.js";
+export type { CompactionRecommendationRequest, CompactionModelAssessment, CompactionModelRecommendations } from "./models/compaction-recommendations.js";
+export { createHarnessToolPolicy, applyHarnessToolPolicy, harnessToolPolicySchema } from "./runtime/tool-policy.js";
+export type { HarnessToolPolicy, HarnessToolPolicyDecision } from "./runtime/tool-policy.js";
+export { createProgressMonitor } from "./runtime/progress-monitor.js";
+export type { ProgressMonitorState, ProgressSignal } from "./runtime/progress-monitor.js";
+export { createAcpConnection } from "./client/acp.js";
+export { serveAcpStdio } from "./client/acp-stdio.js";
+export { openWorkspaceCheckpointStore } from "./persistence/workspace-checkpoints.js";
+export type { WorkspaceCheckpoint, WorkspaceRestoreOperation } from "./persistence/workspace-checkpoints.js";
+export type { HarnessMcpResourceClient } from "./integrations/mcp.js";

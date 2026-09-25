@@ -138,12 +138,12 @@ const providerConfig = `${await readFile(path.join(workspace, "src", "runtime", 
 }`;
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
-  "@zhivex-ai/agents": "1.9.0",
-  "@zhivex-ai/core": "1.23.0",
-  "@zhivex-ai/gemini": "0.12.2",
-  "@zhivex-ai/meta": "0.2.7",
-  "@zhivex-ai/openai": "0.13.5",
-  "@zhivex-ai/qwen": "0.15.2"
+  "@zhivex-ai/agents": "1.10.0-next.0",
+  "@zhivex-ai/core": "1.24.0-next.0",
+  "@zhivex-ai/gemini": "0.12.3-next.0",
+  "@zhivex-ai/meta": "0.2.8-next.0",
+  "@zhivex-ai/openai": "0.13.6-next.0",
+  "@zhivex-ai/qwen": "0.15.3-next.0"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {

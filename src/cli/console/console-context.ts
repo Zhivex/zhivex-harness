@@ -1,3 +1,6 @@
+import { estimateMessages } from "../../context/adaptive-compaction.js";
+import type { ModelMessage } from "@zhivex-ai/core";
+import { formatConsoleBudget } from "./console-budget.js";
 import type { ZhivexHarness } from "../../runtime/harness.js";
 import type { Workspace } from "../../workspace/workspace.js";
 import { sanitizeTerminalText } from "../terminal/terminal-ui.js";
@@ -33,6 +36,8 @@ export const formatConsoleContext = (context: ZhivexHarness["context"], options?
     `Project context: ${options.config.context.enabled ? "enabled" : "disabled"}.`,
     `Loaded skill receipts in retained messages: ${retainedSkills(context, options.messages).join(", ") || "none; compacted/older receipts may no longer be present"}.`,
     `Compaction thresholds: ${options.config.compaction.maxMessages} messages / ${options.config.compaction.maxEstimatedInputTokens} estimated tokens; recent ${options.config.compaction.keepRecentMessages} messages retained.`,
+    `Active retained conversation: ~${estimateMessages(options.messages as ModelMessage[])} estimated tokens (excludes additional request instructions and tool schemas; not cumulative usage).`,
+    formatConsoleBudget(options.config),
     `Current conversation: ${options.messages.length} messages / ${Buffer.byteLength(JSON.stringify(options.messages))} bytes. Compaction events are shown in the activity stream.`,
     ...options.attachments.map(file => `Next request attachment: ${file.path} (${file.digest}; ${file.truncated ? "TRUNCATED excerpt" : "complete"})`),
     ...(!options.attachments.length ? ["Next request attachments: none."] : []),

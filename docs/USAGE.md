@@ -179,3 +179,12 @@ Older release certifications remain in the [historical evidence](https://github.
 
 The default `none` backend provides governance but no OS isolation and therefore exposes no shell-class tool. The local OCI backend enforces the documented container boundary, but it is not a VM or a managed hostile-code sandbox; use a dedicated host or microVM when the container runtime itself is outside the threat model.
 
+
+### Long streaming runs
+
+`runHarness` consumes SDK events live and retains a bounded replay tail instead of
+failing after 4096 accumulated events. Active consumers still receive each event
+with backpressure; collected output and durable run state retain the full result.
+This policy also applies after approval continuations. Explicit `streamBuffer`
+settings override the wrapper default; direct `harness.agent.stream()` keeps its
+SDK replay contract. Token, step, tool and timeout limits remain independent.

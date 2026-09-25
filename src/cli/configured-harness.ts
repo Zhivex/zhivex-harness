@@ -27,12 +27,28 @@ export const createConfiguredHarness = async (
   ])];
   const quietTelemetry = options.json || options.jsonl;
   const providerEnv = credentials ? await credentials.store.providerEnvironment(resolvedConfig.provider, credentials.input) : undefined;
+  // Only transport settings enter the harness environment. Managed secrets stay in model clients.
+  const transportEnv = { ...process.env };
+  const bindTransport = (env: NodeJS.ProcessEnv) => {
+    for (const name of ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID"]) {
+      if (env[name] === undefined) delete transportEnv[name];
+      else transportEnv[name] = env[name];
+    }
+  };
+  if (providerEnv && resolvedConfig.provider === "qwen") bindTransport(providerEnv);
   const routeModels: ReturnType<typeof createHarnessRouteModels> = {};
   for (const [role, route] of routes) {
-    routeModels[role] = credentials
-      ? await credentialModel(route, await credentials.store.providerEnvironment(route.provider, credentials.input))
-      : createProviderModel(route, process.env);
+    const routeEnv = credentials ? await credentials.store.providerEnvironment(route.provider, credentials.input) : process.env;
+    if (route.provider === "qwen") bindTransport(routeEnv);
+    routeModels[role] = credentials ? await credentialModel(route, routeEnv) : createProviderModel(route, routeEnv);
   }
+  const compactionEnv = resolvedConfig.compaction.model && credentials
+    ? await credentials.store.providerEnvironment(resolvedConfig.compaction.model.provider, credentials.input)
+    : undefined;
+  if (compactionEnv && resolvedConfig.compaction.model?.provider === "qwen") bindTransport(compactionEnv);
+  const compactionModelInstance = resolvedConfig.compaction.model && compactionEnv
+    ? await credentialModel(resolvedConfig.compaction.model, compactionEnv)
+    : undefined;
   const harness = await createHarness({
     ...options,
     usageAccounting: {
@@ -41,7 +57,8 @@ export const createConfiguredHarness = async (
     },
     subagentProfiles: profiles,
     subagentModels: routeModels,
-    ...(providerEnv ? { modelInstance: await credentialModel(resolvedConfig, providerEnv) } : {}),
+    ...(compactionModelInstance ? { compactionModelInstance } : {}),
+    ...(providerEnv ? { env: transportEnv, modelInstance: await credentialModel(resolvedConfig, providerEnv) } : {}),
     onTelemetryEvent: orchestrationObserver(quietTelemetry)
   });
   return { harness, routes };

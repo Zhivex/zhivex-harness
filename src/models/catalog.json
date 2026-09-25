@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-23.2",
+  "revision": "2026-09-24.1",
   "providers": [
     {
       "id": "openai",
@@ -16,7 +16,36 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1050000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 128000,
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "pricing": {
+            "currency": "USD",
+            "inputPerMillionTokens": 10,
+            "outputPerMillionTokens": 50,
+            "cachedInputPerMillionTokens": 1,
+            "maxInputTokens": 272000,
+            "scope": "Standard text tokens; excludes regional, mode, cache-write and tool charges.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-astra",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gpt-6-sol",
@@ -29,7 +58,36 @@
             "chat",
             "tools",
             "vision"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1050000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 128000,
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "pricing": {
+            "currency": "USD",
+            "inputPerMillionTokens": 2,
+            "outputPerMillionTokens": 10,
+            "cachedInputPerMillionTokens": 0.2,
+            "maxInputTokens": 272000,
+            "scope": "Standard text tokens; excludes regional, mode, cache-write and tool charges.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gpt-6-luna",
@@ -42,7 +100,36 @@
             "chat",
             "tools",
             "vision"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1050000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 128000,
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "pricing": {
+            "currency": "USD",
+            "inputPerMillionTokens": 0.1,
+            "outputPerMillionTokens": 0.5,
+            "cachedInputPerMillionTokens": 0.01,
+            "maxInputTokens": 272000,
+            "scope": "Standard text tokens; excludes regional, mode, cache-write and tool charges.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gpt-5.6-sol",
@@ -130,7 +217,35 @@
             "chat",
             "tools"
           ],
-          "reason": "Earlier generation; GPT-6 and GPT-5.6 are the current primary choices."
+          "reason": "Earlier generation; GPT-6 and GPT-5.6 are the current primary choices.",
+          "limits": {
+            "contextWindowTokens": 128000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 16384,
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "pricing": {
+            "currency": "USD",
+            "inputPerMillionTokens": 0.15,
+            "outputPerMillionTokens": 0.6,
+            "cachedInputPerMillionTokens": 0.075,
+            "scope": "Standard text tokens; excludes regional, mode, cache-write and tool charges.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://developers.openai.com/api/docs/models/gpt-4o-mini",
+              "checkedAt": "2026-09-24"
+            }
+          }
         }
       ]
     },
@@ -172,7 +287,25 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1000000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 131072,
+            "maxInputTokens": 983616,
+            "evidence": {
+              "sourceUrl": "https://www.alibabacloud.com/help/en/model-studio/qwen3-8-max",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation. Conservative thinking-mode input limit; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://www.alibabacloud.com/help/en/model-studio/qwen3-8-max",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "qwen3.8-flash",
@@ -184,7 +317,25 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1000000,
+            "contextWindowType": "combined",
+            "maxOutputTokens": 131072,
+            "maxInputTokens": 983616,
+            "evidence": {
+              "sourceUrl": "https://www.alibabacloud.com/help/en/model-studio/qwen3-8-flash",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation. Conservative thinking-mode input limit; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://www.alibabacloud.com/help/en/model-studio/qwen3-8-flash",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "qwen3.8-max-preview",
@@ -274,7 +425,24 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1048576,
+            "contextWindowType": "input",
+            "maxOutputTokens": 65536,
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gemini-3.7-flash",
@@ -286,7 +454,24 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1048576,
+            "contextWindowType": "input",
+            "maxOutputTokens": 65536,
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gemini-3.6-flash",
@@ -298,7 +483,24 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1048576,
+            "contextWindowType": "input",
+            "maxOutputTokens": 65536,
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented text generation and token limits; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gemini-3.5-flash-lite",
@@ -310,7 +512,35 @@
           "capabilities": [
             "chat",
             "tools"
-          ]
+          ],
+          "limits": {
+            "contextWindowTokens": 1048576,
+            "contextWindowType": "input",
+            "maxOutputTokens": 65536,
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "compaction": {
+            "suitability": "candidate",
+            "reason": "Editorial candidate based on documented document parsing and text generation; summary fidelity has not been benchmarked.",
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite",
+              "checkedAt": "2026-09-24"
+            }
+          },
+          "pricing": {
+            "currency": "USD",
+            "inputPerMillionTokens": 0.3,
+            "outputPerMillionTokens": 2.5,
+            "cachedInputPerMillionTokens": 0.03,
+            "scope": "Standard paid-tier text tokens; includes output thinking tokens, excludes cache storage and tool charges.",
+            "evidence": {
+              "sourceUrl": "https://ai.google.dev/gemini-api/docs/pricing#gemini-3.5-flash-lite",
+              "checkedAt": "2026-09-24"
+            }
+          }
         },
         {
           "id": "gemini-3.5-flash",

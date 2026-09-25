@@ -38,6 +38,36 @@ import { HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/err
 
 type SqliteDatabaseLike = SqliteAgentRunStoreOptions["db"];
 
+const budgetScopeFor = (config: HarnessConfig) => ({
+  tenantId: config.scope.tenantId,
+  ...(config.scope.userId ? { userId: config.scope.userId } : {}),
+  namespace: "__zhivex_budget__"
+});
+
+/** The SDK coordinator uses an isolated namespace; ordinary operations remain scope-bound. */
+const withBudgetLedgerStore = (primary: AgentRunStore, budget: AgentRunStore, config: HarnessConfig): AgentRunStore => {
+  const scope = budgetScopeFor(config);
+  const budgetScope = (value: AgentRunState["scope"]) => value?.namespace === scope.namespace &&
+    value.tenantId === scope.tenantId && (value.userId ?? undefined) === (scope.userId ?? undefined);
+  const assertId = (id: string) => { if (!/^budget_[a-f0-9]{64}$/.test(id)) throw new HarnessStateConflictError("Invalid budget ledger identity."); };
+  return {
+    ...primary,
+    load: async (id, requestedScope) => {
+      if (!budgetScope(requestedScope)) return primary.load(id, requestedScope);
+      assertId(id);
+      return budget.load(id, requestedScope);
+    },
+    save: async (state, options) => {
+      if (!budgetScope(state.scope)) return primary.save(state, options);
+      assertId(state.runId);
+      if (state.provider !== "zhivex" || state.modelId !== "budget-coordinator" || state.metadata?.budgetCoordinator !== true) {
+        throw new HarnessStateConflictError("Only SDK budget ledger states may use the reserved namespace.");
+      }
+      return budget.save(state, options);
+    }
+  };
+};
+
 export const HARNESS_SQLITE_FILE = "operations.sqlite";
 export const HARNESS_OPERATIONS_SCHEMA_VERSION = 1 as const;
 
@@ -485,6 +515,9 @@ export const migrateLegacyFileRuns = async (
     }
     for (const legacyState of page.items) {
       result.scannedRuns += 1;
+      if (legacyState.budgetCoordinatorId || legacyState.metadata?.budgetCoordinator === true) {
+        throw new HarnessStateConflictError("Legacy file migration cannot rebind a shared budget identity; retain the original scoped store.");
+      }
       const existing = await target.load(legacyState.runId, config.scope);
       if (existing) {
         continue;
@@ -516,12 +549,15 @@ export const openHarnessPersistence = async (
   config: HarnessConfig,
   options: { migrateLegacyFileStore?: boolean } = {}
 ): Promise<HarnessPersistence> => {
+  if (config.scope.namespace === "__zhivex_budget__") throw new HarnessStateConflictError("The budget ledger namespace is reserved.");
   await validateStateDirectory(config.workspace, config.stateDirectory);
   await ensurePrivateStateDirectory(config.stateDirectory);
   await protectStateFromGit(config.workspace, config.stateDirectory);
 
   if (config.storeBackend === "file") {
-    const store = createFileAgentRunStore({ directory: config.stateDirectory, scope: config.scope });
+    const store = withBudgetLedgerStore(
+      createFileAgentRunStore({ directory: config.stateDirectory, scope: config.scope }),
+      createFileAgentRunStore({ directory: config.stateDirectory, scope: budgetScopeFor(config) }), config);
     const migration = shouldMigrateLegacyRuns(config, options.migrateLegacyFileStore)
       ? await migrateLegacyFileRuns(config.stateDirectory, store, config)
       : emptyMigration();
@@ -575,7 +611,9 @@ export const openHarnessPersistence = async (
     await chmod(databasePath, 0o600);
 
     const databaseLike = sqliteAdapter(database);
-    const store = createSqliteAgentRunStore({ db: databaseLike, scope: config.scope });
+    const store = withBudgetLedgerStore(
+      createSqliteAgentRunStore({ db: databaseLike, scope: config.scope }),
+      createSqliteAgentRunStore({ db: databaseLike, scope: budgetScopeFor(config) }), config);
     const memory = createSqliteAgentMemoryStore({ db: databaseLike, scope: config.scope });
     const migration = shouldMigrateLegacyRuns(config, options.migrateLegacyFileStore)
       ? await migrateLegacyFileRuns(config.stateDirectory, store, config)
