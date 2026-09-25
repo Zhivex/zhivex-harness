@@ -283,6 +283,9 @@ export const terminalRunFailure = (error: unknown): string => {
   }
   const streamOverflow = /^Stream replay buffer exceeded its limit of (\d+) events\.$/.exec(message);
   if (streamOverflow) return `event replay limit reached · ${streamOverflow[1]} events`;
+  if (/^Tool is not registered \(sha256:[a-f0-9]{64}\)\.$/.test(message)) {
+    return "requested tool is not registered · use an available tool with its exact name";
+  }
   const cap = /^(maxInputTokens|maxOutputTokens|maxTotalTokens) budget (exceeded|exhausted)$/.exec(message);
   if (cap) return `budget ${cap[2]} · ${cap[1]}`;
   if (message === "Agent exhausted maxSteps before reaching a terminal response.") {

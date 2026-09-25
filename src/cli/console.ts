@@ -1,3 +1,4 @@
+import { cliToolExecution } from "./tool-execution.js";
 import { terminalContinuationMessages } from "./terminal/terminal-continuation.js";
 import { consoleProgressGuard } from "./console/console-progress.js";
 import { consoleBudgetOptions, restoreConsoleOptions, formatConsoleBudget } from "./console/console-budget.js";
@@ -216,7 +217,7 @@ export const chat = async (options: CliOptions) => {
         harness,
         {
           state,
-          toolExecution: { parallel: false, stopOnError: false },
+          toolExecution: { ...cliToolExecution },
           abortSignal,
           approvals: approvalResponses(
             state.pendingApprovals,
@@ -666,7 +667,7 @@ export const chat = async (options: CliOptions) => {
             messages.length === 0
               ? {
                   runId,
-                  toolExecution: { parallel: false, stopOnError: false },
+                  toolExecution: { ...cliToolExecution },
                   abortSignal: AbortSignal.any([abortSignal, progress.signal]),
                   maxRetries: 2,
                   retryBackoffMs: 500,
@@ -685,7 +686,7 @@ export const chat = async (options: CliOptions) => {
                 }
               : {
                   runId,
-                  toolExecution: { parallel: false, stopOnError: false },
+                  toolExecution: { ...cliToolExecution },
                   abortSignal: AbortSignal.any([abortSignal, progress.signal]),
                   maxRetries: 2,
                   retryBackoffMs: 500,

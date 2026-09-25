@@ -1,6 +1,34 @@
 import { expect, test } from "bun:test";
 import { TerminalMarkdown } from "../src/cli/terminal/terminal-markdown.js";
 
+for (const color of [false, true]) {
+  test(`handles heading prefixes without content at flush (color=${color})`, () => {
+    for (let level = 1; level <= 6; level++) {
+      let output = "";
+      const renderer = new TerminalMarkdown(text => { output += text; }, color);
+      renderer.write("#".repeat(level) + " ");
+      expect(() => renderer.flush()).not.toThrow();
+      expect(output).toBe("");
+      renderer.write("Title\nPlain\n");
+      renderer.flush();
+      expect(output).toBe(color ? "\x1b[1mTitle\x1b[0m\nPlain\n" : "Title\nPlain\n");
+    }
+  });
+
+  test(`handles heading prefixes and split Unicode across timed frames (color=${color})`, async () => {
+    let output = "";
+    const renderer = new TerminalMarkdown(text => { output += text; }, color);
+    renderer.write("## ");
+    await new Promise(resolve => setTimeout(resolve, 80));
+    expect(output).toBe("");
+    renderer.write("Title\n## \uD83D");
+    expect(output.replace(/\x1b\[[0-9;]*m/g, "")).toBe("Title\n");
+    renderer.write("\uDE42 listo\nPlain\n");
+    renderer.flush();
+    expect(output.replace(/\x1b\[[0-9;]*m/g, "")).toBe("Title\n🙂 listo\nPlain\n");
+  });
+}
+
 test("delivers partial lines during provider pauses and flushes without replay", async () => {
   let output = "";
   const renderer = new TerminalMarkdown((text) => { output += text; }, false);

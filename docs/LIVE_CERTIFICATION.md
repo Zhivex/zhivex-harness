@@ -2,6 +2,14 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
+## Prepared 1.2.0-rc.1 cohort
+
+The unpublished candidate pins Meta `muse-spark-1.3`, Qwen `qwen3.8-flash` and
+OpenAI `gpt-6-luna` in both certification workflows and the representative matrix.
+All live gates and the 42 representative cases remain pending for its exact artifact.
+Historical certification does not transfer to this candidate. User-session defaults
+and saved model selections are unchanged.
+
 ## What it proves
 
 For each selected provider, the base gate:

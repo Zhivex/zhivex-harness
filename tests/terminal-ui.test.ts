@@ -235,6 +235,10 @@ describe("terminal event rendering", () => {
   });
 
   test("leaves text deltas to the streaming output and applies optional color", () => {
+    expect(formatTerminalEvent({ type: "error", error: new Error(`Tool is not registered (sha256:${"a".repeat(64)}).`) } as never))
+      .toBe("✗ requested tool is not registered · use an available tool with its exact name");
+    expect(formatTerminalEvent({ type: "error", error: new Error("Tool is not registered (secret-name).") } as never))
+      .not.toContain("secret-name");
     expect(formatTerminalEvent({ type: "text-delta", textDelta: "model text" } as never))
       .toBeUndefined();
     expect(formatTerminalEvent({

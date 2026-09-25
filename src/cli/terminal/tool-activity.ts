@@ -6,6 +6,13 @@ const labels: Readonly<Record<string, string>> = {
   apply_reviewed_replacement: "Applying a reviewed replacement", git_diff: "Reviewing changes",
 };
 
+const summaries: Readonly<Record<string, string>> = {
+  read_file: "reads", read_files: "reads", read_dependency: "reads",
+  search_files: "searches", search_many: "searches", list_files: "listings",
+  apply_patch: "edits", apply_reviewed_edits: "edits", apply_reviewed_replacement: "edits",
+  git_diff: "diffs",
+};
+
 /** Live progress plus a bounded, durable summary per activity group. No tool payloads. */
 export class ToolActivity {
   private active = 0;
@@ -18,9 +25,9 @@ export class ToolActivity {
   constructor(private write: (text: string) => void, private tty: boolean,
     private columns: () => number = () => 80) {}
 
-  phase(label: "Waiting for model response" | "Waiting for approval", step?: number) {
-    this.flush();
-    this.label = `${label}${step === undefined ? "" : ` · step ${step}`}`;
+  phase(label: "Waiting for model response" | "Waiting for approval" | "Updating context", _step?: number) {
+    this.clear();
+    this.label = label;
     this.begin();
   }
   start(name?: string) {
@@ -32,7 +39,7 @@ export class ToolActivity {
     this.active = Math.max(0, this.active - 1);
     // Checks and failures have their own authoritative receipt in the transcript.
     if (success && !["run_check", "run_environment_command"].includes(name) && !name.startsWith("verify_and_apply_")) {
-      const label = labels[name] ?? "Running a tool";
+      const label = summaries[name] ?? "other operations";
       this.completed.set(label, (this.completed.get(label) ?? 0) + 1);
     }
     this.label = this.active ? this.label : "Waiting for model response";
@@ -54,12 +61,16 @@ export class ToolActivity {
     this.write(`\r\x1b[2K${Array.from(text).slice(0, Math.max(1, this.columns() - 1)).join("")}`);
     this.visible = true;
   }
-  flush() {
+  private clear() {
     clearInterval(this.timer); this.timer = undefined;
     if (this.visible) this.write("\r\x1b[2K");
     this.visible = false;
-    for (const [label, count] of this.completed) {
-      this.write(`✓ ${label} · ${count} completed\n`);
+  }
+  flush() {
+    this.clear();
+    if (this.completed.size) {
+      const details = [...this.completed].map(([label, count]) => `${label}: ${count}`).join(" · ");
+      this.write(`✓ Activity · ${details}\n`);
     }
     this.completed.clear();
   }

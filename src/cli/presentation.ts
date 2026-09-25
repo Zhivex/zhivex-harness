@@ -190,6 +190,12 @@ export const streamSink = (
         Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80);
       toolActivities.set(tracker, activity);
     }
+    if (event.type === "agent-compaction") {
+      tracker.markdown?.flush();
+      if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
+      activity.phase("Updating context");
+      return;
+    }
     if (event.type === "agent-step-start") {
       tracker.markdown?.flush();
       if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
@@ -244,7 +250,6 @@ export const streamSink = (
       lastTerminalFailures.set(tracker, cause);
     } else if (event.type === "agent-run-start") lastTerminalFailures.delete(tracker);
     if (line) process.stderr.write(`\n${line}\n`);
-    if (compact && event.type === "agent-compaction") toolActivities.get(tracker)?.phase("Waiting for model response");
   }
 };
 

@@ -203,6 +203,8 @@ For the rationale and reference patterns, see [Console UX](https://github.com/Zh
 
 Activity is compact in the direct console: tool actions appear only as a temporary TTY status; approvals, errors and final run status remain visible; repeated provider and per-step transport notices are hidden. `/verbose` toggles full activity for that console process. One-shot and JSON/JSONL outputs retain their contracts.
 
+The agent is instructed to give brief progress updates unless the requested output format or silent execution prevents them; their frequency depends on the model. Model text is shown in compact mode too. Direct CLI runs and continuations return unknown tool names as error receipts so the model can select an exposed tool. Unknown tools are never executed or aliased, and error/step budgets and approval requirements still apply. Library callers retain their configured tool-error policy.
+
 Each console session is a scoped, durable chain of immutable run IDs. The session index stores provider/model/status metadata and never stores prompts, model messages, tool payloads, or provider data; those remain in the governed run store. `zhx chat --continue` opens the latest session and `--session <id>` selects one explicitly.
 
 ```text

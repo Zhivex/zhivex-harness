@@ -1,3 +1,4 @@
+import { cliToolExecution } from "./tool-execution.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import {
   resolveHarnessConfig,
@@ -46,7 +47,7 @@ export const runOnce = async (options: CliOptions) => {
       harness,
       {
         prompt: options.prompt,
-        toolExecution: { parallel: false, stopOnError: false },
+        toolExecution: { ...cliToolExecution },
         scope: harness.config.scope,
         metadata: createHarnessResumeMetadata(harness.config, routes),
         ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {})
@@ -205,7 +206,7 @@ export const resumeRun = async (options: CliOptions) => {
         harness,
         {
           state,
-          toolExecution: { parallel: false, stopOnError: false },
+          toolExecution: { ...cliToolExecution },
           approvals: approvalResponses(
             state.pendingApprovals,
             approve,

@@ -7,7 +7,7 @@ export interface ReleaseMetadata {
   version: string;
   changelog: string;
   matrix: { releaseTags: string[]; expectedModels: { releaseTag: string; models: Record<string, string> }[] };
-  workflow: { jobs: Record<string, { steps?: { id?: string; run?: string; env?: Record<string, string> }[] }> };
+  workflow: { jobs: Record<string, { env?: Record<string, string>; steps?: { id?: string; run?: string; env?: Record<string, string> }[] }> };
 }
 
 export function validateReleaseMetadata(input: ReleaseMetadata, allowUnreleased = false, channel?: string): void {
@@ -33,6 +33,10 @@ export function validateReleaseMetadata(input: ReleaseMetadata, allowUnreleased 
     if (!model || step?.env?.ZHIVEX_SAFE_FIX_PROVIDER !== provider || step.env.ZHIVEX_SAFE_FIX_MODEL !== model ||
         !step.run?.includes(`--provider ${provider} --model ${model} `)) {
       throw new Error(`Representative workflow model disagrees with ${release.tag}: ${provider}`);
+    }
+    const modelVariable = `ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`;
+    if (input.workflow.jobs["certify-live"]?.env?.[modelVariable] !== model) {
+      throw new Error(`Live workflow model disagrees with ${release.tag}: ${provider}`);
     }
   }
 }

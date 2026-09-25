@@ -4,9 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.2.0-rc.1 - 2026-09-25
 
-- Integrate the coordinated SDK `next` prerelease batch (Core 1.24 / Agents 1.10): SDK-owned auxiliary compaction reservations and durable receipts, catalog recommendation contracts, and opt-in MCP HTTP/OAuth transport. Preserve the existing MCP protocol by default.
+- Prepare the next-channel candidate with Meta `muse-spark-1.3`, Qwen `qwen3.8-flash` and OpenAI `gpt-6-luna` across live and representative certification. Fresh exact-artifact certification and publication remain pending.
+- Remove archived candidate notes and exploratory design assets from the working tree; preserve links to their Git history.
+
+- Integrate the coordinated stable SDK batch (Core 1.24 / Agents 1.10): SDK-owned auxiliary compaction reservations and durable receipts, catalog recommendation contracts, and opt-in MCP HTTP/OAuth transport. Preserve the existing MCP protocol by default.
 
 - Add opt-in model-assisted compaction with explicit provider/model selection, shared token budgets, and durable usage accounting; retain deterministic compaction by default.
 - Enrich the model catalog with sourced context/output limits, pricing evidence, and conservative compaction recommendations available through `/compaction`.
