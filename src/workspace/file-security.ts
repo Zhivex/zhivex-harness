@@ -56,7 +56,8 @@ const openRegularFileNoFollow = async (target: string, label: string) => {
       // Darwin's O_NOFOLLOW_ANY is enforced by namei for the entire path.
       // Only canonicalize the OS-owned aliases; never realpath user ancestors.
       absolute = absolute.replace(/^\/(tmp|var|etc)(\/|$)/, "/private/$1$2");
-      return await open(absolute, fsConstants.O_RDONLY | fsConstants.O_NONBLOCK | 0x20000000);
+      // Read-only opens ignore mode; specify a private mode for file-creation analyzers.
+      return await open(absolute, fsConstants.O_RDONLY | fsConstants.O_NONBLOCK | 0x20000000, 0o600);
     }
     if (process.platform !== "linux") throw new Error("Safe descriptor-relative reads require Linux or macOS.");
     const segments = absolute.split("/").filter(Boolean);
