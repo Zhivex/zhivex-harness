@@ -29,7 +29,7 @@ export function observeBenchmarkModel(model: LanguageModel): LanguageModel {
       try {
         const result = await context.run({ id, attempts: 0 }, () => target.generate(...args));
         updateBenchmarkSpan(id, { outcome: "completed" }); return result;
-      } catch (error) { updateBenchmarkSpan(id, { outcome: "failed" }); throw error; }
+      } catch (error) { updateBenchmarkSpan(id, { outcome: "failed", failureKind: error instanceof SyntaxError ? "syntax" : "unknown" }); throw error; }
     };
     if (property === "stream" && target.stream) return async (...args: Parameters<NonNullable<LanguageModel["stream"]>>) => {
       const id = beginBenchmarkSpan("stream");
@@ -47,10 +47,10 @@ export function observeBenchmarkModel(model: LanguageModel): LanguageModel {
               if (first && next.value.type === "text-delta") {
                 first = false; updateBenchmarkSpan(id, { firstTokenMs: Math.round(performance.now() - started) });
               }
-              if (next.value.type === "error") { failed = true; updateBenchmarkSpan(id, { failureKind: "stream" }); }
+              if (next.value.type === "error") { failed = true; updateBenchmarkSpan(id, { failureKind: next.value.error instanceof SyntaxError ? "syntax" : "stream" }); }
               yield next.value;
             }
-          } catch (error) { failed = true; updateBenchmarkSpan(id, { failureKind: "stream" }); throw error; }
+          } catch (error) { failed = true; updateBenchmarkSpan(id, { failureKind: error instanceof SyntaxError ? "syntax" : "stream" }); throw error; }
           finally {
             updateBenchmarkSpan(id, { outcome: failed ? "failed" : completed ? "completed" : "cancelled" });
             if (!completed) {
@@ -62,7 +62,7 @@ export function observeBenchmarkModel(model: LanguageModel): LanguageModel {
             }
           }
         })();
-      } catch (error) { updateBenchmarkSpan(id, { outcome: "failed" }); throw error; }
+      } catch (error) { updateBenchmarkSpan(id, { outcome: "failed", failureKind: error instanceof SyntaxError ? "syntax" : "unknown" }); throw error; }
     };
     const value = Reflect.get(target, property, receiver);
     return typeof value === "function" ? value.bind(target) : value;

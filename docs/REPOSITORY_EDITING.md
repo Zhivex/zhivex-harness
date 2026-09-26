@@ -169,3 +169,24 @@ at publication checkpoints rolls back already published writes. Interrupting
 an approval wait leaves its durable pending approval available for inspection;
 it never authorizes later import. A concurrent filesystem actor or rollback I/O
 failure can still cause a reported rollback failure; it is never a success.
+
+## Model-facing references in 1.2 RC3
+
+When using `runHarness`, read existing files with `read_file` or `read_files` before
+requesting `apply_reviewed_replacement`, `apply_reviewed_edits`, or
+`verify_and_apply_reviewed_edits`. Models supply paths and edits; the runtime
+binds the full-file digest from the preceding successful read. Full-file changes
+use `create: true` only for new files. Existing files must be read again after
+changes or when compaction has removed the reference evidence.
+
+After `inspect_environment_patch`, models call `apply_environment_patch` with
+`{}` or `verify_and_apply_environment_patch` with exact verifier argv. The runtime
+binds that inspected patch ID before the SDK requests approval. It never chooses
+a new snapshot when resuming an approval. A changed snapshot or host file still
+fails closed. Reads and mutations must be separate model turns.
+
+This provider-facing view does not change direct tool schemas: programmatic
+callers and persisted approval payloads still contain `expectedDigest` or
+`patchId`. Explicit legacy references remain authoritative and are never repaired
+or replaced silently. SDK users invoking the agent directly should continue to
+use those explicit contracts.

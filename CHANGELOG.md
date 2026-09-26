@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.3 - 2026-09-25
+
+- Model-facing reviewed edits and OCI imports no longer require copying file digests or patch IDs. The runtime binds successful prior reads/inspections before requesting approval; persisted approvals and programmatic tool contracts retain their exact references.
+- Preserve rejection of stale files and changed OCI snapshots, including after restart. Missing reference evidence requires another read/inspection; explicit legacy references are never silently replaced.
+- Return sanitized argument-validation receipts in CLI and representative runs within existing step/error budgets. Distinguish provider syntax failures and patch inspections in release diagnostics without retaining provider payloads or adding retries.
+- Prepare the unchanged Meta/Qwen/OpenAI cohort and 42-case release gate for the exact RC3 artifact. RC2 failed representative validation and was not published.
+
 ## 1.2.0-rc.2 - 2026-09-25
 
 - Speed up standalone CLI help/version loading, bounded workspace and OCI inventory reads, scoped-context validation and chat persistence reuse; enable bounded independent CLI reads with mutation barriers.

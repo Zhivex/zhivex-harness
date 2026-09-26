@@ -1,3 +1,4 @@
+import { createModelEditReferences } from "./model-edit-references.js";
 import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
 import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
@@ -870,7 +871,7 @@ const executeTerminalReceiptToolOwned = async (
       isError: true,
       ...(recoverPatchId ? {
         output: { kind: "terminal-patch-id-mismatch", diagnosticCode: "OCI_PATCH_ID_MISMATCH",
-          instruction: "The submitted patch ID differs from the inspected unchanged patch. No patch was imported. Call inspect_environment_patch again, copy its exact patchId without alteration, and request a new apply_environment_patch approval. This recovery is allowed once per run." }
+          instruction: "The submitted patch ID differs from the inspected unchanged patch. No patch was imported. Call inspect_environment_patch again, and request a new apply_environment_patch approval with {} so the runtime binds the inspected reference. This recovery is allowed once per run." }
       } : {}),
       ...(recoverVerifier && error instanceof TerminalVerificationFailure ? {
         output: { kind: "terminal-verification-failure", verification: error.verification,
@@ -1124,7 +1125,7 @@ const runHarnessInternal = async (
   const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
-    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [contextRuntime.middleware])
+    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}), contextRuntime.middleware])
   }) };
   if (input.tools) input = { ...input, tools: runtimeTools };
   if (input.compaction === undefined) {

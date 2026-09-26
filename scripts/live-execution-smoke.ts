@@ -42,8 +42,8 @@ export const executionPrompt = (provider: HarnessProvider) =>
   `Perform this exact enforced-environment workflow:
 1. Call run_environment_command exactly once with this exact JSON input: ${JSON.stringify(executionCommandInput(provider))}.
 2. Call inspect_environment_patch exactly once with {}.
-3. Read patchId from that tool result, then call apply_environment_patch exactly once with that unchanged patchId.
-Do not call any other tool, do not invent the patchId, and do not write through repository editing tools.
+3. Call apply_environment_patch exactly once with {}. The runtime binds the inspected patch internally.
+Do not call any other tool, do not supply a patchId, and do not write through repository editing tools.
 After the approved patch import result, reply exactly ${completionToken(provider)}.`;
 
 const certifyProvider = async (
