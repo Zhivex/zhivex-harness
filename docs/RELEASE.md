@@ -4,22 +4,23 @@
 
 ## Next release candidate
 
-The source version is `1.2.0-rc.1`, targeting npm `next` after fresh certification.
-RC.10 is published to `next`. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35924224542)
-passed deterministic and exact-artifact validation, all live gates and the complete
-Meta/Qwen/OpenAI representative matrix. The first publication verification timed
-out waiting for the `next` dist-tag; the original tarball's integrity, dist-tag and
-SLSA provenance subsequently verified. Recovery reruns only the failed publication
-job and preserves the original bytes.
+The source version is `1.2.0-rc.2`, targeting npm `next` after fresh certification.
+It includes the RC1 patch-ID recovery, exact-artifact live gates, packaged Desktop
+journeys and the bounded performance backport. All required gates must pass against
+this new artifact before publication; the focused local Qwen follow-up does not
+certify RC2.
 
 The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
-The `v1.1.0` attempt failed at the Qwen representative approval gate before publication.
-The `v1.1.2` and `v1.1.3` attempts failed at the Meta representative matrix before publication. Their tags and evidence remain unchanged. All exact-artifact gates must pass anew for `v1.2.0-rc.1`.
-`release-status.json` still describes the independently verified 1.0.0
-publication and remains preserved during RC preparation; RC evidence is not substituted
-for certification of the stable artifact. The SDK dependencies now pin Core 1.24.0, Agents 1.10.0 and the coordinated stable provider batch;
-the updated artifact requires its own full certification.
+The `v1.2.0-rc.1` attempt stopped at Qwen representative evaluation before publication.
+Its annotated tag and failure evidence remain unchanged. The `v1.1.0` attempt
+failed at the Qwen representative approval gate; `v1.1.2` and `v1.1.3` failed at
+the Meta representative matrix, also before publication.
+
+`release-status.json` still describes the independently verified 1.0.0 publication
+and remains preserved during RC preparation. RC evidence is not substituted for
+certification of a stable artifact. SDK dependencies remain Core 1.24.0, Agents
+1.10.0 and the coordinated stable provider batch.
 
 ## Deterministic gates
 
