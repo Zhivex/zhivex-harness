@@ -4,7 +4,7 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.2.0-rc.2 - 2026-09-25
 
 - Speed up standalone CLI help/version loading, bounded workspace and OCI inventory reads, scoped-context validation and chat persistence reuse; enable bounded independent CLI reads with mutation barriers.
 
