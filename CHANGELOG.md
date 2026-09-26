@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Preserve OCI inspection references across approval restart and emit sanitized diagnostics distinguishing submitted patch-ID mismatch, snapshot drift, unavailable review evidence and execution-binding changes; retain exact-byte import rejection.
+
 ## 1.2.0-rc.1 - 2026-09-25
 
 - Prepare the next-channel candidate with Meta `muse-spark-1.3`, Qwen `qwen3.8-flash` and OpenAI `gpt-6-luna` across live and representative certification. Fresh exact-artifact certification and publication remain pending.

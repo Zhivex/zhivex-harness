@@ -38,7 +38,11 @@ export type TimeToSafeFixFailureOrigin = (typeof TIME_TO_SAFE_FIX_FAILURE_ORIGIN
 
 export const TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES = [
   "QWEN_DUPLICATE_TOOL_CALL_ID",
-  "OPENAI_RESPONSES_TOOL_CALL_INVALID"
+  "OPENAI_RESPONSES_TOOL_CALL_INVALID",
+  "OCI_PATCH_ID_MISMATCH",
+  "OCI_PATCH_SNAPSHOT_CHANGED",
+  "OCI_PATCH_REVIEW_UNAVAILABLE",
+  "OCI_EXECUTION_BINDING_CHANGED"
 ] as const;
 export type TimeToSafeFixDiagnosticCode = (typeof TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES)[number];
 
@@ -250,7 +254,8 @@ const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticC
     error.name === "QwenToolCallIdError" &&
     record.diagnosticCode === "QWEN_DUPLICATE_TOOL_CALL_ID";
   if (
-    (qwenProviderFailure || openAIProviderFailure) &&
+    (qwenProviderFailure || openAIProviderFailure ||
+      (typeof record.diagnosticCode === "string" && record.diagnosticCode.startsWith("OCI_"))) &&
     typeof record.diagnosticCode === "string" &&
     (TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES as readonly string[]).includes(record.diagnosticCode)
   ) {
@@ -338,7 +343,9 @@ export const classifyTimeToSafeFixFailure = (
   const providerToolCallRetryable = safeProviderToolCallRetryable(error);
   let code = "UNCLASSIFIED_FAILURE";
   let retryable = false;
-  if (options.timedOut || /timed? out|timeout/.test(normalized)) {
+  if (diagnosticCode === "OCI_PATCH_ID_MISMATCH" || diagnosticCode === "OCI_PATCH_SNAPSHOT_CHANGED" || diagnosticCode === "OCI_PATCH_REVIEW_UNAVAILABLE") {
+    code = "PATCH_DRIFT";
+  } else if (options.timedOut || /timed? out|timeout/.test(normalized)) {
     code = "TIMEOUT";
     retryable = true;
   } else if (structured && structured.category !== "execution") {
