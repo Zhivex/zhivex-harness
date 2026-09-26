@@ -1,3 +1,4 @@
+import { modelReasoningEfforts } from "../providers/reasoning.js";
 import { ConsoleInput } from "./console/console-input.js";
 import { navigateConsole } from "./console/console-navigation.js";
 import { parseProvider, providerAvailability, providerDescriptor, type HarnessProvider } from "../runtime/config.js";
@@ -23,9 +24,11 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
     throw new CliUsageError(error instanceof Error ? error.message : String(error));
   }
 
+  let reasoningEffort = options.reasoningEffort ?? existing?.reasoningEffort;
   let model = options.model ?? (existing
     ? existing.provider === provider ? existing.model : providerDescriptor(provider).defaultModel
     : process.env.ZHIVEX_HARNESS_MODEL ?? providerDescriptor(provider).defaultModel);
+  if (existing && (existing.provider !== provider || existing.model !== model) && options.reasoningEffort === undefined) reasoningEffort = undefined;
   if (!options.json && process.stdin.isTTY && process.stdout.isTTY) {
     const input = new ConsoleInput(process.stdin, process.stdout);
     try {
@@ -33,7 +36,7 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
         const providers = [...providerAvailability()].sort((a, b) =>
           Number(b.configured) - Number(a.configured) || Number(b.id === provider) - Number(a.id === provider));
         const selected = await navigateConsole(input, {
-          entry: options.provider ? "model" : "provider", current: { provider, model },
+          entry: options.provider ? "model" : "provider", current: { provider, model, ...(reasoningEffort ? { reasoningEffort } : {}) },
           providers, sessions: async () => [],
         });
         if (!selected || "command" in selected) {
@@ -42,11 +45,15 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
         }
         provider = parseProvider(selected.provider);
         model = options.model ?? selected.model;
+        reasoningEffort = options.reasoningEffort ?? selected.reasoningEffort;
       }
     } finally { input.close(); }
   }
 
-  const created = await (options.updateProfile ? updateCliProfile : createCliProfile)(profileName, { provider, model });
+  if (reasoningEffort && !modelReasoningEfforts(provider, model).includes(reasoningEffort)) {
+    throw new CliUsageError(`Reasoning effort ${reasoningEffort} is not declared for ${provider}/${model}. Use default or a supported level.`);
+  }
+  const created = await (options.updateProfile ? updateCliProfile : createCliProfile)(profileName, { provider, model, ...(reasoningEffort ? { reasoningEffort } : {}) });
   const availability = providerAvailability().find((candidate) => candidate.id === provider);
   const doctorCommand = `zhx doctor --profile ${profileName}`;
   const runCommand = `zhx --profile ${profileName} "inspect this repository"`;
@@ -84,7 +91,7 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
     "Next:",
     `  ${doctorCommand}`,
     `  ${runCommand}`,
-    "Profiles contain provider and model only. A later bare interactive console uses the default profile automatically. Change it with zhx init --update."
+    "Profiles contain provider, model and optional reasoning effort. A later bare interactive console uses the default profile automatically. Change it with zhx init --update."
   ].join("\n") + "\n");
   return true;
 };

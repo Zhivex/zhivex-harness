@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type HarnessReasoningEffort } from "../providers/reasoning.js";
 import { resolveHelpTopic } from "./cli-help.js";
 import { z } from "zod";
 import { type AgentStatus } from "@zhivex-ai/agents";
@@ -42,6 +43,7 @@ export interface CliOptions {
   updateProfile?: boolean;
   provider?: string;
   model?: string;
+  reasoningEffort?: HarnessReasoningEffort;
   workspace?: string;
   stateDirectory?: string;
   storeBackend?: string;
@@ -327,6 +329,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
+      case "--reasoning":
+        options.reasoningEffort = reasoningEffortSchema.parse(optionValue(argv, index, argument));
+        index += 1;
+        break;
       case "--require-verified-delivery":
         options.requireVerifiedDelivery = true;
         break;

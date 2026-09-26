@@ -1,3 +1,4 @@
+import { withQwenHostedPolicy } from "./qwen-hosted-policy.js";
 import { createMetaContinuationFetch } from "./meta-continuation.js";
 import { createMetaReplayModel } from "./meta-replay.js";
 import { annotateMetaRequestError } from "./meta-errors.js";
@@ -614,12 +615,12 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
       const baseURL = env.QWEN_BASE_URL?.trim();
       const workspaceId = env.QWEN_WORKSPACE_ID?.trim();
       const region = optionalQwenRegion(env.QWEN_REGION?.trim());
-      return withQwenDurableToolCallIds(createQwen({
+      return withQwenHostedPolicy(withQwenDurableToolCallIds(createQwen({
         apiKey: credentials.require(),
         ...(baseURL ? { baseURL } : {}),
         ...(workspaceId ? { workspaceId } : {}),
         ...(region ? { region } : {})
-      })(model));
+      })(model)));
     }
   },
   {

@@ -11,6 +11,7 @@ export const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput =>
   schemaVersion: config.schemaVersion,
   provider: config.provider,
   model: config.model,
+  ...(config.reasoningEffort ? { reasoningEffort: config.reasoningEffort } : {}),
   workspace: config.workspace,
   stateDirectory: config.stateDirectory,
   storeBackend: config.storeBackend,

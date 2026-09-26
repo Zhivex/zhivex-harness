@@ -205,3 +205,17 @@ test("current dependency missing-path and missing-package errors have distinct r
   expect(result("Dependency PRIVATE is not installed in this workspace's node_modules. Check package.json")).toContain("check the project installation");
   expect(result("Dependency PRIVATE is not installed in this workspace's node_modules.")).not.toContain("PRIVATE");
 });
+
+test("phase transitions preserve total elapsed time and expose a busy draft", () => {
+ let now=0, output="";
+ const clock=spyOn(Date,"now").mockImplementation(()=>now);
+ const activity=new ToolActivity(text=>{output+=text;},true,()=>150,()=>"0 queued");
+ try {
+   activity.phase("Waiting for model response");
+   now=8000;activity.start("apply_reviewed_edits");
+   expect(output).toContain("Preparing reviewed edits · 0s phase · 8s total");
+   activity.phase("Waiting for approval");
+   now=11000;activity.finish("apply_reviewed_edits");
+   expect(output).toContain("11s total");
+ } finally {activity.flush();clock.mockRestore();}
+});

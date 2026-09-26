@@ -22,7 +22,7 @@ export const consoleBudgetOptions = (options: CliOptions, env: NodeJS.ProcessEnv
 
 /** A saved run owns its budget, including legacy runs without a mode flag. */
 export const restoreConsoleOptions = (current: CliOptions, saved: Partial<CliOptions>): CliOptions => ({
-  ...current, ...saved, unlimitedTokens: saved.unlimitedTokens ?? false
+  ...current, ...saved, reasoningEffort: saved.reasoningEffort ?? "default", unlimitedTokens: saved.unlimitedTokens ?? false
 });
 
 export const formatConsoleBudget = (config: HarnessConfig, usage?: TokenUsage) => {

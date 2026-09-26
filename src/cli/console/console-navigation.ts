@@ -1,28 +1,30 @@
+import { chooseReasoning } from "./console-reasoning.js";
+import type { HarnessReasoningEffort } from "../../providers/reasoning.js";
 import type { ConsoleInput } from "./console-input.js";
 import { bundledModelCatalog, catalogModels, modelDescription, type ModelCatalog } from "../../models/catalog.js";
 import { loadModelCatalog } from "../../models/catalog-store.js";
 import type { ProviderAvailability } from "../../providers/providers.js";
 
 export const consoleModelChoices = (provider: string, defaultModel: string, current?: string, catalog: ModelCatalog = bundledModelCatalog) => {
-  const models = catalogModels(catalog, provider, current);
-  return [...new Set([...(current ? [current] : []), defaultModel, ...models.map(m => m.id)])].map(model => {
+  const models = catalogModels(catalog, provider, current).sort((a, b) => Number(b.group === "primary") - Number(a.group === "primary"));
+  return [...new Set([...models.map(m => m.id), defaultModel])].map(model => {
     const entry = models.find(m => m.id === model);
     return {
       value: model, label: entry?.name ?? model,
       group: entry?.group ?? "other",
-      detail: [model === current ? "Current" : "", model === defaultModel ? "Recommended default" : "",
+      detail: [entry?.name !== model ? model : "", model === current ? "Current" : "", model === defaultModel ? "Recommended default" : "",
         entry ? modelDescription(entry) : "Unverified"].filter(Boolean).join(" · "),
     };
   });
 };
 
-export type ConsoleNavigationResult = { command: string } | { provider: string; model: string };
+export type ConsoleNavigationResult = { command: string } | { provider: string; model: string; reasoningEffort?: HarnessReasoningEffort };
 
 export const navigateConsole = async (
   input: Pick<ConsoleInput, "select" | "question">,
   options: {
     entry: "menu" | "provider" | "model";
-    current: {provider: string; model: string};
+    current: {provider: string; model: string; reasoningEffort?: HarnessReasoningEffort};
     providers: readonly ProviderAvailability[];
     sessions: () => Promise<readonly {value: string; label: string; detail?: string}[]>;
     service?: boolean;
@@ -45,6 +47,8 @@ export const navigateConsole = async (
         ] : []),
         {value:"sessions",label:"Conversations",detail:"Find and resume a saved conversation"},
         {value:"/status",label:"Status",detail:"Current session and runtime"},
+        {value:"/activity",label:"Activity history",detail:"Recent tools, approvals and applied files"},
+        {value:"/queue",label:"Queued tasks",detail:"Inspect tasks and unsent draft"},
         {value:"/pending",label:"Pending approvals",detail:"Inspect pending actions"},
         ...(!options.service ? [
           {value:"/context",label:"Project context",detail:"Rules, skills and attachments"},
@@ -75,10 +79,10 @@ export const navigateConsole = async (
       const choices = consoleModelChoices(provider, defaultModel,
         options.current.provider === provider ? options.current.model : undefined, catalog);
       const primary = choices.filter(item => item.group === "primary" || (provider === options.current.provider && item.value === options.current.model));
-      const others = choices.filter(item => item.group === "other");
-      let selected = await input.select<{kind:"model"|"custom"|"other";id:string}>(`Zhivex / Providers / ${descriptor.name} / Models\nPrimary models · ${snapshot?.source ?? "bundled"}${snapshot?.stale ? " (offline fallback)" : ""} · account access is not checked`, [
+      const others = choices.filter(item => !primary.includes(item));
+      let selected = await input.select<{kind:"model"|"custom"|"other";id:string}>(`Zhivex / Providers / ${descriptor.name} / Models\nFeatured models · ${snapshot?.source ?? "bundled"}${snapshot?.stale ? " (offline fallback)" : ""} · account access is not checked`, [
         ...primary.map(item => ({...item,value:{kind:"model" as const,id:item.value}})),
-        ...(others.length ? [{value:{kind:"other" as const,id:""},label:"Other models…",detail:"Additional, unverified or retiring models"}] : []),
+        ...(others.length ? [{value:{kind:"other" as const,id:""},label:"Other models…",detail:"Previous generations, snapshots and additional models"}] : []),
         {value:{kind:"custom" as const,id:""},label:"Custom model ID…",detail:"Enter a model absent from the local catalog"},
       ]);
       if (!selected) { if (!modelParent) return; page = modelParent; continue; }
@@ -91,12 +95,19 @@ export const navigateConsole = async (
         for (;;) {
           const model = (await input.question(prompt)).trim();
           if (!model) break;
-          if (model.length <= 512 && !/[\u0000-\u001f\u007f]/.test(model)) return {provider,model};
+          if (model.length <= 512 && !/[\u0000-\u001f\u007f]/.test(model)) {
+            const reasoningEffort = await chooseReasoning(input, provider, model);
+            if (reasoningEffort) return {provider,model,reasoningEffort};
+            break;
+          }
           prompt = "Use 1–512 printable characters. Model ID (Enter to go back): ";
         }
         continue;
       }
-      return {provider,model:selected.id};
+      const reasoningEffort = await chooseReasoning(input, provider, selected.id,
+        provider === options.current.provider && selected.id === options.current.model ? options.current.reasoningEffort : undefined);
+      if (!reasoningEffort) continue;
+      return {provider,model:selected.id,reasoningEffort};
     }
   }
 };

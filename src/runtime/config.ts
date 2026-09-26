@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type HarnessReasoningEffort } from "../providers/reasoning.js";
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import path from "node:path";
@@ -165,6 +166,7 @@ export interface HarnessConfig {
   schemaVersion: typeof HARNESS_CONFIG_SCHEMA_VERSION;
   provider: HarnessProvider;
   model: string;
+  reasoningEffort?: HarnessReasoningEffort;
   workspace: string;
   stateDirectory: string;
   storeBackend: HarnessStoreBackend;
@@ -187,6 +189,7 @@ export interface HarnessConfigInput {
   schemaVersion?: number;
   provider?: string;
   model?: string;
+  reasoningEffort?: HarnessReasoningEffort;
   workspace?: string;
   stateDirectory?: string;
   storeBackend?: string;
@@ -723,6 +726,7 @@ export const resolveHarnessConfig = (
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
     provider,
     model: input.model ?? process.env.ZHIVEX_HARNESS_MODEL ?? descriptor.defaultModel,
+    ...(input.reasoningEffort === undefined || input.reasoningEffort === "default" ? {} : { reasoningEffort: reasoningEffortSchema.parse(input.reasoningEffort) }),
     workspace,
     stateDirectory: canonicalStateDirectory(requestedWorkspace, workspace, input.stateDirectory),
     storeBackend: storeBackend as HarnessStoreBackend,

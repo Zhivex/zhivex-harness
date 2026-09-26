@@ -1,5 +1,6 @@
+import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
+import { ToolActivity } from "./terminal/tool-activity.js";
 import { navigateConsole } from "./console/console-navigation.js";
-import { formatComposer } from "./console/console-presentation.js";
 import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { HARNESS_VERSION } from "../version.js";
@@ -47,6 +48,9 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
   }else if(options.continueSession){const latest=(await list())[0];if(!latest)throw new HarnessStateConflictError("No session to continue.");session=latest;}
   else session=await create(options.idempotencyKey);
   let activeRun:string|undefined;
+  let consoleInput: ConsoleInput | undefined;
+  const history = new ActivityHistory();
+  const seenMutations = new Set<string>();
   const currentRun=async(runId=activeRun??session.runs.at(-1)?.runId)=>{
     if(!runId)return undefined;const r=await call({method:"run.get",sessionId:session.sessionId,runId});if(r.kind!=="run")throw new HarnessStateConflictError("Unexpected run response.");return r.run;
   };
@@ -54,6 +58,18 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
   const cursorAtEnd=async()=>{let after=0;for(;;){const page=await requestHarnessLocalService(credentials,"events",{projectId,sessionId:session.sessionId,after});after=page.nextCursor;if(page.cursorExpired||page.events.length<200)return after;}};
   const invoke=async(command:Omit<HarnessClientCommand,"projectId">&Record<string,unknown>)=>{
     let cursor=await cursorAtEnd();let finished=false,streamed=false;
+    consoleInput?.startBackground();
+    const activity = new ToolActivity(text => {process.stderr.write(text);}, Boolean(consoleInput && process.stdout.isTTY), () => process.stdout.columns || 80, () => consoleInput?.backgroundStatus ?? "");
+    const observe = (a: Record<string, unknown>) => {
+      if (options.json || options.jsonl) return;
+      history.observeService(a);
+      if (a.type === "agent-step-start" || a.type === "agent-run-start") activity.phase("Waiting for model response");
+      else if (a.type === "agent-compaction") activity.phase("Updating context");
+      else if (a.type === "tool-call") activity.start(typeof a.toolName === "string" ? a.toolName : undefined);
+      else if (a.type === "tool-result") activity.finish(typeof a.toolName === "string" ? a.toolName : "tool", a.isError !== true);
+      else if (["agent-run-finish", "tool-approval-request", "agent-approval-request"].includes(String(a.type))) activity.flush();
+      else if (a.type === "text-delta") activity.pause();
+    };
     const pending=call(command).finally(()=>{finished=true;});
     // Attach a rejection handler immediately while activity is polled.
     void pending.catch(()=>undefined);
@@ -62,7 +78,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
         const page=await requestHarnessLocalService(credentials,"events",{projectId,sessionId:session.sessionId,after:cursor});
         if(page.cursorExpired)throw new HarnessStateConflictError("Service activity cursor expired; reopen the session snapshot.");
         cursor=page.nextCursor;
-        for(const event of page.events){activeRun=event.runId;const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;
+        for(const event of page.events){activeRun=event.runId;const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;observe(a);
           if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");
           else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}
         }
@@ -72,19 +88,26 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       for (;;) {
       const tail=await requestHarnessLocalService(credentials,"events",{projectId,sessionId:session.sessionId,after:cursor});
       if(tail.cursorExpired)throw new HarnessStateConflictError("Service activity cursor expired; inspect session.");
-      for(const event of tail.events){const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}}
+      for(const event of tail.events){const a=event.activity;if(a.type==="checkpoint"||a.type==="user-message")continue;observe(a);if(options.jsonl)process.stdout.write(JSON.stringify({...a,schemaVersion:1,kind:"run-event",sequence:++sequence})+"\n");else if(!options.json&&typeof a.textDelta==="string"){process.stdout.write(sanitizeTerminalText(a.textDelta));streamed=true;}}
       cursor=tail.nextCursor;
       if(tail.events.length<200)break;
       }
       const result=await pending;if(result.kind!=="run")throw new HarnessStateConflictError("Unexpected run response.");session=result.session;
       return{run:result.run,streamed};
-    }catch(e){throw annotate(e,sequence);}finally{activeRun=undefined;}
+    }catch(e){throw annotate(e,sequence);}finally{activity.flush();consoleInput?.stopBackground();activeRun=undefined;}
   };
   const finish=(run:HarnessClientRun,streamed:boolean)=>{
     const document=cliRunResultDocumentSchema.parse(run.cliResult);
     if(options.jsonl)process.stdout.write(serializeStreamResult({ runId: document.runId, status: document.status, provider: document.provider, model: document.model, steps: document.steps, toolCalls: document.toolCalls, pendingApprovals: document.pendingApprovals.map(a=>({id:a.id,kind:a.kind,name:a.name,...(a.childRunId?{childRunId:a.childRunId}:{}),...(a.childAgentId?{childAgentId:a.childAgentId}:{})})), children:document.children.map(c=>({runId:c.runId,status:c.status})) },++sequence)+"\n");
     else if(options.json)print({...document,sessionId:session.sessionId});
     else{if(!streamed)process.stdout.write(sanitizeTerminalText(document.output));process.stdout.write(`\nRun ${run.runId} · ${run.status} · session ${session.sessionId}\n`);}
+    if (!options.json && !options.jsonl) {
+      const fresh = document.mutations.filter(entry => !seenMutations.has(entry.id));
+      for (const entry of fresh) seenMutations.add(entry.id);
+      while (seenMutations.size > 2000) seenMutations.delete(seenMutations.values().next().value!);
+      const receipt = formatAppliedFiles(fresh, "Review changes in the host workspace");
+      if (receipt) {process.stdout.write(receipt);history.add(receipt.trim());}
+    }
     if(["failed","cancelled","timed_out"].includes(run.status))process.exitCode=1;
   };
   const decision=async(run:HarnessClientRun,approve:boolean)=>invoke({method:"approval.resolve",sessionId:session.sessionId,runId:run.runId,expectedRevision:run.revision,idempotencyKey:key("decision"),decisions:run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve}))});
@@ -105,13 +128,13 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       if(!prompt&&!process.stdin.isTTY){for await(const chunk of process.stdin){prompt+=chunk.toString();if(Buffer.byteLength(prompt)>64*1024)throw new HarnessConfigError("Prompt exceeds 64 KiB.");}}
       if(!prompt.trim())throw new HarnessConfigError("A prompt is required.");await start(prompt);return;
     }
-    const input=new ConsoleInput(process.stdin,process.stdout,Boolean(process.stdin.isTTY), "service");input.onInterrupt=interrupt;
+    const input=new ConsoleInput(process.stdin,process.stdout,Boolean(process.stdin.isTTY), "service");input.onInterrupt=interrupt;consoleInput=input;
     try{
       process.stdout.write(formatConsoleWelcome({version:HARNESS_VERSION, workspace:projectId, sessionId:session.sessionId, service:true}, {columns:process.stdout.columns??80}) + "\n");
       const previous=await currentRun();if(previous)print(previous);
       for(;;){
-        process.stdout.write(formatComposer({ model: "local service", status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready", ...(session.title ? {title:session.title}:{}), automaticApprovals:options.yes===true }, process.stdout.columns));
-        const raw=await input.question("\n> ",true).catch(e=>{if(input.isClosed)return "/exit";if(e instanceof Error&&e.name==="AbortError")return "";throw e;});const literal=input.lastSubmissionWasPaste||raw.includes("\n");let text=literal?raw:raw.trim();if(!text)continue;
+        input.setQueueEnabled(!session.runs.some(run => ["created", "running", "waiting_approval"].includes(run.status)));
+        const raw=await input.compose({ model: "local service", status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready", ...(session.title ? {title:session.title}:{}), automaticApprovals:options.yes===true }).catch(e=>{if(input.isClosed)return "/exit";if(e instanceof Error&&e.name==="AbortError")return "";throw e;});const literal=input.lastSubmissionWasPaste||raw.includes("\n");let text=literal?raw:raw.trim();if(!text)continue;
         if(!literal&&["/exit","/quit"].includes(text))break;
         try{
           if(!literal&&text.startsWith("/")){
@@ -120,12 +143,15 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
               if(!selected||!("command" in selected))continue;text=selected.command;
             }
             if(text==="/help"||text==="/help all")process.stdout.write(formatConsoleHelp("service",text==="/help all"));
+            else if(text==="/activity"||text==="/activity clear"){if(text.endsWith(" clear"))history.clear();process.stdout.write(history.render());}
+            else if(text==="/queue clear"){input.clearQueue();process.stdout.write("Queued tasks cleared.\n");}
+            else if(text==="/queue")process.stdout.write(input.queueSummary());
             else if(text==="/sessions"||text.startsWith("/sessions "))print(await list(text.slice(9).trim()||undefined));
-            else if(text==="/new"){session=await create();input.clearHistory();process.stdout.write(`Session ${session.sessionId}.\n`);}
+            else if(text==="/new"){session=await create();input.clearHistory();history.clear();seenMutations.clear();process.stdout.write(`Session ${session.sessionId}.\n`);}
             else if(text==="/resume"||text.startsWith("/resume ")){
               let id=text.slice(7).trim();
               if(!id){const selected=await input.select("Zhivex / Conversations",(await list()).map(s=>({value:s.sessionId,label:s.title??"Untitled conversation",detail:s.sessionId})));if(!selected)continue;id=selected;}
-              session=await getSession(id);input.clearHistory();print(await currentRun());}
+              session=await getSession(id);input.clearHistory();history.clear();seenMutations.clear();print(await currentRun());}
             else if(text.startsWith("/rename ")){const r=await call({method:"session.rename",sessionId:session.sessionId,expectedRevision:session.revision,idempotencyKey:key("rename"),title:text.slice(8)});if(r.kind==="session")session=r.session;}
             else if(["/status","/pending"].includes(text))print(await currentRun()??{message:"No run yet."});
             else if(text==="/paste"){

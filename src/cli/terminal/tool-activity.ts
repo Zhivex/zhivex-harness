@@ -2,8 +2,8 @@ const labels: Readonly<Record<string, string>> = {
   read_file: "Reading a file", read_files: "Reading files", read_dependency: "Inspecting a dependency",
   search_files: "Searching files", search_many: "Searching the project", list_files: "Listing files",
   run_check: "Running checks", run_environment_command: "Running a command",
-  apply_patch: "Applying edits", apply_reviewed_edits: "Applying reviewed edits",
-  apply_reviewed_replacement: "Applying a reviewed replacement", git_diff: "Reviewing changes",
+  apply_patch: "Preparing edits", apply_reviewed_edits: "Preparing reviewed edits",
+  apply_reviewed_replacement: "Preparing a reviewed replacement", git_diff: "Reviewing changes",
 };
 
 const summaries: Readonly<Record<string, string>> = {
@@ -20,10 +20,12 @@ export class ToolActivity {
   private label = "Working";
   private completed = new Map<string, number>();
   private started = Date.now();
+  private readonly runStarted = Date.now();
   private timer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private write: (text: string) => void, private tty: boolean,
-    private columns: () => number = () => 80) {}
+    private columns: () => number = () => 80,
+    private inputStatus: () => string = () => "") {}
 
   phase(label: "Waiting for model response" | "Waiting for approval" | "Updating context", _step?: number) {
     this.clear();
@@ -58,7 +60,12 @@ export class ToolActivity {
     if (!this.tty) return;
     const elapsed = Math.floor((Date.now() - this.started) / 1_000);
     const done = [...this.completed.values()].reduce((sum, count) => sum + count, 0);
-    const text = `… ${this.label}${elapsed ? ` · ${elapsed}s` : ""}${done ? ` · ${done} tools done` : ""}`;
+    const total = Math.floor((Date.now() - this.runStarted) / 1_000);
+    const input = this.inputStatus();
+    const timing = `${elapsed}s phase · ${total}s total`;
+    const text = input.includes("draft:") || !input.startsWith("0 queued") && input
+      ? `… ${input} · ${timing}`
+      : `… ${this.label} · ${timing}${done ? ` · ${done} tools done` : ""}`;
     this.write(`\r\x1b[2K${Array.from(text).slice(0, Math.max(1, this.columns() - 1)).join("")}`);
     this.visible = true;
   }
@@ -101,5 +108,5 @@ export const compactToolResult = (result: { toolName: string; isError?: boolean;
   else if (message === "Dependency directory links are not allowed.") reason = "dependency link is outside the permitted boundary";
   else if (message.startsWith("Dependency directory changed during inspection.")) reason = "dependency changed during inspection; retry the read";
   const operation = labels[result.toolName] ?? "Tool operation";
-  return `✗ ${operation} · ${reason}`;
+  return `✗ ${operation} · ${reason}${editLabels[result.toolName] && error.code === "TOOL_INPUT_VALIDATION_ERROR" ? " · edits not applied" : ""}`;
 };

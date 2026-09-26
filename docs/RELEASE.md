@@ -4,12 +4,14 @@
 
 ## Next release candidate
 
+RC9 is published on npm `next`; its protected release [run](https://github.com/Zhivex/zhivex-harness/actions/runs/36258148510) succeeded. RC10 requires fresh exact-artifact certification after review and merge.
+
 RC5 was published to npm `next` with exact-artifact integrity and provenance verified. Its historical matrix retains Meta `muse-spark-1.3`; RC6, RC7 and RC8 use the merged `muse-spark-1.3-contributor` certification selection.
 
-The source version is `1.2.0-rc.9`, targeting npm `next` after fresh certification.
-It includes the unified programming-assistant loop, longer task continuity,
-recoverable tool/delegation arguments, current-user steering retention and
-semantic-compaction source provenance. The removal of `agentProfile` is an
+The source version is `1.2.0-rc.10`, targeting npm `next` after fresh certification.
+It adds bounded edit retries, locally authoritative Qwen context, model reasoning
+controls, featured model selection, applied-file receipts, activity history and
+queued tasks isolated from approval answers. The removal of `agentProfile` is an
 intentional pre-promotion API/CLI break; verified delivery remains independently
 configurable. All required gates must pass against this new artifact before
 publication. RC4 passed the exact-artifact build and live certification but failed

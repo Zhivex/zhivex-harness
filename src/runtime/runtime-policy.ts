@@ -21,6 +21,7 @@ export const createRuntimeBudget = (budget: HarnessConfig["budget"], transportTo
 export const runtimeManifest = (config: HarnessConfig, tools: readonly string[], role = "primary") => ({
   schemaVersion: 2, policyVersion: "assistant-v3-durable-closure", role,
   requireVerifiedDelivery: role === "primary" && config.requireVerifiedDelivery,
+  ...(role === "primary" && config.reasoningEffort ? { reasoningEffort: config.reasoningEffort } : {}),
   backend: config.execution.backend, tools: [...tools].sort(),
   budget: { ...(role === "primary" ? config.budget : config.orchestration.childBudget) },
   timeoutMs: role === "primary" ? config.timeoutMs : config.orchestration.childTimeoutMs,

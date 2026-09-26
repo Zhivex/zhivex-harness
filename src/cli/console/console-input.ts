@@ -1,9 +1,10 @@
 import { createInterface, type Interface, type Key } from "node:readline";
 import { PassThrough, type Readable, Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import { sanitizeTerminalText } from "../terminal/terminal-ui.js";
+import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
 
-import { CONSOLE_SHORTCUTS, consoleLabel, chooseConsoleItem } from "./console-presentation.js";
+import { CONSOLE_SHORTCUTS, consoleLabel, chooseConsoleItem, formatComposer, formatComposerFooter,
+  formatComposerPlaceholder, type ConsoleComposerInput } from "./console-presentation.js";
 import { consoleCommands, searchConsoleCommands, type ConsoleMode } from "./console-commands.js";
 
 export const CONSOLE_COMMANDS = consoleCommands().map(([name]) => name);
@@ -15,8 +16,13 @@ export const completeConsoleCommand = (line: string): [string[], string] => [
 
 const interrupted = () => Object.assign(new Error("Input interrupted."), { name: "AbortError" });
 
-/** Lines received without an active question are discarded, never replayed as approvals. */
+/** Background drafts and queued tasks are separate from fresh approval answers. */
 export class ConsoleInput {
+  private background = false;
+  private backgroundDraft = "";
+  private queued: string[] = [];
+  private queueNotice = "";
+  private queueEnabled = true;
   private hidden: { value: string; escape: string; pasted: boolean; resolve(value: string): void; reject(error: Error): void } | undefined;
   private readonly reader: Interface;
   private readonly keyboard = new PassThrough();
@@ -45,7 +51,7 @@ export class ConsoleInput {
       // The destination already queues writes. Waiting for its completion here
       // creates a second queue: direct menu output can then overtake readline's
       // pending clear-screen/prompt chunks and be erased on the first render.
-      output.write(chunk, encoding);
+      if (!(this.background && !this.pending)) output.write(chunk, encoding);
       callback();
     } });
     Object.defineProperty(this.display, "columns", {
@@ -60,6 +66,18 @@ export class ConsoleInput {
     this.reader.setPrompt("");
     source.prependListener("keypress", this.onKeypress);
     this.reader.on("line", (line) => {
+      if (this.background && !this.pending) {
+        if (line.trim() && Buffer.byteLength(line) <= MAX_CONSOLE_INPUT_BYTES) {
+          if (this.queued.length < 8 && this.queued.reduce((n, item) => n + Buffer.byteLength(item), 0) + Buffer.byteLength(line) <= 256 * 1024) {
+            this.queued.push(line);
+            this.backgroundDraft = "";
+            this.queueNotice = "";
+          } else { this.backgroundDraft = line; this.queueNotice = "Queue full; draft retained"; }
+        }
+        this.draftWasPaste = false;
+        queueMicrotask(() => { if (this.background && this.backgroundDraft) Object.assign(this.reader, {line: this.backgroundDraft, cursor: this.backgroundDraft.length}); });
+        return;
+      }
       if (this.paste) {
         const paste = this.paste;
         if (line === ".end") {
@@ -157,6 +175,8 @@ export class ConsoleInput {
     this.menuDismissed = true;
   }
   private menuVisible = false;
+  private placeholderVisible = false;
+  private focusComposer = false;
   private menuSelection = 0;
   private menuQuery = "";
   private menuDismissed = false;
@@ -164,8 +184,46 @@ export class ConsoleInput {
   private standaloneMenuEscape = false;
 
   private hideMenu() {
-    if (this.menuVisible) this.output.write("\u001b7\n\r\u001b[J\u001b8");
+    if (this.placeholderVisible) this.output.write("\u001b[K");
+    if (this.menuVisible) {
+      const { rows } = this.draftPosition();
+      this.output.write(`\u001b7${rows ? `\u001b[${rows}B` : ""}\r\n\u001b[J\u001b8`);
+    }
     this.menuVisible = false;
+    this.placeholderVisible = false;
+  }
+
+  /** Place overlays after the entire draft, even when editing an earlier line. */
+  private draftPosition() {
+    const position = this.reader.getCursorPos();
+    const cursor = this.reader.cursor;
+    Object.assign(this.reader, { cursor: this.reader.line.length });
+    const end = this.reader.getCursorPos();
+    Object.assign(this.reader, { cursor });
+    return { column: position.cols, rows: Math.max(0, end.rows - position.rows) };
+  }
+
+  private showOverlay(lines: readonly string[], placeholder?: string) {
+    const { column, rows } = this.draftPosition();
+    // Reserve space before saving the cursor, including at the bottom of a PTY.
+    const reserve = rows + lines.length;
+    const height = (this.output as Writable & { rows?: number }).rows ?? 24;
+    if (reserve >= height) return;
+    this.output.write("\n".repeat(reserve) + `\u001b[${reserve}A\u001b[${column + 1}G`);
+    this.output.write("\u001b7" + (placeholder ?? "") + (rows ? `\u001b[${rows}B` : "") +
+      lines.map(line => "\r\n" + line).join("") + "\u001b8");
+    this.menuVisible = true;
+    this.placeholderVisible = Boolean(placeholder);
+  }
+
+  private renderFocus() {
+    if (!this.focusComposer || this.selection || this.historySearch) return;
+    const rows = (this.output as Writable & { rows?: number }).rows ?? 24;
+    if (rows < 6) return;
+    const columns = (this.output as Writable & { columns?: number }).columns ?? 80;
+    const color = terminalSupportsColor(this.terminal);
+    this.showOverlay(formatComposerFooter(columns, color),
+      !this.reader.line && columns >= 40 ? formatComposerPlaceholder(columns, color) : undefined);
   }
 
   private renderMenu() {
@@ -176,14 +234,17 @@ export class ConsoleInput {
       this.menuSelection = 0;
       this.menuDismissed = false;
     }
-    if (!this.terminal || process.env.TERM === "dumb" || !this.pending || !this.completeCommands ||
-        (!this.selection && !this.historySearch && (this.draftWasPaste || this.menuDismissed || !/^\/[^\s]*$/.test(query)))) return;
+    if (!this.terminal || process.env.TERM === "dumb" || !this.pending || !this.completeCommands) return;
+    if (!this.selection && !this.historySearch && (this.draftWasPaste || this.menuDismissed || !/^\/[^\s]*$/.test(query))) {
+      this.renderFocus();
+      return;
+    }
     const matches: readonly (readonly [string, string])[] = this.selection
       ? this.selectionMatches().map(item => [item.label, item.detail ?? ""] as const)
       : this.historySearch
       ? this.historyMatches().map(entry => [consoleLabel(entry.text, 64), ""] as const)
       : searchConsoleCommands(query, this.mode).map(([name, description]) => [name, description] as const);
-    if (!matches.length && !this.historySearch && !this.selection) return;
+    if (!matches.length && !this.historySearch && !this.selection) { this.renderFocus(); return; }
     this.menuSelection = Math.max(0, Math.min(this.menuSelection, matches.length - 1));
     const rows = (this.output as Writable & { rows?: number }).rows ?? 24;
     if (rows < 6) return;
@@ -195,11 +256,7 @@ export class ConsoleInput {
     if (!matches.length) lines.push("  No matches; edit the filter".slice(0, columns - 1));
     lines.push((this.selection ? "  ↑↓ navigate · Enter choose · Esc back" : this.historySearch ? "  ↑↓ select · Enter restore · Esc cancel" :
       `  ${this.menuSelection + 1}/${matches.length} · ↑↓ select · Tab insert · Esc close`).slice(0, columns - 1));
-    // Reserve space before saving the cursor, including at the bottom of a PTY.
-    const column = this.reader.getCursorPos().cols;
-    this.output.write("\n".repeat(lines.length) + `\u001b[${lines.length}A\u001b[${column + 1}G`);
-    this.output.write("\u001b7" + lines.map(line => "\r\n" + line).join("") + "\u001b8");
-    this.menuVisible = true;
+    this.showOverlay(lines);
   }
 
   private readonly onEnd = () => { this.finishSecret(false); this.keyboard.end(); };
@@ -287,7 +344,7 @@ export class ConsoleInput {
           this.hideMenu();
           this.clipboard = "";
           this.clipboardBytes = 0;
-          this.clipboardAllowed = Boolean(this.pending && this.completeCommands) || Boolean(this.paste);
+          this.clipboardAllowed = Boolean(this.pending && this.completeCommands) || Boolean(this.paste) || this.background;
         } else {
           const clipboard = this.clipboard;
           this.clipboard = undefined;
@@ -299,11 +356,12 @@ export class ConsoleInput {
                 this.paste.bytes += Buffer.byteLength(safe) + 1;
                 this.output.write(safe + "\n");
               } else this.output.write("\nPaste exceeds 64 KiB; clipboard discarded.\n");
-            } else if (this.pending && this.completeCommands) {
+            } else if ((this.pending && this.completeCommands) || this.background) {
               this.insert(safe);
               this.draftWasPaste = true;
             }
           } else if (this.clipboardAllowed) this.output.write("\nPaste exceeds 64 KiB; clipboard discarded.\n");
+          this.renderMenu();
           // A send/approval appended to the same clipboard packet is not a fresh key.
           return;
         }
@@ -314,7 +372,7 @@ export class ConsoleInput {
       if (this.clipboard !== undefined) {
         this.clipboardBytes += Buffer.byteLength(plain);
         if (this.clipboardAllowed && this.clipboardBytes <= MAX_CONSOLE_INPUT_BYTES) this.clipboard += plain;
-      } else if (this.pending || this.paste) {
+      } else if (this.pending || this.paste || this.background) {
         this.hideMenu();
         if (this.selection && !/[\u0000-\u001f\u007f]/.test(plain) &&
             Buffer.byteLength(this.reader.line) + Buffer.byteLength(plain) > MAX_CONSOLE_INPUT_BYTES) continue;
@@ -352,6 +410,19 @@ export class ConsoleInput {
   }
 
   private readonly onKeypress = (_text: string, key: Key) => {
+    if (this.background && !this.pending) {
+      if (key.name === "up" && !this.reader.line && this.queued.length) {
+        key.name = "console-queue"; key.meta = true;
+        const draft = this.queued.pop()!;
+        Object.assign(this.reader, {line: draft, cursor: draft.length});
+      } else if (key.meta && ["return", "enter"].includes(key.name ?? "")) {
+        key.name = "console-newline";
+        this.insert("\n");
+      } else if (_text && !key.ctrl && !key.meta && Buffer.byteLength(this.reader.line) + Buffer.byteLength(_text) > MAX_CONSOLE_INPUT_BYTES) {
+        key.name = "console-input-limit"; key.meta = true;
+      }
+      return;
+    }
     if (!this.pending || !this.completeCommands) return;
     if (this.selection) {
       if (["up", "down", "tab"].includes(key.name ?? "")) {
@@ -447,7 +518,39 @@ export class ConsoleInput {
     while (this.history.reduce((bytes, entry) => bytes + Buffer.byteLength(entry.text), 0) > 256 * 1024) this.history.pop();
   }
 
+  startBackground() {
+    if (!this.terminal || this.closed || this.pending || this.hidden || this.paste) return;
+    this.background = true;
+    this.completeCommands = false;
+    this.reader.setPrompt("");
+    Object.assign(this.reader, {line: this.backgroundDraft, cursor: this.backgroundDraft.length});
+  }
+
+  stopBackground() {
+    if (!this.background) return;
+    this.backgroundDraft = this.reader.line;
+    this.background = false;
+    Object.assign(this.reader, {line: "", cursor: 0});
+    // An incomplete paste cannot cross into an approval question.
+    this.clipboardAllowed = false;
+  }
+
+  get backgroundStatus() {
+    const draft = this.background ? this.reader.line : this.backgroundDraft;
+    return this.queueNotice || `${this.queued.length} queued${draft ? ` · draft: ${consoleLabel(draft, 80)}` : " · type to draft, Enter queues"}`;
+  }
+
+  queueSummary() {
+    const lines = this.queued.map((text, index) => `${index + 1}. ${consoleLabel(text, 240)}`);
+    if (this.backgroundDraft) lines.push(`Draft: ${consoleLabel(this.backgroundDraft, 240)}`);
+    return lines.length ? lines.join("\n") + "\n" : "No queued tasks or draft.\n";
+  }
+
+  setQueueEnabled(enabled: boolean) { this.queueEnabled = enabled; }
+  clearQueue() { this.queued = []; this.backgroundDraft = ""; this.queueNotice = ""; }
+
   clearHistory() {
+    this.clearQueue();
     this.history = [];
     this.historyPosition = -1;
     this.historyDraft = "";
@@ -466,18 +569,52 @@ export class ConsoleInput {
     this.draftWasPaste = false;
     this.reader.setPrompt("");
     if (this.terminal) Object.assign(this.reader, { line: "", cursor: 0 });
+    if (this.background) {
+      this.backgroundDraft = "";
+      this.queued = [];
+      this.queueNotice = "Queued messages cleared after interruption";
+    }
     this.onInterrupt?.();
   }
 
   get isClosed() { return this.closed; }
 
-  question(prompt: string, completeCommands = false): Promise<string> {
+  compose(input: ConsoleComposerInput): Promise<string> {
+    this.stopBackground();
+    if (this.queueEnabled && this.queued.length && !this.closed && !this.pending && !this.hidden && !this.paste) {
+      const queued = this.queued.shift()!;
+      this.lastSubmissionWasPaste = true; // Queued slash text is always a task, never a command or approval.
+      this.output.write(`\nQueued task > ${sanitizeTerminalText(queued)}\n`);
+      return Promise.resolve(queued);
+    }
+    if (this.closed) return Promise.reject(interrupted());
+    if (this.pending || this.paste || this.hidden) return Promise.reject(new Error("A console question is already active."));
+    const columns = (this.output as Writable & { columns?: number }).columns ?? 80;
+    const color = terminalSupportsColor(this.terminal);
+    this.output.write(formatComposer(input, columns, color));
+    if (!this.terminal || process.env.TERM === "dumb") {
+      this.output.write(formatComposerFooter(columns, color)[1] + "\n");
+    }
+    const answer = this.question("\n> ", true, true);
+    if (this.backgroundDraft) {
+      const draft = this.backgroundDraft;
+      this.backgroundDraft = "";
+      this.draftWasPaste = true;
+      this.insert(draft);
+      this.renderMenu();
+    }
+    return answer;
+  }
+
+  question(prompt: string, completeCommands = false, focus = false): Promise<string> {
+    this.stopBackground();
     if (this.closed) return Promise.reject(interrupted());
     if (this.pending || this.paste || this.hidden) return Promise.reject(new Error("A console question is already active."));
     clearTimeout(this.escapeMenuTimer);
     this.escape = "";
     this.standaloneMenuEscape = false;
     this.hideMenu();
+    this.focusComposer = focus;
     this.menuDismissed = false;
     this.menuQuery = "";
     this.completeCommands = completeCommands;
@@ -497,6 +634,7 @@ export class ConsoleInput {
       if (this.terminal) {
         this.reader.setPrompt(prompt);
         this.reader.prompt();
+        if (focus) this.renderMenu();
       } else this.output.write(prompt);
     });
   }

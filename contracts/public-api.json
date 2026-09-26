@@ -947,6 +947,7 @@
         "allowed": [
           "--provider",
           "--model",
+          "--reasoning",
           "--profile",
           "--update",
           "--json"
@@ -965,6 +966,7 @@
           "--usage-limit-usd",
           "--provider",
           "--model",
+          "--reasoning",
           "--profile",
           "--route",
           "--workspace",
@@ -1068,6 +1070,7 @@
           "--usage-limit-usd",
           "--provider",
           "--model",
+          "--reasoning",
           "--profile",
           "--route",
           "--workspace",
@@ -1108,6 +1111,7 @@
           "--usage-limit-usd",
           "--provider",
           "--model",
+          "--reasoning",
           "--profile",
           "--route",
           "--workspace",
@@ -1216,6 +1220,7 @@
         "allowed": [
           "--provider",
           "--model",
+          "--reasoning",
           "--profile",
           "--workspace",
           "--state-dir",

@@ -20,8 +20,15 @@ These references inform interaction patterns, not a claim of feature parity.
 
 - Welcome: original Zhivex mark, title and bounded project/model context beside it;
   narrow terminals stack the context beneath a compact mark.
-- Composer: model, state, approval policy, attachment count, and keyboard hints are
-  refreshed before each task. `/status` retains the full identifiers and configuration.
+- Focus layout: one conversation column in normal terminal scrollback, with the
+  original Zhivex mark. The welcome panel keeps project and model context; keyboard
+  help lives beside the editor rather than repeating beneath the welcome panel.
+- Composer: model and reasoning sit above the input, followed by state, approval
+  policy and attachment count. A muted placeholder disappears when typing. A lower
+  rule and width-aware keyboard hints follow the complete draft, including while
+  editing an earlier multiline row. Command and history searches temporarily replace
+  this footer. Submitting or cancelling removes the footer before streaming or
+  asking for approval. `/status` retains the full identifiers and configuration.
 - Commands: search descriptions as well as names; names matching the prefix rank
   first. Arrow selection and Tab or Enter on a partial command fill the draft.
   Executing a selected command requires a separate submission.
@@ -47,8 +54,8 @@ These references inform interaction patterns, not a claim of feature parity.
   presentation. Service-host authority and available commands remain explicit.
 
 No prompt history is written to disk by the editor. During model execution or an
-approval question, pasted or surplus input cannot become a queued approval. This
-change does not introduce shell shortcuts or automatic approval-mode cycling.
+approval question, pasted or surplus input cannot become a queued approval. Background tasks remain separate from approval answers. This change does not
+introduce shell shortcuts or automatic approval-mode cycling.
 
 ## Validation
 
@@ -77,3 +84,31 @@ and the grouped exploration presentation in
 [Codex's terminal renderer](https://github.com/openai/codex/blob/main/codex-rs/tui/src/exec_cell/render.rs).
 Zhivex uses its existing `/verbose` toggle; this is not a retrospective transcript
 viewer. JSON and JSONL keep their existing machine contracts.
+
+## Activity and input during execution (2026-09-26)
+
+The direct console displays separate phase and total elapsed times. Mutation tool
+calls say **Preparing** until an authoritative result arrives; input-validation
+failures explicitly say that edits were not applied. Committed workspace audit
+entries produce file-by-file receipts with a `/diff` hint. These receipts do not
+claim verification; check results and the final verification summary remain separate.
+The service console displays host activity and applied-file receipts from its
+validated final result, without inventing file paths missing from streamed events.
+
+`/activity` replays up to 200 recent activity entries from this console process,
+including preparation, tool outcomes, approval waits and applied-file receipts.
+`/activity clear` clears that view. It does not retain raw tool inputs, file contents
+or model reasoning, and switching conversations resets it. `/verbose` still controls
+future rendering independently.
+
+While a run is executing, the terminal editor accepts a background draft. Its
+bounded preview appears in the transient activity line while that line is visible;
+streamed prose takes precedence. Enter queues a task for after the active run,
+Alt+Enter inserts a newline, and Up on an empty draft retrieves the last queued task.
+An unsent draft is restored to the normal composer. `/queue` inspects pending tasks;
+`/queue clear` discards them. The queue holds at most eight tasks and 256 KiB, with
+64 KiB per draft. Overflow retains the draft. Ctrl+C stops the current operation
+and clears its queue. Queued input is always literal task text, including slash
+commands. It never answers approval or credential questions, and queued submission
+pauses while a run is active or awaiting approval. Queue and drafts are in memory
+only. They do not implement mid-request model steering or survive process exit.
