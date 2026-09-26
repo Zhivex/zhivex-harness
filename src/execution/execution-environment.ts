@@ -44,7 +44,7 @@ import {
   type FileDigest,
   type MutationAuditEntry
 } from "../workspace/edit-contracts.js";
-import { FileSizeLimitError, readRegularFileNoFollow } from "../workspace/file-security.js";
+import { FileSizeLimitError, readRegularFileNoFollow, statRegularFileNoFollow } from "../workspace/file-security.js";
 import { HarnessError, HarnessExecutionError } from "../runtime/errors.js";
 import { resolvePackageCheckCommand } from "./package-manager.js";
 import { Workspace, type CommandResult } from "../workspace/workspace.js";
@@ -1195,20 +1195,30 @@ const collectSnapshotInventory = async (
       ...(cursor ? { cursor } : {})
     });
     if (metrics) metrics.inventoryPages += 1;
-    for (const file of page.files) {
+    for await (const candidates of boundedBatches(page.files, async (file) => {
       const absolute = path.join(workspace.root, ...file.path.split("/"));
       if (!isInside(workspace.root, absolute)) throw new Error(`Snapshot file escaped its workspace: ${file.path}.`);
       if (await realpath(absolute) !== absolute) throw new Error("Snapshot inventory path traverses a symbolic link.");
-      const stable = await readRegularFileNoFollow(absolute, {
-        label: "Snapshot inventory file", maxBytes: Math.max(0, maxWorkspaceBytes - totalBytes)
-      });
-      totalBytes += stable.contents.byteLength;
-      files.set(file.path, {
-        path: file.path,
-        digest: digest(stable.contents),
-        mode: stable.stat.mode & 0o777,
-        bytes: stable.contents.byteLength
-      });
+      const entry = await statRegularFileNoFollow(absolute, { label: "Snapshot inventory file" });
+      return { file, absolute, entry };
+    }, 4)) {
+      // Reserve the entire batch before allocating any contents. Each verified
+      // read is capped at its reservation, so concurrent growth cannot exceed
+      // the same aggregate byte budget enforced by the serial inventory.
+      for (const { entry } of candidates) {
+        if (entry.size > maxWorkspaceBytes - totalBytes) throw new FileSizeLimitError("Snapshot inventory file", maxWorkspaceBytes);
+        totalBytes += entry.size;
+      }
+      for await (const batch of boundedBatches(candidates, async ({ file, absolute, entry }) => {
+        const stable = await readRegularFileNoFollow(absolute, {
+          label: "Snapshot inventory file", maxBytes: entry.size
+        });
+        if (stable.stat.dev !== entry.dev || stable.stat.ino !== entry.ino || stable.stat.size !== entry.size ||
+            stable.stat.mtimeMs !== entry.mtimeMs || stable.stat.ctimeMs !== entry.ctimeMs) {
+          throw new Error(`Snapshot inventory file changed while being read: ${file.path}.`);
+        }
+        return { path: file.path, digest: digest(stable.contents), mode: stable.stat.mode & 0o777, bytes: stable.contents.byteLength };
+      }, 4)) for (const file of batch) files.set(file.path, file);
     }
     cursor = page.nextCursor;
   } while (cursor);

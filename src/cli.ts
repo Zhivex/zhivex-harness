@@ -103,24 +103,26 @@ const isMainModule = (() => {
   }
 })();
 
-if (isMainModule) {
-  main().catch((error: unknown) => {
+export const runCli = async (argv = process.argv.slice(2)) => {
+  await main(argv).catch((error: unknown) => {
     const document = harnessErrorDocument(error);
-    if (process.argv.includes("--jsonl")) {
+    if (argv.includes("--jsonl")) {
       process.stdout.write(`${JSON.stringify({
         ...document,
         kind: "run-stream-error",
         sequence: cliStreamErrorSequence(error)
       })}\n`);
-    } else if (process.argv.includes("--json")) {
+    } else if (argv.includes("--json")) {
       process.stderr.write(`${JSON.stringify(document)}\n`);
     } else {
       process.stderr.write(`Error: ${terminalErrorMessage(error)}\n`);
-      process.stderr.write(`Recovery: ${cliRecoveryHint(error, process.argv.slice(2))}\n`);
+      process.stderr.write(`Recovery: ${cliRecoveryHint(error, argv)}\n`);
     }
     process.exitCode = cliExitCodeForError(error);
   });
-}
+};
+
+if (isMainModule) void runCli();
 
 export { HARNESS_RESUME_METADATA_KEY } from "./cli/resume-metadata.js";
 export { HARNESS_RESUME_METADATA_SCHEMA_VERSION } from "./cli/resume-metadata.js";

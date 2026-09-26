@@ -6,6 +6,12 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Speed up standalone CLI help/version loading, bounded workspace and OCI inventory reads, scoped-context validation and chat persistence reuse; enable bounded independent CLI reads with mutation barriers.
+
+- Recover one terminal OCI patch-ID mismatch against an unchanged inspected snapshot through model feedback and a fresh approval; preserve the limit across resume.
+- Run release live provider gates against the validated tarball and require packaged Desktop restart, effect-recovery, cancellation and worktree smokes in CI.
+- Let Desktop offer stay/cancel before draining IPC blocked on an active run; retain draining before host shutdown.
+
 - Preserve OCI inspection references across approval restart and emit sanitized diagnostics distinguishing submitted patch-ID mismatch, snapshot drift, unavailable review evidence and execution-binding changes; retain exact-byte import rejection.
 
 ## 1.2.0-rc.1 - 2026-09-25

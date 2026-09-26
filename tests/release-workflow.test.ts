@@ -313,3 +313,31 @@ test("standalone and release live gates certify the same candidate cohort", asyn
     }
   }
 });
+
+test("all live release gates select the checked artifact and prohibit source fallback", async () => {
+  for (const file of workflowPaths) {
+    const workflow = await readFile(path.join(workspace, file), "utf8");
+    const binding = workflow.slice(workflow.indexOf("      - name: Bind immutable live diagnostic identity"),
+      workflow.indexOf("      - name: Preload", workflow.indexOf("      - name: Bind immutable live diagnostic identity")));
+    expect(binding).toContain('tar -xzf "$ARTIFACT" -C "$LIVE_RUNTIME_ROOT"');
+    expect(binding).toContain('ZHIVEX_HARNESS_LIVE_RUNTIME=$LIVE_RUNTIME_ROOT/package/dist/index.js');
+    expect(binding).toContain('ZHIVEX_HARNESS_LIVE_REQUIRE_ARTIFACT=1');
+    expect(binding.indexOf("artifact:check")).toBeLessThan(binding.indexOf("tar -xzf"));
+  }
+  for (const name of ["provider", "orchestration", "routing", "execution"]) {
+    const source = await readFile(path.join(workspace, `scripts/live-${name}-smoke.ts`), "utf8");
+    expect(source).toContain("await loadLiveSmokeRuntime()");
+    expect(source).not.toContain('from "../src/runtime/harness.js"');
+  }
+});
+
+test("Desktop CI exercises packaged restart, uncertain effects and worktree delivery", async () => {
+  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
+    jobs: Record<string, { steps: { run?: string }[] }>;
+  };
+  const steps = workflow.jobs["desktop-security"]!.steps;
+  const packaged = steps.find(step => step.run?.includes("bun run --cwd desktop package"))!.run!;
+  for (const scenario of ["smoke:restart:packaged", "smoke:restart:packaged --effect-crash", "smoke:restart:packaged --active-close", "smoke:worktrees:packaged"]) {
+    expect(packaged).toContain(`bun run --cwd desktop ${scenario}`);
+  }
+});

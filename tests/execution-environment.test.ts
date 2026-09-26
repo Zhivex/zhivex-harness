@@ -1092,3 +1092,15 @@ test("shared client reviews and verifies an exact OCI edit proposal with patch-b
   expect(await readFile(path.join(root,"src/update.ts"),"utf8")).toBe("verified destination\n");expect(runtime.requests).toHaveLength(1);
  }finally{adapter.close();await harness.close();}
 });
+
+test("concurrent OCI inventory enforces aggregate bytes across files in the same batch", async () => {
+  const { root, workspace } = await workspaceFixture();
+  await Promise.all(Array.from({ length: 4 }, (_, index) =>
+    writeFile(path.join(root, `budget-${index}.bin`), Buffer.alloc(300 * 1024, index))));
+  const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci", ociMaxWorkspaceBytes: 1024 * 1024 });
+  if (config.execution.backend !== "oci") throw new Error("Expected OCI");
+  const runtime = new FakeOciRuntime();
+  const environment = await createHarnessOciExecutionEnvironment({ config: config.execution, workspace, stateDirectory: config.stateDirectory, runtime });
+  await expect(environment.acquire({ runId: "batch-over-budget" })).rejects.toThrow("byte limit");
+  expect(runtime.requests).toHaveLength(0);
+});

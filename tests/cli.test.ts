@@ -33,7 +33,8 @@ const runCli = async (arguments_: string[], env: Record<string, string> = {}) =>
     ...arguments_
   ], {
     cwd: path.resolve(import.meta.dir, ".."),
-    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1", ...env },
+    // Process contracts must not depend on the host keychain or its unlock latency.
+    env: { PATH: process.env.PATH ?? "", NO_COLOR: "1", ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled", ...env },
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe"

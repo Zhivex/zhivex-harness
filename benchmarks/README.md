@@ -46,3 +46,20 @@ The opt-in [SWE-bench comparison](https://github.com/Zhivex/zhivex-harness/blob/
 mini-SWE-agent and the native Zhivex OCI harness, exports actual patches, and grades
 with the official SWE-bench evaluator. `bun run benchmark:swebench:test` validates
 its offline contracts. Paid runs require a prepared, pinned matrix and `--live`.
+
+## Bounded read and startup optimizations
+
+CLI runs, resumes and conversations now enable at most four independent trusted
+local read tools; mutation barriers and approval requirements remain in force.
+Workspace indexing traverses at most eight directories at once and coalesces
+only overlapping freshness checks. Later calls still validate directories and
+ignore-file contents; there is no TTL or persistent content cache.
+
+OCI inventory reserves each four-file batch against the aggregate workspace byte
+limit before reading contents. Descriptor-bound reads remain capped at each
+reserved size and fail if file identity or timestamps changed. Scoped instruction
+validation reads at most four files concurrently and preserves durable digest checks.
+
+The packaged CLI uses a separate lightweight help/version entrypoint and lazy
+runtime chunks. Package smoke coverage must exercise the installed CLI and aliases
+so missing chunks cannot pass as a working source checkout.

@@ -446,6 +446,8 @@ const runFilteredGitDiff = async (
   return await spawnBounded(command, cwd, 15_000);
 };
 
+const workspaceIndexFreshness = new WeakMap<Workspace, { index: WorkspaceIndex; promise: Promise<boolean> }>();
+
 export class Workspace {
   readonly root: string;
   private readonly auditEntries: MutationAuditEntry[] = [];
@@ -597,23 +599,33 @@ export class Workspace {
     const files: CollectedFile[] = [];
     const directories: EntryFingerprint[] = [];
     const ignoreFiles: EntryFingerprint[] = [];
-    const walk = async (directory: string, base: string, inherited: readonly IgnoreRule[]) => {
-      const directoryEntry = await lstat(directory);
-      if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
-        throw new HarnessWorkspaceError(`A workspace directory changed while it was being indexed: ${base || "."}`);
-      }
-      directories.push(this.fingerprint(base, "directory", directoryEntry));
-      const rules = await this.rulesForDirectory(directory, base, inherited, ignoreFiles);
-      const entries = (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
-      for (const entry of entries) {
-        const relative = base ? `${base}/${entry.name}` : entry.name;
-        if (isHardIgnored(relative) || entry.isSymbolicLink() || isIgnoredByRules(relative, entry.isDirectory(), rules)) continue;
-        const absolute = path.join(directory, entry.name);
-        if (entry.isDirectory()) await walk(absolute, relative, rules);
-        else if (entry.isFile()) files.push({ path: relative });
-      }
-    };
-    await walk(this.root, "", []);
+    // A shared breadth-first queue bounds the entire traversal, including deep
+    // trees. Recursive Promise.all would multiply concurrency at each level.
+    let pending: { directory: string; base: string; inherited: readonly IgnoreRule[] }[] = [
+      { directory: this.root, base: "", inherited: [] }
+    ];
+    while (pending.length) {
+      const next: typeof pending = [];
+      for await (const batch of boundedBatches(pending, async ({ directory, base, inherited }) => {
+        const directoryEntry = await lstat(directory);
+        if (directoryEntry.isSymbolicLink() || !directoryEntry.isDirectory()) {
+          throw new HarnessWorkspaceError(`A workspace directory changed while it was being indexed: ${base || "."}`);
+        }
+        directories.push(this.fingerprint(base, "directory", directoryEntry));
+        const rules = await this.rulesForDirectory(directory, base, inherited, ignoreFiles);
+        const children: typeof pending = [];
+        for (const entry of await readdir(directory, { withFileTypes: true })) {
+          const relative = base ? `${base}/${entry.name}` : entry.name;
+          if (isHardIgnored(relative) || entry.isSymbolicLink() || isIgnoredByRules(relative, entry.isDirectory(), rules)) continue;
+          if (entry.isDirectory()) children.push({ directory: path.join(directory, entry.name), base: relative, inherited: rules });
+          else if (entry.isFile()) files.push({ path: relative });
+        }
+        return children;
+      })) for (const children of batch) next.push(...children);
+      pending = next;
+    }
+    directories.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+    ignoreFiles.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
     files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
     return { version, files, directories, ignoreFiles };
   }
@@ -666,7 +678,19 @@ export class Workspace {
   private async getWorkspaceIndex(): Promise<WorkspaceIndex> {
     const cached = this.workspaceIndex;
     if (cached) {
-      if (await this.isWorkspaceIndexFresh(cached)) {
+      // Concurrent readers share only an in-flight check, never a timed cache.
+      // A later request must still observe externally changed paths/ignore rules.
+      let freshness = workspaceIndexFreshness.get(this);
+      if (freshness?.index !== cached) {
+        const promise = this.isWorkspaceIndexFresh(cached).finally(() => {
+          if (workspaceIndexFreshness.get(this)?.promise === promise) workspaceIndexFreshness.delete(this);
+        });
+        freshness = { index: cached, promise };
+        workspaceIndexFreshness.set(this, freshness);
+      }
+      const fresh = await freshness.promise;
+      if (this.workspaceIndex !== cached) return this.getWorkspaceIndex();
+      if (fresh) {
         this.indexMetrics.reuses += 1;
         return cached;
       }
