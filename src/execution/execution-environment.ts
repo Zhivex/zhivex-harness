@@ -1,3 +1,4 @@
+import { EnvironmentPatchDriftError } from "./patch-diagnostics.js";
 import { observeOciPhase } from "./oci-observability.js";
 import { withWorkspaceMutation } from "../workspace/workspace-mutation-lock.js";
 import { boundedBatches } from "../workspace/bounded-reads.js";
@@ -1314,6 +1315,7 @@ interface EnvironmentMetadata {
   releasedAt?: string;
   status?: AgentStatus;
   snapshot: { files: number; bytes: number };
+  lastInspectedPatchId?: FileDigest;
 }
 
 interface EnvironmentPatchEntry {
@@ -1445,12 +1447,13 @@ const importPatch = async (
   maxWorkspaceBytes: number,
   metrics?: HarnessExecutionIoMetrics,
   assertActive?: () => Promise<void>,
-  identity?: string
+  identity?: string,
+  lastInspectedPatchId?: FileDigest
 ): Promise<EnvironmentPatchImportResult> => withWorkspaceMutation(host.root, async () => {
   await assertActive?.();
   const patch = await createEnvironmentPatch(runId, base, current, maxFileWriteBytes, maxWorkspaceBytes, metrics, identity);
   if (patch.patchId !== expectedPatchId) {
-    throw new Error("Environment patch changed after review; inspect it again before import.");
+    throw new EnvironmentPatchDriftError(expectedPatchId, patch.patchId, lastInspectedPatchId);
   }
   if (patch.entries.length === 0) throw new Error("Environment patch contains no changes.");
   for (const entry of patch.entries) {
@@ -1668,10 +1671,10 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
       }
       const file=await readRegularFileNoFollow(path.join(directory,"environment.json"),{label:"Execution metadata",maxBytes:1024*1024});
       const metadata=JSON.parse(file.contents.toString("utf8")) as EnvironmentMetadata;
-      if(metadata.schemaVersion!==HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION||metadata.runId!==request.runId||metadata.scopeKey!==scopeKey||metadata.stateDirectory!==stateDirectory||metadata.executionIdentity!==identity||metadata.hostWorkspace!==options.workspace.root||metadata.binding.fingerprint!==binding.fingerprint||metadata.binding.workspaceId!==binding.workspaceId)throw new Error("Execution review binding changed.");
+      if(metadata.schemaVersion!==HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION||metadata.runId!==request.runId||metadata.scopeKey!==scopeKey||metadata.stateDirectory!==stateDirectory||metadata.executionIdentity!==identity||metadata.hostWorkspace!==options.workspace.root||metadata.binding.fingerprint!==binding.fingerprint||metadata.binding.workspaceId!==binding.workspaceId)throw Object.assign(new Error("Execution review binding changed."), { diagnosticCode: "OCI_EXECUTION_BINDING_CHANGED" });
       const base=await Workspace.open(path.join(directory,"base")),current=await Workspace.open(path.join(directory,"workspace"));
       const patch=await createEnvironmentPatch(request.runId,base,current,options.config.maxFileWriteBytes,options.config.maxWorkspaceBytes,undefined,identity);
-      if(patch.patchId!==expectedPatchId)throw new Error("The OCI patch changed after review.");
+      if(patch.patchId!==expectedPatchId)throw new EnvironmentPatchDriftError(expectedPatchId, patch.patchId, metadata.lastInspectedPatchId);
       for(const entry of patch.entries)await inspectHostPrecondition(options.workspace,entry.path,entry.beforeDigest,entry.beforeMode);
       return {patchId:patch.patchId,entries:patch.entries};
     },
@@ -1715,7 +1718,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
           metadata.binding.fingerprint !== binding.fingerprint ||
           metadata.binding.workspaceId !== binding.workspaceId
         ) {
-          throw new Error(`Execution artifact binding changed for run ${request.runId}.`);
+          throw Object.assign(new Error("Execution artifact binding changed."), { diagnosticCode: "OCI_EXECUTION_BINDING_CHANGED" });
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -2014,6 +2017,10 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             ioMetrics,
             identity
           );
+          // Persist before returning the inspection so approval resume can diagnose
+          // mismatches. This receipt never substitutes for recomputing patch bytes.
+          metadata.lastInspectedPatchId = patch.patchId;
+          await atomicJson(metadataPath, metadata);
           const payload = patchPayload(request.runId, patch.entries);
           return {
             ...payload,
@@ -2032,7 +2039,8 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             options.config.maxWorkspaceBytes,
             ioMetrics,
             assertActive,
-            identity
+            identity,
+            metadata.lastInspectedPatchId
           );
         },
         async release(result) {

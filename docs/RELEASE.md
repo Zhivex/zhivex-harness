@@ -214,3 +214,35 @@ so it explicitly reports `unsupported` rather than claiming no resources remain.
 A supervisor timeout after a valid failed result retains the original sanitized
 failure chain as well as the supervisor timeout; it never turns that run into a pass.
 The Actions failed-case table includes the provider rejection and resource inventory.
+
+### OCI patch mismatch diagnostics
+
+The OCI runtime persists the last inspected patch ID in its private, identity-bound
+execution metadata before returning an inspection. This optional diagnostic receipt
+survives approval restart; older artifacts without it remain readable. Import still
+recomputes the full patch and checks the approved ID and host preconditions. The
+receipt cannot authorize or substitute different bytes.
+
+Sanitized release diagnostics distinguish `OCI_PATCH_ID_MISMATCH` (the current patch
+still matches the last inspection, but the submitted ID does not),
+`OCI_PATCH_SNAPSHOT_CHANGED` (the submitted ID matches that inspection, but the
+current patch differs), and `OCI_PATCH_REVIEW_UNAVAILABLE` (missing or ambiguous
+inspection evidence). A changed execution identity/binding is reported separately
+as `OCI_EXECUTION_BINDING_CHANGED`. No digest values, paths, contents or tool
+arguments are included in these diagnostics. Patch mismatches retain the
+`PATCH_DRIFT` classification across sanitized child-process serialization.
+
+A rejected import leaves the host unchanged. Recovery requires inspecting the
+current patch and obtaining a new approval for that exact ID; do not rewrite a
+pending approval or retry the old ID automatically. The deterministic OCI tests
+exercise rejection, restart, fresh inspection and explicit import. This does not
+mean the strict terminal agent automatically recovers a failed run.
+
+The `v1.2.0-rc.1` attempt
+([run 36204796627](https://github.com/Zhivex/zhivex-harness/actions/runs/36204796627))
+passed exact-artifact validation and live gates, then stopped on Qwen's clean
+`python-pytest-repository` case at `apply_environment_patch` with `PATCH_DRIFT`.
+Meta passed 14/14, Qwen passed 13/14, and OpenAI and publication were skipped.
+The historical diagnostics recorded zero unauthorized effects but did not retain
+the inspection comparison, so they cannot establish which mismatch occurred.
+Do not reinterpret that attempt as passing or attribute it to provider availability.
