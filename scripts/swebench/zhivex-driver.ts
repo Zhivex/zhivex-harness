@@ -64,7 +64,7 @@ export async function runDriver(raw: unknown, preflight = false, onVerifierFailu
   try {
     harness = await createHarness({
       workspace: input.workspace, stateDirectory: state, provider: input.provider, model: input.model,
-      store: createInMemoryAgentRunStore(), projectContext: false, agentProfile: "repair", requireVerifiedDelivery: true,
+      store: createInMemoryAgentRunStore(), projectContext: false, requireVerifiedDelivery: true,
       onTelemetryEvent: (event) => {
         if (event.type === "guardrail-triggered") {
           const limit = event.metadata?.budgetLimit;

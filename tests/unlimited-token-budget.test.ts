@@ -82,22 +82,25 @@ test("unlimited repair budgets retain finite serializable accounting and per-req
   expect(restored.stats.inputTokens).toBe(10000010);
 });
 
-for (const agentProfile of ["strict", "repair"] as const) {
-  test(`${agentProfile}: unlimited mode also works with orchestration enabled`, async () => {
+for (const requireVerifiedDelivery of [false, true]) {
+  test(`verified delivery=${requireVerifiedDelivery}: unlimited mode preserves its completion contract with orchestration`, async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "unlimited-orchestration-"));
     const model = createMockLanguageModel({ streamEvents: [
       [{ type: "tool-call", toolCall: { id: "list", name: "list_files", input: {} } },
         { type: "finish", finishReason: "tool-calls", usage: { inputTokens: 200000, outputTokens: 1000, totalTokens: 201000 } }],
       [{ type: "text-delta", textDelta: "done" },
+        { type: "finish", finishReason: "stop", usage: { inputTokens: 200000, outputTokens: 1000, totalTokens: 201000 } }],
+      [{ type: "text-delta", textDelta: "still no verified patch" },
         { type: "finish", finishReason: "stop", usage: { inputTokens: 200000, outputTokens: 1000, totalTokens: 201000 } }]
     ] });
     const harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model,
-      store: createInMemoryAgentRunStore(), subagentProfiles: ["explorer"], agentProfile,
+      store: createInMemoryAgentRunStore(), subagentProfiles: ["explorer"], requireVerifiedDelivery,
       unlimitedTokens: true, maxInputTokens: 1, maxOutputTokens: 1, maxTotalTokens: 2 });
     try {
       const result = await runHarness(harness, { prompt: "List the files then finish.", maxTokens: 2048 });
-      expect(result.status).toBe("completed");
-      expect(result.usage?.inputTokens).toBe(400000);
+      expect(result.status).toBe(requireVerifiedDelivery ? "failed" : "completed");
+      expect(result.usage?.inputTokens).toBe(requireVerifiedDelivery ? 600000 : 400000);
+      if (requireVerifiedDelivery) expect(result.state.error?.message).toBe("REPAIR_INCOMPLETE");
     } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
   });
 }

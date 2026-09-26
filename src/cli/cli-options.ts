@@ -41,7 +41,7 @@ export const CLI_OPTION_NAMES = [
   "--compaction-model", "--compaction-provider",
   "--provider", "--model", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
-  "--agent-profile", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
+  "--require-verified-delivery", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb", "--store", "--tenant", "--user", "--namespace", "--idempotency-key",
@@ -68,7 +68,7 @@ const provider = ["--provider", "--model"] as const;
 const profile = ["--profile"] as const;
 const project = ["--mcp-config", "--context-config", "--no-project-context"] as const;
 const execution = [
-  "--agent-profile", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
+  "--require-verified-delivery", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
   "--oci-max-pids", "--oci-max-cpus", "--oci-max-workspace-bytes", "--oci-max-file-write-bytes",
   "--oci-tmpfs-mb"

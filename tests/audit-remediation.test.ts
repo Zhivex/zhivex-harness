@@ -68,7 +68,7 @@ test("H03/H09: repair recovers full task on resume but refuses an unverified com
     [call("recover", "read_task", {}), finish], done
   ] });
   const store = createInMemoryAgentRunStore();
-  const h = await createHarness({ workspace: root, modelInstance: model, store, agentProfile: "repair", maxSteps: 8, compactionMaxMessages: 4, compactionKeepRecentMessages: 2 });
+  const h = await createHarness({ workspace: root, modelInstance: model, store, requireVerifiedDelivery: true, maxSteps: 8, compactionMaxMessages: 4, compactionKeepRecentMessages: 2 });
   let diagnostic: HarnessRunDiagnostics | undefined;
   const finishes: string[] = [];
   try {
@@ -109,10 +109,10 @@ test("H08: observations cannot reset repetition and resumed closure retains allo
   expect(await invoke(resumed, "verify_and_apply_environment_patch")).toBe("same");
 });
 
-test("H06/H09: CLI exposes profile and instructions reflect the selected catalog", () => {
-  expect(parseCliArgs(["run", "fix", "--agent-profile", "repair"]).agentProfile).toBe("repair");
-  expect(resolveHarnessConfig({ agentProfile: "repair" }).agentProfile).toBe("repair");
-  expect(() => resolveHarnessConfig({ agentProfile: "invented" })).toThrow();
+test("H06/H09: CLI exposes verified delivery and instructions reflect the selected catalog", () => {
+  expect(parseCliArgs(["run", "fix", "--require-verified-delivery"]).requireVerifiedDelivery).toBe(true);
+  expect(resolveHarnessConfig({ requireVerifiedDelivery: true }).requireVerifiedDelivery).toBe(true);
+  expect(() => resolveHarnessConfig({ requireVerifiedDelivery: "invalid" as unknown as boolean })).toThrow();
   const rendered = renderHarnessInstructions(["read_files", "search_files", "read_task", "repair_plan"]);
   expect(rendered).not.toContain("mutation_audit"); expect(rendered).not.toContain("run_check");
   expect(rendered).toContain("never /workspace/src/file.py");
@@ -193,7 +193,7 @@ test("H03/H09: memory tools are declared and usable inside the enforced OCI poli
     async inspectImage(imageReference) { return { runtime: "docker", runtimeVersion: "fixture", imageReference, imageId: `sha256:${"a".repeat(64)}`, imageDigest: `sha256:${"a".repeat(64)}` }; },
     async run() { throw new Error("Memory must not launch a process"); }, async removeRunContainers() { return 0; }, async cleanupOrphans() { return 0; }
   };
-  const h = await createHarness({ workspace: root, provider: "openai", agentProfile: "repair", executionBackend: "oci", ociRuntimeAdapter: runtime, modelInstance: createMockLanguageModel({ streamEvents: [
+  const h = await createHarness({ workspace: root, provider: "openai", executionBackend: "oci", ociRuntimeAdapter: runtime, modelInstance: createMockLanguageModel({ streamEvents: [
     [call("task", "read_task", {}), finish],
     [call("plan", "repair_plan", { hypothesis: "Parser issue", expectedBehavior: "Preserve delimiters", paths: ["parser.py"], nextCheck: "Reproduce escaped input" }), finish], done
   ] }), maxSteps: 5 });

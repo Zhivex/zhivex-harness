@@ -74,7 +74,7 @@ export interface CliOptions {
   subagentTimeoutMs?: number;
   maxParallelReviews?: number;
   executionBackend?: string;
-  agentProfile?: string;
+  requireVerifiedDelivery?: boolean;
   ociRuntime?: string;
   ociImage?: string;
   ociAllowedCommands?: string[];
@@ -327,9 +327,8 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         index += 1;
         break;
       }
-      case "--agent-profile":
-        options.agentProfile = optionValue(argv, index, argument);
-        index += 1;
+      case "--require-verified-delivery":
+        options.requireVerifiedDelivery = true;
         break;
       case "--execution":
         options.executionBackend = optionValue(argv, index, argument);

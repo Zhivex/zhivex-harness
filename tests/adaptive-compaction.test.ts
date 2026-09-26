@@ -32,7 +32,7 @@ test("SDK compacts an oversized old result while preserving the newest complete 
   const record = result.state.compactions![0]!;
   expect(record.retainedMessageCount).toBe(2);
   expect(record.estimatedTokensAfter).toBeLessThan(record.estimatedTokensBefore * 0.65);
-  expect(record.metadata).toMatchObject({ policy: "adaptive-tokens-v1" });
+  expect(record.metadata).toMatchObject({ policy: "adaptive-tokens-v2" });
   expect((await store.load(result.state.runId))!.compactions).toEqual(result.state.compactions);
 });
 

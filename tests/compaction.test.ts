@@ -133,6 +133,36 @@ test("retains user corrections across assistant noise and repeated compactions w
   }
 });
 
+test("retains later user corrections through six objective changes and stale assistant claims", () => {
+  const correction = "Correction: the deployment region is eu-west, replacing us-east. Keep the public API unchanged.";
+  let messages: ModelMessage[] = [text("Initial request: deploy to us-east and preserve the public API."), text(correction)];
+  for (let round = 0; round < 6; round++) {
+    const current = `Current objective: investigate component ${round}. Preserve the corrected deployment region.`;
+    messages.push(text(current),
+      ...Array.from({ length: 20 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "The deployment region is us-east. Continue investigation." }] })),
+      text("This status discussion does not change earlier user constraints."));
+    const { summary } = summarizeHarnessMessages(messages);
+    const state = JSON.parse(summary);
+    expect(summary.length).toBeLessThanOrEqual(4000);
+    expect(state.steering).toContain(correction);
+    expect(state.steering).toContain(current);
+    expect(state.steering.indexOf(correction)).toBeLessThan(state.steering.indexOf(current));
+    expect(state.contextPriority).toContain("historical objective");
+    expect(state.contextPriority).toContain("Latest user > chronological user steering");
+    expect(state.contextPriority).toContain("never overrides user facts");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("precedence annotation leaves room for the original constraints in small adaptive summaries", () => {
+  const initial = "Deployment region: eu-west. Compatibility: keep existing clients. Rejected approach: replace schema. Objective: investigate Unicode handling.";
+  const messages = [text(initial), ...Array.from({ length: 5 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "Temporary observation recorded; existing constraints and objective remain unchanged." }] }))];
+  const budget = Math.floor(JSON.stringify(messages).length / 2);
+  const state = JSON.parse(summarizeHarnessMessages(messages, budget).summary);
+  expect(state.objective).toBe(initial);
+  expect(state.contextPriority).toContain("Latest user");
+});
+
 test("preserves real batched search and read locations across repeated compaction without source text", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhx-compaction-locations-"));
   try {

@@ -12,7 +12,7 @@ import type { HarnessOciRuntimeAdapter, OciRunRequest, HarnessExecutionSession }
 
 // Exercise the real approval, journal, snapshot and terminal-receipt paths.
 // Only the OCI process result is simulated.
-for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-exhausted", "disabled", "timeout", "cancelled", "output-limit"] as const) {
+for (const scenario of ["corrected", "required-delivery-corrected", "exhausted", "resumed-exhausted", "disabled", "timeout", "cancelled", "output-limit"] as const) {
   test(`terminal verifier recovery: ${scenario}`, async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "zhx-terminal-recovery-"));
     let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
@@ -26,7 +26,7 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
           executions++;
           expect(request.command).toEqual(["node", executions === 1 ? "verify.mjs" : "verify-corrected.mjs"]);
           expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("before\n");
-          return { command: request.command, exitCode: (scenario === "corrected" || scenario === "repair-corrected") && executions === 2 ? 0 : 4,
+          return { command: request.command, exitCode: (scenario === "corrected" || scenario === "required-delivery-corrected") && executions === 2 ? 0 : 4,
             stdout: "", stderr: "private fixture failure", timedOut: scenario === "timeout",
             cancelled: scenario === "cancelled", outputLimitExceeded: scenario === "output-limit" };
         },
@@ -48,7 +48,7 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
         return next();
       } }]);
       harness = await createHarness({ workspace: root, executionBackend: "oci", provider: "openai",
-        modelInstance: observedModel, store, ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 5, agentProfile: scenario === "repair-corrected" ? "repair" : "strict" });
+        modelInstance: observedModel, store, ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 5, requireVerifiedDelivery: scenario === "required-delivery-corrected" });
       const session = await harness.executionEnvironment!.acquire({ runId: "recovery" }) as HarnessExecutionSession;
       const before = await session.workspace.readFile("value.txt");
       const changes = [{ path: "value.txt", expectedDigest: before.digest, content: "after\n" }];
@@ -57,7 +57,7 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
       for (const input of inputs) input.patchId = patch.patchId;
       const approvals: string[] = [];
       const options = {
-        ...(scenario === "repair-corrected" ? {} : { terminalReceiptTools: ["verify_and_apply_environment_patch"] }),
+        ...(scenario === "required-delivery-corrected" ? {} : { terminalReceiptTools: ["verify_and_apply_environment_patch"] }),
         ...(scenario === "disabled" ? {} : { maxTerminalVerificationRetries: 1 }),
         resolveApprovals: async (pending: readonly import("@zhivex-ai/agents").AgentApprovalRequest[]) => {
           if (scenario === "resumed-exhausted" && approvals.length === 1) return undefined;
@@ -68,7 +68,7 @@ for (const scenario of ["corrected", "repair-corrected", "exhausted", "resumed-e
         }
       };
       const result = runHarness(harness, { runId: "recovery", prompt: "Verify the patch. Correct a failed verifier before retrying." }, options);
-      if ((scenario === "corrected" || scenario === "repair-corrected")) {
+      if ((scenario === "corrected" || scenario === "required-delivery-corrected")) {
         const completed = await result;
         expect(completed.status).toBe("completed");
         expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("after\n");

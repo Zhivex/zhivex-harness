@@ -530,14 +530,16 @@ describe("Zhivex harness", () => {
         store: createInMemoryAgentRunStore(),
         compactionMaxMessages: 4,
         compactionKeepRecentMessages: 2,
-        compactionMaxEstimatedInputTokens: 2_000
+        // This regression targets message-count compaction. Keep its threshold
+        // above the irreducible system instructions and tool catalog.
+        compactionMaxEstimatedInputTokens: 10_000
       });
       const result = await runHarness(harness, { prompt: "Inspect twice" });
       expect(result.status).toBe("completed");
       expect(result.state.compactions).toHaveLength(1);
       expect(result.state.compactions?.[0]).toMatchObject({
         reasons: expect.arrayContaining(["message-count"]),
-        metadata: { strategy: "bounded-evidence-v6" }
+        metadata: { strategy: "bounded-evidence-v7" }
       });
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -674,7 +676,7 @@ test("compacted streamed runs count each response once and still enforce the inp
       { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 } }
     ]) });
     const harness = await createHarness({ workspace: root, modelInstance: model, store: createInMemoryAgentRunStore(),
-      maxInputTokens: 350, compactionMaxMessages: 4, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 2000 });
+      maxInputTokens: 350, compactionMaxMessages: 4, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 10_000 });
     try {
       const output = await runHarness(harness, { prompt: "Inspect before finishing" });
       expect(output.usage?.inputTokens).toBe(calls * 100);

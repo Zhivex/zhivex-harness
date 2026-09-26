@@ -3,7 +3,7 @@ import { createRedactionPolicy } from "@zhivex-ai/agents";
 
 const count = z.number().int().nonnegative().finite();
 const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable();
-const diagnosticsSchema = z.object({ schemaVersion: z.literal(1), profile: z.literal("repair"),
+const diagnosticsSchema = z.object({ schemaVersion: z.literal(2), requireVerifiedDelivery: z.boolean(),
   budget: z.object({ inputTokens: count, outputTokens: count, cachedInputTokens: count, modelCalls: count,
     usageComplete: z.boolean(), inFlight: z.boolean(),
     stopReason: z.enum(["USAGE_UNAVAILABLE", "WORK_TOKEN_BUDGET", "INPUT_TOKEN_BUDGET", "OUTPUT_TOKEN_BUDGET"]).nullable(),
@@ -17,8 +17,8 @@ const diagnosticsSchema = z.object({ schemaVersion: z.literal(1), profile: z.lit
   modelTimings: z.array(z.object({ durationMs: z.number().nonnegative().finite(), firstTokenMs: z.number().nonnegative().finite().nullable(), completed: z.boolean() })).max(128),
   omittedContextMeasurements: count
 });
-const manifestSchema = z.object({ schemaVersion: z.literal(1), policyVersion: z.literal("repair-v2-durable-closure"),
-  role: z.string().max(128), profile: z.enum(["strict", "repair"]), backend: z.enum(["none", "oci"]),
+const manifestSchema = z.object({ schemaVersion: z.literal(2), policyVersion: z.literal("assistant-v3-durable-closure"),
+  role: z.string().max(128), requireVerifiedDelivery: z.boolean(), backend: z.enum(["none", "oci"]),
   tools: z.array(z.string().max(128)).max(1024),
   budget: z.object({ unlimitedTokens: z.boolean().optional(), maxSteps: count, maxToolCalls: count, maxToolErrors: count, maxInputTokens: count, maxOutputTokens: count, includeChildRuns: z.boolean() }),
   timeoutMs: count, closureController: z.boolean(), contextEnabled: z.boolean() });

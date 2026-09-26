@@ -13,8 +13,20 @@ const [artifactPath, reportPath] = process.argv.slice(2);
 assert(artifactPath && path.isAbsolute(artifactPath), "Pass the installed dist/index.js absolute path.");
 assert(reportPath && path.isAbsolute(reportPath), "Pass an absolute sanitized report path.");
 const api: typeof import("../src/index.js") = await import(pathToFileURL(artifactPath).href);
-const npm = await runPortableProcess(["npm", "--version"], { cwd: process.cwd() });
-assert.equal(npm.exitCode, 0);
+const bun = await runPortableProcess(["bun", "--version"], { cwd: process.cwd() });
+assert.equal(bun.exitCode, 0);
+const models = { meta: "muse-spark-1.3", qwen: "qwen3.8-max", openai: "gpt-6-luna" } as const;
+const budgetMode = process.env.ZHIVEX_HARNESS_LIVE_DAILY_BUDGET ?? "bounded-baseline";
+assert(["bounded-baseline", "runtime-token-defaults"].includes(budgetMode), "Unknown daily-workflow budget mode.");
+const defaults = api.resolveHarnessConfig({ workspace: process.cwd() }).budget;
+const tokenLimits = budgetMode === "runtime-token-defaults"
+  ? { maxInputTokens: defaults.maxInputTokens, maxOutputTokens: defaults.maxOutputTokens, maxTotalTokens: defaults.maxTotalTokens }
+  : { maxInputTokens: 60_000, maxOutputTokens: 4096, maxTotalTokens: 64_096 };
+assert(!defaults.unlimitedTokens && tokenLimits.maxTotalTokens <= 250_000, "Live acceptance requires bounded token budgets.");
+const limits = { maxSteps: 12, timeoutMs: 150_000, ...tokenLimits };
+const providers = (process.env.ZHIVEX_HARNESS_LIVE_PROVIDERS ?? "meta,qwen,openai").split(",").map(value => value.trim());
+assert(providers.length > 0 && new Set(providers).size === providers.length &&
+  providers.every(provider => Object.hasOwn(models, provider)), "Select meta, qwen, and/or openai without duplicates.");
 const scenarios = [
   {
     name: "fix-rounding-bug", files: {
@@ -34,38 +46,57 @@ const scenarios = [
 ];
 const rows: Record<string, unknown>[] = [];
 let failed = false;
-for (const scenario of scenarios) {
+const selectedTask = process.env.ZHIVEX_HARNESS_LIVE_DAILY_TASK;
+assert(!selectedTask || scenarios.some(scenario => scenario.name === selectedTask), "Unknown daily-workflow task.");
+for (const selected of providers) for (const scenario of scenarios.filter(scenario => !selectedTask || scenario.name === selectedTask)) {
+  const provider = selected as keyof typeof models;
+  const model = process.env[`ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`] ?? models[provider];
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-daily-"));
   let harness: Awaited<ReturnType<typeof api.createHarness>> | undefined;
   const started = Date.now();
   let approvals = 0;
   let phase = "fixture";
+  let runEvidence: Record<string, unknown> = {};
+  let protectedFiles: Record<string, string> = {};
   try {
     await mkdir(path.join(root, "src")); await mkdir(path.join(root, "test"));
     const originals = { ...scenario.files, "package.json": JSON.stringify({ name: "harness-daily-fixture", private: true,
-      type: "module", packageManager: `npm@${npm.stdout.trim()}`, scripts: { test: "node --test" } }) };
+      type: "module", packageManager: `bun@${bun.stdout.trim()}`, scripts: { test: "bun test" } }) };
+    protectedFiles = Object.fromEntries(Object.entries(originals).filter(([file]) => !scenario.editable.includes(file)));
     for (const [file, content] of Object.entries(originals)) await writeFile(path.join(root, file), content);
-    const baseline = await runPortableProcess(["node", "--test"], { cwd: root });
+    const baseline = await runPortableProcess(["bun", "test"], { cwd: root });
     assert.notEqual(baseline.exitCode, 0, "The fixture must reproduce the initial defect.");
-    harness = await api.createHarness({ provider: "openai", workspace: root, model: "gpt-5.6-luna",
-      maxSteps: 12, timeoutMs: 150_000, maxInputTokens: 60_000, maxOutputTokens: 4096,
-      maxTotalTokens: 64_096, allowedChecks: ["test"] });
+    harness = await api.createHarness({ provider, workspace: root, model,
+      ...limits, allowedChecks: ["test"], requireVerifiedDelivery: false });
+    runEvidence = { requireVerifiedDelivery: harness.config.requireVerifiedDelivery,
+      effectiveBudget: harness.config.budget };
     phase = "agent";
-    const result = await api.runHarness(harness, { prompt: scenario.task }, {
+    const result = await api.runHarness(harness, { prompt: scenario.task,
+      ...(provider === "openai" || provider === "qwen" ? { providerOptions: { apiMode: "responses" } } : {}) }, {
       resolveApprovals: async (batch) => batch.map((approval) => {
         const args = JSON.parse(approval.arguments);
         const edit = ["apply_reviewed_edits", "apply_patch"].includes(approval.name) &&
           Array.isArray(args.changes) && args.changes.length > 0 && args.changes.every((change: {path: string; content: string}) =>
             scenario.editable.includes(change.path) && typeof change.content === "string" && change.content.length < 16_384);
-        const check = approval.name === "run_check" && args.expectedScript === "node --test" && args.check === "test";
-        assert(edit || check, "Provider requested an operation outside the acceptance fixture policy.");
+        const replacement = approval.name === "apply_reviewed_replacement" && scenario.editable.includes(args.path) &&
+          typeof args.newText === "string" && args.newText.length < 16_384;
+        const check = approval.name === "run_check" && args.expectedScript === "bun test" && args.check === "test";
+        assert(edit || replacement || check, "Provider requested an operation outside the acceptance fixture policy.");
         approvals++;
         return { provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Bounded live acceptance fixture." };
       })
     });
+    runEvidence = { ...runEvidence, runStatus: result.status, steps: result.steps.length, usage: result.usage,
+      childUsage: result.state.childRuns?.map(child => ({ status: child.status, usage: child.usage })),
+      toolCalls: result.toolResults.length,
+      toolErrors: result.toolResults.filter(tool => tool.isError).length,
+      tools: result.toolResults.map(tool => ({ name: tool.toolName, isError: tool.isError,
+        ...(tool.toolName === "run_check" && tool.output && typeof tool.output === "object" && !Array.isArray(tool.output)
+          ? { exitCode: (tool.output as Record<string, unknown>).exitCode } : {}) })),
+      ...(result.error ? { runDiagnostic: sanitizeOperationalError(result.error) } : {}) };
     assert.equal(result.status, "completed");
     phase = "verification";
-    const verification = await runPortableProcess(["node", "--test"], { cwd: root });
+    const verification = await runPortableProcess(["bun", "test"], { cwd: root });
     assert.equal(verification.exitCode, 0, "Independent post-run tests must pass.");
     for (const [file, content] of Object.entries(originals)) {
       const actual = await readFile(path.join(root, file), "utf8");
@@ -73,12 +104,21 @@ for (const scenario of scenarios) {
       else assert.notEqual(actual, content, "Expected implementation file was not changed");
     }
     assert(result.toolResults.length, "Expected governed tool execution");
-    rows.push({ task: scenario.name, status: "passed", initialTestsFailed: true, finalTestsPassed: true,
-      editedFiles: scenario.editable.length, approvals, steps: result.steps.length, elapsedMs: Date.now() - started });
+    rows.push({ provider, model, task: scenario.name, status: "passed", initialTestsFailed: true, finalTestsPassed: true,
+      editedFiles: scenario.editable.length, approvals, steps: result.steps.length, elapsedMs: Date.now() - started,
+      ...runEvidence });
   } catch (error) {
     failed = true;
-    rows.push({ task: scenario.name, status: "failed", approvals, elapsedMs: Date.now() - started,
-      phase, errorType: error instanceof Error ? error.name : "Error", diagnostic: sanitizeOperationalError(error) });
+    if (phase !== "fixture") {
+      const independent = await runPortableProcess(["bun", "test"], { cwd: root });
+      let protectedFilesUnchanged = true;
+      for (const [file, content] of Object.entries(protectedFiles)) {
+        if (await readFile(path.join(root, file), "utf8").catch(() => null) !== content) protectedFilesUnchanged = false;
+      }
+      runEvidence = { ...runEvidence, independentTestsPassed: independent.exitCode === 0, protectedFilesUnchanged };
+    }
+    rows.push({ provider, model, task: scenario.name, status: "failed", approvals, elapsedMs: Date.now() - started,
+      phase, ...runEvidence, errorType: error instanceof Error ? error.name : "Error", diagnostic: sanitizeOperationalError(error) });
     // No raw provider response, prompt, credential, or workspace path in shared output.
   } finally {
     await harness?.close();
@@ -88,8 +128,10 @@ for (const scenario of scenarios) {
 const report = { schemaVersion: 1, kind: "daily-workflow-acceptance", evidence: "local-installed-live",
   observedAt: new Date().toISOString(), version: api.HARNESS_VERSION,
   moduleSha256: createHash("sha256").update(await readFile(artifactPath)).digest("hex"),
-  provider: "openai", model: "gpt-5.6-luna", status: failed ? "failed" : "passed", rows,
-  limitations: ["Not protected release certification", "No public repository benchmark", "OpenAI only"] };
+  providers, tasks: scenarios.filter(scenario => !selectedTask || scenario.name === selectedTask).map(scenario => scenario.name),
+  budgetMode, limits,
+  status: failed ? "failed" : "passed", rows,
+  limitations: ["Not protected release certification", "No public repository benchmark", "Small disposable coding fixtures; selected tasks recorded explicitly"] };
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 if (failed) process.exitCode = 1;

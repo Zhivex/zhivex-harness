@@ -34,6 +34,9 @@ test("short help leads to focused help without exposing unrelated options", () =
   expect(formatCliHelp("resume", "test", CLI_FULL_HELP_TEXT)).toContain("--deny");
   expect(formatCliHelp("state", "test", CLI_FULL_HELP_TEXT)).toContain("zhx state import");
   expect(formatCliHelp("all", "test", CLI_FULL_HELP_TEXT)).toContain("--oci-max-memory-mb");
+  expect(CLI_FULL_HELP_TEXT).not.toContain("--agent-profile");
+  expect(formatCliHelp("run", "test", CLI_FULL_HELP_TEXT)).toContain("--require-verified-delivery");
+  expect(formatCliHelp("run", "test", CLI_FULL_HELP_TEXT)).toContain("--profile");
 });
 
 test("common actions stay small while advanced and safety actions remain discoverable", () => {

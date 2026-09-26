@@ -322,21 +322,24 @@ Personal CLI profile schema `1` is separate from resolved Harness configuration 
 
 The default state directory is `<workspace>/.zhivex-harness/runs` and the default backend is scoped SQLite at `operations.sqlite`. Explicit external state directories are supported, but the workspace root, filesystem root, sensitive workspace paths, regular files, and symbolic-link targets are rejected before the run store is created. See [DURABLE_OPERATIONS.md](./DURABLE_OPERATIONS.md) for state migration and operations, and [EXTENSIBILITY.md](./EXTENSIBILITY.md) for capability, MCP, subagent, and review-group configuration.
 
-### Runtime repair policy
+### Required verified delivery
 
-`--agent-profile <strict|repair>` selects the runtime policy (default `strict`;
-`ZHIVEX_HARNESS_AGENT_PROFILE` provides the environment default). `repair` enables
-bounded schema/tool recovery, cumulative model accounting, exploration controls,
-and up to two retries of recoverable approved verifier failures. A successful
+The assistant uses one general-purpose execution loop with bounded schema/tool
+recovery and cumulative accounting. `--require-verified-delivery` adds an explicit
+completion obligation, exploration controls and up to two retries of recoverable
+approved verifier failures. A successful
 approved verification/import can finish from its durable receipt. It does not
 auto-approve tools, bypass checks, or recover cancellations/integrity violations.
-The selected profile is persisted in resume configuration and the harness binding.
+The delivery requirement is persisted in resume configuration and the harness binding.
+The former `--agent-profile`, `agentProfile` and `ZHIVEX_HARNESS_AGENT_PROFILE`
+configuration have been removed; there is no profile alias. Saved connection
+profiles (`--profile`) and optional subagent roles are independent and unchanged.
 
 ```sh
-bun run src/cli.ts run "Fix the regression and verify it" --agent-profile repair --execution oci
+bun run src/cli.ts run "Fix the regression and verify it" --require-verified-delivery --execution oci
 ```
 
-Library callers select `agentProfile: "repair"` in `createHarness` and can observe
+Library callers select `requireVerifiedDelivery: true` in `createHarness` and can observe
 bounded timings/accounting with `runHarness(..., { onDiagnostics })`. Telemetry
 observer exceptions do not alter the execution result. A stricter caller can
 explicitly override tool-error behavior or terminal receipt settings.

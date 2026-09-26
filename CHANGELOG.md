@@ -6,9 +6,11 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-- Adapt the assistant loop to explanation, investigation, design and implementation without imposing a repair ceremony on read-only work. Keep the optional verified-delivery profile for callers that require it.
+- Adapt the assistant loop to explanation, investigation, design and implementation without imposing a repair ceremony on read-only work. Remove the `strict`/`repair` runtime profile choice; callers requiring verified completion use `requireVerifiedDelivery` or `--require-verified-delivery` directly. This is an intentional pre-promotion API/CLI break; saved connection profiles and subagent roles remain independent.
 - Unify bounded tool-error, invalid-argument and unknown-tool recovery across CLI, SDK and delegated runs, independently of the repair controller. Explicit fail-fast tool options remain available.
 - Preserve conversational decisions and bounded, redacted local error observations through repeated deterministic and model-assisted compaction. Context is working memory; approvals and verification remain tool-owned.
+- Prioritize recent user corrections over the historical objective and assistant recollections during compaction; retain more distinct user steering within the same summary budget.
+- Use the remaining repair output budget instead of an implicit 2,048-token per-response cap. Preserve explicit caps and provider transport compatibility. Finish after relevant checks and change review without requiring duplicate audits.
 - Refresh discovered directory guidance after normal edits instead of aborting the conversation; retain path, link, encoding and size protections.
 - Return the matching persisted context/accounting checkpoint in every profile, and detect repeated tool cycles even when the model changes its progress narration.
 - Invalidate failed or superseded model edit references and explain how to recover them before another approval. Keep partially failed changes pending verification and preserve closure capacity after rejected plans or out-of-scope reads.

@@ -7,11 +7,11 @@ import { createInMemoryAgentRunStore } from '@zhivex-ai/agents/ops';
 import { createHarness, runHarness } from '../src/runtime/harness.js';
 const finish={type:'finish' as const,finishReason:'tool-calls' as const,usage:{inputTokens:10,outputTokens:2,totalTokens:12}};
 const unknown=(id:string)=>[{type:'tool-call' as const,toolCall:{id,name:'unregistered_fixture',input:{}}},finish];
-for(const scenario of ['repair','strict','override','bounded'] as const)test(`unknown tool selection: ${scenario}`,async()=>{
+for(const scenario of ['default','override','bounded'] as const)test(`unknown tool selection: ${scenario}`,async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'repair-tool-selection-'));let h;
  try{
   await writeFile(path.join(root,'value.txt'),'known fixture');const store=createInMemoryAgentRunStore();
-  h=await createHarness({workspace:root,agentProfile:scenario==='strict'?'strict':'repair',store,maxToolErrors:scenario==='bounded'?1:4,
+  h=await createHarness({workspace:root,store,maxToolErrors:scenario==='bounded'?1:4,
    modelInstance:createMockLanguageModel({streamEvents:scenario==='bounded'?[unknown('bad1'),unknown('bad2'),unknown('bad3')]:[
     unknown('bad'),[{type:'tool-call',toolCall:{id:'read',name:'read_file',input:{path:'value.txt'}}},finish],
     [{type:'text-delta',textDelta:'Inspected fixture'},{...finish,finishReason:'stop'}]
@@ -36,7 +36,7 @@ test('recovering an unknown selection does not approve the next mutation',async(
  try{
   await writeFile(path.join(root,'value.txt'),'before');
   const {createHash}=await import('node:crypto');
-  h=await createHarness({workspace:root,agentProfile:'repair',modelInstance:createMockLanguageModel({streamEvents:[unknown('bad'),[
+  h=await createHarness({workspace:root,modelInstance:createMockLanguageModel({streamEvents:[unknown('bad'),[
    {type:'tool-call',toolCall:{id:'edit',name:'apply_reviewed_replacement',input:{path:'value.txt',expectedDigest:'sha256:'+createHash('sha256').update('before').digest('hex'),oldText:'before',newText:'after'}}},finish
   ]]})});
   const result=await runHarness(h,{prompt:'Replace before with after.'});

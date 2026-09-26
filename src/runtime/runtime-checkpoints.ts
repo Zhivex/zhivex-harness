@@ -19,7 +19,7 @@ export const runtimeCheckpointStore = (store: AgentRunStore, runId: string,
         }
         state.metadata = { ...state.metadata, [MODEL_BUDGET_KEY]: budget.snapshot(),
           [REPAIR_PROGRESS_KEY]: progress.snapshot(), [REPAIR_CONTROLLER_KEY]: controller.snapshot(),
-          [RUNTIME_DIAGNOSTICS_KEY]: { schemaVersion: 1, profile: "repair", budget: { ...budget.stats },
+          [RUNTIME_DIAGNOSTICS_KEY]: { schemaVersion: 2, requireVerifiedDelivery: controller.state.requireVerifiedDelivery, budget: { ...budget.stats },
             phase: controller.state.phase, candidate: controller.state.candidate, revision: controller.state.revision,
             checks: controller.state.receipts, contextMeasurements: budget.contextMetrics,
             modelTimings: budget.modelTimings, omittedContextMeasurements: budget.omittedContextMeasurements } };

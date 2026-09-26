@@ -220,8 +220,8 @@ export const inspectHarnessRun = async (
         };
     };
     runtimeDiagnostics: {
-        schemaVersion: 1;
-        profile: "repair";
+        schemaVersion: 2;
+        requireVerifiedDelivery: boolean;
         budget: {
             inputTokens: number;
             outputTokens: number;
@@ -285,9 +285,9 @@ export const inspectHarnessRun = async (
         }[];
     } | null;
     effectiveRuntime: {
-        schemaVersion: 1;
-        policyVersion: "repair-v2-durable-closure";
-        profile: "repair" | "strict";
+        schemaVersion: 2;
+        policyVersion: "assistant-v3-durable-closure";
+        requireVerifiedDelivery: boolean;
         backend: "none" | "oci";
         budget: {
             unlimitedTokens?: boolean | undefined;

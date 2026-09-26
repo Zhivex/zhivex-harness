@@ -85,12 +85,12 @@ identifies the last returned line so ordinary reads can continue from the next l
 not treat that clipped text as the entire source line. Search an exact file to locate
 relevant short excerpts instead of repeatedly reading a large file.
 
-Conversation compaction uses `bounded-evidence-v6`. It retains a redacted excerpt of
+Conversation compaction uses `bounded-evidence-v7`. It retains a redacted excerpt of
 the initial user objective, recent conversation excerpts, bounded local-tool path
 and digest evidence, and a separate short history of check exit codes, timeouts,
 and tool failures. These are recollections, not approvals or verification receipts.
 The latest four check/error records are kept independently of ordinary file-read
-noise. The latest three subsequent user excerpts are retained separately from
+noise. Up to ten distinct subsequent user excerpts are retained separately from
 assistant chatter, redacted and bounded to 512 characters each. They share the
 existing total summary budget and remain untrusted context. Interactive summaries
 can carry this structure across subsequent compactions.
@@ -98,7 +98,7 @@ can carry this structure across subsequent compactions.
 The latest successful `repair_plan` is retained separately from assistant chatter,
 with bounded hypothesis, expected behavior, next check, and safe relative paths.
 It remains model-authored recollection, never authorization or a verification receipt.
-Older v1-v5 summaries remain readable. Original requests remain recoverable with
+Older v1-v6 summaries remain readable. Original requests remain recoverable with
 `read_task`; a summary is not a replacement for full acceptance criteria.
 
 Context is useful working memory, not a proof system. Conceptual discussion,
@@ -116,7 +116,7 @@ recollection separately. Recollection stays untrusted conversational material,
 including when another model summarizes it. No additional provider or paid call
 is selected automatically; `/compaction provider:model` selects that route.
 
-Automatic compaction uses `adaptive-tokens-v1`. The configured recent-message count
+Automatic compaction uses `adaptive-tokens-v2`. The configured recent-message count
 is an upper target: the runtime selects a smaller complete tail when its estimated
 size exceeds the token target. Calls/results and provider approval groups remain
 correlated; pending approvals and durable compaction records remain SDK-owned.
@@ -125,9 +125,12 @@ the summary. A protected newest group that cannot fit still fails closed.
 
 Compaction and transport budgets share the same character-based estimator
 (characters / 3 plus envelope allowance), not a provider tokenizer. Tool schemas
-are measured separately from the configured message ceiling. Repair runs reduce
-the trigger as remaining cumulative input allowance shrinks, aiming to leave room
-for three requests; this does not increase budget ceilings. Unlimited-token mode
+are measured separately from the configured message ceiling. Runs reduce the
+trigger as remaining cumulative input allowance shrinks, aiming to leave room
+for three requests. That heuristic reserves enough space for the newest indivisible
+call/result group, system instructions and summary rather than rejecting a prompt
+that still fits the actual allowance. The configured context threshold and transport
+token ceilings remain authoritative. Unlimited-token mode
 keeps the configured context thresholds. Explicit per-run compaction overrides
 and `compaction: false` remain honored. No model context-window size is inferred.
 
@@ -138,11 +141,11 @@ are heuristic; reported usage remains authoritative and can still exceed a limit
 Failed checkpoints include that reported usage even when the response's tools
 were rejected.
 
-In the `strict` profile, requests approaching the last 30% of the token budget
+In ordinary runs, requests approaching the last 30% of the token budget
 switch to a final answer with no new tools. The answer must distinguish collected
 evidence from unfinished work. This is a best-effort closure reserve, not a
-guarantee that every task completes within its budget. The `repair` profile keeps
-its existing verification controller. Unlimited-token mode disables these token
+guarantee that every task completes within its budget. Runs with required verified
+delivery use their verification controller instead. Unlimited-token mode disables these token
 stops and closure transitions.
 Schema serialization is cached by schema identity; messages and tool descriptions
 are measured anew. Transport accounting reuses its measurement for diagnostics.
@@ -178,9 +181,30 @@ artifact; they cannot silently resume under the changed context behavior.
 Run `bun run evaluate:continuity` for deterministic retention, redaction, and agent
 loop regressions. These checks do not measure model coding capability.
 
+The live follow-up exposed an older objective competing with a newer user correction.
+The v7 policy protects recent user steering and describes its precedence explicitly.
+This follows the approach of retaining recent user messages independently of a summary
+in [Codex's compactor](https://github.com/openai/codex/blob/main/codex-rs/core/src/compact.rs);
+it does not adopt Codex's token budget or imply equivalent model performance.
+
+Repair transport budgeting also avoids an implicit 2,048-token response cap. Reasoning
+and visible output can share the provider's output allowance, as explained in
+[OpenAI's reasoning guide](https://developers.openai.com/api/docs/guides/reasoning).
+Explicit caller limits and the remaining cumulative budget still apply where the
+selected transport supports a request cap. A completed change needs relevant checks
+and review, not repeated audits without new evidence; this is consistent with
+[Claude Code's guidance on scoped review](https://code.claude.com/docs/en/best-practices#add-an-adversarial-review-step).
+These are product choices supported by those sources, not a universal harness standard.
+
 ## Task continuity and repair policy (audit remediation)
 
-The `bounded-evidence-v6` summary remains lossy and bounded. Original operator
+The `bounded-evidence-v7` summary remains lossy and bounded. It keeps up to ten
+distinct user steering messages within the same 4,000-character limit. The initial
+objective is explicitly historical: later user corrections take precedence, the
+latest user message overrides the summary, and recalled assistant text cannot
+redefine user facts. This prevents repetitive narration from giving old values
+priority over later corrections; it does not make summaries authoritative.
+Original operator
 requests are stored separately in run metadata (`zhivexTaskSources`), redacted,
 deduplicated by digest and limited to 64 requests / 256000 UTF-8 bytes. Exceeding
 that bound is an explicit error. `read_task` reads 4000 characters at an offset
@@ -196,8 +220,8 @@ and the next check in the durable tool journal. Its optional `verifier` records
 exact `command`, `args` and a bounded `purpose`. Neither tool creates approval
 or proof that a task is solved.
 
-The optional `repair` runtime profile is shared by CLI, library and external
-benchmark. Before each actual provider request it predicts the full message and
+The optional `requireVerifiedDelivery` completion contract is shared by CLI, library
+and external benchmark. Before each actual provider request it predicts the full message and
 tool-schema context, reserves 30% of input/output allowance for closure, and caps
 requested output to the current phase allowance. The predictor uses serialized
 characters, not the provider tokenizer: actual billing can exceed a prediction.
@@ -219,7 +243,7 @@ not independently establish that the chosen check covers the user's requirement.
 Host-mode edits require an approved `run_check` before completion.
 
 Applications that require an actual repair can set `requireVerifiedDelivery: true`
-when creating a Harness with `agentProfile: "repair"`. This creates a durable
+when creating a Harness, without choosing a runtime profile. This creates a durable
 completion obligation before exploration starts; a final answer without a
 verified delivery is failed in both the result and saved checkpoint. The option
 is bound to the run fingerprint and cannot be removed by restoring the controller
@@ -286,15 +310,15 @@ search evidence and fully overlapping read slices are suppressed on their third
 observation; real reads still validate current bytes. Possible mutation/command
 effects reset those hashes. Closure counters, known paths and bounded evidence
 hashes survive SDK checkpoints in `zhivexRepairProgress`. Runtime read output is
-limited to 32000 serialized characters per model step in this profile.
+limited to 32000 serialized characters per model step when verified delivery is required.
 
-Changing the compaction strategy or runtime profile changes the harness binding.
+Changing the compaction strategy or delivery requirement changes the harness binding.
 Paused runs from an older binding must be completed/denied with their original
 artifact; these changes deliberately do not reinterpret an old approval.
 
-All harness profiles now return unknown tool selections as `TOOL_NOT_REGISTERED`
+The shared execution loop returns unknown tool selections as `TOOL_NOT_REGISTERED`
 and invalid arguments as structured error feedback. This general-purpose recovery
-is separate from the optional repair controller: the `strict` profile keeps
+is separate from the optional verified-delivery controller: ordinary runs keep
 ordinary model-driven task completion without imposing a verifier plan. No
 unregistered tool or invalid arguments are executed. Existing tool-error, step,
 token and time limits bound recovery; callers can select `stopOnError: true`,
@@ -355,7 +379,7 @@ payloads. See [CLI](CLI.md#configurable-model-assisted-compaction)
 and [model catalog](MODEL_CATALOG.md). Tool metadata, approval state and verification
 receipts remain outside the summarizer's authority. These runtime strategy changes
 alter durable fingerprints: finish old paused runs with their original artifact.
-Every runtime profile returns the matching persisted revision, including refreshed
+Every run returns the matching persisted revision, including refreshed
 context and accounting metadata, rather than an older in-memory SDK projection.
 Named child agents keep their existing bounded runtime; these new primary-run
 context/progress/compaction integrations do not claim a child-runtime migration.

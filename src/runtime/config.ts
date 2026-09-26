@@ -168,7 +168,6 @@ export interface HarnessConfig {
   scope: AgentStoreScope;
   maxSteps: number;
   timeoutMs: number;
-  agentProfile: "strict" | "repair";
   requireVerifiedDelivery: boolean;
   budget: HarnessBudget;
   costBudget?: HarnessCostBudget;
@@ -193,8 +192,7 @@ export interface HarnessConfigInput {
   namespace?: string;
   maxSteps?: number;
   timeoutMs?: number;
-  agentProfile?: string;
-  /** Require an actual verified repair; only available with agentProfile repair. */
+  /** Require an actual verified repair instead of allowing an analysis-only completion. */
   requireVerifiedDelivery?: boolean;
   maxToolCalls?: number;
   maxToolErrors?: number;
@@ -717,7 +715,6 @@ export const resolveHarnessConfig = (
   );
   const execution = resolveExecutionConfig(input);
   if (input.requireVerifiedDelivery !== undefined && typeof input.requireVerifiedDelivery !== "boolean") throw new HarnessConfigError("requireVerifiedDelivery must be boolean.");
-  if (input.requireVerifiedDelivery && (input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict") !== "repair") throw new HarnessConfigError("requireVerifiedDelivery requires agentProfile repair.");
 
   return {
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -733,7 +730,6 @@ export const resolveHarnessConfig = (
     },
     maxSteps,
     timeoutMs,
-    agentProfile: (() => { const value = input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict"; if (value !== "strict" && value !== "repair") throw new HarnessConfigError("agentProfile must be strict or repair."); return value; })(),
     requireVerifiedDelivery: input.requireVerifiedDelivery ?? false,
     budget,
     ...(maxCostUsd === undefined

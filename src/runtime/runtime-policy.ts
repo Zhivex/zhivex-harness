@@ -19,11 +19,12 @@ export const createRuntimeBudget = (budget: HarnessConfig["budget"], transportTo
   return { ...transport, inputGuardrail: durable.inputGuardrail, outputGuardrail: durable.outputGuardrail };
 };
 export const runtimeManifest = (config: HarnessConfig, tools: readonly string[], role = "primary") => ({
-  schemaVersion: 1, policyVersion: "repair-v2-durable-closure", role, profile: config.agentProfile,
+  schemaVersion: 2, policyVersion: "assistant-v3-durable-closure", role,
+  requireVerifiedDelivery: role === "primary" && config.requireVerifiedDelivery,
   backend: config.execution.backend, tools: [...tools].sort(),
   budget: { ...(role === "primary" ? config.budget : config.orchestration.childBudget) },
   timeoutMs: role === "primary" ? config.timeoutMs : config.orchestration.childTimeoutMs,
-  closureController: role === "primary" && config.agentProfile === "repair",
+  closureController: role === "primary" && config.requireVerifiedDelivery,
   contextEnabled: config.context.enabled
 });
 export const childRuntimeSafety = (config: HarnessConfig) => createProductionSafetyPolicy({

@@ -28,7 +28,7 @@ for (const scenario of ["validation", "unknown", "bounded", "approval"] as const
         scenario === "approval" ? call("edit", "apply_reviewed_edits", { changes: [
           { path: "new.txt", expectedDigest: null, content: "Must wait for approval" }
         ] }) : call("read", "read_file", { path: "evidence.txt" }), done];
-      harness = await createHarness({ workspace, agentProfile: "strict", store,
+      harness = await createHarness({ workspace, store,
         subagentProfiles: [profile], subagentMaxToolErrors: scenario === "bounded" ? 1 : 4,
         modelInstance: createMockLanguageModel({ streamEvents: [[
           { type: "tool-call", toolCall: { id: "delegate", name: `delegate_${profile}`, input: { prompt: "Inspect or edit the fixture" } } },
