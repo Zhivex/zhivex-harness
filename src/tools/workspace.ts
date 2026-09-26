@@ -53,7 +53,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   read_file: tool({
     name: "read_file",
-    description: "Read a bounded, line-numbered slice and SHA-256 digest of one UTF-8 text file using a workspace-relative path.",
+    description: "Read ONE UTF-8 file: pass path as a string, not files. For multiple slices use read_files. Returns a bounded line-numbered slice and SHA-256 digest. startLine/endLine are absolute inclusive line numbers, not a line count.",
     schema: z.object({
       path: z.string().min(1),
       startLine: z.number().int().min(1).default(1),
@@ -66,7 +66,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   read_files: tool({
     name: "read_files",
-    description: "Read up to 20 independent UTF-8 file slices in one bounded call. Duplicate paths are read once and results use deterministic path/range order.",
+    description: "Read up to 20 UTF-8 file slices: files must be an array of objects with path, startLine and optional endLine, never a JSON-encoded string. Line numbers are absolute and inclusive; endLine must be at least startLine. Duplicate paths are read once; results use deterministic path/range order.",
     schema: z.object({
       files: z.array(z.object({
         path: z.string().min(1),

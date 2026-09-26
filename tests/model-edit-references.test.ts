@@ -233,3 +233,37 @@ test("hidden patch validation receives provider-only inspection guidance, explic
     expect(JSON.stringify(history)).toBe(original);
   }
 });
+
+test("malformed reads receive provider-only corrections and recover to an approved edit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "zhx-read-recovery-"));
+  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  try {
+    await writeFile(path.join(root, "a.txt"), "before\nsecond\n");
+    const observed: string[] = [];
+    const model = wrapLanguageModel(createMockLanguageModel({ streamEvents: [
+      turn("wrong-name", "read_file", { files: '[{"path":"a.txt"}]' }),
+      turn("wrong-array", "read_files", { files: '[{"path":"a.txt"}]' }),
+      turn("wrong-range", "read_files", { files: [{ path: "a.txt", startLine: 2, endLine: 1 }] }),
+      turn("correct", "read_files", { files: [{ path: "a.txt", startLine: 1, endLine: 2 }] }),
+      turn("edit", "apply_reviewed_replacement", { path: "a.txt", oldText: "before", newText: "after" }), done
+    ] }), [{ wrapStream: async (context, next) => {
+      for (const message of context.input.messages) for (const part of message.parts) {
+        if (part.type === "tool-result" && part.toolResult.error) observed.push(part.toolResult.error.message);
+      }
+      return next();
+    } }]);
+    harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model, maxSteps: 8 });
+    const waiting = await runHarness(harness, { prompt: "Replace before with after", toolExecution: { stopOnError: false, validationErrorMode: "tool-result" } });
+    expect(waiting.status).toBe("waiting_approval");
+    expect(observed.some(text => text.includes("reads ONE file") && text.includes("not a JSON-encoded string"))).toBe(true);
+    expect(observed.some(text => text.includes("actual array of objects"))).toBe(true);
+    expect(observed.some(text => text.includes("absolute, inclusive line numbers"))).toBe(true);
+    expect(waiting.toolResults.filter(result => result.isError)).toHaveLength(3);
+    expect(waiting.toolResults.filter(result => result.error?.code === "TOOL_INPUT_VALIDATION_ERROR")
+      .every(result => result.error?.message === "Tool arguments do not match the input schema.")).toBe(true);
+    expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("before\nsecond\n");
+    const complete = await runHarness(harness, { state: waiting.state }, { resolveApprovals: async approvals => approvals.map(approval => ({ provider: approval.provider, approvalRequestId: approval.id, approve: true })) });
+    expect(complete.status).toBe("completed");
+    expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("after\nsecond\n");
+  } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+});

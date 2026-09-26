@@ -85,15 +85,19 @@ identifies the last returned line so ordinary reads can continue from the next l
 not treat that clipped text as the entire source line. Search an exact file to locate
 relevant short excerpts instead of repeatedly reading a large file.
 
-Conversation compaction uses `bounded-evidence-v7`. It retains a redacted excerpt of
-the initial user objective, recent conversation excerpts, bounded local-tool path
+Conversation compaction uses `bounded-evidence-v8`. It retains a redacted excerpt of
+the latest user direction as `objective`, the earlier task as `historicalObjective`
+when it changes, chronological steering, recent conversation excerpts, bounded local-tool path
 and digest evidence, and a separate short history of check exit codes, timeouts,
 and tool failures. These are recollections, not approvals or verification receipts.
 The latest four check/error records are kept independently of ordinary file-read
 noise. Up to ten distinct subsequent user excerpts are retained separately from
 assistant chatter, redacted and bounded to 512 characters each. They share the
 existing total summary budget and remain untrusted context. Interactive summaries
-can carry this structure across subsequent compactions.
+can carry this structure across subsequent compactions. Older summaries migrate
+their most recent steering into the current objective. A follow-up question does
+not erase the earlier task: it remains historical context and steering, and
+assistant narration cannot supersede user direction.
 
 The latest successful `repair_plan` is retained separately from assistant chatter,
 with bounded hypothesis, expected behavior, next check, and safe relative paths.
@@ -198,9 +202,10 @@ These are product choices supported by those sources, not a universal harness st
 
 ## Task continuity and repair policy (audit remediation)
 
-The `bounded-evidence-v7` summary remains lossy and bounded. It keeps up to ten
+The `bounded-evidence-v8` summary remains lossy and bounded. It keeps up to ten
 distinct user steering messages within the same 4,000-character limit. The initial
-objective is explicitly historical: later user corrections take precedence, the
+request is historical context; `objective` holds the latest direction. Later
+user corrections take precedence, the
 latest user message overrides the summary, and recalled assistant text cannot
 redefine user facts. This prevents repetitive narration from giving old values
 priority over later corrections; it does not make summaries authoritative.
@@ -378,6 +383,12 @@ tool turns. A genuine new user request resets that history, including when the
 user deliberately asks to reread an unchanged file. Approval resumes, summarized
 history and assistant/tool-only continuations retain it, so continuation cannot
 erase a loop within the same turn. Reads are not replaced with cached evidence.
+A separate durable counter requests a decision after eight exploratory operations
+without a successful edit or check, even when every read/search differs. This
+advisory asks for the smallest justified implementation, a synthesis for read-only
+work, a specific missing fact, or an explicit blocker. It never forces a tool call
+or adds a hard stop to legitimate exploration. New user requests and successful
+edits/checks reset it; approval resumes and compaction preserve it.
 Trusted independent local reads use up to four SDK workers; writes, checks,
 approvals, MCP and delegation remain barriers. This is not a latency benchmark.
 
@@ -406,3 +417,12 @@ Every run returns the matching persisted revision, including refreshed
 context and accounting metadata, rather than an older in-memory SDK projection.
 Named child agents keep their existing bounded runtime; these new primary-run
 context/progress/compaction integrations do not claim a child-runtime migration.
+
+### Correcting malformed read calls
+
+Provider-facing tool errors explain the difference between `read_file` (one
+string `path`) and `read_files` (an actual array of slice objects), and clarify
+that `endLine` is an absolute line number, not a count. The runtime does not
+execute, rename or silently repair malformed calls. Durable error receipts stay
+unchanged; the model must issue a corrected request, and edits still require
+current read evidence and approval.

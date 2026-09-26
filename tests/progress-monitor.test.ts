@@ -77,3 +77,37 @@ test("non-JSON custom results cannot turn a successful effect into an error", as
   expect(await (tools.custom as any).execute({})).toBe(result);
   expect(monitor.check().action).toBe("continue");
 });
+
+test("varied exploration advises durably without a hard stop or retaining payloads", () => {
+  let monitor = createProgressMonitor();
+  for (let index = 0; index < 40; index++) {
+    monitor.observeTool(index % 2 ? "read_file" : "search_files", { path: `private-${index}` }, { content: index });
+    if (index === 6) expect(monitor.needsExplorationDecision()).toBe(false);
+    if (index >= 7) expect(monitor.needsExplorationDecision()).toBe(true);
+    monitor = createProgressMonitor({ [PROGRESS_MONITOR_KEY]: JSON.parse(JSON.stringify(monitor.snapshot())) });
+    expect(monitor.check().action).toBe("continue");
+  }
+  expect(monitor.snapshot().exploration).toBe(8);
+  expect(JSON.stringify(monitor.snapshot())).not.toContain("private-");
+  monitor.markProgress();
+  expect(monitor.needsExplorationDecision()).toBe(false);
+});
+
+test("only successful edits and checks reset exploration; legacy metadata remains readable", () => {
+  const monitor = createProgressMonitor({ [PROGRESS_MONITOR_KEY]: { version: 1, history: [] } });
+  for (let index = 0; index < 8; index++) monitor.observeTool("read_dependency", { file: String(index) }, "not found", { failed: true });
+  monitor.observeTool("apply_patch", {}, "denied", { failed: true });
+  monitor.observeTool("run_check", {}, { exitCode: 1 });
+  monitor.observeTool("run_check", {}, { exitCode: 0, timedOut: true });
+  monitor.observeTool("apply_patch", {}, { success: false });
+  monitor.observeTool("propose_edits", {}, { changes: [] });
+  expect(monitor.needsExplorationDecision()).toBe(true);
+  monitor.observeTool("run_check", {}, { exitCode: 0 });
+  expect(monitor.needsExplorationDecision()).toBe(false);
+  for (let index = 0; index < 8; index++) monitor.observeTool("read_file", { path: String(index) }, "text");
+  monitor.observeTool("apply_reviewed_replacement", {}, { changed: true });
+  expect(monitor.needsExplorationDecision()).toBe(false);
+  // Exact-cycle safeguards are independent of an edit's successful return.
+  for (let index = 0; index < 5; index++) monitor.observeTool("apply_patch", {}, { changed: true });
+  expect(monitor.check().action).toBe("stop");
+});

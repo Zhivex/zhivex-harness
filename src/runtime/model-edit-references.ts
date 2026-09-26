@@ -23,6 +23,13 @@ const readPaths = (call: ToolCall): Set<string> => {
   }
   return paths;
 };
+const readRecovery = (call: ToolCall, result: ToolExecutionResult, batchAvailable: boolean): string | undefined => {
+  if (result.error?.code === "TOOL_INPUT_VALIDATION_ERROR") {
+    if (call.name === "read_file") return 'read_file reads ONE file: {"path":"relative/file","startLine":1,"endLine":120}. The required path must be a string; files is not a read_file argument.' + (batchAvailable ? ' For multiple slices use read_files with {"files":[{"path":"relative/file","startLine":1,"endLine":120}]}; files must be an array, not a JSON-encoded string.' : ' Submit one file per read_file call.');
+    return 'read_files requires {"files":[{"path":"relative/file","startLine":1,"endLine":120}]}. Supply an actual array of objects, not a JSON-encoded string. Every item needs a string path.';
+  }
+  if (result.error?.message.startsWith("Invalid line range for ")) return "startLine and endLine are absolute, inclusive line numbers, not a line count. endLine must be at least startLine; omit endLine to use the default bounded slice. Correct the range before retrying.";
+};
 const referenceRecovery = (call: ToolCall, result: ToolExecutionResult): string | undefined => {
   if (result.error?.code !== "TOOL_INPUT_VALIDATION_ERROR") return;
   const args = object(call.input);
@@ -50,11 +57,13 @@ const change = z.strictObject({ path: workspaceFilePathSchema,
 export const createModelEditReferences = (registered: ToolSet): LanguageModelMiddleware => {
   const prepare = (input: { messages: ModelMessage[]; tools?: ToolSet }) => {
     const active = new Set<string>();
+    const activeReads = new Set<string>();
     const tools = toToolSet(input.tools) ?? {};
     const visible = { ...tools };
     for (const [name, definition] of Object.entries(toToolSet(registered) ?? {})) {
       const selected = tools[name];
       if (!selected || !("schema" in selected) || !("schema" in definition) || selected.schema !== definition.schema) continue;
+      if (name === "read_file" || name === "read_files") activeReads.add(name);
       const schema = definition.schema;
       if (!(schema instanceof z.ZodObject)) continue;
       let publicSchema: z.ZodType | undefined;
@@ -100,7 +109,8 @@ export const createModelEditReferences = (registered: ToolSet): LanguageModelMid
       if (!call || call.call.name !== result.toolName) continue;
       calls.delete(result.toolCallId);
       if (result.isError) {
-        const guidance = active.has(result.toolName) ? referenceRecovery(call.call, result) : undefined;
+        const guidance = activeReads.has(result.toolName) ? readRecovery(call.call, result, activeReads.has("read_files"))
+          : active.has(result.toolName) ? referenceRecovery(call.call, result) : undefined;
         if (guidance) recovery.set(result, guidance);
         continue;
       }

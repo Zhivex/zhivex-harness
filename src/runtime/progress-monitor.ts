@@ -5,8 +5,14 @@ import { z } from "zod";
 export const PROGRESS_MONITOR_KEY = "zhivexProgressMonitor";
 const HISTORY_LIMIT = 64;
 const MAX_CYCLE = 8;
+const EXPLORATION_LIMIT = 8;
+const explorationTools = new Set(["read_file", "read_files", "read_dependency", "list_files", "search_files", "search_many"]);
+const editingTools = new Set(["apply_patch", "apply_reviewed_replacement", "apply_reviewed_edits",
+  "move_file", "quarantine_file", "restore_file", "apply_environment_patch",
+  "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"]);
 const stateSchema = z.object({
   version: z.literal(1),
+  exploration: z.number().int().min(0).max(EXPLORATION_LIMIT).optional(),
   history: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(HISTORY_LIMIT),
 });
 export type ProgressMonitorState = z.infer<typeof stateSchema>;
@@ -28,11 +34,13 @@ const digest = (value: unknown) => createHash("sha256").update(canonical(value))
 /** Advisory, profile-independent monitor. Observe completed operations; enforce a stop only
  * before the next model request. Never throw away results or suppress already executed effects.
  * An explicit revision can distinguish operations whose identical output hides real progress.
- * State contains bounded hashes only and survives compaction/resume through run metadata. */
+ * State contains bounded hashes and a capped counter, surviving compaction/resume through run metadata. */
 export const createProgressMonitor = (metadata?: Record<string, unknown>) => {
   const restored = metadata?.[PROGRESS_MONITOR_KEY];
-  let history = restored === undefined ? [] : [...stateSchema.parse(restored).history];
-  const snapshot = (): ProgressMonitorState => ({ version: 1, history: [...history] });
+  const initial = restored === undefined ? undefined : stateSchema.parse(restored);
+  let history = initial ? [...initial.history] : [];
+  let exploration = initial?.exploration ?? 0;
+  const snapshot = (): ProgressMonitorState & { exploration: number } => ({ version: 1, history: [...history], exploration });
   const persist = (target = metadata) => { if (target) target[PROGRESS_MONITOR_KEY] = snapshot(); };
   const observe = (value: unknown) => {
     // Observation is best-effort for non-JSON custom outputs; it must never
@@ -56,6 +64,14 @@ export const createProgressMonitor = (metadata?: Record<string, unknown>) => {
     return best;
   };
   const observeTool = (name: string, input: unknown, output: unknown, options?: { failed?: boolean; revision?: string }) => {
+    // Varied exploration can stall without an exact cycle. Count attempts, including
+    // failures; only a successful edit/check resets this separate advisory.
+    if (explorationTools.has(name)) exploration = Math.min(EXPLORATION_LIMIT, exploration + 1);
+    const result = output && typeof output === "object" ? output as Record<string, unknown> : undefined;
+    const succeeded = !options?.failed && result?.success !== false && result?.ok !== false &&
+      !result?.error && result?.isError !== true;
+    if (succeeded && (editingTools.has(name) ||
+      (name === "run_check" && result?.exitCode === 0 && !result?.timedOut))) exploration = 0;
     observe({ kind: "tool", name, input, output, failed: options?.failed ?? false, revision: options?.revision });
   };
   const observeText = (text: string) => {
@@ -63,7 +79,8 @@ export const createProgressMonitor = (metadata?: Record<string, unknown>) => {
     // Short acknowledgements are common and do not establish a stalled reasoning loop.
     if (normalized.length >= 80) observe({ kind: "text", text: normalized });
   };
-  const markProgress = () => { history = []; persist(); };
+  const markProgress = () => { history = []; exploration = 0; persist(); };
+  const needsExplorationDecision = () => exploration >= EXPLORATION_LIMIT;
   const wrapTools = (tools: ToolSet): ToolSet => Object.fromEntries(Object.entries(tools).map(([name, definition]) => {
     if (!("execute" in definition)) return [name, definition];
     return [name, { ...definition, async execute(input, context) {
@@ -79,5 +96,5 @@ export const createProgressMonitor = (metadata?: Record<string, unknown>) => {
       }
     } } satisfies typeof definition];
   }));
-  return { observeTool, observeText, markProgress, check, snapshot, wrapTools };
+  return { observeTool, observeText, markProgress, check, snapshot, wrapTools, needsExplorationDecision };
 };

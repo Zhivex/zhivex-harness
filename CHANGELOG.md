@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Keep current user direction prominent across compaction, retain earlier task context, and migrate legacy summaries. Add a durable advisory for prolonged varied exploration without forcing edits or stopping legitimate investigation. Give the model actionable read-call and line-range corrections while preserving original error receipts and approvals.
+
 - Allow bounded, read-only dependency source and documentation inspection, with listing and literal search for discovering package-relative files. Remove the separate metadata/type approval flow while retaining filesystem restrictions and mutation approvals.
 - Keep routine exploration out of the conversation until a run or approval boundary; preserve visible edits and check outcomes, and explain known tool failures without dumping private payloads. Keep `/verbose` and machine output available.
 

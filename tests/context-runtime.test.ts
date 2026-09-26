@@ -106,3 +106,76 @@ test("six genuine user requests may reread the same file without inheriting a st
     expect(calls).toBe(12);
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+for (const method of ["generate", "stream"] as const) test(`varied exploration remains an advisory across resume and compaction (${method})`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "exploration-advisory-"));
+  const model = createMockLanguageModel();
+  const requests: any[] = [];
+  model.generate = async input => { requests.push(input); return { text: "Findings.", finishReason: "stop" }; };
+  model.stream = async input => {
+    requests.push(input);
+    return (async function* () { yield { type: "finish" as const, finishReason: "stop" as const }; })();
+  };
+  const harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model,
+    subagentProfiles: [], store: createInMemoryAgentRunStore() });
+  try {
+    const monitor = createProgressMonitor();
+    for (let index = 0; index < 8; index++) monitor.observeTool("read_file", { path: `${index}.ts` }, { content: index });
+    const metadata = { [PROGRESS_MONITOR_KEY]: JSON.parse(JSON.stringify(monitor.snapshot())) };
+    const runtime = await createContextRuntime(harness.workspace, metadata, false);
+    const wrapped = wrapLanguageModel(model, [runtime.middleware]);
+    const invoke = async (target: typeof wrapped) => {
+      const input = { messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "[Compacted prior conversation] Read-only audit." }] }], toolChoice: "auto" as const };
+      if (method === "generate") await target.generate(input);
+      else for await (const _event of await target.stream!(input)) { /* drain */ }
+    };
+    await invoke(wrapped);
+    const request = requests[0];
+    expect(JSON.stringify(request.messages)).toContain("several exploratory operations");
+    expect(JSON.stringify(request.messages)).toContain("read-only review or investigation");
+    expect(JSON.stringify(request.messages)).toContain("concrete unresolved question");
+    expect(request.toolChoice).toBe("auto");
+    // A continued run still sees the bounded advisory; new user input resets it.
+    await invoke(wrapped);
+    expect(JSON.stringify(requests[1].messages)).toContain("several exploratory operations");
+    const fresh = await createContextRuntime(harness.workspace, metadata, false, { newUserRequest: true });
+    await invoke(wrapLanguageModel(model, [fresh.middleware]));
+    expect(JSON.stringify(requests[2].messages)).not.toContain("several exploratory operations");
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("a model can leave varied exploration for an approved edit after the advisory", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "exploration-edit-"));
+  for (let index = 0; index < 8; index++) await writeFile(path.join(root, `${index}.ts`), `export const value = ${index};`);
+  const model = createMockLanguageModel();
+  let reads = 0;
+  let requestedEdit = false;
+  model.stream = async input => {
+    const advisory = JSON.stringify(input.messages).includes("several exploratory operations");
+    return (async function* () {
+      if (requestedEdit) yield { type: "text-delta" as const, textDelta: "Updated." };
+      else if (advisory) {
+        requestedEdit = true;
+        yield { type: "tool-call" as const, toolCall: { id: "edit", name: "apply_reviewed_replacement", input: {
+          path: "0.ts", oldText: "export const value = 0;", newText: "export const value = 42;"
+        } } };
+      } else {
+        yield { type: "tool-call" as const, toolCall: { id: `read-${reads}`, name: "read_file", input: { path: `${reads++}.ts` } } };
+      }
+      yield { type: "finish" as const, finishReason: "stop" as const, usage: { inputTokens: 1, outputTokens: 1 } };
+    })();
+  };
+  const harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model,
+    subagentProfiles: [], store: createInMemoryAgentRunStore() });
+  try {
+    const result = await runHarness(harness, { prompt: "Update value to 42 in 0.ts", maxSteps: 16 });
+    expect(reads).toBe(8);
+    expect(result.status).toBe("waiting_approval");
+    const resumed = await runHarness(harness, { state: result.state, approvals: result.state.pendingApprovals.map(approval => ({
+      provider: approval.provider, approvalRequestId: approval.id, approve: true
+    })) });
+    expect(resumed.status).toBe("completed");
+    expect((resumed.state.metadata?.[PROGRESS_MONITOR_KEY] as { exploration?: number }).exploration).toBe(0);
+    expect(await Bun.file(path.join(root, "0.ts")).text()).toBe("export const value = 42;");
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
