@@ -39,8 +39,10 @@ These references inform interaction patterns, not a claim of feature parity.
   access checks or Harness certification. Custom IDs remain supported. A generator
   refreshes the snapshot from an explicit SDK checkout, without adding a runtime dependency.
 - Activity: direct chat omits routine provider/step notices by default; `/verbose`
-  restores those details. Tool actions, approval payloads, failures, usage and
-  verification outcomes stay visible. This does not change machine output.
+  restores individual events for subsequent activity. Reads and searches use a
+  temporary status and one summary at the run or approval boundary. Edits,
+  failures, approvals and verification outcomes stay visible. Known failures
+  use safe, actionable descriptions instead of an opaque tool error. This does not change machine output.
 - Both direct and service consoles reuse input, history, help, composer and chooser
   presentation. Service-host authority and available commands remain explicit.
 
@@ -66,3 +68,12 @@ when opening help.
 An empty slash search presents common actions. A nonempty query searches the full
 supported catalog. `/help` keeps approval controls visible; `/help all` also shows
 advanced actions. The service console still exposes only host-supported actions.
+
+### Presentation references
+
+The compact view follows the separation between conversation and optional tool
+detail in [Claude Code interactive mode](https://code.claude.com/docs/en/interactive-mode)
+and the grouped exploration presentation in
+[Codex's terminal renderer](https://github.com/openai/codex/blob/main/codex-rs/tui/src/exec_cell/render.rs).
+Zhivex uses its existing `/verbose` toggle; this is not a retrospective transcript
+viewer. JSON and JSONL keep their existing machine contracts.

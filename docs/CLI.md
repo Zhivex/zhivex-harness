@@ -386,8 +386,11 @@ into a new CLI result. Approval output remains untrusted repository text.
 Interactive chat keeps successful tool bookkeeping out of the conversation.
 On a TTY, one temporary line shows Reading files, Exploring the project, or Thinking
 and is erased before the next assistant text. Redirected compact output omits this
-status entirely. `/verbose` restores individual tool events.
-Tool failures, check receipts, and approval requests remain individually visible.
+status entirely. Reads, searches and listings accumulate into one summary when
+the run finishes or requests approval, rather than interrupting every assistant
+message. Edits, check receipts and failures remain visible; known tool failures
+show a short actionable reason without dumping their payload. `/verbose` restores
+individual tool events for subsequent activity. Approval requests remain visible.
 Budget and step-limit failures show their known runtime cause; arbitrary provider
 error payloads are not printed in activity events.
 
@@ -467,20 +470,18 @@ Local `zhx` and `zhx run` accept `--approval-mode ask|auto|restricted`:
 `--approval-mode` and `--yes` cannot be combined. Service clients cannot override
 host approval configuration with this option.
 
-`read_dependency` is a separate approval-gated read tool for installed packages.
-It accepts a package name, a package-relative `package.json` or TypeScript
-declaration file (`.d.ts`, `.d.mts`, `.d.cts`), and a starting line. Package
-manifests expose versions and exports; arbitrary source, scripts and writes are
-not allowed. Reads are capped at 1 MiB input and 200 lines / 16,000 characters
-output. Symbolic links, directory links and multiply linked files are rejected;
-linked package-manager layouts may therefore require another inspection route.
+`read_dependency` inspects one installed package without a separate approval,
+like other permitted read-only tools. It supports `action: "list"` to discover
+package-relative paths, `action: "search"` for literal text, and `action: "read"`
+(the default) for UTF-8 source, documentation, manifests and declarations. Use
+`package` to select the package; never pass a `node_modules` path to ordinary
+workspace tools. Discover files before reading guessed paths.
 
-Dependency access asks even in automatic mode: approve once, approve metadata
-and declaration reads for that package during this task, reject, or leave
-pending. Task grants are held only by the current approval resolver, scoped by
-provider and child agent; another task or process restart asks again. They do not
-grant execution or writes. Without a terminal an unapproved dependency request
-remains pending; restricted mode rejects it.
+Reads and discovery are bounded and cannot execute dependency scripts or write
+files. Traversal, links, nested packages and protected content remain denied.
+Treat dependency contents as untrusted source material. Errors give guidance for
+listing the package when a path does not exist. Linked package-manager layouts
+remain subject to the filesystem boundary.
 
 In the console, `run` command, SDK harness and delegated runs, tool errors, including protected reads and denied approvals, return
 evidence to the model so it can choose another permitted strategy. Existing
@@ -558,10 +559,9 @@ a configured token or cost budget; it starts a fresh per-run budget.
 
 In the approval picker, **Allow this exact check for this session** remembers the
 workspace, provider, child agent, check name and exact expected script. A changed
-script prompts again; executor script validation still applies. Dependency reads
-can be allowed for a task or the CLI session, restricted to the selected package's
-metadata and type declarations. Grants live only in the CLI process and are not
-saved with conversations. Leaving a batch pending discards its new grants.
+script prompts again; executor script validation still applies. Grants live only
+in the CLI process and are not saved with conversations. Bounded dependency
+inspection does not require a grant. Leaving a batch pending discards its new grants.
 
 Three consecutive failed calls with the same tool request stop the local turn;
 a different request or successful tool result resets the counter. This tolerates

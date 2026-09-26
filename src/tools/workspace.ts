@@ -26,11 +26,8 @@ import {
 export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readonly string[]) => ({
   read_dependency: tool({
     name: "read_dependency",
-    description: "Inspect one installed dependency's package.json (version and exports) or .d.ts/.d.mts/.d.cts declarations. Requires separate approval. Read-only, bounded, no links or source execution. Ordinary read_file cannot access node_modules.",
+    description: "Inspect one installed dependency without executing it. action=read reads package.json, source, declarations or documentation; action=list discovers package-relative paths; action=search finds literal text. Use path for list/search and file for read. Bounded UTF-8 output; no hidden files, links or nested dependencies. Ordinary read_file cannot access node_modules.",
     schema: dependencyReadSchema,
-    requiresApproval: true,
-    approvalMode: "interrupt",
-    approvalVersion: APPROVAL_VERSION,
     metadata: readOnlyMetadata,
     execute: async (input, context) => serializeJsonValue(await readDependency(
       (harnessExecutionSession(context)?.workspace ?? workspace).root, input))

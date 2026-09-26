@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Allow bounded, read-only dependency source and documentation inspection, with listing and literal search for discovering package-relative files. Remove the separate metadata/type approval flow while retaining filesystem restrictions and mutation approvals.
+- Keep routine exploration out of the conversation until a run or approval boundary; preserve visible edits and check outcomes, and explain known tool failures without dumping private payloads. Keep `/verbose` and machine output available.
+
 ## 1.2.0-rc.8 - 2026-09-26
 
 - Include durable child and descendant OCI snapshots in parent completion checks. Report `OCI_CHILD_DELIVERY_PENDING` when a delegated edit has not reached the host; missing descendant state fails closed without requesting an import from the wrong workspace.

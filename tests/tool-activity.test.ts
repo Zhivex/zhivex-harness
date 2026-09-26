@@ -142,3 +142,66 @@ test("failed tools never appear as completed and unknown tool names remain priva
   activity.start("SECRET_TOOL"); activity.finish("SECRET_TOOL", false); activity.flush();
   expect(output).toBe("");
 });
+
+test("prose pauses transient progress without losing exploration or leaving a heartbeat", () => {
+  jest.useFakeTimers();
+  let output = "";
+  const activity = new ToolActivity(text => { output += text; }, true);
+  try {
+    activity.start("read_file"); activity.finish("read_file");
+    activity.pause();
+    const paused = output;
+    jest.advanceTimersByTime(2000);
+    expect(output).toBe(paused);
+    expect(output).not.toContain("✓ Activity");
+    activity.start("search_files"); activity.finish("search_files"); activity.flush();
+    expect(output).toContain("✓ Activity · reads: 1 · searches: 1\n");
+  } finally { activity.flush(); jest.useRealTimers(); }
+});
+
+test("interleaved narration and tool results leave one summary and safe actionable errors", async () => {
+  const { streamSink, flushToolActivity } = await import("../src/cli/presentation.js");
+  let output = "";
+  const stdout = spyOn(process.stdout, "write").mockImplementation(((text: string) => { output += text; return true; }) as never);
+  const stderr = spyOn(process.stderr, "write").mockImplementation(((text: string) => { output += text; return true; }) as never);
+  try {
+    const tracker = { streamedText: false };
+    const sink = streamSink({ json: false, jsonl: false }, tracker, true);
+    for (let i = 0; i < 8; i++) {
+      await sink({ type: "tool-result", toolResult: { toolName: "read_dependency", output: "PRIVATE" } } as never);
+      await sink({ type: "text-delta", textDelta: `Finding ${i}.\n` } as never);
+      expect(output).not.toContain("✓ Activity");
+    }
+    await sink({ type: "tool-result", toolResult: { toolName: "read_file", isError: true, error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "SECRET" } } } as never);
+    await sink({ type: "tool-result", toolResult: { toolName: "read_dependency", isError: true, error: { message: "ENOENT: PRIVATE/path" } } } as never);
+    await sink({ type: "tool-result", toolResult: { toolName: "SECRET_TOOL", isError: true, error: { message: "SECRET" } } } as never);
+    await sink({ type: "tool-result", toolResult: { toolName: "apply_patch", output: "PRIVATE" } } as never);
+    expect(output).toContain("invalid arguments");
+    expect(output).toContain("file not found");
+    expect(output).toContain("✓ Edits applied");
+    expect(output).not.toContain("✓ Activity");
+    await sink({ type: "agent-run-finish", status: "waiting_approval" } as never);
+    flushToolActivity(tracker);
+    expect(output.match(/✓ Activity/g)).toHaveLength(1);
+    expect(output).toContain("dependency inspections: 8");
+    expect(output).not.toContain("PRIVATE");
+    expect(output).not.toContain("SECRET");
+    expect(output).not.toContain("edits: 1");
+  } finally { stdout.mockRestore(); stderr.mockRestore(); }
+});
+
+test("dependency discovery hints never copy names or raw paths into terminal output", async () => {
+  const { compactToolResult } = await import("../src/cli/terminal/tool-activity.js");
+  const line = compactToolResult({ toolName: "read_dependency", isError: true,
+    error: { message: "Dependency package or path was not found in PRIVATE. Use action=list" } });
+  expect(line).toContain("list the package files");
+  expect(line).not.toContain("PRIVATE");
+});
+
+test("current dependency missing-path and missing-package errors have distinct recovery hints", async () => {
+  const { compactToolResult } = await import("../src/cli/terminal/tool-activity.js");
+  const result = (message: string) => compactToolResult({toolName:"read_dependency", isError:true, error:{message}});
+  expect(result("Dependency path was not found in PRIVATE. Use read_dependency with action=list and path=. to discover actual package-relative paths.")).toContain("list the package files");
+  expect(result("Dependency PRIVATE is not installed in this workspace's node_modules. Check package.json")).toContain("check the project installation");
+  expect(result("Dependency PRIVATE is not installed in this workspace's node_modules.")).not.toContain("PRIVATE");
+});

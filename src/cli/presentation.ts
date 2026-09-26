@@ -1,4 +1,4 @@
-import { ToolActivity } from "./terminal/tool-activity.js";
+import { ToolActivity, compactToolResult } from "./terminal/tool-activity.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "../runtime/usage-ledger.js";
 import { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
@@ -69,62 +69,21 @@ export const terminalApprovalResolver = (
   ask?: (question: string) => Promise<string>,
   ui?: { select: import("./cli-credentials.js").CredentialInput["select"]; workspace: string; sessionGrants?: Set<string> }
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
-  const grants = new Set<string>();
   return async (approvals) => {
-  if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
-  if ((automaticallyApprove === true || automaticallyApprove === "auto") && !approvals.some(a => a.name === "read_dependency")) {
-    return approvalResponses(approvals, true, "Approved by --yes.");
-  }
-  if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) {
-    return undefined;
-  }
-
-  const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
-  const question = ask ?? ((text: string) => readline!.question(text));
-  try {
-    if (!approvals.some(a => a.name === "read_dependency")) {
-      return await resolveTerminalApprovals(approvals, { ask: question, write: text => process.stderr.write(text), ...ui });
+    if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
+    if (automaticallyApprove === true || automaticallyApprove === "auto") {
+      return approvalResponses(approvals, true, "Approved by automatic mode.");
     }
-    const responses: AgentApprovalResponse[] = [];
-    const staged = new Set(grants);
-    const stagedSession = ui?.sessionGrants ? new Set(ui.sessionGrants) : undefined;
-    for (const approval of approvals) {
-      if (approval.name === "read_dependency") {
-        let name: string | undefined;
-        try {
-          const args = typeof approval.arguments === "string" ? JSON.parse(approval.arguments) : approval.arguments;
-          if (args && typeof args.package === "string" && /^(?:@[a-z0-9_-]+\/)?[a-z0-9][a-z0-9._-]*$/.test(args.package)) name = args.package;
-        } catch { /* Malformed requests never gain a grant. */ }
-        const key = name ? JSON.stringify([approval.provider, approval.childAgentId ?? "", name]) : undefined;
-        const sessionKey = key && ui?.workspace ? JSON.stringify(["dependency", ui.workspace, key]) : undefined;
-        if (sessionKey && stagedSession?.has(sessionKey)) { responses.push(...approvalResponses([approval], true, "Dependency metadata/types approved for this CLI session.")); continue; }
-        if (key && staged.has(key)) { responses.push(...approvalResponses([approval], true, "Dependency read approved for this task.")); continue; }
-        process.stderr.write(formatApproval(approval, { detail: "summary" }) + "\n");
-        const answer = ui ? await ui.select(`Dependency metadata/types: ${name ?? "invalid package"}`, [
-          { value: "n", label: "Reject" }, { value: "y", label: "Allow once" },
-          { value: "t", label: "Allow this package for this task", detail: "Metadata and type declarations only" },
-          ...(stagedSession ? [{ value: "s", label: "Allow this package for this session", detail: "Metadata and type declarations only" }] : []),
-          { value: "q", label: "Leave pending" },
-        ]) ?? "q" : (await question(`Read dependency ${name ?? "(invalid package)"} metadata/types? [y] once / [t] this task / [n] deny / [q] leave pending: `)).trim().toLowerCase();
-        if (answer === "q") return undefined;
-        const approved = Boolean(key && (["y", "yes", "t"].includes(answer) || (answer === "s" && stagedSession && sessionKey)));
-        if (approved && answer === "t") staged.add(key!);
-        if (approved && answer === "s" && sessionKey) stagedSession?.add(sessionKey);
-        responses.push(...approvalResponses([approval], approved, approved ? "Approved bounded dependency read." : "Dependency read denied."));
-      } else if (automaticallyApprove === true || automaticallyApprove === "auto") {
-        responses.push(...approvalResponses([approval], true, "Approved by automatic mode."));
-      } else {
-        const result = await resolveTerminalApprovals([approval], { ask: question, write: text => process.stderr.write(text), ...ui, ...(stagedSession ? { sessionGrants: stagedSession } : {}) });
-        if (!result) return undefined;
-        responses.push(...result);
-      }
+    if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
+    const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      return await resolveTerminalApprovals(approvals, {
+        ask: ask ?? ((text: string) => readline!.question(text)),
+        write: text => process.stderr.write(text), ...ui
+      });
+    } finally {
+      readline?.close();
     }
-    for (const key of staged) grants.add(key);
-    for (const key of stagedSession ?? []) ui?.sessionGrants?.add(key);
-    return responses;
-  } finally {
-    readline?.close();
-  }
   };
 };
 
@@ -215,11 +174,24 @@ export const streamSink = (
     }
     if (event.type === "tool-result") {
       activity.finish(event.toolResult.toolName, !event.toolResult.isError);
-      // Checks and failures remain explicit, including nonzero check receipts.
-      if (!event.toolResult.isError && !["run_check", "run_environment_command"].includes(event.toolResult.toolName) && !event.toolResult.toolName.startsWith("verify_and_apply_")) return;
+      // Keep edits, checks and actionable failures explicit without fragmenting exploration.
+      const detail = compactToolResult(event.toolResult);
+      const check = ["run_check", "run_environment_command"].includes(event.toolResult.toolName) || event.toolResult.toolName.startsWith("verify_and_apply_");
+      if (detail && !check) {
+        activity.pause();
+        tracker.markdown?.flush();
+        if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
+        process.stderr.write(`${detail}\n`);
+        return;
+      }
+      if (!check) return;
+      activity.pause();
+    } else if (["agent-run-finish", "error", "tool-approval-request", "agent-approval-request"].includes(event.type)) {
+      tracker.markdown?.flush();
+      if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
       activity.flush();
     } else if (!["provider-data", "finish", "agent-step-start", "agent-step-finish"].includes(event.type)) {
-      activity.flush();
+      activity.pause();
     }
   }
   if (!output.json && event.type === "text-delta") {
@@ -241,9 +213,12 @@ export const streamSink = (
     if (compact && event.type === "agent-run-finish" && event.status === "waiting_approval") return;
     tracker.markdown?.flush();
     proseLineOpen.delete(tracker);
-    const line = formatTerminalEvent(event, {
+    let line = formatTerminalEvent(event, {
       color: terminalSupportsColor(Boolean(process.stderr.isTTY))
     });
+    if (compact && event.type === "tool-result" && event.toolResult.isError && line?.endsWith(" · error")) {
+      line = compactToolResult(event.toolResult);
+    }
     if ((event.type === "error" || (event.type === "agent-run-finish" && event.status === "failed")) && line) {
       const cause = terminalRunFailure(event.type === "error" ? event.error : event.state.error);
       if (lastTerminalFailures.get(tracker) === cause) return;
