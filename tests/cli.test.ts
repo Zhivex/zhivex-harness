@@ -853,6 +853,7 @@ describe("CLI process contract", () => {
         "openai",
         "--model",
         "gpt-5.6-terra",
+        "--reasoning", "low",
         "--json"
       ], env);
       expect(initialized.exitCode).toBe(CLI_EXIT_CODES.success);
@@ -864,7 +865,8 @@ describe("CLI process contract", () => {
           name: "daily",
           schemaVersion: 1,
           provider: "openai",
-          model: "gpt-5.6-terra"
+          model: "gpt-5.6-terra",
+          reasoningEffort: "low"
         },
         credential: { configured: true },
         next: { doctor: "zhx doctor --profile daily" }
@@ -886,6 +888,13 @@ describe("CLI process contract", () => {
         kind: "doctor",
         configuration: { provider: "openai", model: "gpt-5.6-terra" }
       });
+
+      const updated = await runCli(["init", "--profile", "daily", "--update"], env);
+      expect(updated.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(updated.stdout).toContain("Reasoning: low");
+      const reset = await runCli(["init", "--profile", "daily", "--update", "--reasoning", "default", "--json"], env);
+      expect(reset.exitCode).toBe(CLI_EXIT_CODES.success);
+      expect(parseCliJsonDocument(JSON.parse(reset.stdout))).toMatchObject({ profile: { reasoningEffort: "default" } });
 
       const duplicate = await runCli([
         "init",

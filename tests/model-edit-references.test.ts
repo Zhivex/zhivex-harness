@@ -318,3 +318,40 @@ test("retained candidate survives a new middleware instance and cannot bypass mi
   expect((await invoke(read,tools,"unknown")).input).toEqual({retryToolCallId:"unknown"});
   expect((await invoke([],tools)).prompt).toContain("Rejected edit candidates");
 });
+
+for (const scenario of ["missing-digest", "missing-changes", "invalid-content"] as const) {
+  test(`resume advertises only repairable edit candidates: ${scenario}`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhx-recovery-seed-"));
+    let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+    try {
+      const prompts: string[] = [];
+      const name = "apply_reviewed_edits";
+      const args = scenario === "missing-changes" ? {} : {
+        changes: [{ path: "a.txt", content: scenario === "invalid-content" ? 42 : "after" }]
+      };
+      const model = wrapLanguageModel(createMockLanguageModel({ streamEvents: [turn("candidate", name, args), done, done] }), [{
+        wrapStream: async (context, next) => { prompts.push(JSON.stringify(context.input.messages)); return next(); }
+      }]);
+      harness = await createHarness({ workspace: root, modelInstance: model });
+      const failed = await runHarness(harness, { prompt: "Edit", toolExecution: { stopOnError: false, validationErrorMode: "tool-result" } });
+      expect(failed.toolResults.some(result => result.error?.code === "TOOL_INPUT_VALIDATION_ERROR")).toBe(true);
+      expect(prompts.at(-1)!.includes("Rejected edit candidates")).toBe(scenario === "missing-digest");
+      await runHarness(harness, { state: failed.state });
+      expect(prompts.at(-1)!.includes("Rejected edit candidates")).toBe(scenario === "missing-digest");
+    } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+  });
+}
+
+
+test("verified edit recovery rejects missing command even alongside missing digests", async () => {
+  const { canRecoverEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const call = turn("candidate", "verify_and_apply_reviewed_edits", { changes: [{ path: "a.txt", content: "after" }] })[0].toolCall;
+  const digest = { code: "invalid_type", path: ["changes", 0, "expectedDigest"] };
+  const command = { code: "invalid_type", path: ["command"] };
+  for (const issues of [[command], [command, digest], []]) {
+    expect(canRecoverEditReferences(call, { toolName: call.name, toolCallId: call.id, isError: true,
+      error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid arguments", issues } })).toBe(false);
+  }
+  expect(canRecoverEditReferences(call, { toolName: call.name, toolCallId: call.id, isError: true,
+    error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid arguments", issues: [digest] } })).toBe(true);
+});

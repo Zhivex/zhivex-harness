@@ -30,6 +30,20 @@ const readRecovery = (call: ToolCall, result: ToolExecutionResult, batchAvailabl
   }
   if (result.error?.message.startsWith("Invalid line range for ")) return "startLine and endLine are absolute, inclusive line numbers, not a line count. endLine must be at least startLine; omit endLine to use the default bounded slice. Correct the range before retrying.";
 };
+/** Only missing digest issues can be repaired by rereading targets. */
+export const canRecoverEditReferences = (call: ToolCall, result: ToolExecutionResult): boolean => {
+  const args = object(call.input);
+  const issues = result.error?.issues ?? [];
+  if (!args || !result.isError || result.toolName !== call.name || result.toolCallId !== call.id ||
+    result.error?.code !== "TOOL_INPUT_VALIDATION_ERROR" || issues.length === 0) return false;
+  return issues.every(issue => {
+    if (call.name === replacement) return issue.path.length === 1 && issue.path[0] === "expectedDigest" && !("expectedDigest" in args);
+    const [field, index, digest] = issue.path;
+    const item = edits.has(call.name) && field === "changes" && typeof index === "number" && Array.isArray(args.changes)
+      ? object(args.changes[index]) : undefined;
+    return issue.path.length === 3 && digest === "expectedDigest" && Boolean(item && !("expectedDigest" in item));
+  });
+};
 const referenceRecovery = (call: ToolCall, result: ToolExecutionResult): string | undefined => {
   if (result.error?.code !== "TOOL_INPUT_VALIDATION_ERROR") return;
   const args = object(call.input);
@@ -39,13 +53,7 @@ const referenceRecovery = (call: ToolCall, result: ToolExecutionResult): string 
     return "No successful patch inspection is available in this request. Call inspect_environment_patch, wait for its successful result, then retry this import in a later turn. Omit patchId; the runtime binds the inspected snapshot before requesting approval. Do not invent a hash.";
   }
   if (typeof args.retryToolCallId === "string") return "The retained candidate is unavailable or the retry fields are invalid. Submit a fresh edit after reading existing targets; retryToolCallId may only be combined with createPaths, not replacement contents or verifier overrides.";
-  const missingDigest = call.name === replacement
-    ? !("expectedDigest" in args) && issues.some(issue => issue.path[0] === "expectedDigest")
-    : edits.has(call.name) && issues.some(issue => {
-      const [field, index, digest] = issue.path;
-      const item = field === "changes" && typeof index === "number" && Array.isArray(args.changes) ? object(args.changes[index]) : undefined;
-      return digest === "expectedDigest" && item && !("expectedDigest" in item);
-    });
+  const missingDigest = canRecoverEditReferences(call, result);
   const targets = call.name === replacement ? [args.path] : Array.isArray(args.changes)
     ? issues.flatMap(issue => { const index = issue.path[1]; return typeof index === "number" ? [object((args.changes as JsonValue[])[index]!)?.path] : []; }) : [];
   if (missingDigest) return `Unresolved targets: ${JSON.stringify([...new Set(targets.filter(value => typeof value === "string"))])}. Edit reference recovery for ${JSON.stringify(call.id)}: read the existing target files again, then retry with retryToolCallId=${JSON.stringify(call.id)} and createPaths listing only genuinely new files. Do not regenerate unchanged contents. ` + "No successful read is available for an existing edit target in this request. Call read_file or read_files for every existing target, wait for successful results, then retry the edit in a later turn. Omit expectedDigest; the runtime binds those reads before requesting approval. Do not invent a hash or mark an existing file as create=true.";
@@ -129,6 +137,7 @@ export const createModelEditReferences = (registered: ToolSet, failedCalls: Tool
       if (!call || call.call.name !== result.toolName) continue;
       calls.delete(result.toolCallId);
       if (result.isError) {
+        if (!canRecoverEditReferences(call.call, result)) candidates.delete(result.toolCallId);
         const guidance = activeReads.has(result.toolName) ? readRecovery(call.call, result, activeReads.has("read_files"))
           : active.has(result.toolName) ? referenceRecovery(call.call, result) : undefined;
         if (guidance) recovery.set(result, guidance);

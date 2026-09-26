@@ -1,7 +1,7 @@
 import { withReasoningEffort } from "../providers/reasoning.js";
 import { qwenLocalContext } from "../providers/qwen-context.js";
 import { createOciDelivery, pendingDescendantDelivery } from "./oci-delivery.js";
-import { createModelEditReferences } from "./model-edit-references.js";
+import { canRecoverEditReferences, createModelEditReferences } from "./model-edit-references.js";
 import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
 import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
@@ -1160,9 +1160,9 @@ const runHarnessInternal = async (
   const recoverySteps = "state" in input && !input.state.pendingApprovals.some(approval => mutationNames.has(approval.name))
     ? input.state.steps.slice(input.state.steps.map(step => step.toolResults.some(result => !result.isError && mutationNames.has(result.toolName))).lastIndexOf(true) + 1) : [];
   const failedEditCalls = recoverySteps.flatMap(step => {
-    const rejected = new Set(step.toolResults.filter(result => result.isError && result.error?.code === "TOOL_INPUT_VALIDATION_ERROR").map(result => result.toolCallId));
+    const rejected = new Map(step.toolResults.map(result => [result.toolCallId, result]));
     return (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part =>
-      part.type === "tool-call" && rejected.has(part.toolCall.id) ? [part.toolCall] : []));
+      part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
   });
   const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
   harness = { ...harness, store: contextStore, agent: new Agent({

@@ -65,7 +65,8 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
       path: created.path,
       schemaVersion: created.profile.schemaVersion,
       provider: created.profile.provider,
-      model: created.profile.model
+      model: created.profile.model,
+      reasoningEffort: created.profile.reasoningEffort ?? "default"
     },
     credential: {
       configured: availability?.configured ?? false,
@@ -79,12 +80,12 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
     return true;
   }
   if (context.onboarding) {
-    process.stdout.write(`Provider and model saved. Next: configure credentials for ${provider}.\n`);
+    process.stdout.write(`Provider and model saved. Reasoning: ${created.profile.reasoningEffort ?? "default"}. Next: configure credentials for ${provider}.\n`);
     return true;
   }
   process.stdout.write([
     `${options.updateProfile ? "Updated" : "Created"} personal profile ${profileName} at ${created.path}.`,
-    `Provider: ${created.profile.provider} · Model: ${created.profile.model}`,
+    `Provider: ${created.profile.provider} · Model: ${created.profile.model} · Reasoning: ${created.profile.reasoningEffort ?? "default"}`,
     availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
       : `Open zhx to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
