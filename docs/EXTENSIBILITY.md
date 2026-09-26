@@ -14,6 +14,22 @@ OpenAI is based on the GPT-5.6 family: `gpt-5.6-luna` is the default, with `gpt-
 
 Gemini still defaults to `gemini-3.6-flash`, uses `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`, and accepts optional `GEMINI_BASE_URL`. Adapter `0.11.0` adds modeled Gemini 3.7 and media/realtime surfaces, but the default and support level do not change implicitly. Gemini remains provisional until proposal/approval/restart, delegation, mixed routing, and OCI execution pass the credentialed Harness live matrix; adapter-level evidence alone does not make the Harness integration certified.
 
+### Meta conversation continuity
+
+The built-in Meta route uses Responses with `store: false` and `include: ["reasoning.encrypted_content"]`. It sends retained messages, tool calls, receipts, and opaque encrypted reasoning on every turn. It does not depend on server-side response IDs. A narrow compatibility layer inserts reasoning items omitted by the pinned Meta SDK serializer; the SDK still owns ordinary serialization, streaming, and HTTP handling. Serializer-layout mismatches fail explicitly.
+
+Existing sessions retain visible history and tool receipts; reasoning from old turns that never requested encrypted content cannot be recovered. New encrypted items stay intact in the local checkpoint and are replayed only with retained turns. Model instances do not share replay buffers. No completed host tool is rerun to restore context.
+
+The legacy receipt-only recovery helper permits two backoffs, 1s then 2s, when Meta rejects a just-completed response ID. It never retries arbitrary invalid input or hosted-tool requests. The built-in stateless route does not need this recovery path.
+
+For a bounded live check of both generate and streaming replay, including a new model instance and JSON-restored history:
+
+```bash
+ZHIVEX_HARNESS_LIVE=1 bun --env-file=.env scripts/meta-replay-live-smoke.ts
+```
+
+The check makes four requests and reports only assertions; it does not print response IDs or encrypted content. It validates source behavior, not a newly published release artifact.
+
 ## Capability gate
 
 Every run requires streaming and callable-tool support by default. Add explicit requirements with repeatable CLI flags:

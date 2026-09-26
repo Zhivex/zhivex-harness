@@ -40,19 +40,23 @@ const isUnavailableResponse = async (response: Response) => {
   finally { void reader.cancel().catch(() => {}); }
 };
 
-export const createMetaContinuationFetch = (fetcher: typeof fetch = fetch, waitMs = 500): typeof fetch => {
-  // The SDK's retries reuse their RequestInit. At most one additional attempt
+export const createMetaContinuationFetch = (fetcher: typeof fetch = fetch, backoff: number | readonly number[] = [1000, 2000]): typeof fetch => {
+  // The SDK's retries reuse their RequestInit. One bounded recovery sequence
   // across that entire request, even if a later 5xx triggers an SDK retry.
   const recovered = new WeakSet<RequestInit>();
   return Object.assign(async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
-    const response = await fetcher(input, init);
+    let response = await fetcher(input, init);
     if (response.status !== 400 || !init || recovered.has(init) ||
         !isReceiptContinuation(input, init) || !await isUnavailableResponse(response)) return response;
     recovered.add(init);
-    init.signal?.throwIfAborted();
-    await response.body?.cancel();
-    await delay(waitMs, undefined, { signal: init.signal ?? undefined });
-    init.signal?.throwIfAborted();
-    return fetcher(input, init);
+    for (const waitMs of typeof backoff === "number" ? [backoff] : backoff) {
+      init.signal?.throwIfAborted();
+      await response.body?.cancel();
+      await delay(waitMs, undefined, { signal: init.signal ?? undefined });
+      init.signal?.throwIfAborted();
+      response = await fetcher(input, init);
+      if (response.status !== 400 || !await isUnavailableResponse(response)) break;
+    }
+    return response;
   }, { preconnect: fetcher.preconnect });
 };
