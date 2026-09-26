@@ -510,8 +510,9 @@ model with a small billable request. See [credentials](CREDENTIALS.md).
 
 `/approvals` opens the mode picker; `/approvals ask`, `/approvals auto`, and
 `/approvals restricted` switch directly. The composer and `/status` show the active
-mode. Auto approves gated actions but still asks for dependency access. Restricted
-denies gated actions. Mode changes apply only to this CLI process and are blocked
+mode. Auto approves gated actions within existing workspace and execution policies.
+Bounded dependency inspection runs without a separate approval in every mode.
+Restricted denies gated actions. Mode changes apply only to this CLI process and are blocked
 while work is active or awaiting approval; use `/pending`, `/approve`, or `/deny`
 first. Service-connected consoles retain host-controlled policy.
 
