@@ -361,6 +361,8 @@ export const classifyTimeToSafeFixFailure = (
     code = "STALE_DIGEST";
   } else if (/changed the reviewed|patch changed|does not match the approved edit paths/.test(normalized)) {
     code = "PATCH_DRIFT";
+  } else if (/OCI_(?:CHILD_)?DELIVERY_(PENDING|DECLINED|INSPECTION_FAILED)/.test(message)) {
+    code = message.match(/OCI_(?:CHILD_)?DELIVERY_(PENDING|DECLINED|INSPECTION_FAILED)/)![0];
   } else if (/verifier failed|verifier exited|exit code/.test(normalized)) {
     code = "VERIFIER_FAILED";
   } else if (isApprovalDeniedFailure(normalized)) {

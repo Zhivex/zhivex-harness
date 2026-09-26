@@ -1326,7 +1326,21 @@ interface EnvironmentMetadata {
   status?: AgentStatus;
   snapshot: { files: number; bytes: number };
   lastInspectedPatchId?: FileDigest;
+  deliveryPaths?: string[];
 }
+
+// Import intentions survive exceptions and restarts without retaining file contents.
+const deliveryPaths = (value: unknown): string[] => {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_SYNC_ENTRIES ||
+    value.some(item => typeof item !== "string" || !item || item.length > 8192 ||
+      item.includes("\\") || item.includes("\0") || path.posix.isAbsolute(item) ||
+      item.split("/").some(segment => !segment || segment === "." || segment === "..")) ||
+    Buffer.byteLength(JSON.stringify(value)) > 512 * 1024) {
+    throw new Error("Invalid or oversized OCI delivery path history.");
+  }
+  return [...new Set(value as string[])];
+};
 
 interface EnvironmentPatchEntry {
   path: string;
@@ -1592,6 +1606,7 @@ export const harnessExecutionSession = (
 export interface HarnessOciExecutionEnvironment extends AgentExecutionEnvironment {
   acquire(request: AgentExecutionEnvironmentAcquireRequest): Promise<HarnessExecutionSession>;
   previewPatch(request: Pick<AgentExecutionEnvironmentAcquireRequest,"runId"|"scope">, expectedPatchId: FileDigest): Promise<{patchId:FileDigest;entries:EnvironmentPatchEntry[]}>;
+  pendingDelivery?(request: Pick<AgentExecutionEnvironmentAcquireRequest, "runId" | "scope">): Promise<boolean>;
   readonly image: OciImageInspection;
   readonly runtime: HarnessOciRuntimeAdapter;
 }
@@ -1665,25 +1680,75 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
   const binding = createAgentExecutionEnvironmentBinding(manifest);
   const environmentRoot = path.join(options.stateDirectory, "environments");
 
+  const reviewSnapshot = async (request: Pick<AgentExecutionEnvironmentAcquireRequest, "runId" | "scope">,
+    allowAbsent = false) => {
+    let stateDirectory: string;
+    try { stateDirectory = await realpath(options.stateDirectory); }
+    catch (error) {
+      if (allowAbsent && (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    }
+    const scopeKey = executionScopeKey(request.scope);
+    const identity = executionIdentity(options.workspace.root, stateDirectory, request.runId, scopeKey);
+    const root = path.join(stateDirectory, "environments");
+    const directory = path.join(root, runHash(identity));
+    // Only an absent artifact root/run directory means no work has occurred.
+    // Missing metadata or snapshot children indicate a partial/corrupt artifact.
+    for (const candidate of [root, directory, path.join(directory, "base"), path.join(directory, "workspace")]) {
+      let entry: Stats;
+      try { entry = await lstat(candidate); }
+      catch (error) {
+        if (allowAbsent && (candidate === root || candidate === directory) &&
+          (error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+        throw error;
+      }
+      if (entry.isSymbolicLink() || !entry.isDirectory() || await realpath(candidate) !== candidate) {
+        throw new Error("Unsafe execution review directory.");
+      }
+    }
+    const file = await readRegularFileNoFollow(path.join(directory, "environment.json"), {
+      label: "Execution metadata", maxBytes: 1024 * 1024
+    });
+    const metadata = JSON.parse(file.contents.toString("utf8")) as EnvironmentMetadata;
+    if (metadata.schemaVersion !== HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION || metadata.runId !== request.runId ||
+      metadata.scopeKey !== scopeKey || metadata.stateDirectory !== stateDirectory || metadata.executionIdentity !== identity ||
+      metadata.hostWorkspace !== options.workspace.root || metadata.binding.fingerprint !== binding.fingerprint ||
+      metadata.binding.workspaceId !== binding.workspaceId) {
+      throw Object.assign(new Error("Execution review binding changed."), { diagnosticCode: "OCI_EXECUTION_BINDING_CHANGED" });
+    }
+    const base = await Workspace.open(path.join(directory, "base"));
+    const current = await Workspace.open(path.join(directory, "workspace"));
+    const patch = await createEnvironmentPatch(request.runId, base, current, options.config.maxFileWriteBytes,
+      options.config.maxWorkspaceBytes, undefined, identity);
+    deliveryPaths(metadata.deliveryPaths);
+    return { metadata, patch, current };
+  };
+
   return {
     manifest,
     image,
     runtime,
-    async previewPatch(request, expectedPatchId) {
-      const stateDirectory=await realpath(options.stateDirectory);
-      const scopeKey=executionScopeKey(request.scope);
-      const identity=executionIdentity(options.workspace.root,stateDirectory,request.runId,scopeKey);
-      const directory=path.join(stateDirectory,"environments",runHash(identity));
-      // This read path neither acquires a runtime nor creates missing snapshots.
-      for(const candidate of [path.join(stateDirectory,"environments"),directory,path.join(directory,"base"),path.join(directory,"workspace")]){
-        const entry=await lstat(candidate);
-        if(entry.isSymbolicLink()||!entry.isDirectory()||await realpath(candidate)!==candidate)throw new Error("Unsafe execution review directory.");
+    async pendingDelivery(request) {
+      const reviewed = await reviewSnapshot(request, true);
+      if (!reviewed) return false;
+      const paths = new Set([...reviewed.patch.entries.map(entry => entry.path), ...deliveryPaths(reviewed.metadata.deliveryPaths)]);
+      const inspect = async (workspace: Workspace, filePath: string) => {
+        try { return await workspace.inspectFile(filePath); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+          throw error;
+        }
+      };
+      for (const filePath of paths) {
+        const [current, host] = await Promise.all([
+          inspect(reviewed.current, filePath), inspect(options.workspace, filePath)
+        ]);
+        if (current?.digest !== host?.digest || current?.mode !== host?.mode) return true;
       }
-      const file=await readRegularFileNoFollow(path.join(directory,"environment.json"),{label:"Execution metadata",maxBytes:1024*1024});
-      const metadata=JSON.parse(file.contents.toString("utf8")) as EnvironmentMetadata;
-      if(metadata.schemaVersion!==HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION||metadata.runId!==request.runId||metadata.scopeKey!==scopeKey||metadata.stateDirectory!==stateDirectory||metadata.executionIdentity!==identity||metadata.hostWorkspace!==options.workspace.root||metadata.binding.fingerprint!==binding.fingerprint||metadata.binding.workspaceId!==binding.workspaceId)throw Object.assign(new Error("Execution review binding changed."), { diagnosticCode: "OCI_EXECUTION_BINDING_CHANGED" });
-      const base=await Workspace.open(path.join(directory,"base")),current=await Workspace.open(path.join(directory,"workspace"));
-      const patch=await createEnvironmentPatch(request.runId,base,current,options.config.maxFileWriteBytes,options.config.maxWorkspaceBytes,undefined,identity);
+      return false;
+    },
+    async previewPatch(request, expectedPatchId) {
+      const { metadata, patch } = (await reviewSnapshot(request))!;
       if(patch.patchId!==expectedPatchId)throw new EnvironmentPatchDriftError(expectedPatchId, patch.patchId, metadata.lastInspectedPatchId);
       for(const entry of patch.entries)await inspectHostPrecondition(options.workspace,entry.path,entry.beforeDigest,entry.beforeMode);
       return {patchId:patch.patchId,entries:patch.entries};
@@ -1761,6 +1826,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
           snapshot
         };
       }
+      deliveryPaths(metadata.deliveryPaths);
       metadata.acquiredAt = new Date().toISOString();
       delete metadata.releasedAt;
       delete metadata.status;
@@ -2038,7 +2104,19 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
             totalBytes: patch.totalBytes
           };
         },
-        importPatch(host, patchId, assertActive) {
+        async importPatch(host, patchId, assertActive) {
+          await assertActive?.();
+          const intended = await createEnvironmentPatch(request.runId, base, workspace,
+            options.config.maxFileWriteBytes, options.config.maxWorkspaceBytes, ioMetrics, identity);
+          if (intended.patchId !== patchId) {
+            throw new EnvironmentPatchDriftError(patchId, intended.patchId, metadata.lastInspectedPatchId);
+          }
+          // Persist before effects: a failed or partially rolled-back import still
+          // needs delivery inspection, including edits later reverted to the base.
+          metadata.deliveryPaths = deliveryPaths([...new Set([
+            ...deliveryPaths(metadata.deliveryPaths), ...intended.entries.map(entry => entry.path)
+          ])]);
+          await atomicJson(metadataPath, metadata);
           return importPatch(
             request.runId,
             patchId,
@@ -2096,6 +2174,10 @@ export const createHarnessOciExecutionEnvironment = async (
     const environment = await createHarnessOciExecutionEnvironmentUnsafe(options);
     return {
       ...environment,
+      async pendingDelivery(request) {
+        try { return await environment.pendingDelivery!(request); }
+        catch (error) { return executionBoundaryError(error, "Execution delivery inspection failed."); }
+      },
       async previewPatch(request,patchId) {
         try { return await environment.previewPatch(request,patchId); }
         catch(error) { return executionBoundaryError(error,"Execution patch review failed."); }

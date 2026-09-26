@@ -190,3 +190,24 @@ callers and persisted approval payloads still contain `expectedDigest` or
 `patchId`. Explicit legacy references remain authoritative and are never repaired
 or replaced silently. SDK users invoking the agent directly should continue to
 use those explicit contracts.
+
+### OCI delivery at completion
+
+An OCI edit changes the isolated snapshot until its reviewed import is approved.
+Normal assistant runs now check actual snapshot changes against host contents and
+file modes before saving a completed result. If a model stops with pending changes,
+the runtime can schedule up to two read-only patch inspections and remind it to
+finish verification and request import through the usual approval flow. The
+reminder count and import refusals survive resume; this does not enable
+`requireVerifiedDelivery` or impose a repair plan on read-only work.
+
+If delivery remains pending, completion is saved as failed with
+`OCI_DELIVERY_PENDING`; an import refusal uses `OCI_DELIVERY_DECLINED`, and an
+unreadable or invalid snapshot uses `OCI_DELIVERY_INSPECTION_FAILED`. These checks
+cover edits made by tools or commands and apply to terminal receipts as well.
+They never approve or import a patch automatically.
+
+Parent completion also checks durable child and descendant snapshots within their
+scopes. Pending delegated changes produce `OCI_CHILD_DELIVERY_PENDING`; missing
+child state produces an inspection failure. A parent patch inspection cannot
+deliver a child snapshot, so no parent inspection is scheduled for that case.

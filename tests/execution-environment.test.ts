@@ -550,7 +550,7 @@ describe("enforced OCI execution environment", () => {
     await expect(stat(stagedDirectory)).rejects.toThrow();
   });
 
-  test("requires one approval for execution and keeps approved command changes off the host", async () => {
+  test("requires one approval for execution and keeps command changes off the host without certifying delivery", async () => {
     const { root } = await workspaceFixture();
     const runtime = new FakeOciRuntime(undefined, async (request) => {
       await writeFile(path.join(request.snapshotRoot, "generated.txt"), "generated only in snapshot\n");
@@ -574,7 +574,9 @@ describe("enforced OCI execution environment", () => {
         [
           { type: "text-delta", textDelta: "snapshot command complete" },
           { type: "finish", finishReason: "stop" }
-        ]
+        ],
+        [{ type: "finish", finishReason: "stop" }],
+        [{ type: "finish", finishReason: "stop" }]
       ]
     });
     const harness = await createHarness({
@@ -605,7 +607,9 @@ describe("enforced OCI execution environment", () => {
         reason: "Fixture operator approval."
       }))
     });
-    expect(completed.status).toBe("completed");
+    expect(completed.status).toBe("failed");
+    expect(completed.state.error?.message).toBe("OCI_DELIVERY_PENDING");
+    expect((await store.load("oci-approval-run"))?.status).toBe("failed");
     expect(runtime.requests).toHaveLength(1);
     await expect(readFile(path.join(root, "generated.txt"), "utf8")).rejects.toThrow();
 
@@ -942,7 +946,9 @@ describe("enforced OCI execution environment", () => {
         reason: "Approve inherited OCI command."
       }))
     });
-    expect(completed.status).toBe("completed");
+    expect(completed.status).toBe("failed");
+    expect(completed.state.error?.message).toBe("OCI_CHILD_DELIVERY_PENDING");
+    expect((await store.load(completed.state.runId, harness.config.scope))?.status).toBe("failed");
     const child = completed.state.childRuns?.[0];
     expect(child?.status).toBe("completed");
     expect(runtime.requests).toHaveLength(1);
