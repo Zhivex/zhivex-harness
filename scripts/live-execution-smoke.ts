@@ -18,7 +18,8 @@ const {
   providerHasCredentials,
   providerRunInput,
   redacted,
-  selectedProviders
+  selectedProviders,
+  throwTransientRunFailure
 } = liveProviderSmokeInternals;
 
 const modelEnvironmentName = (provider: HarnessProvider) =>
@@ -45,6 +46,14 @@ export const executionPrompt = (provider: HarnessProvider) =>
 3. Call apply_environment_patch exactly once with {}. The runtime binds the inspected patch internally.
 Do not call any other tool, do not supply a patchId, and do not write through repository editing tools.
 After the approved patch import result, reply exactly ${completionToken(provider)}.`;
+
+const assertExecutionRunStatus = (result: { status: string; outputText?: string; error?: { message?: string } }) => {
+  throwTransientRunFailure(result);
+  if (result.status === "failed" && result.error) {
+    throw new HarnessExecutionError("Live execution run failed.", { cause: result.error });
+  }
+  assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+};
 
 const certifyProvider = async (
   provider: HarnessProvider,
@@ -108,10 +117,7 @@ const certifyProvider = async (
     });
 
     checkpoint = "execution_run_status";
-    if (result.status === "failed" && result.error) {
-      throw new HarnessExecutionError("Live execution run failed.", { cause: result.error });
-    }
-    assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+    assertExecutionRunStatus(result);
     checkpoint = "execution_completion_marker";
     assert.ok(result.outputText.includes(completionToken(provider)), result.outputText);
     checkpoint = "execution_approval_sequence";
@@ -205,6 +211,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
 };
 
 export const liveExecutionSmokeInternals = {
+  assertExecutionRunStatus,
   executionCommandInput,
   executionPrompt,
   completionToken
