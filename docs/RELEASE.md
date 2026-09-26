@@ -14,8 +14,8 @@ publication. RC4 passed the exact-artifact build and live certification but fail
 the representative repository matrix; npm publication was skipped. Its immutable
 tag and failure evidence are preserved and do not certify RC5.
 
-The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3` and OpenAI
-`gpt-6-luna`. Saved selections and historical mappings remain unchanged.
+The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and OpenAI
+`gpt-6-luna`. Meta contributor is selected for release testing only. Saved selections and historical mappings remain unchanged.
 The `v1.2.0-rc.1` attempt stopped at Qwen representative evaluation before publication.
 RC2 and RC3 also stopped before publication. All three annotated tags and their
 failure evidence remain unchanged. The `v1.1.0` attempt
@@ -58,7 +58,7 @@ CI repeats the deterministic and installed-package gates on Linux and macOS. Bui
 Provider behavior is certified separately because it is credential-, account-, model-, endpoint-, and date-dependent:
 
 ```bash
-export ZHIVEX_HARNESS_LIVE_META_MODEL=muse-spark-1.3
+export ZHIVEX_HARNESS_LIVE_META_MODEL=muse-spark-1.3-contributor
 export ZHIVEX_HARNESS_LIVE_QWEN_MODEL=qwen3.8-flash
 export ZHIVEX_HARNESS_LIVE_OPENAI_MODEL=gpt-6-luna
 ZHIVEX_HARNESS_LIVE=1 bun run scripts/live-provider-smoke.ts

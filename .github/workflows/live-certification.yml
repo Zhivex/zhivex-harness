@@ -29,7 +29,7 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       ZHIVEX_HARNESS_LIVE: "1"
-      ZHIVEX_HARNESS_LIVE_META_MODEL: muse-spark-1.3
+      ZHIVEX_HARNESS_LIVE_META_MODEL: muse-spark-1.3-contributor
       ZHIVEX_HARNESS_LIVE_QWEN_MODEL: qwen3.8-flash
       ZHIVEX_HARNESS_LIVE_OPENAI_MODEL: gpt-6-luna
       ZHIVEX_HARNESS_LIVE_PROVIDERS: ${{ inputs.providers }}
