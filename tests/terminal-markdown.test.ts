@@ -1,5 +1,102 @@
 import { expect, test } from "bun:test";
 import { TerminalMarkdown } from "../src/cli/terminal/terminal-markdown.js";
+import { terminalCellWidth } from "../src/cli/terminal/terminal-table.js";
+
+const withoutStyles = (text: string) => text.replace(/\x1b\[[0-9;]*m/g, "");
+const table = "| Check | Result |\n| --- | --- |\n| `bun test` | 30 pass / 0 fail |\n";
+
+test("renders complete tables with aligned borders and readable inline code", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, false);
+  renderer.write(table); renderer.flush();
+  expect(output).toBe([
+    "┌──────────┬──────────────────┐",
+    "│ Check    │ Result           │",
+    "├──────────┼──────────────────┤",
+    "│ bun test │ 30 pass / 0 fail │",
+    "└──────────┴──────────────────┘", ""
+  ].join("\n"));
+});
+
+test("tables survive every token boundary and pauses without duplicate output", async () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, true);
+  renderer.write("| Che"); await new Promise(resolve => setTimeout(resolve, 40));
+  expect(output).toBe("");
+  for (const char of table.slice(5)) renderer.write(char);
+  renderer.write("\nDone"); renderer.flush();
+  expect(withoutStyles(output)).toContain("│ bun test │ 30 pass / 0 fail │");
+  expect(output.match(/┌/g)).toHaveLength(1);
+  expect(output).toEndWith("\n\nDone");
+  const completed = output; renderer.flush(); expect(output).toBe(completed);
+});
+
+test("wraps long paths and Unicode by visible terminal width", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, true, () => 40);
+  renderer.write("| Hallazgo | Estado |\n| :--- | ---: |\n| café 中文 👩‍💻 | src/very-long-unbroken-file-name.ts recuperado sin perder información |\n");
+  renderer.flush();
+  const lines = withoutStyles(output).trimEnd().split("\n");
+  expect(new Set(lines.map(terminalCellWidth)).size).toBe(1);
+  expect(terminalCellWidth(lines[0]!)).toBeLessThan(40);
+  expect(output).toContain("👩‍💻");
+  const text = withoutStyles(output).replace(/[│\s]/g, "");
+  expect(text).toContain("src/very-long-unbroken-file-name.ts".slice(0, 12));
+  expect(text).toContain("información");
+});
+
+test("uses stacked cells in narrow terminals and resolves width at render time", () => {
+  let output = "", width = 80;
+  const renderer = new TerminalMarkdown(value => { output += value; }, false, () => width);
+  renderer.write(table); width = 14; renderer.flush();
+  expect(output).toContain("Check:\nbun test\nResult:\n");
+  expect(output).not.toContain("┌");
+  expect(output.trimEnd().split("\n").every(line => terminalCellWidth(line) < width)).toBe(true);
+});
+
+test("preserves escaped pipes, code pipes and a final row without newline", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, false);
+  renderer.write("| A | B |\n| --- | --- |\n| `a|b` | c\\|d |"); renderer.flush();
+  expect(output).toContain("│ a|b  │ c|d  │");
+});
+
+test("does not consume incomplete tables, malformed rows or fenced pipe text", () => {
+  for (const text of ["| not a table |\nprose\n", "| A | B |", "```text\n" + table + "```\n",
+    "| A | B |\n| -- | -- |\n", "|" + "x".repeat(9000)]) {
+    let output = "";
+    const renderer = new TerminalMarkdown(value => { output += value; }, false);
+    renderer.write(text); renderer.flush(); expect(output).toBe(text);
+  }
+});
+
+test("table cells cannot inject terminal controls", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, true);
+  renderer.write("| A | B |\n| --- | --- |\n| \x1b[2J | \x1b]52;c;payload\x07 |\n"); renderer.flush();
+  expect(output).toContain("\\u001b[2J");
+  expect(output).not.toContain("\x1b[2J");
+  expect(output).not.toContain("\x1b]52");
+});
+
+test("bounded tables retain rows beyond the buffering limit", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, false);
+  renderer.write("| A | B |\n| --- | --- |\n" + Array.from({ length: 150 }, (_, i) => `| row-${i} | value |\n`).join(""));
+  renderer.flush();
+  for (let i = 0; i < 150; i++) expect(output.match(new RegExp(`row-${i}(?=\\s)`, "g"))).toHaveLength(1);
+});
+
+test("empty narrow tables retain headers and alignment markers are honored", () => {
+  let output = "";
+  const renderer = new TerminalMarkdown(value => { output += value; }, false, () => 12);
+  renderer.write("| A | B |\n| --- | --- |\n"); renderer.flush();
+  expect(output).toBe("A\nB\n");
+  let aligned = "";
+  const wide = new TerminalMarkdown(value => { aligned += value; }, false);
+  wide.write("| A | B | C |\n| :--- | :---: | ---: |\n| x | y | z |\n"); wide.flush();
+  expect(aligned).toContain("│ x    │  y   │    z │");
+});
 
 for (const color of [false, true]) {
   test(`handles heading prefixes without content at flush (color=${color})`, () => {

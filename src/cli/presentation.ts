@@ -231,7 +231,7 @@ export const streamSink = (
     tracker.streamedText = true;
     if (process.stdout.isTTY) {
       tracker.markdown ??= new TerminalMarkdown((text) => { process.stdout.write(text); },
-        terminalSupportsColor(true));
+        terminalSupportsColor(true), () => process.stdout.columns || 80);
       tracker.markdown.write(event.textDelta);
     } else process.stdout.write(sanitizeTerminalText(event.textDelta));
     return;

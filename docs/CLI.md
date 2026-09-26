@@ -131,7 +131,11 @@ their status. Review groups retain the status reported by their group runtime.
 `/diff` colors additions, removals, and hunk headers on eligible terminals, respects
 `NO_COLOR`, and escapes untrusted terminal controls. Model text also escapes terminal
 controls and renders bounded Markdown headings, emphasis, and fenced code on a
-TTY; JSON/JSONL retain their existing data contracts.
+TTY. Tables with leading pipes and a Markdown separator row render with aligned
+borders and wrapped cells at the current terminal width; narrow terminals use
+stacked labels and values. Table blocks buffer up to 128 lines (8 KiB per line)
+before rendering; incomplete or oversized syntax stays readable as literal text.
+Redirected output and JSON/JSONL retain their existing data contracts.
 
 Contributor validation: `bun run smoke:package` also runs a real PTY workflow
 against the installed CLI, including approval recovery after process restart.

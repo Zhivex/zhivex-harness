@@ -6,6 +6,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Render pipe-delimited Markdown tables as aligned, wrapped terminal grids, with stacked cells on narrow terminals and Unicode-aware widths. Preserve plain redirected output and terminal-control sanitization.
 - Keep Meta Responses conversation history locally with `store: false` and encrypted reasoning replay, instead of depending on `previous_response_id` availability. Resume existing sessions from retained messages and tool receipts without rerunning completed tools; older turns without encrypted reasoning retain their visible history only.
 - Allow two bounded receipt-only continuation backoffs (1s and 2s) for legacy stateful requests. Add generate/stream replay regressions and an opt-in live check for encrypted replay across model instances.
 
