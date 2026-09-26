@@ -2,8 +2,8 @@ import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 import type { LanguageModelMiddleware, ModelGenerateInput, ToolSet } from "@zhivex-ai/core";
 import type { Workspace } from "../workspace/workspace.js";
 import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "./progress-monitor.js";
-import { createEmptyHarnessScopedContextState, discoverHarnessScopedContext, validateHarnessScopedContext,
-  renderHarnessScopedContext, harnessScopedContextStateSchema } from "../context/scoped-context.js";
+import { createEmptyHarnessScopedContextState, discoverHarnessScopedContext, refreshHarnessScopedContext,
+  harnessScopedContextStateSchema } from "../context/scoped-context.js";
 import { harnessExecutionSession } from "../execution/execution-environment.js";
 
 export const SCOPED_CONTEXT_KEY = "zhivexScopedContext";
@@ -12,7 +12,7 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
   const monitor = createProgressMonitor(metadata);
   let state = metadata[SCOPED_CONTEXT_KEY] === undefined ? createEmptyHarnessScopedContextState()
     : harnessScopedContextStateSchema.parse(metadata[SCOPED_CONTEXT_KEY]);
-  let instructions = enabled ? renderHarnessScopedContext(await validateHarnessScopedContext(workspace, state)) : "";
+  let instructions = "";
   let scopedWorkspace = workspace;
   let discovery = Promise.resolve();
   const wrapTools = (tools: ToolSet): ToolSet => monitor.wrapTools(Object.fromEntries(Object.entries(tools).map(([name, definition]) => {
@@ -24,7 +24,8 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
       const paths = (data.files ?? [data]).flatMap(file => typeof file.path === "string" ? [file.path] : []);
       const currentWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
       const next = discovery.then(async () => {
-        const discovered = await discoverHarnessScopedContext(currentWorkspace, { paths, state });
+        const refreshed = await refreshHarnessScopedContext(currentWorkspace, state);
+        const discovered = await discoverHarnessScopedContext(currentWorkspace, { paths, state: refreshed.state });
         state = discovered.state;
         scopedWorkspace = currentWorkspace;
         instructions = discovered.instructions;
@@ -37,7 +38,14 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
   })));
   const prepare = async (input: ModelGenerateInput) => {
     await discovery;
-    if (enabled) instructions = renderHarnessScopedContext(await validateHarnessScopedContext(scopedWorkspace, state));
+    if (enabled) {
+      // Guidance is working context, not authorization. Normal edits or new
+      // scoped instructions refresh the next request instead of killing a run.
+      // Unsafe files still fail the descriptor-bound reader before model use.
+      const refreshed = await refreshHarnessScopedContext(scopedWorkspace, state);
+      state = refreshed.state;
+      instructions = refreshed.instructions;
+    }
     const signal = monitor.check();
     if (signal.action === "stop") throw new Error("NO_PROGRESS: repeated actions produced unchanged evidence; revise the task before continuing.");
     const text = [instructions, signal.action === "recover"
@@ -45,16 +53,26 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
     if (text) input.messages = [{ role: "system", parts: [{ type: "text", text }] }, ...input.messages];
   };
   const middleware: LanguageModelMiddleware = {
-    name: "harness-context-progress-v1",
-    async wrapGenerate(context, next) { await prepare(context.input); const result = await next(); monitor.observeText(result.text ?? ""); return result; },
+    name: "harness-context-progress-v2",
+    async wrapGenerate(context, next) {
+      await prepare(context.input);
+      const result = await next();
+      // Narrating an unchanged tool cycle is not new evidence. Observe prose
+      // only on text-only turns; tool results drive progress for tool turns.
+      const messages = [...(result.messages ?? []), ...(result.message ? [result.message] : [])];
+      if (!messages.some(message => message.parts.some(part => part.type === "tool-call"))) monitor.observeText(result.text ?? "");
+      return result;
+    },
     async wrapStream(context, next) {
       await prepare(context.input);
       const stream = await next();
       return (async function* () {
         let text = "";
+        let toolCalled = false;
         for await (const event of stream) {
           if (event.type === "text-delta") text = (text + event.textDelta).slice(-8000);
-          if (event.type === "finish") monitor.observeText(text);
+          if (event.type === "tool-call") toolCalled = true;
+          if (event.type === "finish" && !toolCalled) monitor.observeText(text);
           yield event;
         }
       })();

@@ -80,12 +80,26 @@ for (const outcome of ["success", "path", "acceptance", "budget", "no-read", "la
       expect(Object.keys(harness.agent.tools ?? {})).toEqual([]);
       const run = runHarness(harness, { runId: "parent", prompt: "Delegate review", scope: harness.config.scope });
       if (outcome === "success") expect((await run).status).toBe("completed");
-      else if (outcome === "acceptance" || outcome === "no-read" || outcome === "labeled-marker") expect((await run).status).toBe("failed");
+      else if (outcome === "acceptance" || outcome === "no-read" || outcome === "labeled-marker" || outcome === "path") expect((await run).status).toBe("failed");
       else await expect(run).rejects.toThrow();
       const persisted = await store.load("parent", harness.config.scope);
       expect(persisted?.childRuns).toHaveLength(1);
       expect(persisted?.childRuns?.[0]?.status).toBe(outcome === "success" ? "completed" : "failed");
       expect(getAgentBudgetStatus(persisted!, { includeChildRuns: true }).consumption.totalTokens).toBeGreaterThan(5);
+      if (outcome === "path") {
+        const child = await store.load(persisted!.childRuns![0]!.runId, harness.config.scope);
+        // Recovery exposes a denial receipt, not the forbidden file. A final
+        // marker without an authorized read still fails both acceptance gates.
+        expect(persisted?.status).toBe("failed");
+        expect(child?.status).toBe("failed");
+        expect(child?.error?.message).toBe("DELEGATION_ACCEPTANCE_FAILED");
+        expect(child?.toolResults).toHaveLength(1);
+        expect(child?.toolResults[0]).toMatchObject({ toolName: "read_file", isError: true });
+        expect(child?.toolResults.some(result => result.toolName === "read_file" && !result.isError)).toBe(false);
+        expect(JSON.stringify(child?.toolResults)).not.toContain("private fixture");
+        expect(persisted?.childRuns?.[0]?.usage).toMatchObject({ inputTokens: 6, outputTokens: 4, totalTokens: 10 });
+        expect(getAgentBudgetStatus(persisted!, { includeChildRuns: true }).consumption.totalTokens).toBe(20);
+      }
       if (outcome === "labeled-marker") {
         const child = await store.load(persisted!.childRuns![0]!.runId, harness.config.scope);
         // A marker formatted as a credential must not bypass redaction.

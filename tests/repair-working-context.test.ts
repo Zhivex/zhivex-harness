@@ -22,7 +22,7 @@ test("restored compacted working context includes the actual enforced plan and r
  await controller.middleware.wrapGenerate!({input,model:createMockLanguageModel()},async()=>({}));
  const text=input.messages.flatMap(m=>m.parts).filter(p=>p.type==="text").map(p=>p.text).join("\n");
  expect(text).toContain('"plannedPaths":["src/fix.ts"]');
- expect(text).toContain('"closureReadsRemaining":3');
+ expect(text).toContain('"closureReadsRemaining":4');
  expect(text).toContain('"closureCommandsRemaining":3');
  await expect(execute(restored.wrapTools(definitions),"read_files",{files:[{path:"src/outside.ts"}]})).rejects.toThrow("REPAIR_PLAN_SCOPE");
 });

@@ -2,6 +2,7 @@ import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from "@z
 import { createBudgetGuard, createProductionSafetyPolicy } from "@zhivex-ai/agents";
 import { estimateRequestTokens } from "./model-budget.js";
 import type { HarnessConfig } from "./config.js";
+import { harnessToolExecution } from "./tool-execution.js";
 
 /** Project stored settings into the active SDK policy without inactive ceilings. */
 export const effectiveRuntimeBudget = (budget: HarnessConfig["budget"]) => {
@@ -27,8 +28,7 @@ export const runtimeManifest = (config: HarnessConfig, tools: readonly string[],
 });
 export const childRuntimeSafety = (config: HarnessConfig) => createProductionSafetyPolicy({
   budget: createRuntimeBudget(config.orchestration.childBudget, false),
-  toolExecution: { parallel: false, stopOnError: config.agentProfile !== "repair",
-    ...(config.agentProfile === "repair" ? { validationErrorMode: "tool-result" as const } : {}) }
+  toolExecution: { ...harnessToolExecution, parallel: false }
 });
 
 /** Cap each request against observed usage and the persisted checkpoint, including

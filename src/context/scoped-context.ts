@@ -97,6 +97,35 @@ export const renderHarnessScopedContext = (sources: readonly HarnessScopedContex
   ...sources.map((source) => JSON.stringify({ kind: "scoped-project-instructions", ...source }))
 ].join("\n\n");
 
+/** Refresh guidance for conversational runs without widening its discovered scope.
+ * Missing entries remain tracked so later creation can be accepted explicitly by
+ * this mode. A failed refresh never mutates the caller's durable state. This is
+ * guidance only: rendering retains the same permission and authority boundaries.
+ */
+export const refreshHarnessScopedContext = async (
+  workspace: Pick<Workspace, "root">,
+  input: HarnessScopedContextState
+) => {
+  const prior = harnessScopedContextStateSchema.parse(input);
+  for (const entry of prior.entries) validatePath(entry.path);
+  const entries: HarnessScopedContextState["entries"] = [];
+  const sources: HarnessScopedContextSource[] = [];
+  for await (const batch of boundedBatches(prior.entries, async entry => ({
+    entry, source: await readSource(workspace, entry.path)
+  }), 4)) {
+    for (const { entry, source } of batch) {
+      entries.push({ path: entry.path, digest: source?.digest ?? null, bytes: source?.bytes ?? 0 });
+      if (source) sources.push(source);
+    }
+    // Check each bounded batch before scheduling more reads, even if the
+    // previous state recorded only absent or very small instructions.
+    harnessScopedContextStateSchema.parse({ schemaVersion: 1, entries });
+  }
+  const state = harnessScopedContextStateSchema.parse({ schemaVersion: 1, entries });
+  sources.sort((a, b) => a.scope.split("/").length - b.scope.split("/").length || a.path.localeCompare(b.path));
+  return { state, sources, instructions: renderHarnessScopedContext(sources) };
+};
+
 /**
  * Discover only ancestors of already authorized file targets, never siblings.
  * Root AGENTS.md belongs to the initial project bundle and is not duplicated.

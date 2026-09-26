@@ -1,13 +1,14 @@
 import { test, expect } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { SCOPED_CONTEXT_KEY } from "../src/runtime/context-runtime.js";
+import { createContextRuntime, SCOPED_CONTEXT_KEY } from "../src/runtime/context-runtime.js";
+import { wrapLanguageModel } from "@zhivex-ai/core";
 
-test("runtime discovers scoped guidance after a successful read, persists identities and refuses drift on resume", async () => {
+test("runtime discovers guidance after a read and refreshes edited guidance on resume", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "scoped-runtime-"));
   await mkdir(path.join(root, "module"));
   await writeFile(path.join(root, "module/AGENTS.md"), "Use component-specific conventions.");
@@ -15,6 +16,9 @@ test("runtime discovers scoped guidance after a successful read, persists identi
   const model = createMockLanguageModel({ streamEvents: [
     [{ type: "tool-call", toolCall: { id: "read", name: "read_file", input: { path: "module/file.ts" } } },
       { type: "finish", finishReason: "tool-calls", usage: { inputTokens: 1, outputTokens: 1 } }],
+    [{ type: "tool-call", toolCall: { id: "edit", name: "apply_reviewed_replacement", input: {
+      path: "module/file.ts", oldText: "export const x = 1;", newText: "export const x = 2;"
+    } } }, { type: "finish", finishReason: "tool-calls", usage: { inputTokens: 1, outputTokens: 1 } }],
     [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop", usage: { inputTokens: 1, outputTokens: 1 } }]
   ] });
   const requests: string[] = [];
@@ -22,15 +26,29 @@ test("runtime discovers scoped guidance after a successful read, persists identi
   const harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model, subagentProfiles: [], store: createInMemoryAgentRunStore() });
   try {
     const result = await runHarness(harness, { prompt: "Inspect module/file.ts" });
-    expect(result.status).toBe("completed");
+    expect(result.status).toBe("waiting_approval");
     expect(requests[0]).not.toContain("component-specific"); expect(requests[1]).toContain("component-specific");
     expect(result.state.metadata?.[SCOPED_CONTEXT_KEY]).toMatchObject({ entries: [{ path: "module/AGENTS.md" }] });
     await writeFile(path.join(root, "module/AGENTS.md"), "Changed instructions.");
-    await expect(runHarness(harness, { state: result.state })).rejects.toThrow("changed after discovery");
+    const resumed = await runHarness(harness, { state: result.state, approvals: result.state.pendingApprovals.map(approval => ({
+      provider: approval.provider, approvalRequestId: approval.id, approve: true
+    })) });
+    expect(resumed.status).toBe("completed");
+    expect(requests.at(-1)).toContain("Changed instructions.");
+    const before = result.state.metadata?.[SCOPED_CONTEXT_KEY] as { entries: { digest: string }[] };
+    const after = resumed.state.metadata?.[SCOPED_CONTEXT_KEY] as { entries: { digest: string }[] };
+    expect(after.entries[0]!.digest).not.toBe(before.entries[0]!.digest);
+    // Accepting revised guidance does not widen filesystem permissions.
+    await rm(path.join(root, "module/AGENTS.md"));
+    await symlink("file.ts", path.join(root, "module/AGENTS.md"));
+    const calls = requests.length;
+    const runtime = await createContextRuntime(harness.workspace, resumed.state.metadata ?? {}, true);
+    await expect(wrapLanguageModel(model, [runtime.middleware]).stream!({ messages: [] })).rejects.toThrow();
+    expect(requests).toHaveLength(calls);
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
 
-test("runtime stops repeated unchanged reads before another paid model request", async () => {
+for (const commentary of [false, true]) test(`runtime stops repeated unchanged reads despite changing commentary: ${commentary}`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "progress-runtime-"));
   await writeFile(path.join(root, "file.txt"), "unchanged");
   let calls = 0;
@@ -38,6 +56,7 @@ test("runtime stops repeated unchanged reads before another paid model request",
   model.stream = async () => {
     calls++;
     return (async function* () {
+      if (commentary) yield { type: "text-delta" as const, textDelta: `Investigation step ${calls}: I will inspect this file again to understand the implementation and determine which change will resolve the reported problem.` };
       yield { type: "tool-call" as const, toolCall: { id: `read-${calls}`, name: "read_file", input: { path: "file.txt" } } };
       yield { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 1, outputTokens: 1 } };
     })();

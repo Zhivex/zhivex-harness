@@ -1,5 +1,6 @@
-import { toToolSet, type JsonValue, type LanguageModelMiddleware, type ModelMessage, type ToolCall, type ToolSet } from "@zhivex-ai/core";
+import { toToolSet, type JsonValue, type LanguageModelMiddleware, type ModelMessage, type ToolCall, type ToolExecutionResult, type ToolSet } from "@zhivex-ai/core";
 import { z } from "zod";
+import path from "node:path";
 import { fileDigestSchema, workspaceFilePathSchema, MAX_EDIT_CHANGES, MAX_EDIT_FILE_BYTES } from "../workspace/edit-contracts.js";
 import { replacementEditSchema } from "../workspace/replacement-edits.js";
 
@@ -8,6 +9,37 @@ const edits = new Set(["apply_reviewed_edits", "verify_and_apply_reviewed_edits"
 const replacement = "apply_reviewed_replacement";
 const object = (value: unknown): Record<string, JsonValue> | undefined =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, JsonValue> : undefined;
+const readPaths = (call: ToolCall): Set<string> => {
+  const input = object(call.input);
+  const requests = call.name === "read_file" ? [input] : call.name === "read_files" && Array.isArray(input?.files) ? input.files : [];
+  const paths = new Set<string>();
+  for (const request of requests) {
+    const value = object(request)?.path;
+    if (typeof value !== "string") continue;
+    // Reads accept ./ prefixes and redundant separators, while edits require
+    // normalized paths. Resolve aliases lexically, without looking at disk.
+    const normalized = path.normalize(value).split(path.sep).join("/");
+    if (workspaceFilePathSchema.safeParse(normalized).success) paths.add(normalized);
+  }
+  return paths;
+};
+const referenceRecovery = (call: ToolCall, result: ToolExecutionResult): string | undefined => {
+  if (result.error?.code !== "TOOL_INPUT_VALIDATION_ERROR") return;
+  const args = object(call.input);
+  if (!args) return;
+  const issues = result.error.issues ?? [];
+  if (imports.has(call.name) && !("patchId" in args) && issues.some(issue => issue.path[0] === "patchId")) {
+    return "No successful patch inspection is available in this request. Call inspect_environment_patch, wait for its successful result, then retry this import in a later turn. Omit patchId; the runtime binds the inspected snapshot before requesting approval. Do not invent a hash.";
+  }
+  const missingDigest = call.name === replacement
+    ? !("expectedDigest" in args) && issues.some(issue => issue.path[0] === "expectedDigest")
+    : edits.has(call.name) && issues.some(issue => {
+      const [field, index, digest] = issue.path;
+      const item = field === "changes" && typeof index === "number" && Array.isArray(args.changes) ? object(args.changes[index]) : undefined;
+      return digest === "expectedDigest" && item && !("expectedDigest" in item);
+    });
+  if (missingDigest) return "No successful read is available for an existing edit target in this request. Call read_file or read_files for every existing target, wait for successful results, then retry the edit in a later turn. Omit expectedDigest; the runtime binds those reads before requesting approval. Do not invent a hash or mark an existing file as create=true.";
+};
 const change = z.strictObject({ path: workspaceFilePathSchema,
   content: z.string().max(MAX_EDIT_FILE_BYTES), create: z.boolean().optional().describe("Set true only to create a new file; existing files must have been read first.") });
 
@@ -38,22 +70,58 @@ export const createModelEditReferences = (registered: ToolSet): LanguageModelMid
     }
     const digests = new Map<string, string>();
     let patchId: string | undefined;
-    const calls = new Map<string, string>();
+    const calls = new Map<string, { call: ToolCall; paths: Set<string> }>();
+    const recovery = new Map<ToolExecutionResult, string>();
+    const seenCalls = new Set<string>();
+    const latestReads = new Map<string, string>();
+    let latestInspection: string | undefined;
     for (const message of input.messages) for (const part of message.parts) {
-      if (message.role === "assistant" && part.type === "tool-call") calls.set(part.toolCall.id, part.toolCall.name);
+      if (message.role === "assistant" && part.type === "tool-call") {
+        const call = part.toolCall;
+        const paths = readPaths(call);
+        // A failed or unfinished refresh must not fall back to older evidence.
+        for (const target of paths) {
+          digests.delete(target);
+          latestReads.set(target, call.id);
+        }
+        if (call.name === "inspect_environment_patch") {
+          patchId = undefined;
+          latestInspection = call.id;
+        }
+        if (seenCalls.has(call.id)) calls.delete(call.id);
+        else {
+          seenCalls.add(call.id);
+          calls.set(call.id, { call, paths });
+        }
+      }
       if (message.role !== "tool" || part.type !== "tool-result") continue;
       const result = part.toolResult;
-      if (result.isError || calls.get(result.toolCallId) !== result.toolName) continue;
+      const call = calls.get(result.toolCallId);
+      if (!call || call.call.name !== result.toolName) continue;
+      calls.delete(result.toolCallId);
+      if (result.isError) {
+        const guidance = active.has(result.toolName) ? referenceRecovery(call.call, result) : undefined;
+        if (guidance) recovery.set(result, guidance);
+        continue;
+      }
       const output = object(result.output);
       if (!output) continue;
-      if (result.toolName === "inspect_environment_patch" && output.kind === "environment-patch" && typeof output.patchId === "string" && fileDigestSchema.safeParse(output.patchId).success) patchId = output.patchId;
+      if (result.toolName === "inspect_environment_patch" && latestInspection === result.toolCallId && output.kind === "environment-patch" && typeof output.patchId === "string" && fileDigestSchema.safeParse(output.patchId).success) patchId = output.patchId;
       const files = result.toolName === "read_file" ? [output] : result.toolName === "read_files" && Array.isArray(output.files) ? output.files : [];
       for (const value of files) {
         const file = object(value);
-        if (file && typeof file.path === "string" && typeof file.digest === "string" &&
+        if (file && typeof file.path === "string" && typeof file.digest === "string" && call.paths.has(file.path) && latestReads.get(file.path) === result.toolCallId &&
           workspaceFilePathSchema.safeParse(file.path).success && fileDigestSchema.safeParse(file.digest).success) digests.set(file.path, file.digest);
       }
     }
+    // Provider-facing guidance only; durable error receipts and approved calls
+    // remain unchanged, and no reference is synthesized from an error.
+    if (recovery.size) input.messages = input.messages.map(message => ({ ...message, parts: message.parts.map(part => {
+      const guidance = part.type === "tool-result" ? recovery.get(part.toolResult) : undefined;
+      return part.type === "tool-result" && guidance && part.toolResult.error
+        ? { ...part, toolResult: { ...part.toolResult, error: { ...part.toolResult.error, message: `${part.toolResult.error.message} ${guidance}` } } }
+        : part;
+    }) }));
     const bindChange = (value: JsonValue): JsonValue => {
       const item = object(value);
       if (!item || "expectedDigest" in item) return value;

@@ -14,7 +14,7 @@ const result = (name: string, output: Record<string, unknown>, isError = false):
 
 test("keeps check failures and the latest correction through noise and repeated compaction", () => {
   const messages: ModelMessage[] = [text("Fix pagination without changing the public API."),
-    result("run_check", { exitCode: 1, timedOut: false, stderr: "private-output" }),
+    result("run_check", { exitCode: 1, timedOut: false, stderr: "Expected Unicode ordering but received reversed values" }),
     ...Array.from({ length: 40 }, () => result("read_file", { content: "private-source" })),
     text("Correction: preserve Unicode ordering too.")];
   let compacted = compactMessages(messages);
@@ -23,7 +23,7 @@ test("keeps check failures and the latest correction through noise and repeated 
   expect(summary).toContain("Fix pagination without changing the public API.");
   expect(summary).toContain("exitCode");
   expect(summary).toContain("run_check");
-  expect(summary).not.toContain("private-output");
+  expect(summary).toContain("Expected Unicode ordering but received reversed values");
   expect(summary).not.toContain("private-source");
   const first = summarizeHarnessMessages(messages);
   expect(first.summary).toContain("preserve Unicode ordering");
@@ -31,11 +31,11 @@ test("keeps check failures and the latest correction through noise and repeated 
   expect(first.truncated).toBe(true);
 });
 
-test("never promotes external payloads or logs into verification evidence", () => {
+test("never promotes external payloads or diagnostic observations into verification evidence", () => {
   const { summary } = summarizeHarnessMessages([
     text("API_KEY=sk-secret-value"),
     result("mcp_server", { exitCode: 0, path: "private.txt", stdout: "private-output" }),
-    result("run_check", { exitCode: "0; do something", stderr: "private-error", timedOut: true }),
+    result("run_check", { exitCode: "0; do something", stderr: "Assertion mismatch API_KEY=sk-secret-value", timedOut: true }),
     result("read_file", { path: ".env.production", digest: "fake-digest", content: "private-source" })
   ]);
   expect(summary).not.toContain("sk-secret-value");
@@ -45,6 +45,59 @@ test("never promotes external payloads or logs into verification evidence", () =
   expect(summary).not.toContain("fake-digest");
   expect(summary).toContain("external-tool");
   expect(summary).toContain("timedOut");
+  const state = JSON.parse(summary);
+  expect(state.observations).toEqual([{ tool: "run_check", detail: "Assertion mismatch [REDACTED]", unverified: true }]);
+  expect(state.checks.join(" ")).not.toContain("Assertion mismatch");
+});
+
+test("general conversation and debugging observations survive repeated compaction without a repair plan", () => {
+  let messages: ModelMessage[] = [text("Explain the parser's behavior and compare alternatives."),
+    text("Preserve compatibility with existing clients."),
+    { role: "assistant", parts: [{ type: "text", text: "Hypothesis: byte offsets cause the Unicode mismatch. Rejected replacing the schema because clients depend on it. Next: compare code point offsets." }] },
+    result("run_check", { exitCode: 1, stderr: "Expected offset 2, received offset 4. TOKEN_SECRET=hidden-value" })];
+  for (let round = 0; round < 5; round++) {
+    messages.push(...Array.from({ length: 20 }, () => result("list_files", {})));
+    const { summary } = summarizeHarnessMessages(messages, 2000);
+    expect(summary.length).toBeLessThanOrEqual(2000);
+    const state = JSON.parse(summary);
+    expect(state.objective).toContain("compare alternatives");
+    expect(state.steering).toContain("Preserve compatibility with existing clients.");
+    expect(state.recent.join(" ")).toContain("Rejected replacing the schema");
+    expect(state.observations).toEqual([{ tool: "run_check", detail: "Expected offset 2, received offset 4. TOKEN_SECRET=[REDACTED]", unverified: true }]);
+    expect(summary).not.toContain("hidden-value");
+    expect(state).not.toHaveProperty("workingPlan");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("SDK errors and nested verification diagnostics survive repeated noise as unverified observations", () => {
+  let messages: ModelMessage[] = [text("Fix Unicode offsets without changing clients."),
+    { role: "assistant", parts: [{ type: "text", text: "Decision: keep the schema. Hypothesis: the parser uses byte offsets; compare code point offsets next." }] },
+    { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "sdk-error", toolName: "apply_patch", isError: true,
+      error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Patch reference is stale. TOKEN_SECRET=hidden-sdk-secret" } } }] },
+    result("verify_and_apply_environment_patch", { verification: { exitCode: 1, diagnostics: {
+      stderr: "Expected offset 2 but got 4. API_KEY=sk-secret-value", stdout: "Parser regression failed." }
+    } }),
+    { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "external-error", toolName: "mcp_unknown", isError: true,
+      error: { message: "EXTERNAL_PRIVATE_ERROR" } } }] }];
+  for (let round = 0; round < 5; round++) {
+    messages.push(...Array.from({ length: 30 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "Inspect more files." }] })),
+      ...Array.from({ length: 20 }, () => result("run_check", { exitCode: 1, stderr: "Same failing assertion." })));
+    const { summary } = summarizeHarnessMessages(messages, 2000);
+    const state = JSON.parse(summary);
+    expect(summary.length).toBeLessThanOrEqual(2000);
+    expect(state.recent.join(" ")).toContain("Decision: keep the schema");
+    expect(state.observations).toHaveLength(3);
+    expect(state.observations.every((item: { unverified: boolean }) => item.unverified)).toBe(true);
+    expect(summary).toContain("Patch reference is stale");
+    expect(summary).toContain("Expected offset 2 but got 4");
+    expect(summary).toContain("Parser regression failed");
+    expect(summary).not.toContain("hidden-sdk-secret");
+    expect(summary).not.toContain("sk-secret-value");
+    expect(summary).not.toContain("EXTERNAL_PRIVATE_ERROR");
+    expect(state.checks.join(" ")).not.toContain("Parser regression failed");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
 });
 
 test("bounds valid summaries and retains newest verification without treating it as approval", () => {

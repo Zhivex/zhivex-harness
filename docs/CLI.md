@@ -475,11 +475,18 @@ provider and child agent; another task or process restart asks again. They do no
 grant execution or writes. Without a terminal an unapproved dependency request
 remains pending; restricted mode rejects it.
 
-In the local console and `run` command, tool execution errors, including protected reads and denied approvals, return
+In the console, `run` command, SDK harness and delegated runs, tool errors, including protected reads and denied approvals, return
 evidence to the model so it can choose another permitted strategy. Existing
 tool-error, step and time budgets bound recovery. Validation and security
-checks still reject the underlying action. Strict SDK/service defaults remain fail-fast;
-library hosts can opt into recovery with `toolExecution: { stopOnError: false }`.
+checks still reject the underlying action. Invalid arguments and unknown tool
+names produce structured error receipts; neither is executed. This recovery is
+independent of the optional `repair` controller, so a normal coding session does
+not need a verifier plan for every task. Library callers that need fail-fast
+behavior can explicitly pass `toolExecution: { stopOnError: true,
+validationErrorMode: "throw", unknownToolMode: "throw" }`.
+The client protocol's `approval.resolve` command remains fail-fast for the
+specific reviewed effect, so denial or stale content cannot be acknowledged as
+a successful decision. A subsequent turn can continue from that failed attempt.
 
 ```sh
 zhx --approval-mode ask
@@ -576,8 +583,12 @@ quality are not implied. Recommendations check credential presence, not live acc
 Advice reserves 8,000 input and 1,024 output tokens and reports price scope, evidence
 dates and unknown/stale metadata; it never changes the selected model automatically.
 
-The selected provider receives bounded redacted user/assistant excerpts and
-deterministic evidence. Tool/provider payloads are excluded from semantic input.
+The selected provider receives bounded, redacted user/assistant excerpts, local
+read/search code excerpts, diagnostic observations and deterministic context.
+Code and diagnostic excerpts are untrusted data for summarization, not permission
+or proof of correctness. Arbitrary tool objects, external-tool payloads and raw
+provider responses are excluded. All excerpts share the existing input and byte
+reservation limits.
 Calls use the run's budgets and per-model usage ledger, including rejected summaries
 and partial usage. Unknown usage stops continuation. Use per-route `--pricing-file`
 and `--usage-limit-usd` for monetary caps; the legacy single-price cost budget cannot

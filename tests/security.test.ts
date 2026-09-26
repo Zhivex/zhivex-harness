@@ -360,18 +360,23 @@ describe("security regressions", () => {
       store
     });
 
-    await expect(runHarness(harness, { runId: "denied-security-run", prompt: "Create denied.txt" }, {
+    const result = await runHarness(harness, { runId: "denied-security-run", prompt: "Create denied.txt" }, {
       resolveApprovals: async (approvals) => approvals.map((approval) => ({
         provider: approval.provider,
         approvalRequestId: approval.id,
         approve: false,
         reason: "Security regression denial."
       }))
-    })).rejects.toThrow("Security regression denial");
+    });
+    expect(result.status).toBe("completed");
+    expect(result.outputText).toBe("The write was denied.");
+    expect(result.toolResults).toHaveLength(1);
+    expect(result.toolResults[0]?.isError).toBe(true);
+    expect(result.toolResults[0]?.error?.message).toContain("Security regression denial");
 
     await expect(readFile(path.join(root, "denied.txt"), "utf8")).rejects.toThrow();
     const state = await store.load("denied-security-run");
-    expect(state?.status).toBe("failed");
+    expect(state?.status).toBe("completed");
     expect(state?.approvalHistory).toContainEqual(expect.objectContaining({
       kind: "local-tool",
       approve: false

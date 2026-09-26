@@ -17,7 +17,7 @@ for(const scenario of ['repair','strict','override','bounded'] as const)test(`un
     [{type:'text-delta',textDelta:'Inspected fixture'},{...finish,finishReason:'stop'}]
    ]})});
   const pending=runHarness(h,{runId:'selection',prompt:'Inspect value.txt.',...(scenario==='override'?{toolExecution:{unknownToolMode:'throw' as const}}:{})});
-  if(scenario==='strict'||scenario==='override')await expect(pending).rejects.toThrow('not registered');
+   if(scenario==='override')await expect(pending).rejects.toThrow('not registered');
   else if(scenario==='bounded'){
    await pending.catch(()=>undefined);const saved=await store.load('selection');
    expect(saved?.status).toBe('failed');expect(saved!.steps.length).toBeLessThanOrEqual(2);

@@ -6,6 +6,11 @@ Zhivex Harness is a local terminal assistant and TypeScript library. It supports
 OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
 approvals survive restarts.
 
+Use it to understand a repository, discuss a design, investigate a failure or
+implement a change. Conversation context retains decisions, hypotheses and bounded
+diagnostic excerpts across compaction. Edits and command execution keep their
+own permission checks; a conversational summary never grants approval.
+
 Version `1.2.0-rc.4` is prepared as an unpublished release candidate for npm `next`,
 with console, local service and governed delegation improvements. Certification
 and publication remain pending. The

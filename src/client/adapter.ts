@@ -202,7 +202,10 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       readApprovalDecisions(admitted);
       await harness.store.save(admitted,{expectedRevision:state.revision??0});
       state=await getRun(s,c.runId);
-      state = (await invoke(s.sessionId, { state, approvals })).state;
+      // This command acknowledges a specific reviewed effect, not just a
+      // conversational turn. Keep denial/stale-effect failures visible to the
+      // client; a later run.start can continue with normal error recovery.
+      state = (await invoke(s.sessionId, { state, approvals, toolExecution: { stopOnError: true } })).state;
     }
     s = await sessions.updateRun(s.sessionId, state.runId, { status: sessionStatus(state.status) });
     return { kind: "run", session: sessionDocument(s), run: await documentRun(state) };
