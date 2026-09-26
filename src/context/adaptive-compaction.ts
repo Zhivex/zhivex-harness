@@ -54,8 +54,11 @@ export const createAdaptiveCompaction = (config: {
     // Leave room for three further requests when the cumulative budget is tight.
     // Static policy/catalog overhead is irreducible; the transport budget remains
     // authoritative when even the smallest useful prompt no longer fits.
-    return Math.ceil(toolTokens + Math.min(config.maxEstimatedInputTokens,
-      Math.max(systemTokens + summaryAllowance + protectedTailTokens, remaining / 3 - toolTokens)));
+    // This is a compaction target, not the provider's context limit. A complete
+    // recent interaction may exceed it; transport/context admission still owns
+    // the actual hard limit. Never fail solely because that group beats a target.
+    return Math.ceil(toolTokens + Math.max(systemTokens + summaryAllowance + protectedTailTokens,
+      Math.min(config.maxEstimatedInputTokens, remaining / 3 - toolTokens)));
   };
   return {
     ...(options.auxiliary ? { auxiliary: options.auxiliary } : {}),
@@ -75,7 +78,7 @@ export const createAdaptiveCompaction = (config: {
       protectedTailTokens = newestCut === undefined ? 1024 : Math.max(1024, Math.ceil(tailCharacters[newestCut]! / 3) + 64);
       const target = Math.max(1024, Math.floor(threshold() * 0.65) - toolTokens - systemTokens - summaryAllowance);
       // Prefer the largest recent tail that fits both budgets. If the newest
-      // protected group cannot fit, retain it and let the SDK fail closed.
+      // protected group exceeds the target, retain it under the threshold floor.
       const cut = cuts.find(index => messages.length - index <= config.keepRecentMessages &&
         Math.ceil(tailCharacters[index]! / 3) + 64 <= target) ?? cuts.at(-1);
       retained = cut === undefined ? 1 : Math.max(1, messages.length - cut);

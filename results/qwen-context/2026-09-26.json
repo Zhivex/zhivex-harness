@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-build-live",
+  "observedAt": "2026-09-26T13:12:51.018Z",
+  "version": "1.2.0-rc.5",
+  "moduleSha256": "5d615aa9ab02e96d77b029bcd6bf54f54dde43c617284988188fcc2bb541b1f2",
+  "providers": [
+    "qwen"
+  ],
+  "tasks": [
+    "fix-rounding-bug"
+  ],
+  "budgetMode": "runtime-defaults",
+  "limits": {
+    "maxSteps": 50,
+    "timeoutMs": 900000,
+    "maxInputTokens": 100000,
+    "maxOutputTokens": 30000,
+    "maxTotalTokens": 120000
+  },
+  "status": "passed",
+  "rows": [
+    {
+      "provider": "qwen",
+      "model": "qwen3.8-flash",
+      "task": "fix-rounding-bug",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 1,
+      "approvals": 3,
+      "steps": 7,
+      "elapsedMs": 218041,
+      "requireVerifiedDelivery": false,
+      "effectiveBudget": {
+        "maxSteps": 50,
+        "maxToolCalls": 32,
+        "maxToolErrors": 4,
+        "maxInputTokens": 100000,
+        "maxOutputTokens": 30000,
+        "maxTotalTokens": 120000,
+        "includeChildRuns": true
+      },
+      "runStatus": "completed",
+      "usage": {
+        "inputTokens": 48785,
+        "cachedInputTokens": 37120,
+        "outputTokens": 12822,
+        "reasoningTokens": 11147,
+        "totalTokens": 61607
+      },
+      "childUsage": [],
+      "toolCalls": 9,
+      "toolErrors": 0,
+      "tools": [
+        {
+          "name": "read_task",
+          "isError": false
+        },
+        {
+          "name": "list_files",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 1
+        },
+        {
+          "name": "apply_reviewed_edits",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 0
+        },
+        {
+          "name": "git_diff",
+          "isError": false
+        }
+      ],
+      "phaseTimingsMs": {
+        "fixture": 48,
+        "agent": 217966,
+        "verification": 27
+      },
+      "stepTimings": [
+        {
+          "step": 1,
+          "status": "completed",
+          "firstEventMs": 3738,
+          "durationMs": 4221
+        },
+        {
+          "step": 2,
+          "status": "completed",
+          "durationMs": 3157
+        },
+        {
+          "step": 3,
+          "status": "waiting_approval",
+          "durationMs": 92050
+        },
+        {
+          "step": 4,
+          "status": "waiting_approval",
+          "firstEventMs": 50189,
+          "durationMs": 57903
+        },
+        {
+          "step": 5,
+          "status": "waiting_approval",
+          "firstEventMs": 10433,
+          "durationMs": 11086
+        },
+        {
+          "step": 6,
+          "status": "completed",
+          "firstEventMs": 21898,
+          "durationMs": 21981
+        },
+        {
+          "step": 7,
+          "status": "completed",
+          "durationMs": 27247
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "Small disposable coding fixtures; selected tasks recorded explicitly",
+    "Built directly from working-tree source; not a separately installed npm artifact or RC5 certification."
+  ],
+  "sourceSha256": {
+    "src/context/qwen-reasoning.ts": "95199a717f80f57ee43f6651d60dc19ec0b6b20b322f0e732826777ce6507818",
+    "src/context/adaptive-compaction.ts": "0a5bf963ee6401125872cfcda534761c0d3f1c7d9de61275974c66ccea79d5f0",
+    "src/runtime/harness.ts": "b95e8e4ef0d34ff4c6ee0265efcf4381ebd910126d136ae80ffb821f59f2de0e"
+  },
+  "savedSessionSimulation": {
+    "beforeEstimatedTokens": 50473,
+    "afterEstimatedTokens": 31968,
+    "modifiedOriginalSession": false
+  },
+  "offlineValidation": {
+    "maintainedTestsPassed": 1366,
+    "skipped": 1,
+    "failed": 0,
+    "repeatedCompactionThenFileEditAndExecutableCheck": true
+  }
+}

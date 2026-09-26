@@ -131,7 +131,11 @@ their status. Review groups retain the status reported by their group runtime.
 `/diff` colors additions, removals, and hunk headers on eligible terminals, respects
 `NO_COLOR`, and escapes untrusted terminal controls. Model text also escapes terminal
 controls and renders bounded Markdown headings, emphasis, and fenced code on a
-TTY; JSON/JSONL retain their existing data contracts.
+TTY. Tables with leading pipes and a Markdown separator row render with aligned
+borders and wrapped cells at the current terminal width; narrow terminals use
+stacked labels and values. Table blocks buffer up to 128 lines (8 KiB per line)
+before rendering; incomplete or oversized syntax stays readable as literal text.
+Redirected output and JSON/JSONL retain their existing data contracts.
 
 Contributor validation: `bun run smoke:package` also runs a real PTY workflow
 against the installed CLI, including approval recovery after process restart.
@@ -570,8 +574,11 @@ model and endpoint support the full request plus output reserve. The current
 catalog has no verified context-window metadata, so the fallback remains 40000
 estimated conversation tokens; no model capacity is guessed. Qwen reasoning
 fragments are normalized losslessly before estimation, followed by adaptive
-compaction at safe tool/approval boundaries. Oversized protected groups still
-require operator intervention; they are never silently discarded.
+compaction at safe tool/approval boundaries. Identical unsigned final reasoning
+summaries are deduplicated against their streamed text. The compaction target
+has a floor for instructions and the newest complete interaction so that a
+target alone cannot abort useful work. Actual context admission and configured
+run budgets remain authoritative; protected groups are never silently discarded.
 ## Configurable model-assisted compaction
 
 Automatic compaction remains deterministic unless explicitly selected. Use

@@ -4,6 +4,16 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Deduplicate identical unsigned Qwen reasoning summaries against their streamed text before context accounting, including restored sessions. Preserve distinct, signed, and encrypted provider data.
+- Treat the compaction threshold as a target that must fit the newest indivisible interaction, while keeping transport and run budgets authoritative. Validate repeated compaction followed by a real file edit and executable check.
+- Guide scoped implementation toward editing once the relevant code and check are known; clarify exact tool names and dependency lookup paths to avoid repeated blocked discovery.
+
+- Render pipe-delimited Markdown tables as aligned, wrapped terminal grids, with stacked cells on narrow terminals and Unicode-aware widths. Preserve plain redirected output and terminal-control sanitization.
+- Keep Meta Responses conversation history locally with `store: false` and encrypted reasoning replay, instead of depending on `previous_response_id` availability. Resume existing sessions from retained messages and tool receipts without rerunning completed tools; older turns without encrypted reasoning retain their visible history only.
+- Allow two bounded receipt-only continuation backoffs (1s and 2s) for legacy stateful requests. Add generate/stream replay regressions and an opt-in live check for encrypted replay across model instances.
+
 ## 1.2.0-rc.5 - 2026-09-26
 
 - Adapt the assistant loop to explanation, investigation, design and implementation without imposing a repair ceremony on read-only work. Remove the `strict`/`repair` runtime profile choice; callers requiring verified completion use `requireVerifiedDelivery` or `--require-verified-delivery` directly. This is an intentional pre-promotion API/CLI break; saved connection profiles and subagent roles remain independent.

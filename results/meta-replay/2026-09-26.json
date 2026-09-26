@@ -1,0 +1,45 @@
+{
+  "kind": "meta-stateless-source-validation",
+  "baseCommit": "9553949282e4ac70cda9f4103a454ac42cab1131",
+  "scope": "Working-tree source; not certification of a published artifact",
+  "sourceSha256": {
+    "src/providers/meta-replay.ts": "1e1caf354e81810f21375ce32fe6edd483d3c6dc3fe0036567e5c0f67e9e2bdd",
+    "src/providers/meta-continuation.ts": "b6b53b2502f3addf8f74206d4d04df6418ac321ac48a19364328fc745956dc26",
+    "src/providers/providers.ts": "54926d7d05bf2e1f815c5a3632d5a18945ad06021b6f54bd6ab5aaf8195effe7",
+    "scripts/meta-replay-live-smoke.ts": "29d7c72534602c36b8f6490e517be63ba762e26f128d1b2ca579e1cfc77a49f4"
+  },
+  "replay": {
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "rows": [
+      {
+        "mode": "generate",
+        "status": "passed",
+        "requests": 2,
+        "encryptedReplay": true
+      },
+      {
+        "mode": "stream",
+        "status": "passed",
+        "requests": 2,
+        "encryptedReplay": true
+      }
+    ]
+  },
+  "approvalRestart": {
+    "ok": true,
+    "gate": "live-provider-smoke",
+    "certifiedAt": "2026-09-26T12:08:41.486Z",
+    "providers": [
+      {
+        "ok": true,
+        "provider": "meta",
+        "model": "muse-spark-1.3",
+        "approvalPersisted": true,
+        "processRestarted": true,
+        "toolExecutions": 1,
+        "journalEntries": 1
+      }
+    ]
+  }
+}

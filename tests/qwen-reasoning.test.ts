@@ -9,6 +9,29 @@ import { normalizeQwenReasoning, coalesceQwenReasoning } from "../src/context/qw
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 
 const fragment = (text: string) => ({type:"provider-data" as const,provider:"qwen",data:{type:"reasoning_content",reasoningContent:text}});
+const summary = (text: string) => ({type:"provider-data" as const,provider:"qwen",data:{type:"reasoning",id:"rs_fixture",summary:[{type:"summary_text",text}]}});
+
+test("deduplicates exact final summaries in saved histories and streaming without losing reasoning", async () => {
+  const text = "reasoning ".repeat(7000);
+  const parts = [fragment(text.slice(0,20000)),fragment(text.slice(20000)),summary(text)];
+  const input: ModelMessage[] = [{role:"assistant",parts}];
+  const before = structuredClone(input);
+  expect(normalizeQwenReasoning(input)[0]!.parts).toEqual([fragment(text)]);
+  expect(input).toEqual(before);
+  const collected: StreamEvent[] = [];
+  for await (const event of coalesceQwenReasoning((async function*(){yield* parts;})())) collected.push(event);
+  expect(normalizeQwenReasoning([{role:"assistant",parts:collected as ModelMessage["parts"]}])[0]!.parts).toEqual([fragment(text)]);
+});
+
+test("retains distinct summaries and signed or encrypted data", () => {
+  const different = summary("different");
+  const signed = {...summary("same"),data:{...summary("same").data,signature:"opaque"}};
+  const encrypted = {...summary("same"),data:{...summary("same").data,encrypted_content:"opaque"}};
+  for (const extra of [different,signed,encrypted]) {
+    const input: ModelMessage[] = [{role:"assistant",parts:[fragment("same"),extra]}];
+    expect(normalizeQwenReasoning(input)).toEqual(input);
+  }
+});
 
 test("normalization is lossless, idempotent, immutable and respects opaque barriers", () => {
   const opaque = {...fragment("signed"),data:{...fragment("signed").data,signature:"preserve"}};

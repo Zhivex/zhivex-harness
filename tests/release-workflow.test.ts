@@ -135,7 +135,7 @@ describe("release workflow version source", () => {
     expect(workflow).toContain("needs.representative-evaluation.result == 'success'");
     expect(workflow).toContain("evaluations/representative-repositories.jsonl");
     expect(workflow).toContain("--tasks 7 --repetitions 1 --profiles governed --carriers rule_file");
-    expect(workflow).toContain("--provider meta --model muse-spark-1.3");
+    expect(workflow).toContain("--provider meta --model muse-spark-1.3-contributor");
     expect(workflow).toContain("--provider qwen --model qwen3.8-flash");
     expect(workflow).toContain("--provider openai --model gpt-6-luna");
     expect(workflow).toContain("scripts/assemble-representative-evidence.ts");
@@ -304,7 +304,7 @@ test("registry summary distinguishes verification, accepted bytes and uncertain 
 test("standalone and release live gates certify the same candidate cohort", async () => {
   const release = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8")) as any;
   const standalone = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/live-certification.yml"), "utf8")) as any;
-  for (const [provider, model] of Object.entries({META: "muse-spark-1.3", QWEN: "qwen3.8-flash", OPENAI: "gpt-6-luna"})) {
+  for (const [provider, model] of Object.entries({META: "muse-spark-1.3-contributor", QWEN: "qwen3.8-flash", OPENAI: "gpt-6-luna"})) {
     const key = `ZHIVEX_HARNESS_LIVE_${provider}_MODEL`;
     expect(release.jobs["certify-live"].env[key]).toBe(model);
     expect(standalone.jobs.certify.env[key]).toBe(model);

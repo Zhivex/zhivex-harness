@@ -1,4 +1,5 @@
 import { createMetaContinuationFetch } from "./meta-continuation.js";
+import { createMetaReplayModel } from "./meta-replay.js";
 import { annotateMetaRequestError } from "./meta-errors.js";
 import { bundledDefaultModel } from "../models/catalog.js";
 import { createHash } from "node:crypto";
@@ -13,7 +14,6 @@ import {
   type ToolCall
 } from "@zhivex-ai/core";
 import { createGemini } from "@zhivex-ai/gemini";
-import { createMeta } from "@zhivex-ai/meta";
 import { createOpenAI } from "@zhivex-ai/openai";
 import { createQwen, type QwenRegion } from "@zhivex-ai/qwen";
 
@@ -559,7 +559,7 @@ const withOpenAIToolResultEnvelopes = (model: LanguageModel): LanguageModel => w
   }
 }]);
 
-// Keep agent tool loops on Meta's stateful Responses protocol in every caller.
+// Keep agent tool loops on Meta's Responses protocol in every caller.
 const withMetaResponses = (model: LanguageModel): LanguageModel => wrapLanguageModel(model, [{
   name: "harness-meta-responses-v1",
   async wrapGenerate({ input }, next) {
@@ -585,11 +585,11 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
     diagnostics: { endpointEnvironmentVariable: "META_BASE_URL" },
     factory: ({ model, env, credentials }) => {
       const baseURL = env.META_BASE_URL?.trim();
-      return withMetaResponses(createMeta({
+      return withMetaResponses(createMetaReplayModel({
         apiKey: credentials.require(),
         fetch: createMetaContinuationFetch(),
         ...(baseURL ? { baseURL } : {})
-      })(model));
+      }, model));
     }
   },
   {

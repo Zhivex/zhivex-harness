@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { Agent, createInMemoryAgentRunStore, createTextMessage, tool, type ModelMessage } from "@zhivex-ai/core";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { z } from "zod";
@@ -13,6 +16,34 @@ const group = (id: string, length: number): ModelMessage[] => [
   { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: id, toolName: "read_file", isError: false, output: { content: "x".repeat(length) } } }] }
 ];
 const config = { maxMessages: 60, maxEstimatedInputTokens: 6000, keepRecentMessages: 12 };
+
+test("a complete recent group above the compaction target can continue to a checked edit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "compacted-edit-"));
+  const file = path.join(root,"sum.js");
+  await writeFile(file,"export const sum = (a,b) => a-b;");
+  let edited = false, checked = false;
+  const tools = {
+    edit: tool({name:"edit",schema:z.object({}),execute:async()=>{await writeFile(file,"export const sum = (a,b) => a+b;");edited=true;return "edited";}}),
+    check: tool({name:"check",schema:z.object({}),execute:async()=>{
+      const child = Bun.spawn([process.execPath,"-e",`import {sum} from ${JSON.stringify(file)}; if(sum(2,3)!==5) process.exit(1);`],{stdout:"ignore",stderr:"ignore"});
+      const exitCode = await child.exited; checked=exitCode===0;return {exitCode};
+    }})
+  };
+  const model = createMockLanguageModel({responses:[
+    {messages:[{role:"assistant",parts:[{type:"tool-call",toolCall:{id:"edit",name:"edit",input:{}}}]}],finishReason:"tool-calls"},
+    {messages:[{role:"assistant",parts:[{type:"tool-call",toolCall:{id:"check",name:"check",input:{}}}]}],finishReason:"tool-calls"},
+    {messages:[createTextMessage("assistant","done")],text:"done",finishReason:"stop"}
+  ]});
+  const agent = new Agent({model,tools,maxSteps:5,store:createInMemoryAgentRunStore(),compaction:createAdaptiveCompaction({...config,maxMessages:6},{tools})});
+  try {
+  const result = await agent.run({messages:[createTextMessage("user","Implement the fix and run the check."),...group("old",24000),...group("recent",30000)]});
+  expect(result.state.error).toBeUndefined();
+  expect(result.status).toBe("completed");
+  expect(edited).toBe(true);
+  expect(checked).toBe(true);
+  expect(result.state.compactions!.length).toBeGreaterThan(1);
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
 
 test("SDK compacts an oversized old result while preserving the newest complete group and durable record", async () => {
   const tools = { read_file: tool({ name: "read_file", schema: z.object({}), execute: () => ({}) }) };

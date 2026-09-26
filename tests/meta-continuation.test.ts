@@ -8,6 +8,27 @@ const unavailable = () => Response.json({ error: { type: "invalid_request_error"
 const mockFetch = (fn: (input: Parameters<typeof fetch>[0], init?: RequestInit) => Promise<Response>): typeof fetch => Object.assign(fn, { preconnect: fetch.preconnect });
 
 describe("Meta continuation recovery", () => {
+  test("allows two bounded backoffs for delayed persistence without replaying tools", async () => {
+    let calls = 0;
+    const init = request();
+    const wrapped = createMetaContinuationFetch(mockFetch(async (_url, options) => {
+      expect(options).toBe(init);
+      return ++calls < 3 ? unavailable() : new Response("ok");
+    }), [0, 0]);
+    expect((await wrapped(url, init)).status).toBe(200);
+    expect(calls).toBe(3);
+  });
+
+  test("stops after two backoffs when remote state stays unavailable", async () => {
+    let calls = 0;
+    const wrapped = createMetaContinuationFetch(mockFetch(async () => { calls++; return unavailable(); }), [0, 0]);
+    const init = request();
+    expect((await wrapped(url, init)).status).toBe(400);
+    expect(calls).toBe(3);
+    await wrapped(url, init);
+    expect(calls).toBe(4);
+  });
+
   test("replays identical receipt bytes and options once without consuming success stream", async () => {
     const init = request();
     let calls = 0;
