@@ -145,7 +145,7 @@
     },
     {
       "name": "cliJsonDocumentSchema",
-      "sha256": "sha256:87b3d492b6f06538be89183d1c074856e817c6b78c666cec2798194fdc3dbf4a"
+      "sha256": "sha256:8d464b66e470c13b61331f4b8e5547300841ac76b71a4e9ed66d3e1783447b96"
     },
     {
       "name": "cliJsonLineDocumentSchema",
@@ -245,7 +245,7 @@
     },
     {
       "name": "parseCliJsonDocument",
-      "sha256": "sha256:cf746812ab0325aa936071a6f8441bd7cda896a1a51054df43ceff324b301a80"
+      "sha256": "sha256:c1fe9cb7087af89e0a2c89e7a3941bd028f49b32a9e2f5cba1d5a2dbf1d918e1"
     },
     {
       "name": "parseCliJsonLineDocument",
@@ -319,7 +319,7 @@
     },
     {
       "name": "CliJsonDocument",
-      "sha256": "sha256:43ea7f266f1a044f9d7cac7eb1e0c0b2df455a928eaa837ba3fde5cdc5065b52"
+      "sha256": "sha256:07692bcada20b028c985633d764e0c5375a022bfc93f00fc8ecec0caae3fec3a"
     },
     {
       "name": "CliJsonLineDocument",
@@ -490,5 +490,5 @@
       "sha256": "sha256:236fa1dd85851bf31083217eb72318a871645be8548486c829ba79d2a1a0933e"
     }
   ],
-  "digest": "sha256:4a89ad163ad5bf4a352fec79280e635d05301490b76e7e851465383ce9a06a0e"
+  "digest": "sha256:7dd369f0c3163b628a2907c3ec092d88892d3f7ae11385c802fb0197e2f28629"
 }

@@ -232,7 +232,7 @@ const doctorCheckSchema = observationalDocument({
   ]))
 });
 const doctorConfigurationSchema = observationalDocument({
-  requireVerifiedDelivery: z.boolean(),
+  requireVerifiedDelivery: z.boolean().optional(),
   provider: z.string().min(1),
   model: z.string().min(1),
   workspace: z.string().min(1),

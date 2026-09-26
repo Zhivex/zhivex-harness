@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "gate": "live-orchestration-smoke",
+  "certifiedAt": "2026-09-26T04:33:21.607Z",
+  "providers": [
+    {
+      "ok": true,
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "parentRunId": "run_48a28e96-655d-4f60-9c36-2de6222da715",
+      "childRunId": "run_e8420625-a58f-41ed-927b-dbd84028f911",
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 4487
+    }
+  ]
+}

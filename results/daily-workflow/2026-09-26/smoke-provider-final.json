@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "gate": "live-provider-smoke",
+  "certifiedAt": "2026-09-26T04:27:05.904Z",
+  "providers": [
+    {
+      "ok": true,
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "approvalPersisted": true,
+      "processRestarted": true,
+      "toolExecutions": 1,
+      "journalEntries": 1
+    },
+    {
+      "ok": true,
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "approvalPersisted": true,
+      "processRestarted": true,
+      "toolExecutions": 1,
+      "journalEntries": 1
+    },
+    {
+      "ok": true,
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "approvalPersisted": true,
+      "processRestarted": true,
+      "toolExecutions": 1,
+      "journalEntries": 1
+    }
+  ]
+}

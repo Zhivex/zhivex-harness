@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-installed-live",
+  "observedAt": "2026-09-26T04:29:29.599Z",
+  "version": "1.2.0-rc.4",
+  "moduleSha256": "23c969852009be4ed9b6080e371b207570b57c117bec4d290d32ff9f2b8c35c9",
+  "providers": [
+    "meta"
+  ],
+  "tasks": [
+    "fix-rounding-bug",
+    "multi-file-cart-feature"
+  ],
+  "budgetMode": "runtime-token-defaults",
+  "limits": {
+    "maxSteps": 12,
+    "timeoutMs": 150000,
+    "maxInputTokens": 100000,
+    "maxOutputTokens": 30000,
+    "maxTotalTokens": 120000
+  },
+  "status": "failed",
+  "rows": [
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "task": "fix-rounding-bug",
+      "status": "failed",
+      "approvals": 3,
+      "elapsedMs": 112783,
+      "phase": "agent",
+      "requireVerifiedDelivery": false,
+      "effectiveBudget": {
+        "maxSteps": 12,
+        "maxToolCalls": 32,
+        "maxToolErrors": 4,
+        "maxInputTokens": 100000,
+        "maxOutputTokens": 30000,
+        "maxTotalTokens": 120000,
+        "includeChildRuns": true
+      },
+      "independentTestsPassed": false,
+      "protectedFilesUnchanged": true,
+      "errorType": "HarnessExecutionError",
+      "diagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "status": 400,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "status": 400,
+              "provider": {
+                "reason": "previous_response_unavailable",
+                "parameter": "none",
+                "bodyState": "parsed"
+              }
+            }
+          ]
+        },
+        "fingerprint": "sha256:b09b3b514d87e9f578b0582221be8295b0814414da3524821a73ba5e8c47d11b"
+      }
+    },
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "task": "multi-file-cart-feature",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 2,
+      "approvals": 4,
+      "steps": 8,
+      "elapsedMs": 60317,
+      "requireVerifiedDelivery": false,
+      "effectiveBudget": {
+        "maxSteps": 12,
+        "maxToolCalls": 32,
+        "maxToolErrors": 4,
+        "maxInputTokens": 100000,
+        "maxOutputTokens": 30000,
+        "maxTotalTokens": 120000,
+        "includeChildRuns": true
+      },
+      "runStatus": "completed",
+      "usage": {
+        "inputTokens": 58530,
+        "outputTokens": 1930,
+        "totalTokens": 60460
+      },
+      "childUsage": [],
+      "toolCalls": 7,
+      "toolErrors": 0,
+      "tools": [
+        {
+          "name": "list_files",
+          "isError": false
+        },
+        {
+          "name": "read_files",
+          "isError": false
+        },
+        {
+          "name": "repair_plan",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 1
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "isError": false
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 0
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "Small disposable coding fixtures; selected tasks recorded explicitly"
+  ]
+}

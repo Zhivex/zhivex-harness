@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "kind": "live-conversation-continuity",
+  "runtime": "selected-artifact",
+  "harnessVersion": "1.2.0-rc.4",
+  "observedAt": "2026-09-26T04:08:20.164Z",
+  "status": "failed",
+  "scriptSha256": "0cc575f10a077844a708c8a74e0eb54ee69cccde80e08b3c680b773a0982b10e",
+  "rows": [
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "status": "passed",
+      "processStarts": 3,
+      "elapsedMs": 6614,
+      "phases": [
+        {
+          "phase": 0,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": true,
+            "compatibility": true,
+            "rejectedApproach": true,
+            "objective": true,
+            "noTools": true
+          },
+          "status": "passed",
+          "compactions": 1,
+          "compactedMessages": 6,
+          "inputTokens": 892,
+          "outputTokens": 210,
+          "checkpointRestored": false,
+          "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+        },
+        {
+          "phase": 1,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": true,
+            "compatibility": true,
+            "rejectedApproach": true,
+            "objective": true,
+            "noTools": true
+          },
+          "status": "passed",
+          "compactions": 1,
+          "compactedMessages": 12,
+          "inputTokens": 1027,
+          "outputTokens": 181,
+          "checkpointRestored": true,
+          "sourceDigest": "f47cf0e8f0c18722ed3b8d522199007dad7eb8b222b0a879529f54571428feca"
+        },
+        {
+          "phase": 2,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": true,
+            "compatibility": true,
+            "rejectedApproach": true,
+            "objective": true,
+            "noTools": true
+          },
+          "status": "passed",
+          "compactions": 1,
+          "compactedMessages": 12,
+          "inputTokens": 1050,
+          "outputTokens": 148,
+          "checkpointRestored": true,
+          "sourceDigest": "43e17c670b9cbfa6a5af9720b1db4c022b453e3d194769e9f590663c4f18d72f"
+        }
+      ]
+    },
+    {
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "status": "failed",
+      "processStarts": 1,
+      "elapsedMs": 120,
+      "phases": [
+        {
+          "phase": 0,
+          "status": "failed",
+          "reason": "child_request_or_runtime_failure",
+          "exitCode": 1
+        }
+      ]
+    },
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "status": "failed",
+      "processStarts": 3,
+      "elapsedMs": 30681,
+      "phases": [
+        {
+          "phase": 0,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": true,
+            "compatibility": true,
+            "rejectedApproach": true,
+            "objective": true,
+            "noTools": true
+          },
+          "status": "passed",
+          "compactions": 1,
+          "compactedMessages": 6,
+          "inputTokens": 1402,
+          "outputTokens": 842,
+          "checkpointRestored": false,
+          "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+        },
+        {
+          "phase": 1,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": true,
+            "compatibility": true,
+            "rejectedApproach": true,
+            "objective": true,
+            "noTools": true
+          },
+          "status": "passed",
+          "compactions": 1,
+          "compactedMessages": 12,
+          "inputTokens": 1537,
+          "outputTokens": 941,
+          "checkpointRestored": true,
+          "sourceDigest": "d77f1744c0cbd5bafbebcd40c21eb6383cc45b9918edd4b478f62e213247129d"
+        },
+        {
+          "phase": 2,
+          "checks": {
+            "completed": true,
+            "compacted": true,
+            "codename": false,
+            "compatibility": false,
+            "rejectedApproach": false,
+            "objective": false,
+            "noTools": true
+          },
+          "status": "failed",
+          "compactions": 1,
+          "compactedMessages": 12,
+          "inputTokens": 1559,
+          "outputTokens": 1024,
+          "checkpointRestored": true,
+          "sourceDigest": "14cad8a63de64b5e876d905eba8794558122d1d1ea9e36d3d8de1c500958f203"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Small synthetic memory scenario; not general benchmark or release certification",
+    "Conversation restarts between completed runs; suspended approval resume is tested separately",
+    "Deterministic compaction; no auxiliary paid compactor"
+  ]
+}
