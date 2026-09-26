@@ -3,7 +3,7 @@ import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
 const systemCodes = ["ENOENT", "EACCES", "EPERM", "ENOSPC", "EIO", "EISDIR", "ENOTDIR", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "ABORT_ERR"] as const;
-const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError"] as const;
+const kinds = ["AssertionError", "Error", "TypeError", "RangeError", "SyntaxError", "ProviderToolCallError", "QwenStreamEventError", "AbortError", "TimeoutError", "ZodError", "GuardrailTriggeredError"] as const;
 const budgetLimits = ["maxSteps", "maxToolCalls", "maxToolErrors", "maxInputTokens", "maxOutputTokens", "maxTotalTokens"] as const;
 const budgetDiagnosticSchema = z.object({
   budgetLimit: z.enum(budgetLimits),

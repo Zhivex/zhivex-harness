@@ -38,6 +38,9 @@ export type TimeToSafeFixFailureOrigin = (typeof TIME_TO_SAFE_FIX_FAILURE_ORIGIN
 
 export const TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES = [
   "QWEN_DUPLICATE_TOOL_CALL_ID",
+  "QWEN_RESPONSES_TOOL_CALL_INVALID",
+  "QWEN_CHAT_TOOL_CALL_INVALID",
+  "QWEN_SSE_EVENT_INVALID",
   "OPENAI_RESPONSES_TOOL_CALL_INVALID",
   "OCI_PATCH_ID_MISMATCH",
   "OCI_PATCH_SNAPSHOT_CHANGED",
@@ -237,6 +240,16 @@ const structuredHarnessFailure = (error: unknown): StructuredHarnessFailure | un
   return structured;
 };
 
+const isQwenStreamFailure = (record: Record<string, unknown>): boolean =>
+  record.provider === "qwen" && (
+    (record.category === "provider-tool-call" && (
+      (record.transport === "responses" && record.diagnosticCode === "QWEN_RESPONSES_TOOL_CALL_INVALID") ||
+      (record.transport === "chat" && record.diagnosticCode === "QWEN_CHAT_TOOL_CALL_INVALID")
+    )) ||
+    (record.name === "QwenStreamEventError" && record.diagnosticCode === "QWEN_SSE_EVENT_INVALID" &&
+      (record.transport === "responses" || record.transport === "chat"))
+  );
+
 const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticCode | undefined => {
   if (!error || typeof error !== "object" || depth > 4) return undefined;
   const record = error as {
@@ -254,7 +267,7 @@ const safeDiagnosticCode = (error: unknown, depth = 0): TimeToSafeFixDiagnosticC
     error.name === "QwenToolCallIdError" &&
     record.diagnosticCode === "QWEN_DUPLICATE_TOOL_CALL_ID";
   if (
-    (qwenProviderFailure || openAIProviderFailure ||
+    (qwenProviderFailure || openAIProviderFailure || isQwenStreamFailure(record) ||
       (typeof record.diagnosticCode === "string" && record.diagnosticCode.startsWith("OCI_"))) &&
     typeof record.diagnosticCode === "string" &&
     (TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES as readonly string[]).includes(record.diagnosticCode)
@@ -274,9 +287,9 @@ const safeProviderToolCallRetryable = (error: unknown, depth = 0): boolean | und
     cause?: unknown;
   };
   if (
-    record.category === "provider-tool-call" &&
-    record.provider === "openai" &&
-    record.diagnosticCode === "OPENAI_RESPONSES_TOOL_CALL_INVALID" &&
+    ((record.category === "provider-tool-call" &&
+      record.provider === "openai" &&
+      record.diagnosticCode === "OPENAI_RESPONSES_TOOL_CALL_INVALID") || isQwenStreamFailure(record)) &&
     typeof record.retryable === "boolean"
   ) {
     return record.retryable;
