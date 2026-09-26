@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Prevent OCI runs from completing while edits remain only in their isolated snapshot. Detect pending delivery from actual host contents and modes, including resumed runs and command-created edits. Allow at most two read-only completion reminders, preserve import approvals and refusals, and persist an explicit incomplete-delivery result when delivery cannot finish.
+- Report pending OCI delivery separately from verifier failures in representative release diagnostics.
+
 ## 1.2.0-rc.7 - 2026-09-26
 
 - Split live approval/resume diagnostics into receipt count, tool success, file read/content, and journal count/status checkpoints. Include bounded receipt and journal counters without tool arguments, file contents or provider output. Preserve every release acceptance assertion and the unpublished RC6 failure evidence.

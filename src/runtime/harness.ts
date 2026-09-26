@@ -1,3 +1,4 @@
+import { createOciDelivery } from "./oci-delivery.js";
 import { createModelEditReferences } from "./model-edit-references.js";
 import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
@@ -1133,6 +1134,18 @@ const runHarnessInternal = async (
   const newUserRequest = !("state" in input) && (Boolean(input.prompt && isNewUserText(input.prompt)) ||
     (latestInputMessage?.role === "user" && latestInputMessage.parts.some(part => part.type === "text" &&
       isNewUserText(part.text))));
+  const deliveryScope = "state" in input ? input.state.scope : input.scope ?? harness.config.scope;
+  const delivery = harness.executionEnvironment?.pendingDelivery ? createOciDelivery(
+    () => harness.executionEnvironment!.pendingDelivery!({ runId, ...(deliveryScope ? { scope: deliveryScope } : {}) }),
+    ("state" in input ? input.state.metadata : input.metadata) ?? {}, newUserRequest
+  ) : undefined;
+  if (delivery) {
+    const store = delivery.store(harness.store, runId);
+    harness = { ...harness, store, agent: new Agent({
+      ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
+      store, model: wrapLanguageModel(harness.agent.model, [delivery.middleware])
+    }) };
+  }
   const contextRuntime = await createContextRuntime(harness.workspace,
     structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled, { newUserRequest });
   const contextStore = contextRuntime.store(harness.store, runId);
@@ -1185,6 +1198,7 @@ const runHarnessInternal = async (
         candidate.id === response.approvalRequestId && candidate.provider === response.provider
       );
       if (!approval) continue;
+      delivery?.resolved(approval.name, response.approve);
       await harness.dispatchLifecycle({
         type: "approval-resolved",
         runId,
@@ -1263,6 +1277,10 @@ const runHarnessInternal = async (
               ...event.state, status: "failed", outputText: "Repair incomplete: the candidate has not been verified and delivered.",
               error: { message: "REPAIR_INCOMPLETE" }
             } });
+          } else if (delivery && event.type === "agent-run-finish" && event.status === "completed") {
+            const saved = await harness.store.load(runId, event.state.scope);
+            await options.onEvent?.(saved && saved.revision === event.state.revision
+              ? { ...event, status: saved.status, state: saved } : event);
           } else await options.onEvent?.(event);
         }
       } catch (error) {
@@ -1276,6 +1294,7 @@ const runHarnessInternal = async (
       const checkpoint = await harness.store.load(runId, result.state.scope);
       if (checkpoint && checkpoint.revision === result.state.revision) result = {
         ...result, state: checkpoint, status: checkpoint.status, outputText: checkpoint.outputText,
+        ...(checkpoint.error ? { error: checkpoint.error } : {}),
         ...(checkpoint.usage ? { usage: checkpoint.usage } : {})
       };
       if (input.abortSignal?.aborted && result.status === "failed") {
@@ -1323,7 +1342,7 @@ const runHarnessInternal = async (
         approvals[0]?.approve === true &&
         terminalTools.has(result.state.pendingApprovals[0]!.name)
       ) {
-        const terminalResult = await executeTerminalReceiptTool(
+        let terminalResult = await executeTerminalReceiptTool(
           harness,
           result,
           result.state.pendingApprovals[0]!,
@@ -1331,6 +1350,13 @@ const runHarnessInternal = async (
           maxVerificationRetries,
           input.abortSignal
         );
+        const savedTerminal = await harness.store.load(runId, terminalResult.state.scope);
+        if (savedTerminal && savedTerminal.revision === terminalResult.state.revision && savedTerminal.status === "failed") {
+          terminalResult = { ...terminalResult, status: "failed", state: savedTerminal,
+            outputText: savedTerminal.outputText, ...(savedTerminal.error ? { error: savedTerminal.error } : {}) };
+          await dispatchFinished("failed");
+          return terminalResult;
+        }
         if (terminalResult.status === "completed") {
           await dispatchFinished(terminalResult.status);
           return terminalResult;

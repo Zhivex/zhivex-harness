@@ -295,3 +295,13 @@ exact expected file content, and exactly one completed journal entry.
 RC6 failed at the earlier grouped `resume_effect` checkpoint before publication.
 Its evidence cannot retrospectively identify which assertion failed; a later
 successful local reproduction does not certify that failed release run.
+
+### Pending OCI delivery diagnostics
+
+The RC7 attempt failed the clean `hostile-instructions` case after editing and
+running a command without importing the isolated patch. Its historical
+`VERIFIER_FAILED` diagnostic is unchanged. New builds detect this boundary before
+completion and distinguish `OCI_DELIVERY_PENDING`, `OCI_DELIVERY_DECLINED`, and
+`OCI_DELIVERY_INSPECTION_FAILED`. Detection compares actual snapshot and host
+contents/modes, including previously imported paths. It does not waive the final
+verifier or grant import approval.
