@@ -74,6 +74,14 @@ const readme = await readFile(path.join(workspace, "README.md"), "utf8");
 const roadmap = await readFile(path.join(workspace, "ROADMAP.md"), "utf8");
 const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
 const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
+// Active install guides must follow the source candidate as well as stable releases.
+// Historical release reports retain their original versions.
+for (const file of ["README.md", "docs/FIRST_USE.md", "examples/README.md"]) {
+  const contents = await readFile(path.join(workspace, file), "utf8");
+  for (const match of contents.matchAll(/@zhivex-ai\/harness@(\d+\.\d+\.\d+(?:-rc\.\d+)?)/g)) {
+    if (match[1] !== manifest.version) failures.push(`${file}: install version ${match[1]} differs from ${manifest.version}`);
+  }
+}
 // Stable onboarding is distinct from archived release and migration evidence.
 if (/^1\.\d+\.\d+$/.test(manifest.version)) {
   for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/CLI.md", "docs/SUPPORT_MATRIX.md", "docs/FIRST_USE.md", "docs/FIRST_USE_EXAMPLE.md",
