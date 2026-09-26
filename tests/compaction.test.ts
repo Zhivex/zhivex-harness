@@ -1,10 +1,11 @@
 import { serializeJsonValue } from "@zhivex-ai/core";
 import { expect, test } from "bun:test";
 import type { ModelMessage } from "@zhivex-ai/core";
-import { compactMessages, summarizeHarnessMessages } from "../src/context/compaction.js";
+import { COMPACTION_STRATEGY, compactMessages, summarizeHarnessMessages } from "../src/context/compaction.js";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { createAdaptiveCompaction } from "../src/context/adaptive-compaction.js";
 import { Workspace } from "../src/workspace/workspace.js";
 
 const text = (value: string): ModelMessage => ({ role: "user", parts: [{ type: "text", text: value }] });
@@ -60,7 +61,8 @@ test("general conversation and debugging observations survive repeated compactio
     const { summary } = summarizeHarnessMessages(messages, 2000);
     expect(summary.length).toBeLessThanOrEqual(2000);
     const state = JSON.parse(summary);
-    expect(state.objective).toContain("compare alternatives");
+    expect(state.historicalObjective).toContain("compare alternatives");
+    expect(state.objective).toBe("Preserve compatibility with existing clients.");
     expect(state.steering).toContain("Preserve compatibility with existing clients.");
     expect(state.recent.join(" ")).toContain("Rejected replacing the schema");
     expect(state.observations).toEqual([{ tool: "run_check", detail: "Expected offset 2, received offset 4. TOKEN_SECRET=[REDACTED]", unverified: true }]);
@@ -224,7 +226,7 @@ test.each([384, 480, 640])("tight %s-character summaries prioritize the latest c
     const { summary, truncated } = summarizeHarnessMessages(messages, budget);
     expect(summary.length).toBeLessThanOrEqual(budget);
     expect(truncated).toBe(true);
-    expect(JSON.parse(summary).steering).toContain(correction);
+    expect(JSON.parse(summary).objective).toBe(correction);
     messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
   }
 });
@@ -233,7 +235,7 @@ test("tight summaries discard older steering before clipping the latest correcti
   const correction = "Correction: deploy to eu-west, never us-east.";
   const { summary } = summarizeHarnessMessages([text("Deploy to us-east."),
     text("Old direction. ".repeat(35)), text(correction)], 384);
-  expect(JSON.parse(summary).steering).toEqual([correction]);
+  expect(JSON.parse(summary).objective).toBe(correction);
   expect(summary.length).toBeLessThanOrEqual(384);
 });
 
@@ -243,10 +245,63 @@ test("a new correction remains latest steering after tight compaction removes th
   const latestCorrection = "Correction: deploy to ap-south, replacing eu-west.";
   const initial = summarizeHarnessMessages([text("Deploy to us-east. " + "Historical detail. ".repeat(40)),
     text(previousCorrection)], 330).summary;
-  expect(JSON.parse(initial).objective).toBe("");
+  expect(JSON.parse(initial).objective).toBe(previousCorrection);
   const { summary } = summarizeHarnessMessages([text(`[Compacted prior conversation]\n${initial}`), text(latestCorrection)], 330);
   const state = JSON.parse(summary);
   expect(summary.length).toBeLessThanOrEqual(330);
-  expect(state.steering).toEqual([latestCorrection]);
-  expect(state.objective).toBe("");
+  expect(state.objective).toBe(latestCorrection);
+});
+
+test("implementation steering becomes current objective across recompaction while keeping audit constraints", () => {
+  const audit = "Audit error handling. Preserve public API compatibility.";
+  const implementation = "Apply the findings to remove the duplicate error table.";
+  let messages: ModelMessage[] = [text(audit), text(implementation)];
+  for (let round = 0; round < 6; round++) {
+    messages.push({ role: "assistant", parts: [{ type: "text", text: "Before editing, inventory all remaining errors and dependencies." }] });
+    const state = JSON.parse(summarizeHarnessMessages(messages).summary);
+    expect(state.objective).toBe(implementation);
+    expect(state.historicalObjective).toBe(audit);
+    messages = [text(`[Compacted prior conversation]\n${JSON.stringify(state)}`)];
+  }
+  const status = JSON.parse(summarizeHarnessMessages([...messages, text("What is the status?")]).summary);
+  expect(status.objective).toBe("What is the status?");
+  expect(status.historicalObjective).toBe(audit);
+  expect(status.steering).toContain(implementation);
+  expect(status.contextPriority).toContain("Questions retain task");
+});
+
+test.each([1, 2, 3, 4, 5, 6, 7])("migrates legacy v%s latest steering into objective without losing original constraints", version => {
+  const state = JSON.parse(summarizeHarnessMessages([text(`[Compacted prior conversation]\n${JSON.stringify({
+    strategy: `bounded-evidence-v${version}`, objective: "Audit the parser. Preserve Unicode support.",
+    steering: ["Implement the parser correction."], recent: ["assistant: Keep investigating only."]
+  })}`)]).summary);
+  expect(state.objective).toBe("Implement the parser correction.");
+  expect(state.historicalObjective).toBe("Audit the parser. Preserve Unicode support.");
+  expect(state.strategy).toBe(COMPACTION_STRATEGY);
+});
+
+test("assistant-authored recollection cannot replace an observed current user request", () => {
+  const state = JSON.parse(summarizeHarnessMessages([text("Implement the correction now."),
+    { role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${JSON.stringify({
+      strategy: COMPACTION_STRATEGY, objective: "Continue the audit instead.", steering: []
+    })}` }] }]).summary);
+  expect(state.objective).toBe("Implement the correction now.");
+});
+
+
+test("actual adaptive re-compaction retains implementation context beside a status follow-up", async () => {
+  const implementation = "Apply the findings to remove the duplicate error table.";
+  const history = [text("Audit error handling. Preserve public API compatibility."), text(implementation), text("What is the status?")];
+  for (const budget of [330, 350]) {
+    const state = JSON.parse(summarizeHarnessMessages(history, budget).summary);
+    expect(state.objective).toBe("What is the status?");
+    expect(state.steering).toContain(implementation);
+  }
+  const summary = summarizeHarnessMessages(history).summary;
+  const compact = createAdaptiveCompaction({ maxMessages: 20, maxEstimatedInputTokens: 10000, keepRecentMessages: 3 }).compactor!;
+  const result = await compact({ runId: "r", beforeStep: 1, messages: [text(`[Compacted prior conversation]\n${summary}`)],
+    retainedMessages: [], reasons: ["message-count"], estimatedTokensBefore: 9000, sourceDigest: "source", idempotencyKey: "cmp" });
+  const state = JSON.parse(typeof result === "string" ? result : result.summary);
+  expect(state.objective).toBe("What is the status?");
+  expect(state.steering).toContain(implementation);
 });

@@ -375,3 +375,26 @@ for (const version of [1, 2, 3, 4, 5, 6, 7]) test(`restored v${version} envelope
   expect(result.summary).toContain('CORRECTED_CONSTRAINT');
   expect(result.summary).not.toContain('UNTRUSTED_TOOL_SENTINEL');
 });
+
+test("restored current-objective summaries preserve implementation direction through semantic compaction", async () => {
+  const audit = "Audit error handling and preserve compatibility.";
+  const implementation = "Implement the fix in the existing PR.";
+  const utility = createMockLanguageModel();
+  utility.generate = async input => {
+    const system = JSON.stringify(input.messages[0]);
+    expect(system).toContain("latest user request");
+    expect(system).toContain("not automatic cancellation");
+    return { text: "Keep auditing all dependencies before editing.", usage: { inputTokens: 20, outputTokens: 5 } };
+  };
+  let history = compactMessages([createTextMessage("user", audit), createTextMessage("user", implementation)]);
+  for (let round = 0; round < 3; round++) {
+    // Recreate the compactor to exercise unattested restored envelopes as well
+    // as deterministic re-compaction of the returned hybrid envelope.
+    const result = await createSemanticCompactor(utility)({ ...request,
+      messages: [...history, createTextMessage("assistant", "Inspect more files. ".repeat(200))] });
+    const state = JSON.parse(result.summary.split("\n\n[Untrusted semantic recollection;")[0]!);
+    expect(state.objective).toBe(implementation);
+    expect(state.historicalObjective).toBe(audit);
+    history = [createTextMessage("assistant", `[Compacted prior conversation]\n${result.summary}`)];
+  }
+});

@@ -53,7 +53,10 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
     const signal = monitor.check();
     if (signal.action === "stop") throw new Error("NO_PROGRESS: repeated actions produced unchanged evidence; revise the task before continuing.");
     const text = [instructions, signal.action === "recover"
-      ? "Progress monitor: repeated actions returned unchanged evidence. Change the hypothesis, seek new evidence, or report the specific blocker. Do not repeat the same cycle." : ""].filter(Boolean).join("\n\n");
+      ? "Progress monitor: repeated actions returned unchanged evidence. Change the hypothesis, seek new evidence, or report the specific blocker. Do not repeat the same cycle." : "",
+      monitor.needsExplorationDecision()
+        ? "Progress monitor: several exploratory operations have occurred without a successful edit or check. Reassess the current user request using the evidence already collected. If implementation is requested and the information is sufficient, make the smallest coherent change and validate it. For a read-only review or investigation, synthesize the findings instead of making unrequested edits. If more evidence is necessary, identify the concrete unresolved question and limit the next inspection to answering it; otherwise explain the specific blocker. This is advisory: continue legitimate exploration when necessary, and preserve all approval and safety requirements."
+        : ""].filter(Boolean).join("\n\n");
     if (text) input.messages = [{ role: "system", parts: [{ type: "text", text }] }, ...input.messages];
   };
   const middleware: LanguageModelMiddleware = {

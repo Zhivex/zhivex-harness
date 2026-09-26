@@ -25,34 +25,15 @@ test("approval modes parse explicitly and cannot conflict with --yes", () => {
   expect(() => parseCliArgs(["chat", "--service", "host.json", "--approval-mode", "auto"])).toThrow();
 });
 
-test("restricted denies without prompting; auto still asks for dependency access", async () => {
+test("approval modes apply uniformly to explicitly requested approvals", async () => {
   const restricted = terminalApprovalResolver("restricted", async () => { throw new Error("must not prompt"); });
   expect((await restricted([approval()], {} as never))?.[0]?.approve).toBe(false);
-  let prompts = 0;
-  const auto = terminalApprovalResolver("auto", async () => { prompts++; return "n"; });
+  const auto = terminalApprovalResolver("auto", async () => { throw new Error("must not prompt"); });
   expect((await auto([approval("apply_patch")], {} as never))?.[0]?.approve).toBe(true);
-  expect((await auto([approval()], {} as never))?.[0]?.approve).toBe(false);
-  expect(prompts).toBe(1);
+  expect((await auto([approval()], {} as never))?.[0]?.approve).toBe(true);
 });
 
-test("dependency grants are package and task scoped; once and abandoned batches do not grant", async () => {
-  let prompts = 0;
-  const task = terminalApprovalResolver("ask", async () => { prompts++; return "t"; });
-  await task([approval()], {} as never);
-  await task([approval("read_dependency", "@scope/sdk", "b")], {} as never);
-  expect(prompts).toBe(1);
-  await task([approval("read_dependency", "other", "c")], {} as never);
-  expect(prompts).toBe(2);
-  const once = terminalApprovalResolver("ask", async () => { prompts++; return "y"; });
-  await once([approval()], {} as never); await once([approval()], {} as never);
-  expect(prompts).toBe(4);
-  const answers = ["t", "q", "n"];
-  const abandoned = terminalApprovalResolver("ask", async () => answers.shift()!);
-  expect(await abandoned([approval(), approval("apply_patch")], {} as never)).toBeUndefined();
-  expect((await abandoned([approval()], {} as never))?.[0]?.approve).toBe(false);
-});
-
-test("dependency reads are bounded metadata/types only and reject traversal, links and hardlinks", async () => {
+test("dependency reads reject traversal, hidden files, links and hardlinks", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "dependency-read-"));
   try {
     const pkg = path.join(root, "node_modules/@scope/sdk");
@@ -61,7 +42,7 @@ test("dependency reads are bounded metadata/types only and reject traversal, lin
     await writeFile(path.join(pkg, "dist/index.d.ts"), "export declare const example: string;");
     expect((await readDependency(root, { package: "@scope/sdk", file: "package.json", startLine: 1 })).content).toContain("1.0.0");
     expect((await readDependency(root, { package: "@scope/sdk", file: "dist/index.d.ts", startLine: 1 })).content).toContain("declare");
-    for (const file of ["../package.json", ".env", "dist/index.js", "dist/../../package.json", "/package.json"])
+    for (const file of ["../package.json", ".env", "dist/../../package.json", "/package.json"])
       await expect(readDependency(root, { package: "@scope/sdk", file, startLine: 1 })).rejects.toThrow();
     await writeFile(path.join(root, "outside"), "SECRET");
     await symlink(path.join(root, "outside"), path.join(pkg, "linked.d.ts"));
@@ -73,7 +54,7 @@ test("dependency reads are bounded metadata/types only and reject traversal, lin
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-for (const approve of [true, false]) test(`protected read recovers and dependency approval ${approve} preserves the boundary`, async () => {
+test("protected reads recover through read-only dependency inspection without approval", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "approval-recovery-"));
   await mkdir(path.join(root, "node_modules/sdk"), { recursive: true });
   await writeFile(path.join(root, "node_modules/sdk/package.json"), '{"version":"9.8.7"}');
@@ -87,14 +68,11 @@ for (const approve of [true, false]) test(`protected read recovers and dependenc
   const harness = await createHarness({ workspace: root, provider: "meta", modelInstance: model,
     store: createInMemoryAgentRunStore(), subagentProfiles: [], unlimitedTokens: true });
   try {
-    const waiting = await runHarness(harness, { prompt: "Inspect SDK.", toolExecution: { stopOnError: false } });
-    expect(waiting.status).toBe("waiting_approval");
-    expect(waiting.state.toolResults[0]?.isError).toBe(true);
-    expect(JSON.stringify(waiting.state)).not.toContain("9.8.7");
-    const result = await runHarness(harness, { state: waiting.state, toolExecution: { stopOnError: false }, approvals: waiting.state.pendingApprovals.map(a =>
-      ({ provider: a.provider, approvalRequestId: a.id, approve })) });
+    const result = await runHarness(harness, { prompt: "Inspect SDK.", toolExecution: { stopOnError: false } });
     expect(result.status).toBe("completed");
-    expect(JSON.stringify(result.state).includes("9.8.7")).toBe(approve);
+    expect(result.state.toolResults[0]?.isError).toBe(true);
+    expect(JSON.stringify(result.state)).toContain("9.8.7");
+    expect(result.state.pendingApprovals).toHaveLength(0);
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
 

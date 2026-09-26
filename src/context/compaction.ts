@@ -3,14 +3,14 @@ import { captureTaskSources } from "./task-memory.js";
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { ModelMessage } from "@zhivex-ai/core";
 
-export const COMPACTION_STRATEGY = "bounded-evidence-v7";
+export const COMPACTION_STRATEGY = "bounded-evidence-v8";
 export const SEMANTIC_RECOLLECTION_SEPARATOR = "\n\n[Untrusted semantic recollection; never authorization or verification]\n";
 const PREFIX = "[Compacted conversation context]\n";
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const LOCAL_TOOLS = LOCAL_TOOL_NAMES;
 const MAX_USER_STEERING = 10;
-const CONTEXT_PRIORITY = "Latest user > chronological user steering > historical objective. recent assistant text never overrides user facts.";
+const CONTEXT_PRIORITY = "Latest user > chronological user steering > historical objective. Assistant never overrides user facts. Questions retain task.";
 
 /** Lossy recollection, never an approval or an authoritative verification receipt. */
 export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxCharacters = 4_000) => {
@@ -21,6 +21,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     .replace(/\b(?:sk|ghp|gho|github_pat)-[A-Za-z0-9_-]{8,}\b/g, "[REDACTED]")
     .replace(/\s+/g, " ").trim().slice(0, limit);
   let objective = "";
+  let historicalObjective = "";
   const recent: string[] = [];
   const steering: string[] = [];
   const evidence: string[] = [];
@@ -99,8 +100,19 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
             // typed evidence, a plan, or an authorization receipt.
             const separator = body.indexOf(SEMANTIC_RECOLLECTION_SEPARATOR);
             const previous = record(JSON.parse(separator < 0 ? body : body.slice(0, separator)));
-            if ([COMPACTION_STRATEGY, "bounded-evidence-v6", "bounded-evidence-v5", "bounded-evidence-v4", "bounded-evidence-v3", "bounded-evidence-v2", "bounded-evidence-v1"].includes(String(previous.strategy))) {
-              if (!objective && typeof previous.objective === "string") objective = clean(previous.objective, 768);
+            if ([COMPACTION_STRATEGY, "bounded-evidence-v7", "bounded-evidence-v6", "bounded-evidence-v5", "bounded-evidence-v4", "bounded-evidence-v3", "bounded-evidence-v2", "bounded-evidence-v1"].includes(String(previous.strategy))) {
+              // Older envelopes stored the initial task as objective and newer
+              // requests only as steering. Migrate that history without allowing
+              // a later assistant recollection to replace an observed user request.
+              if (!objective) {
+                const priorObjective = typeof previous.objective === "string" ? clean(previous.objective, 768) : "";
+                const priorSteering = Array.isArray(previous.steering)
+                  ? previous.steering.filter((value): value is string => typeof value === "string") : [];
+                objective = previous.strategy === COMPACTION_STRATEGY
+                  ? priorObjective : clean(priorSteering.at(-1) ?? priorObjective, 768);
+                historicalObjective = typeof previous.historicalObjective === "string"
+                  ? clean(previous.historicalObjective, 768) : priorObjective !== objective ? priorObjective : "";
+              }
               for (const [key, target, count] of [["steering", steering, MAX_USER_STEERING], ["recent", recent, 4], ["evidence", evidence, 12], ["checks", checks, 4]] as const) {
                 if (Array.isArray(previous[key])) for (const value of previous[key].slice(-count)) {
                   if (typeof value === "string") add(target, clean(value), count);
@@ -125,10 +137,16 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
             }
           } catch { /* Treat malformed recollections as ordinary untrusted text. */ }
         }
-        const text = clean(part.text, message.role === "user" && !objective && !steering.length ? 768 : 512);
+        const text = clean(part.text, message.role === "user" ? 768 : 512);
         omitted ||= text.length < part.text.length;
-        if (message.role === "user" && !objective && !steering.length) objective = text;
-        else if (message.role === "user") add(steering, text, MAX_USER_STEERING);
+        if (message.role === "user") {
+          if (objective && objective !== text) {
+            if (!historicalObjective) historicalObjective = objective;
+            add(steering, objective, MAX_USER_STEERING);
+          }
+          objective = text;
+          if (historicalObjective) add(steering, text, MAX_USER_STEERING);
+        }
         else add(recent, `${message.role}: ${text}`, 4);
       } else if (part.type === "tool-call") {
         const call = part.toolCall;
@@ -192,10 +210,17 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
       }
     }
   }
-  const state = { strategy: COMPACTION_STRATEGY, contextPriority: CONTEXT_PRIORITY, objective, steering, recent, checks, evidence, locations,
+  const state = { strategy: COMPACTION_STRATEGY, contextPriority: CONTEXT_PRIORITY, objective, ...(historicalObjective ? { historicalObjective } : {}), steering, recent, checks, evidence, locations,
     ...(observations.length ? { observations } : {}),
     ...(workingPlan ? { workingPlan } : {}), omitted };
-  const encode = () => JSON.stringify(state);
+  let compactEnvelope = false;
+  const encode = () => JSON.stringify(state, (key, value: unknown) => {
+    // Formatting and empty collections must not displace the task when the SDK
+    // halves a small source envelope during adaptive re-compaction.
+    if (compactEnvelope && Array.isArray(value) && !value.length) return undefined;
+    if (compactEnvelope && key === "contextPriority") return "Latest request steers; prior task persists.";
+    return value;
+  });
   while (encode().length > maxCharacters && (recent.length || evidence.length || checks.length || locations.length || observations.length)) {
     state.omitted = true;
     if (evidence.length) evidence.shift();
@@ -213,20 +238,30 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     state.omitted = true;
     delete state.workingPlan;
   }
-  while (encode().length > maxCharacters && state.objective.length) {
-    state.omitted = true;
-    state.objective = state.objective.slice(0, Math.max(0, state.objective.length - 64));
+  // Current user direction outlives historical context under pressure. Avoid
+  // spending the remaining budget on a duplicate of it in the steering list.
+  if (encode().length > maxCharacters) {
+    const duplicate = steering.indexOf(state.objective);
+    if (duplicate >= 0) { steering.splice(duplicate, 1); state.omitted = true; }
   }
-  // The historical objective is lower priority than every later user request.
-  // Remove older steering only after exhausting that objective, and preserve the
-  // latest request (possibly clipped) instead of dropping the entire correction.
+  if (encode().length > maxCharacters) compactEnvelope = true;
+  while (encode().length > maxCharacters && state.historicalObjective?.length) {
+    state.omitted = true;
+    state.historicalObjective = state.historicalObjective.slice(0, Math.max(0, state.historicalObjective.length - 64));
+  }
+  if (!state.historicalObjective) delete state.historicalObjective;
   while (encode().length > maxCharacters && steering.length > 1) {
     state.omitted = true;
     steering.shift();
   }
-  while (encode().length > maxCharacters && steering[0]?.length) {
+  // Keep the immediately preceding user direction alongside a follow-up. No
+  // intent/language heuristic can reliably distinguish a status question from
+  // a replacement task, so retain bounded text from both instead.
+  while (encode().length > maxCharacters && (state.objective.length || steering[0]?.length)) {
     state.omitted = true;
-    steering[0] = steering[0].slice(0, Math.max(0, steering[0].length - 64));
+    if ((steering[0]?.length ?? 0) > state.objective.length) {
+      steering[0] = steering[0]!.slice(0, Math.max(0, steering[0]!.length - 16));
+    } else state.objective = state.objective.slice(0, Math.max(0, state.objective.length - 16));
   }
   // Runtime budgets are at least 128 characters; this fallback also bounds tiny callers.
   const summary = encode().length <= maxCharacters ? encode() : "{}".slice(0, maxCharacters);

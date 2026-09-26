@@ -58,16 +58,9 @@ test("loop guard stops three repeated failures, but permits corrections and succ
   emit("7", "b"); expect(guard.signal.aborted).toBe(true);
 });
 
-test("dependency session grants survive resolver recreation but remain package and workspace scoped", async () => {
-  const sessionGrants = new Set<string>(); let prompts = 0;
-  const select = async <T>(_title: string, items: readonly {value:T}[]) => {
-    prompts++; return items.find(item=>item.value === "s")?.value;
-  };
-  const request = {...check(),name:"read_dependency",arguments:'{"package":"sdk"}'};
-  const resolver = (workspace:string) => terminalApprovalResolver("ask",async()=>"n",{workspace,sessionGrants,select});
-  await resolver("/workspace")([request],{} as never);
-  await resolver("/workspace")([request],{} as never);
-  expect(prompts).toBe(1);
-  await resolver("/other")([request],{} as never); expect(prompts).toBe(2);
-  expect((await terminalApprovalResolver("restricted",async()=>"y",{workspace:"/workspace",sessionGrants,select})([request],{} as never))?.[0]?.approve).toBe(false);
+test("legacy dependency approvals use ordinary approval policy without package grants", async () => {
+  const request = {...check(), name:"read_dependency", arguments:'{"package":"sdk"}'};
+  expect((await terminalApprovalResolver("auto")([request],{} as never))?.[0]?.approve).toBe(true);
+  expect((await terminalApprovalResolver("restricted")([request],{} as never))?.[0]?.approve).toBe(false);
+  expect((await terminalApprovalResolver("ask",async()=>"n")([request],{} as never))?.[0]?.approve).toBe(false);
 });
