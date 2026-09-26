@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Split live approval/resume diagnostics into receipt count, tool success, file read/content, and journal count/status checkpoints. Include bounded receipt and journal counters without tool arguments, file contents or provider output. Preserve every release acceptance assertion and the unpublished RC6 failure evidence.
+
 ## 1.2.0-rc.6 - 2026-09-26
 
 - Deduplicate identical unsigned Qwen reasoning summaries against their streamed text before context accounting, including restored sessions. Preserve distinct, signed, and encrypted provider data.
