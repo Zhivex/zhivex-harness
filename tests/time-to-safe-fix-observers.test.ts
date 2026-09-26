@@ -105,3 +105,16 @@ test("transport rejection retains the HTTP boundary and original error", async (
     expect(benchmarkSnapshot().lastProviderFailure?.httpStatus).toBeUndefined();
   } finally {restore();globalThis.fetch=original;}
 });
+
+test("provider syntax errors are classified without exposing payload or retrying", async () => {
+  let requests = 0;
+  const error = new SyntaxError("private provider payload");
+  const model = observeBenchmarkModel({ provider: "qwen", modelId: "fixture", capabilities: {},
+    stream: async () => (async function* () { requests++; throw error; })()
+  } as unknown as LanguageModel);
+  const stream = await model.stream!({ messages: [] });
+  await expect(stream[Symbol.asyncIterator]().next()).rejects.toBe(error);
+  expect(requests).toBe(1);
+  expect(benchmarkSnapshot().spans!.findLast(span => span.operation === "stream")).toMatchObject({ outcome: "failed", failureKind: "syntax" });
+  expect(JSON.stringify(benchmarkSnapshot())).not.toContain("private");
+});

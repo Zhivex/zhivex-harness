@@ -4,5 +4,6 @@ export const cliToolExecution = {
   independentOnly: true,
   maxConcurrency: 4,
   stopOnError: false,
+  validationErrorMode: "tool-result",
   unknownToolMode: "tool-result"
 } as const;

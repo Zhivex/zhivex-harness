@@ -28,7 +28,7 @@ export const benchmarkApprovalDiagnosticSchema = z.strictObject({
   compactionsBeforeDecision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 });
 
-export const benchmarkOperationSchema = z.enum(["generate", "stream", "http", "read_file", "read_files", "list_files", "search_files", "search_many", "apply_patch", "apply_reviewed_edits", "apply_environment_patch", "run_environment_command", "run_check", "verify_and_apply_reviewed_edits", "other_tool", "oci_inspect", "oci_create", "oci_execute", "oci_export", "oci_cleanup"]);
+export const benchmarkOperationSchema = z.enum(["generate", "stream", "http", "read_file", "read_files", "list_files", "search_files", "search_many", "apply_patch", "apply_reviewed_edits", "apply_environment_patch", "run_environment_command", "run_check", "verify_and_apply_reviewed_edits", "inspect_environment_patch", "other_tool", "oci_inspect", "oci_create", "oci_execute", "oci_export", "oci_cleanup"]);
 export const benchmarkSpanSchema = z.strictObject({
   id: z.number().int().nonnegative(), parentId: z.number().int().nonnegative().optional(),
   operation: benchmarkOperationSchema,
@@ -37,7 +37,7 @@ export const benchmarkSpanSchema = z.strictObject({
   firstTokenMs: z.number().int().nonnegative().optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
   provider: providerDiagnosticSchema.optional(),
-  failureKind: z.enum(["transport", "abort", "stream", "unknown"]).optional(),
+  failureKind: z.enum(["transport", "abort", "stream", "syntax", "unknown"]).optional(),
   attempt: z.number().int().positive().optional()
 });
 
