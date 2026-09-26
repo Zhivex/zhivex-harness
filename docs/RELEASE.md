@@ -4,14 +4,15 @@
 
 ## Next release candidate
 
-The source version is `1.2.0-rc.4`, targeting npm `next` after fresh certification.
-It adds runtime-owned edit/import references and bounded argument correction to
-the exact-artifact live gates, packaged Desktop journeys and performance backport.
-All required gates must pass against this new artifact before publication. RC2
-passed the base live gate but failed two Qwen representative cases; publication
-was skipped. Its evidence does not certify RC4. RC3 subsequently passed base, orchestration
-and routing certification but failed a Qwen assertion in model-directed execution.
-RC4 adds precise, allowlisted execution checkpoints without relaxing those assertions.
+The source version is `1.2.0-rc.5`, targeting npm `next` after fresh certification.
+It includes the unified programming-assistant loop, longer task continuity,
+recoverable tool/delegation arguments, current-user steering retention and
+semantic-compaction source provenance. The removal of `agentProfile` is an
+intentional pre-promotion API/CLI break; verified delivery remains independently
+configurable. All required gates must pass against this new artifact before
+publication. RC4 passed the exact-artifact build and live certification but failed
+the representative repository matrix; npm publication was skipped. Its immutable
+tag and failure evidence are preserved and do not certify RC5.
 
 The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
