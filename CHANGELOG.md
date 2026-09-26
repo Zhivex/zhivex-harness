@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.4 - 2026-09-26
+
+- Identify the precise live-execution assertion in sanitized release diagnostics: approved tool/arguments, import reference, run status, completion marker, approval/tool sequence, tool success, host content, environment binding or durable journal.
+- Preserve a failed run's structured cause instead of reducing it to an opaque status assertion. Existing assertions, cohort, budgets and all exact-artifact release gates remain enforced.
+- Preserve unpublished RC3 and its failed Qwen execution evidence. One local reproduction on the same RC3 tarball passed; it does not establish the CI failure's cause or certify RC4.
+
 ## 1.2.0-rc.3 - 2026-09-25
 
 - Model-facing reviewed edits and OCI imports no longer require copying file digests or patch IDs. The runtime binds successful prior reads/inspections before requesting approval; persisted approvals and programmatic tool contracts retain their exact references.

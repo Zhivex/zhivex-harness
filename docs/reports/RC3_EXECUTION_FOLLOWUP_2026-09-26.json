@@ -1,0 +1,28 @@
+{
+  "releaseTag": "v1.2.0-rc.3",
+  "sourceCommit": "ac38f3ca9ed0c827289902577d55952094582215",
+  "workflowRunUrl": "https://github.com/Zhivex/zhivex-harness/actions/runs/36213818577",
+  "artifactSha512": "sha512-z4/yjvzbQ+WJvR3GZkkgIsg9Uq8ktnm2hQbEKRuulRZELoG8Xiw0BzQ7akuQ2BWw8Pxaklc9Vg2aWShAswAC+A==",
+  "publication": "skipped",
+  "registryVersionStatus": 404,
+  "passedGates": ["artifact", "oci", "base", "orchestration", "routing"],
+  "failedGate": "execution",
+  "failedProvider": "qwen",
+  "model": "qwen3.8-flash",
+  "observedError": "EXECUTION_FAILED caused by AssertionError",
+  "assertionCheckpoint": "unavailable",
+  "representativeMatrix": "not_run",
+  "localReproduction": {
+    "cases": 1,
+    "sameTarball": true,
+    "result": "passed",
+    "approvedTools": ["run_environment_command", "apply_environment_patch"],
+    "toolSequence": ["run_environment_command", "inspect_environment_patch", "apply_environment_patch"],
+    "hostImportVerified": true,
+    "environmentBound": true,
+    "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+    "limitation": "Local reproduction with a local OCI image; not certification of the GitHub runner or proof of the original failure's cause."
+  },
+  "nextCandidate": "1.2.0-rc.4",
+  "change": "Retain exact execution assertion checkpoints and structured run causes without changing the assertions, budgets or required release gates."
+}

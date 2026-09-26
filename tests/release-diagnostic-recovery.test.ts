@@ -164,3 +164,14 @@ test("wrapped typed stream failures retain delegation reason at serialization", 
   expect(safe.details?.chain).toEqual([{kind:"Error",checkpoint:"orchestration_status"},{kind:"GuardrailTriggeredError",delegation:"acceptance"}]);
   expect(JSON.stringify(safe)).not.toContain("private");
 });
+
+for (const checkpoint of ["execution_approval_tool", "execution_command_arguments", "execution_import_reference", "execution_run_status", "execution_completion_marker", "execution_approval_sequence", "execution_tool_sequence", "execution_tool_success", "execution_host_content", "execution_environment_binding", "execution_journal"] as const) {
+  test(`execution checkpoint survives the release diagnostic boundary: ${checkpoint}`, () => {
+    const error = Object.assign(new Error("PRIVATE_PROVIDER_OUTPUT"), { checkpoint,
+      cause: Object.assign(new Error("PRIVATE_ASSERTION_ARGUMENTS"), { name: "AssertionError", actual: "PRIVATE_ACTUAL", expected: "PRIVATE_EXPECTED" }) });
+    const safe = sanitizeOperationalError(error);
+    expect(safe.details?.chain).toEqual([{ kind: "Error", checkpoint }, { kind: "AssertionError" }]);
+    expect(sanitizeOperationalError(restoreSanitizedOperationalError(safe))).toEqual(safe);
+    expect(JSON.stringify(safe)).not.toContain("PRIVATE_");
+  });
+}

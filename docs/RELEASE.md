@@ -4,17 +4,20 @@
 
 ## Next release candidate
 
-The source version is `1.2.0-rc.3`, targeting npm `next` after fresh certification.
+The source version is `1.2.0-rc.4`, targeting npm `next` after fresh certification.
 It adds runtime-owned edit/import references and bounded argument correction to
 the exact-artifact live gates, packaged Desktop journeys and performance backport.
 All required gates must pass against this new artifact before publication. RC2
 passed the base live gate but failed two Qwen representative cases; publication
-was skipped. Its evidence does not certify RC3.
+was skipped. Its evidence does not certify RC4. RC3 subsequently passed base, orchestration
+and routing certification but failed a Qwen assertion in model-directed execution.
+RC4 adds precise, allowlisted execution checkpoints without relaxing those assertions.
 
 The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3` and OpenAI
 `gpt-6-luna`. Saved selections and historical mappings remain unchanged.
 The `v1.2.0-rc.1` attempt stopped at Qwen representative evaluation before publication.
-RC2 also stopped before publication. Both annotated tags and failure evidence remain unchanged. The `v1.1.0` attempt
+RC2 and RC3 also stopped before publication. All three annotated tags and their
+failure evidence remain unchanged. The `v1.1.0` attempt
 failed at the Qwen representative approval gate; `v1.1.2` and `v1.1.3` failed at
 the Meta representative matrix, also before publication.
 

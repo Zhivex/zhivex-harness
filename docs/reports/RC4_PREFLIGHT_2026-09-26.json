@@ -1,0 +1,38 @@
+{
+  "candidate": "1.2.0-rc.4",
+  "artifactSha512": "sha512-gNeo9hCqcEUzFhJsW0NBHK2+TfHsu97esUBaReoqrxoFrfjaFh6gbAgPpqjxL2VQzH5L9sLxgJQY4sGAPVXabQ==",
+  "deterministicChecks": {
+    "command": "bun run check",
+    "passed": 1265,
+    "skipped": 1,
+    "failed": 0
+  },
+  "dependencyAudit": {
+    "packages": 48,
+    "vulnerabilities": 0
+  },
+  "localExecutionSmoke": {
+    "provider": "qwen",
+    "model": "qwen3.8-flash",
+    "cases": 1,
+    "passed": 1,
+    "certifiedAt": "2026-09-26T03:23:53.786Z",
+    "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+    "approvals": [
+      "run_environment_command",
+      "apply_environment_patch"
+    ],
+    "toolSequence": [
+      "run_environment_command",
+      "inspect_environment_patch",
+      "apply_environment_patch"
+    ],
+    "hostImportVerified": true,
+    "environmentBound": true
+  },
+  "limitations": [
+    "Local preflight only; protected CI must validate and certify its own exact tarball before publication.",
+    "The RC3 CI assertion failure was not reproduced locally; its original checkpoint remains unknown.",
+    "All execution assertions and the complete 42-case representative gate remain required."
+  ]
+}
