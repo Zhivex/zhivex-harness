@@ -7,7 +7,7 @@ import path from "node:path";
 test("RC certification selects Flash without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
   validateReleaseMetadata(input, false, "next");
-  expect(input.version).toBe("1.2.0-rc.4");
+  expect(input.version).toBe("1.2.0-rc.5");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
     .toEqual({meta: "muse-spark-1.3", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.4")?.models.qwen).toBe("qwen3.8-max");
