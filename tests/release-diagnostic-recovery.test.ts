@@ -175,3 +175,57 @@ for (const checkpoint of ["execution_approval_tool", "execution_command_argument
     expect(JSON.stringify(safe)).not.toContain("PRIVATE_");
   });
 }
+
+const goodReceipt = { toolName: "apply_patch", isError: false };
+const goodJournal = { toolName: "apply_patch", status: "completed" };
+for (const [checkpoint, results, journal, content] of [
+  ["resume_result_count", [], [goodJournal], "ok"],
+  ["resume_result_count", [{ ...goodReceipt, isError: true }, goodReceipt], [goodJournal], "ok"],
+  ["resume_result_success", [{ ...goodReceipt, isError: true }], [], "ok"],
+  ["resume_file_content", [goodReceipt], [goodJournal], "PRIVATE_WRONG_CONTENT"],
+  ["resume_journal_count", [goodReceipt], [], "ok"],
+  ["resume_journal_count", [goodReceipt], [goodJournal, goodJournal], "ok"],
+  ["resume_journal_status", [goodReceipt], [{ ...goodJournal, status: "failed" }], "ok"]
+] as const) {
+  test(`live edit diagnostic distinguishes ${checkpoint} with ${results.length} receipts and ${journal.length} journal entries`, async () => {
+    try {
+      await liveProviderSmokeInternals.assertResumeEffect(results, journal, async () => content, "ok");
+      throw new Error("Expected a rejected effect");
+    } catch (error) {
+      const safe = sanitizeOperationalError(error);
+      expect(safe.details?.chain?.[0]).toMatchObject({ checkpoint, editEffect: {
+        resultReceipts: results.length,
+        errorReceipts: results.filter(result => result.isError).length,
+        successReceipts: results.filter(result => !result.isError).length,
+        journalEntries: journal.length,
+        completedJournalEntries: journal.filter(entry => entry.status === "completed").length
+      } });
+      expect(sanitizeOperationalError(restoreSanitizedOperationalError(safe))).toEqual(safe);
+      expect(JSON.stringify(safe)).not.toContain("PRIVATE_WRONG_CONTENT");
+    }
+  });
+}
+
+test("live edit file-read failures remain distinct and successful effects preserve the acceptance contract", async () => {
+  await expect(liveProviderSmokeInternals.assertResumeEffect([goodReceipt], [goodJournal], async () => "ok", "ok"))
+    .resolves.toEqual({ toolExecutions: 1, journalEntries: 1 });
+  try {
+    await liveProviderSmokeInternals.assertResumeEffect([goodReceipt], [goodJournal], async () => {
+      throw Object.assign(new Error("PRIVATE_PATH"), { code: "ENOENT" });
+    }, "ok");
+    throw new Error("Expected read failure");
+  } catch (error) {
+    const safe = sanitizeOperationalError(error);
+    expect(safe.details?.chain?.[0]?.checkpoint).toBe("resume_file_read");
+    expect(safe.details?.chain?.[1]?.code).toBe("ENOENT");
+    expect(JSON.stringify(safe)).not.toContain("PRIVATE_PATH");
+  }
+});
+
+test("edit effect diagnostics reject invalid counters and strip arbitrary payloads", () => {
+  const counts = { resultReceipts: 2, errorReceipts: 1, successReceipts: 1, journalEntries: 1, completedJournalEntries: 1 };
+  expect(sanitizedErrorDetails({editEffect:{...counts,secret:"PRIVATE"}}).chain).toEqual([{editEffect:counts}]);
+  for (const value of [-1, 1.5, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1, "PRIVATE"]) {
+    expect(sanitizedErrorDetails({editEffect:{...counts,resultReceipts:value}}).chain).toEqual([]);
+  }
+});

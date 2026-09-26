@@ -280,3 +280,18 @@ The complete representative matrix remains blocking and unchanged. The focused
 [Python follow-up](reports/RC1_PATCH_FOLLOWUP_2026-09-26.json) is diagnostic evidence only; it cannot replace the full
 cohort or certify a new release. It also predates the performance backport from
 `95aee33`; the combined artifact requires its own complete live certification.
+
+### Diagnosing reviewed-edit resume failures
+
+The base live gate records separate checkpoints for `resume_result_count`,
+`resume_result_success`, `resume_file_read`, `resume_file_content`,
+`resume_journal_read`, `resume_journal_count`, and `resume_journal_status`.
+Sanitized `editEffect` counters distinguish result receipts (successful or error)
+from durable journal entries and completed entries. An error receipt alone does
+not establish that a filesystem mutation executed. These are diagnostics, not
+relaxed acceptance: the gate still requires exactly one successful write result,
+exact expected file content, and exactly one completed journal entry.
+
+RC6 failed at the earlier grouped `resume_effect` checkpoint before publication.
+Its evidence cannot retrospectively identify which assertion failed; a later
+successful local reproduction does not certify that failed release run.

@@ -313,6 +313,41 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
   }
 };
 
+// Receipts describe attempts/results; durable journal entries describe execution.
+// Keep every acceptance assertion; add only allowlisted structural diagnostics.
+const assertResumeEffect = async (
+  results: readonly { toolName: string; isError?: boolean }[],
+  journal: readonly { toolName: string; status: string }[],
+  readContent: () => Promise<string>, expectedContent: string
+) => {
+  const writes = results.filter(result => result.toolName === "apply_patch");
+  const entries = journal.filter(entry => entry.toolName === "apply_patch");
+  const editEffect = {
+    resultReceipts: writes.length,
+    errorReceipts: writes.filter(result => result.isError === true).length,
+    successReceipts: writes.filter(result => result.isError === false).length,
+    journalEntries: entries.length,
+    completedJournalEntries: entries.filter(entry => entry.status === "completed").length
+  };
+  let checkpoint = "resume_result_count";
+  try {
+    assert.equal(writes.length, 1);
+    checkpoint = "resume_result_success";
+    assert.equal(writes[0]?.isError, false);
+    checkpoint = "resume_file_read";
+    const content = await readContent();
+    checkpoint = "resume_file_content";
+    assert.equal(content, expectedContent);
+    checkpoint = "resume_journal_count";
+    assert.equal(entries.length, 1);
+    checkpoint = "resume_journal_status";
+    assert.equal(entries[0]?.status, "completed");
+    return { toolExecutions: writes.length, journalEntries: entries.length };
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live edit effect assertion failed.", { cause: error }), { checkpoint, editEffect });
+  }
+};
+
 const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => {
   assert.ok(args.runId);
   const harness = await createLiveHarness(args);
@@ -341,27 +376,19 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
     checkpoint = "resume_output";
     assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
-    checkpoint = "resume_effect";
-    const writeResults = result.toolResults.filter((toolResult) => toolResult.toolName === "apply_patch");
-    assert.equal(writeResults.length, 1);
-    assert.equal(writeResults[0]?.isError, false);
-    assert.equal(
-      await readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"),
-      certificationContent(args.provider)
-    );
-
-    checkpoint = "resume_journal";
+    checkpoint = "resume_journal_read";
     const journal = await harness.store.listToolCalls?.(args.runId, harness.config.scope);
-    const writeEntries = journal?.filter((entry) => entry.toolName === "apply_patch") ?? [];
-    assert.equal(writeEntries.length, 1);
-    assert.equal(writeEntries[0]?.status, "completed");
+    checkpoint = "resume_effect";
+    const effect = await assertResumeEffect(result.toolResults, journal ?? [],
+      () => readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"),
+      certificationContent(args.provider));
     return {
       phase: "resume",
       provider: args.provider,
       model: args.model,
       runId: args.runId,
-      toolExecutions: writeResults.length,
-      journalEntries: writeEntries.length
+      toolExecutions: effect.toolExecutions,
+      journalEntries: effect.journalEntries
     };
   } catch (error) {
     throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
@@ -515,6 +542,7 @@ const errorEvidence = (
 };
 
 export const liveProviderSmokeInternals = {
+  assertResumeEffect,
   assertApprovalArguments,
   assertLiveOptIn,
   certificationPrompt,
