@@ -4,12 +4,14 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.2.0-rc.8 - 2026-09-26
 
 - Include durable child and descendant OCI snapshots in parent completion checks. Report `OCI_CHILD_DELIVERY_PENDING` when a delegated edit has not reached the host; missing descendant state fails closed without requesting an import from the wrong workspace.
 
 - Prevent OCI runs from completing while edits remain only in their isolated snapshot. Detect pending delivery from actual host contents and modes, including resumed runs and command-created edits. Allow at most two read-only completion reminders, preserve import approvals and refusals, and persist an explicit incomplete-delivery result when delivery cannot finish.
 - Report pending OCI delivery separately from verifier failures in representative release diagnostics.
+
+- Prepare fresh exact-artifact certification for RC8. RC7 failed the Meta representative matrix before publication; its tag and evidence remain unchanged. Local Meta regression evidence does not replace certification of the new candidate.
 
 ## 1.2.0-rc.7 - 2026-09-26
 
