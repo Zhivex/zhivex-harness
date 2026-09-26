@@ -2,28 +2,46 @@ import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/termina
 
 /** Bound presentation metadata without allowing paths/titles to control the terminal. */
 export const consoleLabel = (text: string, width: number) => {
+  if (width <= 0) return "";
   const safe = sanitizeTerminalText(text).replace(/[\r\n\t]/g, " ");
   const characters = Array.from(safe);
   return characters.length <= width ? safe : characters.slice(0, Math.max(0, width - 1)).join("") + "…";
 };
 
-export const formatComposer = (input: {
+export interface ConsoleComposerInput {
   model: string;
+  reasoning?: string;
   title?: string;
   status: string;
   attachments?: number;
   automaticApprovals?: boolean;
   approvalMode?: "ask" | "auto" | "restricted";
-}, columns = 80, color = terminalSupportsColor(Boolean(process.stdout.isTTY))) => {
-  const width = Math.max(20, Math.min(columns || 80, 100));
-  const details = [input.model, input.status,
-    input.approvalMode === "restricted" ? "restricted approvals" : input.automaticApprovals ? "auto approvals" : "review approvals",
-    input.attachments ? `${input.attachments} attached` : undefined,
-    input.title].filter(Boolean).join(" · ");
-  const line = consoleLabel(details, width);
-  const hint = consoleLabel("/menu browse · / commands · Ctrl+R history · Alt+Enter newline · ? shortcuts", width);
-  return `\n${color ? "\u001b[90m" : ""}${"─".repeat(width)}\n${line}\n${hint}${color ? "\u001b[0m" : ""}\n`;
+}
+
+export const consoleWidth = (columns = 80) => Math.max(1, Math.min((columns || 80) - 1, 100));
+const muted = (text: string, color: boolean) => color ? `\u001b[90m${text}\u001b[0m` : text;
+
+/** Focus keeps policy and pending decisions ahead of optional presentation metadata. */
+export const formatComposer = (input: ConsoleComposerInput, columns = 80,
+  color = terminalSupportsColor(Boolean(process.stdout.isTTY))) => {
+  const width = consoleWidth(columns);
+  const model = consoleLabel([input.model, input.reasoning ? `reasoning ${input.reasoning}` : undefined].filter(Boolean).join(" · "), width);
+  const policy = input.approvalMode === "restricted" ? "restricted approvals"
+    : input.approvalMode === "auto" || input.automaticApprovals ? "auto approvals" : "review approvals";
+  const status = consoleLabel([input.status, policy, input.attachments ? `${input.attachments} attached` : undefined].filter(Boolean).join(" · "), width);
+  const title = input.title ? muted(consoleLabel(input.title, width), color) + "\n" : "";
+  return `\n${title}${muted(model, color)}\n${color && input.status.startsWith("approval pending") ? `\u001b[33m${status}\u001b[0m` : muted(status, color)}\n${muted("─".repeat(width), color)}\n`;
 };
+
+export const formatComposerFooter = (columns = 80, color = false) => {
+  const width = consoleWidth(columns);
+  const hints = width >= 65 ? "/ commands · Ctrl+R history · Alt+Enter newline · ? shortcuts"
+    : width >= 40 ? "/ commands · Ctrl+R history · ? shortcuts" : "/ commands · ? help";
+  return [muted("─".repeat(width), color), muted(consoleLabel(hints, width), color)];
+};
+
+export const formatComposerPlaceholder = (columns = 80, color = false) =>
+  muted(consoleLabel("Ask a question or describe a task", Math.max(0, consoleWidth(columns) - 2)), color);
 
 export const CONSOLE_SHORTCUTS = [
   "Keyboard shortcuts",

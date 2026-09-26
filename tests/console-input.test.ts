@@ -18,6 +18,57 @@ const terminalFixture = () => {
   return { input, output, rendered: () => rendered, console: new ConsoleInput(input, output, true) };
 };
 
+test("Focus footer follows a literal multiline draft and never redraws during approvals or model output", async () => {
+  const previousTerm = process.env.TERM;
+  process.env.TERM = "xterm-256color";
+  const f = terminalFixture();
+  Object.assign(f.output, { columns: 80, rows: 24 });
+  try {
+    const task = f.console.compose({ model: "openai/model", reasoning: "high", status: "ready" });
+    expect(f.rendered()).toContain("Ask a question or describe a task");
+    expect(f.rendered()).toContain("Ctrl+R history");
+    f.input.write("\x1b[200~/approve\nsecond\x1b[201~");
+    // Editing an earlier line must leave the lower draft rows above the footer.
+    const beforeEdit = f.rendered().length;
+    f.input.write("\x1b[A!");
+    expect(f.rendered().slice(beforeEdit)).toContain("\x1b[1B\r\n\x1b[J");
+    Object.assign(f.output, { columns: 45 });
+    f.output.emit("resize");
+    f.input.write("\n");
+    expect(await task).toBe("/appro!ve\nsecond");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+    const busy = f.rendered();
+    f.output.emit("resize");
+    f.input.write("busy input");
+    expect(f.rendered()).toBe(busy);
+    const approval = f.console.question("Approve? ");
+    const approvalStart = f.rendered().length;
+    f.input.write("n\n");
+    expect(await approval).toBe("n");
+    expect(f.rendered().slice(approvalStart)).not.toContain("Ctrl+R");
+    expect(f.rendered().slice(approvalStart)).not.toContain("Ask a question");
+  } finally {
+    f.console.close();
+    if (previousTerm === undefined) delete process.env.TERM; else process.env.TERM = previousTerm;
+  }
+});
+
+test("Focus uses plain presentation when terminal overlays are unavailable", async () => {
+  let rendered = "";
+  // A separate pipe fixture captures presentation without a terminal editor.
+  const input = new PassThrough();
+  const output = new PassThrough();
+  output.on("data", chunk => { rendered += chunk.toString(); });
+  const console = new ConsoleInput(input, output, false);
+  try {
+    const task = console.compose({ model: "local service", status: "ready" });
+    expect(rendered).toContain("/ commands");
+    expect(rendered).not.toContain("\x1b");
+    input.write("task\n");
+    expect(await task).toBe("task");
+  } finally { console.close(); }
+});
+
 test("initial selection stays visible when terminal writes complete asynchronously", async () => {
   const oldTerm = process.env.TERM;
   process.env.TERM = "xterm-256color";
@@ -382,4 +433,62 @@ test("nested selection supports filtering, arrow navigation and Escape without e
     f.input.write("\r");
     expect(await pasted).toBe("one");
   } finally {f.console.close();if(oldTerm===undefined)delete process.env.TERM;else process.env.TERM=oldTerm;}
+});
+
+test("busy tasks are queued literally and cannot answer an approval", async () => {
+  const f = terminalFixture();
+  try {
+    f.console.startBackground();
+    f.input.write("/approve\r");
+    f.input.write("unfinished draft");
+    expect(f.console.backgroundStatus).toContain("1 queued");
+    f.console.stopBackground();
+    const question = f.console.question("Approval? ");
+    let answered = false;
+    void question.then(() => { answered = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(answered).toBe(false);
+    f.input.write("n\r");
+    expect(await question).toBe("n");
+    f.console.setQueueEnabled(false);
+    const paused = f.console.compose({model:"model",status:"approval pending"});
+    f.input.write("\r");
+    expect(await paused).toBe("unfinished draft");
+    f.console.setQueueEnabled(true);
+    expect(await f.console.compose({model:"model",status:"ready"})).toBe("/approve");
+    expect(f.console.lastSubmissionWasPaste).toBe(true);
+  } finally {f.console.close();}
+});
+
+test("busy paste remains editable; recall and interruption never replay a queued command", async () => {
+  const f = terminalFixture();
+  try {
+    f.console.startBackground();
+    f.input.write("\x1b[200~first\nsecond\x1b[201~\r/approve\r");
+    expect(f.console.backgroundStatus).toContain("0 queued");
+    expect(f.console.backgroundStatus).toContain("first second");
+    f.input.write("\r");
+    expect(f.console.backgroundStatus).toContain("1 queued");
+    f.input.write("\x1b[A");
+    expect(f.console.backgroundStatus).toContain("0 queued");
+    expect(f.console.backgroundStatus).toContain("first second");
+    f.input.write("\r");
+    f.input.write("\x03");
+    f.console.stopBackground();
+    const prompt = f.console.compose({model:"model",status:"ready"});
+    f.input.write("fresh\r");
+    expect(await prompt).toBe("fresh");
+  } finally {f.console.close();}
+});
+
+test("background queue is bounded and retains the overflow as an editable draft", async () => {
+  const f = terminalFixture();
+  try {
+    f.console.startBackground();
+    for (let i=0;i<9;i++) {f.input.write(`task ${i}\r`);await new Promise(resolve=>setImmediate(resolve));}
+    expect(f.console.backgroundStatus).toContain("Queue full");
+    f.console.stopBackground();
+    for(let i=0;i<8;i++) expect(await f.console.compose({model:"model",status:"ready"})).toBe(`task ${i}`);
+    const draft=f.console.compose({model:"model",status:"ready"});f.input.write("\r");expect(await draft).toBe("task 8");
+  } finally {f.console.close();}
 });

@@ -1,5 +1,7 @@
+import { withReasoningEffort } from "../providers/reasoning.js";
+import { qwenLocalContext } from "../providers/qwen-context.js";
 import { createOciDelivery, pendingDescendantDelivery } from "./oci-delivery.js";
-import { createModelEditReferences } from "./model-edit-references.js";
+import { canRecoverEditReferences, createModelEditReferences } from "./model-edit-references.js";
 import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
 import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
@@ -128,9 +130,10 @@ const createHarnessBinding = (
   fingerprint: `sha256:${createHash("sha256")
     .update(JSON.stringify({
       runtimePolicy: "assistant-recovery-v3-verified-delivery-v1",
-      contextRuntime: "adaptive-context-progress-v4-turn-local-history",
+      contextRuntime: "adaptive-context-progress-v5-local-qwen-history",
       readScheduler: "independent-local-reads-v1",
       requireVerifiedDelivery: config.requireVerifiedDelivery,
+      ...(config.reasoningEffort ? { reasoningEffort: config.reasoningEffort } : {}),
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
       approvalVersion: APPROVAL_VERSION,
       toolContractVersion: TOOL_CONTRACT_VERSION,
@@ -172,7 +175,7 @@ Rules:
 - Make the smallest coherent change that fully addresses the task. For repair requests, implement and validate the repair before finishing; a plan alone is not completion.
 - When implementation is requested, move from targeted inspection to an edit once the affected code, intended behavior and relevant check are known. Do not turn a scoped fix into a repository-wide audit or repeatedly inspect dependency internals without a concrete unresolved question.
 - Start with narrow searches (10 matches per query) and file slices (about 120 lines). Search the exact file once known. After two unsuccessful searches, change scope or inspect a targeted slice instead of repeating the same call. Expand only when needed.
-- After compaction, continue from the retained objective, decisions and next steps. Call read_task when request details or constraints are missing; do not restart repository discovery merely because history was summarized. For multistep repairs, repair_plan can preserve a useful hypothesis and next check.
+- After compaction, continue from the retained objective, decisions and next steps. Call read_task when request details or constraints are missing; do not restart repository discovery merely because history was summarized. For multistep repairs, repair_plan can preserve a useful hypothesis and next check. For an already scoped implementation, do not add a planning-only turn: read the target and relevant check, edit, then validate. Reopen discovery only to answer a concrete unresolved question.
 - After compaction, use remembered file/line locations to resume a targeted read before rediscovering repository structure. Locations are historical hints, not current source or authorization; reread the relevant slice before editing and honor clippedLine.
 - For bug fixes, reproduce the reported behavior when practical and validate the correction with focused checks. For other changes, choose validation appropriate to the request; documentation and conceptual answers do not require a bug reproduction. An exception disappearing is not proof of correct behavior. Do not claim verification from a successful import alone.
 - For exact replacements, copy oldText from the current read and include enough surrounding context to make it unique; after an ambiguity error, reread and narrow the target.
@@ -397,6 +400,8 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     options.env ?? process.env,
     options.providerRegistry
   );
+  model = withReasoningEffort(model, config.reasoningEffort);
+  if (model.provider === "qwen") model = wrapLanguageModel(model, [qwenLocalContext]);
   let compactionModel = config.compaction.model ? options.compactionModelInstance ?? createProviderModel(
     config.compaction.model, options.env ?? process.env, options.providerRegistry) : undefined;
   const capabilityRequirements = [...new Set([
@@ -1151,10 +1156,18 @@ const runHarnessInternal = async (
   const contextRuntime = await createContextRuntime(harness.workspace,
     structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled, { newUserRequest });
   const contextStore = contextRuntime.store(harness.store, runId);
+  const mutationNames = new Set(["apply_reviewed_edits", "apply_reviewed_replacement", "verify_and_apply_reviewed_edits", "apply_patch"]);
+  const recoverySteps = "state" in input && !input.state.pendingApprovals.some(approval => mutationNames.has(approval.name))
+    ? input.state.steps.slice(input.state.steps.map(step => step.toolResults.some(result => !result.isError && mutationNames.has(result.toolName))).lastIndexOf(true) + 1) : [];
+  const failedEditCalls = recoverySteps.flatMap(step => {
+    const rejected = new Map(step.toolResults.map(result => [result.toolCallId, result]));
+    return (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part =>
+      part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
+  });
   const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
-    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}), contextRuntime.middleware])
+    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware])
   }) };
   if (input.tools) input = { ...input, tools: runtimeTools };
   if (input.compaction === undefined) {

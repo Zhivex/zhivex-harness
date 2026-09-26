@@ -39,7 +39,7 @@ const conflicts: Readonly<Record<string, readonly string[]>> = {
 
 export const CLI_OPTION_NAMES = [
   "--compaction-model", "--compaction-provider",
-  "--provider", "--model", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
+  "--provider", "--model", "--reasoning", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
   "--require-verified-delivery", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
@@ -64,7 +64,7 @@ export const CLI_OPTION_DEFINITIONS: Readonly<Record<CliOptionName, CliOptionDef
   }])) as Readonly<Record<CliOptionName, CliOptionDefinition>>;
 
 const locator = ["--workspace", "--state-dir", "--store", "--tenant", "--user", "--namespace"] as const;
-const provider = ["--provider", "--model"] as const;
+const provider = ["--provider", "--model", "--reasoning"] as const;
 const profile = ["--profile"] as const;
 const project = ["--mcp-config", "--context-config", "--no-project-context"] as const;
 const execution = [

@@ -10,7 +10,9 @@ const fixture = () => structuredClone(bundledModelCatalog);
 test("new OpenAI choices default to GPT-6 Luna while explicit older choices remain selectable", () => {
   const provider = bundledModelCatalog.providers.find((entry) => entry.id === "openai")!;
   expect(provider.defaultModel).toBe("gpt-6-luna");
-  expect(consoleModelChoices("openai", provider.defaultModel, "gpt-5.6-luna")[0]!.value).toBe("gpt-5.6-luna");
+  const choices = consoleModelChoices("openai", provider.defaultModel, "gpt-5.6-luna");
+  expect(choices.slice(0,3).map(m=>m.value)).toEqual(["gpt-6-astra","gpt-6-sol","gpt-6-luna"]);
+  expect(choices.find(m=>m.value==="gpt-5.6-luna")?.detail).toContain("Current");
   expect(provider.models.find((entry) => entry.id === "gpt-6-luna")?.validation).toBe("unverified");
 });
 test("catalog rejects ambiguous identities, missing defaults and invalid replacements", () => {
@@ -62,17 +64,17 @@ test("demotion and retirement preserve current IDs and show a replacement", () =
   const m = provider.models.find(m => m.id !== provider.defaultModel)!;
   m.group = "other";m.lifecycle = "retired";m.replacement = provider.defaultModel;
   const choices = consoleModelChoices(provider.id,provider.defaultModel,m.id,c);
-  expect(choices[0]!.value).toBe(m.id);
-  expect(choices[0]!.detail).toContain("Retired");
-  expect(choices[0]!.detail).toContain(provider.defaultModel);
+  const retired = choices.find(item=>item.value===m.id)!;
+  expect(retired.detail).toContain("Retired");
+  expect(retired.detail).toContain(provider.defaultModel);
   expect(catalogModels(c,provider.id,"custom-current")[0]!.id).toBe("custom-current");
 });
 
 test("CLI exposes Other models as a separate page and selects an explicit choice", async () => {
   const pages: string[] = [];
-  const answers = [{kind:"other",id:""},{kind:"model",id:"gpt-5.5"}];
+  const answers = [{kind:"other",id:""},{kind:"model",id:"gpt-5.5"},"default"];
   const input = {select:async (title: string) => {pages.push(title);return answers.shift();},question:async()=>""} as unknown as Pick<ConsoleInput,"select"|"question">;
   const result = await navigateConsole(input,{entry:"model",providers:providerAvailability({}),current:{provider:"openai",model:"gpt-5.6-luna"},sessions:async()=>[]});
-  expect(result).toEqual({provider:"openai",model:"gpt-5.5"});
+  expect(result).toEqual({provider:"openai",model:"gpt-5.5",reasoningEffort:"default"});
   expect(pages[1]).toContain("Other models");
 });

@@ -25,11 +25,11 @@
     },
     {
       "name": "CLI_OPTION_DEFINITIONS",
-      "sha256": "sha256:e81ab83efe6632fea8457e220c8fd187a0d6f22f3856a5dfbc236d0760debcdb"
+      "sha256": "sha256:cf8d007b1d5fab300a3730716c97fe5da6cbece37886916a48be947c4062c35b"
     },
     {
       "name": "CLI_OPTION_NAMES",
-      "sha256": "sha256:b147c57222331192c6736d51bc8a24bd1f06bd0322735da0ee2fcbe88bd2559d"
+      "sha256": "sha256:56578840a2e0da57962fae8c255272168b2898151e25e2be36d2185202ff4901"
     },
     {
       "name": "DEFAULT_ALLOWED_CHECKS",
@@ -133,7 +133,7 @@
     },
     {
       "name": "cancelHarnessRun",
-      "sha256": "sha256:c0574a794f7afccd4d16286a6c445b55b2ca64f89b8b61d88429141c5aa177e3"
+      "sha256": "sha256:e36da6c24c521dd14d143fa0a71ba0ab2ed45abf71cb0126403c6b03da404e98"
     },
     {
       "name": "canonicalizeChangeEnvelope",
@@ -141,11 +141,11 @@
     },
     {
       "name": "cleanupHarnessRuns",
-      "sha256": "sha256:e5460d2369e64398e8d7fae6209bd5647791536c73de58d015eab2ccae30d3c5"
+      "sha256": "sha256:4a75d154f76a3a98c1e8c17b857db0829df0e29719a4a07ed09482ad96de03b2"
     },
     {
       "name": "cliJsonDocumentSchema",
-      "sha256": "sha256:8d464b66e470c13b61331f4b8e5547300841ac76b71a4e9ed66d3e1783447b96"
+      "sha256": "sha256:ea221418b3ef75dfe99aadfc80f99ab67d88f29a231cf24fdbd12a7b891b6d50"
     },
     {
       "name": "cliJsonLineDocumentSchema",
@@ -165,7 +165,7 @@
     },
     {
       "name": "createHarness",
-      "sha256": "sha256:587e0ddcd2294c92ef9d1f2d4c4b15d3344183c5bcc34f5ceccf763a17d11f66"
+      "sha256": "sha256:d64067ac36a8afb8ebe7875ae9c5c6e01890ffed879a7eeff9c141b6a603588c"
     },
     {
       "name": "createHarnessMcpTools",
@@ -177,7 +177,7 @@
     },
     {
       "name": "createHarnessStateBackup",
-      "sha256": "sha256:dc912401622813c191270cc3222e634b8d51d648ead021974048c651d1fdca62"
+      "sha256": "sha256:6dec078c2691090e6e21b4bac89520d9010924e50088e2075155f3b742ec6102"
     },
     {
       "name": "createHttpMcpClient",
@@ -185,7 +185,7 @@
     },
     {
       "name": "createProviderModel",
-      "sha256": "sha256:0d6344ffcd775921c45045ff75f55fe913be8e1ced79b782be88a9f793abf623"
+      "sha256": "sha256:d3c8e0e05dea6efdf8b58c31fac7b7ab5d263918394866d362107d9859a9b337"
     },
     {
       "name": "digestChangeEnvelopeArtifact",
@@ -193,7 +193,7 @@
     },
     {
       "name": "exportHarnessStateBackup",
-      "sha256": "sha256:79db384b04677937507ba69f0c36a93bf3ec42e39b6d22d6690b5bba47471711"
+      "sha256": "sha256:4a89bf93ebf9b2c0777fe7e5c73faa46962b81c7536f2331992322f580b009af"
     },
     {
       "name": "harnessErrorDocument",
@@ -201,23 +201,23 @@
     },
     {
       "name": "importHarnessStateBackup",
-      "sha256": "sha256:7449e1eec652b252961ce4965ea0f33926d9f843763aefb0f155d1af0c429a42"
+      "sha256": "sha256:740e572d8c1412bd62f2fcd8024e518a2722dd5ea6c554530a04642dcfc5d604"
     },
     {
       "name": "importHarnessStateBackupFile",
-      "sha256": "sha256:927feae9fb0061fbd04314a2fd2d7cb132eb84d756ef620b51040debb5cbd187"
+      "sha256": "sha256:0755dd97e54d1fdfeb7a289f1259a9be38ecaed1eb34d19284b9a03488cd12fb"
     },
     {
       "name": "inspectHarnessRun",
-      "sha256": "sha256:cf4a8f1c2691b9f3027502ab3cd098a8a1f9768641fd10d9925d217ba2ab3ea9"
+      "sha256": "sha256:33e2c8012f4fdadeb18e94b1f922aaa9b085315af2f8521771eb81c416475581"
     },
     {
       "name": "inspectHarnessState",
-      "sha256": "sha256:d63145751610dc11e7ba8e356cd5a8c88eb27aec607df8c24cc2fb2598e9ffb9"
+      "sha256": "sha256:9d07d3239461a9ec411eb5e419370e0d00ab7b381f6eff746d2182a8a3775552"
     },
     {
       "name": "listHarnessRuns",
-      "sha256": "sha256:2cce91cb548056e3aadb7e8c01182f933cf9644ffb5e0c0c3ffa9589cae24eba"
+      "sha256": "sha256:c21a907c98bd48d8d8518b477a0abb5e3d5ae88b9b1cbb888212c6b303b342d4"
     },
     {
       "name": "loadHarnessMcpConfiguration",
@@ -225,7 +225,7 @@
     },
     {
       "name": "migrateHarnessConfigInput",
-      "sha256": "sha256:58518757b2d9f4b2b37fe31a2b8df84633521b3c39199eaf08a76a7c12e58a46"
+      "sha256": "sha256:3757847c7e64d66acd2a25471e2ada13576189e80e7b2bbea2c5e5f9ce9e606e"
     },
     {
       "name": "normalizeHarnessError",
@@ -241,11 +241,11 @@
     },
     {
       "name": "openHarnessPersistence",
-      "sha256": "sha256:8a97855ed76aa6962be3e8e824ae6e48f56afd923da0f7c102005bfd15e4dafb"
+      "sha256": "sha256:88552131f2aeee51101be035fa683944f810b10ff222a4ea42dd3b12cf65ea7e"
     },
     {
       "name": "parseCliJsonDocument",
-      "sha256": "sha256:c1fe9cb7087af89e0a2c89e7a3941bd028f49b32a9e2f5cba1d5a2dbf1d918e1"
+      "sha256": "sha256:a27c7a9b868aa26b0d8c0ec8e7ea661a5e09df5fe0dd830a092a12889ff83b5b"
     },
     {
       "name": "parseCliJsonLineDocument",
@@ -269,11 +269,11 @@
     },
     {
       "name": "resolveHarnessConfig",
-      "sha256": "sha256:70a73657bcb9df9090ecdd83cd396042be1dda98f90674e55c17a732205743f6"
+      "sha256": "sha256:7c93c375258ae204faba275ac31b3b06cc83d81fba3a0ee5327cb9657e726a86"
     },
     {
       "name": "runHarness",
-      "sha256": "sha256:713a8a62198f1ab9d96b7f071084021895538259b2ef504dcb9dc37a341812d2"
+      "sha256": "sha256:b9edc132c711d883d20ae61a4d5b827c89ef7022a37bf57dcf3cef5ff9ee55d2"
     },
     {
       "name": "serializeStreamEvent",
@@ -315,11 +315,11 @@
     },
     {
       "name": "CliInitDocument",
-      "sha256": "sha256:bf62495ab0698d620b0101576d33b3c7f57dfdabbe09b9c66ce031d9bae5971f"
+      "sha256": "sha256:44728b04c9fd867b8b207187a24c968c1c961ca3a17988ef2b7235ea42303ddf"
     },
     {
       "name": "CliJsonDocument",
-      "sha256": "sha256:07692bcada20b028c985633d764e0c5375a022bfc93f00fc8ecec0caae3fec3a"
+      "sha256": "sha256:28227f279b455e6fff3e6cafdb8fa73fb23908fe10e2f4e8ded726ad722a7f37"
     },
     {
       "name": "CliJsonLineDocument",
@@ -331,7 +331,7 @@
     },
     {
       "name": "CliOptionName",
-      "sha256": "sha256:167d6977a0bbef5d76abb16e8c038bc4951825780b8e7a77b70d66ff982d374c"
+      "sha256": "sha256:f70a903733c995154846df610a246cecd1ca751018ddb4e84e89a0206c27f68d"
     },
     {
       "name": "CliReviewGroupDocument",
@@ -375,7 +375,7 @@
     },
     {
       "name": "CreateHarnessOptions",
-      "sha256": "sha256:99b41e8193618f672bd9cf53b44bdff077d08005bfe88fcbe220c5b0f146307f"
+      "sha256": "sha256:390cff6d5ea83dd08bde8cc6965b729a8408e00f93752dea13f95b43ce7d2fe8"
     },
     {
       "name": "HarnessBudget",
@@ -383,15 +383,15 @@
     },
     {
       "name": "HarnessConfig",
-      "sha256": "sha256:5fec1a887e085b1fab5d0d9b539c3c6a4ae373ef3cc2905580d7eafb590cf725"
+      "sha256": "sha256:a5043eec3a71c35d9ac49607aed2408689a8a47694689268de12cdfc195ae6e7"
     },
     {
       "name": "HarnessConfigInput",
-      "sha256": "sha256:0475b86f699aa0840ea849c336849b65e28e345e1c1c87bb96e4372011810ab2"
+      "sha256": "sha256:01093620aed18df40794324345600983230878d197c3a1cf2f01c17aae1c382e"
     },
     {
       "name": "HarnessConfigMigrationResult",
-      "sha256": "sha256:ec8f1ef997ff8ef59482c90fe3bc23bc8ad4c151e6e4b04ff10104d36331374f"
+      "sha256": "sha256:b3b86d52652e9d24b7ab6013de95000976d6058fec5b41e0e604dd3ee31a9bd2"
     },
     {
       "name": "HarnessContextBundle",
@@ -487,8 +487,8 @@
     },
     {
       "name": "ZhivexHarness",
-      "sha256": "sha256:e244fbf6f5df2c07e247b6df7810fca4e53a92046940c3e327ecd5d5224deee3"
+      "sha256": "sha256:fde9c8ee503d75acf6672611dfee6ea32dce09a209dc82df1ba53085ebeea371"
     }
   ],
-  "digest": "sha256:540d453617592b39457b2412085b041193a0336c70e16f9f54d5ef81a264dce3"
+  "digest": "sha256:0f2e9df6cd62c3e654853e7a07b41f8daf5358c72ee57e0c19d9f21b60f2fd05"
 }

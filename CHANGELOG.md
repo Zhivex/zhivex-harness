@@ -4,6 +4,16 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.10 - 2026-09-26
+
+- Scope deterministic test discovery to maintained root and Desktop suites, excluding historical artifacts stored locally.
+- CLI: featured model ordering, Qwen-hosted GLM/DeepSeek/Kimi choices, phase/total timing, committed file receipts, bounded `/activity` history, and literal task queues isolated from approvals.
+
+- Add model-to-reasoning selection, `/reasoning` and `--reasoning`, with adapter-declared levels, personal-profile persistence and durable run bindings.
+- Reuse bounded rejected edit candidates after targeted reference recovery, without regenerating file contents or bypassing exact-payload approval.
+- Make Qwen's local compacted conversation authoritative instead of continuing remote response chains; retain reasoning and tool history.
+- Guide scoped implementations toward editing and checking without an unnecessary planning-only turn.
+
 ## 1.2.0-rc.9 - 2026-09-26
 
 - Keep current user direction prominent across compaction, retain earlier task context, and migrate legacy summaries. Add a durable advisory for prolonged varied exploration without forcing edits or stopping legitimate investigation. Give the model actionable read-call and line-range corrections while preserving original error receipts and approvals.

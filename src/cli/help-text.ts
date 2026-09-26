@@ -37,6 +37,7 @@ Options (automation and advanced configuration):
   --update                       Update an existing profile (init only)
   --provider <${PROVIDERS.join("|")}>  Provider (default: openai)
   --model <id>                   Override the default model
+  --reasoning <level>            default, none, minimal, low, medium, high, xhigh, max (model-dependent)
   --compaction-model <id>        Opt into model-assisted compaction with this model
   --compaction-provider <id>     Compaction provider (defaults to the primary provider)
   --route <role=provider[:model]> Route a subagent role; repeatable

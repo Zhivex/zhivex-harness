@@ -1,3 +1,4 @@
+import { reasoningEffortSchema, type HarnessReasoningEffort } from "../providers/reasoning.js";
 import { constants as fsConstants } from "node:fs";
 import { lstat, mkdir, open, unlink, rename } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -29,6 +30,7 @@ const profileNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 export const cliProfileSchema = z.strictObject({
   schemaVersion: z.literal(CLI_PROFILE_SCHEMA_VERSION),
   provider: z.enum(PROVIDERS),
+  reasoningEffort: reasoningEffortSchema.optional(),
   model: z.string()
     .min(1)
     .max(512)
@@ -190,13 +192,14 @@ export const loadCliProfile = async (
 
 export const createCliProfile = async (
   name: string,
-  input: { provider: HarnessProvider; model: string },
+  input: { provider: HarnessProvider; model: string; reasoningEffort?: HarnessReasoningEffort },
   context: CliProfilePathContext = {}
 ) => {
   const parsed = cliProfileSchema.safeParse({
     schemaVersion: CLI_PROFILE_SCHEMA_VERSION,
     provider: input.provider,
-    model: input.model
+    model: input.model,
+    ...(input.reasoningEffort ? { reasoningEffort: input.reasoningEffort } : {})
   });
   if (!parsed.success) {
     throw new HarnessConfigError(
@@ -251,7 +254,7 @@ export const createCliProfile = async (
 /** Publish a complete, private replacement without truncating the current profile. */
 export const updateCliProfile = async (
   name: string,
-  input: { provider: HarnessProvider; model: string },
+  input: { provider: HarnessProvider; model: string; reasoningEffort?: HarnessReasoningEffort },
   context: CliProfilePathContext = {}
 ) => {
   await loadCliProfile(name, context);
@@ -277,6 +280,7 @@ export const applyCliProfile = async <T extends HarnessConfigInput & { profile?:
   return {
     provider: profile.provider,
     model: profile.model,
+    ...(profile.reasoningEffort && (!options.provider || options.provider === profile.provider) && (!options.model || options.model === profile.model) ? { reasoningEffort: profile.reasoningEffort } : {}),
     ...options
   };
 };

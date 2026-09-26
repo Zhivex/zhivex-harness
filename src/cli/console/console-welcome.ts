@@ -47,15 +47,12 @@ export const formatConsoleWelcome = (input: {
     const mark = color ? `\u001b[31m${line}\u001b[0m` : line;
     const label = titleBesideLogo ? right[index - titleRow] : undefined;
     return label
-      ? `${mark}${" ".repeat(logoWidth - line.length + 3)}${consoleLabel(label, columns - logoWidth - 3)}`
+      ? `${mark}${" ".repeat(logoWidth - line.length + 3)}${color ? (index === titleRow ? "\u001b[1m" : "\u001b[90m") : ""}${consoleLabel(label, columns - logoWidth - 3)}${color ? "\u001b[0m" : ""}`
       : mark;
   }).join("\n");
   // Compact-logo layouts have only one row; retain their context below it.
   return [
     header,
     ...(titleBesideLogo ? (logoLines.length === 1 ? context : []) : [title, ...context]),
-    "",
-    consoleLabel("Try: Explain this project · Review my changes", columns),
-    consoleLabel("Type / to find commands, or ? for shortcuts.", columns),
   ].join("\n");
 };

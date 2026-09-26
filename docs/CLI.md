@@ -72,6 +72,12 @@ Start with `zhx`. Use `/help` inside the conversation. For scripting, use `zhx r
 
 ### Interactive daily workflow
 
+The Focus layout keeps a single conversation column in terminal scrollback. Model
+and reasoning appear above the input, with approval state and selected attachments.
+An empty draft shows a muted task hint. Shortcuts sit below the complete draft,
+adapt to terminal width, and give way to command and history searches. Sending or
+cancelling removes these editor hints before model output or approval questions.
+
 The console opens with the Zhivex logo and a compact welcome panel. Project/model context sits beside the logo when space permits. Before each task, the composer shows the model, approval mode, pending approval state and attachment count. Long labels are bounded to the terminal width; full configuration remains available through `/status`. Type `/` to open the command menu; keep typing to search names and descriptions, use Up/Down to select, Tab to insert, and Enter to submit. Escape dismisses the menu. Enter on a partial command inserts its selection; a separate Enter submits it, including approval commands. Only commands supported by the connected runtime appear. Narrow terminals use a compact logo; `NO_COLOR` disables logo color. The console completes slash-command prefixes with Tab. `/paste` captures a bounded
 multiline draft: finish with `.end` on a separate line, review the preview, then type
 `send` at the separate confirmation prompt. Slash commands inside the draft remain
@@ -89,7 +95,9 @@ Ctrl+R searches that in-memory history. Type a filter, use Up/Down to choose, th
 Left/Right and Home/End edit the draft in the supported Node terminal runtime;
 resizing the terminal preserves it. Ctrl+C discards the current draft (including
 an unfinished paste), or cancels the active operation and returns after cleanup.
-During an operation, typed input is ignored without echoing over the stream.
+During an operation, typed input is retained as a background draft; Enter queues a
+literal task for the next turn. Draft previews appear in the transient activity line.
+Approval questions require fresh input and never consume the task queue.
 
 Text streams progressively, including partial lines during provider pauses. Activity,
 approval requests and completion remain separate labelled events. Partial output is
@@ -612,3 +620,46 @@ be combined with a utility model. Manual `/compact` remains deterministic.
 
 The experimental `zhx-acp` binary exposes text sessions to ACP clients; see
 [ACP](ACP.md) for supported methods and limitations.
+
+## Model reasoning
+
+The interactive model picker continues to a reasoning picker. Escape returns to the
+model list without changing the active configuration. `/reasoning` adjusts the
+current model; `/reasoning low` and `--reasoning low` select an explicit level.
+Supported values are `default`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`
+and `max`, but only adapter-declared levels are offered or accepted for that model.
+`default` sends no override. Adapters without an explicit level inventory show
+only `default`; a generic reasoning capability does not establish supported levels.
+Higher effort can increase latency and token consumption. No effort is silently
+lowered. The composer displays the setting. Onboarding stores it in the personal
+profile; conversation runs persist it for resume. Switching models resets the
+selection unless a new level is chosen. Explicit CLI configuration wins over a
+profile. Active or approval-pending runs retain their original configuration.
+
+Reviewed edits with missing read references can reuse a rejected candidate via
+`retryToolCallId` after a successful reread, optionally specifying `createPaths`
+for genuinely new files. The runtime rebinds references and requests approval for
+the complete edit. Candidates are bounded to four / 1 MiB per invocation; durable
+validation-failed calls seed recovery on resume. Unknown or unavailable candidates
+require a fresh proposal. Explicit digests are never silently refreshed, and
+stale files remain rejected. No edit occurs merely by retaining a candidate.
+
+Qwen requests replay the local conversation instead of retaining a remote response
+chain. This makes compacted context and current system guidance authoritative.
+Reasoning and tool payloads remain intact; local replay does not guarantee a
+particular cache hit rate or response latency.
+
+### Activity and queued tasks
+
+`/activity` shows a bounded in-memory history of tool outcomes, approvals and applied
+file receipts; `/activity clear` clears it. `/queue` lists tasks submitted while the
+agent was busy, and `/queue clear` clears tasks and the unsent draft. Enter queues,
+Alt+Enter adds a newline, Up retrieves the last queued task from an empty background
+draft, and Ctrl+C cancels the operation and clears the queue. Queued slash text is
+always a literal task, never an approval command. Pending approvals pause delivery.
+The queue is limited to eight tasks / 256 KiB; each draft is limited to 64 KiB.
+
+Activity shows phase and total elapsed time. Preparing edits, waiting for approval,
+applied file changes and verification are distinct states. `/diff` reviews workspace
+changes, including changes outside the current run; file receipts identify mutations
+recorded by this harness.

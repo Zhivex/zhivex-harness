@@ -31,7 +31,7 @@ To roll back, republish the earlier valid manifest at the same URL; clients acce
 
 ## Selection behavior
 
-Both selectors expose Primary models, Other models, and a custom ID option. Desktop searches across names, IDs and providers, expanding Other models for search results. Deprecation details and replacements accompany model choices.
+The CLI exposes Featured models, Other models, and a custom ID option; Desktop uses Primary models. Desktop searches across names, IDs and providers, expanding Other models for search results. Deprecation details and replacements accompany model choices.
 
 Catalog refresh never writes project or conversation selections and never silently migrates a selected model. A current ID missing from the catalog stays visible. Retirement is metadata, not proof of account access or an execution block; the provider decides whether a request is accepted. Remote defaults guide explicit choices in the selector. Runtime startup defaults remain the bundled defaults, preserving startup behavior without requiring networking.
 
@@ -70,3 +70,30 @@ The harness uses `@zhivex-ai/core` 1.24.0 `createModelCatalog` and `recommendAux
 The harness retains its curated inventory, defaults, chooser ordering, lifecycle policy and route validation labels. The core package's `defaultModelCatalog` is an explicitly frozen compatibility inventory, so it is not used to replace the current manifest. Release-managed upstream inventory lives in `@zhivex-ai/sdk`; `models:import` remains an explicit curation workflow. This integration removes duplicate recommendation calculations, without introducing an automatic inventory migration or depending on an unpublished checkout.
 
 The SDK requires an evaluation artifact with source, fixture, version, date and pass result for evaluated compaction quality. The current manifest's `evaluated` label has only generic evidence, so the adapter conservatively emits a candidate plus a warning instead of inventing an evaluation. Host lifecycle restrictions and compaction curation freshness remain additional harness checks; public recommendation arguments, return shape and existing reason codes are preserved. Recommendations remain advisory and never authorize credentials or automatically switch providers.
+
+## Featured choices, 2026-09-26
+
+Revision `2026-09-26-frontier` puts Qwen 3.8 Flash and Max on the first CLI page,
+followed by GLM 5.3, DeepSeek V4.1 Flash, Kimi K3 and Qwen 3.7 Plus. Third-party
+entries identify the model author separately from Alibaba Model Studio, the API
+provider. GPT-6 Astra, Sol and Luna appear before older GPT generations. The current
+model is labelled but does not displace featured models; saved selections and
+provider defaults do not change. Other models contains older generations and snapshots.
+
+The installed Qwen adapter declares these hosted model IDs and model-specific
+reasoning levels. Availability still depends on account, region and endpoint. No new
+entry is certified by listing it. Reviewed primary sources:
+
+- [Qwen 3.8 Flash release](https://www.alibabacloud.com/en/news/product/qwen38-flash-released-noi).
+- [GLM on Model Studio](https://help.aliyun.com/en/model-studio/glm): `glm-5.3`; Responses availability depends on region.
+- [DeepSeek V4.1 Flash on Alibaba](https://www.alibabacloud.com/blog/603550): `deepseek-v4.1-flash`; Token Plan uses a distinct endpoint and credential.
+- [Kimi on Model Studio](https://help.aliyun.com/en/model-studio/kimi-api): `kimi-k3`.
+
+Unknown context/output limits and prices for new entries remain unset; the selector
+does not infer them from model age or the provider default.
+
+Kimi K3 has an application-side compatibility restriction: current official Model
+Studio documentation requires Chat Completions and thinking-only mode. The harness
+uses that transport and offers only default reasoning for this entry, rather than
+exposing the broader levels/Responses route in the installed SDK snapshot. Explicit
+incompatible overrides fail before sending a request.

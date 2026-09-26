@@ -267,3 +267,91 @@ test("malformed reads receive provider-only corrections and recover to an approv
     expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("after\nsecond\n");
   } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+for (const drift of [false, true]) test(`rejected multi-file candidate retries without regenerating content; drift=${drift}`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "zhx-edit-retry-"));
+  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  try {
+    await writeFile(path.join(root,"a.txt"),"before\n");
+    harness = await createHarness({workspace:root,modelInstance:createMockLanguageModel({streamEvents:[
+      turn("candidate","apply_reviewed_edits",{changes:[{path:"a.txt",content:"after\n"},{path:"new.txt",content:"new\n"}]}),
+      turn("read","read_file",{path:"a.txt"}),
+      turn("retry","apply_reviewed_edits",{retryToolCallId:"candidate",createPaths:["new.txt"]}),done
+    ]})});
+    const output = await runHarness(harness,{prompt:"Implement",toolExecution:{validationErrorMode:"tool-result"}});
+    expect(output.status).toBe("waiting_approval");
+    const payload=JSON.parse(output.state.pendingApprovals[0]!.arguments);
+    expect(payload.changes[0].content).toBe("after\n"); expect(payload.changes[0].expectedDigest).toMatch(/^sha256:/);
+    expect(payload.changes[1].expectedDigest).toBeNull();
+    expect(await readFile(path.join(root,"a.txt"),"utf8")).toBe("before\n");
+    if(drift) await writeFile(path.join(root,"a.txt"),"external\n");
+    const result=await runHarness(harness,{state:output.state},{resolveApprovals:async approvals=>approvals.map(a=>({provider:a.provider,approvalRequestId:a.id,approve:true}))}).catch(e=>e);
+    if(drift) expect(await readFile(path.join(root,"a.txt"),"utf8")).toBe("external\n");
+    else { expect(result.status).toBe("completed"); expect(await readFile(path.join(root,"new.txt"),"utf8")).toBe("new\n"); }
+  } finally {await harness?.close();await rm(root,{recursive:true,force:true});}
+});
+
+test("retained candidate survives a new middleware instance and cannot bypass missing reads or hidden tools", async () => {
+  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { z } = await import("zod");
+  const { editProposalInputSchema } = await import("../src/workspace/edit-contracts.js");
+  const definition = {name:"apply_reviewed_edits",schema:editProposalInputSchema,execute:async()=>null};
+  const tools={apply_reviewed_edits:definition,read_file:{name:"read_file",schema:z.object({path:z.string()}),execute:async()=>null}};
+  const candidate=turn("saved","apply_reviewed_edits",{changes:[{path:"a.txt",content:"retained"}]})[0].toolCall;
+  const digest=`sha256:${"a".repeat(64)}`;
+  const read:ModelMessage[]=[{role:"assistant",parts:[turn("read","read_file",{path:"a.txt"})[0]]},
+    {role:"tool",parts:[{type:"tool-result",toolResult:{toolName:"read_file",toolCallId:"read",isError:false,output:{path:"a.txt",digest}}}]}];
+  const invoke=async(history:ModelMessage[],available:ToolSet,retry="saved")=>{
+    let prompt="";
+    const model=wrapLanguageModel({...createMockLanguageModel(),generate:async input=>{
+      prompt=JSON.stringify(input.messages);
+      return {message:{role:"assistant" as const,parts:[turn("retry","apply_reviewed_edits",{retryToolCallId:retry})[0]]}};
+    }},[createModelEditReferences(tools,[candidate])]);
+    const result=await model.generate({messages:history,tools:available});
+    const part=result.message!.parts[0]!;
+    if(part.type!=="tool-call")throw new Error("missing call");
+    return {input:part.toolCall.input,prompt};
+  };
+  expect((await invoke(read,tools)).input).toEqual({changes:[{path:"a.txt",content:"retained",expectedDigest:digest}]});
+  expect((await invoke([],tools)).input).toEqual({changes:[{path:"a.txt",content:"retained"}]});
+  expect((await invoke(read,{})).input).toEqual({retryToolCallId:"saved"});
+  expect((await invoke(read,tools,"unknown")).input).toEqual({retryToolCallId:"unknown"});
+  expect((await invoke([],tools)).prompt).toContain("Rejected edit candidates");
+});
+
+for (const scenario of ["missing-digest", "missing-changes", "invalid-content"] as const) {
+  test(`resume advertises only repairable edit candidates: ${scenario}`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "zhx-recovery-seed-"));
+    let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+    try {
+      const prompts: string[] = [];
+      const name = "apply_reviewed_edits";
+      const args = scenario === "missing-changes" ? {} : {
+        changes: [{ path: "a.txt", content: scenario === "invalid-content" ? 42 : "after" }]
+      };
+      const model = wrapLanguageModel(createMockLanguageModel({ streamEvents: [turn("candidate", name, args), done, done] }), [{
+        wrapStream: async (context, next) => { prompts.push(JSON.stringify(context.input.messages)); return next(); }
+      }]);
+      harness = await createHarness({ workspace: root, modelInstance: model });
+      const failed = await runHarness(harness, { prompt: "Edit", toolExecution: { stopOnError: false, validationErrorMode: "tool-result" } });
+      expect(failed.toolResults.some(result => result.error?.code === "TOOL_INPUT_VALIDATION_ERROR")).toBe(true);
+      expect(prompts.at(-1)!.includes("Rejected edit candidates")).toBe(scenario === "missing-digest");
+      await runHarness(harness, { state: failed.state });
+      expect(prompts.at(-1)!.includes("Rejected edit candidates")).toBe(scenario === "missing-digest");
+    } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+  });
+}
+
+
+test("verified edit recovery rejects missing command even alongside missing digests", async () => {
+  const { canRecoverEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const call = turn("candidate", "verify_and_apply_reviewed_edits", { changes: [{ path: "a.txt", content: "after" }] })[0].toolCall;
+  const digest = { code: "invalid_type", path: ["changes", 0, "expectedDigest"] };
+  const command = { code: "invalid_type", path: ["command"] };
+  for (const issues of [[command], [command, digest], []]) {
+    expect(canRecoverEditReferences(call, { toolName: call.name, toolCallId: call.id, isError: true,
+      error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid arguments", issues } })).toBe(false);
+  }
+  expect(canRecoverEditReferences(call, { toolName: call.name, toolCallId: call.id, isError: true,
+    error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid arguments", issues: [digest] } })).toBe(true);
+});

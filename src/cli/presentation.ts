@@ -1,4 +1,5 @@
 import { ToolActivity, compactToolResult } from "./terminal/tool-activity.js";
+import type { ActivityHistory } from "./terminal/activity-history.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "../runtime/usage-ledger.js";
 import { runResultDocument } from "./run-document.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
@@ -133,9 +134,10 @@ export const flushToolActivity = (tracker: object) => toolActivities.get(tracker
 
 export const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown },
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string },
   compact = false
 ) => async (event: AgentStreamEvent) => {
+  if (!output.json && !output.jsonl) tracker.activityHistory?.observe(event);
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
     process.stdout.write(`${serializeStreamEvent(event, tracker.sequence)}\n`);
@@ -146,7 +148,7 @@ export const streamSink = (
     let activity = toolActivities.get(tracker);
     if (!activity) {
       activity = new ToolActivity(text => { process.stderr.write(text); },
-        Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80);
+        Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80, tracker.inputStatus);
       toolActivities.set(tracker, activity);
     }
     if (event.type === "agent-compaction") {
@@ -196,7 +198,7 @@ export const streamSink = (
   }
   if (!output.json && event.type === "text-delta") {
     if (compact && !conversationStarted.has(tracker)) {
-      process.stdout.write("\nZhivex\n"); conversationStarted.add(tracker);
+      process.stdout.write(terminalSupportsColor(Boolean(process.stdout.isTTY)) ? "\n\u001b[1mZhivex\u001b[0m\n" : "\nZhivex\n"); conversationStarted.add(tracker);
     }
     if (event.textDelta.endsWith("\n")) proseLineOpen.delete(tracker);
     else if (event.textDelta) proseLineOpen.add(tracker);

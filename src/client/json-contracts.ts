@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { reasoningEffortSchema } from "../providers/reasoning.js";
 
 import { changeEnvelopeSchema } from "../workspace/change-envelope.js";
 import { CLI_EVENT_SCHEMA_VERSION, CLI_JSON_SCHEMA_VERSION } from "../cli/cli-stream.js";
@@ -304,7 +305,8 @@ export const cliInitDocumentSchema = observationalDocument({
     path: z.string().min(1),
     schemaVersion: nonnegativeInteger,
     provider: z.enum(PROVIDERS),
-    model: z.string().min(1)
+    model: z.string().min(1),
+    reasoningEffort: reasoningEffortSchema.optional()
   }),
   credential: observationalDocument({
     configured: z.boolean(),

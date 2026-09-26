@@ -1,3 +1,6 @@
+import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
+import { chooseReasoning } from "./console/console-reasoning.js";
+import { reasoningEffortSchema } from "../providers/reasoning.js";
 import { cliToolExecution } from "./tool-execution.js";
 import { terminalContinuationMessages } from "./terminal/terminal-continuation.js";
 import { consoleProgressGuard } from "./console/console-progress.js";
@@ -7,7 +10,6 @@ import { USAGE_LEDGER_KEY, formatUsageLedger, inspectUsageLedger } from "../runt
 import { TASK_SOURCE_KEY, taskSources } from "../context/task-memory.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import { navigateConsole } from "./console/console-navigation.js";
-import { formatComposer } from "./console/console-presentation.js";
 import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { ConsoleInput } from "./console/console-input.js";
@@ -66,6 +68,7 @@ export const chat = async (options: CliOptions) => {
   const sessionStore = await openSessionStoreForConfig(baseConfig);
   const readline = new ConsoleInput(process.stdin, process.stdout);
   const attachments = new ConsoleAttachments();
+  const activityHistory = new ActivityHistory();
   const credentials = { store: new CliCredentials(), input: readline };
   let credentialsRevision = credentials.store.revision;
   let activeController: AbortController | undefined;
@@ -80,8 +83,9 @@ export const chat = async (options: CliOptions) => {
   const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
     const controller = new AbortController();
     activeController = controller;
+    readline.startBackground();
     try { return await operation(controller.signal); }
-    finally { activeController = undefined; }
+    finally { readline.stopBackground(); activeController = undefined; }
   };
   let verbose = false;
   const sessionGrants = new Set<string>();
@@ -146,6 +150,34 @@ export const chat = async (options: CliOptions) => {
     throw error;
   }
 
+  const consoleApprovals: ReturnType<typeof terminalApprovalResolver> = async (approvals, context) => {
+    readline.stopBackground();
+    try {
+      return await terminalApprovalResolver(options.approvalMode ?? options.yes,
+        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants})(approvals, context);
+    } finally { if (activeController && !activeController.signal.aborted) readline.startBackground(); }
+  };
+
+  const createTracker = () => {
+    let offset = harness.workspace.mutationAudit().length;
+    const tracker: Parameters<typeof streamSink>[1] = {streamedText: false,
+      activityHistory, inputStatus: () => readline.backgroundStatus};
+    return {tracker, onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
+      await streamSink({json: false, jsonl: false}, tracker, !verbose)(event);
+      if (event.type === "tool-result") {
+        const audit = harness.workspace.mutationAudit();
+        const receipt = formatAppliedFiles(audit.slice(offset));
+        offset = audit.length;
+        if (receipt) {
+          flushToolActivity(tracker);
+          tracker.markdown?.flush();
+          process.stderr.write(receipt);
+          activityHistory.add(receipt.trim());
+        }
+      }
+    }};
+  };
+
   const refreshSession = async () => {
     const refreshed = await sessionStore.get(session.sessionId);
     if (!refreshed) throw new HarnessStateConflictError(`Session ${session.sessionId} was not found.`);
@@ -209,6 +241,7 @@ export const chat = async (options: CliOptions) => {
     session = selected;
     attachments.clear();
     readline.clearHistory();
+    activityHistory.clear();
     messages = state?.messages ?? [];
     retainedTasks = taskSources(state?.metadata);
   };
@@ -220,7 +253,7 @@ export const chat = async (options: CliOptions) => {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
-    const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
+    const { tracker, onEvent } = createTracker();
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
@@ -237,8 +270,8 @@ export const chat = async (options: CliOptions) => {
           )
         },
         {
-          onEvent: streamSink({ json: false, jsonl: false }, tracker, !verbose),
-          resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, (question) => readline.question(question), { select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants })
+          onEvent,
+          resolveApprovals: consoleApprovals
         }
       ));
     } catch {
@@ -293,6 +326,7 @@ export const chat = async (options: CliOptions) => {
   }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
 
   process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
+  process.stderr.write("While working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.\n");
   process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled within workspace and execution policies.\n" : "Changes require your approval.\n");
 
   const showSessionState = async () => {
@@ -309,15 +343,17 @@ export const chat = async (options: CliOptions) => {
     await showSessionState();
     for (;;) {
       try {
-        process.stdout.write(formatComposer({
+        const pendingTurn = await hasActiveTurn();
+        readline.setQueueEnabled(!pendingTurn);
+        const submitted = await readline.compose({
           model: `${harness.config.provider}/${harness.config.model}`,
+          reasoning: harness.config.reasoningEffort ?? "default",
           ...(session.title ? { title: session.title } : {}),
           status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready",
           attachments: attachments.list().length,
           automaticApprovals: options.yes === true,
           ...(options.approvalMode ? { approvalMode: options.approvalMode } : {}),
-        }, process.stdout.columns));
-        const submitted = await readline.question("\n> ", true);
+        });
         const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
         let prompt = literalInput ? submitted : submitted.trim();
         if (!prompt.trim()) {
@@ -327,7 +363,7 @@ export const chat = async (options: CliOptions) => {
         if (["/menu", "/provider", "/providers", "/model", "/models"].includes(command)) {
           const selection = await navigateConsole(readline, {
             entry: command === "/menu" ? "menu" : command.startsWith("/provider") ? "provider" : "model",
-            current: {provider:harness.config.provider,model:harness.config.model},
+            current: {provider:harness.config.provider,model:harness.config.model,reasoningEffort:harness.config.reasoningEffort ?? "default"},
             providers: providerAvailability(),
             sessions: async () => (await sessionStore.list({limit:200})).map(item => ({value:item.sessionId,label:item.title??"Untitled conversation",detail:item.sessionId})),
           });
@@ -337,9 +373,9 @@ export const chat = async (options: CliOptions) => {
             const active = await hasActiveTurn();
             if (active) { process.stderr.write(`Cannot switch models while run ${active.runId} is ${active.status}.\n`); continue; }
             const portableMessages = compactHarnessMessages(messages);
-            await replaceHarness({...runtimeOptions,provider:parseProvider(selection.provider),model:selection.model},routes);
+            await replaceHarness({...runtimeOptions,provider:parseProvider(selection.provider),model:selection.model,reasoningEffort:selection.reasoningEffort ?? "default"},routes);
             messages = portableMessages;
-            process.stderr.write(`Next turn: ${selection.provider}/${selection.model}; context was compacted.\n`);
+            process.stderr.write(`Next turn: ${selection.provider}/${selection.model} · reasoning ${selection.reasoningEffort ?? "default"}; context was compacted.\n`);
             continue;
           }
         }
@@ -464,6 +500,7 @@ export const chat = async (options: CliOptions) => {
           retainedTasks = [];
           attachments.clear();
           readline.clearHistory();
+          activityHistory.clear();
           process.stderr.write("Context cleared.\n");
           continue;
         }
@@ -471,6 +508,13 @@ export const chat = async (options: CliOptions) => {
           process.stderr.write(`${await statusLine()}\n`);
           continue;
         }
+        if (command === "/activity" || command === "/activity clear") {
+          if (command.endsWith(" clear")) activityHistory.clear();
+          process.stdout.write(activityHistory.render());
+          continue;
+        }
+        if (command === "/queue clear") { readline.clearQueue(); process.stdout.write("Queued tasks and draft cleared.\n"); continue; }
+        if (command === "/queue") { process.stdout.write(readline.queueSummary() + "Use /queue clear to discard queued tasks.\n"); continue; }
         if (command === "/diff") {
           const diff = await harness.workspace.gitDiff();
           const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
@@ -508,7 +552,7 @@ export const chat = async (options: CliOptions) => {
           const provider = parseProvider(value);
           const model = DEFAULT_PROVIDER_REGISTRY.descriptor(provider).defaultModel;
           const portableMessages = compactHarnessMessages(messages);
-          await replaceHarness({ ...runtimeOptions, provider, model }, routes);
+          await replaceHarness({ ...runtimeOptions, provider, model, reasoningEffort: "default" }, routes);
           messages = portableMessages;
           process.stderr.write(`Next turn: ${provider}/${model}; context was compacted for a safe handoff.\n`);
           continue;
@@ -521,9 +565,21 @@ export const chat = async (options: CliOptions) => {
             continue;
           }
           const portableMessages = compactHarnessMessages(messages);
-          await replaceHarness({ ...runtimeOptions, model: value }, routes);
+          const reasoningEffort = await chooseReasoning(readline, harness.config.provider, value);
+          if (!reasoningEffort) continue;
+          await replaceHarness({ ...runtimeOptions, model: value, reasoningEffort }, routes);
           messages = portableMessages;
           process.stderr.write(`Next turn: ${harness.config.provider}/${value}; context was compacted.\n`);
+          continue;
+        }
+        if (command === "/reasoning" || command.startsWith("/reasoning ")) {
+          const active = await hasActiveTurn();
+          if (active) { process.stderr.write(`Cannot change reasoning while run ${active.runId} is ${active.status}.\n`); continue; }
+          const argument = command.slice("/reasoning".length).trim();
+          const effort = argument ? reasoningEffortSchema.parse(argument) : await chooseReasoning(readline, harness.config.provider, harness.config.model, harness.config.reasoningEffort);
+          if (!effort) continue;
+          await replaceHarness({ ...runtimeOptions, reasoningEffort: effort }, routes);
+          process.stderr.write(`Reasoning for next turns: ${effort}.\n`);
           continue;
         }
         if (command === "/route" || command.startsWith("/route ")) {
@@ -668,7 +724,7 @@ export const chat = async (options: CliOptions) => {
         });
         const turn = session.runs.at(-1)!;
 
-        const tracker: { streamedText: boolean; markdown?: TerminalMarkdown } = { streamedText: false };
+        const { tracker, onEvent } = createTracker();
         const progress = consoleProgressGuard();
         let markedRunning = false;
         let result: AgentRunOutput;
@@ -721,9 +777,9 @@ export const chat = async (options: CliOptions) => {
                   session = await sessionStore.updateRun(session.sessionId, runId, { status: "running" });
                   markedRunning = true;
                 }
-                await streamSink({ json: false, jsonl: false }, tracker, !verbose)(event);
+                await onEvent(event);
               },
-              resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, (question) => readline.question(question), { select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants })
+              resolveApprovals: consoleApprovals
             }
           ));
         } catch (error) {

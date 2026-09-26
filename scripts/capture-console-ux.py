@@ -17,19 +17,24 @@ pathlib.Path(root,'README.md').write_text('Fixture project: Qwen Token Plan, int
 proc = subprocess.Popen(['node','--import',str(repo/'tests/fixtures/console-ux-fetch.mjs'),str(repo/'dist/cli.js'),'chat','--provider','qwen','--model','qwen3.8-max','--workspace',root],stdin=slave,stdout=slave,stderr=slave,env=env)
 os.close(slave)
 transcript = b''
+pending = b''
 def read_until(marker):
- global transcript
- recent=b''; deadline=time.monotonic()+30
+ global transcript, pending
+ deadline=time.monotonic()+30
  while time.monotonic()<deadline:
+  index=pending.find(marker.encode())
+  if index>=0:
+   pending=pending[index+len(marker.encode()):];return
   if select.select([master],[],[],0.1)[0]:
-   chunk=os.read(master,65536);recent+=chunk;transcript+=chunk
-   if marker.encode() in recent:return
- raise RuntimeError('Missing visual fixture marker: '+marker+'\n'+recent.decode(errors='replace')[-1500:])
+   chunk=os.read(master,65536);pending+=chunk;transcript+=chunk
+ raise RuntimeError('Missing visual fixture marker: '+marker+'\n'+pending.decode(errors='replace')[-1500:])
 try:
  read_until('> ')
+ read_until('? shortcuts')
  os.write(master,'Como estamos de soporte en QwenCloud?\n'.encode())
  read_until('Puedes consultar el detalle')
  read_until('> ')
+ read_until('? shortcuts')
  screen=pyte.Screen(cols,rows);pyte.Stream(screen).feed(transcript.decode('utf8',errors='replace'))
  visible='\n'.join(screen.display)
  assert 'tools ·' not in visible and 'Reading files' not in visible and 'Exploring the project' not in visible
