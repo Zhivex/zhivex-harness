@@ -98,13 +98,12 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         }
         if (closing || exitApproved) return; closing = true;
         void (async () => {
-            await Promise.allSettled([...taskOperations]);
             const hosts = await Promise.allSettled([...runtimes.values()]);
             const ready = hosts.flatMap(host => host.status === "fulfilled" ? [host.value] : []);
             const approved = await prepareDesktopShutdown(ready, async () => {
                 const response = fixture ? (fixtureCloseChoices.shift() === "cancel" ? 1 : 0) : (await dialog.showMessageBox(window, { type: "question", title: "Work in progress", message: "Your projects have active operations.", detail: "Return to the app or request cancellation before quitting. Cancelling does not undo changes already made. If operations do not stop, the window will remain open.", buttons: ["Return to app", "Cancel work and quit"], defaultId: 0, cancelId: 0, noLink: true })).response;
                 return response === 1 ? "cancel" : "stay";
-            });
+            }, 5000, async () => { await Promise.allSettled([...taskOperations]); });
             if (approved) { await Promise.allSettled([...remoteManagers.values()].map(async pending => (await pending).transport.close())); remoteManagers.clear(); runtimes.clear(); exitApproved = true; app.quit(); }
         })().catch(async () => { if (!fixture && !window.isDestroyed()) await dialog.showMessageBox(window, { type: "warning", title: "The application is still open", message: "Completion of all work has not been confirmed.", detail: "Check your projects before quitting again. No shutdown was forced and no operations were repeated.", buttons: ["Return to app"] }); }).finally(() => { if (!exitApproved) closing = false; });
     };

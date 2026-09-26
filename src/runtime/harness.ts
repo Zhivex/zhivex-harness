@@ -1,3 +1,4 @@
+import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
 import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
 import { assembleHarnessTools } from "../tools/tool-registry.js";
@@ -266,7 +267,8 @@ export interface HarnessRunOptions {
    * execution-environment authorization, and durable state persistence. A stale
    * digest rejection from the verified-edit transaction is journaled and
    * returned to the model so a corrected call must cross a new approval
-   * boundary; other failures remain terminal.
+   * boundary. A typed OCI patch-ID mismatch against an unchanged inspected
+   * snapshot similarly allows one fresh approval per run; other failures remain terminal.
    */
   terminalReceiptTools?: readonly string[];
   /** Opt-in retries after a known verifier exit failure (0..3, default 0).
@@ -641,6 +643,15 @@ const terminalToolCallId = (
 const recoverableTerminalStaleDigest = (toolName: string, message: string) =>
   toolName === "verify_and_apply_reviewed_edits" && /^Stale patch rejected for .+\.$/.test(message);
 
+// Only a typed, pre-import ID mismatch is recoverable. Unknown effects,
+// changed snapshots and binding failures remain terminal.
+const patchIdMismatch = (error: unknown): EnvironmentPatchDriftError | undefined => {
+  for (let depth = 0; depth < 8 && error instanceof Error; depth++, error = error.cause) {
+    if (error instanceof EnvironmentPatchDriftError && error.diagnosticCode === "OCI_PATCH_ID_MISMATCH") return error;
+  }
+  return undefined;
+};
+
 const executeTerminalReceiptTool = async (harness: ZhivexHarness, waiting: AgentRunOutput,
   approval: AgentApprovalRequest, response: AgentApprovalResponse, retries: number, signal?: AbortSignal) => {
   const store = harness.store;
@@ -845,7 +856,11 @@ const executeTerminalReceiptToolOwned = async (
     const recoverVerifier = ["verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"].includes(approval.name) &&
       error instanceof TerminalVerificationFailure && error.recoverable &&
       priorVerificationFailures < maxVerificationRetries;
-    if (!recoverableTerminalStaleDigest(approval.name, message) && !recoverVerifier) throw error;
+    const recoverPatchId = approval.name === "apply_environment_patch" && patchIdMismatch(error) !== undefined &&
+      !waiting.toolResults.some(result => result.isError && result.toolName === "apply_environment_patch" &&
+        result.output && typeof result.output === "object" && !Array.isArray(result.output) &&
+        result.output.kind === "terminal-patch-id-mismatch");
+    if (!recoverableTerminalStaleDigest(approval.name, message) && !recoverVerifier && !recoverPatchId) throw error;
 
     const now = Date.now();
     const toolResult = {
@@ -853,6 +868,10 @@ const executeTerminalReceiptToolOwned = async (
       toolName: approval.name,
       error: { message },
       isError: true,
+      ...(recoverPatchId ? {
+        output: { kind: "terminal-patch-id-mismatch", diagnosticCode: "OCI_PATCH_ID_MISMATCH",
+          instruction: "The submitted patch ID differs from the inspected unchanged patch. No patch was imported. Call inspect_environment_patch again, copy its exact patchId without alteration, and request a new apply_environment_patch approval. This recovery is allowed once per run." }
+      } : {}),
       ...(recoverVerifier && error instanceof TerminalVerificationFailure ? {
         output: { kind: "terminal-verification-failure", verification: error.verification,
           instruction: "Diagnose the failed verifier with a focused command, correct the check or repair, then inspect the patch and request a new verified import. The patch has not been imported." }

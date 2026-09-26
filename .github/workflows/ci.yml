@@ -67,10 +67,18 @@ jobs:
           bun run --cwd desktop typecheck
           bun test desktop/tests
 
+      # Restart/history smokes compare Desktop state through dist/cli.js.
+      - name: Build CLI for desktop interoperability smokes
+        run: bun run build
+
       - name: Package and exercise the desktop application
         run: |
           bun run --cwd desktop package
           bun run --cwd desktop smoke:packaged --empty-start
+          bun run --cwd desktop smoke:restart:packaged
+          bun run --cwd desktop smoke:restart:packaged --effect-crash
+          bun run --cwd desktop smoke:restart:packaged --active-close
+          bun run --cwd desktop smoke:worktrees:packaged
 
       - name: Verify desktop build produced no tracked changes
         run: git diff --exit-code

@@ -1,3 +1,4 @@
+import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -5,19 +6,13 @@ import path from "node:path";
 
 import type { AgentRunInput } from "@zhivex-ai/agents";
 
-import {
-  PROVIDERS,
-  PROVIDER_DESCRIPTORS,
-  providerDescriptor,
-  type HarnessProvider
-} from "../src/runtime/config.js";
-import { createEditProposal } from "../src/workspace/edit-contracts.js";
-import { HarnessConfigError, HarnessExecutionError } from "../src/runtime/errors.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
+import type { HarnessProvider } from "../src/runtime/config.js";
 import {
   restoreSanitizedOperationalError,
   sanitizeOperationalError
 } from "./release-diagnostics.js";
+
+const { PROVIDERS, PROVIDER_DESCRIPTORS, providerDescriptor, createEditProposal, HarnessConfigError, HarnessExecutionError, createHarness, runHarness } = await loadLiveSmokeRuntime();
 
 const OPT_IN_VARIABLE = "ZHIVEX_HARNESS_LIVE";
 const PROVIDERS_VARIABLE = "ZHIVEX_HARNESS_LIVE_PROVIDERS";

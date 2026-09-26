@@ -254,6 +254,11 @@ jobs:
           bun run artifact:check -- "$ARTIFACT"
           ARTIFACT_SHA512="$(bun -e 'import { createHash } from "node:crypto"; import { readFileSync } from "node:fs"; process.stdout.write(`sha512-${createHash("sha512").update(readFileSync(process.argv[1])).digest("base64")}`);' "$ARTIFACT")"
           echo "ARTIFACT_SHA512=$ARTIFACT_SHA512" >> "$GITHUB_ENV"
+          LIVE_RUNTIME_ROOT="$GITHUB_WORKSPACE/release-artifacts/live-runtime"
+          mkdir -p "$LIVE_RUNTIME_ROOT"
+          tar -xzf "$ARTIFACT" -C "$LIVE_RUNTIME_ROOT"
+          echo "ZHIVEX_HARNESS_LIVE_RUNTIME=$LIVE_RUNTIME_ROOT/package/dist/index.js" >> "$GITHUB_ENV"
+          echo "ZHIVEX_HARNESS_LIVE_REQUIRE_ARTIFACT=1" >> "$GITHUB_ENV"
           echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           mkdir -p release-artifacts/live-diagnostics
 

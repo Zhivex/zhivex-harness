@@ -3,7 +3,7 @@ export interface ShutdownRuntime {
     close(): Promise<void>;
 }
 /** Keep the window until all hosts stop accepting mutations and drain safely. */
-export async function prepareDesktopShutdown(runtimes: ShutdownRuntime[], choose: () => Promise<"stay" | "cancel">, timeoutMs = 5000): Promise<boolean> {
+export async function prepareDesktopShutdown(runtimes: ShutdownRuntime[], choose: () => Promise<"stay" | "cancel">, timeoutMs = 5000, drainAcceptedWork: () => Promise<void> = async () => {}): Promise<boolean> {
     let completed = false;
     try {
         const pauses = await Promise.allSettled(runtimes.map(runtime => runtime.controlClose("pause")));
@@ -20,6 +20,9 @@ export async function prepareDesktopShutdown(runtimes: ShutdownRuntime[], choose
                 await new Promise(resolve => setTimeout(resolve, 50));
             }
         }
+        // A long-running IPC may wait for the very run being cancelled. Drain
+        // only after the user can stay or cancel, and before closing hosts.
+        await drainAcceptedWork();
         await Promise.all(runtimes.map(runtime => runtime.close())); completed = true; return true;
     } finally { if (!completed) await Promise.allSettled(runtimes.map(runtime => runtime.controlClose("resume"))); }
 }

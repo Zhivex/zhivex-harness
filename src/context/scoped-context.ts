@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
+import { boundedBatches } from "../workspace/bounded-reads.js";
 
 import { fileDigestSchema, workspaceFilePathSchema, type FileDigest } from "../workspace/edit-contracts.js";
 import { readRegularFileNoFollow } from "../workspace/file-security.js";
@@ -79,12 +80,14 @@ const readSource = async (workspace: Pick<Workspace, "root">, relativePath: stri
 export const validateHarnessScopedContext = async (workspace: Pick<Workspace, "root">, input: HarnessScopedContextState) => {
   const state = harnessScopedContextStateSchema.parse(input);
   const sources: HarnessScopedContextSource[] = [];
-  for (const entry of state.entries) {
+  for await (const batch of boundedBatches(state.entries, async (entry) => {
     const source = await readSource(workspace, entry.path);
     if ((source?.digest ?? null) !== entry.digest || (source?.bytes ?? 0) !== entry.bytes) {
       throw new Error(`Scoped instructions changed after discovery: ${entry.path}; start a new run to accept the change.`);
     }
-    if (source) sources.push(source);
+    return source;
+  }, 4)) {
+    for (const source of batch) if (source) sources.push(source);
   }
   return sources;
 };

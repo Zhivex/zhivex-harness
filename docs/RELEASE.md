@@ -74,7 +74,7 @@ The release workflow performs this sequence across an unprivileged validation jo
 4. create one tarball with `bun pm pack --ignore-scripts`;
 5. allow only the documented package roots, verify the packed manifest, and write `SHA512SUMS`;
 6. install that same tarball in an isolated consumer and execute its CLI and public API;
-7. run the protected base, orchestration, routing, and model-directed OCI live gates from the same annotated tag and source commit;
+7. extract the validated tarball and run the protected base, orchestration, routing, and model-directed OCI live gates through its public runtime; require the artifact path and matching version, including approval child processes;
 8. run the 14-case governed representative repository matrix for Meta, Qwen, and OpenAI against the same artifact binding and one digest-pinned OCI image; reject missing/selective/unsafe runs and upload only the strict sanitized evidence document;
 9. transfer only the tarball and `SHA512SUMS` into the `npm` environment, then revalidate the checksum and artifact contract;
 10. pass that same file to the npm CLI for the registry transaction; and
@@ -234,9 +234,12 @@ arguments are included in these diagnostics. Patch mismatches retain the
 
 A rejected import leaves the host unchanged. Recovery requires inspecting the
 current patch and obtaining a new approval for that exact ID; do not rewrite a
-pending approval or retry the old ID automatically. The deterministic OCI tests
-exercise rejection, restart, fresh inspection and explicit import. This does not
-mean the strict terminal agent automatically recovers a failed run.
+pending approval or retry the old ID automatically. A terminal
+`apply_environment_patch` call with a typed `OCI_PATCH_ID_MISMATCH` may return to
+the model once per run with instructions to inspect again and request a fresh
+approval. The failure receipt survives pause/resume, so resuming does not reset
+that limit. Changed snapshots, unavailable review evidence, binding changes and
+unknown effects remain terminal. No pending approval is rewritten.
 
 The `v1.2.0-rc.1` attempt
 ([run 36204796627](https://github.com/Zhivex/zhivex-harness/actions/runs/36204796627))
@@ -246,3 +249,26 @@ Meta passed 14/14, Qwen passed 13/14, and OpenAI and publication were skipped.
 The historical diagnostics recorded zero unauthorized effects but did not retain
 the inspection comparison, so they cannot establish which mismatch occurred.
 Do not reinterpret that attempt as passing or attribute it to provider availability.
+
+### Product and artifact coverage
+
+Release and manual live workflows set `ZHIVEX_HARNESS_LIVE_REQUIRE_ARTIFACT=1`
+and `ZHIVEX_HARNESS_LIVE_RUNTIME` to the extracted, inspected tarball. The base,
+orchestration, routing and model-directed execution smokes load their Harness
+functions, descriptors and error types from that runtime. A missing artifact,
+wrong version or missing export fails before requests; local development alone
+may fall back to source. The separate deterministic OCI smoke remains a source
+boundary check.
+
+Desktop CI packages the macOS application and exercises startup, approval/history
+restart, interruption between an effect and its receipt, active-run cancellation,
+and isolated worktree delivery/reconciliation. Closing with active work must offer
+stay/cancel before awaiting an IPC that itself depends on that work finishing.
+Accepted application operations still drain before hosts are closed. These are
+fixture-backed product journeys, not live-provider or signed Desktop distribution
+certification.
+
+The complete representative matrix remains blocking and unchanged. The focused
+[Python follow-up](reports/RC1_PATCH_FOLLOWUP_2026-09-26.json) is diagnostic evidence only; it cannot replace the full
+cohort or certify a new release. It also predates the performance backport from
+`95aee33`; the combined artifact requires its own complete live certification.

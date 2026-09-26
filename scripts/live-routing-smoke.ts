@@ -1,18 +1,15 @@
+import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import { reviewDelegationContract } from "./live-orchestration-smoke.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import {
-  parseProvider,
-  providerDescriptor,
-  type HarnessProvider
-} from "../src/runtime/config.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { createHarnessRouteModels, resolveHarnessModelRoutes } from "../src/providers/routing.js";
+import type { HarnessProvider } from "../src/runtime/config.js";
 import { orchestrationPrompt, prepareReviewFixture } from "./live-orchestration-smoke.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
+
+const { parseProvider, providerDescriptor, createHarness, runHarness, createHarnessRouteModels, resolveHarnessModelRoutes } = await loadLiveSmokeRuntime();
 
 const {
   assertLiveOptIn,

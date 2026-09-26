@@ -1,3 +1,4 @@
+import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -5,16 +6,11 @@ import path from "node:path";
 
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 
-import {
-  PROVIDERS,
-  providerDescriptor,
-  type HarnessProvider
-} from "../src/runtime/config.js";
-import { HarnessExecutionError } from "../src/runtime/errors.js";
-import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { inspectHarnessRun } from "../src/persistence/operations.js";
+import type { HarnessProvider } from "../src/runtime/config.js";
 import { runPortableProcess } from "../src/execution/process-runtime.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
+
+const { PROVIDERS, providerDescriptor, HarnessExecutionError, createHarness, runHarness, inspectHarnessRun } = await loadLiveSmokeRuntime();
 
 const {
   assertLiveOptIn,

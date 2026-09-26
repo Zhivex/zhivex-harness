@@ -102,16 +102,25 @@ export const chat = async (options: CliOptions) => {
   let messages: AgentRunOutput["messages"] = [];
   let retainedTasks: ReturnType<typeof taskSources> = [];
 
+  let persistenceHarness: ZhivexHarness | undefined;
   const latestState = async (selected: CliSession) => {
     const latest = selected.runs.at(-1);
     if (!latest) return undefined;
-    const persistence = await openHarnessPersistence(baseConfig);
+    const reusable = persistenceHarness &&
+      persistenceHarness.config.workspace === baseConfig.workspace &&
+      persistenceHarness.config.stateDirectory === baseConfig.stateDirectory &&
+      persistenceHarness.config.storeBackend === baseConfig.storeBackend &&
+      persistenceHarness.config.scope.tenantId === baseConfig.scope.tenantId &&
+      persistenceHarness.config.scope.userId === baseConfig.scope.userId &&
+      persistenceHarness.config.scope.namespace === baseConfig.scope.namespace
+      ? persistenceHarness : undefined;
+    const persistence = reusable ? undefined : await openHarnessPersistence(baseConfig);
     try {
-      const state = await persistence.store.load(latest.runId, baseConfig.scope);
+      const state = await (reusable?.store ?? persistence!.store).load(latest.runId, baseConfig.scope);
       if (!state) throw new HarnessStateConflictError(`Run ${latest.runId} referenced by session ${selected.sessionId} was not found.`);
       return state;
     } finally {
-      persistence.close();
+      persistence?.close();
     }
   };
 
@@ -128,6 +137,7 @@ export const chat = async (options: CliOptions) => {
       retainedTasks = taskSources(restored.metadata);
     }
     harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
+    persistenceHarness = harness;
     credentialsRevision = credentials.store.revision;
   } catch (error) {
     process.off("SIGINT", interrupt);
@@ -169,6 +179,7 @@ export const chat = async (options: CliOptions) => {
     const created = await createConfiguredHarness(nextOptions, extraProfiles, nextRoutes, credentials);
     await harness.close();
     harness = created.harness;
+    persistenceHarness = harness;
     credentialsRevision = credentials.store.revision;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
