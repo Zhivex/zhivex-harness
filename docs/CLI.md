@@ -574,8 +574,11 @@ model and endpoint support the full request plus output reserve. The current
 catalog has no verified context-window metadata, so the fallback remains 40000
 estimated conversation tokens; no model capacity is guessed. Qwen reasoning
 fragments are normalized losslessly before estimation, followed by adaptive
-compaction at safe tool/approval boundaries. Oversized protected groups still
-require operator intervention; they are never silently discarded.
+compaction at safe tool/approval boundaries. Identical unsigned final reasoning
+summaries are deduplicated against their streamed text. The compaction target
+has a floor for instructions and the newest complete interaction so that a
+target alone cannot abort useful work. Actual context admission and configured
+run budgets remain authoritative; protected groups are never silently discarded.
 ## Configurable model-assisted compaction
 
 Automatic compaction remains deterministic unless explicitly selected. Use

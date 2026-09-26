@@ -6,6 +6,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Deduplicate identical unsigned Qwen reasoning summaries against their streamed text before context accounting, including restored sessions. Preserve distinct, signed, and encrypted provider data.
+- Treat the compaction threshold as a target that must fit the newest indivisible interaction, while keeping transport and run budgets authoritative. Validate repeated compaction followed by a real file edit and executable check.
+- Guide scoped implementation toward editing once the relevant code and check are known; clarify exact tool names and dependency lookup paths to avoid repeated blocked discovery.
+
 - Render pipe-delimited Markdown tables as aligned, wrapped terminal grids, with stacked cells on narrow terminals and Unicode-aware widths. Preserve plain redirected output and terminal-control sanitization.
 - Keep Meta Responses conversation history locally with `store: false` and encrypted reasoning replay, instead of depending on `previous_response_id` availability. Resume existing sessions from retained messages and tool receipts without rerunning completed tools; older turns without encrypted reasoning retain their visible history only.
 - Allow two bounded receipt-only continuation backoffs (1s and 2s) for legacy stateful requests. Add generate/stream replay regressions and an opt-in live check for encrypted replay across model instances.

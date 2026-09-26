@@ -69,12 +69,28 @@ test("runtime charges auxiliary model once and preserves explicit route in resum
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
 
+test("useful semantic compaction above a soft target retains usage and continues", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(),"utility-soft-target-"));
+  const primary = createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:"done"},{type:"finish",finishReason:"stop"}]]});
+  const utility = createMockLanguageModel({responses:[{text:"Remember compatibility.",finishReason:"stop",usage:{inputTokens:40,outputTokens:5,totalTokens:45}}]});
+  const store = createInMemoryAgentRunStore();
+  const harness = await createHarness({workspace:root,provider:"openai",store,modelInstance:primary,
+    compactionModel:"small",compactionModelInstance:utility,subagentProfiles:[],maxOutputTokens:2000,
+    compactionMaxMessages:4,compactionKeepRecentMessages:2,compactionMaxEstimatedInputTokens:1000});
+  try {
+    const result = await runHarness(harness,{runId:"soft-target",messages});
+    expect(result.status).toBe("completed");
+    expect(result.state.compactions!.length).toBeGreaterThan(0);
+    expect(harness.usageLedger!.summary("soft-target").inputTokens).toBe(40);
+  } finally {await harness.close();await rm(root,{recursive:true,force:true});}
+});
+
 test("CLI accepts an explicit utility route", () => {
   expect(parseCliArgs(["run", "--compaction-provider", "qwen", "--compaction-model", "my-model", "task"]))
     .toMatchObject({ compactionProvider: "qwen", compactionModel: "my-model" });
 });
 
-for (const scenario of ["over-budget", "rejected-summary", "partial-usage"] as const) {
+for (const scenario of ["over-budget", "partial-usage"] as const) {
   test(`utility accounting survives ${scenario} and the primary model is not invoked`, async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "utility-accounting-"));
     const store = createInMemoryAgentRunStore();
@@ -87,11 +103,10 @@ for (const scenario of ["over-budget", "rejected-summary", "partial-usage"] as c
     utility.generate = async () => { utilityCalls++; return { text: "Remember compatibility and rejected rewrite.", finishReason: "stop", usage }; };
     const harness = await createHarness({ workspace: root, provider: "openai", store, modelInstance: primary,
       compactionModel: "small", compactionModelInstance: utility, subagentProfiles: [],
-      maxOutputTokens: 2000, compactionMaxMessages: 4, compactionKeepRecentMessages: 2,
-      ...(scenario === "rejected-summary" ? { compactionMaxEstimatedInputTokens: 1000 } : {}) });
+      maxOutputTokens: 2000, compactionMaxMessages: 4, compactionKeepRecentMessages: 2 });
     try {
       await expect(runHarness(harness, { runId: scenario, messages })).rejects.toThrow(
-        scenario === "over-budget" ? "reservation" : scenario === "partial-usage" ? "COMPACTION_USAGE_UNAVAILABLE" : "compaction");
+        scenario === "over-budget" ? "reservation" : "COMPACTION_USAGE_UNAVAILABLE");
       expect(utilityCalls).toBe(1); expect(primaryCalls).toBe(0);
       const state = await store.load(scenario);
       expect(state?.status).toBe("failed");
