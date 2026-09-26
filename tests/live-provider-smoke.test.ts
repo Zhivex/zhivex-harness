@@ -201,3 +201,16 @@ describe("live provider smoke contract", () => {
     expect(LIVE_ROUTING_DEFAULTS).toEqual({ parent: "openai", reviewer: "qwen" });
   });
 });
+
+test("execution gate preserves message-only provider status without retaining private payloads", () => {
+  let failure: unknown;
+  try { liveExecutionSmokeInternals.assertExecutionRunStatus({ status: "failed",
+    error: { message: "Provider request failed with HTTP 503 PRIVATE_PROVIDER_PAYLOAD" } }); }
+  catch (error) { failure = error; }
+  expect((failure as { status?: number }).status).toBe(503);
+  const safe = JSON.parse(errorEvidence(failure, {}));
+  expect(safe.error.details.chain.some((entry: { status?: number }) => entry.status === 503)).toBe(true);
+  expect(JSON.stringify(safe)).not.toContain("PRIVATE_PROVIDER_PAYLOAD");
+  expect(() => liveExecutionSmokeInternals.assertExecutionRunStatus({ status: "completed", outputText: "done" })).not.toThrow();
+  expect(() => liveExecutionSmokeInternals.assertExecutionRunStatus({ status: "waiting_approval" })).toThrow();
+});

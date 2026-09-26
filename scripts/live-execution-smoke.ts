@@ -9,7 +9,7 @@ import { createAgentExecutionEnvironmentBinding } from "@zhivex-ai/agents/beta";
 import type { HarnessProvider } from "../src/runtime/config.js";
 import { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 
-const { PROVIDERS, providerDescriptor, createHarness, runHarness } = await loadLiveSmokeRuntime();
+const { PROVIDERS, providerDescriptor, createHarness, runHarness, HarnessExecutionError } = await loadLiveSmokeRuntime();
 
 const {
   assertLiveOptIn,
@@ -18,7 +18,8 @@ const {
   providerHasCredentials,
   providerRunInput,
   redacted,
-  selectedProviders
+  selectedProviders,
+  throwTransientRunFailure
 } = liveProviderSmokeInternals;
 
 const modelEnvironmentName = (provider: HarnessProvider) =>
@@ -45,6 +46,14 @@ export const executionPrompt = (provider: HarnessProvider) =>
 3. Call apply_environment_patch exactly once with {}. The runtime binds the inspected patch internally.
 Do not call any other tool, do not supply a patchId, and do not write through repository editing tools.
 After the approved patch import result, reply exactly ${completionToken(provider)}.`;
+
+const assertExecutionRunStatus = (result: { status: string; outputText?: string; error?: { message?: string } }) => {
+  throwTransientRunFailure(result);
+  if (result.status === "failed" && result.error) {
+    throw new HarnessExecutionError("Live execution run failed.", { cause: result.error });
+  }
+  assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+};
 
 const certifyProvider = async (
   provider: HarnessProvider,
@@ -73,6 +82,7 @@ const certifyProvider = async (
     subagentProfiles: [],
     env: process.env
   });
+  let checkpoint: string | undefined;
   const approvals: Array<{ name: string; arguments: unknown }> = [];
   try {
     const result = await runHarness(harness, {
@@ -82,6 +92,7 @@ const certifyProvider = async (
       idempotencyKey: `live-execution-${provider}`
     }, {
       resolveApprovals: async (pending) => pending.map((approval) => {
+        checkpoint = "execution_approval_tool";
         assert.ok(
           approval.name === "run_environment_command" || approval.name === "apply_environment_patch",
           `Unexpected live execution approval: ${approval.name}.`
@@ -89,10 +100,13 @@ const certifyProvider = async (
         const argumentsValue = JSON.parse(approval.arguments) as unknown;
         approvals.push({ name: approval.name, arguments: argumentsValue });
         if (approval.name === "run_environment_command") {
+          checkpoint = "execution_command_arguments";
           assert.deepEqual(argumentsValue, executionCommandInput(provider));
         } else {
+          checkpoint = "execution_import_reference";
           assert.match((argumentsValue as { patchId?: string }).patchId ?? "", /^sha256:[a-f0-9]{64}$/);
         }
+        checkpoint = undefined;
         return {
           provider: approval.provider,
           approvalRequestId: approval.id,
@@ -102,8 +116,11 @@ const certifyProvider = async (
       })
     });
 
-    assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+    checkpoint = "execution_run_status";
+    assertExecutionRunStatus(result);
+    checkpoint = "execution_completion_marker";
     assert.ok(result.outputText.includes(completionToken(provider)), result.outputText);
+    checkpoint = "execution_approval_sequence";
     assert.deepEqual(approvals.map((approval) => approval.name), [
       "run_environment_command",
       "apply_environment_patch"
@@ -113,16 +130,21 @@ const certifyProvider = async (
       "inspect_environment_patch",
       "apply_environment_patch"
     ];
+    checkpoint = "execution_tool_sequence";
     assert.deepEqual(result.toolResults.map((entry) => entry.toolName), expectedTools);
+    checkpoint = "execution_tool_success";
     assert.ok(result.toolResults.every((entry) => !entry.isError));
+    checkpoint = "execution_host_content";
     assert.equal(
       await readFile(path.join(workspace, executionPath(provider)), "utf8"),
       executionContent(provider)
     );
+    checkpoint = "execution_environment_binding";
     assert.deepEqual(
       result.state.executionEnvironment,
       createAgentExecutionEnvironmentBinding(harness.executionEnvironment!.manifest)
     );
+    checkpoint = "execution_journal";
     const journal = await harness.store.listToolCalls?.(result.state.runId, harness.config.scope);
     for (const toolName of ["run_environment_command", "apply_environment_patch"]) {
       const entries = journal?.filter((entry) => entry.toolName === toolName) ?? [];
@@ -140,6 +162,9 @@ const certifyProvider = async (
       hostImportVerified: true,
       environmentBound: true
     };
+  } catch (error) {
+    throw Object.assign(new HarnessExecutionError("Live execution certification failed.", { cause: error }),
+      checkpoint ? { checkpoint } : {});
   } finally {
     await harness.close();
   }
@@ -186,6 +211,7 @@ const run = async (env: NodeJS.ProcessEnv) => {
 };
 
 export const liveExecutionSmokeInternals = {
+  assertExecutionRunStatus,
   executionCommandInput,
   executionPrompt,
   completionToken
