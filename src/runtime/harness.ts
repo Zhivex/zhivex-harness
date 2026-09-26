@@ -12,7 +12,7 @@ import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY } from "../context/task-memory.js";
 import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources } from "../context/compaction.js";
 import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
-import { createSemanticCompactor, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
+import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
 import { createContextRuntime } from "./context-runtime.js";
 import { scheduleLocalReads } from "./tool-scheduling.js";
 import { harnessToolExecution } from "./tool-execution.js";
@@ -332,6 +332,8 @@ const createCostGuardrails = (config: HarnessConfig) => {
 
 const createProviderCompatibleBudget = (config: HarnessConfig) => createRuntimeBudget(config.budget, false);
 
+const semanticSourceProvenance = new WeakMap<HarnessConfig, ReturnType<typeof createSemanticSourceProvenance>>();
+
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   const config = resolveHarnessConfig(options, options.providerRegistry);
   if (options.toolPolicyPaths && (!options.toolPolicyPathsVersion || !/^[a-zA-Z0-9._-]{1,80}$/.test(options.toolPolicyPathsVersion))) {
@@ -457,7 +459,10 @@ export const createHarness = async (options: CreateHarnessOptions = {}): Promise
     if (error instanceof HarnessError) throw error;
     throw new HarnessExecutionError("Harness MCP tool discovery failed.", { cause: error, retryable: true });
   }
-  const availableTools = assembleHarnessTools([createTaskTools(), workspaceTools, executionTools, contextTools], mcpTools);
+  const localTools = assembleHarnessTools([createTaskTools(), workspaceTools, executionTools, contextTools], {});
+  const sourceProvenance = config.compaction.model ? createSemanticSourceProvenance() : undefined;
+  if (sourceProvenance) semanticSourceProvenance.set(config, sourceProvenance);
+  const availableTools = assembleHarnessTools([sourceProvenance ? sourceProvenance.wrapTools(localTools) : localTools], mcpTools);
   if (options.toolNames?.some(name => !Object.hasOwn(availableTools, name))) {
     throw new HarnessConfigError("The requested tool catalog contains unavailable tools.");
   }
@@ -1140,7 +1145,9 @@ const runHarnessInternal = async (
     if (utilityModel && tokenCap) utilityModel = wrapLanguageModel(utilityModel, [tokenCap.auxiliary()]);
     if (utilityModel && policyBudget) utilityModel = wrapLanguageModel(utilityModel, [policyBudget.middleware]);
     input = { ...input, compaction: createAdaptiveCompaction(harness.config.compaction, {
-      ...(utilityModel ? { compactor: createSemanticCompactor(utilityModel), auxiliary: {
+      ...(utilityModel ? { compactor: createSemanticCompactor(utilityModel, {
+        ...(semanticSourceProvenance.has(harness.config) ? { sourceProvenance: semanticSourceProvenance.get(harness.config)! } : {})
+      }), auxiliary: {
         provider: utilityModel.provider,
         modelId: utilityModel.modelId,
         fingerprint: createHash("sha256").update(JSON.stringify({

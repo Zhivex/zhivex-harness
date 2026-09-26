@@ -215,3 +215,38 @@ test("revalidates recalled locations and bounds them independently of external p
     expect(JSON.parse(bounded).locations?.length ?? 0).toBeLessThanOrEqual(8);
   }
 });
+
+
+test.each([384, 480, 640])("tight %s-character summaries prioritize the latest correction over historical objective", budget => {
+  const correction = "Correction: deploy to eu-west, never us-east.";
+  let messages: ModelMessage[] = [text("Deploy to us-east. " + "Historical detail. ".repeat(40)), text(correction)];
+  for (let round = 0; round < 3; round++) {
+    const { summary, truncated } = summarizeHarnessMessages(messages, budget);
+    expect(summary.length).toBeLessThanOrEqual(budget);
+    expect(truncated).toBe(true);
+    expect(JSON.parse(summary).steering).toContain(correction);
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("tight summaries discard older steering before clipping the latest correction", () => {
+  const correction = "Correction: deploy to eu-west, never us-east.";
+  const { summary } = summarizeHarnessMessages([text("Deploy to us-east."),
+    text("Old direction. ".repeat(35)), text(correction)], 384);
+  expect(JSON.parse(summary).steering).toEqual([correction]);
+  expect(summary.length).toBeLessThanOrEqual(384);
+});
+
+
+test("a new correction remains latest steering after tight compaction removes the historical objective", () => {
+  const previousCorrection = "Correction: deploy to eu-west, never us-east.";
+  const latestCorrection = "Correction: deploy to ap-south, replacing eu-west.";
+  const initial = summarizeHarnessMessages([text("Deploy to us-east. " + "Historical detail. ".repeat(40)),
+    text(previousCorrection)], 330).summary;
+  expect(JSON.parse(initial).objective).toBe("");
+  const { summary } = summarizeHarnessMessages([text(`[Compacted prior conversation]\n${initial}`), text(latestCorrection)], 330);
+  const state = JSON.parse(summary);
+  expect(summary.length).toBeLessThanOrEqual(330);
+  expect(state.steering).toEqual([latestCorrection]);
+  expect(state.objective).toBe("");
+});

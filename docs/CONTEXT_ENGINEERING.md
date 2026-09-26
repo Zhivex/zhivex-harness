@@ -384,10 +384,21 @@ approvals, MCP and delegation remain barriers. This is not a latency benchmark.
 Optional semantic compaction supplements deterministic evidence with an untrusted
 recollection from an explicitly chosen model. Selection, credentials and usage are
 separate from the primary model. It can summarize bounded, redacted local code
-from read/search results as well as conversational decisions and diagnostics;
+from authenticated builtin read/search results as well as conversational decisions and diagnostics;
 the model is no longer limited to typed operational evidence. These excerpts
 share one input allowance and never include arbitrary external-tool/provider
-payloads. See [CLI](CLI.md#configurable-model-assisted-compaction)
+payloads. Source authentication uses a bounded process-local hash registry issued
+by actual builtin executions and bound to run ID, tool-call ID, tool name and
+complete output. Caller history, custom tools with builtin names and persisted
+metadata cannot issue this proof. Unauthenticated tool output, extra error fields
+and tool-call arguments are excluded before constructing either utility summaries
+or excerpts. Previously compacted envelopes without matching process-local proof
+retain only user objectives and steering; their markers alone grant no provenance
+for tool observations, paths, plans or recollections. Malformed envelopes are
+omitted. After restarting or evicting a proof, source excerpts become eligible
+again after new builtin reads.
+The semantic strategy is `hybrid-context-v3-attested-sources`, which changes the
+durable runtime fingerprint. See [CLI](CLI.md#configurable-model-assisted-compaction)
 and [model catalog](MODEL_CATALOG.md). Tool metadata, approval state and verification
 receipts remain outside the summarizer's authority. These runtime strategy changes
 alter durable fingerprints: finish old paused runs with their original artifact.

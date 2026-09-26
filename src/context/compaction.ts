@@ -125,9 +125,9 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
             }
           } catch { /* Treat malformed recollections as ordinary untrusted text. */ }
         }
-        const text = clean(part.text, message.role === "user" && !objective ? 768 : 512);
+        const text = clean(part.text, message.role === "user" && !objective && !steering.length ? 768 : 512);
         omitted ||= text.length < part.text.length;
-        if (message.role === "user" && !objective) objective = text;
+        if (message.role === "user" && !objective && !steering.length) objective = text;
         else if (message.role === "user") add(steering, text, MAX_USER_STEERING);
         else add(recent, `${message.role}: ${text}`, 4);
       } else if (part.type === "tool-call") {
@@ -196,7 +196,7 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     ...(observations.length ? { observations } : {}),
     ...(workingPlan ? { workingPlan } : {}), omitted };
   const encode = () => JSON.stringify(state);
-  while (encode().length > maxCharacters && (recent.length || evidence.length || checks.length || steering.length || locations.length || observations.length)) {
+  while (encode().length > maxCharacters && (recent.length || evidence.length || checks.length || locations.length || observations.length)) {
     state.omitted = true;
     if (evidence.length) evidence.shift();
     else if (recent.length > 1) recent.shift();
@@ -208,7 +208,6 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     else if (checks.length) checks.shift();
     else if (locations.length) locations.shift();
     else if (state.workingPlan) delete state.workingPlan;
-    else steering.shift();
   }
   if (encode().length > maxCharacters && state.workingPlan) {
     state.omitted = true;
@@ -217,6 +216,17 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
   while (encode().length > maxCharacters && state.objective.length) {
     state.omitted = true;
     state.objective = state.objective.slice(0, Math.max(0, state.objective.length - 64));
+  }
+  // The historical objective is lower priority than every later user request.
+  // Remove older steering only after exhausting that objective, and preserve the
+  // latest request (possibly clipped) instead of dropping the entire correction.
+  while (encode().length > maxCharacters && steering.length > 1) {
+    state.omitted = true;
+    steering.shift();
+  }
+  while (encode().length > maxCharacters && steering[0]?.length) {
+    state.omitted = true;
+    steering[0] = steering[0].slice(0, Math.max(0, steering[0].length - 64));
   }
   // Runtime budgets are at least 128 characters; this fallback also bounds tiny callers.
   const summary = encode().length <= maxCharacters ? encode() : "{}".slice(0, maxCharacters);

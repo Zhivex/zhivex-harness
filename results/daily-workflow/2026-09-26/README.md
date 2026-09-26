@@ -1,5 +1,10 @@
 # Installed assistant validation
 
+The live artifacts below precede the subsequent PR review fixes for tight-budget
+steering retention and semantic-compaction source provenance. Those fixes have
+separate deterministic regressions and package/CI validation; these historical
+live results do not certify the later bytes.
+
 ## Failed-case repeat with the installed runtime deadline
 
 The two previously failed rounding cases were repeated once each, without case
