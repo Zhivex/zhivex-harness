@@ -4,7 +4,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import type { ModelGenerateInput, StreamEvent } from "@zhivex-ai/core";
 import { z } from "zod";
-import { createOciDelivery, OCI_DELIVERY_KEY } from "../src/runtime/oci-delivery.js";
+import { createOciDelivery, OCI_DELIVERY_KEY, pendingDescendantDelivery } from "../src/runtime/oci-delivery.js";
 
 const model = createMockLanguageModel();
 const input = (): ModelGenerateInput => ({ messages: [], tools: {
@@ -128,5 +128,63 @@ test("delivery decorator does not overwrite failed runs or inspect another run",
   const other = { ...saved, runId: "other-run", status: "completed" as const };
   await delivery.store(base, saved.runId).save(other);
   expect((await base.load(other.runId))?.status).toBe("completed");
+  expect(inspections).toBe(0);
+});
+
+test("parent completion aggregates durable descendants in the inherited scope across restart", async () => {
+  const base = createInMemoryAgentRunStore();
+  const parent = await state();
+  parent.scope = { tenantId: "delivery-tenant", namespace: "project" };
+  const child = { ...structuredClone(parent), runId: "child" };
+  const grandchild = { ...structuredClone(parent), runId: "grandchild" };
+  const summary = (runId: string) => ({ runId, status: "completed" as const, outputText: "finished", steps: 1, toolCalls: 1, toolErrors: 0 });
+  child.childRuns = [summary(grandchild.runId)];
+  grandchild.childRuns = [summary(parent.runId), summary(child.runId)];
+  parent.childRuns = [summary(child.runId)];
+  await base.save(child);
+  await base.save(grandchild);
+  const inspected: { runId: string; scope?: typeof parent.scope }[] = [];
+  let delivered = false;
+  const pending = async (request: { runId: string; scope?: NonNullable<typeof parent.scope> }) => {
+    inspected.push(request);
+    return request.runId === grandchild.runId && !delivered;
+  };
+  const first = createOciDelivery(async () => false, {}, false,
+    saved => pendingDescendantDelivery(saved, base, pending));
+  const stream = await collect(await first.middleware.wrapStream!({ input: input(), model }, async () => events()));
+  expect(stream.some(event => event.type === "tool-call")).toBe(false);
+  await first.store(base, parent.runId).save(parent);
+  const checkpoint = (await base.load(parent.runId, parent.scope))!;
+  expect(checkpoint.status).toBe("failed");
+  expect(checkpoint.error?.message).toBe("OCI_CHILD_DELIVERY_PENDING");
+  expect(inspected).toEqual([
+    { runId: child.runId, scope: parent.scope }, { runId: grandchild.runId, scope: parent.scope }
+  ]);
+  // Recreating the guard and resuming the parent still sees the descendant;
+  // once that descendant's actual patch is delivered, completion is allowed.
+  const resumed = createOciDelivery(async () => false, checkpoint.metadata ?? {}, false,
+    saved => pendingDescendantDelivery(saved, base, pending));
+  checkpoint.status = "completed";
+  await resumed.store(base, parent.runId).save(checkpoint);
+  expect((await base.load(parent.runId, parent.scope))?.status).toBe("failed");
+  delivered = true;
+  checkpoint.status = "completed";
+  delete checkpoint.error;
+  await resumed.store(base, parent.runId).save(checkpoint);
+  expect((await base.load(parent.runId, parent.scope))?.status).toBe("completed");
+});
+
+test("missing durable child state fails closed without inspecting another tenant", async () => {
+  const base = createInMemoryAgentRunStore();
+  const parent = await state();
+  parent.scope = { tenantId: "authorized" };
+  parent.childRuns = [{ runId: "scoped-child", status: "completed", outputText: "", steps: 1, toolCalls: 0, toolErrors: 0 }];
+  const unrelated = { ...structuredClone(parent), runId: "scoped-child", scope: { tenantId: "other" }, childRuns: [] };
+  await base.save(unrelated);
+  let inspections = 0;
+  const guard = createOciDelivery(async () => false, {}, false,
+    saved => pendingDescendantDelivery(saved, base, async () => { inspections++; return false; }));
+  await guard.store(base, parent.runId).save(parent);
+  expect((await base.load(parent.runId, parent.scope))?.error?.message).toBe("OCI_DELIVERY_INSPECTION_FAILED");
   expect(inspections).toBe(0);
 });

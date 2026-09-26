@@ -946,7 +946,9 @@ describe("enforced OCI execution environment", () => {
         reason: "Approve inherited OCI command."
       }))
     });
-    expect(completed.status).toBe("completed");
+    expect(completed.status).toBe("failed");
+    expect(completed.state.error?.message).toBe("OCI_CHILD_DELIVERY_PENDING");
+    expect((await store.load(completed.state.runId, harness.config.scope))?.status).toBe("failed");
     const child = completed.state.childRuns?.[0];
     expect(child?.status).toBe("completed");
     expect(runtime.requests).toHaveLength(1);

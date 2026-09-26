@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Include durable child and descendant OCI snapshots in parent completion checks. Report `OCI_CHILD_DELIVERY_PENDING` when a delegated edit has not reached the host; missing descendant state fails closed without requesting an import from the wrong workspace.
+
 - Prevent OCI runs from completing while edits remain only in their isolated snapshot. Detect pending delivery from actual host contents and modes, including resumed runs and command-created edits. Allow at most two read-only completion reminders, preserve import approvals and refusals, and persist an explicit incomplete-delivery result when delivery cannot finish.
 - Report pending OCI delivery separately from verifier failures in representative release diagnostics.
 

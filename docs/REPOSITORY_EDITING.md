@@ -206,3 +206,8 @@ If delivery remains pending, completion is saved as failed with
 unreadable or invalid snapshot uses `OCI_DELIVERY_INSPECTION_FAILED`. These checks
 cover edits made by tools or commands and apply to terminal receipts as well.
 They never approve or import a patch automatically.
+
+Parent completion also checks durable child and descendant snapshots within their
+scopes. Pending delegated changes produce `OCI_CHILD_DELIVERY_PENDING`; missing
+child state produces an inspection failure. A parent patch inspection cannot
+deliver a child snapshot, so no parent inspection is scheduled for that case.

@@ -431,7 +431,7 @@ export const runGovernedTimeToSafeFixProfile = async (
     phasesMs.agent = elapsedMs(agentStartedAt);
     if (output.status !== "completed") {
       environmentFailure = !observedApprovals.some((approval) => !approval.approved) &&
-        !/^OCI_DELIVERY_(PENDING|DECLINED)$/.test(output.error?.message ?? "");
+        !/^OCI_(?:CHILD_)?DELIVERY_(PENDING|DECLINED)$/.test(output.error?.message ?? "");
       failureError = output.error ?? `Agent ended with status ${output.status}.`;
       failureStage = "model";
       failureOrigin = "agent_run";

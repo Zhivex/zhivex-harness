@@ -1,4 +1,4 @@
-import { createOciDelivery } from "./oci-delivery.js";
+import { createOciDelivery, pendingDescendantDelivery } from "./oci-delivery.js";
 import { createModelEditReferences } from "./model-edit-references.js";
 import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
@@ -1137,7 +1137,9 @@ const runHarnessInternal = async (
   const deliveryScope = "state" in input ? input.state.scope : input.scope ?? harness.config.scope;
   const delivery = harness.executionEnvironment?.pendingDelivery ? createOciDelivery(
     () => harness.executionEnvironment!.pendingDelivery!({ runId, ...(deliveryScope ? { scope: deliveryScope } : {}) }),
-    ("state" in input ? input.state.metadata : input.metadata) ?? {}, newUserRequest
+    ("state" in input ? input.state.metadata : input.metadata) ?? {}, newUserRequest,
+    state => pendingDescendantDelivery(state, harness.store,
+      request => harness.executionEnvironment!.pendingDelivery!(request))
   ) : undefined;
   if (delivery) {
     const store = delivery.store(harness.store, runId);
