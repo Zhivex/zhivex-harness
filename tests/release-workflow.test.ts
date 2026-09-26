@@ -337,6 +337,11 @@ test("Desktop CI exercises packaged restart, uncertain effects and worktree deli
   };
   const steps = workflow.jobs["desktop-security"]!.steps;
   const packaged = steps.find(step => step.run?.includes("bun run --cwd desktop package"))!.run!;
+  // Restart/history checks invoke the root CLI; Desktop packaging does not build it.
+  const commands = steps.flatMap(step => (step.run ?? "").split("\n").map(line => line.trim()));
+  const cliBuild = commands.indexOf("bun run build");
+  expect(cliBuild).toBeGreaterThanOrEqual(0);
+  expect(cliBuild).toBeLessThan(commands.indexOf("bun run --cwd desktop smoke:restart:packaged"));
   for (const scenario of ["smoke:restart:packaged", "smoke:restart:packaged --effect-crash", "smoke:restart:packaged --active-close", "smoke:worktrees:packaged"]) {
     expect(packaged).toContain(`bun run --cwd desktop ${scenario}`);
   }

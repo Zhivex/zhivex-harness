@@ -67,6 +67,10 @@ jobs:
           bun run --cwd desktop typecheck
           bun test desktop/tests
 
+      # Restart/history smokes compare Desktop state through dist/cli.js.
+      - name: Build CLI for desktop interoperability smokes
+        run: bun run build
+
       - name: Package and exercise the desktop application
         run: |
           bun run --cwd desktop package
