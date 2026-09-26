@@ -6,7 +6,7 @@
 
 RC5 was published to npm `next` with exact-artifact integrity and provenance verified. Its historical matrix retains Meta `muse-spark-1.3`; RC6, RC7 and RC8 use the merged `muse-spark-1.3-contributor` certification selection.
 
-The source version is `1.2.0-rc.8`, targeting npm `next` after fresh certification.
+The source version is `1.2.0-rc.9`, targeting npm `next` after fresh certification.
 It includes the unified programming-assistant loop, longer task continuity,
 recoverable tool/delegation arguments, current-user steering retention and
 semantic-compaction source provenance. The removal of `agentProfile` is an

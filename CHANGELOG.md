@@ -4,7 +4,7 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.2.0-rc.9 - 2026-09-26
 
 - Keep current user direction prominent across compaction, retain earlier task context, and migrate legacy summaries. Add a durable advisory for prolonged varied exploration without forcing edits or stopping legitimate investigation. Give the model actionable read-call and line-range corrections while preserving original error receipts and approvals.
 
