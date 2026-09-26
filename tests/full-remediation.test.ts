@@ -49,7 +49,7 @@ test("a repair plan with a verifier cannot complete before producing a candidate
     [{ type: "finish", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 2 } }]
   ] });
   try {
-    harness = await createHarness({ workspace: root, agentProfile: "repair", modelInstance: model,
+    harness = await createHarness({ workspace: root, requireVerifiedDelivery: true, modelInstance: model,
       store: createInMemoryAgentRunStore(), maxSteps: 4 });
     const result = await runHarness(harness, { prompt: "Fix value.txt and verify the result." });
     expect(result.status).toBe("failed");
@@ -109,7 +109,7 @@ for (const scenario of ["approve", "early-final", "plan-recovered", "deny", "res
       return stream(input);
     };
     try {
-      harness = await createHarness({ workspace: root, executionBackend: "oci", agentProfile: "repair", modelInstance: model,
+      harness = await createHarness({ workspace: root, executionBackend: "oci", requireVerifiedDelivery: true, modelInstance: model,
         store, ...(qwenRecovery ? { provider: "qwen" as const } : {}), ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 8 });
       const result = await runHarness(harness, { runId: "controller", scope: harness.config.scope, prompt: "Create value.txt with after and verify it.", ...(qwenRecovery ? { reasoning: { effort: "none" as const }, providerOptions: { apiMode: "chat", enable_thinking: false } } : {}) }, {
         resolveApprovals: async pending => pending[0]?.name.startsWith("verify_") && scenario === "resume" ? undefined : pending.map(a => ({ provider: a.provider,
@@ -210,11 +210,14 @@ test("unknown stream usage and cancellation cannot silently reopen the budget", 
 
 test("durable diagnostics strip unknown metadata and redact receipt text", () => {
   const budget = createModelBudget({ inputTokens: 1000, outputTokens: 1000 });
-  const raw = { schemaVersion: 1, profile: "repair", budget: budget.stats, phase: "candidate", candidate: null,
+  const raw = { schemaVersion: 2, requireVerifiedDelivery: true, budget: budget.stats, phase: "candidate", candidate: null,
     revision: 1, checks: [{ commandId: "check", purpose: "Contact owner@example.com", argvDigest: null, candidate: null, exitCode: 1, verified: false,
       stdout: "PRIVATE SOURCE" }], contextMeasurements: [], modelTimings: [], omittedContextMeasurements: 0, prompt: "PRIVATE SOURCE" };
   const projected = inspectRuntimeDiagnostics(raw);
   expect(projected?.checks[0]?.exitCode).toBe(1);
+  expect(projected?.requireVerifiedDelivery).toBe(true);
+  expect(projected).not.toHaveProperty("profile");
+  expect(inspectRuntimeDiagnostics({ ...raw, schemaVersion: 1 })).toBeNull();
   expect(JSON.stringify(projected)).not.toContain("PRIVATE SOURCE");
   expect(JSON.stringify(projected)).not.toContain("owner@example.com");
   expect(inspectRuntimeDiagnostics({ ...raw, modelTimings: [{ durationMs: -1 }] })).toBeNull();
@@ -305,7 +308,7 @@ test("combined edit transaction recovers into a freshly approved candidate verif
   model.stream = input => { recoveryMessages = JSON.stringify(input.messages); return originalStream(input); };
   const approvalIds: string[] = [];
   try {
-    harness = await createHarness({ workspace: root, executionBackend: "oci", agentProfile: "repair", modelInstance: model,
+    harness = await createHarness({ workspace: root, executionBackend: "oci", requireVerifiedDelivery: true, modelInstance: model,
       store: createInMemoryAgentRunStore(), ociRuntimeAdapter: runtime, ociAllowedCommands: ["node", "bun"], maxSteps: 6 });
     const result = await runHarness(harness, { prompt: "Create value.txt and verify the content." }, { resolveApprovals: async approvals => approvals.map(a => {
       approvalIds.push(a.id); return { provider: a.provider, approvalRequestId: a.id, approve: true };

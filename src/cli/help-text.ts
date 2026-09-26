@@ -51,7 +51,7 @@ Options (automation and advanced configuration):
   --patch <path>                 Exact patch/artifact bytes bound to a change envelope
   --preconditions <path>         Verification preconditions JSON for changes verify
   --now <ISO-8601 UTC>           Explicit millisecond verification time (default: current time)
-  --agent-profile <strict|repair> Runtime recovery and exploration policy (default: strict)
+  --require-verified-delivery    Require a verified change before completing the task
   --execution <none|oci>         Enforced execution backend (default: none)
   --oci-runtime <docker|podman>  Local OCI runtime (default: docker)
   --oci-image <reference>        Preloaded immutable-capable OCI image
@@ -70,7 +70,7 @@ Options (automation and advanced configuration):
   --user <id>                    Optional durable user scope
   --namespace <id>               Optional scope namespace (default: workspace digest)
   --idempotency-key <key>        Reuse the same durable run for duplicate requests
-  --max-steps <1-50>             Maximum agent steps (default: 12)
+  --max-steps <n>                Finite positive step limit (default: 50)
   --max-tool-calls <n>           Maximum tool calls (default: 32)
   --max-tool-errors <n>          Maximum failed tool calls (default: 4)
   --no-token-budget             Disable cumulative token budgets (default for new local chat)

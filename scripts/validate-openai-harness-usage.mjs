@@ -14,7 +14,7 @@ const model=createOpenAI({apiKey:'fixture',fetch:async()=>new Response(events.ma
 const root=await mkdtemp(path.join(tmpdir(),'ga-installed-accounting-'));
 let harness,diagnostics,failed=false,toolExecutions=0;
 try{
- harness=await createHarness({workspace:root,modelInstance:model,provider:'openai',agentProfile:'repair',subagentProfiles:[]});
+ harness=await createHarness({workspace:root,modelInstance:model,provider:'openai',requireVerifiedDelivery:true,subagentProfiles:[]});
  const original = harness.agent.tools.list_files;
  harness.agent.tools = {...harness.agent.tools, list_files: {...original, execute: async (...args) => { toolExecutions++; return original.execute(...args); }}};
  try{const result=await runHarness(harness,{prompt:'List files.',providerOptions:{apiMode:'responses'}},{onDiagnostics:value=>{diagnostics=value;}});failed=result.status==='failed';}catch{failed=true;}

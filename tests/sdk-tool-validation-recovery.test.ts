@@ -33,7 +33,10 @@ for (const mode of ["strict", "corrected", "bounded", "approval"] as const) {
       const readTool = (harness.agent.tools as any).read_files;
       const execute = readTool.execute;
       readTool.execute = async (...args: any[]) => { reads++; return execute(...args); };
-      const options = { toolExecution: { stopOnError: false, ...(mode === "strict" ? {} : { validationErrorMode: "tool-result" as const }) } };
+      // General-purpose recovery does not require the repair controller or a
+      // CLI-specific option. Integrators can still request fail-fast validation.
+      const options = mode === "strict"
+        ? { toolExecution: { stopOnError: false, validationErrorMode: "throw" as const } } : {};
       if (mode === "strict") {
         await expect(runHarness(harness, { prompt: "Read.", ...options })).rejects.toThrow("Invalid input for tool");
         expect(reads).toBe(0); expect(requests).toBe(1);

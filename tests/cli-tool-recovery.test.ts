@@ -12,7 +12,7 @@ for (const scenario of ["recover", "stop", "budget"] as const) {
     let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
     try {
       await writeFile(path.join(root, "sample.txt"), "needle");
-      harness = await createHarness({ workspace: root, agentProfile: "strict",
+      harness = await createHarness({ workspace: root,
         maxToolErrors: scenario === "budget" ? 0 : 4,
         modelInstance: createMockLanguageModel({ streamEvents: [
           [{ type: "tool-call", toolCall: { id: "unknown", name: "grep_search", input: { query: "needle" } } },
@@ -50,7 +50,7 @@ test("CLI overlaps trusted reads through the durable harness and journals every 
   const watchdog = setTimeout(release, 1000);
   try {
     await Promise.all(["a.txt", "b.txt"].map(name => writeFile(path.join(root, name), name)));
-    harness = await createHarness({ workspace: root, agentProfile: "strict", modelInstance: createMockLanguageModel({
+    harness = await createHarness({ workspace: root, modelInstance: createMockLanguageModel({
       streamEvents: [[
         ...["a.txt", "b.txt"].map((name, index) => ({ type: "tool-call" as const,
           toolCall: { id: `read-${index}`, name: "read_file", input: { path: name } } })),

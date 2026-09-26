@@ -17,6 +17,11 @@
       "toolCalls": ["propose_edits", "apply_patch"]
     },
     {
+      "name": "denied-approval-recovery",
+      "status": "completed",
+      "toolCalls": ["propose_edits", "apply_patch"]
+    },
+    {
       "name": "failure-recovery",
       "status": "completed",
       "toolCalls": ["propose_edits", "apply_patch"]

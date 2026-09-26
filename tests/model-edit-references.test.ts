@@ -134,3 +134,102 @@ for (const drift of [false, true]) test(`delegated implementer binds references 
     else { expect(result?.status).toBe("completed"); expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("after\n"); }
   } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+test("reference refreshes discard stale evidence and consume only matching read results", async () => {
+  const { z } = await import("zod");
+  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { editChangesSchema, fileDigestSchema } = await import("../src/workspace/edit-contracts.js");
+  const tools = {
+    apply_reviewed_edits: { name: "apply_reviewed_edits", schema: z.strictObject({ changes: editChangesSchema }), execute: async () => null },
+    apply_environment_patch: { name: "apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema }), execute: async () => null }
+  };
+  const old = `sha256:${"a".repeat(64)}`, fresh = `sha256:${"b".repeat(64)}`;
+  const call = (id: string, name: string, input: unknown): ModelMessage => ({ role: "assistant", parts: [turn(id, name, input)[0]] });
+  const result = (id: string, name: string, output: unknown, isError = false): ModelMessage => ({ role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: id, toolName: name, output: serializeJsonValue(output), isError } }] });
+  const read = (id: string, file: string, digest = old): ModelMessage[] => [call(id, "read_file", { path: file }), result(id, "read_file", { path: file, digest })];
+  const inspected: ModelMessage[] = [call("inspect1", "inspect_environment_patch", {}), result("inspect1", "inspect_environment_patch", { kind: "environment-patch", patchId: old })];
+  const bind = async (messages: ModelMessage[], name = "apply_reviewed_edits", input: unknown = { changes: [{ path: "a.txt", content: "after" }] }) => {
+    const model = wrapLanguageModel({ ...createMockLanguageModel(), generate: async () => ({ message: call("edit", name, input) }) }, [createModelEditReferences(tools)]);
+    const output = (await model.generate({ messages, tools })).message!.parts[0]!;
+    if (output.type !== "tool-call") throw new Error("missing call");
+    return output.toolCall.input;
+  };
+  const unbound = { changes: [{ path: "a.txt", content: "after" }] };
+  const bound = { changes: [{ path: "a.txt", content: "after", expectedDigest: fresh }] };
+  const failedRead = [call("read2", "read_file", { path: "./a.txt" }), result("read2", "read_file", { message: "file missing" }, true)];
+  expect(await bind([...read("read1", "a.txt"), ...failedRead])).toEqual(unbound);
+  expect(await bind([...read("read1", "a.txt"), ...failedRead, ...read("read3", "a.txt", fresh)])).toEqual(bound);
+  // Unrelated successful reads survive a failed refresh.
+  expect(await bind([...read("b", "b.txt", fresh), ...failedRead], "apply_reviewed_edits", { changes: [{ path: "b.txt", content: "after" }] })).toEqual({ changes: [{ path: "b.txt", content: "after", expectedDigest: fresh }] });
+  // A batch failure invalidates all requested aliases, but a subsequent read restores evidence.
+  expect(await bind([...read("read1", "a.txt"), call("batch", "read_files", { files: [{ path: "./a.txt" }, { path: "missing.txt" }] }), result("batch", "read_files", {}, true)])).toEqual(unbound);
+  expect(await bind([call("batch", "read_files", { files: [{ path: "./a.txt" }] }), result("batch", "read_files", { files: [{ path: "a.txt", digest: fresh }] })])).toEqual(bound);
+  // Neither malformed refreshes nor missing results fall back to an older digest.
+  expect(await bind([...read("read1", "a.txt"), call("read2", "read_file", { path: "a.txt" })])).toEqual(unbound);
+  expect(await bind([...read("read1", "a.txt"), call("read2", "read_file", { path: "a.txt" }), result("read2", "read_file", { path: "a.txt", digest: "invalid" })])).toEqual(unbound);
+  // A replayed result cannot roll evidence back; late results cannot undo a newer failed refresh.
+  expect(await bind([...read("read1", "a.txt"), ...read("read2", "a.txt", fresh), result("read1", "read_file", { path: "a.txt", digest: old })])).toEqual(bound);
+  expect(await bind([call("read1", "read_file", { path: "a.txt" }), ...failedRead, result("read1", "read_file", { path: "a.txt", digest: old })])).toEqual(unbound);
+  expect(await bind([call("read1", "read_file", { path: "b.txt" }), result("read1", "read_file", { path: "a.txt", digest: old })])).toEqual(unbound);
+  expect(await bind([result("orphan", "read_file", { path: "a.txt", digest: old })])).toEqual(unbound);
+  expect(await bind([call("duplicate", "read_file", { path: "a.txt" }), call("duplicate", "read_file", { path: "a.txt" }), result("duplicate", "read_file", { path: "a.txt", digest: old })])).toEqual(unbound);
+  const failedInspection = [call("inspect2", "inspect_environment_patch", {}), result("inspect2", "inspect_environment_patch", {}, true)];
+  expect(await bind([...inspected, ...failedInspection], "apply_environment_patch", {})).toEqual({});
+  expect(await bind([...inspected, ...failedInspection, result("inspect1", "inspect_environment_patch", { kind: "environment-patch", patchId: old })], "apply_environment_patch", {})).toEqual({});
+  expect(await bind([...inspected, ...failedInspection, call("inspect3", "inspect_environment_patch", {}), result("inspect3", "inspect_environment_patch", { kind: "environment-patch", patchId: fresh })], "apply_environment_patch", {})).toEqual({ patchId: fresh });
+  // Explicit caller references remain exact: middleware never repairs an approved value.
+  expect(await bind([...inspected, ...failedInspection], "apply_environment_patch", { patchId: old })).toEqual({ patchId: old });
+});
+
+test("missing hidden digest guides a real run to reread and obtain an exact approved edit", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "zhx-reference-recovery-"));
+  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  try {
+    await writeFile(path.join(root, "a.txt"), "before\n");
+    const observedErrors: string[] = [];
+    const edit = { changes: [{ path: "a.txt", content: "after\n" }] };
+    const model = wrapLanguageModel(createMockLanguageModel({ streamEvents: [
+      turn("missing", "apply_reviewed_edits", edit),
+      turn("refresh", "read_file", { path: "a.txt" }),
+      turn("retry", "apply_reviewed_edits", edit), done
+    ] }), [{ wrapStream: async (context, next) => {
+      for (const message of context.input.messages) for (const part of message.parts) {
+        if (part.type === "tool-result" && part.toolResult.error) observedErrors.push(part.toolResult.error.message);
+      }
+      return next();
+    } }]);
+    harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model, maxSteps: 6 });
+    const waiting = await runHarness(harness, { prompt: "Repair a.txt", toolExecution: { stopOnError: false, validationErrorMode: "tool-result" } });
+    expect(waiting.status).toBe("waiting_approval");
+    expect(waiting.state.pendingApprovals).toHaveLength(1);
+    expect(observedErrors.some(message => message.includes("Call read_file or read_files") && message.includes("Omit expectedDigest"))).toBe(true);
+    const failure = waiting.toolResults.find(result => result.error?.code === "TOOL_INPUT_VALIDATION_ERROR");
+    expect(failure?.error?.message).toBe("Tool arguments do not match the input schema.");
+    const { createHash } = await import("node:crypto");
+    const digest = `sha256:${createHash("sha256").update("before\n").digest("hex")}`;
+    expect(JSON.parse(waiting.state.pendingApprovals[0]!.arguments)).toEqual({ changes: [{ path: "a.txt", content: "after\n", expectedDigest: digest }] });
+    expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("before\n");
+    const complete = await runHarness(harness, { state: waiting.state }, { resolveApprovals: async pending => pending.map(approval => ({ provider: approval.provider, approvalRequestId: approval.id, approve: true })) });
+    expect(complete.status).toBe("completed");
+    expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("after\n");
+  } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("hidden patch validation receives provider-only inspection guidance, explicit references do not", async () => {
+  const { z } = await import("zod");
+  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { fileDigestSchema } = await import("../src/workspace/edit-contracts.js");
+  const tools = { apply_environment_patch: { name: "apply_environment_patch", schema: z.strictObject({ patchId: fileDigestSchema }), execute: async () => null } };
+  for (const input of [{}, { patchId: "invalid" }]) {
+    const history: ModelMessage[] = [
+      { role: "assistant", parts: [turn("import", "apply_environment_patch", input)[0]] },
+      { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "import", toolName: "apply_environment_patch", isError: true, error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid arguments", issues: [{ code: "invalid_type", path: ["patchId"] }] } } }] }
+    ];
+    const original = JSON.stringify(history);
+    let observed = "";
+    const model = wrapLanguageModel({ ...createMockLanguageModel(), generate: async request => { observed = JSON.stringify(request.messages); return { message: { role: "assistant", parts: [{ type: "text", text: "done" }] } }; } }, [createModelEditReferences(tools)]);
+    await model.generate({ messages: history, tools });
+    expect(observed.includes("Call inspect_environment_patch")).toBe(!("patchId" in input));
+    expect(JSON.stringify(history)).toBe(original);
+  }
+});

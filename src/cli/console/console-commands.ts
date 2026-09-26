@@ -49,7 +49,7 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 };
 
 const argumentsFor: Readonly<Record<string, string>> = {
-  "/limits": "[1-50]",
+  "/limits": "[positive integer]",
   "/compaction": "[provider:model|off|recommend]",
   "/approvals": "[ask|auto|restricted]",
   "/provider": "[id]", "/model": "[id]", "/route": "[role=provider[:model] | clear [role]]",

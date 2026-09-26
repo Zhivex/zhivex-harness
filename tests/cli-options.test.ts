@@ -8,6 +8,17 @@ import {
 import { CliUsageError, parseCliArgs } from "../src/cli.js";
 
 describe("command-specific CLI option contract", () => {
+  test("publishes verified delivery without the removed agent profile option", () => {
+    expect(CLI_OPTION_NAMES).toContain("--require-verified-delivery");
+    expect(CLI_OPTION_NAMES as readonly string[]).not.toContain("--agent-profile");
+    expect(CLI_OPTION_DEFINITIONS).not.toHaveProperty("--agent-profile");
+    for (const contract of Object.values(CLI_COMMAND_OPTION_CONTRACTS)) {
+      expect(contract.allowed as readonly string[]).not.toContain("--agent-profile");
+    }
+    for (const command of ["run", "chat", "doctor"] as const) {
+      expect(CLI_COMMAND_OPTION_CONTRACTS[command].allowed).toContain("--require-verified-delivery");
+    }
+  });
   test("declares allowed, required, repeatable, and conflict metadata for every command", () => {
     const declared = new Set<string>();
     for (const contract of Object.values(CLI_COMMAND_OPTION_CONTRACTS)) {

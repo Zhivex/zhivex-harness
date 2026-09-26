@@ -104,3 +104,32 @@ test("context measurements stay bounded without dropping actual token accounting
   expect(budget.stats.inputTokens).toBe(130);
   expect(budget.stats.modelCalls).toBe(130);
 });
+
+test("a rejected plan cannot replace the last accepted scope, including after resume", async () => {
+  const { REPAIR_PROGRESS_KEY } = await import("../src/runtime/repair-progress.js");
+  const usage = () => ({ inputTokens: 700, outputTokens: 0 });
+  const controller = createRepairProgress(usage, limits);
+  const tools = controller.wrapTools({ repair_plan: tool({ name: "repair_plan", schema: z.any(),
+    execute: async (input: any) => { if (input.reject) throw new Error("invalid verifier"); return {}; } }) });
+  await call(tools, "repair_plan", { paths: ["src/accepted.ts"] });
+  await expect(call(tools, "repair_plan", { paths: ["src/rejected.ts"], reject: true })).rejects.toThrow("invalid verifier");
+  const restored = createRepairProgress(usage, limits, { [REPAIR_PROGRESS_KEY]: controller.snapshot() });
+  expect(restored.workingContext().plannedPaths).toEqual(["src/accepted.ts"]);
+});
+
+test("scope mistakes preserve focused read allowance without resetting it on replanning", async () => {
+  const controller = createRepairProgress(() => ({ inputTokens: 700, outputTokens: 0 }), limits);
+  let executed = 0;
+  const tools = controller.wrapTools({
+    repair_plan: tool({ name: "repair_plan", schema: z.any(), execute: async () => ({}) }),
+    read_file: tool({ name: "read_file", schema: z.any(), execute: async () => ({ content: String(++executed) }) })
+  });
+  await call(tools, "repair_plan", { paths: ["src/fix.ts"] });
+  for (let i = 0; i < 4; i++) await expect(call(tools, "read_file", { path: "src/wrong.ts" })).rejects.toThrow("REPAIR_PLAN_SCOPE");
+  expect(controller.workingContext().closureReadsRemaining).toBe(4);
+  for (let i = 0; i < 4; i++) await call(tools, "read_file", { path: "src/fix.ts" });
+  await call(tools, "repair_plan", { paths: ["src/other.ts"] });
+  await expect(call(tools, "read_file", { path: "src/other.ts" })).rejects.toThrow("REPAIR_PHASE_BUDGET");
+  expect(executed).toBe(4);
+  expect(controller.workingContext().closureReadsRemaining).toBe(0);
+});

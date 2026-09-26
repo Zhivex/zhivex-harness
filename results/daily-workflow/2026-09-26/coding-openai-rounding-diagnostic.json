@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-installed-live",
+  "observedAt": "2026-09-26T04:09:35.081Z",
+  "version": "1.2.0-rc.4",
+  "moduleSha256": "e751af235ca6e8609be43ddcaf87c40954b7940f982ee704baeaacba33b69fea",
+  "providers": [
+    "openai"
+  ],
+  "limits": {
+    "maxSteps": 12,
+    "timeoutMs": 150000,
+    "maxInputTokens": 60000,
+    "maxOutputTokens": 4096,
+    "maxTotalTokens": 64096
+  },
+  "status": "passed",
+  "rows": [
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "task": "fix-rounding-bug",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 1,
+      "approvals": 3,
+      "steps": 8,
+      "elapsedMs": 21435,
+      "runStatus": "completed",
+      "usage": {
+        "inputTokens": 38326,
+        "cachedInputTokens": 34937,
+        "cacheWriteTokens": 3365,
+        "outputTokens": 1602,
+        "reasoningTokens": 896,
+        "totalTokens": 39928
+      },
+      "childUsage": [],
+      "toolCalls": 10,
+      "toolErrors": 0,
+      "tools": [
+        {
+          "name": "list_files",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        },
+        {
+          "name": "repair_plan",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 1
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 0
+        },
+        {
+          "name": "mutation_audit",
+          "isError": false
+        },
+        {
+          "name": "git_diff",
+          "isError": false
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "Two disposable coding fixtures per provider"
+  ]
+}

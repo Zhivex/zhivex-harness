@@ -175,7 +175,7 @@ const editAndTest = async () => {
   ]);
 };
 
-const deniedApproval = async () => {
+const deniedApproval = async (recover = false) => {
   const workspace = await temporaryWorkspace("denied");
   const changes = [{ path: "denied.txt", expectedDigest: null, content: "must not exist\n" }];
   const proposal = createEditProposal({ changes });
@@ -204,7 +204,12 @@ const deniedApproval = async () => {
   const startedAt = Date.now();
   let output: AgentRunOutput;
   try {
-    output = await runHarness(harness, { runId: "evaluation-denied", prompt: "Attempt denied edit" }, {
+    output = await runHarness(harness, {
+      runId: "evaluation-denied",
+      prompt: "Attempt denied edit",
+      // Preserve the fail-fast contract alongside conversational recovery.
+      ...(!recover ? { toolExecution: { stopOnError: true } } : {})
+    }, {
       resolveApprovals: async (approvals) => approveAll(approvals, false)
     });
   } catch (error) {
@@ -223,7 +228,12 @@ const deniedApproval = async () => {
   }
   const absent = await readFile(path.join(workspace, "denied.txt"), "utf8")
     .then(() => false, () => true);
-  return evaluateState(expected("denied-approval"), output, startedAt, absent ? [] : ["Denied edit mutated the workspace."]);
+  const rejected = output.toolResults.some((result) => result.toolName === "apply_patch" && result.isError);
+  return evaluateState(expected(recover ? "denied-approval-recovery" : "denied-approval"), output, startedAt, [
+    ...(absent ? [] : ["Denied edit mutated the workspace."]),
+    ...(!recover || rejected ? [] : ["Denied edit did not retain an error receipt."]),
+    ...(!recover || output.outputText === "denied safely" ? [] : ["Conversation did not continue after denial."])
+  ]);
 };
 
 const failureRecovery = async () => {
@@ -413,6 +423,7 @@ try {
     await analysisOnly(),
     await editAndTest(),
     await deniedApproval(),
+    await deniedApproval(true),
     await failureRecovery(),
     await providerSwitch(),
     await governedMcp(),

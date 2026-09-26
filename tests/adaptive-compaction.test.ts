@@ -32,7 +32,7 @@ test("SDK compacts an oversized old result while preserving the newest complete 
   const record = result.state.compactions![0]!;
   expect(record.retainedMessageCount).toBe(2);
   expect(record.estimatedTokensAfter).toBeLessThan(record.estimatedTokensBefore * 0.65);
-  expect(record.metadata).toMatchObject({ policy: "adaptive-tokens-v1" });
+  expect(record.metadata).toMatchObject({ policy: "adaptive-tokens-v2" });
   expect((await store.load(result.state.runId))!.compactions).toEqual(result.state.compactions);
 });
 
@@ -117,4 +117,20 @@ test("structured plan survives assistant noise and repeated summaries without au
     expect(summary.length).toBeLessThanOrEqual(4000);
     messages = [createTextMessage("assistant", `[Compacted prior conversation]\n${summary}`)];
   }
+});
+
+test("adaptive SDK compaction retains a user correction when its half-input summary budget is tight", async () => {
+  const correction = "Correction: deploy to eu-west, never us-east.";
+  const messages = [createTextMessage("user", "Deploy to us-east. " + "Historical detail. ".repeat(40)),
+    createTextMessage("user", correction), createTextMessage("assistant", "Ready for the next step.")];
+  const model = createMockLanguageModel({ responses: [{ text: "done", messages: [createTextMessage("assistant", "done")], finishReason: "stop" }] });
+  const original = model.generate.bind(model);
+  model.generate = async input => {
+    expect(JSON.stringify(input.messages)).toContain(correction);
+    return original(input);
+  };
+  const agent = new Agent({ model, tools: {}, compaction: createAdaptiveCompaction({ ...config, maxMessages: 2, keepRecentMessages: 1 }) });
+  const result = await agent.run({ messages });
+  expect(result.status).toBe("completed");
+  expect(result.state.compactions).toHaveLength(1);
 });

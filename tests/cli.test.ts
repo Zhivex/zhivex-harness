@@ -48,6 +48,17 @@ const runCli = async (arguments_: string[], env: Record<string, string> = {}) =>
 };
 
 describe("CLI parsing", () => {
+  test("uses one runtime with explicit verified delivery and rejects the removed agent profile", () => {
+    for (const command of ["run", "chat", "doctor"]) {
+      const args = [command, "--require-verified-delivery", ...(command === "run" ? ["Fix the regression"] : [])];
+      expect(parseCliArgs(args).requireVerifiedDelivery).toBe(true);
+      expect(() => parseCliArgs([command, "--agent-profile", "repair"])).toThrow();
+    }
+    expect(parseCliArgs(["run", "Explain this module"]).requireVerifiedDelivery).toBeUndefined();
+    expect(() => parseCliArgs(["run", "Fix", "--require-verified-delivery", "--require-verified-delivery"])).toThrow("cannot be repeated");
+    expect(() => parseCliArgs(["run", "Fix", "--service", "/tmp/service.json", "--require-verified-delivery"])).toThrow("runtime configuration belongs to the service host");
+    expect(() => parseCliArgs(["resume", "run-1", "--approve", "--require-verified-delivery"])).toThrow("not supported by resume");
+  });
   test("accepts literal session search only for listing", () => {
     expect(parseCliArgs(["sessions", "list", "--search", "parser", "--limit", "1"])).toMatchObject({ sessionSearch: "parser", limit: 1 });
     expect(() => parseCliArgs(["run", "--search", "parser", "task"])).toThrow("not supported");
@@ -505,6 +516,7 @@ describe("approval review", () => {
         tenantId: "tenant-a",
         userId: "user-a",
         namespace: "namespace-a",
+        requireVerifiedDelivery: true,
         executionBackend: "oci",
         ociRuntime: "podman",
         ociImage: "example/harness@sha256:fixture",
@@ -528,6 +540,8 @@ describe("approval review", () => {
       expect(restored.stateDirectory).toBe(config.stateDirectory);
       expect(restored.storeBackend).toBe(config.storeBackend);
       expect(restored.scope).toEqual(config.scope);
+      expect(restored.requireVerifiedDelivery).toBe(true);
+      expect(restoredInput).not.toHaveProperty("agentProfile");
 
       const command = resumeCommand("run-oci", config);
       expect(command).toContain("resume 'run-oci' --approve");
@@ -938,6 +952,7 @@ describe("doctor", () => {
       }));
       const report = await createDoctorReport({
         provider: "openai",
+        requireVerifiedDelivery: true,
         workspace,
         stateDirectory: path.join(workspace, ".zhivex-harness", "runs")
       }, {
@@ -957,6 +972,7 @@ describe("doctor", () => {
         harnessVersion: HARNESS_VERSION,
         configuration: {
           provider: "openai",
+          requireVerifiedDelivery: true,
           stateDirectory: path.join(await realpath(workspace), ".zhivex-harness", "runs"),
           orchestration: {
             childBudget: { maxSteps: 3 },
@@ -979,6 +995,7 @@ describe("doctor", () => {
         "provider:gemini"
       ]));
       const serialized = JSON.stringify(report);
+      expect(report.configuration).not.toHaveProperty("agentProfile");
       expect(serialized).not.toContain("do-not-print-this-key");
       expect(serialized).not.toContain("secret-host");
       expect(formatDoctorReport(report)).toContain("Doctor completed without blocking problems.");

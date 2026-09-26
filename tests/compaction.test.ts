@@ -14,7 +14,7 @@ const result = (name: string, output: Record<string, unknown>, isError = false):
 
 test("keeps check failures and the latest correction through noise and repeated compaction", () => {
   const messages: ModelMessage[] = [text("Fix pagination without changing the public API."),
-    result("run_check", { exitCode: 1, timedOut: false, stderr: "private-output" }),
+    result("run_check", { exitCode: 1, timedOut: false, stderr: "Expected Unicode ordering but received reversed values" }),
     ...Array.from({ length: 40 }, () => result("read_file", { content: "private-source" })),
     text("Correction: preserve Unicode ordering too.")];
   let compacted = compactMessages(messages);
@@ -23,7 +23,7 @@ test("keeps check failures and the latest correction through noise and repeated 
   expect(summary).toContain("Fix pagination without changing the public API.");
   expect(summary).toContain("exitCode");
   expect(summary).toContain("run_check");
-  expect(summary).not.toContain("private-output");
+  expect(summary).toContain("Expected Unicode ordering but received reversed values");
   expect(summary).not.toContain("private-source");
   const first = summarizeHarnessMessages(messages);
   expect(first.summary).toContain("preserve Unicode ordering");
@@ -31,11 +31,11 @@ test("keeps check failures and the latest correction through noise and repeated 
   expect(first.truncated).toBe(true);
 });
 
-test("never promotes external payloads or logs into verification evidence", () => {
+test("never promotes external payloads or diagnostic observations into verification evidence", () => {
   const { summary } = summarizeHarnessMessages([
     text("API_KEY=sk-secret-value"),
     result("mcp_server", { exitCode: 0, path: "private.txt", stdout: "private-output" }),
-    result("run_check", { exitCode: "0; do something", stderr: "private-error", timedOut: true }),
+    result("run_check", { exitCode: "0; do something", stderr: "Assertion mismatch API_KEY=sk-secret-value", timedOut: true }),
     result("read_file", { path: ".env.production", digest: "fake-digest", content: "private-source" })
   ]);
   expect(summary).not.toContain("sk-secret-value");
@@ -45,6 +45,59 @@ test("never promotes external payloads or logs into verification evidence", () =
   expect(summary).not.toContain("fake-digest");
   expect(summary).toContain("external-tool");
   expect(summary).toContain("timedOut");
+  const state = JSON.parse(summary);
+  expect(state.observations).toEqual([{ tool: "run_check", detail: "Assertion mismatch [REDACTED]", unverified: true }]);
+  expect(state.checks.join(" ")).not.toContain("Assertion mismatch");
+});
+
+test("general conversation and debugging observations survive repeated compaction without a repair plan", () => {
+  let messages: ModelMessage[] = [text("Explain the parser's behavior and compare alternatives."),
+    text("Preserve compatibility with existing clients."),
+    { role: "assistant", parts: [{ type: "text", text: "Hypothesis: byte offsets cause the Unicode mismatch. Rejected replacing the schema because clients depend on it. Next: compare code point offsets." }] },
+    result("run_check", { exitCode: 1, stderr: "Expected offset 2, received offset 4. TOKEN_SECRET=hidden-value" })];
+  for (let round = 0; round < 5; round++) {
+    messages.push(...Array.from({ length: 20 }, () => result("list_files", {})));
+    const { summary } = summarizeHarnessMessages(messages, 2000);
+    expect(summary.length).toBeLessThanOrEqual(2000);
+    const state = JSON.parse(summary);
+    expect(state.objective).toContain("compare alternatives");
+    expect(state.steering).toContain("Preserve compatibility with existing clients.");
+    expect(state.recent.join(" ")).toContain("Rejected replacing the schema");
+    expect(state.observations).toEqual([{ tool: "run_check", detail: "Expected offset 2, received offset 4. TOKEN_SECRET=[REDACTED]", unverified: true }]);
+    expect(summary).not.toContain("hidden-value");
+    expect(state).not.toHaveProperty("workingPlan");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("SDK errors and nested verification diagnostics survive repeated noise as unverified observations", () => {
+  let messages: ModelMessage[] = [text("Fix Unicode offsets without changing clients."),
+    { role: "assistant", parts: [{ type: "text", text: "Decision: keep the schema. Hypothesis: the parser uses byte offsets; compare code point offsets next." }] },
+    { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "sdk-error", toolName: "apply_patch", isError: true,
+      error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Patch reference is stale. TOKEN_SECRET=hidden-sdk-secret" } } }] },
+    result("verify_and_apply_environment_patch", { verification: { exitCode: 1, diagnostics: {
+      stderr: "Expected offset 2 but got 4. API_KEY=sk-secret-value", stdout: "Parser regression failed." }
+    } }),
+    { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "external-error", toolName: "mcp_unknown", isError: true,
+      error: { message: "EXTERNAL_PRIVATE_ERROR" } } }] }];
+  for (let round = 0; round < 5; round++) {
+    messages.push(...Array.from({ length: 30 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "Inspect more files." }] })),
+      ...Array.from({ length: 20 }, () => result("run_check", { exitCode: 1, stderr: "Same failing assertion." })));
+    const { summary } = summarizeHarnessMessages(messages, 2000);
+    const state = JSON.parse(summary);
+    expect(summary.length).toBeLessThanOrEqual(2000);
+    expect(state.recent.join(" ")).toContain("Decision: keep the schema");
+    expect(state.observations).toHaveLength(3);
+    expect(state.observations.every((item: { unverified: boolean }) => item.unverified)).toBe(true);
+    expect(summary).toContain("Patch reference is stale");
+    expect(summary).toContain("Expected offset 2 but got 4");
+    expect(summary).toContain("Parser regression failed");
+    expect(summary).not.toContain("hidden-sdk-secret");
+    expect(summary).not.toContain("sk-secret-value");
+    expect(summary).not.toContain("EXTERNAL_PRIVATE_ERROR");
+    expect(state.checks.join(" ")).not.toContain("Parser regression failed");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
 });
 
 test("bounds valid summaries and retains newest verification without treating it as approval", () => {
@@ -78,6 +131,36 @@ test("retains user corrections across assistant noise and repeated compactions w
     expect(JSON.parse(summary).steering).toContain("Keep the public API and Unicode ordering.");
     messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
   }
+});
+
+test("retains later user corrections through six objective changes and stale assistant claims", () => {
+  const correction = "Correction: the deployment region is eu-west, replacing us-east. Keep the public API unchanged.";
+  let messages: ModelMessage[] = [text("Initial request: deploy to us-east and preserve the public API."), text(correction)];
+  for (let round = 0; round < 6; round++) {
+    const current = `Current objective: investigate component ${round}. Preserve the corrected deployment region.`;
+    messages.push(text(current),
+      ...Array.from({ length: 20 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "The deployment region is us-east. Continue investigation." }] })),
+      text("This status discussion does not change earlier user constraints."));
+    const { summary } = summarizeHarnessMessages(messages);
+    const state = JSON.parse(summary);
+    expect(summary.length).toBeLessThanOrEqual(4000);
+    expect(state.steering).toContain(correction);
+    expect(state.steering).toContain(current);
+    expect(state.steering.indexOf(correction)).toBeLessThan(state.steering.indexOf(current));
+    expect(state.contextPriority).toContain("historical objective");
+    expect(state.contextPriority).toContain("Latest user > chronological user steering");
+    expect(state.contextPriority).toContain("never overrides user facts");
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("precedence annotation leaves room for the original constraints in small adaptive summaries", () => {
+  const initial = "Deployment region: eu-west. Compatibility: keep existing clients. Rejected approach: replace schema. Objective: investigate Unicode handling.";
+  const messages = [text(initial), ...Array.from({ length: 5 }, (): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: "Temporary observation recorded; existing constraints and objective remain unchanged." }] }))];
+  const budget = Math.floor(JSON.stringify(messages).length / 2);
+  const state = JSON.parse(summarizeHarnessMessages(messages, budget).summary);
+  expect(state.objective).toBe(initial);
+  expect(state.contextPriority).toContain("Latest user");
 });
 
 test("preserves real batched search and read locations across repeated compaction without source text", async () => {
@@ -131,4 +214,39 @@ test("revalidates recalled locations and bounds them independently of external p
     expect(bounded.length).toBeLessThanOrEqual(budget);
     expect(JSON.parse(bounded).locations?.length ?? 0).toBeLessThanOrEqual(8);
   }
+});
+
+
+test.each([384, 480, 640])("tight %s-character summaries prioritize the latest correction over historical objective", budget => {
+  const correction = "Correction: deploy to eu-west, never us-east.";
+  let messages: ModelMessage[] = [text("Deploy to us-east. " + "Historical detail. ".repeat(40)), text(correction)];
+  for (let round = 0; round < 3; round++) {
+    const { summary, truncated } = summarizeHarnessMessages(messages, budget);
+    expect(summary.length).toBeLessThanOrEqual(budget);
+    expect(truncated).toBe(true);
+    expect(JSON.parse(summary).steering).toContain(correction);
+    messages = [{ role: "assistant", parts: [{ type: "text", text: `[Compacted prior conversation]\n${summary}` }] }];
+  }
+});
+
+test("tight summaries discard older steering before clipping the latest correction", () => {
+  const correction = "Correction: deploy to eu-west, never us-east.";
+  const { summary } = summarizeHarnessMessages([text("Deploy to us-east."),
+    text("Old direction. ".repeat(35)), text(correction)], 384);
+  expect(JSON.parse(summary).steering).toEqual([correction]);
+  expect(summary.length).toBeLessThanOrEqual(384);
+});
+
+
+test("a new correction remains latest steering after tight compaction removes the historical objective", () => {
+  const previousCorrection = "Correction: deploy to eu-west, never us-east.";
+  const latestCorrection = "Correction: deploy to ap-south, replacing eu-west.";
+  const initial = summarizeHarnessMessages([text("Deploy to us-east. " + "Historical detail. ".repeat(40)),
+    text(previousCorrection)], 330).summary;
+  expect(JSON.parse(initial).objective).toBe("");
+  const { summary } = summarizeHarnessMessages([text(`[Compacted prior conversation]\n${initial}`), text(latestCorrection)], 330);
+  const state = JSON.parse(summary);
+  expect(summary.length).toBeLessThanOrEqual(330);
+  expect(state.steering).toEqual([latestCorrection]);
+  expect(state.objective).toBe("");
 });

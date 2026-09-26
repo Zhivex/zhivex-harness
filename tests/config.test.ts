@@ -96,7 +96,7 @@ describe("provider configuration", () => {
       });
     }
     expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 0 })).toThrow("maxSteps");
-    expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: 51 })).toThrow("maxSteps");
+    expect(() => resolveHarnessConfig({ provider: "openai", maxSteps: Number.MAX_SAFE_INTEGER + 1 })).toThrow("maxSteps");
     expect(() => resolveHarnessConfig({ schemaVersion: 3 })).toThrow("Unsupported config schema");
     expect(() => resolveHarnessConfig({ storeBackend: "postgres" })).toThrow("storeBackend");
     expect(() => resolveHarnessConfig({ maxToolErrors: -1 })).toThrow("maxToolErrors");

@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "gate": "live-execution-smoke",
+  "certifiedAt": "2026-09-26T04:27:30.632Z",
+  "providers": [
+    {
+      "ok": true,
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "runId": "run_3d39efa3-ac67-430b-abf7-12bd5c64879a",
+      "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+      "approvals": [
+        "run_environment_command",
+        "apply_environment_patch"
+      ],
+      "toolSequence": [
+        "run_environment_command",
+        "inspect_environment_patch",
+        "apply_environment_patch"
+      ],
+      "hostImportVerified": true,
+      "environmentBound": true
+    },
+    {
+      "ok": true,
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "runId": "run_8a304c03-ef99-4805-b88a-a84a8f5b227e",
+      "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+      "approvals": [
+        "run_environment_command",
+        "apply_environment_patch"
+      ],
+      "toolSequence": [
+        "run_environment_command",
+        "inspect_environment_patch",
+        "apply_environment_patch"
+      ],
+      "hostImportVerified": true,
+      "environmentBound": true
+    },
+    {
+      "ok": true,
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "runId": "run_f493b356-383e-48d7-9297-fd97dee538cb",
+      "imageDigest": "sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6",
+      "approvals": [
+        "run_environment_command",
+        "apply_environment_patch"
+      ],
+      "toolSequence": [
+        "run_environment_command",
+        "inspect_environment_patch",
+        "apply_environment_patch"
+      ],
+      "hostImportVerified": true,
+      "environmentBound": true
+    }
+  ]
+}

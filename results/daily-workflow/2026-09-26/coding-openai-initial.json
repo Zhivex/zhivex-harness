@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-installed-live",
+  "observedAt": "2026-09-26T04:07:56.856Z",
+  "version": "1.2.0-rc.4",
+  "moduleSha256": "e751af235ca6e8609be43ddcaf87c40954b7940f982ee704baeaacba33b69fea",
+  "providers": [
+    "openai"
+  ],
+  "limits": {
+    "maxSteps": 12,
+    "timeoutMs": 150000,
+    "maxInputTokens": 60000,
+    "maxOutputTokens": 4096,
+    "maxTotalTokens": 64096
+  },
+  "status": "failed",
+  "rows": [
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "task": "fix-rounding-bug",
+      "status": "failed",
+      "approvals": 4,
+      "elapsedMs": 39327,
+      "phase": "agent",
+      "errorType": "AssertionError",
+      "diagnostic": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "kind": "AssertionError"
+            }
+          ]
+        },
+        "fingerprint": "sha256:770e0cf58b7233b91bf8cc353326bf554e1a7270526eb52db6c33c892923ab3d"
+      }
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "task": "multi-file-cart-feature",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 2,
+      "approvals": 3,
+      "steps": 8,
+      "elapsedMs": 24881,
+      "usage": {
+        "inputTokens": 46061,
+        "cachedInputTokens": 41182,
+        "cacheWriteTokens": 4855,
+        "outputTokens": 1110,
+        "reasoningTokens": 218,
+        "totalTokens": 47171
+      },
+      "toolErrors": 0,
+      "tools": [
+        {
+          "name": "list_files",
+          "isError": false
+        },
+        {
+          "name": "read_files",
+          "isError": false
+        },
+        {
+          "name": "delegate_explorer",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false
+        },
+        {
+          "name": "repair_plan",
+          "isError": false
+        },
+        {
+          "name": "apply_reviewed_edits",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false
+        },
+        {
+          "name": "mutation_audit",
+          "isError": false
+        },
+        {
+          "name": "git_diff",
+          "isError": false
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "Two disposable coding fixtures per provider"
+  ]
+}

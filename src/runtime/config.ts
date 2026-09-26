@@ -70,6 +70,9 @@ export const HARNESS_SUBAGENT_PROFILES = [
   "reviewer"
 ] as const;
 
+// Defaults remain finite; callers may explicitly select larger safe integer counts.
+export const DEFAULT_HARNESS_MAX_STEPS = 50;
+
 export const DEFAULT_HARNESS_BUDGET = {
   maxToolCalls: 32,
   maxToolErrors: 4,
@@ -168,7 +171,6 @@ export interface HarnessConfig {
   scope: AgentStoreScope;
   maxSteps: number;
   timeoutMs: number;
-  agentProfile: "strict" | "repair";
   requireVerifiedDelivery: boolean;
   budget: HarnessBudget;
   costBudget?: HarnessCostBudget;
@@ -193,8 +195,7 @@ export interface HarnessConfigInput {
   namespace?: string;
   maxSteps?: number;
   timeoutMs?: number;
-  agentProfile?: string;
-  /** Require an actual verified repair; only available with agentProfile repair. */
+  /** Require an actual verified repair instead of allowing an analysis-only completion. */
   requireVerifiedDelivery?: boolean;
   maxToolCalls?: number;
   maxToolErrors?: number;
@@ -594,9 +595,9 @@ export const resolveHarnessConfig = (
     "maxSteps",
     input.maxSteps,
     process.env.ZHIVEX_HARNESS_MAX_STEPS,
-    12,
+    DEFAULT_HARNESS_MAX_STEPS,
     1,
-    50
+    Number.MAX_SAFE_INTEGER
   );
   const storeBackend = (input.storeBackend ?? process.env.ZHIVEX_HARNESS_STORE ?? "sqlite").trim().toLowerCase();
   if (!(HARNESS_STORE_BACKENDS as readonly string[]).includes(storeBackend)) {
@@ -628,7 +629,7 @@ export const resolveHarnessConfig = (
   const budget: HarnessBudget = {
     ...tokenMode,
     maxSteps,
-    maxToolCalls: integerOption("maxToolCalls", input.maxToolCalls, process.env.ZHIVEX_HARNESS_MAX_TOOL_CALLS, DEFAULT_HARNESS_BUDGET.maxToolCalls, 0, 500),
+    maxToolCalls: integerOption("maxToolCalls", input.maxToolCalls, process.env.ZHIVEX_HARNESS_MAX_TOOL_CALLS, DEFAULT_HARNESS_BUDGET.maxToolCalls, 0, Number.MAX_SAFE_INTEGER),
     maxToolErrors: integerOption("maxToolErrors", input.maxToolErrors, process.env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS, DEFAULT_HARNESS_BUDGET.maxToolErrors, 0, 100),
     maxInputTokens: integerOption("maxInputTokens", input.maxInputTokens, process.env.ZHIVEX_HARNESS_MAX_INPUT_TOKENS, DEFAULT_HARNESS_BUDGET.maxInputTokens, 1, 10_000_000),
     maxOutputTokens: integerOption("maxOutputTokens", input.maxOutputTokens, process.env.ZHIVEX_HARNESS_MAX_OUTPUT_TOKENS, DEFAULT_HARNESS_BUDGET.maxOutputTokens, 1, 10_000_000),
@@ -673,8 +674,8 @@ export const resolveHarnessConfig = (
       !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,79}$/.test(compaction.model.provider))) throw new HarnessConfigError("Invalid compaction model route.");
   const childBudget: HarnessBudget = {
     ...tokenMode,
-    maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, 30),
-    maxToolCalls: integerOption("subagentMaxToolCalls", input.subagentMaxToolCalls, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS, DEFAULT_SUBAGENT_BUDGET.maxToolCalls, 0, 200),
+    maxSteps: integerOption("subagentMaxSteps", input.subagentMaxSteps, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_STEPS, DEFAULT_SUBAGENT_BUDGET.maxSteps, 1, Number.MAX_SAFE_INTEGER),
+    maxToolCalls: integerOption("subagentMaxToolCalls", input.subagentMaxToolCalls, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_CALLS, DEFAULT_SUBAGENT_BUDGET.maxToolCalls, 0, Number.MAX_SAFE_INTEGER),
     maxToolErrors: integerOption("subagentMaxToolErrors", input.subagentMaxToolErrors, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_TOOL_ERRORS, DEFAULT_SUBAGENT_BUDGET.maxToolErrors, 0, 50),
     maxInputTokens: integerOption("subagentMaxInputTokens", input.subagentMaxInputTokens, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS, DEFAULT_SUBAGENT_BUDGET.maxInputTokens, 1, 2_000_000),
     maxOutputTokens: integerOption("subagentMaxOutputTokens", input.subagentMaxOutputTokens, process.env.ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS, DEFAULT_SUBAGENT_BUDGET.maxOutputTokens, 1, 2_000_000),
@@ -717,7 +718,6 @@ export const resolveHarnessConfig = (
   );
   const execution = resolveExecutionConfig(input);
   if (input.requireVerifiedDelivery !== undefined && typeof input.requireVerifiedDelivery !== "boolean") throw new HarnessConfigError("requireVerifiedDelivery must be boolean.");
-  if (input.requireVerifiedDelivery && (input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict") !== "repair") throw new HarnessConfigError("requireVerifiedDelivery requires agentProfile repair.");
 
   return {
     schemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -733,7 +733,6 @@ export const resolveHarnessConfig = (
     },
     maxSteps,
     timeoutMs,
-    agentProfile: (() => { const value = input.agentProfile ?? process.env.ZHIVEX_HARNESS_AGENT_PROFILE ?? "strict"; if (value !== "strict" && value !== "repair") throw new HarnessConfigError("agentProfile must be strict or repair."); return value; })(),
     requireVerifiedDelivery: input.requireVerifiedDelivery ?? false,
     budget,
     ...(maxCostUsd === undefined

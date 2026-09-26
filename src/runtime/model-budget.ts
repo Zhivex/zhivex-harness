@@ -52,8 +52,14 @@ export const createModelBudget = (limits: { inputTokens: number; outputTokens: n
     // adding it in auto mode silently switches to Chat Completions.
     const capSupported = provider !== "qwen" || input.providerOptions?.apiMode === "chat" ||
       (input.providerOptions?.apiMode !== "responses" && (input.maxTokens !== undefined || input.reasoning?.budgetTokens !== undefined));
-    stats.outputCapApplied = capSupported;
-    if (capSupported) input.maxTokens = Math.max(1, Math.min(input.maxTokens ?? 2048, outputCeiling - stats.outputTokens));
+    const remainingOutput = outputCeiling - stats.outputTokens;
+    const outputCap = Math.min(input.maxTokens ?? remainingOutput, remainingOutput);
+    stats.outputCapApplied = capSupported && Number.isFinite(outputCap);
+    // A repair may need reasoning plus a complete edit in the same response.
+    // Use the remaining phase budget, not a hidden per-response default. An
+    // unlimited budget leaves the provider default intact unless the caller
+    // supplied a finite cap; never manufacture Infinity on the wire.
+    if (stats.outputCapApplied) input.maxTokens = Math.max(1, outputCap);
     stats.modelCalls++; stats.inFlight = true;
     if (contextMetrics.length < 128) contextMetrics.push(measured); else omittedContextMeasurements++;
   };

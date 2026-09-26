@@ -60,5 +60,5 @@ test("console step policy respects flags, environment, and saved run limits", ()
   expect(consoleBudgetOptions(parseCliArgs(["chat","--max-steps","20"]),{}).maxSteps).toBe(20);
   expect(consoleBudgetOptions(parseCliArgs(["chat"]),{ZHIVEX_HARNESS_MAX_STEPS:"15"}).maxSteps).toBeUndefined();
   expect(restoreConsoleOptions(consoleBudgetOptions(parseCliArgs(["chat"]),{}),{maxSteps:12}).maxSteps).toBe(12);
-  expect(resolveHarnessConfig(parseCliArgs(["run","task"])).maxSteps).toBe(12);
+  expect(resolveHarnessConfig(parseCliArgs(["run","task"])).maxSteps).toBe(50);
 });

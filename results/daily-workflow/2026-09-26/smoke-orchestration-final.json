@@ -1,0 +1,58 @@
+{
+  "ok": false,
+  "gate": "live-orchestration-smoke",
+  "certifiedAt": "2026-09-26T04:27:07.659Z",
+  "providers": [
+    {
+      "ok": true,
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "parentRunId": "run_8446bc8f-5e1f-4327-8846-15438cc84f1d",
+      "childRunId": "run_c73b5d44-a45c-4b1c-9d4f-62f9597b2f67",
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 4915
+    },
+    {
+      "ok": false,
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "checkpoint": "orchestration_status",
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "delegation": "contract",
+              "code": "CONFIG_INVALID",
+              "retryable": false
+            }
+          ]
+        },
+        "fingerprint": "sha256:b7d15832e4cbcf0d415251b2d0c174367023b984e70726f051f9f19074486ad2"
+      }
+    },
+    {
+      "ok": true,
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "parentRunId": "run_85acb733-44e2-4c41-8e8a-3d2a71299ef8",
+      "childRunId": "run_13a8a28b-0d0d-4691-b4a3-acb7593e562a",
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 1871
+    }
+  ]
+}

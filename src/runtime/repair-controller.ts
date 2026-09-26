@@ -115,9 +115,12 @@ export const createRepairController = (metadata: Record<string, unknown>, oci: b
             const session = harnessExecutionSession(context);
             const patch = session ? await session.inspectPatch() : undefined;
             const candidate = patch ? (patch.entries.length ? patch.patchId : null) : sha({ failedTool: name, call: context?.toolCall?.id });
-            if (candidate !== state.candidate) state.revision++;
+            const changed = candidate !== state.candidate;
+            if (changed) state.revision++;
             state.candidate = candidate;
-            if (pending()) {
+            // A failed tool can change files after an earlier verified delivery.
+            // Do not let the old delivered phase hide a new, unverified revision.
+            if (candidate !== null && (changed || pending())) {
               const failure = record(record(error).verification);
               if (Number.isSafeInteger(failure.exitCode)) {
                 state.receipts.push({ commandId: context?.toolCall?.id ?? `check_${randomUUID()}`,

@@ -1,5 +1,5 @@
 import type { CliOptions } from "../arguments.js";
-import type { HarnessConfig } from "../../runtime/config.js";
+import { DEFAULT_HARNESS_MAX_STEPS, type HarnessConfig } from "../../runtime/config.js";
 import type { TokenUsage } from "@zhivex-ai/core";
 
 const tokenOptions = ["maxInputTokens", "maxOutputTokens", "maxTotalTokens",
@@ -12,7 +12,7 @@ const tokenEnvironment = ["ZHIVEX_HARNESS_MAX_INPUT_TOKENS", "ZHIVEX_HARNESS_MAX
  * into bounded execution; SDK, service hosts and automation retain their policy. */
 export const consoleBudgetOptions = (options: CliOptions, env: NodeJS.ProcessEnv = process.env): CliOptions => ({
   ...options,
-  ...(options.maxSteps === undefined && env.ZHIVEX_HARNESS_MAX_STEPS === undefined ? { maxSteps: 50 } : {}),
+  ...(options.maxSteps === undefined && env.ZHIVEX_HARNESS_MAX_STEPS === undefined ? { maxSteps: DEFAULT_HARNESS_MAX_STEPS } : {}),
   ...(options.maxToolCalls === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_CALLS === undefined ? { maxToolCalls: 200 } : {}),
   ...(options.maxToolErrors === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS === undefined ? { maxToolErrors: 20 } : {}),
   ...(options.timeoutMs === undefined && env.ZHIVEX_HARNESS_TIMEOUT_MS === undefined ? { timeoutMs: 60 * 60_000 } : {}),

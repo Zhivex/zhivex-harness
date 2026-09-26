@@ -85,12 +85,12 @@ identifies the last returned line so ordinary reads can continue from the next l
 not treat that clipped text as the entire source line. Search an exact file to locate
 relevant short excerpts instead of repeatedly reading a large file.
 
-Conversation compaction uses `bounded-evidence-v5`. It retains a redacted excerpt of
+Conversation compaction uses `bounded-evidence-v7`. It retains a redacted excerpt of
 the initial user objective, recent conversation excerpts, bounded local-tool path
 and digest evidence, and a separate short history of check exit codes, timeouts,
 and tool failures. These are recollections, not approvals or verification receipts.
 The latest four check/error records are kept independently of ordinary file-read
-noise. The latest three subsequent user excerpts are retained separately from
+noise. Up to ten distinct subsequent user excerpts are retained separately from
 assistant chatter, redacted and bounded to 512 characters each. They share the
 existing total summary budget and remain untrusted context. Interactive summaries
 can carry this structure across subsequent compactions.
@@ -98,10 +98,25 @@ can carry this structure across subsequent compactions.
 The latest successful `repair_plan` is retained separately from assistant chatter,
 with bounded hypothesis, expected behavior, next check, and safe relative paths.
 It remains model-authored recollection, never authorization or a verification receipt.
-Older v1-v4 summaries remain readable. Original requests remain recoverable with
+Older v1-v6 summaries remain readable. Original requests remain recoverable with
 `read_task`; a summary is not a replacement for full acceptance criteria.
 
-Automatic compaction uses `adaptive-tokens-v1`. The configured recent-message count
+Context is useful working memory, not a proof system. Conceptual discussion,
+decisions, hypotheses and unresolved questions remain available without a
+`repair_plan` or verification receipt. Up to three redacted local diagnostic
+excerpts (640 characters each) are retained as `unverified` observations, separate
+from typed check records. These may include command stdout/stderr, SDK tool-error
+messages and terminal-verifier diagnostics. They share the summary's total bound;
+file bodies and external-tool payloads are not copied into these observations.
+Repeated identical excerpts do not evict distinct decisions. A summary neither
+authorizes an effect nor proves that a check passed.
+
+Repeated hybrid compaction preserves the deterministic JSON and the model's
+recollection separately. Recollection stays untrusted conversational material,
+including when another model summarizes it. No additional provider or paid call
+is selected automatically; `/compaction provider:model` selects that route.
+
+Automatic compaction uses `adaptive-tokens-v2`. The configured recent-message count
 is an upper target: the runtime selects a smaller complete tail when its estimated
 size exceeds the token target. Calls/results and provider approval groups remain
 correlated; pending approvals and durable compaction records remain SDK-owned.
@@ -110,9 +125,12 @@ the summary. A protected newest group that cannot fit still fails closed.
 
 Compaction and transport budgets share the same character-based estimator
 (characters / 3 plus envelope allowance), not a provider tokenizer. Tool schemas
-are measured separately from the configured message ceiling. Repair runs reduce
-the trigger as remaining cumulative input allowance shrinks, aiming to leave room
-for three requests; this does not increase budget ceilings. Unlimited-token mode
+are measured separately from the configured message ceiling. Runs reduce the
+trigger as remaining cumulative input allowance shrinks, aiming to leave room
+for three requests. That heuristic reserves enough space for the newest indivisible
+call/result group, system instructions and summary rather than rejecting a prompt
+that still fits the actual allowance. The configured context threshold and transport
+token ceilings remain authoritative. Unlimited-token mode
 keeps the configured context thresholds. Explicit per-run compaction overrides
 and `compaction: false` remain honored. No model context-window size is inferred.
 
@@ -123,11 +141,11 @@ are heuristic; reported usage remains authoritative and can still exceed a limit
 Failed checkpoints include that reported usage even when the response's tools
 were rejected.
 
-In the `strict` profile, requests approaching the last 30% of the token budget
+In ordinary runs, requests approaching the last 30% of the token budget
 switch to a final answer with no new tools. The answer must distinguish collected
 evidence from unfinished work. This is a best-effort closure reserve, not a
-guarantee that every task completes within its budget. The `repair` profile keeps
-its existing verification controller. Unlimited-token mode disables these token
+guarantee that every task completes within its budget. Runs with required verified
+delivery use their verification controller instead. Unlimited-token mode disables these token
 stops and closure transitions.
 Schema serialization is cached by schema identity; messages and tool descriptions
 are measured anew. Transport accounting reuses its measurement for diagnostics.
@@ -163,13 +181,40 @@ artifact; they cannot silently resume under the changed context behavior.
 Run `bun run evaluate:continuity` for deterministic retention, redaction, and agent
 loop regressions. These checks do not measure model coding capability.
 
+The live follow-up exposed an older objective competing with a newer user correction.
+The v7 policy protects recent user steering and describes its precedence explicitly.
+This follows the approach of retaining recent user messages independently of a summary
+in [Codex's compactor](https://github.com/openai/codex/blob/main/codex-rs/core/src/compact.rs);
+it does not adopt Codex's token budget or imply equivalent model performance.
+
+Repair transport budgeting also avoids an implicit 2,048-token response cap. Reasoning
+and visible output can share the provider's output allowance, as explained in
+[OpenAI's reasoning guide](https://developers.openai.com/api/docs/guides/reasoning).
+Explicit caller limits and the remaining cumulative budget still apply where the
+selected transport supports a request cap. A completed change needs relevant checks
+and review, not repeated audits without new evidence; this is consistent with
+[Claude Code's guidance on scoped review](https://code.claude.com/docs/en/best-practices#add-an-adversarial-review-step).
+These are product choices supported by those sources, not a universal harness standard.
+
 ## Task continuity and repair policy (audit remediation)
 
-The `bounded-evidence-v5` summary remains lossy and bounded. Original operator
-requests are stored separately in run metadata (`zhivexTaskSources`), redacted,
-deduplicated by digest and limited to 64 requests / 256000 UTF-8 bytes. Exceeding
-that bound is an explicit error. `read_task` reads 4000 characters at an offset
-and lists source IDs; summaries do not replace the original acceptance criteria.
+The `bounded-evidence-v7` summary remains lossy and bounded. It keeps up to ten
+distinct user steering messages within the same 4,000-character limit. The initial
+objective is explicitly historical: later user corrections take precedence, the
+latest user message overrides the summary, and recalled assistant text cannot
+redefine user facts. This prevents repetitive narration from giving old values
+priority over later corrections; it does not make summaries authoritative.
+Original operator
+requests are stored separately in run metadata (`zhivexTaskSources`), redacted
+and deduplicated by digest, ordered by the latest occurrence of each request.
+Repeating an earlier request makes it current without duplicating its stored text;
+an explicit original-source marker preserves `firstSourceId`. Durable history is retained beyond 64 requests and
+256000 UTF-8 bytes instead of aborting the conversation or discarding requirements.
+`read_task` reads 4000 characters at an offset and projects at most 64 source IDs.
+The default ID page contains the latest requests; `sourceOffset` pages older IDs
+and `firstSourceId` addresses the original request directly. Stored metadata grows
+with operator history, while model-facing pages remain bounded. Summaries do not
+replace the original acceptance criteria.
 Interactive sessions retain this metadata across turns and durable resumes.
 Manual compaction keeps a bounded summary in the prompt and retains redacted
 operator sources separately. The CLI persists them in session/run metadata.
@@ -181,8 +226,8 @@ and the next check in the durable tool journal. Its optional `verifier` records
 exact `command`, `args` and a bounded `purpose`. Neither tool creates approval
 or proof that a task is solved.
 
-The optional `repair` runtime profile is shared by CLI, library and external
-benchmark. Before each actual provider request it predicts the full message and
+The optional `requireVerifiedDelivery` completion contract is shared by CLI, library
+and external benchmark. Before each actual provider request it predicts the full message and
 tool-schema context, reserves 30% of input/output allowance for closure, and caps
 requested output to the current phase allowance. The predictor uses serialized
 characters, not the provider tokenizer: actual billing can exceed a prediction.
@@ -204,7 +249,7 @@ not independently establish that the chosen check covers the user's requirement.
 Host-mode edits require an approved `run_check` before completion.
 
 Applications that require an actual repair can set `requireVerifiedDelivery: true`
-when creating a Harness with `agentProfile: "repair"`. This creates a durable
+when creating a Harness, without choosing a runtime profile. This creates a durable
 completion obligation before exploration starts; a final answer without a
 verified delivery is failed in both the result and saved checkpoint. The option
 is bound to the run fingerprint and cannot be removed by restoring the controller
@@ -253,6 +298,12 @@ four further read calls and three command calls remain. Every `read_files` path
 is checked against the normalized plan scope. Approved verification remains
 subject to the run deadline, lease and tool budgets.
 
+A rejected plan leaves the previous accepted plan intact. An out-of-scope read
+does not consume the closure read allowance, though it still consumes the ordinary
+tool-error budget. Correcting or replacing a plan does not replenish allowances.
+If an operation fails after changing a previously delivered candidate, the new
+candidate remains pending verification across resume.
+
 Primary and child definitions share the durable policy factory. Their manifests
 identify the role, catalogue, budget and whether the primary closure controller
 is installed. Read-only review groups and SDK-managed delegated runs do not gain
@@ -265,13 +316,21 @@ search evidence and fully overlapping read slices are suppressed on their third
 observation; real reads still validate current bytes. Possible mutation/command
 effects reset those hashes. Closure counters, known paths and bounded evidence
 hashes survive SDK checkpoints in `zhivexRepairProgress`. Runtime read output is
-limited to 32000 serialized characters per model step in this profile.
+limited to 32000 serialized characters per model step when verified delivery is required.
 
-Changing the compaction strategy or runtime profile changes the harness binding.
+Changing the compaction strategy or delivery requirement changes the harness binding.
 Paused runs from an older binding must be completed/denied with their original
 artifact; these changes deliberately do not reinterpret an old approval.
 
-Repair mode returns an unknown tool selection to the model as `TOOL_NOT_REGISTERED`, just as invalid arguments receive structured feedback. It never resolves aliases or executes an unregistered tool. Existing tool-error, step and token limits bound recovery; callers can override `unknownToolMode` to `throw` or use `stopOnError`. Strict mode retains its fail-fast behavior, and subsequent mutations still require approval.
+The shared execution loop returns unknown tool selections as `TOOL_NOT_REGISTERED`
+and invalid arguments as structured error feedback. This general-purpose recovery
+is separate from the optional verified-delivery controller: ordinary runs keep
+ordinary model-driven task completion without imposing a verifier plan. No
+unregistered tool or invalid arguments are executed. Existing tool-error, step,
+token and time limits bound recovery; callers can select `stopOnError: true`,
+`validationErrorMode: "throw"` and `unknownToolMode: "throw"` explicitly. Delegated
+runs use the same recovery defaults with sequential execution and their existing
+child budgets. Subsequent mutations still require approval.
 
 For required-delivery OCI runs, reaching the predicted work-budget boundary without a verifier transitions into the same durable two-attempt planning path before rejecting another exploration request. That request exposes only `repair_plan` and `read_task`. The estimate includes the working-state message and current tool catalogue; the budget gate recalculates after narrowing. This spends only the existing closure reserve, keeps total input/output ceilings, and neither executes nor approves a repair. Optional inspection runs do not gain access to the reserve.
 
@@ -288,7 +347,7 @@ non-reasoning event. Oversized irreducible groups still fail closed; the CLI
 identifies this as a context-compaction failure rather than an unknown cause.
 ## Hierarchical context and hybrid compaction
 
-The pinned SDK `next` prerelease owns paid-compaction admission and durable attempt receipts. Harness supplies an explicit route fingerprint and reserves 32,000 input tokens plus 1,024 output tokens before the callback runs. The serialized utility input is capped below 31,000 UTF-8 bytes, leaving framing allowance; this conservative bound can reject a call when a tight budget cannot reserve it. Small sources use deterministic evidence and a zero-usage receipt. Confirmed usage survives summary rejection; interrupted or unknown attempts block paid retries. The separate Harness ledger remains responsible for per-route monetary limits and partial provider usage.
+The pinned Zhivex SDK owns paid-compaction admission and durable attempt receipts. Harness supplies an explicit route fingerprint and reserves 32,000 input tokens plus 1,024 output tokens before the callback runs. The serialized utility input is capped below 31,000 UTF-8 bytes, leaving framing allowance; this conservative bound can reject a call when a tight budget cannot reserve it. Small sources use deterministic evidence and a zero-usage receipt. Confirmed usage survives summary rejection; interrupted or unknown attempts block paid retries. The separate Harness ledger remains responsible for per-route monetary limits and partial provider usage.
 
 The SDK shared budget coordinator is available to library callers through an explicit run policy; it is not enabled automatically. Harness persistence supports its reserved namespace without widening tenant/user access. Portable backups include linked coordinator ledgers and reject unresolved reservations or unknown compaction attempts, so restoring a backup cannot silently reset the shared consumption. Backups created before these optional records remain readable.
 
@@ -297,21 +356,53 @@ inside the workspace, excluding the already loaded root. Discovery is bounded,
 rejects links/protected paths, and records both present and absent file identities
 in SDK-owned checkpoints. Applicable guidance is supplied on subsequent requests,
 with its scope and provenance; it cannot change permissions or verification.
-Changed instructions fail revalidation rather than silently changing a resumed run.
+The number of previously visited directories or small instruction files does not
+exhaust a lifetime quota. Content remains bounded by per-file and aggregate byte
+limits, and each discovery request retains its target/ancestor bound.
+The runtime refreshes these discovered scopes before model requests, including
+normal edits, deletion and creation at a previously absent instruction path.
+Updated guidance replaces the previous scoped context; it cannot authorize an
+effect. Unsafe links, protected paths, invalid text and exceeded limits still
+fail before that guidance reaches the model. The strict
+`validateHarnessScopedContext` library function remains available for callers
+that explicitly require fixed instruction identities. The root context bundle
+and execution/approval fingerprints keep their existing binding rules.
 Project context can still be disabled with `--no-project-context`.
 
 Primary runs now monitor repeated tool-result cycles and long repeated text across
 compaction and resume. Three unchanged cycles request a new hypothesis; five stop
 before the next model call. Changed results break repetition. Bounded persisted
-hashes contain no source text. Reads are not replaced with cached evidence.
+hashes contain no source text. Changing narration around identical tools does
+not count as progress. Text-only repetition remains monitored independently of
+tool turns. A genuine new user request resets that history, including when the
+user deliberately asks to reread an unchanged file. Approval resumes, summarized
+history and assistant/tool-only continuations retain it, so continuation cannot
+erase a loop within the same turn. Reads are not replaced with cached evidence.
 Trusted independent local reads use up to four SDK workers; writes, checks,
 approvals, MCP and delegation remain barriers. This is not a latency benchmark.
 
 Optional semantic compaction supplements deterministic evidence with an untrusted
 recollection from an explicitly chosen model. Selection, credentials and usage are
-separate from the primary model. See [CLI](CLI.md#configurable-model-assisted-compaction)
+separate from the primary model. It can summarize bounded, redacted local code
+from authenticated builtin read/search results as well as conversational decisions and diagnostics;
+the model is no longer limited to typed operational evidence. These excerpts
+share one input allowance and never include arbitrary external-tool/provider
+payloads. Source authentication uses a bounded process-local hash registry issued
+by actual builtin executions and bound to run ID, tool-call ID, tool name and
+complete output. Caller history, custom tools with builtin names and persisted
+metadata cannot issue this proof. Unauthenticated tool output, extra error fields
+and tool-call arguments are excluded before constructing either utility summaries
+or excerpts. Previously compacted envelopes without matching process-local proof
+retain only user objectives and steering; their markers alone grant no provenance
+for tool observations, paths, plans or recollections. Malformed envelopes are
+omitted. After restarting or evicting a proof, source excerpts become eligible
+again after new builtin reads.
+The semantic strategy is `hybrid-context-v3-attested-sources`, which changes the
+durable runtime fingerprint. See [CLI](CLI.md#configurable-model-assisted-compaction)
 and [model catalog](MODEL_CATALOG.md). Tool metadata, approval state and verification
 receipts remain outside the summarizer's authority. These runtime strategy changes
 alter durable fingerprints: finish old paused runs with their original artifact.
+Every run returns the matching persisted revision, including refreshed
+context and accounting metadata, rather than an older in-memory SDK projection.
 Named child agents keep their existing bounded runtime; these new primary-run
 context/progress/compaction integrations do not claim a child-runtime migration.

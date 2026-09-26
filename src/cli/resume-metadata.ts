@@ -17,7 +17,7 @@ export const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput =>
   tenantId: config.scope.tenantId,
   ...(config.scope.userId ? { userId: config.scope.userId } : {}),
   ...(config.scope.namespace ? { namespace: config.scope.namespace } : {}),
-  agentProfile: config.agentProfile,
+  requireVerifiedDelivery: config.requireVerifiedDelivery,
   maxSteps: config.maxSteps,
   timeoutMs: config.timeoutMs,
   maxToolCalls: config.budget.maxToolCalls,

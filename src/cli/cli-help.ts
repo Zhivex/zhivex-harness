@@ -72,7 +72,7 @@ export function formatCliHelp(topic: string | undefined, version: string, full: 
   };
   const groups = new Map<string, string[]>();
   for (const name of contract.allowed) {
-    const group = name.startsWith("--oci-") || ["--execution", "--agent-profile", "--allow-check", "--yes"].includes(name) ? "Execution and approvals" :
+    const group = name.startsWith("--oci-") || ["--execution", "--require-verified-delivery", "--allow-check", "--yes"].includes(name) ? "Execution and approvals" :
       /subagent|reviewer|parallel-reviews|^--route$/.test(name) ? "Specialist agents" :
       /cost|pricing|usage-limit|^--max-|^--timeout/.test(name) ? "Budgets and limits" :
       ["--state-dir", "--store", "--tenant", "--user", "--namespace", "--idempotency-key"].includes(name) ? "State and scope" :

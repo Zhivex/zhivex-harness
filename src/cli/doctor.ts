@@ -42,7 +42,7 @@ export interface DoctorReport {
     scope: ReturnType<typeof resolveHarnessConfig>["scope"];
     maxSteps: number;
     timeoutMs: number;
-    agentProfile: "strict" | "repair";
+    requireVerifiedDelivery: boolean;
     budget: ReturnType<typeof resolveHarnessConfig>["budget"];
     costBudget?: ReturnType<typeof resolveHarnessConfig>["costBudget"];
     compaction: ReturnType<typeof resolveHarnessConfig>["compaction"];
@@ -487,7 +487,7 @@ export const createDoctorReport = async (
     | "userId"
     | "namespace"
     | "maxSteps"
-    | "agentProfile"
+    | "requireVerifiedDelivery"
     | "timeoutMs"
     | "maxToolCalls"
     | "maxToolErrors"
@@ -728,8 +728,8 @@ export const createDoctorReport = async (
       stateDirectory: config.stateDirectory,
       storeBackend: config.storeBackend,
       scope: config.scope,
-      agentProfile: config.agentProfile,
-  maxSteps: config.maxSteps,
+      requireVerifiedDelivery: config.requireVerifiedDelivery,
+      maxSteps: config.maxSteps,
       timeoutMs: config.timeoutMs,
       budget: config.budget,
       ...(config.costBudget ? { costBudget: config.costBudget } : {}),

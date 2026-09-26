@@ -47,8 +47,9 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
       try {
       if (name === "repair_plan") {
         const plan = input as { paths?: string[] };
+        const result = await definition.execute(input, context);
         plannedPaths = plan.paths ?? []; stats.planRecorded = true; stats.phase = "explore";
-        return definition.execute(input, context);
+        return result;
       }
       if (observations.has(name)) return definition.execute(input, context);
       if (name.startsWith("verify_")) stats.phase = "verify";
@@ -75,14 +76,17 @@ export const createRepairProgress = (usage: () => { inputTokens: number; outputT
         stats.blockedBroadCalls++;
         throw new Error("REPAIR_CLOSURE: broad discovery is paused to preserve the remaining budget. Use known file paths for focused reads/searches, reproduce the issue, repair and verify. If context is insufficient, report the limitation; do not guess a patch.");
       }
-      if (closing() && ++closureReads > CLOSURE_READ_LIMIT) {
-        stats.blockedPhaseCalls++;
-        throw new Error("REPAIR_PHASE_BUDGET: the closure read allowance is exhausted. Recover task constraints with read_task, repair known files, and verify or report the limitation.");
-      }
       if (closing() && plannedPaths.length && normalizedPaths.some(value => !normalizedPlan.includes(value))) {
         stats.blockedPhaseCalls++;
         throw new Error("REPAIR_PLAN_SCOPE: use a file recorded in repair_plan or explicitly revise the hypothesis first.");
       }
+      // Rejected scopes did not read anything. Preserve the finite allowance
+      // for a corrected call; ordinary tool-error limits still bound mistakes.
+      if (closing() && closureReads >= CLOSURE_READ_LIMIT) {
+        stats.blockedPhaseCalls++;
+        throw new Error("REPAIR_PHASE_BUDGET: the closure read allowance is exhausted. Recover task constraints with read_task, repair known files, and verify or report the limitation.");
+      }
+      if (closing()) closureReads++;
       const output = await definition.execute(input, context);
       if (outputStep !== context.step) { outputStep = context.step; outputCharacters = 0; }
       outputCharacters += JSON.stringify(output).length;

@@ -103,7 +103,7 @@ test("an over-budget response cannot execute its requested tool", async () => {
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
 
-test("strict reserves a final answer after substantial cumulative input", async () => {
+test("default runtime reserves a final answer after substantial cumulative input", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "budget-closure-"));
   const model = createMockLanguageModel({ streamEvents: [
     [{ type: "tool-call", toolCall: { id: "list", name: "list_files", input: {} } },
@@ -160,7 +160,7 @@ test("total-token preflight reserves input before assigning an output cap", asyn
   expect(context.input.maxTokens).toBe(500 - estimateRequestTokens({ messages: [] }));
 });
 
-test("strict compaction tracks consumption within the current invocation", async () => {
+test("default runtime compaction tracks consumption within the current invocation", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "budget-compaction-"));
   await writeFile(path.join(root, "a.txt"), "a".repeat(18000));
   await writeFile(path.join(root, "b.txt"), "b".repeat(18000));

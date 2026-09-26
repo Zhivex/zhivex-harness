@@ -46,6 +46,7 @@ export const createAdaptiveCompaction = (config: {
 }, options: { tools?: ToolSet; remainingInputTokens?: () => number; compactor?: AgentCompactionOptions["compactor"]; auxiliary?: AgentCompactionOptions["auxiliary"] } = {}): AgentCompactionOptions => {
   let retained = config.keepRecentMessages;
   let systemTokens = 0;
+  let protectedTailTokens = 1024;
   const toolTokens = estimateContextTokens(measureContext({ messages: [], ...(options.tools ? { tools: options.tools } : {}) })) - 64;
   const summaryAllowance = 1500; // 4,000 characters plus the SDK envelope.
   const threshold = () => {
@@ -54,7 +55,7 @@ export const createAdaptiveCompaction = (config: {
     // Static policy/catalog overhead is irreducible; the transport budget remains
     // authoritative when even the smallest useful prompt no longer fits.
     return Math.ceil(toolTokens + Math.min(config.maxEstimatedInputTokens,
-      Math.max(systemTokens + summaryAllowance + 1024, remaining / 3 - toolTokens)));
+      Math.max(systemTokens + summaryAllowance + protectedTailTokens, remaining / 3 - toolTokens)));
   };
   return {
     ...(options.auxiliary ? { auxiliary: options.auxiliary } : {}),
@@ -64,10 +65,15 @@ export const createAdaptiveCompaction = (config: {
     estimateTokens(messages) {
       const measured = measureContext({ messages: [...messages] });
       systemTokens = Math.ceil(measured.systemCharacters / 3);
-      const target = Math.max(1024, Math.floor(threshold() * 0.65) - toolTokens - systemTokens - summaryAllowance);
       const cuts = safeRetentionCuts(messages);
       const tailCharacters = new Array<number>(messages.length + 1).fill(0);
       for (let i = messages.length - 1; i >= 0; i--) tailCharacters[i] = tailCharacters[i + 1]! + JSON.stringify(messages[i]).length;
+      // A three-request reserve is a heuristic, not a smaller hard budget.
+      // Its floor must fit the newest indivisible call/result group; otherwise
+      // the SDK rejects useful compaction even when the actual token budget fits.
+      const newestCut = cuts.at(-1);
+      protectedTailTokens = newestCut === undefined ? 1024 : Math.max(1024, Math.ceil(tailCharacters[newestCut]! / 3) + 64);
+      const target = Math.max(1024, Math.floor(threshold() * 0.65) - toolTokens - systemTokens - summaryAllowance);
       // Prefer the largest recent tail that fits both budgets. If the newest
       // protected group cannot fit, retain it and let the SDK fail closed.
       const cut = cuts.find(index => messages.length - index <= config.keepRecentMessages &&
@@ -78,7 +84,7 @@ export const createAdaptiveCompaction = (config: {
     compactor: options.compactor ?? (({ messages }) => {
       const budget = Math.max(128, Math.min(4000, Math.floor(JSON.stringify(messages).length / 2)));
       const { summary, truncated } = summarizeHarnessMessages(messages, budget);
-      return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: "adaptive-tokens-v1",
+      return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: "adaptive-tokens-v2",
         sourceMessages: messages.length, truncated, targetRatio: 0.65, toolTokens } };
     })
   };

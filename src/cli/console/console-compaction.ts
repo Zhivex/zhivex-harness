@@ -51,7 +51,7 @@ export async function handleConsoleCompaction(command: string, deps: ConsoleComp
       write(`  Limits source: ${limits.evidence.sourceUrl} (checked ${limits.evidence.checkedAt}). Select explicitly: /compaction ${provider}:${best.model.id}`);
     }
     if (!configured) write("No configured provider credentials found. Configure credentials before requesting recommendations.");
-    write("No model selection changed. Choosing another provider sends bounded conversation excerpts to that provider.");
+    write("No model selection changed. Choosing another provider sends bounded, redacted conversation, code and diagnostic excerpts to that provider.");
     return true;
   }
   if (await deps.hasActiveTurn()) {
@@ -74,6 +74,6 @@ export async function handleConsoleCompaction(command: string, deps: ConsoleComp
     return true;
   }
   await deps.replaceOptions({...deps.options, compactionProvider: provider, compactionModel: model});
-  write(`Next turns: hybrid compaction using ${provider}:${model}. Bounded conversation excerpts will be sent to this provider; summary quality and account access are not certified by this selection.`);
+  write(`Next turns: hybrid compaction using ${provider}:${model}. Bounded, redacted conversation, code and diagnostic excerpts will be sent to this provider; summary quality and account access are not certified by this selection.`);
   return true;
 }

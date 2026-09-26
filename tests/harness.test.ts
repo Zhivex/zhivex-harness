@@ -391,7 +391,7 @@ describe("Zhivex harness", () => {
     }
   });
 
-  test("does not terminalize or execute a denied terminal approval", async () => {
+  for (const stopOnError of [false, true]) test(`denied terminal approval never executes (fail-fast=${stopOnError})`, async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-terminal-denial-"));
     try {
       const model = createMockLanguageModel({
@@ -410,7 +410,8 @@ describe("Zhivex harness", () => {
               }
             },
             { type: "finish", finishReason: "tool-calls" }
-          ]
+          ],
+          [{ type: "text-delta", textDelta: "The edit was denied; no change was made." }, { type: "finish", finishReason: "stop" }]
         ]
       });
       const harness = await createHarness({
@@ -419,7 +420,7 @@ describe("Zhivex harness", () => {
         modelInstance: model,
         store: createInMemoryAgentRunStore()
       });
-      await expect(runHarness(harness, { prompt: "Try a denied edit" }, {
+      const run = runHarness(harness, { prompt: "Try a denied edit", ...(stopOnError ? { toolExecution: { stopOnError } } : {}) }, {
         terminalReceiptTools: ["apply_reviewed_edits"],
         resolveApprovals: async (approvals) => approvals.map((approval) => ({
           provider: approval.provider,
@@ -427,7 +428,16 @@ describe("Zhivex harness", () => {
           approve: false,
           reason: "Fixture denial."
         }))
-      })).rejects.toThrow("Fixture denial");
+      });
+      if (stopOnError) await expect(run).rejects.toThrow("Fixture denial");
+      else {
+        const result = await run;
+        expect(result.status).toBe("completed");
+        expect(result.toolResults).toHaveLength(1);
+        expect(result.toolResults[0]?.isError).toBe(true);
+        expect(result.toolResults[0]?.error?.message).toContain("Fixture denial");
+        expect(result.outputText).toContain("no change was made");
+      }
       await expect(readFile(path.join(root, "denied.txt"), "utf8")).rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -520,14 +530,16 @@ describe("Zhivex harness", () => {
         store: createInMemoryAgentRunStore(),
         compactionMaxMessages: 4,
         compactionKeepRecentMessages: 2,
-        compactionMaxEstimatedInputTokens: 2_000
+        // This regression targets message-count compaction. Keep its threshold
+        // above the irreducible system instructions and tool catalog.
+        compactionMaxEstimatedInputTokens: 10_000
       });
       const result = await runHarness(harness, { prompt: "Inspect twice" });
       expect(result.status).toBe("completed");
       expect(result.state.compactions).toHaveLength(1);
       expect(result.state.compactions?.[0]).toMatchObject({
         reasons: expect.arrayContaining(["message-count"]),
-        metadata: { strategy: "bounded-evidence-v5" }
+        metadata: { strategy: "bounded-evidence-v7" }
       });
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -620,7 +632,7 @@ describe("Zhivex harness", () => {
   });
 });
 
-test("exact replacement waits for approval and rejects drift before resume", async () => {
+for (const stopOnError of [false, true]) test(`replacement rejects drift before resume (fail-fast=${stopOnError})`, async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhx-replacement-approval-"));
   try {
     await writeFile(path.join(root, "a.txt"), "before\n");
@@ -631,14 +643,23 @@ test("exact replacement waits for approval and rejects drift before resume", asy
       { type: "tool-call", toolCall: { id: "replace-1", name: "apply_reviewed_replacement", input: {
         path: "a.txt", expectedDigest: file.digest, oldText: "before", newText: "after"
       } } }, { type: "finish", finishReason: "tool-calls" }
-    ], [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }]] });
+    ], [{ type: "text-delta", textDelta: "Concurrent change prevented the edit." }, { type: "finish", finishReason: "stop" }]] });
     const harness = await createHarness({ provider: "openai", workspace: root, modelInstance: model, store });
     try {
       const pending = await runHarness(harness, { prompt: "Repair the file" });
       expect(pending.status).toBe("waiting_approval");
       expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("before\n");
       await writeFile(path.join(root, "a.txt"), "concurrent\n");
-      await expect(runHarness(harness, { state: pending.state, approvals: pending.state.pendingApprovals.map((a) => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) })).rejects.toThrow("Stale patch");
+      const run = runHarness(harness, { state: pending.state,
+        ...(stopOnError ? { toolExecution: { stopOnError } } : {}),
+        approvals: pending.state.pendingApprovals.map((a) => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) });
+      if (stopOnError) await expect(run).rejects.toThrow("Stale patch");
+      else {
+        const result = await run;
+        expect(result.toolResults.at(-1)?.isError).toBe(true);
+        expect(result.toolResults.at(-1)?.error?.message).toContain("Stale patch");
+        expect(result.outputText).toContain("prevented the edit");
+      }
       expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("concurrent\n");
     } finally { await harness.close(); }
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -655,7 +676,7 @@ test("compacted streamed runs count each response once and still enforce the inp
       { type: "finish" as const, finishReason: "tool-calls" as const, usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 } }
     ]) });
     const harness = await createHarness({ workspace: root, modelInstance: model, store: createInMemoryAgentRunStore(),
-      maxInputTokens: 350, compactionMaxMessages: 4, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 2000 });
+      maxInputTokens: 350, compactionMaxMessages: 4, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 10_000 });
     try {
       const output = await runHarness(harness, { prompt: "Inspect before finishing" });
       expect(output.usage?.inputTokens).toBe(calls * 100);

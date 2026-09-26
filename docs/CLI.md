@@ -322,21 +322,24 @@ Personal CLI profile schema `1` is separate from resolved Harness configuration 
 
 The default state directory is `<workspace>/.zhivex-harness/runs` and the default backend is scoped SQLite at `operations.sqlite`. Explicit external state directories are supported, but the workspace root, filesystem root, sensitive workspace paths, regular files, and symbolic-link targets are rejected before the run store is created. See [DURABLE_OPERATIONS.md](./DURABLE_OPERATIONS.md) for state migration and operations, and [EXTENSIBILITY.md](./EXTENSIBILITY.md) for capability, MCP, subagent, and review-group configuration.
 
-### Runtime repair policy
+### Required verified delivery
 
-`--agent-profile <strict|repair>` selects the runtime policy (default `strict`;
-`ZHIVEX_HARNESS_AGENT_PROFILE` provides the environment default). `repair` enables
-bounded schema/tool recovery, cumulative model accounting, exploration controls,
-and up to two retries of recoverable approved verifier failures. A successful
+The assistant uses one general-purpose execution loop with bounded schema/tool
+recovery and cumulative accounting. `--require-verified-delivery` adds an explicit
+completion obligation, exploration controls and up to two retries of recoverable
+approved verifier failures. A successful
 approved verification/import can finish from its durable receipt. It does not
 auto-approve tools, bypass checks, or recover cancellations/integrity violations.
-The selected profile is persisted in resume configuration and the harness binding.
+The delivery requirement is persisted in resume configuration and the harness binding.
+The former `--agent-profile`, `agentProfile` and `ZHIVEX_HARNESS_AGENT_PROFILE`
+configuration have been removed; there is no profile alias. Saved connection
+profiles (`--profile`) and optional subagent roles are independent and unchanged.
 
 ```sh
-bun run src/cli.ts run "Fix the regression and verify it" --agent-profile repair --execution oci
+bun run src/cli.ts run "Fix the regression and verify it" --require-verified-delivery --execution oci
 ```
 
-Library callers select `agentProfile: "repair"` in `createHarness` and can observe
+Library callers select `requireVerifiedDelivery: true` in `createHarness` and can observe
 bounded timings/accounting with `runHarness(..., { onDiagnostics })`. Telemetry
 observer exceptions do not alter the execution result. A stricter caller can
 explicitly override tool-error behavior or terminal receipt settings.
@@ -475,11 +478,18 @@ provider and child agent; another task or process restart asks again. They do no
 grant execution or writes. Without a terminal an unapproved dependency request
 remains pending; restricted mode rejects it.
 
-In the local console and `run` command, tool execution errors, including protected reads and denied approvals, return
+In the console, `run` command, SDK harness and delegated runs, tool errors, including protected reads and denied approvals, return
 evidence to the model so it can choose another permitted strategy. Existing
 tool-error, step and time budgets bound recovery. Validation and security
-checks still reject the underlying action. Strict SDK/service defaults remain fail-fast;
-library hosts can opt into recovery with `toolExecution: { stopOnError: false }`.
+checks still reject the underlying action. Invalid arguments and unknown tool
+names produce structured error receipts; neither is executed. This recovery is
+independent of the optional `repair` controller, so a normal coding session does
+not need a verifier plan for every task. Library callers that need fail-fast
+behavior can explicitly pass `toolExecution: { stopOnError: true,
+validationErrorMode: "throw", unknownToolMode: "throw" }`.
+The client protocol's `approval.resolve` command remains fail-fast for the
+specific reviewed effect, so denial or stale content cannot be acknowledged as
+a successful decision. A subsequent turn can continue from that failed attempt.
 
 ```sh
 zhx --approval-mode ask
@@ -508,10 +518,14 @@ IDs and input hashes are available through **View technical details**. Reviewed
 edits retain their complete payload. Cancelling the picker leaves the batch pending.
 `/verbose` retains the detailed event view; JSONL output retains its event contract.
 
-New local conversations default to 50 model iterations per turn. Explicit
+New local conversations, API runs, automation, and service runs default to a finite
+limit of 50 model iterations per turn. Explicit
 `--max-steps` and `ZHIVEX_HARNESS_MAX_STEPS` take precedence. Saved runs retain their
-limits; automation and service defaults remain 12. `/limits` opens a picker and
-`/limits 30` changes the limit for subsequent turns (1–50). Active runs and pending
+limits. `/limits` opens a picker and `/limits 100` sets the limit for subsequent
+turns. Step limits accept any positive safe integer, with no separate ceiling of 50.
+Explicit parent and child step/tool-call budgets can exceed the former configuration
+ceilings; defaults remain finite and tool calls still accept zero to prohibit calls.
+Active runs and pending
 approvals must be resolved first. More steps can increase API costs; other budgets
 still apply. A failed run reaching its step limit now shows the persisted cause
 and the current/maximum counts. Continue with a new message after adjusting the
@@ -527,7 +541,8 @@ in these progress summaries. Checks and errors retain their separate receipts.
 
 New local `chat` sessions default to 50 model steps, 200 tool calls, 20 tool
 errors and 60 minutes per run. Explicit CLI/environment limits and saved run
-policies take precedence; automation and service defaults are unchanged.
+policies take precedence. Automation and service share the 50-step default but
+retain their separate tool, token and time budgets.
 `/usage` shows all these ceilings separately from cumulative token usage.
 
 After an interrupted or failed turn, `/continue` starts a new run with retained
@@ -576,8 +591,12 @@ quality are not implied. Recommendations check credential presence, not live acc
 Advice reserves 8,000 input and 1,024 output tokens and reports price scope, evidence
 dates and unknown/stale metadata; it never changes the selected model automatically.
 
-The selected provider receives bounded redacted user/assistant excerpts and
-deterministic evidence. Tool/provider payloads are excluded from semantic input.
+The selected provider receives bounded, redacted user/assistant excerpts, local
+read/search code excerpts, diagnostic observations and deterministic context.
+Code and diagnostic excerpts are untrusted data for summarization, not permission
+or proof of correctness. Arbitrary tool objects, external-tool payloads and raw
+provider responses are excluded. All excerpts share the existing input and byte
+reservation limits.
 Calls use the run's budgets and per-model usage ledger, including rejected summaries
 and partial usage. Unknown usage stops continuation. Use per-route `--pricing-file`
 and `--usage-limit-usd` for monetary caps; the legacy single-price cost budget cannot
