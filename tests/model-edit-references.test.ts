@@ -104,3 +104,33 @@ test("generate preserves explicit references, isolates requests and respects too
   expect(original.schema.safeParse({}).success).toBe(false);
   expect(await invoke([{ ...messages[1]!, role: "user" }])).toEqual({ command: "bun", args: ["test"] });
 });
+
+for (const drift of [false, true]) test(`delegated implementer binds references before promoted approval: drift=${drift}`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "zhx-child-refs-"));
+  let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
+  try {
+    await writeFile(path.join(root, "a.txt"), "before\n");
+    const parent = createMockLanguageModel({ streamEvents: [turn("delegate", "delegate_implementer", { prompt: "Repair a.txt" }), done] });
+    const child = wrapLanguageModel(createMockLanguageModel({ responses: [
+      { messages: [{ role: "assistant", parts: [turn("read", "read_file", { path: "a.txt" })[0]] }], finishReason: "tool-calls", usage },
+      { messages: [{ role: "assistant", parts: [turn("edit", "apply_reviewed_replacement", { path: "a.txt", oldText: "before", newText: "after" })[0]] }], finishReason: "tool-calls", usage },
+      { text: "done", messages: [{ role: "assistant", parts: [{ type: "text", text: "done" }] }], finishReason: "stop", usage }
+    ] }), [{ wrapGenerate: async (context, next) => {
+      const tool = context.input.tools?.apply_reviewed_replacement;
+      expect(tool && "schema" in tool && JSON.stringify(tool.schema).includes("expectedDigest")).toBe(false);
+      return next();
+    } }]);
+    const store = createInMemoryAgentRunStore();
+    harness = await createHarness({ workspace: root, provider: "openai", modelInstance: parent, subagentProfiles: ["implementer"], subagentModels: { implementer: child }, store });
+    const waiting = await runHarness(harness, { prompt: "Delegate the repair", runId: "parent-edit-refs", scope: harness.config.scope });
+    expect(waiting.status).toBe("waiting_approval");
+    expect(waiting.state.pendingApprovals[0]!.kind).toBe("subagent");
+    const savedChild = await store.load(waiting.state.childRuns![0]!.runId, harness.config.scope);
+    expect(JSON.parse(savedChild!.pendingApprovals[0]!.arguments).expectedDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("before\n");
+    if (drift) await writeFile(path.join(root, "a.txt"), "external\n");
+    const result = await runHarness(harness, { state: waiting.state, approvals: waiting.state.pendingApprovals.map(a => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) }).catch(() => undefined);
+    if (drift) expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("external\n");
+    else { expect(result?.status).toBe("completed"); expect(await readFile(path.join(root, "a.txt"), "utf8")).toBe("after\n"); }
+  } finally { await harness?.close(); await rm(root, { recursive: true, force: true }); }
+});

@@ -98,6 +98,9 @@ if (/^1\.\d+\.\d+$/.test(manifest.version)) {
 }
 const security = await readFile(path.join(workspace, "SECURITY.md"), "utf8");
 const releaseDocumentation = await readFile(path.join(workspace, "docs", "RELEASE.md"), "utf8");
+if (manifest.version.includes("-rc.") && !releaseDocumentation.includes(`The source version is \`${manifest.version}\``)) {
+  failures.push("docs/RELEASE.md must identify the current source candidate.");
+}
 const publicSecurity = await readFile(path.join(workspace, "docs", "PUBLIC_SECURITY.md"), "utf8");
 let packageRelease: ReturnType<typeof parseHarnessReleaseVersion> | undefined;
 try {

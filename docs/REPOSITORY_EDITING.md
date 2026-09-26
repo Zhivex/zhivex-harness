@@ -172,7 +172,7 @@ failure can still cause a reported rollback failure; it is never a success.
 
 ## Model-facing references in 1.2 RC3
 
-When using `runHarness`, read existing files with `read_file` or `read_files` before
+When using `runHarness` or delegating to its implementer subagent, read existing files with `read_file` or `read_files` before
 requesting `apply_reviewed_replacement`, `apply_reviewed_edits`, or
 `verify_and_apply_reviewed_edits`. Models supply paths and edits; the runtime
 binds the full-file digest from the preceding successful read. Full-file changes
