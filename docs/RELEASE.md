@@ -4,11 +4,11 @@
 
 ## Next release candidate
 
-RC9 is published on npm `next`; its protected release [run](https://github.com/Zhivex/zhivex-harness/actions/runs/36258148510) succeeded. RC10 requires fresh exact-artifact certification after review and merge.
+RC9 is published on npm `next`; its protected release [run](https://github.com/Zhivex/zhivex-harness/actions/runs/36258148510) succeeded. RC10 failed its Qwen representative matrix before publication ([run](https://github.com/Zhivex/zhivex-harness/actions/runs/36272851509)); its tag and evidence remain unchanged. RC11 requires fresh exact-artifact certification after incorporating Qwen 0.16.2 and Core 1.25.0.
 
 RC5 was published to npm `next` with exact-artifact integrity and provenance verified. Its historical matrix retains Meta `muse-spark-1.3`; RC6, RC7 and RC8 use the merged `muse-spark-1.3-contributor` certification selection.
 
-The source version is `1.2.0-rc.10`, targeting npm `next` after fresh certification.
+The source version is `1.2.0-rc.11`, targeting npm `next` after fresh certification.
 It adds bounded edit retries, locally authoritative Qwen context, model reasoning
 controls, featured model selection, applied-file receipts, activity history and
 queued tasks isolated from approval answers. The removal of `agentProfile` is an
@@ -28,7 +28,7 @@ the Meta representative matrix, also before publication.
 
 `release-status.json` still describes the independently verified 1.0.0 publication
 and remains preserved during RC preparation. RC evidence is not substituted for
-certification of a stable artifact. SDK dependencies remain Core 1.24.0, Agents
+certification of a stable artifact. SDK dependencies pin Core 1.25.0, Qwen 0.16.2, Agents
 1.10.0 and the coordinated stable provider batch.
 
 ## Deterministic gates

@@ -1,13 +1,13 @@
 # First use
 
-This guide targets the unpublished `1.2.0-rc.10` candidate. Installation commands become available after protected publication to npm `next`; stable users can install `@zhivex-ai/harness@latest`.
+This guide targets the unpublished `1.2.0-rc.11` candidate. Installation commands become available after protected publication to npm `next`; stable users can install `@zhivex-ai/harness@latest`.
 
 ## Install and start
 
 Install Node.js 22.13.0 or newer and Git. Then:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.2.0-rc.10
+npm install -g @zhivex-ai/harness@1.2.0-rc.11
 cd /path/to/your/project
 zhx
 ```
@@ -82,16 +82,16 @@ For command execution, configure [OCI isolation](EXECUTION_ENVIRONMENTS.md).
 With Bun 1.4.0 or newer and a supported Node runtime:
 
 ```sh
-bun add --global @zhivex-ai/harness@1.2.0-rc.10
+bun add --global @zhivex-ai/harness@1.2.0-rc.11
 zhx
 ```
 
 For a disposable version/help/environment check without a global installation:
 
 ```sh
-bunx @zhivex-ai/harness@1.2.0-rc.10 --version
-bunx @zhivex-ai/harness@1.2.0-rc.10 --help
-bunx @zhivex-ai/harness@1.2.0-rc.10 doctor
+bunx @zhivex-ai/harness@1.2.0-rc.11 --version
+bunx @zhivex-ai/harness@1.2.0-rc.11 --help
+bunx @zhivex-ai/harness@1.2.0-rc.11 doctor
 ```
 
 For source development, use the [contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md).
