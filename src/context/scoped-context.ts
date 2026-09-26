@@ -6,7 +6,7 @@ import { boundedBatches } from "../workspace/bounded-reads.js";
 import { fileDigestSchema, workspaceFilePathSchema, type FileDigest } from "../workspace/edit-contracts.js";
 import { readRegularFileNoFollow } from "../workspace/file-security.js";
 import type { Workspace } from "../workspace/workspace.js";
-import { MAX_HARNESS_CONTEXT_FILE_BYTES, MAX_HARNESS_CONTEXT_TOTAL_BYTES, MAX_HARNESS_CONTEXT_FILES } from "./context-engineering.js";
+import { MAX_HARNESS_CONTEXT_FILE_BYTES, MAX_HARNESS_CONTEXT_TOTAL_BYTES } from "./context-engineering.js";
 
 export const MAX_HARNESS_SCOPED_CONTEXT_PATHS = 256;
 const protectedSegments = new Set([".git", ".next", ".turbo", ".zhivex-harness", "coverage", "dist", "node_modules"]);
@@ -30,20 +30,21 @@ export const harnessScopedContextStateSchema = z.strictObject({
     path: workspaceFilePathSchema,
     digest: fileDigestSchema.nullable(),
     bytes: z.number().int().min(0).max(MAX_HARNESS_CONTEXT_FILE_BYTES)
-  })).max(MAX_HARNESS_SCOPED_CONTEXT_PATHS)
+  }))
 }).superRefine((state, context) => {
   const seen = new Set<string>();
   let bytes = 0;
-  let files = 0;
   for (const entry of state.entries) {
     if (!entry.path.endsWith("/AGENTS.md") || seen.has(entry.path) || (entry.digest === null && entry.bytes !== 0)) {
       context.addIssue({ code: "custom", message: "Invalid or duplicate scoped instruction identity." });
     }
     seen.add(entry.path);
     bytes += entry.bytes;
-    if (entry.digest !== null) files += 1;
   }
-  if (bytes > MAX_HARNESS_CONTEXT_TOTAL_BYTES || files > MAX_HARNESS_CONTEXT_FILES) {
+  // Bound content volume, not the number of directories visited over a session.
+  // Missing instruction files carry no prompt content and must not exhaust a
+  // lifetime discovery counter. Individual discovery requests remain bounded.
+  if (bytes > MAX_HARNESS_CONTEXT_TOTAL_BYTES) {
     context.addIssue({ code: "custom", message: "Scoped context exceeds its aggregate limit." });
   }
 });
@@ -150,7 +151,6 @@ export const discoverHarnessScopedContext = async (
   const entries = new Map(state.entries.map((entry) => [entry.path, entry]));
   for (const candidate of candidates) {
     if (entries.has(candidate)) continue;
-    if (entries.size >= MAX_HARNESS_SCOPED_CONTEXT_PATHS) throw new Error("Scoped context discovery limit reached.");
     const source = await readSource(workspace, candidate);
     entries.set(candidate, { path: candidate, digest: source?.digest ?? null, bytes: source?.bytes ?? 0 });
     if (source) sourcesByPath.set(candidate, source);

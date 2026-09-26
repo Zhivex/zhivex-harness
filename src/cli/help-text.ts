@@ -70,7 +70,7 @@ Options (automation and advanced configuration):
   --user <id>                    Optional durable user scope
   --namespace <id>               Optional scope namespace (default: workspace digest)
   --idempotency-key <key>        Reuse the same durable run for duplicate requests
-  --max-steps <1-50>             Maximum agent steps (default: 12)
+  --max-steps <n>                Finite positive step limit (default: 50)
   --max-tool-calls <n>           Maximum tool calls (default: 32)
   --max-tool-errors <n>          Maximum failed tool calls (default: 4)
   --no-token-budget             Disable cumulative token budgets (default for new local chat)

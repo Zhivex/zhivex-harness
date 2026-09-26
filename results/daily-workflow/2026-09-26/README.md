@@ -1,5 +1,52 @@
 # Installed assistant validation
 
+## Failed-case repeat with the installed runtime deadline
+
+The two previously failed rounding cases were repeated once each, without case
+retries, using installed module SHA-256
+`576ee23f5e893992673ac73643a87ce53978127d33c941f1179691a474f842ee`.
+The new `runtime-defaults` driver mode resolves limits from that artifact:
+12 steps, 900000 ms, 100000 input / 30000 output / 120000 total tokens.
+The earlier 150000 ms evaluation deadline is no longer substituted in this mode.
+
+| Provider | Result | Duration | Steps | Input / output tokens |
+| --- | --- | --- | --- | --- |
+| Meta | Passed | 201245 ms | 11 | 81380 / 16246 |
+| Qwen | Passed | 448550 ms | 9 | 68557 / 21160 |
+
+See `retest-meta-runtime-defaults.json` and `retest-qwen-runtime-defaults.json`.
+Both reproduced the failing tests, edited implementation only and passed independent
+post-run tests. Meta's first attempted fix still failed its check and was corrected.
+Fixture plus independent verification took 58 ms for Meta and 49 ms for Qwen;
+the remaining time was inside the agent run. Step timing includes the SDK/model
+path and does not independently isolate remote inference, HTTP retries or host
+waiting. Both successful runs exceed the former evaluation deadline. Meta's
+previous HTTP 400 did not recur; this does not establish its original root cause.
+The original failed reports remain unchanged. This is a targeted repeat, not a
+new six-case campaign or release certification.
+
+The subsequent source changes remove cumulative task-source and scoped-directory
+count cutoffs, paginate task-source IDs, preserve repeated latest requests, reset
+loop detection on a new user request, and share a finite 50-step API/chat default.
+Explicit larger step/tool-call counts are accepted. Token/time/tool budgets,
+permissions, per-operation reads and scoped-content byte bounds still apply.
+These source changes are separate from the immutable artifact used above.
+
+The final source was separately packed and installed with module SHA-256
+`ecb9fed1786d81d2f1cd52075ed01410ea70ac0d5b0ece3009cad9fe2c0acd59`
+and tarball SHA-512
+`577c1dbcde44d4de0644c10959c3d4898f2f63c0b03e745db10323fa8886d3f037d8594e5db5840553b02f7bc850678a7cc4ae8e15f6f3350e0465277a05a8cd`.
+One OpenAI rounding run passed without case retries in 32156 ms, with 8 steps,
+9 tool calls, no tool errors and passing independent tests. See
+`final-limits-openai-runtime-defaults.json`: this artifact resolves 50 steps and
+the same 15-minute / 100k input / 30k output / 120k total token limits.
+Meta and Qwen were not recertified on these later bytes. Final local validation
+passed 1338 tests with one platform skip, plus architecture, documentation,
+contracts, typechecks, migration fixtures, evaluations/benchmarks, MCP, Docker and
+the installed-package smoke. A separate mock-model persistence check retained
+72 operator sources, including a 299023-byte request, through real SDK compaction
+and SQLite close/reopen without truncation.
+
 ## Latest unified-runtime campaign
 
 Runtime source: `4073d8d`. This artifact removes the `strict`/`repair` choice and uses

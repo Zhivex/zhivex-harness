@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "kind": "daily-workflow-acceptance",
+  "evidence": "local-installed-live",
+  "observedAt": "2026-09-26T10:10:56.990Z",
+  "version": "1.2.0-rc.4",
+  "moduleSha256": "576ee23f5e893992673ac73643a87ce53978127d33c941f1179691a474f842ee",
+  "providers": [
+    "qwen"
+  ],
+  "tasks": [
+    "fix-rounding-bug"
+  ],
+  "budgetMode": "runtime-defaults",
+  "limits": {
+    "maxSteps": 12,
+    "timeoutMs": 900000,
+    "maxInputTokens": 100000,
+    "maxOutputTokens": 30000,
+    "maxTotalTokens": 120000
+  },
+  "status": "passed",
+  "rows": [
+    {
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "task": "fix-rounding-bug",
+      "status": "passed",
+      "initialTestsFailed": true,
+      "finalTestsPassed": true,
+      "editedFiles": 1,
+      "approvals": 3,
+      "steps": 9,
+      "elapsedMs": 448550,
+      "requireVerifiedDelivery": false,
+      "effectiveBudget": {
+        "maxSteps": 12,
+        "maxToolCalls": 32,
+        "maxToolErrors": 4,
+        "maxInputTokens": 100000,
+        "maxOutputTokens": 30000,
+        "maxTotalTokens": 120000,
+        "includeChildRuns": true
+      },
+      "runStatus": "completed",
+      "usage": {
+        "inputTokens": 68557,
+        "cachedInputTokens": 55552,
+        "outputTokens": 21160,
+        "reasoningTokens": 18663,
+        "totalTokens": 89717
+      },
+      "childUsage": [],
+      "toolCalls": 9,
+      "toolErrors": 0,
+      "tools": [
+        {
+          "name": "list_files",
+          "isError": false
+        },
+        {
+          "name": "read_task",
+          "isError": false
+        },
+        {
+          "name": "read_files",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 1
+        },
+        {
+          "name": "repair_plan",
+          "isError": false
+        },
+        {
+          "name": "apply_reviewed_replacement",
+          "isError": false
+        },
+        {
+          "name": "run_check",
+          "isError": false,
+          "exitCode": 0
+        },
+        {
+          "name": "git_diff",
+          "isError": false
+        },
+        {
+          "name": "read_file",
+          "isError": false
+        }
+      ],
+      "phaseTimingsMs": {
+        "fixture": 29,
+        "agent": 448501,
+        "verification": 20
+      },
+      "stepTimings": [
+        {
+          "step": 1,
+          "status": "completed",
+          "firstEventMs": 3552,
+          "durationMs": 4912
+        },
+        {
+          "step": 2,
+          "status": "completed",
+          "durationMs": 3034
+        },
+        {
+          "step": 3,
+          "status": "waiting_approval",
+          "durationMs": 99509
+        },
+        {
+          "step": 4,
+          "status": "completed",
+          "firstEventMs": 108611,
+          "durationMs": 120326
+        },
+        {
+          "step": 5,
+          "status": "waiting_approval",
+          "durationMs": 120337
+        },
+        {
+          "step": 6,
+          "status": "waiting_approval",
+          "firstEventMs": 20511,
+          "durationMs": 21214
+        },
+        {
+          "step": 7,
+          "status": "completed",
+          "firstEventMs": 2498,
+          "durationMs": 3251
+        },
+        {
+          "step": 8,
+          "status": "completed",
+          "durationMs": 44554
+        },
+        {
+          "step": 9,
+          "status": "completed",
+          "durationMs": 30931
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Not protected release certification",
+    "No public repository benchmark",
+    "Small disposable coding fixtures; selected tasks recorded explicitly"
+  ]
+}

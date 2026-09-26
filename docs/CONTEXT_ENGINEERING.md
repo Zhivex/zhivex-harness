@@ -205,10 +205,16 @@ latest user message overrides the summary, and recalled assistant text cannot
 redefine user facts. This prevents repetitive narration from giving old values
 priority over later corrections; it does not make summaries authoritative.
 Original operator
-requests are stored separately in run metadata (`zhivexTaskSources`), redacted,
-deduplicated by digest and limited to 64 requests / 256000 UTF-8 bytes. Exceeding
-that bound is an explicit error. `read_task` reads 4000 characters at an offset
-and lists source IDs; summaries do not replace the original acceptance criteria.
+requests are stored separately in run metadata (`zhivexTaskSources`), redacted
+and deduplicated by digest, ordered by the latest occurrence of each request.
+Repeating an earlier request makes it current without duplicating its stored text;
+an explicit original-source marker preserves `firstSourceId`. Durable history is retained beyond 64 requests and
+256000 UTF-8 bytes instead of aborting the conversation or discarding requirements.
+`read_task` reads 4000 characters at an offset and projects at most 64 source IDs.
+The default ID page contains the latest requests; `sourceOffset` pages older IDs
+and `firstSourceId` addresses the original request directly. Stored metadata grows
+with operator history, while model-facing pages remain bounded. Summaries do not
+replace the original acceptance criteria.
 Interactive sessions retain this metadata across turns and durable resumes.
 Manual compaction keeps a bounded summary in the prompt and retains redacted
 operator sources separately. The CLI persists them in session/run metadata.
@@ -350,6 +356,9 @@ inside the workspace, excluding the already loaded root. Discovery is bounded,
 rejects links/protected paths, and records both present and absent file identities
 in SDK-owned checkpoints. Applicable guidance is supplied on subsequent requests,
 with its scope and provenance; it cannot change permissions or verification.
+The number of previously visited directories or small instruction files does not
+exhaust a lifetime quota. Content remains bounded by per-file and aggregate byte
+limits, and each discovery request retains its target/ancestor bound.
 The runtime refreshes these discovered scopes before model requests, including
 normal edits, deletion and creation at a previously absent instruction path.
 Updated guidance replaces the previous scoped context; it cannot authorize an
@@ -365,7 +374,10 @@ compaction and resume. Three unchanged cycles request a new hypothesis; five sto
 before the next model call. Changed results break repetition. Bounded persisted
 hashes contain no source text. Changing narration around identical tools does
 not count as progress. Text-only repetition remains monitored independently of
-tool turns. Reads are not replaced with cached evidence.
+tool turns. A genuine new user request resets that history, including when the
+user deliberately asks to reread an unchanged file. Approval resumes, summarized
+history and assistant/tool-only continuations retain it, so continuation cannot
+erase a loop within the same turn. Reads are not replaced with cached evidence.
 Trusted independent local reads use up to four SDK workers; writes, checks,
 approvals, MCP and delegation remain barriers. This is not a latency benchmark.
 

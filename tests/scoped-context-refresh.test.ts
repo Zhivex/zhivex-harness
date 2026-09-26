@@ -4,12 +4,31 @@ import os from "node:os";
 import path from "node:path";
 import { discoverHarnessScopedContext, refreshHarnessScopedContext, validateHarnessScopedContext,
   type HarnessScopedContextState } from "../src/context/scoped-context.js";
-import { MAX_HARNESS_CONTEXT_FILE_BYTES, MAX_HARNESS_CONTEXT_FILES } from "../src/context/context-engineering.js";
+import { MAX_HARNESS_CONTEXT_FILE_BYTES } from "../src/context/context-engineering.js";
 
 const fixture = async (run: (workspace: { root: string }) => Promise<void>) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-scoped-refresh-"));
   try { await run({ root }); } finally { await rm(root, { recursive: true, force: true }); }
 };
+
+test("small scoped guidance is not limited by historical file or directory counts", () => fixture(async workspace => {
+  let state: HarnessScopedContextState = { schemaVersion: 1, entries: [] };
+  // More than 256 remembered absent ancestors and 32 actual guidance files.
+  for (let index = 0; index < 257; index++) {
+    const directory = `package-${index}`;
+    await mkdir(path.join(workspace.root, directory));
+    if (index < 33) await writeFile(path.join(workspace.root, directory, "AGENTS.md"), "Use Bun.");
+    state.entries.push({ path: `${directory}/AGENTS.md`, digest: null, bytes: 0 });
+  }
+  state = (await refreshHarnessScopedContext(workspace, state)).state;
+  expect((await validateHarnessScopedContext(workspace, state))).toHaveLength(33);
+  await mkdir(path.join(workspace.root, "next"));
+  await writeFile(path.join(workspace.root, "next/AGENTS.md"), "Run tests.");
+  const discovered = await discoverHarnessScopedContext(workspace, { paths: ["next/code.ts"], state });
+  expect(discovered.state.entries).toHaveLength(258);
+  expect(discovered.instructions).toContain("Run tests.");
+  expect((await refreshHarnessScopedContext(workspace, discovered.state)).sources).toHaveLength(34);
+}));
 
 test("refresh accepts changed, removed and newly created discovered guidance without widening scope", () => fixture(async workspace => {
   await mkdir(path.join(workspace.root, "src/api"), { recursive: true });
@@ -75,9 +94,9 @@ for (const bytes of [Buffer.from([0xff]), Buffer.from([0]), Buffer.alloc(MAX_HAR
   }));
 }
 
-for (const kind of ["bytes", "files"] as const) {
+for (const kind of ["bytes"] as const) {
   test(`refresh enforces aggregate ${kind} limits for previously absent guidance`, () => fixture(async workspace => {
-    const count = kind === "bytes" ? 5 : MAX_HARNESS_CONTEXT_FILES + 1;
+    const count = 5;
     const state: HarnessScopedContextState = { schemaVersion: 1, entries: [] };
     for (let index = 0; index < count; index++) {
       const directory = `scope-${index}`;

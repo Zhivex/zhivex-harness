@@ -357,7 +357,7 @@ export const chat = async (options: CliOptions) => {
             { value: "50", label: "50 steps", detail: "Long tasks; potentially higher API cost" },
           ]);
           if (!next) continue;
-          if (!/^\d+$/.test(next) || Number(next) < 1 || Number(next) > 50) { process.stderr.write("Use /limits with a step count from 1 to 50.\n"); continue; }
+          if (!/^\d+$/.test(next) || !Number.isSafeInteger(Number(next)) || Number(next) < 1) { process.stderr.write("Use /limits with a positive safe integer step count.\n"); continue; }
           await replaceHarness({ ...runtimeOptions, maxSteps: Number(next) }, routes);
           process.stderr.write(`Step limit updated: ${harness.config.maxSteps} for next turns.\n`);
           continue;

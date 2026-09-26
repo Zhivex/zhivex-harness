@@ -17,13 +17,15 @@ const bun = await runPortableProcess(["bun", "--version"], { cwd: process.cwd() 
 assert.equal(bun.exitCode, 0);
 const models = { meta: "muse-spark-1.3", qwen: "qwen3.8-max", openai: "gpt-6-luna" } as const;
 const budgetMode = process.env.ZHIVEX_HARNESS_LIVE_DAILY_BUDGET ?? "bounded-baseline";
-assert(["bounded-baseline", "runtime-token-defaults"].includes(budgetMode), "Unknown daily-workflow budget mode.");
-const defaults = api.resolveHarnessConfig({ workspace: process.cwd() }).budget;
-const tokenLimits = budgetMode === "runtime-token-defaults"
+assert(["bounded-baseline", "runtime-token-defaults", "runtime-defaults"].includes(budgetMode), "Unknown daily-workflow budget mode.");
+const runtimeDefaults = api.resolveHarnessConfig({ workspace: process.cwd() });
+const defaults = runtimeDefaults.budget;
+const tokenLimits = budgetMode !== "bounded-baseline"
   ? { maxInputTokens: defaults.maxInputTokens, maxOutputTokens: defaults.maxOutputTokens, maxTotalTokens: defaults.maxTotalTokens }
   : { maxInputTokens: 60_000, maxOutputTokens: 4096, maxTotalTokens: 64_096 };
 assert(!defaults.unlimitedTokens && tokenLimits.maxTotalTokens <= 250_000, "Live acceptance requires bounded token budgets.");
-const limits = { maxSteps: 12, timeoutMs: 150_000, ...tokenLimits };
+const limits = { maxSteps: budgetMode === "runtime-defaults" ? runtimeDefaults.maxSteps : 12,
+  timeoutMs: budgetMode === "runtime-defaults" ? runtimeDefaults.timeoutMs : 150_000, ...tokenLimits };
 const providers = (process.env.ZHIVEX_HARNESS_LIVE_PROVIDERS ?? "meta,qwen,openai").split(",").map(value => value.trim());
 assert(providers.length > 0 && new Set(providers).size === providers.length &&
   providers.every(provider => Object.hasOwn(models, provider)), "Select meta, qwen, and/or openai without duplicates.");
@@ -56,6 +58,17 @@ for (const selected of providers) for (const scenario of scenarios.filter(scenar
   const started = Date.now();
   let approvals = 0;
   let phase = "fixture";
+  let phaseStarted = started;
+  const phaseTimingsMs: Record<string, number> = {};
+  const stepTimings: { step: number; status: string; durationMs?: number; firstEventMs?: number }[] = [];
+  let activeStep: { step: number; started: number; firstEventMs?: number } | undefined;
+  const transition = (next: string) => {
+    phaseTimingsMs[phase] = (phaseTimingsMs[phase] ?? 0) + Date.now() - phaseStarted;
+    phase = next; phaseStarted = Date.now();
+  };
+  const timings = () => ({ phaseTimingsMs: { ...phaseTimingsMs, [phase]: (phaseTimingsMs[phase] ?? 0) + Date.now() - phaseStarted },
+    stepTimings, ...(activeStep ? { unfinishedStep: { step: activeStep.step,
+      elapsedMs: Date.now() - activeStep.started, firstEventMs: activeStep.firstEventMs } } : {}) });
   let runEvidence: Record<string, unknown> = {};
   let protectedFiles: Record<string, string> = {};
   try {
@@ -70,9 +83,25 @@ for (const selected of providers) for (const scenario of scenarios.filter(scenar
       ...limits, allowedChecks: ["test"], requireVerifiedDelivery: false });
     runEvidence = { requireVerifiedDelivery: harness.config.requireVerifiedDelivery,
       effectiveBudget: harness.config.budget };
-    phase = "agent";
+    transition("agent");
     const result = await api.runHarness(harness, { prompt: scenario.task,
       ...(provider === "openai" || provider === "qwen" ? { providerOptions: { apiMode: "responses" } } : {}) }, {
+      onEvent: event => {
+        if (event.type === "agent-step-start") activeStep = { step: event.stepIndex, started: Date.now() };
+        if (activeStep && activeStep.firstEventMs === undefined && ["text-delta", "reasoning-delta", "tool-call"].includes(event.type)) {
+          activeStep.firstEventMs = Date.now() - activeStep.started;
+        }
+        if (event.type === "agent-step-finish") {
+          stepTimings.push({ step: event.step.index, status: event.step.status,
+            ...(activeStep?.firstEventMs === undefined ? {} : { firstEventMs: activeStep.firstEventMs }),
+            ...(typeof event.step.startedAt === "number" && typeof event.step.finishedAt === "number"
+              ? { durationMs: event.step.finishedAt - event.step.startedAt } : {}) });
+          activeStep = undefined;
+        }
+        if (event.type === "agent-run-finish") runEvidence = { ...runEvidence, runStatus: event.status,
+          steps: event.state.steps.length, usage: event.state.usage,
+          ...(event.state.error ? { runDiagnostic: sanitizeOperationalError(event.state.error) } : {}) };
+      },
       resolveApprovals: async (batch) => batch.map((approval) => {
         const args = JSON.parse(approval.arguments);
         const edit = ["apply_reviewed_edits", "apply_patch"].includes(approval.name) &&
@@ -95,7 +124,7 @@ for (const selected of providers) for (const scenario of scenarios.filter(scenar
           ? { exitCode: (tool.output as Record<string, unknown>).exitCode } : {}) })),
       ...(result.error ? { runDiagnostic: sanitizeOperationalError(result.error) } : {}) };
     assert.equal(result.status, "completed");
-    phase = "verification";
+    transition("verification");
     const verification = await runPortableProcess(["bun", "test"], { cwd: root });
     assert.equal(verification.exitCode, 0, "Independent post-run tests must pass.");
     for (const [file, content] of Object.entries(originals)) {
@@ -106,10 +135,12 @@ for (const selected of providers) for (const scenario of scenarios.filter(scenar
     assert(result.toolResults.length, "Expected governed tool execution");
     rows.push({ provider, model, task: scenario.name, status: "passed", initialTestsFailed: true, finalTestsPassed: true,
       editedFiles: scenario.editable.length, approvals, steps: result.steps.length, elapsedMs: Date.now() - started,
-      ...runEvidence });
+      ...runEvidence, ...timings() });
   } catch (error) {
     failed = true;
+    const failurePhase = phase;
     if (phase !== "fixture") {
+      transition("failure-verification");
       const independent = await runPortableProcess(["bun", "test"], { cwd: root });
       let protectedFilesUnchanged = true;
       for (const [file, content] of Object.entries(protectedFiles)) {
@@ -118,7 +149,7 @@ for (const selected of providers) for (const scenario of scenarios.filter(scenar
       runEvidence = { ...runEvidence, independentTestsPassed: independent.exitCode === 0, protectedFilesUnchanged };
     }
     rows.push({ provider, model, task: scenario.name, status: "failed", approvals, elapsedMs: Date.now() - started,
-      phase, ...runEvidence, errorType: error instanceof Error ? error.name : "Error", diagnostic: sanitizeOperationalError(error) });
+      phase: failurePhase, ...runEvidence, ...timings(), errorType: error instanceof Error ? error.name : "Error", diagnostic: sanitizeOperationalError(error) });
     // No raw provider response, prompt, credential, or workspace path in shared output.
   } finally {
     await harness?.close();

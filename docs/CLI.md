@@ -518,10 +518,14 @@ IDs and input hashes are available through **View technical details**. Reviewed
 edits retain their complete payload. Cancelling the picker leaves the batch pending.
 `/verbose` retains the detailed event view; JSONL output retains its event contract.
 
-New local conversations default to 50 model iterations per turn. Explicit
+New local conversations, API runs, automation, and service runs default to a finite
+limit of 50 model iterations per turn. Explicit
 `--max-steps` and `ZHIVEX_HARNESS_MAX_STEPS` take precedence. Saved runs retain their
-limits; automation and service defaults remain 12. `/limits` opens a picker and
-`/limits 30` changes the limit for subsequent turns (1–50). Active runs and pending
+limits. `/limits` opens a picker and `/limits 100` sets the limit for subsequent
+turns. Step limits accept any positive safe integer, with no separate ceiling of 50.
+Explicit parent and child step/tool-call budgets can exceed the former configuration
+ceilings; defaults remain finite and tool calls still accept zero to prohibit calls.
+Active runs and pending
 approvals must be resolved first. More steps can increase API costs; other budgets
 still apply. A failed run reaching its step limit now shows the persisted cause
 and the current/maximum counts. Continue with a new message after adjusting the
@@ -537,7 +541,8 @@ in these progress summaries. Checks and errors retain their separate receipts.
 
 New local `chat` sessions default to 50 model steps, 200 tool calls, 20 tool
 errors and 60 minutes per run. Explicit CLI/environment limits and saved run
-policies take precedence; automation and service defaults are unchanged.
+policies take precedence. Automation and service share the 50-step default but
+retain their separate tool, token and time budgets.
 `/usage` shows all these ceilings separately from cumulative token usage.
 
 After an interrupted or failed turn, `/continue` starts a new run with retained

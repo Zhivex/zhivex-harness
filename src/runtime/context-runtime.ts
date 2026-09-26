@@ -8,8 +8,12 @@ import { harnessExecutionSession } from "../execution/execution-environment.js";
 
 export const SCOPED_CONTEXT_KEY = "zhivexScopedContext";
 /** Per invocation; only SDK-owned saves persist these observers. */
-export async function createContextRuntime(workspace: Workspace, metadata: Record<string, unknown>, enabled: boolean) {
+export async function createContextRuntime(workspace: Workspace, metadata: Record<string, unknown>, enabled: boolean,
+  options: { newUserRequest?: boolean } = {}) {
   const monitor = createProgressMonitor(metadata);
+  // A user asking again starts a new reasoning turn. Approval resumes and
+  // tool-only continuations keep their history, so retries cannot reset a loop.
+  if (options.newUserRequest) monitor.markProgress();
   let state = metadata[SCOPED_CONTEXT_KEY] === undefined ? createEmptyHarnessScopedContextState()
     : harnessScopedContextStateSchema.parse(metadata[SCOPED_CONTEXT_KEY]);
   let instructions = "";

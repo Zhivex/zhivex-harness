@@ -385,8 +385,8 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "--max-steps": {
         const value = optionValue(argv, index, argument);
         options.maxSteps = Number(value);
-        if (!Number.isSafeInteger(options.maxSteps) || options.maxSteps < 1 || options.maxSteps > 50) {
-          throw new CliUsageError("--max-steps must be an integer between 1 and 50.");
+        if (!Number.isSafeInteger(options.maxSteps) || options.maxSteps < 1) {
+          throw new CliUsageError("--max-steps must be a positive safe integer.");
         }
         index += 1;
         break;

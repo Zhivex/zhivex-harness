@@ -7,6 +7,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { createContextRuntime, SCOPED_CONTEXT_KEY } from "../src/runtime/context-runtime.js";
 import { wrapLanguageModel } from "@zhivex-ai/core";
+import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "../src/runtime/progress-monitor.js";
 
 test("runtime discovers guidance after a read and refreshes edited guidance on resume", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "scoped-runtime-"));
@@ -66,5 +67,42 @@ for (const commentary of [false, true]) test(`runtime stops repeated unchanged r
     try { const result = await runHarness(harness, { prompt: "inspect", maxSteps: 10 }); expect(result.status).toBe("failed"); }
     catch (error) { expect(String(error)).toContain("NO_PROGRESS"); }
     expect(calls).toBe(5);
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+test("six genuine user requests may reread the same file without inheriting a stalled turn", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "progress-user-turns-"));
+  await writeFile(path.join(root, "file.txt"), "unchanged");
+  let calls = 0;
+  const model = createMockLanguageModel();
+  model.stream = async () => {
+    const index = calls++;
+    return (async function* () {
+      if (index % 2 === 0) yield { type: "tool-call" as const, toolCall: { id: `read-${index}`, name: "read_file", input: { path: "file.txt" } } };
+      else yield { type: "text-delta" as const, textDelta: "Unchanged." };
+      yield { type: "finish" as const, finishReason: index % 2 === 0 ? "tool-calls" as const : "stop" as const, usage: { inputTokens: 1, outputTokens: 1 } };
+    })();
+  };
+  const harness = await createHarness({ workspace: root, provider: "openai", modelInstance: model,
+    subagentProfiles: [], store: createInMemoryAgentRunStore() });
+  try {
+    let metadata = {};
+    for (let turn = 0; turn < 6; turn++) {
+      const result = await runHarness(harness, { prompt: "Please reread file.txt now.", metadata });
+      expect(result.status).toBe("completed");
+      metadata = result.state.metadata ?? {};
+      expect((metadata as Record<string, { history: string[] }>)[PROGRESS_MONITOR_KEY]!.history).toHaveLength(1);
+    }
+    expect(calls).toBe(12);
+    const stalled = createProgressMonitor();
+    for (let index = 0; index < 5; index++) stalled.observeTool("read_file", { path: "file.txt" }, { content: "unchanged" });
+    const continuation = await createContextRuntime(harness.workspace, { [PROGRESS_MONITOR_KEY]: stalled.snapshot() }, true);
+    await expect(wrapLanguageModel(model, [continuation.middleware]).stream!({ messages: [] })).rejects.toThrow("NO_PROGRESS");
+    expect(calls).toBe(12);
+    await expect(runHarness(harness, { messages: [{ role: "assistant", parts: [{ type: "text", text: "Continue from the prior tool result." }] }],
+      metadata: { [PROGRESS_MONITOR_KEY]: stalled.snapshot() } })).rejects.toThrow("NO_PROGRESS");
+    await expect(runHarness(harness, { prompt: "[Compacted prior conversation]\n{}",
+      metadata: { [PROGRESS_MONITOR_KEY]: stalled.snapshot() } })).rejects.toThrow("NO_PROGRESS");
+    expect(calls).toBe(12);
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });

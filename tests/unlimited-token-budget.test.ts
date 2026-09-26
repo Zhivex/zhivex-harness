@@ -25,7 +25,7 @@ test("CLI, JSON resume and child policy preserve unlimited mode without disablin
   const restored = resolveHarnessConfig(readHarnessResumeConfig({ metadata }));
   expect(restored.budget.unlimitedTokens).toBe(true);
   expect(restored.orchestration.childBudget.unlimitedTokens).toBe(true);
-  expect(effectiveRuntimeBudget(restored.budget)).toEqual({ maxSteps: 12, maxToolCalls: 32, maxToolErrors: 4, includeChildRuns: true });
+  expect(effectiveRuntimeBudget(restored.budget)).toEqual({ maxSteps: 50, maxToolCalls: 32, maxToolErrors: 4, includeChildRuns: true });
   expect(childRuntimeSafety(restored).budget).not.toHaveProperty("maxInputTokens");
   expect(inspectRuntimeManifest(runtimeManifest(restored, []))?.budget.unlimitedTokens).toBe(true);
   expect(effectiveRuntimeBudget(resolveHarnessConfig({ unlimitedTokens: false }).budget)).toHaveProperty("maxInputTokens", 100000);

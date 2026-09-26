@@ -127,7 +127,7 @@ const createHarnessBinding = (
   fingerprint: `sha256:${createHash("sha256")
     .update(JSON.stringify({
       runtimePolicy: "assistant-recovery-v3-verified-delivery-v1",
-      contextRuntime: "adaptive-context-progress-v3",
+      contextRuntime: "adaptive-context-progress-v4-turn-local-history",
       readScheduler: "independent-local-reads-v1",
       requireVerifiedDelivery: config.requireVerifiedDelivery,
       configSchemaVersion: HARNESS_CONFIG_SCHEMA_VERSION,
@@ -1121,8 +1121,13 @@ const runHarnessInternal = async (
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
       instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
   }
+  const latestInputMessage = !("state" in input) ? input.messages?.at(-1) : undefined;
+  const isNewUserText = (text: string) => text.trim().length > 0 && !/^\[Compacted (?:conversation context|prior conversation)\]/.test(text.trimStart());
+  const newUserRequest = !("state" in input) && (Boolean(input.prompt && isNewUserText(input.prompt)) ||
+    (latestInputMessage?.role === "user" && latestInputMessage.parts.some(part => part.type === "text" &&
+      isNewUserText(part.text))));
   const contextRuntime = await createContextRuntime(harness.workspace,
-    structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled);
+    structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled, { newUserRequest });
   const contextStore = contextRuntime.store(harness.store, runId);
   const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
   harness = { ...harness, store: contextStore, agent: new Agent({
