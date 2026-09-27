@@ -2,13 +2,18 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
-## Prepared 1.2.0-rc.13 cohort
+## Prepared 1.2.0 cohort
 
-The unpublished candidate pins Meta `muse-spark-1.3-contributor`, Qwen `qwen3.8-flash` and
-OpenAI `gpt-6-luna` in both certification workflows and the representative matrix.
-All live gates and the 42 representative cases remain pending for its exact artifact.
-Historical certification does not transfer to this candidate. User-session defaults
-and saved model selections are unchanged.
+RC13 passed exact-artifact validation, all live gates, the complete 42-case
+representative matrix and publication in [workflow 36291748057](https://github.com/Zhivex/zhivex-harness/actions/runs/36291748057).
+Its npm `next` artifact, SHA-512 integrity and SLSA source/workflow provenance were
+independently verified against `v1.2.0-rc.13` at `d9b619e6c67ee831d246f9c0c08d0edc2143b584`.
+
+The stable 1.2.0 preparation changes release metadata and documentation only.
+It retains Meta `muse-spark-1.3-contributor`, Qwen `qwen3.8-flash` and OpenAI
+`gpt-6-luna`. Its protected workflow validates the stable artifact before
+publication to `latest`; RC evidence remains bound to the original RC artifact.
+User-session defaults and saved model selections are unchanged.
 
 ## What it proves
 

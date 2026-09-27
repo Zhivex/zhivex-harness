@@ -4,6 +4,14 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0 - 2026-09-27
+
+- Promote the code validated in 1.2.0-rc.13 to the stable release line, targeting npm `latest` through the protected GitHub Actions workflow.
+- Improve interactive CLI model/reasoning selection, activity reporting, task queues and recovery from rejected edits.
+- Preserve user direction and conversational context across compaction, with incremental SQLite history and bounded active checkpoints using Core 1.26.0 and Agents 1.10.1.
+- Retain governed approvals, isolated patch delivery and restart/backup recovery, including segmented exports for large histories.
+- Keep the Meta, Qwen and OpenAI certification cohort unchanged. Gemini remains provisional and Desktop remains a separate private alpha.
+
 ## 1.2.0-rc.13 - 2026-09-26
 
 - Store SQLite run history incrementally with published Core 1.26.0 and Agents 1.10.1. Keep the 4 MiB limit on the active checkpoint while retaining steps, tool results and compaction history separately; unchanged history is not rewritten.

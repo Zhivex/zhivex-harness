@@ -2,30 +2,23 @@
 
 `@zhivex-ai/harness@1.1.1` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## Next release candidate
+## Stable 1.2.0 preparation
 
-RC12 is published on npm `next` after its [protected release workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/36285136611) passed. RC10 failed its Qwen representative matrix;
-RC11 failed its OpenAI representative matrix before publication
-([run](https://github.com/Zhivex/zhivex-harness/actions/runs/36279274477)).
-Their tags and historical evidence remain unchanged.
+The source version is `1.2.0`, targeting npm `latest` through annotated tag `v1.2.0`
+and the protected GitHub Actions publication workflow. This preparation promotes
+the code from published RC13 without runtime changes. RC13 passed validation,
+live certification, all 42 representative cases and publication in
+[workflow 36291748057](https://github.com/Zhivex/zhivex-harness/actions/runs/36291748057).
 
-The source version is `1.2.0-rc.13`, targeting npm `next`. It stores durable history separately
-from the bounded active checkpoint using Core 1.26.0 and Agents 1.10.1, preserves
-portable backups and reports state-limit failures explicitly. Fresh exact-artifact, live and
-representative certification must pass before publication.
+The stable tag retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
+OpenAI `gpt-6-luna` in the release matrix. Core 1.26.0, Agents 1.10.1 and all
+provider dependencies remain pinned. Saved model selections remain unchanged.
 
-The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and OpenAI
-`gpt-6-luna`. Meta contributor is selected for release testing only. Saved selections and historical mappings remain unchanged.
-The `v1.2.0-rc.1` attempt stopped at Qwen representative evaluation before publication.
-RC2 and RC3 also stopped before publication. All three annotated tags and their
-failure evidence remain unchanged. The `v1.1.0` attempt
-failed at the Qwen representative approval gate; `v1.1.2` and `v1.1.3` failed at
-the Meta representative matrix, also before publication.
-
-`release-status.json` still describes the independently verified 1.0.0 publication
-and remains preserved during RC preparation. RC evidence is not substituted for
-certification of a stable artifact. SDK dependencies pin Core 1.26.0, Qwen 0.16.2, Agents
-1.10.1 and the coordinated stable provider batch.
+The stable workflow validates and publishes its own exact artifact. RC13 remains
+available under `next`; its immutable tag and release evidence are preserved.
+Earlier failed attempts remain historical failures. `release-status.json` still
+records the independently verified 1.0.0 publication until refreshed after stable
+publication; it must not be interpreted as 1.2.0 certification.
 
 ## Deterministic gates
 

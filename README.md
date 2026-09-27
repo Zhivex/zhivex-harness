@@ -11,12 +11,12 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
-Version `1.2.0-rc.13` is prepared as an unpublished release candidate for npm `next`,
-with incremental durable history and bounded active checkpoints for long conversations. Certification
-and publication remain pending. The
-[repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-preserves historical stable evidence. The installation commands below target
-1.2.0-rc.13 once published; stable users can install `@zhivex-ai/harness@latest`.
+Version `1.2.0` is prepared for stable publication to npm `latest`, based on
+published RC13 and its successful protected release workflow. It includes incremental
+durable history and bounded active checkpoints for long conversations. Stable
+publication remains pending; the installation commands below target 1.2.0 once
+published. The [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
+preserves historical stable evidence.
 Desktop retains its separate private alpha status.
 
 ## Quick start
@@ -24,7 +24,7 @@ Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.2.0-rc.13
+npm install -g @zhivex-ai/harness@1.2.0
 cd /path/to/your/project
 zhx
 ```
