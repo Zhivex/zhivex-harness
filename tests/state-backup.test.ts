@@ -1,3 +1,4 @@
+import { segmentedChunks } from "../src/persistence/state-backup-stream.js";
 import { Workspace } from "../src/workspace/workspace.js";
 import { openWorkspaceCheckpointStore } from "../src/persistence/workspace-checkpoints.js";
 import { afterEach, describe, expect, test } from "bun:test";
@@ -501,4 +502,39 @@ test("export refuses to silently omit orphan budget ledgers after their run is r
     await coordinator.settle("paid", { inputTokens: 1, outputTokens: 1, totalTokens: 2 });
     await expect(createHarnessStateBackup(source)).rejects.toThrow("unlinked shared budget ledger");
   } finally { persistence.close(); }
+});
+
+test("incremental history above 64 MiB exports and restores through the file transport", async () => {
+  const { root, source, target } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  const state = terminalState("large-history", source.scope);
+  const output = "é😀\"\\\n".repeat(7_000_000);
+  state.toolResults = [{ toolCallId: "large-read", toolName: "read_file", output, isError: false }];
+  try { await persistence.store.save(state); } finally { persistence.close(); }
+  const backupPath = path.join(root, "large-backup.json");
+  await exportHarnessStateBackup(source, backupPath);
+  expect((await lstat(backupPath)).size).toBeGreaterThan(64 * 1024 * 1024);
+  const bundle = await readHarnessStateBackup(backupPath);
+  expect(bundle.records.runs[0]!.state.toolResults).toEqual(state.toolResults);
+  await importHarnessStateBackup(target, bundle);
+  const restored = await openHarnessPersistence(target);
+  try {
+    const loaded = await restored.store.load(state.runId, state.scope);
+    expect(loaded!.toolResults).toEqual(state.toolResults);
+  } finally { restored.close(); }
+}, 180_000);
+
+
+test("segmented backups verify the logical checksum before restoration", async () => {
+  const { root, source } = await fixture();
+  const persistence = await openHarnessPersistence(source);
+  try { await persistence.store.save(terminalState("integrity-run", source.scope)); }
+  finally { persistence.close(); }
+  const bundle = await createHarnessStateBackup(source);
+  const file = path.join(root, "segmented");
+  await writeFile(file, [...segmentedChunks(bundle)].join(""), { mode: 0o600 });
+  expect(await readHarnessStateBackup(file)).toEqual(bundle);
+  bundle.records.runs[0]!.state.outputText = "tampered";
+  await writeFile(file, [...segmentedChunks(bundle)].join(""));
+  await expect(readHarnessStateBackup(file)).rejects.toThrow("checksum");
 });
