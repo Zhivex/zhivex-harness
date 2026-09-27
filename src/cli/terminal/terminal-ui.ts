@@ -283,6 +283,8 @@ export const terminalRunFailure = (error: unknown): string => {
   }
   const streamOverflow = /^Stream replay buffer exceeded its limit of (\d+) events\.$/.exec(message);
   if (streamOverflow) return `event replay limit reached · ${streamOverflow[1]} events`;
+  const stateOverflow = /^Agent run state is (\d+) bytes and exceeds maxStateBytes=(\d+)\. Offload large tool outputs to artifacts or raise the explicit limit\.$/.exec(message);
+  if (stateOverflow) return `durable state limit reached · ${stateOverflow[1]} / ${stateOverflow[2]} bytes · inspect /status before /continue`;
   if (/^Tool is not registered \(sha256:[a-f0-9]{64}\)\.$/.test(message)) {
     return "requested tool is not registered · use an available tool with its exact name";
   }

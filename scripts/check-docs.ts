@@ -149,8 +149,8 @@ const providerConfig = `${await readFile(path.join(workspace, "src", "runtime", 
 }`;
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
-  "@zhivex-ai/agents": "1.10.0",
-  "@zhivex-ai/core": "1.25.0",
+  "@zhivex-ai/agents": "1.10.1",
+  "@zhivex-ai/core": "1.26.0",
   "@zhivex-ai/gemini": "0.12.3",
   "@zhivex-ai/meta": "0.2.8",
   "@zhivex-ai/openai": "0.13.6",

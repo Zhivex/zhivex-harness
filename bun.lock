@@ -5,8 +5,8 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.10.0",
-        "@zhivex-ai/core": "1.25.0",
+        "@zhivex-ai/agents": "1.10.1",
+        "@zhivex-ai/core": "1.26.0",
         "@zhivex-ai/gemini": "0.12.3",
         "@zhivex-ai/meta": "0.2.8",
         "@zhivex-ai/openai": "0.13.6",
@@ -26,7 +26,7 @@
     },
   },
   "overrides": {
-    "@zhivex-ai/core": "1.25.0",
+    "@zhivex-ai/core": "1.26.0",
   },
   "packages": {
     "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
@@ -103,9 +103,9 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.10.0", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0" } }, "sha512-0OrRzrt5hI4Af4EHN4+E1UnmU4/P0o+XZMzbPHNwrvHKf6ER0Rn+oXGMg+bIXCe0O/ZHMzMuoDnsI7eb2ubzjw=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.10.1", "", { "dependencies": { "@zhivex-ai/core": "^1.26.0" } }, "sha512-v3SdGHnqayNmW8mn64jVyA1tveUmb7UshP9e9swBjT6G+VXCZ0FbqvLmIKeP4N+NXAc0X/QeQjIqGhqFvZ3AMg=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.25.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-DG5vL7M2Vt0s+Ngt4kUzkHvtGEB1eRYaaov/ai6mCNbck5GcNPtheKwAZHtBseYLHFZSu3pc+7pMBZ/JKHqA9w=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.26.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-Kk9BZQEhRnXM0l3IoJll+X/Ouc/mU1rI+JHlbrmPsXrgcssc4wf+e5DJ5CejAnpcNQs3KmATLIV5EW65yp3yvA=="],
 
     "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.12.3", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-l1CRgsEqfMNAALtTM7u7Dmac5yrunJ1s96qTT2H9bOcc/FvpoioMvm1j3DejUWsWQ/FT1YE4UDdaHqE0i9fQmQ=="],
 

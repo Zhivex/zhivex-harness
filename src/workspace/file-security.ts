@@ -153,3 +153,26 @@ export const readRegularFileNoFollow = async (
     await handle.close();
   }
 };
+
+/** Descriptor-bound bounded reads; identity is revalidated before successful EOF. */
+export async function* readRegularFileChunksNoFollow(target: string, options: {
+  label: string; requireSingleLink?: boolean; requirePrivate?: boolean;
+}): AsyncGenerator<Buffer> {
+  const handle = await openRegularFileNoFollow(target, options.label);
+  try {
+    const before = await handle.stat();
+    if (!before.isFile() || (options.requireSingleLink && before.nlink !== 1)) throw invalidFileError(options.label);
+    if (options.requirePrivate && (before.mode & 0o077) !== 0) throw new Error(`${options.label} permissions must not grant group or other access.`);
+    let offset = 0;
+    while (offset < before.size) {
+      const buffer = Buffer.allocUnsafe(Math.min(64 * 1024, before.size - offset));
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, offset);
+      if (!bytesRead) throw new FileChangedWhileReadingError(options.label);
+      offset += bytesRead;
+      yield buffer.subarray(0, bytesRead);
+    }
+    const probe = Buffer.allocUnsafe(1);
+    const { bytesRead } = await handle.read(probe, 0, 1, offset);
+    if (bytesRead || !sameOpenFile(before, await handle.stat())) throw new FileChangedWhileReadingError(options.label);
+  } finally { await handle.close(); }
+}

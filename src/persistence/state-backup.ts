@@ -1,3 +1,4 @@
+import { canonicalChunks, segmentedChunks, readBackupTransport } from "./state-backup-stream.js";
 import { workspaceCheckpointSchema, workspaceRestoreOperationSchema } from "./workspace-checkpoints.js";
 import { createHash, randomUUID } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
@@ -6,11 +7,11 @@ import path from "node:path";
 
 import { z } from "zod";
 import { normalizeAgentRunState, type AgentRunState } from "@zhivex-ai/agents";
+import { createSqliteAgentRunStore } from "@zhivex-ai/agents/ops";
 
 import type { HarnessConfig } from "../runtime/config.js";
 import { HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/errors.js";
-import { readRegularFileNoFollow } from "../workspace/file-security.js";
-import { HARNESS_OPERATIONS_SCHEMA_VERSION, HARNESS_SQLITE_FILE, openHarnessPersistence } from "./operations.js";
+import { HARNESS_OPERATIONS_SCHEMA_VERSION, HARNESS_SQLITE_FILE, openHarnessPersistence, sqliteAdapter } from "./operations.js";
 import { HARNESS_SESSION_SCHEMA_VERSION, openCliSessionStore } from "./sessions.js";
 import { SqliteDatabase } from "./sqlite-database.js";
 import type { SqliteAccessLease } from "./sqlite-access.js";
@@ -158,8 +159,11 @@ const canonicalJson = (value: unknown): string => {
     .join(",")}}`;
 };
 
-const checksumPayload = (payload: HarnessStateBackupPayload) =>
-  `sha256:${createHash("sha256").update(canonicalJson(payload)).digest("hex")}`;
+const checksumPayload = (payload: HarnessStateBackupPayload) => {
+  const hash = createHash("sha256");
+  for (const chunk of canonicalChunks(payload)) hash.update(chunk);
+  return `sha256:${hash.digest("hex")}`;
+};
 
 const stableKey = (kind: string, value: string) =>
   createHash("sha256").update(kind).update("\u0000").update(value).digest("hex");
@@ -332,8 +336,17 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
     const allRunRows = database.query<RunRow, []>(
       "SELECT run_id, state_json, updated_at_ms FROM zhivex_agent_runs ORDER BY run_id"
     ).all();
+    let historyReader: ReturnType<typeof createSqliteAgentRunStore> | undefined;
     const runRows = allRunRows.flatMap((row) => {
-      const state = validatedRunState(parseJsonRecord(row.state_json, `Run ${row.run_id}`), `Run ${row.run_id}`);
+      const record = parseJsonRecord(row.state_json, `Run ${row.run_id}`);
+      // Export a self-contained legacy-compatible state, never dangling history
+      // pointers. The source transaction gives history and checkpoint one snapshot.
+      const hydrated = record.checkpointHistory
+        ? (historyReader ??= createSqliteAgentRunStore({ db: sqliteAdapter(database), history: "incremental" }))
+          .load(String(record.runId), record.scope as AgentRunState["scope"])
+        : record;
+      if (hydrated instanceof Promise || !hydrated) throw new HarnessStateConflictError("Cannot hydrate state backup history.");
+      const state = validatedRunState(hydrated as unknown as Record<string, unknown>, `Run ${row.run_id}`);
       return stateMatchesScope(config, state) ? [{ row, state }] : [];
     });
     const runs = runRows.map(({ row, state }) => {
@@ -474,7 +487,7 @@ export const createArchivedHarnessStateBackup = async (config: HarnessConfig, op
   return stateBackupBundleSchema.parse({...payload, checksum: checksumPayload(payload)});
 };
 
-const writePrivateBackup = async (target: string, contents: string) => {
+const writePrivateBackup = async (target: string, contents: Iterable<string>) => {
   const requested = path.resolve(target);
   const parent = path.dirname(requested);
   let parentHandle;
@@ -500,7 +513,17 @@ const writePrivateBackup = async (target: string, contents: string) => {
       0o600
     );
     stagedExists = true;
-    await handle.writeFile(contents, "utf8");
+    let pending: string[] = [];
+    let pendingBytes = 0;
+    for (const chunk of contents) {
+      pending.push(chunk);
+      pendingBytes += Buffer.byteLength(chunk);
+      if (pendingBytes >= 64 * 1024) {
+        await handle.writeFile(pending.join(""), "utf8");
+        pending = []; pendingBytes = 0;
+      }
+    }
+    if (pending.length) await handle.writeFile(pending.join(""), "utf8");
     await handle.sync();
     await chmod(staged, 0o600);
     await handle.close();
@@ -524,11 +547,13 @@ const writePrivateBackup = async (target: string, contents: string) => {
 
 export const exportHarnessStateBackup = async (config: HarnessConfig, target: string) => {
   const bundle = await createHarnessStateBackup(config);
-  const serialized = `${JSON.stringify(bundle, null, 2)}\n`;
-  if (Buffer.byteLength(serialized) > HARNESS_STATE_BACKUP_MAX_BYTES) {
-    throw new HarnessStateConflictError("State backup exceeds the supported size limit.");
+  let bytes = 0;
+  for (const chunk of canonicalChunks(bundle)) {
+    bytes += Buffer.byteLength(chunk);
+    if (bytes > HARNESS_STATE_BACKUP_MAX_BYTES) break;
   }
-  await writePrivateBackup(target, serialized);
+  await writePrivateBackup(target, bytes > HARNESS_STATE_BACKUP_MAX_BYTES
+    ? segmentedChunks(bundle) : canonicalChunks(bundle));
   return {
     schemaVersion: HARNESS_STATE_BACKUP_SCHEMA_VERSION,
     kind: "state-export" as const,
@@ -539,19 +564,14 @@ export const exportHarnessStateBackup = async (config: HarnessConfig, target: st
 };
 
 export const readHarnessStateBackup = async (source: string): Promise<HarnessStateBackupBundle> => {
-  const { contents, stat } = await readRegularFileNoFollow(path.resolve(source), {
-    label: "Harness state backup",
-    maxBytes: HARNESS_STATE_BACKUP_MAX_BYTES,
-    requireSingleLink: true
-  });
-  if ((stat.mode & 0o077) !== 0) {
-    throw new HarnessWorkspaceError("Harness state backup permissions must not grant group or other access.");
-  }
   let input: unknown;
   try {
-    input = JSON.parse(contents.toString("utf8"));
+    input = await readBackupTransport(path.resolve(source), HARNESS_STATE_BACKUP_MAX_BYTES);
   } catch (error) {
-    throw new HarnessStateConflictError("Harness state backup is not valid JSON.", { cause: error });
+    if (error instanceof SyntaxError) {
+      throw new HarnessStateConflictError("Harness state backup is not valid JSON.", { cause: error });
+    }
+    throw error;
   }
   return validateStateBackupBundle(input);
 };

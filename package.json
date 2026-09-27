@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.2.0-rc.12",
+  "version": "1.2.0-rc.13",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -146,8 +146,8 @@
     "release:prepare": "bun run scripts/prepare-release.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.10.0",
-    "@zhivex-ai/core": "1.25.0",
+    "@zhivex-ai/agents": "1.10.1",
+    "@zhivex-ai/core": "1.26.0",
     "@zhivex-ai/gemini": "0.12.3",
     "@zhivex-ai/meta": "0.2.8",
     "@zhivex-ai/openai": "0.13.6",
@@ -155,7 +155,7 @@
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.25.0"
+    "@zhivex-ai/core": "1.26.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/server": "2.0.0",

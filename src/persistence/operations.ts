@@ -458,7 +458,7 @@ const shouldMigrateLegacyRuns = (
   config.scope.namespace === defaultHarnessNamespace(config.workspace)
 );
 
-const sqliteAdapter = (database: SqliteDatabase): SqliteDatabaseLike => ({
+export const sqliteAdapter = (database: SqliteDatabase): SqliteDatabaseLike => ({
   exec(sql) {
     return database.exec(sql);
   },
@@ -612,7 +612,7 @@ export const openHarnessPersistence = async (
 
     const databaseLike = sqliteAdapter(database);
     const store = withBudgetLedgerStore(
-      createSqliteAgentRunStore({ db: databaseLike, scope: config.scope }),
+      createSqliteAgentRunStore({ db: databaseLike, scope: config.scope, history: "incremental" }),
       createSqliteAgentRunStore({ db: databaseLike, scope: budgetScopeFor(config) }), config);
     const memory = createSqliteAgentMemoryStore({ db: databaseLike, scope: config.scope });
     const migration = shouldMigrateLegacyRuns(config, options.migrateLegacyFileStore)
