@@ -785,6 +785,11 @@ console.log("INSTALLED_HARNESS_SMOKE_OK");
   const installedSmoke = await run(["node", installedSmokePath], { cwd: consumer });
   assert(installedSmoke.stdout.includes("INSTALLED_HARNESS_SMOKE_OK"));
 
+  const releaseContractsPath = path.join(consumer, "installed-release-contracts.mjs");
+  await writeFile(releaseContractsPath, await readFile(path.join(workspace, "scripts/installed-release-contracts.mjs")));
+  const releaseContracts = await run(["node", releaseContractsPath], { cwd: consumer });
+  assert(releaseContracts.stdout.includes("INSTALLED_RELEASE_CONTRACTS_OK"));
+
   const bunImport = await run([
     "bun",
     "-e",

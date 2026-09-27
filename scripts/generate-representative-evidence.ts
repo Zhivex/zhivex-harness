@@ -16,7 +16,8 @@ import {
 } from "./assemble-representative-evidence.js";
 
 export const REPRESENTATIVE_DATASET_NAME = "zhivex-representative-repositories" as const;
-export const REPRESENTATIVE_DATASET_REVISION = "representative-repositories-v1" as const;
+export const GA_REPRESENTATIVE_DATASET_REVISION = "representative-repositories-v1" as const;
+export const REPRESENTATIVE_DATASET_REVISION = "representative-repositories-v2" as const;
 
 const MAX_REPORT_BYTES = 100 * 1024 * 1024;
 const DEFAULT_ASSEMBLY_MATRIX_PATH = fileURLToPath(

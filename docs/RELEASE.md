@@ -4,19 +4,15 @@
 
 ## Next release candidate
 
-RC9 is published on npm `next`; its protected release [run](https://github.com/Zhivex/zhivex-harness/actions/runs/36258148510) succeeded. RC10 failed its Qwen representative matrix before publication ([run](https://github.com/Zhivex/zhivex-harness/actions/runs/36272851509)); its tag and evidence remain unchanged. RC11 requires fresh exact-artifact certification after incorporating Qwen 0.16.2 and Core 1.25.0.
+RC9 is published on npm `next`. RC10 failed its Qwen representative matrix;
+RC11 failed its OpenAI representative matrix before publication
+([run](https://github.com/Zhivex/zhivex-harness/actions/runs/36279274477)).
+Their tags and historical evidence remain unchanged.
 
-RC5 was published to npm `next` with exact-artifact integrity and provenance verified. Its historical matrix retains Meta `muse-spark-1.3`; RC6, RC7 and RC8 use the merged `muse-spark-1.3-contributor` certification selection.
-
-The source version is `1.2.0-rc.11`, targeting npm `next` after fresh certification.
-It adds bounded edit retries, locally authoritative Qwen context, model reasoning
-controls, featured model selection, applied-file receipts, activity history and
-queued tasks isolated from approval answers. The removal of `agentProfile` is an
-intentional pre-promotion API/CLI break; verified delivery remains independently
-configurable. All required gates must pass against this new artifact before
-publication. RC4 passed the exact-artifact build and live certification but failed
-the representative repository matrix; npm publication was skipped. Its immutable
-tag and failure evidence are preserved and do not certify RC5.
+The source version is `1.2.0-rc.12`, targeting npm `next`. It preserves optional
+OpenAI Responses edit/retry fields and strengthens installed-package contracts
+and representative functional fixtures (v2). Fresh exact-artifact, live and
+representative certification must pass before publication.
 
 The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and OpenAI
 `gpt-6-luna`. Meta contributor is selected for release testing only. Saved selections and historical mappings remain unchanged.

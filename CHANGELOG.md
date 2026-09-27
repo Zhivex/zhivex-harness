@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.12 - 2026-09-26
+
+- Preserve optional edit/retry fields in OpenAI Responses tool schemas; keep runtime validation, read-bound digests and approval checks unchanged.
+
+- Strengthen release validation with representative fixtures v2, structural workflow checks and installed-runtime regressions; preserve historical evidence and publication gates.
+
 ## 1.2.0-rc.11 - 2026-09-26
 
 - Consume Qwen 0.16.2 with Core 1.25.0, retaining typed malformed tool-argument and SSE-event diagnostics through benchmark and release reports without exposing provider payloads or adding automatic retries.

@@ -4,6 +4,18 @@ import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, test } from "bun:test";
+import { REPRESENTATIVE_DATASET_NAME, REPRESENTATIVE_DATASET_REVISION } from "../scripts/generate-representative-evidence.js";
+
+type WorkflowStep = { id?: string; name?: string; run?: string; if?: string; env?: Record<string, string>; with?: Record<string, unknown>; uses?: string };
+type Workflow = { jobs: Record<string, { needs?: string | string[]; if?: string; env: Record<string, string>; steps: WorkflowStep[] }> };
+const readWorkflow = async (name: string) => Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows", name), "utf8")) as Workflow;
+const candidateModels = async () => {
+  const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8"));
+  const matrix = JSON.parse(await readFile(path.join(workspace, "evaluations/representative-assembly-matrix.json"), "utf8"));
+  const entry = matrix.expectedModels.find((row: { releaseTag: string }) => row.releaseTag === `v${manifest.version}`);
+  expect(entry).toBeDefined();
+  return entry.models as Record<string, string>;
+};
 
 const workspace = path.resolve(import.meta.dir, "..");
 const workflowPaths = [
@@ -127,36 +139,40 @@ describe("release workflow version source", () => {
     expect(readiness).toContain('["bun", "run", "readiness:1.0:release"]');
   });
 
-  test("publication requires complete sanitized representative evidence", async () => {
-    const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
-
-    expect(workflow).toContain("representative-evaluation:");
-    expect(workflow).toContain("- representative-evaluation");
-    expect(workflow).toContain("needs.representative-evaluation.result == 'success'");
-    expect(workflow).toContain("evaluations/representative-repositories.jsonl");
-    expect(workflow).toContain("--tasks 7 --repetitions 1 --profiles governed --carriers rule_file");
-    expect(workflow).toContain("--provider meta --model muse-spark-1.3-contributor");
-    expect(workflow).toContain("--provider qwen --model qwen3.8-flash");
-    expect(workflow).toContain("--provider openai --model gpt-6-luna");
-    expect(workflow).toContain("scripts/assemble-representative-evidence.ts");
-    expect(workflow).toContain("path: release-artifacts/representative-evidence-*.json");
-    expect(workflow).toContain("--diagnostics-out release-artifacts/representative-diagnostics/");
-    expect(workflow).toContain("name: representative-diagnostics-${{ github.sha }}-${{ github.run_attempt }}");
-    expect(workflow).toContain("path: release-artifacts/representative-diagnostics/*.json");
-    expect(workflow).toContain("if: ${{ always() }}");
-    expect(workflow).toContain("WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}");
-    expect(workflow).toContain("id: representative_meta");
-    expect(workflow).toContain("id: representative_qwen");
-    expect(workflow).toContain("id: representative_openai");
-    expect(workflow).toContain("steps.representative_meta.outcome == 'success'");
-    expect(workflow).toContain("steps.representative_qwen.outcome == 'success'");
-    expect(workflow).toContain("steps.representative_openai.outcome == 'success'");
-    expect(workflow).toContain("scripts/release-diagnostics.ts");
-    expect(workflow).toContain("--diagnostics-dir release-artifacts/representative-diagnostics");
-    expect(workflow).toContain('--gate "meta=${{ steps.representative_meta.outcome }}"');
-    expect(workflow).toContain('--gate "qwen=${{ steps.representative_qwen.outcome }}"');
-    expect(workflow).toContain('--gate "openai=${{ steps.representative_openai.outcome }}"');
-    expect(workflow).not.toContain("path: release-artifacts/representative-raw");
+  test("publication requires complete artifact-bound representative evidence", async () => {
+    const workflow = await readWorkflow("release.yml");
+    const publication = workflow.jobs.publish!;
+    expect(publication.needs).toEqual(["validate", "certify-live", "representative-evaluation"]);
+    for (const gate of publication.needs!) expect(publication.if).toContain(`needs.${gate}.result == 'success'`);
+    const representative = workflow.jobs["representative-evaluation"]!;
+    expect(representative.needs).toEqual(["validate", "certify-live"]);
+    expect(representative.env.REPRESENTATIVE_DATASET_NAME).toBe(REPRESENTATIVE_DATASET_NAME);
+    expect(representative.env.REPRESENTATIVE_DATASET_REVISION).toBe(REPRESENTATIVE_DATASET_REVISION);
+    const tasks = (await readFile(path.join(workspace, representative.env.REPRESENTATIVE_DATASET!), "utf8"))
+      .trim().split("\n").map(line => JSON.parse(line));
+    const matrix = JSON.parse(await readFile(path.join(workspace, "evaluations/representative-assembly-matrix.json"), "utf8"));
+    expect([...new Set(matrix.expectedCases.map((row: { scenarioId: string }) => row.scenarioId))].sort())
+      .toEqual(tasks.map(task => task.task_id).sort());
+    const assembly = representative.steps.find(step => step.id === "representative_assembly")!;
+    expect(assembly.run).toContain("scripts/assemble-representative-evidence.ts");
+    const enforce = representative.steps.find(step => step.run?.includes("--diagnostics-dir release-artifacts/representative-diagnostics"))!;
+    expect(enforce.if).toBe("${{ always() }}");
+    for (const [provider, model] of Object.entries(await candidateModels())) {
+      const id = `representative_${provider}`;
+      const evaluation = representative.steps.find(step => step.id === id)!;
+      expect(evaluation).toBeDefined();
+      expect(evaluation.if).toBeUndefined();
+      expect(evaluation.run).toMatch(new RegExp(`--tasks\\s+${tasks.length}\\b`));
+      expect(evaluation.run).toContain("--profiles governed --carriers rule_file");
+      expect(evaluation.run).toContain(`--provider ${provider} --model ${model}`);
+      expect(evaluation.run).toContain(`--diagnostics-out release-artifacts/representative-diagnostics/${provider}.json`);
+      expect(assembly.if).toContain(`steps.${id}.outcome == 'success'`);
+      expect(enforce.run).toContain(`--gate "${provider}=\${{ steps.${id}.outcome }}"`);
+    }
+    const uploads = representative.steps.filter(step => step.uses?.startsWith("actions/upload-artifact@"));
+    expect(uploads.some(step => step.with?.path === "release-artifacts/representative-evidence-*.json")).toBe(true);
+    expect(uploads.some(step => step.with?.path === "release-artifacts/representative-diagnostics/*.json" && step.if === "${{ always() }}")).toBe(true);
+    expect(uploads.some(step => String(step.with?.path).includes("representative-raw"))).toBe(false);
   });
 
   for (const workflowPath of workflowPaths) {
@@ -301,14 +317,13 @@ test("registry summary distinguishes verification, accepted bytes and uncertain 
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
-test("standalone and release live gates certify the same candidate cohort", async () => {
-  const release = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8")) as any;
-  const standalone = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/live-certification.yml"), "utf8")) as any;
-  for (const [provider, model] of Object.entries({META: "muse-spark-1.3-contributor", QWEN: "qwen3.8-flash", OPENAI: "gpt-6-luna"})) {
-    const key = `ZHIVEX_HARNESS_LIVE_${provider}_MODEL`;
-    expect(release.jobs["certify-live"].env[key]).toBe(model);
-    expect(standalone.jobs.certify.env[key]).toBe(model);
-    for (const job of [release.jobs["certify-live"], standalone.jobs.certify]) {
+test("standalone and release live gates certify the declared candidate cohort", async () => {
+  const release = await readWorkflow("release.yml");
+  const standalone = await readWorkflow("live-certification.yml");
+  for (const [provider, model] of Object.entries(await candidateModels())) {
+    const key = `ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`;
+    for (const job of [release.jobs["certify-live"]!, standalone.jobs.certify!]) {
+      expect(job.env[key]).toBe(model);
       for (const step of job.steps) expect(step.env?.[key]).toBeUndefined();
     }
   }
