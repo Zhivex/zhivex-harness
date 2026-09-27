@@ -24,6 +24,29 @@ const workflowPaths = [
 ] as const;
 
 describe("release workflow version source", () => {
+  test("actual release readiness accepts the candidate workflow and dataset", async () => {
+    const child = Bun.spawn([process.execPath, "run", "scripts/check-release-readiness.ts"], {
+      cwd: workspace,
+      // Exercise local checks in PR CI without claiming this checkout is main.
+      env: { ...process.env, GITHUB_ACTIONS: "false" },
+      stdin: "ignore", stdout: "pipe", stderr: "pipe"
+    });
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited
+    ]);
+    if (code === 0) {
+      expect(stdout).toContain("Release readiness passed");
+      return;
+    }
+    expect(stderr).toContain("Release readiness check failed:");
+    const failures = stderr.split("\n").filter(line => line.startsWith("- "));
+    expect(failures.length).toBeGreaterThan(0);
+    // A contributor checkout may be dirty or on a branch; every metadata and
+    // workflow contract must still pass before reaching the protected release.
+    expect(failures.filter(line => line !== "- Git worktree is not clean" &&
+      !line.startsWith("- release checks must run from main, not "))).toEqual([]);
+  });
+
   test("release stops remaining paid gates while preserving aggregate enforcement and diagnostics", async () => {
     const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
     expect(workflow).not.toContain("continue-on-error:");

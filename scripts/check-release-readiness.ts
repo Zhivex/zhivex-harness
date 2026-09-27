@@ -237,7 +237,7 @@ for (const required of [
   "bun run smoke:live:execution",
   "representative-evaluation:",
   "needs.representative-evaluation.result == 'success'",
-  "evaluations/representative-repositories.jsonl",
+  "evaluations/representative-repositories-v2.jsonl",
   "scripts/generate-representative-evidence.ts",
   "scripts/assemble-representative-evidence.ts",
   "path: release-artifacts/representative-evidence-*.json"
