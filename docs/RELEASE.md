@@ -4,14 +4,14 @@
 
 ## Next release candidate
 
-RC9 is published on npm `next`. RC10 failed its Qwen representative matrix;
+RC12 is published on npm `next` after its [protected release workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/36285136611) passed. RC10 failed its Qwen representative matrix;
 RC11 failed its OpenAI representative matrix before publication
 ([run](https://github.com/Zhivex/zhivex-harness/actions/runs/36279274477)).
 Their tags and historical evidence remain unchanged.
 
-The source version is `1.2.0-rc.12`, targeting npm `next`. It preserves optional
-OpenAI Responses edit/retry fields and strengthens installed-package contracts
-and representative functional fixtures (v2). Fresh exact-artifact, live and
+The source version is `1.2.0-rc.13`, targeting npm `next`. It stores durable history separately
+from the bounded active checkpoint using Core 1.26.0 and Agents 1.10.1, preserves
+portable backups and reports state-limit failures explicitly. Fresh exact-artifact, live and
 representative certification must pass before publication.
 
 The candidate matrix selects Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and OpenAI
@@ -24,8 +24,8 @@ the Meta representative matrix, also before publication.
 
 `release-status.json` still describes the independently verified 1.0.0 publication
 and remains preserved during RC preparation. RC evidence is not substituted for
-certification of a stable artifact. SDK dependencies pin Core 1.25.0, Qwen 0.16.2, Agents
-1.10.0 and the coordinated stable provider batch.
+certification of a stable artifact. SDK dependencies pin Core 1.26.0, Qwen 0.16.2, Agents
+1.10.1 and the coordinated stable provider batch.
 
 ## Deterministic gates
 

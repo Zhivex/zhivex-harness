@@ -64,6 +64,14 @@ zhx sessions archive <sessionId>
 
 The store uses SQLite WAL transactions, optimistic revisions, workspace/scope hashes, owner-only permissions, soft deletion/retention, and bounded session/run/metadata/index sizes. It rejects a new run while the latest session run is active or waiting for approval. Fork and archive operations also require a terminal branch point.
 
+SQLite runs store steps, tool results and compaction records separately from the active checkpoint. Large repeated text is retained in per-run content-addressed artifacts. Checkpoint and history changes commit in the same transaction; unchanged historical records are not rewritten. The 4 MiB state limit applies to the active checkpoint, including current messages, approvals, metadata and counters. Conversation compaction still controls model input size independently.
+
+Loading a run reconstructs its complete state for compatibility with approvals, recovery and verification. Programmatic history inspection can use `store.loadHistory(runId, { field: "toolResults", offset: 0, limit: 50 }, scope)` to read a page. Full hydrated states and total disk usage can grow with the run; run retention remains necessary. File and in-memory stores retain the full-state size limit.
+
+Logical backups contain hydrated history rather than database references, so restoration does not require the original artifact tables. A state-limit failure records a bounded terminal diagnostic on the last durable checkpoint; the unsaved payload is not claimed as preserved. Use `/status` to inspect the failed run before `/continue`. Recovery retains tool journal receipts and never re-executes an operation itself.
+
+Incremental SQLite history uses the published Core 1.26.0 and Agents 1.10.1 packages. No local dependency patch is required. Install this checkout with `bun install --frozen-lockfile`.
+
 ## Provider handoff safety
 
 Every console turn preallocates a new run ID and binds it permanently to one provider/model. Provider or model changes take effect only on the next run and are blocked while an approval is pending. Before transferring context to another provider/model, the console creates a bounded deterministic redacted summary: text is truncated and common credentials are removed, while tool inputs, outputs, and provider payloads are replaced by tool/type names.

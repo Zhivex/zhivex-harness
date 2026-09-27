@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.2.0-rc.13 - 2026-09-26
+
+- Store SQLite run history incrementally with published Core 1.26.0 and Agents 1.10.1. Keep the 4 MiB limit on the active checkpoint while retaining steps, tool results and compaction history separately; unchanged history is not rewritten.
+- Preserve full history through reopen and portable backup/restore, including legacy inline states. Report state-limit failures with bounded diagnostics and retain the SDK terminal failure checkpoint.
+- Add a 200-read, 99-compaction regression covering more than 11 MB of hydrated history with a checkpoint below 48 KB. Full hydrated loads and disk retention remain proportional to history size.
+- Prepare fresh exact-artifact, live and representative certification for RC13; RC12 publication evidence remains historical.
+
 ## 1.2.0-rc.12 - 2026-09-26
 
 - Preserve optional edit/retry fields in OpenAI Responses tool schemas; keep runtime validation, read-bound digests and approval checks unchanged.
