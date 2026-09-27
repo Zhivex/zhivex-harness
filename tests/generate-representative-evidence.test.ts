@@ -173,6 +173,7 @@ describe("representative evidence generator", () => {
     for (const [field, value] of [
       ["name", "other-dataset"],
       ["revision", "moving-latest"],
+      ["revision", "representative-repositories-v1"],
       ["tasks", 6]
     ] as const) {
       const drifted = clone(fullReport()) as unknown as Record<string, unknown>;
@@ -240,7 +241,7 @@ describe("representative evidence generator", () => {
   });
 
   test("ships seven autonomous driver-compatible tasks with matching case/task IDs", async () => {
-    const datasetPath = path.join(import.meta.dir, "..", "evaluations", "representative-repositories.jsonl");
+    const datasetPath = path.join(import.meta.dir, "..", "evaluations", "representative-repositories-v2.jsonl");
     const lines = (await readFile(datasetPath, "utf8")).trim().split(/\r?\n/);
     const tasks = lines.map((line) => timeToSafeFixTaskSchema.parse(JSON.parse(line)));
 

@@ -101,6 +101,15 @@ export const createModelEditReferences = (registered: ToolSet, failedCalls: Tool
       }
       active.add(name);
       visible[name] = { ...tools[name]!, schema: publicSchema,
+        // Responses otherwise promotes optional fields into required fields.
+        // Fresh edits and retained-candidate retries intentionally have different
+        // required inputs; the execution schema still validates the bound call.
+        ...((edits.has(name) || name === replacement) ? { metadata: {
+          ...tools[name]!.metadata,
+          "openai.responses_function_config": {
+            ...object(tools[name]!.metadata?.["openai.responses_function_config"]), strict: false
+          }
+        } } : {}),
         description: imports.has(name)
           ? "Request approval to import the last successfully inspected OCI patch. Call inspect_environment_patch first in a preceding turn. The runtime binds the exact inspected snapshot; changes after inspection or approval are rejected. " + (name.startsWith("verify_") ? "Run the exact allowlisted command and args before importing; verification must succeed without changing the patch." : "")
           : "Request approval for these exact edits. Read every existing target first with read_file or read_files in a preceding turn. The runtime binds the digest from that read and rejects stale files. " + (name === replacement ? "Replace exactly one literal oldText with newText; include enough context to make oldText unique." : "Supply full content per file; set create=true only for a new file. ") + (name.startsWith("verify_") ? "Run the exact command and args and import only after successful verification." : "") };

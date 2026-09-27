@@ -27,7 +27,7 @@ import {
 } from "./assemble-representative-evidence.js";
 import {
   REPRESENTATIVE_DATASET_NAME,
-  REPRESENTATIVE_DATASET_REVISION
+  GA_REPRESENTATIVE_DATASET_REVISION
 } from "./generate-representative-evidence.js";
 import {
   GA_REPRESENTATIVE_EVALUATION_PROVIDERS,
@@ -317,7 +317,7 @@ if (evaluations.schemaVersion !== 2 ||
   failures.push("representative evaluation matrix must use schema 2 and the certified provider cohort");
 }
 if (evaluationDataset?.name !== REPRESENTATIVE_DATASET_NAME ||
-  evaluationDataset?.revision !== REPRESENTATIVE_DATASET_REVISION ||
+  evaluationDataset?.revision !== GA_REPRESENTATIVE_DATASET_REVISION ||
   evaluationDataset?.path !== "evaluations/representative-repositories.jsonl" ||
   evaluationDataset?.tasks !== GA_REPRESENTATIVE_EVALUATION_SCENARIOS.length ||
   JSON.stringify(evaluationDataset?.profiles) !== JSON.stringify(["governed"]) ||

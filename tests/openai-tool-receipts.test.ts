@@ -61,3 +61,43 @@ describe("OpenAI function receipts across native tool name collisions", () => {
     });
   }
 });
+
+for (const mode of ["generate", "stream"] as const) test(`OpenAI ${mode} keeps fresh-edit and retry fields optional on the wire`, async () => {
+  const { z } = await import("zod");
+  const { wrapLanguageModel } = await import("@zhivex-ai/core");
+  const { createModelEditReferences } = await import("../src/runtime/model-edit-references.js");
+  const { editChangesSchema } = await import("../src/workspace/edit-contracts.js");
+  const { replacementEditSchema } = await import("../src/workspace/replacement-edits.js");
+  const schemas = {
+    apply_reviewed_edits: z.strictObject({ changes: editChangesSchema }),
+    verify_and_apply_reviewed_edits: z.strictObject({ changes: editChangesSchema, command: z.string(), args: z.array(z.string()) }),
+    apply_reviewed_replacement: replacementEditSchema,
+    unrelated: z.strictObject({ value: z.string() })
+  };
+  const tools = Object.fromEntries(Object.entries(schemas).map(([name, schema]) => [name, {
+    name, schema, metadata: { "openai.responses_function_config": { defer_loading: true } }, execute: async () => null
+  }]));
+  let body: any;
+  const model = wrapLanguageModel(createOpenAI({ apiKey: "fixture", fetch: (async (_url, init) => {
+    body = JSON.parse(String(init?.body));
+    const response = { id: "resp_optional", status: "completed", output: [] };
+    return mode === "generate" ? Response.json(response) : new Response(`data: ${JSON.stringify({ type: "response.completed", response })}\n\n`);
+  }) as typeof fetch })("gpt-6-luna"), [createModelEditReferences(tools)]);
+  const request = { messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "Repair" }] }], tools,
+    providerOptions: { apiMode: "responses" as const } };
+  if (mode === "generate") await model.generate(request);
+  else for await (const _event of await model.stream!(request)) { /* consume published SDK transport */ }
+  for (const name of Object.keys(schemas)) {
+    const sent = body.tools.find((tool: any) => tool.name === name);
+    expect(sent.defer_loading).toBe(true);
+    if (name === "unrelated") { expect(sent.strict).toBeUndefined(); continue; }
+    expect(sent.strict).toBe(false);
+    expect(sent.parameters.required ?? []).not.toContain("retryToolCallId");
+    expect(sent.parameters.required ?? []).not.toContain("createPaths");
+  }
+  // Presentation settings never weaken the host's execution schema or mutate
+  // the registered definitions consumed by approval and persistence.
+  expect(schemas.apply_reviewed_edits.safeParse({ changes: [{ path: "a.txt", content: "after" }] }).success).toBe(false);
+  expect(schemas.apply_reviewed_edits.safeParse({ retryToolCallId: "invented" }).success).toBe(false);
+  expect(tools.apply_reviewed_edits!.metadata).toEqual({ "openai.responses_function_config": { defer_loading: true } });
+});
