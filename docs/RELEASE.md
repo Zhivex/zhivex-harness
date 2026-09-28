@@ -1,24 +1,27 @@
 # Release process
 
-`@zhivex-ai/harness@1.1.1` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
+`@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## Stable 1.2.0 preparation
+## 1.3.0-rc.1 preparation
 
-The source version is `1.2.0`, targeting npm `latest` through annotated tag `v1.2.0`
-and the protected GitHub Actions publication workflow. This preparation promotes
-the code from published RC13 without runtime changes. RC13 passed validation,
-live certification, all 42 representative cases and publication in
-[workflow 36291748057](https://github.com/Zhivex/zhivex-harness/actions/runs/36291748057).
+The source version is `1.3.0-rc.1`, targeting npm `next` through annotated tag
+`v1.3.0-rc.1` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
+`latest`. RC1 includes HAR-HU-36–38: public engine boundaries, compatibility
+bridges and an independently built local Code package.
 
-The stable tag retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
-OpenAI `gpt-6-luna` in the release matrix. Core 1.26.0, Agents 1.10.1 and all
-provider dependencies remain pinned. Saved model selections remain unchanged.
+This candidate retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
+OpenAI `gpt-6-luna` in the release matrix. Anthropic, Gemini/Vertex improvements,
+Desktop package migration and independent Code publication are pending stories;
+none is advertised as completed or certified by RC1. Code remains private.
 
-The stable workflow validates and publishes its own exact artifact. RC13 remains
-available under `next`; its immutable tag and release evidence are preserved.
-Earlier failed attempts remain historical failures. `release-status.json` still
-records the independently verified 1.0.0 publication until refreshed after stable
-publication; it must not be interpreted as 1.2.0 certification.
+Each later RC must bind its own source SHA, exact tarball, CI/CodeQL, installed
+acceptance and protected live/representative evidence. Previous RC results do not
+certify new bytes. Do not overwrite immutable versions or advance `latest`.
+The engine/Code installed gate uses the exact release tarball without changing
+its manifest version; Code is packed only for consumer acceptance, not published.
+
+Publication of RC1 is pending. Historical records, including `release-status.json`,
+remain historical and must not be interpreted as RC1 certification.
 
 ## Deterministic gates
 

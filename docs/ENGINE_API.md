@@ -1,8 +1,8 @@
 # Engine API and Code integration
 
-This checkout adds terminal-independent package entrypoints for the planned
-Harness 1.3 line. They are not present in the previously published Harness 1.2.0.
-The root manifest version is unchanged during implementation; use the documented
+This checkout adds terminal-independent package entrypoints for
+Harness 1.3.0-rc.1. They are not present in the previously published Harness 1.2.0.
+Publication is pending the protected workflow; use the documented
 local candidate smoke to validate these bytes. Do not install registry 1.2.0 and
 expect the new entrypoints to exist.
 
@@ -82,13 +82,14 @@ bun run contract:check
 bun run smoke:engine-code
 ```
 
-The smoke stages an unpublished Harness candidate by changing the version in a
-temporary copy of the package metadata, not the checkout. Its report identifies
-the staged version, artifact hashes, package-manager/runtime versions and observed
-results. Execution uses Node with a restricted PATH excluding Bun; local fixtures
-exercise installed engine approval, persistence and restart, and Code execution
-and cancellation without live provider keys. This is installed deterministic
-evidence, not provider certification or a registry release.
+The smoke packs the current Harness candidate without changing its version. The
+release workflow supplies the exact tarball via `HARNESS_CODE_HARNESS_ARTIFACT`;
+its bytes are copied, never repacked. The report identifies hashes, installed
+versions and observed results. Node execution uses a restricted PATH excluding
+Bun. Local fixtures exercise approval, persistence and restart, Code execution
+and cancellation without live keys. This is deterministic installed evidence,
+not provider certification or a registry release. Historical HU37/38 reports
+used temporary 1.3.0-dev.0 metadata; those reports do not certify RC1.
 
 `dev:code` explicitly links the built local Harness for contributor tests; it
 preserves an existing dependency and is never run by package installation.

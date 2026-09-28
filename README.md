@@ -11,12 +11,11 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
-Version `1.2.0` is prepared for stable publication to npm `latest`, based on
-published RC13 and its successful protected release workflow. It includes incremental
-durable history and bounded active checkpoints for long conversations. Stable
-publication remains pending; the installation commands below target 1.2.0 once
-published. The [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-preserves historical stable evidence.
+Version `1.3.0-rc.1` prepares the terminal-independent engine API and the local
+Code package for candidate validation on npm `next`. Publication remains pending
+the protected release workflow. This RC does not include the pending Anthropic,
+Gemini/Vertex, Desktop migration or independent Code publication milestones.
+Stable `1.2.0` remains available under npm `latest`.
 Desktop retains its separate private alpha status.
 
 ## Quick start
@@ -24,7 +23,7 @@ Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.2.0
+npm install -g @zhivex-ai/harness@1.3.0-rc.1
 cd /path/to/your/project
 zhx
 ```
@@ -79,7 +78,7 @@ Gemini remains provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
 
 [Browse documentation](docs/README.md).
 
-Version `1.1.1` is the current public npm release. Source checkout changes can be
+Version `1.2.0` is the current stable public npm release. Source checkout changes can be
 newer than the published package. Consult the [changelog](CHANGELOG.md) and
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
 for the recorded 1.0.0 release; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)

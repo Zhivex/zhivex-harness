@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -13,18 +13,23 @@ const run = (command: string, args: string[], cwd = root) => {
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`);
   return result;
 };
-run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", path.join(output, "harness-original.tgz")]);
+const artifact = path.join(output, "harness.tgz");
+if (process.env.HARNESS_CODE_HARNESS_ARTIFACT) {
+  await copyFile(path.resolve(process.env.HARNESS_CODE_HARNESS_ARTIFACT), artifact);
+} else {
+  run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", artifact]);
+}
 const stage = path.join(output, "stage"); await mkdir(stage);
-run("tar", ["-xzf", path.join(output, "harness-original.tgz"), "-C", stage]);
+run("tar", ["-xzf", artifact, "-C", stage]);
 const stagedManifest = path.join(stage, "package", "package.json");
 const manifest = JSON.parse(await readFile(stagedManifest, "utf8"));
 const sourceVersion = manifest.version;
-// A consumer proof of the unreleased boundary, never a release/version mutation.
-manifest.version = "1.3.0-dev.0";
-await writeFile(stagedManifest, `${JSON.stringify(manifest, null, 2)}\n`);
-run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", path.join(output, "harness.tgz")], path.join(stage, "package"));
+const checkout = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+if (sourceVersion !== checkout.version || !/^1\.(?:[3-9]|[1-9]\d+)\./.test(sourceVersion)) {
+  throw new Error("Installed acceptance requires the exact current Harness 1.3+ candidate; metadata is never rewritten");
+}
 run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", path.join(output, "code.tgz")], path.join(root, "packages/code"));
-console.log(`Installed consumer proof: source Harness ${sourceVersion}; staged Harness ${manifest.version}; artifacts ${output}. No package published.`);
+console.log(`Installed consumer proof: exact Harness ${sourceVersion}; artifacts ${output}. No package published.`);
 const result = spawnSync("node", [path.join(root, "scripts/smoke-engine-code.mjs"), path.join(output, "harness.tgz"),
   path.join(output, "code.tgz"), process.argv[2] ?? "npm,pnpm,yarn,bun"], { cwd: root, env: process.env, encoding: "utf8", timeout: 900_000 });
 await writeFile(path.join(output, "report.json"), result.stdout ?? "");
