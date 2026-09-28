@@ -29,7 +29,7 @@
     "@electron/packager": "20.3.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "electron": "44.4.3"
+    "electron": "44.4.5"
   },
   "trustedDependencies": [
     "electron"
