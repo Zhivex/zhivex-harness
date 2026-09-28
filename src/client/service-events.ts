@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { createRedactionPolicy, type AgentStreamEvent } from "@zhivex-ai/agents";
 import { SqliteDatabase } from "../persistence/sqlite-database.js";
 import { openCliSessionStore } from "../persistence/sessions.js";
-import { streamEventDocument } from "../cli/cli-stream.js";
+import { streamEventDocument } from "./stream.js";
 import type { HarnessConfig } from "../runtime/config.js";
 
 export interface HarnessActivityEvent { schemaVersion: 1; eventId: string; sequence: number; sessionId: string; runId: string; at: number; activity: Record<string, unknown> }

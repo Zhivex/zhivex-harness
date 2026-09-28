@@ -4,11 +4,13 @@ import { prepareRelease, type Command } from "../scripts/prepare-release.js";
 import { bundledDefaultModel } from "../src/models/catalog.js";
 import path from "node:path";
 
-test("Stable certification selects Flash and Meta contributor without changing historical pins or user defaults", async () => {
+test("RC1 certification retains the stable provider cohort without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
-  validateReleaseMetadata(input, false, "latest");
-  expect(input.version).toBe("1.2.0");
+  validateReleaseMetadata(input, false, "next");
+  expect(input.version).toBe("1.3.0-rc.1");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
+    .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0")?.models)
     .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.4")?.models.qwen).toBe("qwen3.8-max");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0-rc.4")?.models.meta).toBe("muse-spark-1.3");

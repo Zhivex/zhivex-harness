@@ -96,6 +96,27 @@ jobs:
       - name: Install and execute exact release artifact
         run: bun run smoke:artifact -- "$ARTIFACT"
 
+      - name: Validate engine and Code against the exact release artifact
+        run: |
+          bun run packages/code/scripts/link-local-engine.ts
+          bun run build:code
+          bun run typecheck:code
+          bun run test:code
+          npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
+          HARNESS_CODE_HARNESS_ARTIFACT="$ARTIFACT" bun run smoke:engine-code
+        env:
+          SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
+          SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
+          HARNESS_CODE_SMOKE_OUTPUT: ${{ runner.temp }}/engine-code-release-evidence
+
+      - name: Retain exact-artifact engine and Code acceptance
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-code-release-evidence
+          path: ${{ runner.temp }}/engine-code-release-evidence/report.json
+          if-no-files-found: warn
+
       - name: Upload immutable validated artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

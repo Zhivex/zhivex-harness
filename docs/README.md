@@ -16,6 +16,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Integrate Harness
 
+- [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
+
 - [CLI reference](CLI.md): command options, JSON/JSONL and exit codes.
 - [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
 - [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).
@@ -25,6 +27,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).
 
 ## Contribute and maintain
+
+- [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.
 
 [Contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
 [Maintenance and release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md) ·

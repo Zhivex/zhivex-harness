@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.1 - 2026-09-28
+
+- Add explicit terminal-independent Harness engine, protocol, client, local-service and ACP entrypoints while preserving historical root exports and stable signatures.
+- Extract the Code terminal product into its own unpublished package with the distinct `zhivex-code` binary; Harness 1.x keeps its existing binaries and state contracts.
+- Add transitive architecture checks and installed candidate acceptance for engine approvals/recovery and Code execution/cancellation across npm, pnpm, Yarn and Bun. The new APIs target the future Harness 1.3 line; RC1 targets npm `next` and does not claim completion of the provider roadmap.
+
 ## 1.2.0 - 2026-09-27
 
 - Promote the code validated in 1.2.0-rc.13 to the stable release line, targeting npm `latest` through the protected GitHub Actions workflow.

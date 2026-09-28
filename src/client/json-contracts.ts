@@ -2,7 +2,7 @@ import { z } from "zod";
 import { reasoningEffortSchema } from "../providers/reasoning.js";
 
 import { changeEnvelopeSchema } from "../workspace/change-envelope.js";
-import { CLI_EVENT_SCHEMA_VERSION, CLI_JSON_SCHEMA_VERSION } from "../cli/cli-stream.js";
+import { CLI_EVENT_SCHEMA_VERSION, CLI_JSON_SCHEMA_VERSION } from "./stream.js";
 import { PROVIDERS } from "../runtime/config.js";
 import { HARNESS_ERROR_CODES, HARNESS_ERROR_SCHEMA_VERSION } from "../runtime/errors.js";
 

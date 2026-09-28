@@ -1,5 +1,11 @@
 # API stability
 
+The additive [engine entrypoints](ENGINE_API.md) are enumerated in
+[`../contracts/engine-api.json`](../contracts/engine-api.json). Aliases preserve
+their existing root tiers; newly exposed helpers have explicit tiers. The root
+compatibility surface remains unchanged. These entrypoints are source changes
+for the planned 1.3 line, not APIs available in the registry 1.2.0 package.
+
 [`../contracts/public-api.json`](../contracts/public-api.json) is the machine-checked 1.0 baseline for the package root, binaries, CLI commands/subcommands, exit codes, and document schemas. Every runtime and type export is present in the snapshot and belongs to exactly one explicit tier. Exports listed as stable form the intended 1.x compatibility surface; Time-to-Safe-Fix exports are experimental; the explicitly listed beta exports may evolve under the policy below.
 
 [`../contracts/stable-api-signatures.json`](../contracts/stable-api-signatures.json) binds every Stable runtime and type export to a reproducible SHA-256 signature derived from emitted TypeScript declarations. Each signature includes the local declaration dependency closure, so a Beta helper type cannot change the effective signature of a Stable API unnoticed. `bun run contract:check` regenerates declarations in a temporary directory and fails on drift; `bun run contract:signatures:update` is only for a reviewed compatible baseline update or the next major version. The installed-package smoke repeats the comparison against the exact tarball declarations.

@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.2.0",
+  "version": "1.3.0-rc.1",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -45,6 +45,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./engine": {
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/engine/protocol.d.ts",
+      "import": "./dist/engine/protocol.js"
+    },
+    "./client": {
+      "types": "./dist/engine/client.d.ts",
+      "import": "./dist/engine/client.js"
+    },
+    "./service": {
+      "types": "./dist/engine/service.d.ts",
+      "import": "./dist/engine/service.js"
+    },
+    "./acp": {
+      "types": "./dist/engine/acp.d.ts",
+      "import": "./dist/engine/acp.js"
+    },
+    "./code-support": {
+      "types": "./dist/compat/code-support.d.ts",
+      "import": "./dist/compat/code-support.js"
     }
   },
   "files": [
@@ -87,14 +111,15 @@
     "evaluations/*.jsonl",
     "benchmarks/README.md",
     "docs/ACP.md",
-    "docs/WORKSPACE_CHECKPOINTS.md"
+    "docs/WORKSPACE_CHECKPOINTS.md",
+    "docs/ENGINE_API.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",
     "models:import": "bun run scripts/generate-console-models.ts",
     "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
-    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/service-cli.ts ./src/acp-cli.ts --outdir ./dist --target node --packages external && bun build ./src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
+    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/service-cli.ts ./src/acp-cli.ts ./src/engine/index.ts ./src/engine/protocol.ts ./src/engine/client.ts ./src/engine/service.ts ./src/engine/acp.ts ./src/compat/code-support.ts --root ./src --outdir ./dist --target node --packages external --splitting && bun build ./src/engine/protocol.ts --outdir ./dist/engine --target browser --packages external && bun build ./src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "architecture:check": "bun run scripts/check-architecture.ts",
     "docs:check": "bun run scripts/check-docs.ts",
@@ -143,7 +168,12 @@
     "smoke:console": "bun run build && python3 scripts/console-pty-smoke.py && python3 scripts/console-entry-smoke.py",
     "smoke:credentials": "node --experimental-strip-types scripts/credential-store-smoke.ts",
     "release:preflight": "bun run scripts/release-preflight.ts",
-    "release:prepare": "bun run scripts/prepare-release.ts"
+    "release:prepare": "bun run scripts/prepare-release.ts",
+    "build:code": "bun run --cwd packages/code build",
+    "test:code": "bun run --cwd packages/code test",
+    "smoke:engine-code": "bun run scripts/smoke-engine-code.ts",
+    "dev:code": "bun run build && bun run packages/code/scripts/link-local-engine.ts && bun run build:code",
+    "typecheck:code": "bun run --cwd packages/code typecheck"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.10.1",
