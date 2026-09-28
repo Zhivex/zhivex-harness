@@ -54,7 +54,8 @@ bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
 CODE_EXPECTED_SHA="$(git rev-list -n 1 code-v0.1.0-rc.1)" \
   node scripts/code-bootstrap-provenance.cjs verify \
   release-code-artifacts/code.tgz release-code-artifacts/code.sigstore.json
-npm publish ./release-code-artifacts/code.tgz --ignore-scripts --access public \
+node "$CODE_PROVENANCE_NPM_ROOT/bin/npm-cli.js" publish \
+  ./release-code-artifacts/code.tgz --ignore-scripts --access public \
   --tag next --provenance-file ./release-code-artifacts/code.sigstore.json
 bun run scripts/code-release.ts verify release-code-artifacts/code.tgz
 ```
@@ -75,6 +76,10 @@ publishing after GitHub approval, not `npm stage publish`. Preserve the GitHub
 environment's required human approval. Then prepare a
 new Code RC/version and annotated tag through the same PR and main CI process.
 Dispatch its tag with `mode=oidc` and `confirm_publication=true`.
+
+All Code tags share one workflow concurrency group. Before publishing, the
+registry gate also rejects moving `next` back to an older RC, including when
+GitHub schedules queued workflows out of order.
 
 The publish job downloads the validated artifact without rebuilding it,
 rechecks identity and digest after protected approval, and uses npm OIDC plus

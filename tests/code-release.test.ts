@@ -29,6 +29,9 @@ test("Registry retries accept only identical immutable artifacts", () => {
   const document = { versions: { [manifest.version]: { name: manifest.name, version: manifest.version, dist: { integrity: "sha512-abc" } } } };
   expect(assertCodeRegistryState(document, manifest.version, "sha512-abc")).toBe("identical");
   expect(() => assertCodeRegistryState(document, manifest.version, "sha512-other")).toThrow();
+  expect(() => assertCodeRegistryState({ "dist-tags": { next: "0.1.0-rc.2" } }, "0.1.0-rc.1", "sha512-abc")).toThrow("older");
+  expect(assertCodeRegistryState({ "dist-tags": { next: "0.1.0-rc.1" } }, "0.1.0-rc.2", "sha512-abc")).toBe("absent");
+  expect(() => assertCodeRegistryState({ "dist-tags": { next: "0.1.0" } }, "0.1.0-rc.2", "sha512-abc")).toThrow("order");
 });
 test("Code provenance rejects another workflow, ref, commit or artifact", () => {
   const statement = { subject: [{ digest: { sha512: "digest" } }], predicate: { buildDefinition: { externalParameters: { workflow: { repository: "https://github.com/Zhivex/zhivex-harness", path: ".github/workflows/release-code.yml", ref: `refs/tags/code-v${manifest.version}` } }, resolvedDependencies: [{ digest: { gitCommit: sha } }] }, runDetails: { builder: { id: "https://github.com/actions/runner/github-hosted" }, metadata: { invocationId: "https://github.com/Zhivex/zhivex-harness/actions/runs/123" } } } };

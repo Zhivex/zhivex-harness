@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ProvenanceStatement } from "./release-provenance.js";
@@ -54,6 +54,16 @@ export async function assertCodeReleaseIdentity(options: {
   }
 }
 export function assertCodeRegistryState(document: RegistryDocument, version: string, integrity: string): "absent" | "identical" {
+  const next = document["dist-tags"]?.next;
+  if (next && next !== version) {
+    const candidate = /^([0-9]+)\.([0-9]+)\.([0-9]+)-rc\.([1-9][0-9]*)$/.exec(version);
+    const current = /^([0-9]+)\.([0-9]+)\.([0-9]+)-rc\.([1-9][0-9]*)$/.exec(next);
+    assert(candidate && current, "Cannot order next safely; investigate registry state");
+    const wanted = candidate.slice(1).map(Number), existing = current.slice(1).map(Number);
+    assert(wanted.every(Number.isSafeInteger) && existing.every(Number.isSafeInteger));
+    const firstDifference = wanted.findIndex((value, index) => value !== existing[index]);
+    assert(firstDifference >= 0 && wanted[firstDifference]! > existing[firstDifference]!, "Refusing to move next back to an older Code candidate");
+  }
   const found = document.versions?.[version];
   if (!found) return "absent";
   assert.equal(found.dist?.integrity, integrity, "Published version has different immutable bytes; never rebuild or overwrite it");
@@ -110,13 +120,26 @@ async function main() {
   }
   if (mode === "engine") {
     assert(input, "Provide destination for exact registry engine tarball");
-    const engine = await json<RegistryVersion>(`${registry}%40zhivex-ai%2Fharness/${engineVersion}`);
+    // npm owns registry transport; only the validated public package/version is queried.
+    const engine = JSON.parse(run(["npm", "view", `@zhivex-ai/harness@${engineVersion}`, "--json", "--registry", registry])) as RegistryVersion;
     assert.equal(engine.name, "@zhivex-ai/harness"); assert.equal(engine.version, engineVersion);
     assert(engine.dist?.tarball && engine.dist.integrity && engine.dist.attestations?.url, "Engine release must exist with integrity and provenance");
-    const response = await fetch(npmUrl(engine.dist.tarball), { signal: AbortSignal.timeout(60_000) }); assert(response.ok);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    assert.equal(`sha512-${createHash("sha512").update(bytes).digest("base64")}`, engine.dist.integrity);
-    await writeFile(input, bytes); console.log(`Downloaded published Harness ${engineVersion} with verified integrity.`); return;
+    npmUrl(engine.dist.tarball);
+    const download = await mkdtemp(path.join(os.tmpdir(), "code-release-engine-"));
+    try {
+      // Fetch the exact registry tarball through npm without lifecycle scripts.
+      const packed = JSON.parse(run(["npm", "pack", engine.dist.tarball, "--json", "--ignore-scripts", "--pack-destination", download, "--registry", registry])) as Array<{ filename: string }>;
+      assert.equal(packed.length, 1);
+      const filename = packed[0]!.filename;
+      assert.equal(path.basename(filename), filename, "npm must return a local tarball basename");
+      const downloaded = path.join(download, filename);
+      const bytes = await readFile(downloaded);
+      assert.equal(`sha512-${createHash("sha512").update(bytes).digest("base64")}`, engine.dist.integrity);
+      const installed = JSON.parse(run(["tar", "-xOf", downloaded, "package/package.json"])) as Manifest;
+      assert.equal(installed.name, "@zhivex-ai/harness"); assert.equal(installed.version, engineVersion);
+      await copyFile(downloaded, input);
+    } finally { await rm(download, { recursive: true, force: true }); }
+    console.log(`Downloaded published Harness ${engineVersion} with verified integrity.`); return;
   }
   assert(input, "Provide exact Code artifact path");
   const artifact = path.resolve(input);

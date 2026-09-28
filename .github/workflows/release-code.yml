@@ -24,7 +24,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: code-npm-release-${{ inputs.tag }}
+  group: code-npm-release
   cancel-in-progress: false
 
 env:
