@@ -12,7 +12,9 @@ bridges and an independently built local Code package.
 This candidate retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
 OpenAI `gpt-6-luna` in the release matrix. Anthropic, Gemini/Vertex improvements,
 Desktop package migration and independent Code publication are pending stories;
-none is advertised as completed or certified by RC1. Code remains private.
+none is advertised as completed or certified by the Harness RC1 workflow.
+Code `0.1.0-rc.1` is now prepared for a separate `release-code.yml` workflow and
+its own annotated tag; see [Code release procedure](CODE_RELEASE.md).
 
 Each later RC must bind its own source SHA, exact tarball, CI/CodeQL, installed
 acceptance and protected live/representative evidence. Previous RC results do not

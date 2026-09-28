@@ -1,7 +1,6 @@
 {
   "name": "@zhivex-ai/code",
-  "version": "0.1.0-dev.0",
-  "private": true,
+  "version": "0.1.0-rc.1",
   "description": "Zhivex terminal product powered by the Harness engine",
   "type": "module",
   "license": "MIT",
@@ -28,7 +27,7 @@
     "node": ">=22.13.0"
   },
   "dependencies": {
-    "@zhivex-ai/harness": ">=1.3.0-0 <2.0.0",
+    "@zhivex-ai/harness": "1.3.0-rc.1",
     "@zhivex-ai/agents": "1.10.1",
     "@zhivex-ai/core": "1.26.0",
     "zod": "4.6.5"
@@ -41,5 +40,10 @@
     "@types/node": "^26.6.2",
     "typescript": "7.0.2"
   },
-  "packageManager": "bun@1.4.0"
+  "packageManager": "bun@1.4.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "next"
+  }
 }

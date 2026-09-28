@@ -56,9 +56,11 @@ switching presentation does not migrate state or authorize new effects.
 ## Terminal product
 
 `packages/code` is the independently built terminal product. Its current version
-is `0.1.0-dev.0`, publication is disabled, and its dependency range requires the
-future additive Harness line (`>=1.3.0-0 <2.0.0`). Code imports declared package
-APIs, never Harness source paths. Its build leaves Harness external.
+is `0.1.0-rc.1`, prepared for independent publication to `next` with the exact
+engine dependency `@zhivex-ai/harness@1.3.0-rc.1`. Publication remains gated by
+reviewed main, CI and registry evidence in the [Code release procedure](CODE_RELEASE.md).
+Code imports declared package APIs, never Harness source paths. Its build leaves
+Harness external.
 
 Code owns `zhivex-code`. Harness 1.x continues to own `zhx`, `zhivex-harness` and
 `zhx-acp`, preserving commands, flags, exit codes, JSON contracts and state paths.
