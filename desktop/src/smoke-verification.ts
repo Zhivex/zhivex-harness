@@ -5,7 +5,36 @@ import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
 import type { ProjectRuntime } from "./runtime-host.js";
 export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<string, Promise<ProjectRuntime>>, reportDirectory: string) {
-    const js = async (source: string) => { try { return await window.webContents.executeJavaScript(source); } catch (error) { await writeFile(path.join(reportDirectory, "failure-script.txt"), source); await writeFile(path.join(reportDirectory, "failure-view.txt"), await window.webContents.executeJavaScript("document.body.innerText")); throw error; } };
+    const startedAt = Date.now();
+    const phases: Array<{ phase: string; elapsedMs: number }> = [];
+    const checkpoint = async (phase: string) => {
+        phases.push({ phase, elapsedMs: Date.now() - startedAt });
+        await writeFile(path.join(reportDirectory, "progress.json"), JSON.stringify({ schemaVersion: 1, phases }));
+    };
+    await checkpoint("renderer-startup");
+    // A renderer promise (including animation frames) can stop settling when the
+    // renderer is unavailable. Bound both the operation and failure diagnostics;
+    // otherwise the outer watchdog loses the operation that actually stalled.
+    const evaluate = async (source: string) => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([
+                window.webContents.executeJavaScript(source),
+                new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(new Error("RENDERER_OPERATION_TIMEOUT")), 10000);
+                }),
+            ]);
+        } finally { clearTimeout(timer); }
+    };
+    const js = async (source: string) => {
+        try { return await evaluate(source); }
+        catch (error) {
+            await writeFile(path.join(reportDirectory, "failure-script.txt"), source);
+            const view = await evaluate("document.body.innerText").catch(() => "Renderer unavailable while capturing failure context.");
+            await writeFile(path.join(reportDirectory, "failure-view.txt"), view);
+            throw error;
+        }
+    };
     const wait = async (expression: string) => { for (let i = 0; i < 200; i++) { if (await js(expression)) return; await new Promise(r => setTimeout(r, 50)); } await writeFile(path.join(reportDirectory, "failure-view.txt"), await js("document.body.innerText")); throw new Error(`RENDERER_TIMEOUT: ${expression}`); };
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
     await wait('document.querySelector("[data-ready=true]") !== null');
@@ -20,17 +49,20 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const duplicateTimer = setTimeout(() => duplicate.kill("SIGKILL"), 10000);
     try { assert.equal(await new Promise<number | null>((resolve, reject) => { duplicate.once("exit", resolve); duplicate.once("error", reject); }), 0); } finally { clearTimeout(duplicateTimer); }
 
+    await checkpoint("project-boundary");
     const rejectedOverrides = await js(`Promise.all([
  window.harness.command(${JSON.stringify(firstKey)},{method:"project.get",projectId:"forged"}).then(()=>false,()=>true),
  window.harness.command(${JSON.stringify(firstKey)},{method:"project.get",workspace:"/"}).then(()=>false,()=>true),
  window.harness.openProject("/arbitrary/path").then(()=>false,()=>true)
  ]).then(r=>r.every(Boolean))`); assert(rejectedOverrides);
     const listFirst = await first.command({ method: "session.list" }); assert(listFirst.ok && listFirst.data.kind === "sessions"); assert.equal(listFirst.data.sessions.length, 0);
+    await checkpoint("run-and-cancellation");
     await click('[data-action="new-session"]'); await wait('Boolean(document.querySelector("main").dataset.sessionId)');
     const sessionId = await js('document.querySelector("main").dataset.sessionId');
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"Describe the local runtime connection.");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]'); await wait('document.body.innerText.includes("completed")');
     await wait('document.querySelector("[data-action=wait]").disabled === false'); await click('[data-action="wait"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("cancelled")');
+    await checkpoint("project-isolation");
     const before = await first.command({ method: "session.get", sessionId }); assert(before.ok && before.data.kind === "session"); const runIds = before.data.session.runs.map(r => r.runId);
     await click('[data-action="open-project"]'); await wait('document.querySelector("[role=alert]") !== null && document.querySelector("[data-action=open-project]").disabled === false'); assert.equal(await js('document.querySelector("main").dataset.projectKey'), firstKey);
     await click('[data-action="open-project"]'); await wait(`document.querySelector("main").dataset.projectKey !== ${JSON.stringify(firstKey)} && Boolean(document.querySelector("main").dataset.projectKey)`);
@@ -46,9 +78,11 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await wait(`document.querySelector("main").dataset.sessionId === ${JSON.stringify(sessionId)} && document.body.innerText.includes("cancelled") && document.body.innerText.includes("Separate runtime")`);
     const after = await first.command({ method: "session.get", sessionId }); assert(after.ok && after.data.kind === "session"); assert.deepEqual(after.data.session.runs.map(r => r.runId), runIds);
     const other = await second.command({ method: "session.get", sessionId: secondSession }); assert(other.ok && other.data.kind === "session"); assert.equal(other.data.session.runs.length, 0);
+    await checkpoint("renderer-reload");
     const loaded = new Promise<void>(resolve => window.webContents.once("did-finish-load", () => resolve())); window.webContents.reload(); await loaded; await wait('document.querySelector("[data-ready=true]") !== null'); assert.equal((await js('window.harness.projects()')).length, 2);
     if (emptyStartup) { await click(`[data-project="${firstKey}"]`); }
     await wait('document.querySelectorAll("[data-session]").length === 1 && document.querySelector("[data-session]").disabled === false'); await click(`[data-session="${sessionId}"]`); await wait('document.body.innerText.includes("cancelled") && document.body.innerText.includes("Separate runtime")');
+    await checkpoint("activity-and-review");
     // HU28: duplicate submit, actual read/check tools, failed receipt, redaction and reconnect.
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false');
@@ -83,9 +117,11 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     assert(!JSON.stringify(boundary).includes(secret)); assert(!JSON.stringify(boundary).includes("cliResult"));
     const expired = await first.events({ sessionId, after: 0 }); assert(expired.cursorExpired); assert(expired.snapshot?.runs[probeId]?.prompt === "activity-probe"); assert.equal(expired.snapshot?.runs[probeId]?.tools?.["tool:probe-check"]?.exitCode, 7);
     const finalSession = await first.command({ method: "session.get", sessionId }); assert(finalSession.ok && finalSession.data.kind === "session"); assert.equal(finalSession.data.session.runs.length, runIds.length + 1);
+    await checkpoint("capture-chat");
     await js(`document.querySelector('[data-run="${probeId}"] [data-tool="run_check"]').scrollIntoView({block:"center"})`);
     await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
     await writeFile(path.join(reportDirectory, "screenshot-chat.png"), (await window.webContents.capturePage()).toPNG());
+    await checkpoint("response-loss");
     first.dropFixtureRunResponse();
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"response-loss-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]');
@@ -94,6 +130,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await click('[data-action="retry"]'); await wait('document.querySelector("#prompt").disabled === false && document.body.innerText.includes("response-loss-probe") && !document.body.innerText.includes("Could not complete the operation.")');
     const reconciled = await first.command({ method: "session.get", sessionId }); assert(reconciled.ok && reconciled.data.kind === "session"); assert.deepEqual(reconciled.data.session.runs, lost.data.session.runs);
     assert.equal(await js(`document.querySelector('[data-session="${sessionId}"] small').textContent`), "completed");
+    await checkpoint("active-crash-recovery");
     // HU30: kill a worker while it owns an active run. Reopening only reads it;
     // cancellation is explicit and must wait for the dead worker's lease to expire.
     await wait('document.querySelector("[data-action=wait]").disabled === false'); await click('[data-action="wait"]');
@@ -106,11 +143,14 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await click(`[data-session="${sessionId}"]`); await wait('document.querySelector("[data-action=cancel]")?.disabled === false');
     await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("active lease")');
     const stillInterrupted = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(stillInterrupted.ok && stillInterrupted.data.kind === "run"); assert.equal(stillInterrupted.data.run.revision, interrupted.data.run.revision);
+    await checkpoint("lease-expiry-wait");
     await new Promise(resolve => setTimeout(resolve, 31000));
+    await checkpoint("orphan-cancellation");
     await click('[data-action="retry"]'); await wait('document.querySelector("[data-action=cancel]")?.disabled === false'); await click('[data-action="cancel"]');
     await wait(`document.querySelector('[data-run="${interruptedId}"]').innerText.includes("cancelled") && document.querySelector("[data-action=wait]").disabled === false`);
     const cancelledOrphan = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(cancelledOrphan.ok && cancelledOrphan.data.kind === "run"); assert.equal(cancelledOrphan.data.run.status, "cancelled");
     const recoveredSession = await first.command({ method: "session.get", sessionId }); assert(recoveredSession.ok && recoveredSession.data.kind === "session"); assert.equal(recoveredSession.data.session.runs.length, activeSession.data.session.runs.length);
+    await checkpoint("file-review-decisions");
     const decisionRuns: Array<{ runId: string; status: string }> = [];
     for (const approve of [false, true]) {
         await js(`{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"file-review-probe");field.dispatchEvent(new Event("input",{bubbles:true}));}`);
@@ -134,6 +174,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
         assert.equal(await readFile(path.join(first.context.project.workspace, "review.txt"), "utf8"), approve ? "context\r\nafter <img onerror=alert(1)>\r\nlast" : "context\r\nbefore\r\nlast");
         const latest = await first.command({ method: "session.get", sessionId }); assert(latest.ok && latest.data.kind === "session"); decisionRuns.push({ runId: latest.data.session.runs.at(-1)!.runId, status: approve ? "applied" : "rejected" });
     }
+    await checkpoint("decision-history-reload");
     const reloadedHistory = new Promise<void>(resolve => window.webContents.once("did-finish-load", () => resolve())); window.webContents.reload(); await reloadedHistory; await wait('document.querySelector("[data-ready=true]") !== null');
     if (emptyStartup) await click(`[data-project="${firstKey}"]`);
     await wait('document.querySelector("[data-session]")?.disabled === false'); await click(`[data-session="${sessionId}"]`);
@@ -145,7 +186,9 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await js(`document.querySelector('[data-run="${decisionRuns[1]!.runId}"] .decision-history').scrollIntoView({block:"center"})`);
     await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
     await writeFile(path.join(reportDirectory, "screenshot-decisions.png"), (await window.webContents.capturePage()).toPNG());
+    await checkpoint("final-evidence");
     const database = await stat(path.join(first.stateDirectory, "operations.sqlite"));
     await writeFile(path.join(reportDirectory, "screenshot.png"), (await window.webContents.capturePage()).toPNG());
+    await checkpoint("assertions-complete");
     await writeFile(path.join(reportDirectory, "report.json"), JSON.stringify({ schemaVersion: 1, platform: process.platform, arch: process.arch, electron: process.versions.electron, hostNode: process.versions.node, runtimeNode: first.context.runtimeNode, separateProcess: true, isolatedRenderer: isolated, rejectedOverrides, sqliteBytes: database.size, streaming: true, cancellation: true, fileApprovalUI: true, fileRejectionUI: true, completePreimage: true, decisionHistoryReload: true, serviceCrashRecovered: true, activeCrashRecovered: true, liveLeaseCancellationRejected: true, orphanCancelledWithoutReplay: true, expiredApprovalRejected: true, staleApprovalRejected: true, duplicateSubmitPrevented: true, lostResponseReconciled: true, failedCheckVisible: true, redactedRenderer: true, literalRepositoryText: true, activeReconnect: true, expiredSnapshot: true, projectIsolation: true, singleInstance: true, emptyStartup, invalidProjectRecovery: true, selectionHasNoExecution: true, keyboardNavigation: true, rendererReload: true, recentProjects: 2, packaged: app.isPackaged, fixture: true }, null, 2));
 }

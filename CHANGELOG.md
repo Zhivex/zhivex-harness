@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.3 - 2026-09-28
+
+- Release Meta stream deadlines after HTTP setup errors, stream completion, cancellation and early iterator closure; retain the original provider error and natural process exit.
+- Certify valid approval recovery using persisted pre-approval validation receipts without accepting additional executions, new errors or mismatched approved calls.
+- Bound Desktop smoke renderer diagnostics and retain phase timing without extending the watchdog or weakening lease/approval checks.
+- Pin the independent Code RC to Harness RC3. Local corrected-artifact acceptance reached 41/42: OpenAI and Qwen 14/14, Meta 13/14 with one HTTP 504. The operator authorized proceeding with RC preparation despite this provider failure; protected certification remains separate and is not recorded as passed.
+
 ## 1.3.0-rc.2 - 2026-09-28
 
 - Reject a mismatched `apply_patch` proposal digest during input validation, before requesting operator approval. Invalid calls remain non-mutating and can be corrected by the model; valid calls still require the original approval.

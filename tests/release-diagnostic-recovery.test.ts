@@ -229,3 +229,28 @@ test("edit effect diagnostics reject invalid counters and strip arbitrary payloa
     expect(sanitizedErrorDetails({editEffect:{...counts,resultReceipts:value}}).chain).toEqual([]);
   }
 });
+
+const rejectedEdit = { toolName: "apply_patch", toolCallId: "invalid-before-approval", isError: true,
+  error: { code: "TOOL_INPUT_VALIDATION_ERROR" } };
+const approvedEdit = { ...goodReceipt, toolCallId: "approved-edit" };
+const recoveryContext = { approvedToolCallId: "approved-edit", priorResults: [rejectedEdit] };
+test("live gate accepts only validation receipts persisted before the approved execution", async () => {
+  await expect(liveProviderSmokeInternals.assertResumeEffect([rejectedEdit, approvedEdit], [goodJournal],
+    async () => "ok", "ok", recoveryContext)).resolves.toEqual({ toolExecutions: 1, journalEntries: 1 });
+});
+for (const [name, results, context, journal, content] of [
+  ["unbound error", [rejectedEdit, approvedEdit], { ...recoveryContext, priorResults: [] }, [goodJournal], "ok"],
+  ["new error after approval", [rejectedEdit, { ...rejectedEdit, toolCallId: "new" }, approvedEdit], recoveryContext, [goodJournal], "ok"],
+  ["execution error before approval", [rejectedEdit, approvedEdit], { ...recoveryContext, priorResults: [{ ...rejectedEdit, error: { code: "EXECUTION_FAILED" } }] }, [goodJournal], "ok"],
+  ["changed retained error", [{ ...rejectedEdit, error: { code: "EXECUTION_FAILED" } }, approvedEdit], recoveryContext, [goodJournal], "ok"],
+  ["duplicate retained receipt", [rejectedEdit, rejectedEdit, approvedEdit], recoveryContext, [goodJournal], "ok"],
+  ["missing retained receipt", [approvedEdit], recoveryContext, [goodJournal], "ok"],
+  ["wrong approved identity", [rejectedEdit, { ...approvedEdit, toolCallId: "other" }], recoveryContext, [goodJournal], "ok"],
+  ["two successes", [rejectedEdit, approvedEdit, approvedEdit], recoveryContext, [goodJournal], "ok"],
+  ["two journal entries", [rejectedEdit, approvedEdit], recoveryContext, [goodJournal, goodJournal], "ok"],
+  ["wrong content after recovery", [rejectedEdit, approvedEdit], recoveryContext, [goodJournal], "wrong"],
+] as const) {
+  test(`recovered edit gate rejects ${name}`, async () => {
+    await expect(liveProviderSmokeInternals.assertResumeEffect(results, journal, async () => content, "ok", context)).rejects.toThrow();
+  });
+}
