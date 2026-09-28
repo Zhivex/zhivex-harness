@@ -26,6 +26,31 @@ const fixture = async action => {
   finally { await rm(root, { recursive: true, force: true }); }
 };
 
+// A failed Meta stream must preserve its HTTP error and let Node exit naturally.
+// Run in a child so a retained SDK timer cannot hide inside the test runner.
+{
+  const source = `
+    import assert from "node:assert/strict";
+    import { createProviderModel } from "@zhivex-ai/harness";
+    globalThis.fetch = async () => Response.json({ error: { type: "server_error", message: "fixture" } }, { status: 503 });
+    const model = createProviderModel({ provider: "meta", model: "muse-spark-1.3-contributor" }, { MODEL_API_KEY: "fixture" });
+    await assert.rejects(model.stream({ messages: [{ role: "user", parts: [{ type: "text", text: "fixture" }] }],
+      timeoutMs: 60000, maxRetries: 0 }), error => error.status === 503);
+    console.log("meta-failure-settled");
+  `;
+  const child = spawn(process.execPath, ["--input-type=module", "--eval", source], { stdio: ["ignore", "pipe", "pipe"] });
+  let stdout = "", stderr = "", timedOut = false;
+  child.stdout.on("data", value => stdout += value);
+  child.stderr.on("data", value => stderr += value);
+  const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, 5000);
+  try {
+    const code = await new Promise((resolve, reject) => { child.once("close", resolve); child.once("error", reject); });
+    assert.equal(timedOut, false, "Meta setup failure retained the process");
+    assert.equal(code, 0, stderr);
+    assert(stdout.includes("meta-failure-settled"));
+  } finally { clearTimeout(timer); if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL"); }
+}
+
 // Retained history must preserve current user direction without granting an edit.
 const user = text => ({ role: "user", parts: [{ type: "text", text }] });
 let history = [user("Fix pagination without changing the public API."), user("Preserve Unicode ordering too.")];

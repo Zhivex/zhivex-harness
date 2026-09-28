@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
+import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { JsonValue, StreamEvent } from "@zhivex-ai/core";
-import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { applyEditProposalInputSchema, createEditProposal } from "../src/workspace/edit-contracts.js";
@@ -41,7 +41,7 @@ for (const correctRetry of [false, true]) {
         [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }]
       ] });
       harness = await createHarness({ workspace: root, modelInstance: model,
-        toolNames: ["propose_edits", "apply_patch"], store: createInMemoryAgentRunStore() });
+        toolNames: ["propose_edits", "apply_patch"], stateDirectory: path.join(root, ".runs") });
       const pending = await runHarness(harness, { prompt: "Propose and apply the file", maxSteps: 5 });
       expect(pending.toolResults.find(result => result.toolCallId === "propose")?.output).toEqual(proposal);
       expect(pending.toolResults.find(result => result.toolCallId === "invalid")).toMatchObject({
@@ -58,9 +58,22 @@ for (const correctRetry of [false, true]) {
       expect(pending.state.pendingApprovals).toHaveLength(1);
       const approval = pending.state.pendingApprovals[0]!;
       expect(JSON.parse(approval.arguments)).toEqual({ proposalId: proposal.proposalId, changes });
-      const resumed = await runHarness(harness, { state: pending.state,
+      await harness.close();
+      harness = await createHarness({ workspace: root, modelInstance: model,
+        toolNames: ["propose_edits", "apply_patch"], stateDirectory: path.join(root, ".runs") });
+      const restored = await harness.store.load(pending.state.runId, harness.config.scope);
+      expect(restored?.status).toBe("waiting_approval");
+      expect((await harness.store.listToolCalls?.(pending.state.runId, harness.config.scope) ?? [])
+        .filter(entry => entry.toolName === "apply_patch")).toHaveLength(0);
+      const priorResults = restored!.toolResults.map(receipt => ({ toolName: receipt.toolName,
+        toolCallId: receipt.toolCallId, isError: receipt.isError, error: { code: receipt.error?.code } }));
+      const resumed = await runHarness(harness, { state: restored!,
         approvals: [{ provider: approval.provider, approvalRequestId: approval.id, approve: true }] });
       expect(resumed.status).toBe("completed");
+      const journal = await harness.store.listToolCalls?.(pending.state.runId, harness.config.scope);
+      expect(await liveProviderSmokeInternals.assertResumeEffect(resumed.toolResults, journal ?? [],
+        () => readFile(path.join(root, "approved.txt"), "utf8"), "approved\n", { approvedToolCallId: approval.toolCallId!, priorResults }))
+        .toEqual({ toolExecutions: 1, journalEntries: 1 });
       expect(await readFile(path.join(root, "approved.txt"), "utf8")).toBe("approved\n");
       expect(harness.workspace.mutationAudit().filter(entry => entry.operation === "create")).toHaveLength(1);
       expect(resumed.toolResults.filter(result => result.toolCallId === "corrected" && !result.isError)).toHaveLength(1);

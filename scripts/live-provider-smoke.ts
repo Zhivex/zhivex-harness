@@ -314,11 +314,19 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
 };
 
 // Receipts describe attempts/results; durable journal entries describe execution.
-// Keep every acceptance assertion; add only allowlisted structural diagnostics.
+// Only persisted pre-approval input-validation receipts may accompany the approved execution.
+interface EditReceipt {
+  toolName: string; toolCallId?: string; isError?: boolean; error?: { code?: string | undefined };
+}
+interface ApprovalReceiptContext {
+  approvedToolCallId: string;
+  priorResults: readonly EditReceipt[];
+}
 const assertResumeEffect = async (
-  results: readonly { toolName: string; isError?: boolean }[],
+  results: readonly EditReceipt[],
   journal: readonly { toolName: string; status: string }[],
-  readContent: () => Promise<string>, expectedContent: string
+  readContent: () => Promise<string>, expectedContent: string,
+  approvalContext?: ApprovalReceiptContext
 ) => {
   const writes = results.filter(result => result.toolName === "apply_patch");
   const entries = journal.filter(entry => entry.toolName === "apply_patch");
@@ -331,9 +339,25 @@ const assertResumeEffect = async (
   };
   let checkpoint = "resume_result_count";
   try {
-    assert.equal(writes.length, 1);
+    const prior = approvalContext?.priorResults.filter(result => result.toolName === "apply_patch") ?? [];
+    const priorIds = new Set<string>();
+    for (const receipt of prior) {
+      assert.equal(receipt.isError, true);
+      assert.equal(receipt.error?.code, "TOOL_INPUT_VALIDATION_ERROR");
+      assert.ok(receipt.toolCallId);
+      assert.notEqual(receipt.toolCallId, approvalContext?.approvedToolCallId);
+      assert.equal(priorIds.has(receipt.toolCallId), false);
+      priorIds.add(receipt.toolCallId);
+      const retained = writes.filter(result => result.toolCallId === receipt.toolCallId);
+      assert.equal(retained.length, 1);
+      assert.equal(retained[0]?.isError, true);
+      assert.equal(retained[0]?.error?.code, "TOOL_INPUT_VALIDATION_ERROR");
+    }
+    const executions = writes.filter(result => !result.toolCallId || !priorIds.has(result.toolCallId));
+    assert.equal(executions.length, 1);
     checkpoint = "resume_result_success";
-    assert.equal(writes[0]?.isError, false);
+    assert.equal(executions[0]?.isError, false);
+    if (approvalContext) assert.equal(executions[0]?.toolCallId, approvalContext.approvedToolCallId);
     checkpoint = "resume_file_read";
     const content = await readContent();
     checkpoint = "resume_file_content";
@@ -342,7 +366,7 @@ const assertResumeEffect = async (
     assert.equal(entries.length, 1);
     checkpoint = "resume_journal_status";
     assert.equal(entries[0]?.status, "completed");
-    return { toolExecutions: writes.length, journalEntries: entries.length };
+    return { toolExecutions: entries.length, journalEntries: entries.length };
   } catch (error) {
     throw Object.assign(new HarnessExecutionError("Live edit effect assertion failed.", { cause: error }), { checkpoint, editEffect });
   }
@@ -359,6 +383,16 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     assert.ok(approval, "The persisted run has no apply_patch approval.");
     checkpoint = "resume_arguments";
     assertApprovalArguments(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
+    // Snapshot before resume: a new validation failure after approval is not a recovered receipt.
+    assert.ok(approval.toolCallId);
+    const approvalContext: ApprovalReceiptContext = {
+      approvedToolCallId: approval.toolCallId,
+      priorResults: state.toolResults.map(receipt => ({ toolName: receipt.toolName,
+        toolCallId: receipt.toolCallId, isError: receipt.isError, error: { code: receipt.error?.code } }))
+    };
+    checkpoint = "resume_journal_count";
+    const beforeJournal = await harness.store.listToolCalls?.(args.runId, harness.config.scope);
+    assert.equal((beforeJournal ?? []).filter(entry => entry.toolName === "apply_patch").length, 0);
     checkpoint = "resume_status";
 
     const result = await runHarness(harness, {
@@ -381,7 +415,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     checkpoint = "resume_effect";
     const effect = await assertResumeEffect(result.toolResults, journal ?? [],
       () => readFile(path.join(args.workspace, certificationPath(args.provider)), "utf8"),
-      certificationContent(args.provider));
+      certificationContent(args.provider), approvalContext);
     return {
       phase: "resume",
       provider: args.provider,

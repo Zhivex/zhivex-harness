@@ -17,10 +17,16 @@ const invalid = path.join(output, "not-a-repo"); await mkdir(invalid);
 const args = [...(packaged ? [] : [root]), ...(empty ? [] : ["--workspace", workspace]), "--smoke-test", ...(models ? ["--fixture-models"] : []), ...(oci ? ["--fixture-oci"] : []), "--report-directory", report, ...(empty ? ["--fixture-project", workspace] : []), "--fixture-project", invalid, "--fixture-project", second];
 const child = spawn(executable, args, { cwd: output, env: { PATH: process.env.PATH!, HOME: output, ZHIVEX_HARNESS_DESKTOP_FIXTURE_SECRET: "desktop-fixture-private-value-2837" }, stdio: ["ignore", "pipe", "pipe"] });
 let stderr = ""; child.stderr.on("data", chunk => stderr += chunk); child.stdout.resume();
-const timer = setTimeout(() => child.kill("SIGKILL"), 90000);
+const startedAt = Date.now();
+let timedOut = false;
+const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, 90000);
 try {
     const code = await new Promise<number | null>((resolve, reject) => { child.once("exit", resolve); child.once("error", reject); });
-    assert.equal(code, 0, stderr);
+    if (timedOut) {
+        const progress = await readFile(path.join(report, "progress.json"), "utf8").catch(() => "unavailable");
+        throw new Error(`DESKTOP_SMOKE_TIMEOUT: elapsedMs=${Date.now() - startedAt}; evidenceDirectory=${report}; progress=${progress}\n${stderr}`);
+    }
+    assert.equal(code, 0, `evidenceDirectory=${report}\n${stderr}`);
     const evidence = JSON.parse(await readFile(path.join(report, "report.json"), "utf8"));
     assert.equal(evidence.packaged, packaged); if(models){assert(evidence.providers.length===4 && evidence.approvalBlocksSwitch && evidence.customModel && evidence.rendererReload);} else if (oci) { assert(evidence.fixtureRuntime && !evidence.realDocker && evidence.completePreview && evidence.explicitApproval && evidence.hostBytesVerified && evidence.patchBoundEvidence); } else { assert(evidence.separateProcess && evidence.isolatedRenderer && evidence.rejectedOverrides && evidence.streaming && evidence.cancellation); assert(evidence.sqliteBytes > 0); assert(evidence.projectIsolation && evidence.selectionHasNoExecution && evidence.keyboardNavigation && evidence.rendererReload && evidence.recentProjects === 2 && evidence.invalidProjectRecovery && evidence.singleInstance); assert.equal(evidence.emptyStartup, empty); assert(evidence.serviceCrashRecovered && evidence.decisionHistoryReload && evidence.expiredApprovalRejected && evidence.staleApprovalRejected); assert(evidence.fileApprovalUI && evidence.fileRejectionUI && evidence.completePreimage); assert(evidence.duplicateSubmitPrevented && evidence.lostResponseReconciled && evidence.failedCheckVisible && evidence.redactedRenderer && evidence.literalRepositoryText && evidence.activeReconnect && evidence.expiredSnapshot); }
     console.log(JSON.stringify({ ...evidence, evidenceDirectory: report }));

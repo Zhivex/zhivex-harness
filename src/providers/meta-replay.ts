@@ -1,4 +1,5 @@
-import { wrapLanguageModel, type ModelGenerateInput, type ModelMessage } from "@zhivex-ai/core";
+import { wrapLanguageModel, type ModelGenerateInput, type ModelMessage, type StreamEvent } from "@zhivex-ai/core";
+import { withTimeoutSignal } from "@zhivex-ai/core/provider";
 import { createMeta, type MetaProviderOptions } from "@zhivex-ai/meta";
 
 type ReplayItem = { type: "reasoning"; summary: []; encrypted_content: string; id?: string };
@@ -71,7 +72,40 @@ export const createMetaReplayModel = (options: MetaProviderOptions, modelId: str
     },
     async wrapStream({ input }) {
       const prepared = prepare(input);
-      return prepared.model.stream!(prepared.input);
+      // The SDK stream setup can reject before its iterator owns cleanup.
+      // Own the deadline here so HTTP/transport failures cannot retain its timer.
+      const lifetime = withTimeoutSignal(prepared.input);
+      const { timeoutMs: _timeout, ...request } = prepared.input;
+      try {
+        const stream = await prepared.model.stream!({ ...request, abortSignal: lifetime.signal });
+        const iterator = stream[Symbol.asyncIterator]();
+        const owned: AsyncIterableIterator<StreamEvent> = {
+          [Symbol.asyncIterator]() { return owned; },
+          async next() {
+            try {
+              const result = await iterator.next();
+              if (result.done) lifetime.cleanup();
+              return result;
+            } catch (error) { lifetime.cleanup(); throw error; }
+          },
+          async return() {
+            try { return await iterator.return?.() ?? { done: true as const, value: undefined }; }
+            finally { lifetime.cleanup(); }
+          },
+          async throw(error: unknown) {
+            try {
+              if (iterator.throw) {
+                const result = await iterator.throw(error);
+                if (result.done) lifetime.cleanup();
+                return result;
+              }
+              await iterator.return?.();
+              throw error;
+            } catch (failure) { lifetime.cleanup(); throw failure; }
+          }
+        };
+        return owned;
+      } catch (error) { lifetime.cleanup(); throw error; }
     }
   }]);
 };

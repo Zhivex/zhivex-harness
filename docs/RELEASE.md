@@ -2,17 +2,17 @@
 
 `@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## 1.3.0-rc.2 preparation
+## 1.3.0-rc.3 preparation
 
-The source version is `1.3.0-rc.2`, targeting npm `next` through annotated tag
-`v1.3.0-rc.2` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
-`latest`. RC2 includes HAR-HU-36–38: public engine boundaries, compatibility
+The source version is `1.3.0-rc.3`, targeting npm `next` through annotated tag
+`v1.3.0-rc.3` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
+`latest`. RC3 includes HAR-HU-36–38: public engine boundaries, compatibility
 bridges and an independently built local Code package.
 
 This candidate retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
 OpenAI `gpt-6-luna` in the release matrix. Anthropic, Gemini/Vertex improvements,
 Desktop package migration and independent Code publication are pending stories;
-none is advertised as completed or certified by the Harness RC2 workflow.
+none is advertised as completed or certified by the Harness RC3 workflow.
 Code `0.1.0-rc.1` is now prepared for a separate `release-code.yml` workflow and
 its own annotated tag; see [Code release procedure](CODE_RELEASE.md).
 
@@ -22,8 +22,8 @@ certify new bytes. Do not overwrite immutable versions or advance `latest`.
 The engine/Code installed gate uses the exact release tarball without changing
 its manifest version; Code is packed only for consumer acceptance, not published.
 
-Publication of RC2 is pending. Historical records, including `release-status.json`,
-remain historical and must not be interpreted as RC2 certification.
+Publication of RC3 is pending. Historical records, including `release-status.json`,
+remain historical and must not be interpreted as RC3 certification.
 
 The previous `v1.3.0-rc.1` attempt failed the Qwen base certification because
 its pending `apply_patch` proposal ID differed from the expected ID. npm was
@@ -31,6 +31,35 @@ never invoked. RC2 validates proposal digests before requesting approval, so an
 invalid model call receives an input error rather than an unusable approval.
 The exact live assertion and provider cohort remain unchanged; the historical
 tag and artifact are not moved or rewritten.
+
+## RC3 operator decision
+
+After complete local validation, the corrected artifact passed OpenAI 14/14 and
+Qwen 14/14; Meta passed 13/14 and returned HTTP 504 `server_error` in the remaining
+SQLite case. No unauthorized effects occurred and the process exited naturally.
+The operator explicitly authorized advancing the RC despite this provider-side
+HTTP failure. The precise upstream internal cause remains unknown.
+
+This authorization permits preparing and uploading RC3; it does not turn 41/42
+into full certification. The current protected workflow has no failure waiver:
+publication still requires successful exact-artifact validation, live gates,
+representative matrix and environment approval. Historical RC1/RC2 tags remain
+unchanged. See the [local campaign](reports/RC2_RECOVERY_REPRESENTATIVE_2026-09-28.json).
+
+## Recovered proposal certification
+
+A schema rejection before approval is a result receipt, not a workspace execution.
+The base gate snapshots persisted results before resume and allows only retained
+`TOOL_INPUT_VALIDATION_ERROR` receipts with the same tool-call IDs. New errors,
+missing or duplicated receipts, execution failures, and results for an unapproved
+call remain failures. No apply-patch journal entry may exist before approval;
+after resume there must be one successful result for the approved call, one
+completed journal entry, and the exact expected file content.
+
+The deterministic proposal-recovery test runs the same effect assertion after
+closing and reopening the durable store. This connects the runtime's recovery
+contract to the release gate instead of testing each in isolation. It does not
+replace full artifact live and representative certification.
 
 ## Deterministic gates
 
@@ -308,3 +337,16 @@ completion and distinguish `OCI_DELIVERY_PENDING`, `OCI_DELIVERY_DECLINED`, and
 `OCI_DELIVERY_INSPECTION_FAILED`. Detection compares actual snapshot and host
 contents/modes, including previously imported paths. It does not waive the final
 verifier or grant import approval.
+
+### Provider failure shutdown checks
+
+Meta stream setup failures must retain the original provider error and exit
+naturally without waiting for the model deadline. The adapter owns deadline
+cleanup across setup and iterator termination. Subprocess regressions cover
+HTTP/transport failures, stream errors, cancellation and deadlines; the installed
+package smoke checks the same failure boundary under Node. A valid result on
+stdout alone is not successful driver completion.
+
+Desktop smoke retains a 90-second watchdog and records phase timing in
+`progress.json`; renderer operations and failure snapshots have bounded waits.
+A watchdog failure must include its evidence directory and last phase.
