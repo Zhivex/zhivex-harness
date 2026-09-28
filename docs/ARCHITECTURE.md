@@ -4,6 +4,10 @@ Harness keeps one runtime package and a separately built Desktop application.
 The internal boundaries below are co-versioned; they do not introduce new public
 package entrypoints or change the persisted-state and client protocol versions.
 
+The proposed future split between Harness and Code is recorded in
+[ADR 0001](adr/0001-harness-code-public-boundary.md). It inventories the current
+boundary and defines a compatible migration; the package split is not implemented.
+
 ## Module ownership
 
 | Folder | Responsibility |

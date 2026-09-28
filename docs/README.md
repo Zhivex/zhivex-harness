@@ -26,6 +26,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Contribute and maintain
 
+- [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.
+
 [Contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
 [Maintenance and release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md) ·
 [Changelog](../CHANGELOG.md)
