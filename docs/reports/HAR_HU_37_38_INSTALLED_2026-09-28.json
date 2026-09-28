@@ -1,0 +1,122 @@
+{
+  "runtime": {
+    "node": "v24.11.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "artifacts": [
+    {
+      "file": "harness.tgz",
+      "sha256": "b203f3f7be1b2c2d03e67011fa6e639113e87db31429223b0eaf4c7b81c50168"
+    },
+    {
+      "file": "code.tgz",
+      "sha256": "82879d73420d3698258c1115c56ac656e406faa899deff7f4c2962340d75c095"
+    }
+  ],
+  "consumers": [
+    {
+      "manager": "npm",
+      "status": "passed",
+      "transitiveArtifactOverride": {
+        "config": "package.json direct file dependencies",
+        "resolution": "file:harness.tgz"
+      },
+      "version": "11.6.1",
+      "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+      "installedVersions": {
+        "harness": "1.3.0-dev.0",
+        "code": "0.1.0-dev.0"
+      },
+      "verifiedHarnessCopies": 1,
+      "checks": [
+        "imports",
+        "no-bun-in-path",
+        "approval-before-write",
+        "cross-process-durable-resume",
+        "cancel-persisted",
+        "cli-help",
+        "cli-execution",
+        "cli-durable-cancellation"
+      ]
+    },
+    {
+      "manager": "pnpm",
+      "status": "passed",
+      "transitiveArtifactOverride": {
+        "config": "pnpm-workspace.yaml",
+        "selector": "@zhivex-ai/harness",
+        "resolution": "file:harness.tgz"
+      },
+      "version": "11.25.0",
+      "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+      "installedVersions": {
+        "harness": "1.3.0-dev.0",
+        "code": "0.1.0-dev.0"
+      },
+      "verifiedHarnessCopies": 1,
+      "checks": [
+        "imports",
+        "no-bun-in-path",
+        "approval-before-write",
+        "cross-process-durable-resume",
+        "cancel-persisted",
+        "cli-help",
+        "cli-execution",
+        "cli-durable-cancellation"
+      ]
+    },
+    {
+      "manager": "yarn",
+      "status": "passed",
+      "transitiveArtifactOverride": {
+        "config": "package.json resolutions",
+        "selector": "@zhivex-ai/harness",
+        "resolution": "file:harness.tgz"
+      },
+      "version": "1.22.22",
+      "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+      "installedVersions": {
+        "harness": "1.3.0-dev.0",
+        "code": "0.1.0-dev.0"
+      },
+      "verifiedHarnessCopies": 1,
+      "checks": [
+        "imports",
+        "no-bun-in-path",
+        "approval-before-write",
+        "cross-process-durable-resume",
+        "cancel-persisted",
+        "cli-help",
+        "cli-execution",
+        "cli-durable-cancellation"
+      ]
+    },
+    {
+      "manager": "bun",
+      "status": "passed",
+      "transitiveArtifactOverride": {
+        "config": "package.json direct file dependencies",
+        "resolution": "file:harness.tgz"
+      },
+      "version": "1.4.0",
+      "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+      "installedVersions": {
+        "harness": "1.3.0-dev.0",
+        "code": "0.1.0-dev.0"
+      },
+      "verifiedHarnessCopies": 1,
+      "checks": [
+        "imports",
+        "no-bun-in-path",
+        "approval-before-write",
+        "cross-process-durable-resume",
+        "cancel-persisted",
+        "cli-help",
+        "cli-execution",
+        "cli-durable-cancellation"
+      ]
+    }
+  ],
+  "pathNormalization": "Temporary artifact directory removed; hashes and test outcomes unchanged."
+}

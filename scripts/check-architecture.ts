@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import ts from "typescript-compiler-api";
 
-export interface SourceDependency { target: string; typeOnly: boolean }
+export interface SourceDependency { target: string; typeOnly: boolean; computed?: boolean }
 
 /** Includes re-exports and literal dynamic imports, not just import declarations. */
 export const sourceDependencies = (source: string): SourceDependency[] => {
@@ -14,9 +14,12 @@ export const sourceDependencies = (source: string): SourceDependency[] => {
         ? Boolean(node.importClause?.isTypeOnly || (node.importClause && !node.importClause.name && node.importClause.namedBindings && ts.isNamedImports(node.importClause.namedBindings) && node.importClause.namedBindings.elements.length > 0 && node.importClause.namedBindings.elements.every(item => item.isTypeOnly)))
         : Boolean(node.isTypeOnly || (node.exportClause && ts.isNamedExports(node.exportClause) && node.exportClause.elements.length > 0 && node.exportClause.elements.every(item => item.isTypeOnly)));
       dependencies.push({ target: node.moduleSpecifier.text, typeOnly });
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && node.moduleReference.expression && ts.isStringLiteral(node.moduleReference.expression)) {
+      dependencies.push({ target: node.moduleReference.expression.text, typeOnly: node.isTypeOnly });
     } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === "require"))) {
       const argument = node.arguments[0];
-      if (argument && ts.isStringLiteral(argument)) dependencies.push({ target: argument.text, typeOnly: false });
+      if (argument && (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))) dependencies.push({ target: argument.text, typeOnly: false });
+      else dependencies.push({ target: "<computed>", typeOnly: false, computed: true });
     } else if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
       dependencies.push({ target: node.argument.literal.text, typeOnly: true });
     }
@@ -41,6 +44,7 @@ export const architectureViolations = (file: string, source: string): string[] =
       reject("Desktop must consume an explicit internal/desktop surface");
     }
     if (file.startsWith("src/") && target.startsWith("desktop/")) reject("the runtime must not depend on Desktop");
+    if (file.startsWith("src/") && /^(packages\/code\/|@zhivex-ai\/code(?:\/|$))/.test(target)) reject("Harness must not depend on Code");
     if (file === "src/client/protocol.ts" && !dependency.typeOnly && target !== "zod") {
       reject("the wire protocol may load only its schema library");
     }
@@ -55,17 +59,50 @@ export const architectureViolations = (file: string, source: string): string[] =
   return violations;
 };
 
+/** Traverse every source edge, including erased type references and intermediary helpers. */
+export const engineBoundaryViolations = (sources: ReadonlyMap<string, string>, entries: readonly string[] = ["src/engine/index.ts", "src/engine/protocol.ts", "src/engine/client.ts", "src/engine/service.ts", "src/engine/acp.ts", "src/compat/code-support.ts"]): string[] => {
+  const violations: string[] = [];
+  const visited = new Set<string>();
+  const visit = (file: string, chain: string[]): void => {
+    if (visited.has(file)) return;
+    visited.add(file);
+    const source = sources.get(file);
+    if (source === undefined && file.endsWith(".json")) return;
+    if (source === undefined) { violations.push(`${chain.join(" -> ")}: unresolved engine source`); return; }
+    for (const dependency of sourceDependencies(source)) {
+      const target = dependency.target.startsWith(".") ? resolveSource(file, dependency.target) : dependency.target;
+      const edge = [...chain, target];
+      if (dependency.computed) violations.push(`${edge.join(" -> ")}: computed imports cannot prove engine isolation`);
+      else if (/^@zhivex-ai\/harness(?:\/|$)/.test(target)) {
+        violations.push(`${edge.join(" -> ")}: engine self-imports must use relative source paths so the full closure is checked`);
+      } else if (/^(?:node:)?(?:readline(?:\/promises)?|tty)$/.test(target)) {
+        violations.push(`${edge.join(" -> ")}: engine must not load terminal builtins`);
+      } else if (/^(src\/cli(?:\/|\.|-)|src\/(?:service-cli|acp-cli|index)\.ts$|desktop\/|packages\/code\/|@zhivex-ai\/code(?:\/|$)|@napi-rs\/keyring$)/.test(target)) {
+        violations.push(`${edge.join(" -> ")}: engine must not depend on terminal, Code, Desktop or credential UI`);
+      } else if (dependency.target.startsWith(".")) visit(target, edge);
+    }
+  };
+  for (const entry of entries) visit(entry, [entry]);
+  return violations;
+};
+
 export const checkArchitecture = async (root: string): Promise<string[]> => {
   const violations: string[] = [];
+  const sources = new Map<string, string>();
   const visit = async (directory: string): Promise<void> => {
     for (const entry of await readdir(path.join(root, directory), { withFileTypes: true })) {
       const file = `${directory}/${entry.name}`;
       if (entry.isDirectory()) await visit(file);
-      else if (/\.tsx?$/.test(entry.name)) violations.push(...architectureViolations(file, await readFile(path.join(root, file), "utf8")));
+      else if (/\.tsx?$/.test(entry.name)) {
+        const source = await readFile(path.join(root, file), "utf8");
+        sources.set(file, source);
+        violations.push(...architectureViolations(file, source));
+      }
     }
   };
   await visit("src");
   await visit("desktop/src");
+  violations.push(...engineBoundaryViolations(sources));
   return violations;
 };
 

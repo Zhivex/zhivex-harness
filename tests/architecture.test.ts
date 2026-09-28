@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import path from "node:path";
-import { architectureViolations, checkArchitecture, sourceDependencies } from "../scripts/check-architecture.js";
+import { architectureViolations, checkArchitecture, sourceDependencies, engineBoundaryViolations } from "../scripts/check-architecture.js";
 
 test("source boundaries hold across runtime and Desktop", async () => {
   expect(await checkArchitecture(path.resolve(import.meta.dir, ".."))).toEqual([]);
@@ -45,4 +45,82 @@ test("Desktop protocol bundles for a browser without host runtime dependencies",
   const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/internal/desktop/protocol.ts")], target: "browser" });
   expect(result.success).toBe(true);
   expect(result.logs).toEqual([]);
+});
+
+
+test("engine closure rejects transitive runtime, re-export and erased reverse dependencies", () => {
+  for (const edge of [
+    'import "../cli/console.js";',
+    'export { x } from "../../packages/code/src/index.js";',
+    'import type { X } from "../../desktop/src/types.js";',
+    'type X = import("@zhivex-ai/code").X;',
+    'const x = import("../cli/console.js");',
+    'const x = require("../cli/console.js");',
+    'const x = import(target);',
+    'const x = require(target);',
+    'import x = require("@zhivex-ai/code");',
+  ]) {
+    const sources = new Map([
+      ["src/engine/index.ts", 'export { x } from "../runtime/bridge.js";'],
+      ["src/runtime/bridge.ts", edge],
+    ]);
+    expect(engineBoundaryViolations(sources, ["src/engine/index.ts"])).toHaveLength(1);
+  }
+});
+
+test("public protocol bundles for browsers with no host runtime", async () => {
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/engine/protocol.ts")], target: "browser" });
+  expect(result.success).toBe(true);
+  expect(result.logs).toEqual([]);
+  const output = await result.outputs[0]!.text();
+  expect(output).not.toContain("node:");
+  expect(output).not.toContain("@napi-rs/keyring");
+});
+
+test("additive engine contracts enumerate exact named exports and preserve historical tiers", async () => {
+  const ts = await import("typescript-compiler-api");
+  const contract = await Bun.file(path.resolve(import.meta.dir, "../contracts/engine-api.json")).json();
+  const historical = await Bun.file(path.resolve(import.meta.dir, "../contracts/public-api.json")).json();
+  const manifest = await Bun.file(path.resolve(import.meta.dir, "../package.json")).json();
+  for (const [subpath, value] of Object.entries(contract.entrypoints) as [string, { source: string; exports: { name: string; kind: string; tier: string }[] }][]) {
+    expect(manifest.exports[subpath]).toEqual({
+      types: "./" + value.source.replace(/^src\//, "dist/").replace(/\.ts$/, ".d.ts"),
+      import: "./" + value.source.replace(/^src\//, "dist/").replace(/\.ts$/, ".js"),
+    });
+    const source = await Bun.file(path.resolve(import.meta.dir, "..", value.source)).text();
+    const ast = ts.createSourceFile(value.source, source, ts.ScriptTarget.Latest, true);
+    const actual: {name:string;kind:string}[] = [];
+    for (const statement of ast.statements) {
+      if (!ts.isExportDeclaration(statement)) {
+        if (ts.isVariableStatement(statement) && statement.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+          for (const declaration of statement.declarationList.declarations) {
+            expect(ts.isIdentifier(declaration.name)).toBe(true);
+            if (ts.isIdentifier(declaration.name)) actual.push({ name: declaration.name.text, kind: "runtime" });
+          }
+        }
+        continue;
+      }
+      expect(statement.exportClause && ts.isNamedExports(statement.exportClause)).toBe(true);
+      if (statement.exportClause && ts.isNamedExports(statement.exportClause)) for (const element of statement.exportClause.elements) actual.push({name:element.name.text,kind:statement.isTypeOnly ? "type" : "runtime"});
+    }
+    expect(actual).toEqual(value.exports.map(({name,kind}) => ({name,kind})));
+    for (const item of value.exports) for (const tier of ["stable", "beta", "experimental"]) {
+      if (historical[tier + (item.kind === "type" ? "TypeExports" : "RuntimeExports")].includes(item.name)) expect(item.tier).toBe(tier);
+    }
+  }
+});
+
+
+test("engine closure cannot bypass isolation through self-package aliases or terminal builtins", () => {
+  for (const target of ["@zhivex-ai/harness", "@zhivex-ai/harness/engine", "@zhivex-ai/harness/code-support", "node:readline", "readline", "node:readline/promises", "readline/promises", "node:tty", "tty"]) {
+    for (const edge of [`export { X } from "${target}";`, `import type { X } from "${target}";`, `const x = import("${target}");`]) {
+      const sources = new Map([
+        ["src/engine/index.ts", 'export { x } from "../runtime/bridge.js";'],
+        ["src/runtime/bridge.ts", edge],
+      ]);
+      const violations = engineBoundaryViolations(sources, ["src/engine/index.ts"]);
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain(`src/engine/index.ts -> src/runtime/bridge.ts -> ${target}`);
+    }
+  }
 });

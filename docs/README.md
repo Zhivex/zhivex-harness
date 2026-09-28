@@ -16,6 +16,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Integrate Harness
 
+- [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
+
 - [CLI reference](CLI.md): command options, JSON/JSONL and exit codes.
 - [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
 - [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).

@@ -6,7 +6,7 @@ import {
   type ApprovalDecisionRecord
 } from "../approvals/approval-history.js";
 import { APPROVAL_DIFFS_KEY, captureApprovalDiffs, attachAppliedDiffs } from "../approvals/approval-diff.js";
-import { terminalContinuationMessages } from "../cli/terminal/terminal-continuation.js";
+import { terminalContinuationMessages } from "./continuation.js";
 import { attachApprovalPreviews } from "../approvals/approval-preview.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { AgentRunState } from "@zhivex-ai/agents";
@@ -19,7 +19,7 @@ import {
   SESSION_RUN_STATUSES,
   type SessionRunStatus
 } from "../persistence/sessions.js";
-import { runResultDocument } from "../cli/run-document.js";
+import { runResultDocument } from "./run-document.js";
 import { HarnessStateConflictError } from "../runtime/errors.js";
 import {
   harnessClientRequestSchema,

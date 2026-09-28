@@ -1,0 +1,2587 @@
+{
+  "schemaVersion": 1,
+  "policy": "Named aliases retain root tiers. Additional client helpers are beta; ACP additions experimental. Root compatibility signatures remain authoritative. New Code support names are experimental.",
+  "entrypoints": {
+    "./engine": {
+      "source": "src/engine/index.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "DEFAULT_ALLOWED_CHECKS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "DEFAULT_OCI_EXECUTION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "DEFAULT_SUBAGENT_BUDGET",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_CONFIG_MIGRATABLE_SCHEMA_VERSIONS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_CONFIG_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_EXECUTION_BACKENDS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_EXECUTION_POLICY_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_OCI_RUNTIMES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_OCI_SHELL_MODES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_REQUIRED_CAPABILITIES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_SUBAGENT_PROFILES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "BUILTIN_PROVIDER_REGISTRATIONS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "DEFAULT_PROVIDER_REGISTRY",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "PROVIDERS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "PROVIDER_DESCRIPTORS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createProviderModel",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "createProviderRegistry",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "defaultHarnessNamespace",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "migrateHarnessConfigInput",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "parseProvider",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "providerAvailability",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "providerDescriptor",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "resolveHarnessConfig",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "BuiltInHarnessProvider",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessBudget",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessCompactionConfig",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessContextConfig",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessConfig",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessConfigInput",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessConfigMigrationResult",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessCostBudget",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessExecutionBackend",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessExecutionConfig",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessOciRuntime",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessOciShellMode",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessOrchestrationConfig",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessProvider",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessProviderRegistry",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessRequiredCapability",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessStoreBackend",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessSubagentProfile",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "ProviderCapability",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderAvailability",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "ProviderCredentials",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderDescriptor",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "ProviderDiagnosticsDescriptor",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderEnumDiagnostic",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderModelFactory",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderModelFactoryContext",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderPresenceDiagnostic",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ProviderRegistration",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "ProviderSupport",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarnessRouteModels",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "parseHarnessModelRoute",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "resolveHarnessModelRoutes",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "serializeHarnessModelRoutes",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessModelRoute",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CLI_EVENT_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CLI_JSON_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "serializeStreamEvent",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "serializeStreamResult",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "streamEventDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "streamResultDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "StreamRunResultSource",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CLI_COMMAND_OPTION_CONTRACTS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CLI_OPTION_DEFINITIONS",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CLI_OPTION_NAMES",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "validateCliCommandOptions",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CliCommandOptionContract",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliCommandOptionContractKey",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliOptionDefinition",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliOptionName",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "cliChangeEnvelopeVerificationDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliDoctorDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliErrorDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliInitDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliJsonDocumentSchema",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "cliJsonLineDocumentSchema",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "cliProviderDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliReviewGroupDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunCancellationDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunCleanupDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunEventDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunExportDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunInspectionDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunListDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliRunResultDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliSessionDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliSessionListDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliStateExportDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliStateImportDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliStateStatusDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliStreamErrorDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cliStreamResultDocumentSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "parseCliJsonDocument",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "parseCliJsonLineDocument",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CliChangeEnvelopeVerificationDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliInitDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliJsonDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliJsonLineDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliReviewGroupDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliRunEventDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliRunInspectionDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliRunListDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliRunResultDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliSessionDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliStreamErrorDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliStreamResultDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_SESSION_INDEX_FILE",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_SESSION_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "SESSION_RUN_STATUSES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "TERMINAL_SESSION_RUN_STATUSES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "openCliSessionStore",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "openSessionStore",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_STATE_BACKUP_MAX_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_STATE_BACKUP_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "createHarnessStateBackup",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "exportHarnessStateBackup",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "importHarnessStateBackup",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "importHarnessStateBackupFile",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "inspectHarnessState",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "readHarnessStateBackup",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "stateBackupBundleSchema",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessStateBackupBundle",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessStateImportOptions",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "AppendSessionRunInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CliSession",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliSessionStore",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "CliSessionSummary",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CreateSessionInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ForkSessionInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ListSessionsQuery",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OpenSessionStoreOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SessionRetentionResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SessionRunReference",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SessionRunStatus",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "UpdateSessionInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "UpdateSessionRunInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CliOciRuntimeAdapter",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_OCI_LABEL",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_OCI_LABEL_VALUE",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cleanupHarnessExecutionArtifacts",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarnessOciExecutionEnvironment",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "describeOciCommand",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "executionFingerprintInput",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "harnessExecutionSession",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "CreateHarnessOciEnvironmentOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EnvironmentPatchImportResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EnvironmentPatchInspection",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ExecutionArtifactCleanupResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessCommandResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessEnvironmentStatus",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessExecutionIoMetrics",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessExecutionSession",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessOciExecutionEnvironment",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessOciRuntimeAdapter",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciCommandBatchResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciImageInspection",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciCommandResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciPhaseLatencies",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciRunBatchRequest",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "OciRunRequest",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "assertHarnessModelCapabilities",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "inspectHarnessModelCapabilities",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "selectHarnessModel",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessModelCandidate",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessModelCapabilityReport",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessModelSelection",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_MCP_CONFIG_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_MCP_PERMISSIONS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarnessMcpTools",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "createHttpMcpClient",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "loadHarnessMcpConfiguration",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "normalizeHarnessMcpConfiguration",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessMcpClients",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessMcpConfiguration",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessMcpHttpOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessMcpPermission",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessMcpServerConfig",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessMcpTransport",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "McpClient",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "McpListedTool",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_SUBAGENT_PROFILE_DESCRIPTORS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarnessSubagents",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "runHarnessReviewGroup",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessReviewGroupResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessSubagentProfileDescriptor",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessSubagentRuntime",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "BUN_ENGINE_RANGE",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "NODE_ENGINE_RANGE",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_ERROR_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_ERROR_CODES",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessApprovalError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessConfigError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessExecutionError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessProviderError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessStateConflictError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessWorkspaceError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "harnessErrorDocument",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "normalizeHarnessError",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessErrorCategory",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessErrorCode",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessErrorDocument",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessErrorOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CHANGE_ENVELOPE_DIGEST_ALGORITHM",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "CHANGE_ENVELOPE_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "MAX_CHANGE_ENVELOPE_APPROVALS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_CHANGE_ENVELOPE_APPROVAL_SCOPES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_CHANGE_ENVELOPE_ATTESTATIONS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_CHANGE_ENVELOPE_CHECKS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "canonicalizeChangeEnvelope",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "changeEnvelopeApprovalSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeBaseSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeCheckSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeEvidenceSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeFingerprintsSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopePatchSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopePreconditionsSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "changeEnvelopeSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "computeChangeEnvelopeDigest",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "computeChangeEnvelopeEvidenceDigest",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createChangeEnvelope",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "digestChangeEnvelopeArtifact",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "externalAttestationReferenceSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "verifyChangeEnvelope",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "ChangeEnvelope",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "ChangeEnvelopeApproval",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeCheck",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeEvidence",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopePreconditions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeVerificationIssue",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeVerificationIssueCode",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeVerificationOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ChangeEnvelopeVerificationResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CreateChangeEnvelopeInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ExternalAttestationReference",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EDIT_CONTRACT_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "EDIT_DIGEST_ALGORITHM",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_EDIT_CHANGES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_EDIT_FILE_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_EDIT_PROPOSAL_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "applyEditProposalInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createEditProposal",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "editContractDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "editChangeSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "editChangesSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "editProposalInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "editProposalChangeSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "editProposalSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "fileDigestSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "moveFileInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "mutationAuditEntrySchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "mutationOperationSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "quarantineFileInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "restoreFileInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "validateEditProposal",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "workspaceFilePathSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "ApplyEditProposalInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ApplyPatchResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EditContractDocument",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EditChange",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EditProposal",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "EditProposalChange",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "FileDigest",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "MoveFileInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "MoveFileResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "MutationAuditEntry",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "MutationOperation",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "QuarantineFileInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "QuarantineFileResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "RestoreFileInput",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "RestoreFileResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_INSTRUCTIONS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "appendUserMessage",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "compactHarnessMessages",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createExecutionEnvironmentTools",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarness",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "estimateMessageTokens",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "runHarness",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_OPERATIONS_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "HARNESS_SQLITE_FILE",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "TERMINAL_RUN_STATUSES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cancelHarnessRun",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "cleanupHarnessRuns",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "inspectHarnessRun",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "listHarnessRuns",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "migrateLegacyFileRuns",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "openHarnessPersistence",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "validateStateDirectory",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessMigrationResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessPersistence",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessRunQuery",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "CreateHarnessOptions",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessRunOptions",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessRunDiagnostics",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ZhivexHarness",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "DEFAULT_HARNESS_CONTEXT_MANIFEST",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "DEFAULT_HARNESS_PROJECT_INSTRUCTIONS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_CONTEXT_BUNDLE_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_CONTEXT_CONFIG_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HARNESS_LIFECYCLE_EVENTS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_CONTEXT_FILES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_CONTEXT_FILE_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_CONTEXT_TOTAL_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_SKILLS",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_SKILL_DIRECTORIES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "MAX_HARNESS_SKILL_FILE_BYTES",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createEmptyHarnessContextBundle",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "createHarnessLifecycleDispatcher",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "harnessContextConfigurationSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "harnessContextFingerprintInput",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "harnessLifecycleFingerprintInput",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "harnessSkillLoadInputSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "isHarnessContextDigest",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "loadHarnessProjectContext",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "loadHarnessSkill",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "renderHarnessContextInstructions",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessContextBundle",
+          "kind": "type",
+          "tier": "stable"
+        },
+        {
+          "name": "HarnessContextConfiguration",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessContextManifestIdentity",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessContextSource",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessLifecycleEvent",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessLifecycleEventName",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessLifecycleHookFailure",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessLifecycleHookRegistration",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessLoadedSkill",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessSkillIndexEntry",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "LoadHarnessProjectContextOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "Workspace",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CommandResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessCheck",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ListFilesOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ListFilesResult",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ReadFilesRequest",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SearchFilesOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SearchManyOptions",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SearchManyQuery",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "SearchMatch",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "WorkspaceFile",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "WorkspaceTopologyFile",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "WorkspaceIndexDiagnostics",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "DEFAULT_TIME_TO_SAFE_FIX_GOAL",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_CARRIERS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_FAILURE_ORIGINS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_FAILURE_STAGES",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_GOALS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_PROFILES",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TIME_TO_SAFE_FIX_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "classifyTimeToSafeFixFailure",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTimeToSafeFixCases",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTimeToSafeFixReport",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTimeToSafeFixSample",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "injectTimeToSafeFixAttack",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "timeToSafeFixDriverResultSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "timeToSafeFixLatencyStatistics",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "timeToSafeFixTaskSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixAggregate",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixCarrier",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixCase",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixDriverResult",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixDiagnosticCode",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixFailureOrigin",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixFailureStage",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixGoal",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixLatencyStatistics",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixProfile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixRate",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixRatioStatistics",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixReport",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixSample",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "TimeToSafeFixTask",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HARNESS_CLIENT_PROTOCOL_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientCommandSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientRequestSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createHarnessClientAdapter",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRequest",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientErrorCode",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientSession",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRun",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientData",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientResponse",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientNegotiation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapter",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "startHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "recoverHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readHarnessLocalCredentials",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "requestHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessLocalCredentialsSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalService",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalServiceOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalCredentials",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openHarnessActivityStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityEvent",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivitySnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityPage",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityStore",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapterOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessDelegationContract",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "createSemanticCompactor",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "SEMANTIC_COMPACTION_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "recommendCompactionModels",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CompactionRecommendationRequest",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CompactionModelAssessment",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CompactionModelRecommendations",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createHarnessToolPolicy",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "applyHarnessToolPolicy",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessToolPolicySchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessToolPolicy",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessToolPolicyDecision",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createProgressMonitor",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ProgressMonitorState",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "ProgressSignal",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createAcpConnection",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "serveAcpStdio",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openWorkspaceCheckpointStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "WorkspaceCheckpoint",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "WorkspaceRestoreOperation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessMcpResourceClient",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./protocol": {
+      "source": "src/engine/protocol.ts",
+      "environment": "browser",
+      "exports": [
+        {
+          "name": "HARNESS_CLIENT_PROTOCOL_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientCommandSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientRequestSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRequest",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientErrorCode",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientSession",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRun",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientData",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientResponse",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientNegotiation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapterOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapter",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CLI_JSON_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "CLI_EVENT_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "streamEventDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "serializeStreamEvent",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "streamResultDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "serializeStreamResult",
+          "kind": "runtime",
+          "tier": "stable"
+        },
+        {
+          "name": "StreamRunResultSource",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessActivityEvent",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityRun",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessActivitySnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityPage",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./client": {
+      "source": "src/engine/client.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "HARNESS_CLIENT_PROTOCOL_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientCommandSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessClientRequestSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientCommand",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRequest",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientErrorCode",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientSession",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientRun",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientData",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientResponse",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientNegotiation",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapterOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessClientAdapter",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "createHarnessClientAdapter",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "runResultDocument",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "terminalContinuationMessages",
+          "kind": "runtime",
+          "tier": "beta"
+        }
+      ]
+    },
+    "./service": {
+      "source": "src/engine/service.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "harnessLocalCredentialsSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "startHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readHarnessLocalCredentials",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "requestHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "recoverHarnessLocalService",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalService",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalServiceOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessLocalCredentials",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "openHarnessActivityStore",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityEvent",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityRun",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessActivitySnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityPage",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityStore",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessActivityOptions",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./acp": {
+      "source": "src/engine/acp.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createAcpConnection",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "AcpConnectionOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "serveAcpStdio",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./code-support": {
+      "source": "src/compat/code-support.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "estimateMessages",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TASK_SOURCE_KEY",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskSources",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "resolvePackageManager",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "runPortableProcess",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "loadModelCatalog",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CatalogSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "bundledModelCatalog",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "catalogModels",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "modelDescription",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "ModelCatalog",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectCodeStateDatabase",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "modelReasoningEfforts",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "reasoningEffortSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessReasoningEffort",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "DEFAULT_HARNESS_MAX_STEPS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectRuntimeDiagnostics",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessToolExecution",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "USAGE_LEDGER_KEY",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "formatUsageLedger",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectUsageLedger",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "usagePricingSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "FileChangedWhileReadingError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "FileSizeLimitError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "UnsafeFileTypeError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readRegularFileNoFollow",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    }
+  }
+}

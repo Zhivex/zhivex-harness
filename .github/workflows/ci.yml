@@ -166,6 +166,49 @@ jobs:
       - name: Verify build produced no tracked changes
         run: git diff --exit-code
 
+  engine-code-consumers:
+    name: Engine and Code installed consumers / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.13.0", "24"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - name: Prepare independent packages and contributor tests
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run dev:code
+          bun run typecheck:code
+          bun run test:code
+      - name: Install pinned consumer package managers
+        run: npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
+      - name: Verify npm, pnpm, Yarn and Bun consumers without Bun runtime
+        run: bun run smoke:engine-code
+        env:
+          SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
+          SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
+          HARNESS_CODE_SMOKE_OUTPUT: ${{ runner.temp }}/engine-code-evidence
+      - name: Retain installed consumer report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: engine-code-node-${{ matrix.node }}
+          path: ${{ runner.temp }}/engine-code-evidence/report.json
+          if-no-files-found: warn
+      - name: Verify builds did not modify tracked files
+        run: git diff --exit-code
+
   node-compatibility:
     name: Node ${{ matrix.node }} package runtime
     runs-on: ubuntu-latest

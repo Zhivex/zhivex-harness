@@ -1,12 +1,15 @@
 # Source architecture
 
-Harness keeps one runtime package and a separately built Desktop application.
-The internal boundaries below are co-versioned; they do not introduce new public
-package entrypoints or change the persisted-state and client protocol versions.
+Harness keeps its runtime package, a separately built Code terminal package in
+`packages/code`, and a separately built Desktop application. Additive public
+[engine entrypoints](ENGINE_API.md) expose the motor independently of terminal
+presentation. Persisted-state and client protocol versions remain unchanged.
 
 The proposed future split between Harness and Code is recorded in
 [ADR 0001](adr/0001-harness-code-public-boundary.md). It inventories the current
-boundary and defines a compatible migration; the package split is not implemented.
+boundary and defines the compatible migration. HAR-HU-37/38 implement the additive
+engine interfaces and local Code package; Desktop migration and release
+certification remain separate work.
 
 ## Module ownership
 
@@ -24,9 +27,12 @@ boundary and defines a compatible migration; the package split is not implemente
 | `cli/` | Commands and presentation, with `console/` and `terminal/` subfolders |
 | `tools/` | Tool definitions and registration |
 | `internal/desktop/` | Explicit integration surfaces consumed by Desktop |
+| `engine/` | Explicit public entrypoints without terminal implementation |
+| `compat/` | Shared CLI option contracts and named Code host helpers |
 
 Only `index.ts`, `cli.ts`, `service-cli.ts` and `version.ts` remain at the source
-root. The first three are public/build entrypoints. `version.ts` stays beside
+root, together with `cli-entry.ts` and `acp-cli.ts`. All except `version.ts` are
+public/build entrypoints. `version.ts` stays beside
 them so its package metadata lookup has the same relative path in source and
 bundled Node entrypoints. The architecture check rejects new root modules.
 
@@ -81,6 +87,16 @@ reviewed, named export to the appropriate surface when a new integration is need
 The surfaces are internal source interfaces, not independently versioned packages.
 Renderer code uses the protocol surface; host capabilities remain behind the
 existing preload/IPC boundary. The runtime never imports Desktop.
+
+## Code integration
+
+Code owns its terminal source and independent build/tests in `packages/code`.
+It imports the named Harness subpaths, with no source-relative links. The existing
+Harness CLI remains a compatibility snapshot for its 1.x binaries. Shared wire
+serialization, result documents and continuation reconstruction live in `client/`;
+old CLI paths are re-export bridges. Public CLI option contracts live in `compat/`.
+Harness has no dependency on Code. The same public build uses shared chunks to
+preserve class and schema identity across entrypoints.
 
 ## Enforcement and verification
 
