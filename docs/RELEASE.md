@@ -2,17 +2,17 @@
 
 `@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## 1.3.0-rc.1 preparation
+## 1.3.0-rc.2 preparation
 
-The source version is `1.3.0-rc.1`, targeting npm `next` through annotated tag
-`v1.3.0-rc.1` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
-`latest`. RC1 includes HAR-HU-36–38: public engine boundaries, compatibility
+The source version is `1.3.0-rc.2`, targeting npm `next` through annotated tag
+`v1.3.0-rc.2` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
+`latest`. RC2 includes HAR-HU-36–38: public engine boundaries, compatibility
 bridges and an independently built local Code package.
 
 This candidate retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
 OpenAI `gpt-6-luna` in the release matrix. Anthropic, Gemini/Vertex improvements,
 Desktop package migration and independent Code publication are pending stories;
-none is advertised as completed or certified by the Harness RC1 workflow.
+none is advertised as completed or certified by the Harness RC2 workflow.
 Code `0.1.0-rc.1` is now prepared for a separate `release-code.yml` workflow and
 its own annotated tag; see [Code release procedure](CODE_RELEASE.md).
 
@@ -22,8 +22,15 @@ certify new bytes. Do not overwrite immutable versions or advance `latest`.
 The engine/Code installed gate uses the exact release tarball without changing
 its manifest version; Code is packed only for consumer acceptance, not published.
 
-Publication of RC1 is pending. Historical records, including `release-status.json`,
-remain historical and must not be interpreted as RC1 certification.
+Publication of RC2 is pending. Historical records, including `release-status.json`,
+remain historical and must not be interpreted as RC2 certification.
+
+The previous `v1.3.0-rc.1` attempt failed the Qwen base certification because
+its pending `apply_patch` proposal ID differed from the expected ID. npm was
+never invoked. RC2 validates proposal digests before requesting approval, so an
+invalid model call receives an input error rather than an unusable approval.
+The exact live assertion and provider cohort remain unchanged; the historical
+tag and artifact are not moved or rewritten.
 
 ## Deterministic gates
 

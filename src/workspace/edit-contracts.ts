@@ -108,6 +108,14 @@ export interface ApplyEditProposalInput {
 export const applyEditProposalInputSchema = z.strictObject({
   proposalId: fileDigestSchema,
   changes: editChangesSchema
+}).superRefine((input, context) => {
+  // Validate the binding before the agent can request approval. Keep malformed
+  // changes as ordinary schema issues rather than throwing from this refinement.
+  if (!editProposalInputSchema.safeParse({ changes: input.changes }).success) return;
+  if (createEditProposal({ changes: input.changes }).proposalId !== input.proposalId) {
+    context.addIssue({ code: "custom", path: ["proposalId"],
+      message: "proposalId does not match the supplied paths, preconditions, and content. Read proposalId from the matching propose_edits result; do not invent it." });
+  }
 });
 
 export const moveFileInputSchema = z.strictObject({

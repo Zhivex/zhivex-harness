@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.2 - 2026-09-28
+
+- Reject a mismatched `apply_patch` proposal digest during input validation, before requesting operator approval. Invalid calls remain non-mutating and can be corrected by the model; valid calls still require the original approval.
+- Preserve the exact provider certification assertions after the failed RC1 attempt; no historical tag or artifact is changed.
+- Prepare the independent Code RC with an exact Harness RC2 dependency and protected artifact/provenance publication workflow.
+
 ## 1.3.0-rc.1 - 2026-09-28
 
 - Add explicit terminal-independent Harness engine, protocol, client, local-service and ACP entrypoints while preserving historical root exports and stable signatures.

@@ -2,7 +2,7 @@
 
 Code is released independently of Harness. The initial candidate is
 `@zhivex-ai/code@0.1.0-rc.1`, with the sole binary `zhivex-code`, npm tag `next`,
-and the exact dependency `@zhivex-ai/harness@1.3.0-rc.1`. Harness must first be
+and the exact dependency `@zhivex-ai/harness@1.3.0-rc.2`. Harness must first be
 published and verified through its protected release workflow. This document
 records preparation, not successful publication.
 
