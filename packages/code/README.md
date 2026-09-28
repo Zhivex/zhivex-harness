@@ -1,10 +1,11 @@
 # Zhivex Code
 
-The terminal product for the Zhivex Harness engine. This is an unpublished development
-package (`0.1.0-dev.0`), with publication disabled while the first release is reviewed.
-It requires the new public APIs planned for Harness 1.3.0; registry Harness 1.2.0
-cannot satisfy this implementation. `>=1.3.0-0 <2.0.0` allows staging the additive
-candidate locally without misrepresenting the existing registry package.
+The terminal product for the Zhivex Harness engine. Version `0.1.0-rc.1` is
+prepared for the npm `next` channel and pins `@zhivex-ai/harness@1.3.0-rc.1`.
+Publication remains pending the protected release workflow and registry checks.
+
+After publication, install with `npm install -g @zhivex-ai/code@next`.
+Node >=22.13.0 is required; consumers do not need Bun.
 
 ## Build and run
 
@@ -18,7 +19,7 @@ its public export artifacts and preserves any installed dependency. It does not 
 as an install/build lifecycle script and does not read or bundle engine source.
 The root manifest is now `1.3.0-rc.1`; this link is local API development
 evidence only. Installed acceptance tests the exact unpublished Harness RC tarball
-without rewriting its version, which satisfies Code's declared release range.
+without rewriting its version, which matches Code's exact engine pin.
 
 The resulting tarball runs on Node >=22.13.0 without Bun, TypeScript, or install
 scripts. Bun is contribution tooling only. The independent build deliberately
@@ -52,10 +53,14 @@ The historical Harness CLI remains an independent compatibility snapshot.
 
 ## Release status
 
-Packing and installed local candidate tests are not a registry release. The scoped
-name and publication permissions need an authenticated scope-owner check; the
-2026-09-28 HAR-HU-36 check returned E404 for package visibility and E401 for identity
-and organization access. No successful reservation or write permission is inferred.
-Minimum/latest engine versions and package-manager/install-order certification
-belong to HAR-HU-40. Remove `private` only as part of an authorized release after
-those gates and the additive Harness release are ready.
+Packing and local tests are not a registry release. The independent Code workflow
+validates an annotated `code-v0.1.0-rc.1` tag on reviewed main, its exact CI/CodeQL
+results, and the published engine dependency. It tests one immutable Code tarball
+both without dependency overrides and with the four package managers.
+
+The first publication uses the retained validated tarball and its GitHub-generated
+npm provenance bundle with an authenticated scope owner. Later publications use
+npm Trusted Publishing with the protected `npm` environment. See
+[Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
+HAR-HU-40 remains responsible for broader compatibility and install-order coverage;
+this initial RC pins one engine version and does not claim the complete matrix.

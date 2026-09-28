@@ -1,0 +1,160 @@
+name: Publish Code npm package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Annotated code-v0.x.y-rc.N tag on main with passing CI and CodeQL
+        required: true
+        type: string
+      mode:
+        description: Bootstrap retains the validated artifact for the first authenticated publication
+        required: true
+        default: bootstrap
+        type: choice
+        options: [bootstrap, oidc]
+      confirm_publication:
+        description: Confirm public immutable publication (required for OIDC mode)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: code-npm-release
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+
+jobs:
+  validate:
+    name: Validate exact Code release artifact
+    if: ${{ github.repository == 'Zhivex/zhivex-harness' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Verify annotated tag and exact main push CI and CodeQL
+        run: bun run scripts/code-release.ts identity
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Install immutable build tools and test source
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+          bun run packages/code/scripts/link-local-engine.ts
+          bun run build:code
+          bun run typecheck:code
+          bun run test:code
+          bun test tests/code-release.test.ts
+      - name: Pack one immutable Code artifact and fetch published engine
+        run: |
+          mkdir -p release-code-artifacts
+          bun run scripts/code-release.ts engine release-code-artifacts/harness.tgz
+          (cd packages/code && bun pm pack --ignore-scripts --filename "$GITHUB_WORKSPACE/release-code-artifacts/code.tgz")
+          bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
+      - name: Test actual registry resolution without engine overrides
+        run: bun run scripts/code-release.ts smoke-registry release-code-artifacts/code.tgz
+      - name: Test installed products across package managers
+        run: |
+          npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
+          node scripts/smoke-engine-code.mjs release-code-artifacts/harness.tgz release-code-artifacts/code.tgz > release-code-artifacts/acceptance.json
+        env:
+          SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
+          SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
+      - name: Generate npm provenance bound to this artifact and tagged source
+        run: |
+          npm install --prefix "$RUNNER_TEMP/code-provenance-tools" --ignore-scripts --no-audit --no-fund npm@11.6.1
+          node scripts/code-bootstrap-provenance.cjs generate release-code-artifacts/code.tgz release-code-artifacts/code.sigstore.json
+        env:
+          CODE_PROVENANCE_NPM_ROOT: ${{ runner.temp }}/code-provenance-tools/node_modules/npm
+      - name: Retain immutable artifact, provenance and installed acceptance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: code-release-${{ github.sha }}
+          path: |
+            release-code-artifacts/code.tgz
+            release-code-artifacts/code.sigstore.json
+            release-code-artifacts/SHA512SUMS
+            release-code-artifacts/acceptance.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Record publication boundary
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          printf 'Code artifact validated for %s at %s. Mode: %s. Bootstrap does not publish; download the retained tarball and provenance bundle for authenticated first publication.\n' "$RELEASE_TAG" "$GITHUB_SHA" "$MODE" >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish retained Code artifact with OIDC
+    needs: validate
+    if: ${{ inputs.mode == 'oidc' && inputs.confirm_publication && needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Revalidate release identity after protected approval
+        run: bun run scripts/code-release.ts identity
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: code-release-${{ github.sha }}
+          path: release-code-artifacts
+      - name: Verify transferred artifact and compatible npm client
+        run: |
+          (cd release-code-artifacts && shasum -a 512 -c SHA512SUMS)
+          bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
+          npm install --prefix "$RUNNER_TEMP/code-npm-client" --ignore-scripts --no-audit --no-fund npm@11.6.1
+      - name: Check immutable registry state
+        id: registry
+        run: |
+          STATUS="$(bun run scripts/code-release.ts status release-code-artifacts/code.tgz)"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+      - name: Publish exact bytes with npm Trusted Publishing
+        if: steps.registry.outputs.status == 'absent'
+        run: node "$RUNNER_TEMP/code-npm-client/node_modules/npm/bin/npm-cli.js" publish ./release-code-artifacts/code.tgz --ignore-scripts --access public --provenance --tag next
+      - name: Verify registry bytes, distribution tag and provenance
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if bun run scripts/code-release.ts verify release-code-artifacts/code.tgz; then exit 0; fi
+            if [ "$attempt" -lt 6 ]; then sleep 10; fi
+          done
+          exit 1
