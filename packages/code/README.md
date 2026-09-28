@@ -16,9 +16,9 @@ then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contrib
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest remains 1.2.0 during development; this link is local API development
-evidence only. Installed acceptance instead stages an unpublished `1.3.0-dev.0`
-Harness candidate, which satisfies Code's future release range.
+The root manifest is now `1.3.0-rc.1`; this link is local API development
+evidence only. Installed acceptance tests the exact unpublished Harness RC tarball
+without rewriting its version, which satisfies Code's declared release range.
 
 The resulting tarball runs on Node >=22.13.0 without Bun, TypeScript, or install
 scripts. Bun is contribution tooling only. The independent build deliberately
