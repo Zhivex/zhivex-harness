@@ -70,7 +70,9 @@ hard failure; never attempt to replace that version.
 
 In npm package settings, configure GitHub Actions with organization `Zhivex`,
 repository `zhivex-harness`, workflow filename `release-code.yml`, and environment
-`npm`. Preserve the GitHub environment's required human approval. Then prepare a
+`npm`. Enable the allowed action `npm publish`; the OIDC job uses direct
+publishing after GitHub approval, not `npm stage publish`. Preserve the GitHub
+environment's required human approval. Then prepare a
 new Code RC/version and annotated tag through the same PR and main CI process.
 Dispatch its tag with `mode=oidc` and `confirm_publication=true`.
 
