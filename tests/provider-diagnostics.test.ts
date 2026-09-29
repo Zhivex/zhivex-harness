@@ -6,6 +6,7 @@ import { inspectProviderResponse } from "../scripts/time-to-safe-fix-model-obser
 for (const [body, status, reason, parameter] of [
   [{error:{type:"invalid_request_error",param:"previous_response_id",message:"Response SECRET expired"}},400,"previous_response_unavailable","previous_response_id"],
   [{error:{code:"context_length_exceeded",message:"SECRET"}},400,"context_length_exceeded","none"],
+  [{error:{message:"SECRET billing payload"}},402,"payment_required","none"],
   [{error:{type:"authentication_error",message:"SECRET"}},401,"authentication","none"],
   [{error:{status:"RESOURCE_EXHAUSTED",message:"SECRET"}},429,"rate_limit","none"],
   [{error:{status:"INVALID_ARGUMENT",message:"SECRET",param:"tools"}},400,"invalid_request","tools"],

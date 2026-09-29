@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Classify provider HTTP 402 as `payment_required` without leaking response data; add Gemini creation/update, nullable-digest, signed-continuation and durable approval regressions. Installed Gemini 3.7 live reproduction remains blocked by HTTP 402 and does not certify editing.
+
 - Add provisional Anthropic direct API support via SDK 0.12.4, shared CLI/Desktop models, secret-store credentials and presence-only diagnostics. Preserve existing default transport fingerprints; signed provider data, tool IDs and usage remain intact.
 - Add a versioned common task acceptance suite with seven fixtures, protected independent checks, durable approval/restart/cancellation, explicit model/route/artifact/budgets and append-only attempt evidence. Failed first attempts remain failed when a later retry recovers. No live certification or publication is implied.
 
