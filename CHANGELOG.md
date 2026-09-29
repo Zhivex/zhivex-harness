@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Add provisional Anthropic direct API support via SDK 0.12.4, shared CLI/Desktop models, secret-store credentials and presence-only diagnostics. Preserve existing default transport fingerprints; signed provider data, tool IDs and usage remain intact.
+- Add a versioned common task acceptance suite with seven fixtures, protected independent checks, durable approval/restart/cancellation, explicit model/route/artifact/budgets and append-only attempt evidence. Failed first attempts remain failed when a later retry recovers. No live certification or publication is implied.
+
 ## 1.3.0-rc.3 - 2026-09-28
 
 - Release Meta stream deadlines after HTTP setup errors, stream completion, cancellation and early iterator closure; retain the original provider error and natural process exit.

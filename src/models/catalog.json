@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-26-frontier",
+  "revision": "2026-09-28-anthropic",
   "providers": [
     {
       "id": "openai",
@@ -696,6 +696,54 @@
             "chat",
             "tools"
           ]
+        }
+      ]
+    },
+    {
+      "id": "anthropic",
+      "defaultModel": "claude-sonnet-5",
+      "models": [
+        {
+          "id": "claude-sonnet-5",
+          "name": "claude-sonnet-5",
+          "group": "primary",
+          "order": 0,
+          "lifecycle": "active",
+          "validation": "unverified",
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision"
+          ],
+          "reason": "Provisional Anthropic API route. Account access and live Harness certification are not verified."
+        },
+        {
+          "id": "claude-haiku-4-5",
+          "name": "claude-haiku-4-5",
+          "group": "other",
+          "order": 1,
+          "lifecycle": "active",
+          "validation": "unverified",
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision"
+          ],
+          "reason": "Provisional Anthropic API route. Account access and live Harness certification are not verified."
+        },
+        {
+          "id": "claude-opus-5-5",
+          "name": "claude-opus-5-5",
+          "group": "other",
+          "order": 2,
+          "lifecycle": "active",
+          "validation": "unverified",
+          "capabilities": [
+            "chat",
+            "tools",
+            "vision"
+          ],
+          "reason": "Provisional Anthropic API route. Account access and live Harness certification are not verified."
         }
       ]
     }

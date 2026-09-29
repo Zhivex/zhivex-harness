@@ -32,6 +32,7 @@ export async function verifyDesktopModelsSmoke(
   const key = await js("document.querySelector('main').dataset.projectKey");
   const catalog = await js("window.harness.providers()");
   assert.deepEqual(catalog.map((p: { id: string }) => p.id).sort(), [
+    "anthropic",
     "gemini",
     "meta",
     "openai",
@@ -44,7 +45,7 @@ export async function verifyDesktopModelsSmoke(
   );
   const ux = await verifyDesktopUX(window, report);
   const evidence = [];
-  for (const provider of ["qwen", "meta", "gemini", "openai"]) {
+  for (const provider of ["qwen", "meta", "gemini", "openai", "anthropic"]) {
     await click("[data-action=open-models]");
     await click(".model-advanced > summary");
     await select("[data-action=select-provider]", provider);

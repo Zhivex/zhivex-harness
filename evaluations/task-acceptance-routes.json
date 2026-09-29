@@ -1,0 +1,7 @@
+[
+  { "provider": "openai", "model": "gpt-6-luna", "route": "direct-api" },
+  { "provider": "qwen", "model": "qwen3.8-max", "route": "direct-api" },
+  { "provider": "meta", "model": "muse-spark-1.3", "route": "direct-api" },
+  { "provider": "gemini", "model": "gemini-3.6-flash", "route": "direct-api" },
+  { "provider": "anthropic", "model": "claude-sonnet-5", "route": "direct-api" }
+]

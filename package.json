@@ -113,7 +113,8 @@
     "benchmarks/README.md",
     "docs/ACP.md",
     "docs/WORKSPACE_CHECKPOINTS.md",
-    "docs/ENGINE_API.md"
+    "docs/ENGINE_API.md",
+    "docs/ANTHROPIC.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",
@@ -174,10 +175,12 @@
     "test:code": "bun run --cwd packages/code test",
     "smoke:engine-code": "bun run scripts/smoke-engine-code.ts",
     "dev:code": "bun run build && bun run packages/code/scripts/link-local-engine.ts && bun run build:code",
-    "typecheck:code": "bun run --cwd packages/code typecheck"
+    "typecheck:code": "bun run --cwd packages/code typecheck",
+    "evaluate:tasks": "bun run scripts/task-acceptance.ts"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.10.1",
+    "@zhivex-ai/anthropic": "0.12.4",
     "@zhivex-ai/core": "1.26.0",
     "@zhivex-ai/gemini": "0.12.3",
     "@zhivex-ai/meta": "0.2.8",

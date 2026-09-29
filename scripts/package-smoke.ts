@@ -34,6 +34,8 @@ const consumer = path.join(temporaryDirectory, "consumer");
 const commandEnvironment = { ...process.env };
 commandEnvironment.NPM_CONFIG_CACHE = path.join(temporaryDirectory, "npm-cache");
 for (const name of [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_BASE_URL",
   "OPENAI_API_KEY",
   "MODEL_API_KEY",
   "DASHSCOPE_API_KEY",
@@ -441,6 +443,7 @@ void create;
   assert(providersDocument.providers?.some((provider) =>
     provider.id === "gemini" && provider.support === "provisional"
   ));
+  assert(providersDocument.providers?.some(provider => provider.id === "anthropic" && provider.support === "provisional"));
   assert(!providers.stdout.includes("package-smoke-secret"), "provider output exposed a credential");
 
   const profileConfigDirectory = path.join(temporaryDirectory, "profile-config");

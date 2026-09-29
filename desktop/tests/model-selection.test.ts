@@ -7,8 +7,8 @@ import {prepareModelTransition} from "../src/model-transition.js";
 import type {HarnessClientResponse} from "../../src/client/index.js";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
- expect(desktopProviders().map(p=>p.id).sort()).toEqual(["gemini","meta","openai","qwen"]);
- for(const [provider,key] of Object.entries({openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
+ expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","gemini","meta","openai","qwen"]);
+ for(const [provider,key] of Object.entries({anthropic:"ANTHROPIC_API_KEY",openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
   expect(providerEnvironment({provider,model:"test-model"},"fixture-secret")).toEqual({[key]:"fixture-secret"});
   expect(providerEnvironment({provider,model:"test-model"})).toEqual({});
  }

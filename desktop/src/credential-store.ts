@@ -13,6 +13,7 @@ const responseSchema = z.object({ status: statusSchema, secret: z.string().min(1
 export function openCredentialStore(helper: string, options: { provider?: string; platform?: string; request?: typeof fetch; timeoutMs?: number } = {}) {
     const provider = modelSelectionSchema.shape.provider.parse(options.provider ?? "openai");
     const endpoints = {
+        anthropic: "https://api.anthropic.com/v1/models",
         openai: "https://api.openai.com/v1/models",
         qwen: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models",
         meta: "https://api.meta.ai/v1/models",
@@ -41,7 +42,7 @@ export function openCredentialStore(helper: string, options: { provider?: string
         read: () => serial(() => invoke("read")),
         probe: (): Promise<CredentialProbe> => serial(async () => {
             const value = await invoke("read"); if (value.status !== "present" || !value.secret) return value.status;
-            try { const response = await (options.request ?? fetch)(endpoints[provider], { method: "GET", headers: provider === "gemini" ? { "x-goog-api-key": value.secret } : { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
+            try { const response = await (options.request ?? fetch)(endpoints[provider], { method: "GET", headers: provider === "anthropic" ? { "x-api-key": value.secret, "anthropic-version": "2023-06-01" } : provider === "gemini" ? { "x-goog-api-key": value.secret } : { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
         })
     };
 }

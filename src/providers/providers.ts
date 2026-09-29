@@ -1,3 +1,4 @@
+import { withAnthropicContinuation } from "./anthropic-continuation.js";
 import { withQwenHostedPolicy } from "./qwen-hosted-policy.js";
 import { createMetaContinuationFetch } from "./meta-continuation.js";
 import { createMetaReplayModel } from "./meta-replay.js";
@@ -14,11 +15,12 @@ import {
   type StreamEvent,
   type ToolCall
 } from "@zhivex-ai/core";
+import { createAnthropic } from "@zhivex-ai/anthropic";
 import { createGemini } from "@zhivex-ai/gemini";
 import { createOpenAI } from "@zhivex-ai/openai";
 import { createQwen, type QwenRegion } from "@zhivex-ai/qwen";
 
-export const PROVIDERS = ["meta", "qwen", "openai", "gemini"] as const;
+export const PROVIDERS = ["meta", "qwen", "openai", "gemini", "anthropic"] as const;
 
 export type BuiltInHarnessProvider = (typeof PROVIDERS)[number];
 export type HarnessProvider = BuiltInHarnessProvider | (string & {});
@@ -401,7 +403,11 @@ export const createProviderRegistry = (
       })
     ),
     transportFingerprint: (env: NodeJS.ProcessEnv = process.env) => {
-      const transport = frozenRegistrations.map((registration) => {
+      // Preserve pre-Anthropic transport bindings when the new route uses its default.
+      // An explicit endpoint remains part of the binding and invalidates stale resumes.
+      const transport = frozenRegistrations.filter(registration =>
+        registration.descriptor.id !== "anthropic" || Boolean(env.ANTHROPIC_BASE_URL?.trim())
+      ).map((registration) => {
         const names = [
           registration.diagnostics.endpointEnvironmentVariable,
           ...(registration.diagnostics.presence ?? []).map((entry) => entry.environmentVariable),
@@ -574,6 +580,26 @@ const withMetaResponses = (model: LanguageModel): LanguageModel => wrapLanguageM
 }]);
 
 export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = Object.freeze([
+  {
+    descriptor: {
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModel: bundledDefaultModel("anthropic"),
+      credentialNames: ["ANTHROPIC_API_KEY"],
+      capabilities: HARNESS_PROVIDER_CAPABILITIES,
+      support: "provisional"
+    },
+    diagnostics: { endpointEnvironmentVariable: "ANTHROPIC_BASE_URL" },
+    factory: ({ model, env, credentials }) => {
+      const baseURL = env.ANTHROPIC_BASE_URL?.trim();
+      return withAnthropicContinuation(createAnthropic({
+        apiKey: credentials.require(),
+        // Keep the SDK inside this host's explicit environment/credential boundary.
+        baseURL: baseURL ?? "https://api.anthropic.com/v1",
+        workspaceId: null
+      })(model));
+    }
+  },
   {
     descriptor: {
       id: "meta",

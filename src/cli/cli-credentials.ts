@@ -64,7 +64,7 @@ export class CliCredentials {
   source(provider: HarnessProvider) { return this.sources.get(provider) ?? "missing"; }
   private endpointOverride(provider: HarnessProvider) {
     const variables: Record<string, string[]> = {
-      openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
+      anthropic: ["ANTHROPIC_BASE_URL"], openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
       qwen: ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID"],
     };
     return (variables[provider] ?? []).some(name => this.environment[name]?.trim());

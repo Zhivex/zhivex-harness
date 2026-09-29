@@ -3,7 +3,7 @@
 **Work on your code with an agent. Review consequential actions before approving them.**
 
 Zhivex Harness is a local terminal assistant and TypeScript library. It supports
-OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
+OpenAI, Qwen and Meta, with provisional Gemini and Anthropic support. Conversations and pending
 approvals survive restarts.
 
 Use it to understand a repository, discuss a design, investigate a failure or
@@ -67,7 +67,7 @@ The default runtime has no OS isolation and exposes no shell-class tools. Runnin
 commands in isolation requires an explicitly configured Docker or Podman environment;
 see [Execution environments](docs/EXECUTION_ENVIRONMENTS.md).
 
-Gemini remains provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
+Gemini and [Anthropic](docs/ANTHROPIC.md) remain provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
 [security policy](SECURITY.md) for supported configurations and reporting concerns.
 
 ## Documentation
