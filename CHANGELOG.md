@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Use the explicit Anthropic default endpoint when `ANTHROPIC_BASE_URL` is empty or whitespace-only, including empty optional workflow secrets. Preserve host environment isolation and rejection of unsafe custom endpoints.
+
 ## 1.3.0-rc.4 - 2026-09-29
 
 - Add experimental trusted tool policies, explicit review receipts, policy inspection, durable task acceptance with exact-byte OCI delivery, structured delegation validation, and sanitized portable governance reports.

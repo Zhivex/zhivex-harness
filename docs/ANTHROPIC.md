@@ -3,8 +3,10 @@
 HAR-HU-41 adds `anthropic` through `@zhivex-ai/anthropic@0.12.4`. CLI and
 Desktop use the same registry and curated catalogue. Set `ANTHROPIC_API_KEY` or
 use the client's secure credential setup. Diagnostics expose presence and endpoint
-validity only. `ANTHROPIC_BASE_URL` is optional and must be a trusted HTTPS API base including `/v1` (default `https://api.anthropic.com/v1`);
-the CLI does not send a stored key to an overridden endpoint without setup consent.
+validity only. `ANTHROPIC_BASE_URL` is optional and must be a trusted HTTPS API base including `/v1` (default `https://api.anthropic.com/v1`).
+An unset, empty or whitespace-only endpoint uses that explicit default, without
+inheriting another endpoint from the host process environment. The CLI does not
+send a stored key to an overridden endpoint without setup consent.
 OAuth, Vertex and Bedrock are separate routes and are not enabled by this integration.
 
 ```sh
