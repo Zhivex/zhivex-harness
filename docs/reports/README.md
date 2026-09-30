@@ -94,3 +94,24 @@ The exploratory rebranding analysis, concepts and screenshots are preserved in
 the [design archive](https://github.com/Zhivex/zhivex-harness/tree/d3d059f3259b46e58724f9de3503b7dcb5c28a5e/output/ux-rebranding).
 Both archives remain available in that local Git commit independently of remote
 availability. Removing their working-tree copies does not change validation outcomes.
+
+## RC4 acceptance and archived intermediate narratives
+
+Use the [RC4 readiness report](HAR_1_3_RC4_PR_READINESS_2026-09-29.md) and its
+[JSON evidence](HAR_1_3_RC4_PR_READINESS_2026-09-29.json) for the final local candidate.
+The [final comparative pilot](HAR_HU_51_FINAL_CAMPAIGN_2026-09-29.md) retains its original artifact identity.
+
+Nine superseded readiness and intermediate campaign narratives were removed from
+the working tree. Their original content remains in Git history at the links below.
+All result JSON files, including unsuccessful attempts, remain in this directory.
+This cleanup changes no evaluation outcome or certification scope.
+
+- [HAR_1_3_DEPLOYMENT_READINESS_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_1_3_DEPLOYMENT_READINESS_2026-09-29.md)
+- [HAR_HU_45_CURRENT_CANDIDATE_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_45_CURRENT_CANDIDATE_2026-09-29.md)
+- [HAR_HU_45_FINAL_CANDIDATE_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_45_FINAL_CANDIDATE_2026-09-29.md)
+- [HAR_HU_45_GEMINI_RECHECK_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_45_GEMINI_RECHECK_2026-09-29.md)
+- [HAR_HU_45_REMAINING_ROUTES_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_45_REMAINING_ROUTES_2026-09-29.md)
+- [HAR_HU_51_CONTEXT_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_CONTEXT_CAMPAIGN_2026-09-29.md)
+- [HAR_HU_51_CONTEXT_GUARDED_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_CONTEXT_GUARDED_CAMPAIGN_2026-09-29.md)
+- [HAR_HU_51_SONNET_55_FIRST_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_SONNET_55_FIRST_CAMPAIGN_2026-09-29.md)
+- [HAR_HU_51_SONNET_55_SYSTEM_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_SONNET_55_SYSTEM_CAMPAIGN_2026-09-29.md)
