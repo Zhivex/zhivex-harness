@@ -115,3 +115,5 @@ This cleanup changes no evaluation outcome or certification scope.
 - [HAR_HU_51_CONTEXT_GUARDED_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_CONTEXT_GUARDED_CAMPAIGN_2026-09-29.md)
 - [HAR_HU_51_SONNET_55_FIRST_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_SONNET_55_FIRST_CAMPAIGN_2026-09-29.md)
 - [HAR_HU_51_SONNET_55_SYSTEM_CAMPAIGN_2026-09-29.md](https://github.com/Zhivex/zhivex-harness/blob/5e4f64d401a13b9cf993d72596c3c4d89bc1128c/docs/reports/HAR_HU_51_SONNET_55_SYSTEM_CAMPAIGN_2026-09-29.md)
+
+- [RC4 dependency update](HAR_RC4_DEPENDENCY_UPDATE_2026-09-29.md): updated SDK/tooling validation, excluded compiler API update, CI fixture fixes and preserved live failures.

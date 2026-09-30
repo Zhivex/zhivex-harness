@@ -204,25 +204,25 @@
     "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.10.1",
-    "@zhivex-ai/anthropic": "0.12.4",
-    "@zhivex-ai/core": "1.26.0",
-    "@zhivex-ai/gemini": "0.12.3",
+    "@zhivex-ai/agents": "1.10.2",
+    "@zhivex-ai/anthropic": "0.13.1",
+    "@zhivex-ai/core": "1.28.0",
+    "@zhivex-ai/gemini": "0.13.0",
     "@zhivex-ai/meta": "0.2.8",
-    "@zhivex-ai/openai": "0.13.6",
-    "@zhivex-ai/qwen": "0.16.2",
-    "@zhivex-ai/vertex": "1.1.2",
-    "google-auth-library": "11.0.2",
+    "@zhivex-ai/openai": "0.13.7",
+    "@zhivex-ai/qwen": "0.16.3",
+    "@zhivex-ai/vertex": "1.2.2",
+    "google-auth-library": "11.1.0",
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.26.0"
+    "@zhivex-ai/core": "1.28.0"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.5.1",
-    "@modelcontextprotocol/server": "2.1.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "@types/bun": "1.4.2",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "typescript": "7.0.2",
     "typescript-compiler-api": "npm:typescript@6.0.3"
   },

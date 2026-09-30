@@ -79,4 +79,4 @@ test('real CLI processes review and restore a persisted checkpoint without a pro
     expect((await cli(['storage'])).records).toBe(0);
     expect(await readFile(path.join(root, 'a.txt'), 'utf8')).toBe('original');
   } finally { adapter.close(); await harness.close(); await rm(root, { recursive: true, force: true }); }
-});
+}, 30_000); // Multiple real CLI startups need a CI-scale integration-test deadline.

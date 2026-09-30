@@ -64,7 +64,8 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
         consumerManifest.dependencies[name] = artifactSpecs[index];
         await writeFile(path.join(consumer, 'package.json'), JSON.stringify(consumerManifest));
         const args = manager === 'npm' ? ['install', '--ignore-scripts', '--no-audit', '--no-fund']
-          : manager === 'pnpm' || manager === 'bun' ? ['install', '--ignore-scripts']
+          : manager === 'pnpm' ? ['install', '--ignore-scripts', '--no-frozen-lockfile']
+          : manager === 'bun' ? ['install', '--ignore-scripts']
           : Number(row.version.split('.')[0]) >= 2 ? ['install'] : ['install', '--ignore-scripts', '--registry', 'https://registry.npmjs.org', '--cache-folder', path.join(root, 'yarn-cache')];
         await run(command, args, consumer, env);
         // Exercise the actual manager-created launchers, not only package entry files.
