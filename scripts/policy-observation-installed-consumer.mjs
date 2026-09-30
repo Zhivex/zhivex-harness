@@ -1,5 +1,6 @@
 // Executed from an isolated package installation, in separate prepare/verify processes.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -8,6 +9,7 @@ import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLo
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 
 const phase = process.argv[2]; assert(['prepare','verify'].includes(phase));
+const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const root = path.resolve('..'), policyFile = path.join(root,'policy.json');
 if (phase === 'prepare') await writeFile(policyFile, JSON.stringify({ schemaVersion:1, rules:[{
   id:'deny-read', tools:['read_file'], decision:'deny', reason:'Restricted /private/customer/data sk-fixturesecret123'
@@ -50,10 +52,15 @@ try {
     assert.equal(run.status,'completed');
     assert.equal(run.cliResult.policyEvidence.events[0].decision,'deny');
     identity={sessionId:session.sessionId,runId:run.runId};
-    await writeFile('identity.json',JSON.stringify(identity));
+    await writeFile('identity.sha256',digest(identity));
     await writeFile('policy-snapshot.json',JSON.stringify(view));
   } else {
-    identity=JSON.parse(await readFile('identity.json','utf8'));
+    const {sessions}=await call({method:'session.list'});
+    assert.equal(sessions.length,1);
+    const {session}=await call({method:'session.get',sessionId:sessions[0].sessionId});
+    assert.equal(session.runs.length,1);
+    identity={sessionId:session.sessionId,runId:session.runs[0].runId};
+    assert.equal(digest(identity),await readFile('identity.sha256','utf8'));
     assert.deepEqual(view,JSON.parse(await readFile('policy-snapshot.json','utf8')));
     const {run}=await call({method:'run.get',...identity});
     assert.equal(run.cliResult.policyEvidence.events[0].decision,'deny');
@@ -69,7 +76,7 @@ try {
   assert(!JSON.stringify(decisions).includes('/private/customer'));
   assert.deepEqual(await requestHarnessLocalService(credentials,'events',{projectId:hello.projectId,sessionId:identity.sessionId,after:0}),page);
   assert.equal(modelCalls,count); assert.equal(harness.workspace.mutationAudit().length,0);
-  if(phase==='prepare') await writeFile('decisions.json',JSON.stringify(decisions));
-  else assert.deepEqual(decisions,JSON.parse(await readFile('decisions.json','utf8')));
+  if(phase==='prepare') await writeFile('decisions.sha256',digest(decisions));
+  else assert.equal(digest(decisions),await readFile('decisions.sha256','utf8'));
 } finally { await service.close(); }
 console.log(JSON.stringify({phase,ok:true,runtime:process.version,queryParity:true,durableReplay:true,noQueryOrReplayExecution:true}));

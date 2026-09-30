@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import type { ProjectRuntime } from './runtime-host.js';
+import { rendererString } from './renderer-script.js';
 import { openCliSessionStore, openWorkspaceCheckpointStore, Workspace, resolveHarnessConfig } from '@zhivex-ai/harness/engine';
 
 export async function verifyDesktopCheckpoints(window: BrowserWindow, runtimes: Map<string, Promise<ProjectRuntime>>, directory: string, phase: string) {
@@ -19,9 +20,9 @@ export async function verifyDesktopCheckpoints(window: BrowserWindow, runtimes: 
     for (let i = 0; i < 200; i++) { if (await js(source)) return; await new Promise(resolve => setTimeout(resolve, 50)); }
     await writeFile(path.join(directory, `${phase}-failure-view.txt`), await js('document.body.innerText')); throw new Error(`CHECKPOINT_UI_TIMEOUT: ${source}`);
   };
-  const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+  const click = (selector: string) => js(`document.querySelector(${rendererString(selector)}).click()`);
   const button = async (label: string) => {
-    const query = `Array.from(document.querySelectorAll('[data-action=checkpoints] button')).find(b=>b.textContent===${JSON.stringify(label)})`;
+    const query = `Array.from(document.querySelectorAll('[data-action=checkpoints] button')).find(b=>b.textContent===${rendererString(label)})`;
     await wait(`${query}?.disabled === false`); await js(`${query}.click()`);
   };
   const file = path.join(directory, 'checkpoint-state.json');
@@ -68,13 +69,14 @@ export async function verifyDesktopCheckpoints(window: BrowserWindow, runtimes: 
     const image = await window.webContents.capturePage(); await writeFile(path.join(directory, 'review.png'), image.toPNG());
   } else {
     saved = JSON.parse(await readFile(file, 'utf8'));
-    await wait(`document.querySelector('[data-session="${saved.source}"]')?.disabled === false`); await click(`[data-session="${saved.source}"]`);
-    await wait(`document.querySelector('main').dataset.sessionId === ${JSON.stringify(saved.source)} && document.querySelector('[data-action=checkpoints] button')?.disabled === false`);
+    const sessionButton = `Array.from(document.querySelectorAll('[data-session]')).find(button=>button.dataset.session===${rendererString(saved.source)})`;
+    await wait(`${sessionButton}?.disabled === false`); await js(`${sessionButton}.click()`);
+    await wait(`document.querySelector('main').dataset.sessionId === ${rendererString(saved.source)} && document.querySelector('[data-action=checkpoints] button')?.disabled === false`);
     await button('Workspace checkpoints');
     if (phase === 'recover') {
       assert(saved.existingFork);
       await wait(`document.querySelector('[data-action=checkpoints] input:not([type=checkbox])') !== null`);
-      await js(`(()=>{const field=document.querySelector('[data-action=checkpoints] input:not([type=checkbox])');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,${JSON.stringify(saved.existingFork)});field.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+      await js(`(()=>{const field=document.querySelector('[data-action=checkpoints] input:not([type=checkbox])');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(field,${rendererString(saved.existingFork)});field.dispatchEvent(new Event('input',{bubbles:true}));})()`);
       await button('Review recovery');
       await wait(`document.querySelector('[aria-label="Review checkpoint restoration"] input[type=checkbox]') !== null`);
       assert.equal(await readFile(target, 'utf8'), 'changed after checkpoint\n');
@@ -88,7 +90,7 @@ export async function verifyDesktopCheckpoints(window: BrowserWindow, runtimes: 
       await wait(`document.querySelector('[aria-label="Review checkpoint restoration"] input[type=checkbox]') !== null`);
       assert.equal(await js(`Array.from(document.querySelectorAll('[data-action=checkpoints] button')).find(b=>b.textContent==='Confirm restoration').disabled`), true);
       await click('[aria-label="Review checkpoint restoration"] input[type=checkbox]'); await button('Confirm restoration');
-      await wait(`Boolean(document.querySelector('main').dataset.sessionId) && document.querySelector('main').dataset.sessionId !== ${JSON.stringify(saved.source)}`);
+      await wait(`Boolean(document.querySelector('main').dataset.sessionId) && document.querySelector('main').dataset.sessionId !== ${rendererString(saved.source)}`);
       saved.derivative = await js('document.querySelector("main").dataset.sessionId');
       assert.equal(await readFile(target, 'utf8'), 'checkpoint original\n');
       const retained = await runtime.command({ method: 'session.get', sessionId: saved.source });
@@ -96,7 +98,8 @@ export async function verifyDesktopCheckpoints(window: BrowserWindow, runtimes: 
       await writeFile(file, JSON.stringify(saved));
     } else {
       await button('Open restored conversation');
-      await wait(`document.querySelector('main').dataset.sessionId === ${JSON.stringify(saved.derivative)}`);
+      assert(saved.derivative);
+      await wait(`document.querySelector('main').dataset.sessionId === ${rendererString(saved.derivative)}`);
       const listed = await runtime.command({ method: 'session.list' }); assert(listed.ok && listed.data.kind === 'sessions');
       assert.equal(listed.data.sessions.filter(session => session.parentSessionId === saved.source).length, 1);
       assert.equal(await readFile(target, 'utf8'), 'checkpoint original\n');
