@@ -2,6 +2,19 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
+## Prepared 1.3.0-rc.5 cohort
+
+RC5 restores Meta `muse-spark-1.3-contributor` and Qwen `qwen3.8-flash`
+in the protected release and manual certification workflows, representative
+evidence and task acceptance routes. OpenAI remains `gpt-6-luna`; the release
+cohort also retains Anthropic `claude-sonnet-5-5`, Gemini API `gemini-3.6-flash`
+and Vertex `gemini-3.7-flash`. See [Release process](RELEASE.md) for coverage.
+
+RC4 failed and its historical tag/model mapping is unchanged. RC5 has no live
+certification yet: paid execution and publication remain pending separate
+approval. Earlier results cannot certify the new bytes. CLI/Desktop defaults
+and saved model selections are unchanged.
+
 ## Prepared 1.2.0 cohort
 
 RC13 passed exact-artifact validation, all live gates, the complete 42-case
