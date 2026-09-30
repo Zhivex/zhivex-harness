@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "gate": "live-orchestration-smoke",
+  "certifiedAt": "2026-09-29T20:08:14.640Z",
+  "providers": [
+    {
+      "ok": true,
+      "provider": "vertex",
+      "model": "gemini-3.7-flash",
+      "parentRunId": "live-orchestration-parent",
+      "childRunId": "run_28a4d411-1918-49b5-b39a-53cd2956a64e",
+      "structuredResult": true,
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 2988
+    },
+    {
+      "ok": true,
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "parentRunId": "live-orchestration-parent",
+      "childRunId": "run_dd2bce91-dedd-4b01-871f-196a990ba2ae",
+      "structuredResult": true,
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 5716
+    },
+    {
+      "ok": true,
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "parentRunId": "live-orchestration-parent",
+      "childRunId": "run_c024a489-dc3d-42bd-8011-f0498099d245",
+      "structuredResult": true,
+      "delegationExecutions": 1,
+      "childPersisted": true,
+      "processReopened": true,
+      "hierarchyRuns": 2,
+      "childToolCalls": 1,
+      "aggregateTokens": 2440
+    }
+  ],
+  "artifactSha256": "db853c7a960c419f24cbd8e881b83997252b832c120133b5e9616345f1a227ac"
+}

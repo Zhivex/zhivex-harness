@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .env
+gha-creds-*.json
 .zhivex-harness/
 coverage/
 release-artifacts/
@@ -18,3 +19,7 @@ evaluations/external/.venv/
 # Desktop build artifacts
 desktop/build/
 desktop/out/
+desktop/.harness/
+
+# Local working notes and intermediate diagnostics
+/.local-docs/

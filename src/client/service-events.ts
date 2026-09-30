@@ -1,3 +1,4 @@
+import { harnessPolicyDecisionEventSchema, type HarnessPolicyDecisionEvent } from "../runtime/policy-decisions.js";
 /** Durable, bounded, redacted client activity. Never persist raw tool payloads. */
 import { createHash } from "node:crypto";
 import { createRedactionPolicy, type AgentStreamEvent } from "@zhivex-ai/agents";
@@ -9,8 +10,9 @@ import type { HarnessConfig } from "../runtime/config.js";
 export interface HarnessActivityEvent { schemaVersion: 1; eventId: string; sequence: number; sessionId: string; runId: string; at: number; activity: Record<string, unknown> }
 export interface HarnessActivityRun {text:string;status:string;truncated:boolean;prompt?:string;tools?:Record<string,{name:string;status:string;exitCode?:number;timedOut?:boolean}>}
 export interface HarnessActivitySnapshot { schemaVersion: 1; sessionId: string; sequence: number; runs: Record<string, HarnessActivityRun> }
-export interface HarnessActivityPage { schemaVersion: 1; cursorExpired: boolean; nextCursor: number; events: HarnessActivityEvent[]; snapshot?: HarnessActivitySnapshot }
+export interface HarnessActivityPage { schemaVersion: 1; cursorExpired: boolean; hasMore?: boolean; policyEvidenceIncomplete?: boolean; nextCursor: number; events: HarnessActivityEvent[]; snapshot?: HarnessActivitySnapshot }
 export interface HarnessActivityStore {
+  policyDecision(sessionId: string, runId: string, event: HarnessPolicyDecisionEvent): void;
   prompt(sessionId:string,runId:string,prompt:string):void;
   append(sessionId: string, runId: string, event: AgentStreamEvent): void;
   checkpoint(sessionId: string, runId: string, status: string): void;
@@ -88,6 +90,7 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     }catch(e){db.exec("ROLLBACK");throw e;}
   };
   return {
+    policyDecision(sessionId,runId,event){write(sessionId,runId,redactValue(harnessPolicyDecisionEventSchema.parse(event)) as Record<string,unknown>);},
     prompt(sessionId,runId,prompt){const safe=redact(prompt);const truncated=Buffer.byteLength(safe)>60*1024;write(sessionId,runId,{type:"user-message",prompt:truncated?Buffer.from(safe).subarray(0,60*1024).toString("utf8")+"[TRUNCATED]":safe});},
     append(sessionId,runId,event){
       const key=`${sessionId}:${runId}`;
@@ -113,10 +116,10 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       db.exec("BEGIN IMMEDIATE");try{prune();db.exec("COMMIT");}catch(e){db.exec("ROLLBACK");throw e;}
       const current=snapshot(sessionId);const expired=after<current.expiredThrough;
       if(after>current.state.sequence)throw new Error("ACTIVITY_CURSOR_AHEAD");
-      if(expired)return {schemaVersion:1,cursorExpired:true,nextCursor:current.state.sequence,events:[],snapshot:current.state};
-      const rows=db.query<{sequence:number;session:string;run:string;at:number;activity:string}>("SELECT sequence,session,run,at,activity FROM client_activity_events WHERE scope=? AND session=? AND sequence>? ORDER BY sequence LIMIT 200").all(scope,sessionId,after);
-      const events=rows.map(row=>({schemaVersion:1 as const,eventId:createHash("sha256").update(`${scope}:${row.sequence}`).digest("hex"),sequence:row.sequence,sessionId:row.session,runId:row.run,at:row.at,activity:JSON.parse(row.activity)}));
-      return {schemaVersion:1,cursorExpired:false,nextCursor:events.at(-1)?.sequence??after,events};
+      if(expired)return {schemaVersion:1,cursorExpired:true,hasMore:false,policyEvidenceIncomplete:true,nextCursor:current.state.sequence,events:[],snapshot:current.state};
+      const rows=db.query<{sequence:number;session:string;run:string;at:number;activity:string}>("SELECT sequence,session,run,at,activity FROM client_activity_events WHERE scope=? AND session=? AND sequence>? ORDER BY sequence LIMIT 201").all(scope,sessionId,after);
+      const events=rows.slice(0,200).map(row=>({schemaVersion:1 as const,eventId:createHash("sha256").update(`${scope}:${row.sequence}`).digest("hex"),sequence:row.sequence,sessionId:row.session,runId:row.run,at:row.at,activity:JSON.parse(row.activity)}));
+      return {schemaVersion:1,cursorExpired:false,hasMore:rows.length>200,policyEvidenceIncomplete:current.expiredThrough>0,nextCursor:events.at(-1)?.sequence??after,events};
     },
     close(){db.close();tails.clear();discard.clear();}
   };

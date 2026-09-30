@@ -1,3 +1,4 @@
+import { validateDelegationResult, delegationTerminalText } from "../src/runtime/delegation-result.js";
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -37,27 +38,39 @@ export const orchestrationPrompt = (provider: HarnessProvider) =>
   `Call delegate_reviewer exactly once with this exact JSON input: {"taskId":"release-review"}.
 Do not call any other tool. After the delegated result returns, reply exactly ${parentToken(provider)}.`;
 
-export const reviewDelegationContract = (provider: HarnessProvider) => ({
-  taskId: "release-review", profile: "reviewer" as const, prompt: childPrompt(provider),
-  allowedReadPaths: ["review-target.txt"], requiredOutput: childToken(provider)
+export const reviewDelegationContract = (provider: HarnessProvider, structured = false) => ({
+  taskId: "release-review", profile: "reviewer" as const, prompt: structured ? "Read review-target.txt exactly once, without line limits, then return the structured result required by the application contract. Semantic review remains pending." : childPrompt(provider),
+  allowedReadPaths: ["review-target.txt"], requiredOutput: childToken(provider),
+  ...(structured?{resultContract:{schemaVersion:1 as const,requiredReadPaths:["review-target.txt"],humanReviewRequired:true,maxCorrections:1}}:{})
 });
+
+export const assertStructuredDelegationEvidence=(value:unknown,childRunId:string)=>{
+  assert(value && typeof value==='object' && 'schemaVersion'in value && value.schemaVersion===1 && 'evaluations'in value && Array.isArray(value.evaluations));
+  assert.equal(value.evaluations.length,1);
+  const evaluation=value.evaluations[0];
+  assert.equal(evaluation.taskId,'release-review');assert.equal(evaluation.childRunId,childRunId);
+  assert.equal(evaluation.childStatus,'completed');assert.equal(evaluation.accepted,true);assert.equal(evaluation.semanticReview,'pending');
+  assert(Number.isInteger(evaluation.correctionsUsed) && evaluation.correctionsUsed>=0 && evaluation.correctionsUsed<=1);
+};
 
 const createLiveOrchestrationHarness = (args: {
   provider: HarnessProvider;
   model: string;
   workspace: string;
   stateDirectory: string;
+  structured: boolean;
 }) => createHarness({
   provider: args.provider,
   model: args.model,
   workspace: args.workspace,
   stateDirectory: args.stateDirectory,
-  maxSteps: 4,
+  // Aggregate budget includes two coordinator steps and up to four child steps.
+  maxSteps: args.structured ? 6 : 4,
   maxToolCalls: 4,
   subagentProfiles: ["reviewer"],
-  delegationContracts: [reviewDelegationContract(args.provider)],
-  subagentMaxSteps: 2,
-  subagentMaxToolCalls: 1,
+  delegationContracts: [reviewDelegationContract(args.provider,args.structured)],
+  subagentMaxSteps: args.structured?4:2,
+  subagentMaxToolCalls: args.structured?2:1,
   env: process.env
 });
 
@@ -83,7 +96,8 @@ const certifyProvider = async (
   workspace: string,
   stateDirectory: string
 ) => {
-  const first = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory });
+  const structured=process.env.ZHIVEX_HARNESS_LIVE_STRUCTURED_DELEGATION==="1";
+  const first = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory,structured });
   let parentRunId = "";
   let childRunId = "";
   let childToolCalls = 0;
@@ -93,7 +107,9 @@ const certifyProvider = async (
   try {
     const result = await runHarness(first, {
       ...providerRunInput(provider, orchestrationPrompt(provider)),
+      maxSteps: structured ? 6 : 4,
       scope: first.config.scope,
+      runId: "live-orchestration-parent",
       idempotencyKey: `live-orchestration-${provider}`
     }, { onEvent: (event) => {
       // Keep the typed cause in memory; errorEvidence performs the only serialization.
@@ -112,9 +128,10 @@ const certifyProvider = async (
     const child = result.state.childRuns?.[0];
     assert.ok(child?.runId);
     assert.equal(child.status, "completed");
-    assert.ok(child.outputText?.includes(childToken(provider)), child.outputText);
+    if(structured)assertStructuredDelegationEvidence(result.state.metadata?.zhivexDelegationAcceptanceV1,child.runId);
+    else assert.ok(child.outputText?.includes(childToken(provider)), child.outputText);
     checkpoint = "orchestration_budget";
-    assert.ok(child.toolCalls <= 1, "The reviewer exceeded its one-tool certification budget.");
+    assert.ok(child.toolCalls <= (structured?2:1), "The reviewer exceeded its certification tool budget.");
     assert.equal(child.toolErrors, 0);
     childToolCalls = child.toolCalls;
     parentRunId = result.state.runId;
@@ -122,12 +139,32 @@ const certifyProvider = async (
     totalTokens = getAgentBudgetStatus(result.state, first.config.budget, result).consumption.totalTokens;
     assert.ok(totalTokens > 0);
   } catch (error) {
-    throw Object.assign(new HarnessExecutionError("Live orchestration certification failed.", { cause: error }), { checkpoint });
+    const acceptanceDiagnostics = [];
+    const parent = await first.store.load("live-orchestration-parent", first.config.scope);
+    for (const child of parent?.childRuns ?? []) {
+      const durable = await first.store.load(child.runId, first.config.scope);
+      if (!durable || !structured) continue;
+      const assessment = validateDelegationResult(reviewDelegationContract(provider, true), delegationTerminalText(durable), durable.toolResults);
+      const terminal = delegationTerminalText(durable).trim();
+      const candidates = durable.messages.flatMap(message => message.parts.flatMap(part =>
+        part.type === "tool-call" && part.toolCall.name === "__harness_result_feedback" &&
+        part.toolCall.input && typeof part.toolCall.input === "object" && "candidate" in part.toolCall.input && typeof part.toolCall.input.candidate === "string"
+          ? [part.toolCall.input.candidate] : []));
+      acceptanceDiagnostics.push({ reason: assessment.reason, accepted: assessment.accepted,
+        terminalEmpty: terminal.length === 0, terminalFenced: terminal.startsWith("```"),
+        terminalStartsObject: terminal.startsWith("{"),
+        candidateReasons: candidates.map(candidate => validateDelegationResult(reviewDelegationContract(provider, true), candidate, durable.toolResults).reason),
+        candidateShapes: candidates.map(candidate => ({ empty: !candidate.trim(), fenced: candidate.trim().startsWith("```"), startsObject: candidate.trim().startsWith("{"),
+          fencedJsonValid: /^```(?:json)?\s*([\s\S]*?)\s*```$/.test(candidate.trim()) && (() => { try { JSON.parse(candidate.trim().replace(/^```(?:json)?\s*|\s*```$/g, "")); return true; } catch { return false; } })() })),
+        reads: durable.toolResults.filter(row => row.toolName === "read_file" && !row.isError).length,
+        corrections: durable.toolResults.filter(row => row.toolName === "__harness_result_feedback").length });
+    }
+    throw Object.assign(new HarnessExecutionError("Live orchestration certification failed.", { cause: error }), { checkpoint, acceptanceDiagnostics });
   } finally {
     await first.close();
   }
 
-  const reopened = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory });
+  const reopened = await createLiveOrchestrationHarness({ provider, model, workspace, stateDirectory,structured });
   try {
     const [parent, child, inspection] = await Promise.all([
       reopened.store.load(parentRunId, reopened.config.scope),
@@ -137,6 +174,7 @@ const certifyProvider = async (
     assert.equal(parent?.status, "completed");
     assert.equal(child?.status, "completed");
     assert.equal(child?.parentRunId, parentRunId);
+    if(structured)assertStructuredDelegationEvidence(parent?.metadata?.zhivexDelegationAcceptanceV1,childRunId);
     assert.equal(inspection.hierarchy?.totalRuns, 2);
     assert.ok(JSON.stringify(inspection.hierarchy).includes(childRunId));
   } catch (error) {
@@ -151,6 +189,7 @@ const certifyProvider = async (
     model,
     parentRunId,
     childRunId,
+    structuredResult:structured,
     delegationExecutions: 1,
     childPersisted: true,
     processReopened: true,
@@ -181,7 +220,8 @@ const run = async (env: NodeJS.ProcessEnv) => {
       const failure = JSON.parse(errorEvidence(error, env, "live-orchestration-smoke")) as {
         error: Record<string, unknown>;
       };
-      evidence.push({ ok: false, provider, model, error: failure.error });
+      evidence.push({ ok: false, provider, model, error: failure.error,
+        acceptanceDiagnostics: error && typeof error === "object" && "acceptanceDiagnostics" in error ? error.acceptanceDiagnostics : [] });
     } finally {
       await rm(workspace, { recursive: true, force: true });
     }

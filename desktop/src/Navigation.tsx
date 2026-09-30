@@ -8,7 +8,7 @@ import type {
   DesktopProject,
   DesktopProvider,
 } from "./bridge.js";
-import type { HarnessClientSession } from "../../src/internal/desktop/protocol.js";
+import type { HarnessClientSession } from "@zhivex-ai/harness/protocol";
 const arrows = (event: KeyboardEvent<HTMLElement>) => {
   if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
   const buttons = Array.from(

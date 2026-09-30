@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "packaged": true,
+  "fixture": true,
+  "wholeAppRestart": true,
+  "explicitReview": true,
+  "oldTicketRejected": true,
+  "originalPreserved": true,
+  "derivativeOpened": true,
+  "singleDerivative": true,
+  "workersExited": true,
+  "phases": [
+    {
+      "phase": "prepare",
+      "appPid": 74022,
+      "runtimePid": 74047,
+      "source": "ses_73b2afe5-d3f0-4cbe-9368-c57b31473824",
+      "operationId": "b2356179-4302-4a17-99af-4cec48603f0b",
+      "packaged": true,
+      "status": "passed"
+    },
+    {
+      "phase": "apply",
+      "appPid": 74049,
+      "runtimePid": 74064,
+      "source": "ses_73b2afe5-d3f0-4cbe-9368-c57b31473824",
+      "operationId": "b2356179-4302-4a17-99af-4cec48603f0b",
+      "derivative": "ses_2e133771-dcb6-4e2d-bd35-a3f35bba1018",
+      "packaged": true,
+      "status": "passed"
+    },
+    {
+      "phase": "history",
+      "appPid": 74065,
+      "runtimePid": 74080,
+      "source": "ses_73b2afe5-d3f0-4cbe-9368-c57b31473824",
+      "operationId": "b2356179-4302-4a17-99af-4cec48603f0b",
+      "derivative": "ses_2e133771-dcb6-4e2d-bd35-a3f35bba1018",
+      "packaged": true,
+      "status": "passed"
+    }
+  ],
+  "evidenceDirectory": "/tmp/har-checkpoints-v9XRLE/report",
+  "harnessArtifactSha256": "6bb615581c711eb209a7e2a0f6558a92eeb0de1f779ef428e1f471ee3777f051",
+  "scope": "Packaged local Desktop with installed unpublished Harness candidate and deterministic model fixture; no publication or live provider certification"
+}

@@ -8,6 +8,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Worked example](FIRST_USE_EXAMPLE.md): a small change with approval and restart recovery.
 - [Usage reference](USAGE.md): scripts, providers and security boundaries.
 - [Model catalog administration](MODEL_CATALOG.md): shared CLI/Desktop recommendations and remote distribution.
+- [Anthropic direct API](ANTHROPIC.md): provisional setup and continuity contract.
 - [Credentials](CREDENTIALS.md): system keychain, temporary keys and automation.
 - [Project instructions and context](CONTEXT_ENGINEERING.md).
 - [Execution environments](EXECUTION_ENVIRONMENTS.md): isolated command execution.

@@ -2,18 +2,22 @@
 
 `@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## 1.3.0-rc.3 preparation
+## 1.3.0-rc.4 preparation
 
-The source version is `1.3.0-rc.3`, targeting npm `next` through annotated tag
-`v1.3.0-rc.3` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
+The source version is `1.3.0-rc.4`, targeting npm `next` through annotated tag
+`v1.3.0-rc.4` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
 `latest`. RC3 includes HAR-HU-36–38: public engine boundaries, compatibility
 bridges and an independently built local Code package.
 
-This candidate retains Qwen `qwen3.8-flash`, Meta `muse-spark-1.3-contributor` and
-OpenAI `gpt-6-luna` in the release matrix. Anthropic, Gemini/Vertex improvements,
-Desktop package migration and independent Code publication are pending stories;
-none is advertised as completed or certified by the Harness RC3 workflow.
-Code `0.1.0-rc.1` is now prepared for a separate `release-code.yml` workflow and
+RC4 incorporates the provider, Desktop, MCP/ACP, checkpoint and governance
+increments. The protected live cohort pins Qwen `qwen3.8-max`, Meta
+`muse-spark-1.3`, OpenAI `gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API
+`gemini-3.6-flash` and Vertex `gemini-3.7-flash`. All six must pass base,
+approval compaction, structured delegation, OCI execution and multi-process
+continuity. Four routing gates cover OpenAI to Vertex/Anthropic/Gemini and Qwen
+to Meta. Representative repository evaluation remains the separate three-route
+Meta/Qwen/OpenAI cohort; its model pins match the live cohort.
+Code `0.1.0-rc.2` is now prepared for a separate `release-code.yml` workflow and
 its own annotated tag; see [Code release procedure](CODE_RELEASE.md).
 
 Each later RC must bind its own source SHA, exact tarball, CI/CodeQL, installed
@@ -22,8 +26,30 @@ certify new bytes. Do not overwrite immutable versions or advance `latest`.
 The engine/Code installed gate uses the exact release tarball without changing
 its manifest version; Code is packed only for consumer acceptance, not published.
 
-Publication of RC3 is pending. Historical records, including `release-status.json`,
-remain historical and must not be interpreted as RC3 certification.
+RC3 and Code RC1 are already published. RC4 and Code RC2 remain unpublished;
+their evidence must bind their own bytes. Historical records, including
+`release-status.json`, must not be interpreted as RC4 certification.
+
+### Protected configuration before RC4 release
+
+The `live-certification` environment requires secrets `OPENAI_API_KEY`,
+`MODEL_API_KEY`, `DASHSCOPE_API_KEY` (or `QWEN_API_KEY`), `ANTHROPIC_API_KEY`
+and `GEMINI_API_KEY`. Optional route settings use the existing provider-specific
+base URL, Qwen region and workspace secrets. A presence-only preflight rejects
+missing configuration before paid gates and prints names, never values.
+
+Configure environment variables `GOOGLE_CLOUD_PROJECT`, `VERTEX_LOCATION`,
+`VERTEX_WORKLOAD_IDENTITY_PROVIDER` and `VERTEX_SERVICE_ACCOUNT`. The pinned
+Google auth action creates short-lived ADC via GitHub OIDC; the identity must be
+authorized for this repository and protected environment and for the selected
+Vertex route. Local user ADC is not copied to GitHub. Auth-generated credential
+files are ignored and never included in artifact uploads. The job requires
+`id-token: write`; authentication failure blocks every subsequent paid gate.
+
+On 29/09 the environment inventory contained only the original three provider
+secrets and none of these Vertex variables. New environment configuration must
+be provisioned before dispatch. Workflow coverage in a PR is not proof that
+protected credentials, cloud access or remote certification have passed.
 
 The previous `v1.3.0-rc.1` attempt failed the Qwen base certification because
 its pending `apply_patch` proposal ID differed from the expected ID. npm was

@@ -140,3 +140,16 @@ busy timeout for its ownership transaction. Contention fails immediately rather
 than blocking the event loop while another recovery awaits filesystem I/O.
 `OpenSessionStoreOptions.busyTimeoutMs` accepts 0–5000 ms and preserves the prior
 5000 ms default for other callers. The additive signature snapshot is reviewed.
+
+Policy-enabled hosts append sanitized `policy-decision` activity through the same
+session event channel. These records describe policy evaluation before entering
+the tool executor, including rule IDs, reason, approval/review requirements, digest
+and backend. They are not execution receipts and cannot authorize an action.
+Reasons are bounded and carry `reasonTruncated` when shortened. Replay pages expose
+`hasMore`; `policyEvidenceIncomplete` remains true after retention removes evidence,
+even after the client adopts the recovery cursor or the service reopens its store.
+
+The decision `phase` distinguishes `approval-request` from `tool-entry`. A pending
+approval emits the former before the tool executor is entered. Baseline decisions
+without an additional policy are observable too; an allow evaluation does not
+bypass the tool's own permission checks or certify successful execution.

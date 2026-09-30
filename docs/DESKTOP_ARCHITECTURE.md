@@ -5,6 +5,13 @@ shares the [client protocol](CLIENT_PROTOCOL.md) and [local service](LOCAL_SERVI
 with other clients. Development uses Bun; installed application processes use
 Electron's bundled Node runtime. macOS arm64 is the supported alpha target.
 
+Desktop imports only declared Harness package entrypoints. Builds consume a
+prepared tarball installation and record its version/hash, without rewriting
+engine source or depending on Code. The renderer uses `/models` and `/protocol`;
+Node hosts use `/engine`, `/service`, `/desktop/v1/state` and
+`/desktop/v1/providers`. The versioned state contract owns SQL snapshot checks;
+Desktop owns update admission, application verification and recovery coordination.
+
 ## Process and trust boundaries
 
 - **Renderer:** bundled local React UI in sandboxed Chromium, with

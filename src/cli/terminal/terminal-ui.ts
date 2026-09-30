@@ -129,6 +129,10 @@ export interface TerminalApprovalResolverOptions {
   maxSummaryCharacters?: number;
   approvedReason?: string;
   deniedReason?: string;
+  /** Host policy: complete bounded payload, no cached session grants. */
+  requireCompleteReview?: boolean;
+  /** Host-only observation; never determines approval or grants explicit review. */
+  onDecisionOrigin?: (origin: 'interactive' | 'automatic') => void;
 }
 
 const promptEnded = (error: unknown) => {
@@ -150,19 +154,24 @@ export const resolveTerminalApprovals = async (
   approvals: readonly AgentApprovalRequest[],
   options: TerminalApprovalResolverOptions
 ): Promise<readonly AgentApprovalResponse[] | undefined> => {
+  if (options.requireCompleteReview && approvals.reduce((bytes, approval) => bytes + Buffer.byteLength(approval.arguments), 0) > 256 * 1024) {
+    options.write('Explicit review exceeds the complete payload limit; approvals remain pending.\n');
+    return undefined;
+  }
   const responses: AgentApprovalResponse[] = [];
   const staged = new Set(options.sessionGrants);
   for (let index = 0; index < approvals.length; index += 1) {
     const approval = approvals[index]!;
-    const grant = options.sessionGrants && options.workspace ? checkApprovalGrant(approval, options.workspace) : undefined;
+    const grant = !options.requireCompleteReview && options.sessionGrants && options.workspace ? checkApprovalGrant(approval, options.workspace) : undefined;
     if (grant && staged.has(grant)) {
       responses.push({ provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Exact check approved for this CLI session." });
+      options.onDecisionOrigin?.('automatic');
       continue;
     }
     options.write(
       `\nApproval required ${index + 1}/${approvals.length}:\n` +
       `${formatApproval(approval, {
-        detail: "summary",
+        detail: options.requireCompleteReview ? "full" : "summary",
         ...(options.maxSummaryCharacters !== undefined
           ? { maxSummaryCharacters: options.maxSummaryCharacters }
           : {})
@@ -202,6 +211,7 @@ export const resolveTerminalApprovals = async (
           approve: true,
           reason: options.approvedReason ?? "Approved interactively."
         });
+        options.onDecisionOrigin?.('interactive');
         break;
       }
       if (answer === "" || answer === "n" || answer === "no") {
@@ -211,6 +221,7 @@ export const resolveTerminalApprovals = async (
           approve: false,
           reason: options.deniedReason ?? "Denied by the operator."
         });
+        options.onDecisionOrigin?.('interactive');
         break;
       }
       options.write("Choose y, n, v, or q.\n");

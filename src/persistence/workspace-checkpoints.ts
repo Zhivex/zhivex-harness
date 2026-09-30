@@ -20,6 +20,10 @@ export const workspaceRestoreOperationSchema = z.strictObject({ id: z.string().u
 export type WorkspaceCheckpoint = z.infer<typeof workspaceCheckpointSchema>;
 export type WorkspaceRestoreOperation = z.infer<typeof workspaceRestoreOperationSchema>;
 const digest = (content: string | Buffer): FileDigest => `sha256:${createHash("sha256").update(content).digest("hex")}`;
+const retentionSelection = z.object({ checkpointIds: z.array(z.string().uuid()).max(100), completedRestoreIds: z.array(z.string().uuid()).max(100) }).strict()
+  .refine(value => value.checkpointIds.length + value.completedRestoreIds.length > 0 &&
+    new Set([...value.checkpointIds, ...value.completedRestoreIds]).size === value.checkpointIds.length + value.completedRestoreIds.length,
+  'Select unique checkpoint and completed restore IDs.');
 
 /** Existing text files only. No deletion, creation, binary file, or mode rollback. */
 export const openWorkspaceCheckpointStore = async (workspace: Workspace, sessions: CliSessionStore) => {
@@ -71,10 +75,105 @@ export const openWorkspaceCheckpointStore = async (workspace: Workspace, session
     return { proposalId: result.proposalId, changes };
   };
   const getOperation = (id: string) => workspaceRestoreOperationSchema.parse(load("restore", id));
+  const list = (kind: "checkpoint" | "restore") => db.query<{ body: string }>(
+    "SELECT body FROM zhivex_workspace_checkpoints WHERE workspace_key=? AND scope_key=? AND kind=? ORDER BY id"
+  ).all(sessions.workspaceKey, sessions.scopeKey, kind).map(row => JSON.parse(row.body) as unknown);
+  const summary = (checkpoint: WorkspaceCheckpoint) => ({ id: checkpoint.id, sessionId: checkpoint.sessionId,
+    turnId: checkpoint.turnId, files: checkpoint.files.map(file => ({ path: file.path, digest: file.digest,
+      bytes: Buffer.byteLength(file.content), mode: file.mode })) });
+  const inventory = () => db.query<{ id: string; kind: string; body: string }>(
+    "SELECT id,kind,body FROM zhivex_workspace_checkpoints WHERE workspace_key=? AND scope_key=? ORDER BY id"
+  ).all(sessions.workspaceKey, sessions.scopeKey).map(row => {
+    const value = row.kind === 'checkpoint' ? workspaceCheckpointSchema.parse(JSON.parse(row.body))
+      : row.kind === 'restore' ? workspaceRestoreOperationSchema.parse(JSON.parse(row.body)) : undefined;
+    if (!value || value.id !== row.id) throw new Error('Invalid checkpoint inventory.');
+    return { ...row, value };
+  });
+  const retentionPlan = (input: z.infer<typeof retentionSelection>) => {
+    const selection = retentionSelection.parse(input);
+    const rows = inventory();
+    const selected = new Set([...selection.checkpointIds, ...selection.completedRestoreIds]);
+    for (const id of selection.checkpointIds) {
+      if (!rows.some(row => row.id === id && row.kind === 'checkpoint')) throw new Error('Unknown checkpoint selection in this scope.');
+    }
+    for (const id of selection.completedRestoreIds) {
+      const row = rows.find(row => row.id === id && row.kind === 'restore');
+      if (!row || !('stage' in row.value) || row.value.stage !== 'completed') throw new Error('Retention cannot remove pending or unknown restore evidence.');
+    }
+    for (const row of rows) {
+      if ('checkpoint' in row.value && selection.checkpointIds.includes(row.value.checkpoint.id) && !selected.has(row.id)) {
+        throw new Error('Checkpoint is still referenced by a retained restore operation.');
+      }
+    }
+    const records = rows.filter(row => selected.has(row.id)).map(row => ({ id: row.id, kind: row.kind,
+      sessionId: 'checkpoint' in row.value ? row.value.checkpoint.sessionId : row.value.sessionId, bytes: Buffer.byteLength(row.body) }));
+    // Bind the full scoped inventory, including references added after review.
+    const planId = digest(JSON.stringify({ workspace: sessions.workspaceKey, scope: sessions.scopeKey,
+      selection: [...selected].sort(), inventory: rows.map(row => [row.id, row.kind, digest(row.body)]) }));
+    return { planId, selection: { checkpointIds: [...selection.checkpointIds].sort(), completedRestoreIds: [...selection.completedRestoreIds].sort() },
+      records, recordsBefore: rows.length, recordsAfter: rows.length - records.length,
+      bytesRemoved: records.reduce((sum, row) => sum + row.bytes, 0), workspaceFilesChanged: false as const,
+      conversationsChanged: false as const };
+  };
   return {
     close: () => db.close(),
     getCheckpoint: (id: string) => workspaceCheckpointSchema.parse(load("checkpoint", id)),
     getOperation,
+    storageStatus: () => {
+      const rows = inventory();
+      const operations = rows.filter(row => 'stage' in row.value);
+      const referenced = new Set(operations.map(row => (row.value as WorkspaceRestoreOperation).checkpoint.id));
+      return { policy: 'explicit-reviewed-removal' as const, automaticEviction: false as const,
+        maxRecords: 100, maxRecordBytes: 2 * 1024 * 1024, maxFilesPerCheckpoint: 20, maxFileBytes: 65536,
+        records: rows.length, availableRecords: Math.max(0, 100 - rows.length), serializedBytes: rows.reduce((sum, row) => sum + Buffer.byteLength(row.body), 0),
+        pendingRestores: operations.filter(row => (row.value as WorkspaceRestoreOperation).stage !== 'completed').length,
+        checkpoints: rows.filter(row => row.kind === 'checkpoint').map(row => ({ id: row.id, referenced: referenced.has(row.id) })) };
+    },
+    prepareRetention: retentionPlan,
+    /** Explicit operator review. Atomic scoped deletion never removes workspace files or sessions. */
+    applyRetention: async (selection: z.infer<typeof retentionSelection>, reviewedPlanId: FileDigest) => withWorkspaceMutation(workspace.root, async () => {
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        const plan = retentionPlan(selection);
+        if (plan.planId !== reviewedPlanId) throw new Error('Retention inventory changed or was not reviewed.');
+        for (const row of plan.records) db.query('DELETE FROM zhivex_workspace_checkpoints WHERE id=? AND workspace_key=? AND scope_key=? AND kind=?')
+          .run(row.id, sessions.workspaceKey, sessions.scopeKey, row.kind);
+        db.exec('COMMIT');
+        return plan;
+      } catch (error) { db.exec('ROLLBACK'); throw error; }
+    }),
+    /** Scoped metadata only; file contents are disclosed only by explicit review. */
+    listCheckpoints: (sessionId: string) => list("checkpoint").map(value => workspaceCheckpointSchema.parse(value))
+      .filter(checkpoint => checkpoint.sessionId === sessionId).map(summary),
+    listRestores: (sessionId: string) => list("restore").map(value => workspaceRestoreOperationSchema.parse(value))
+      .filter(operation => operation.checkpoint.sessionId === sessionId).map(operation => ({ id: operation.id,
+        checkpointId: operation.checkpoint.id, proposalId: operation.proposalId, stage: operation.stage,
+        ...(operation.forkSessionId ? { forkSessionId: operation.forkSessionId } : {}) })),
+    /** Read projection, not authorization. Digests must still be supplied to prepareRestore.
+     * Missing/protected/binary/oversized files are unavailable, never recreated. */
+    inspectCheckpoint: async (id: string) => {
+      const checkpoint = workspaceCheckpointSchema.parse(load("checkpoint", id));
+      const files = await Promise.all(checkpoint.files.map(async file => {
+        try {
+          const current = await read(file.path);
+          if (current.mode !== file.mode) return { path: file.path, status: "mode-conflict" as const };
+          return { path: file.path, status: "available" as const, before: current.content, after: file.content,
+            expectedDigest: current.digest, afterDigest: file.digest, mode: file.mode };
+        } catch { return { path: file.path, status: "unavailable" as const }; }
+      }));
+      return { checkpoint: summary(checkpoint), files,
+        coverage: { existingTextOnly: true as const, maxFiles: 20, maxFileBytes: 65536,
+          creation: false as const, deletion: false as const, binary: false as const, modeRollback: false as const,
+          fullWorkspaceSnapshot: false as const } };
+    },
+    /** Exact prepared diff. Reading it never forks a conversation or writes files. */
+    previewRestore: async (id: string) => {
+      const operation = getOperation(id);
+      for (const file of operation.checkpoint.files) {
+        if ((await read(file.path)).mode !== file.mode) throw new Error(`Restore mode conflict: ${file.path}.`);
+      }
+      return workspace.previewPatch(proposal(operation));
+    },
     capture: async (input: { sessionId: string; turnId: string; paths: readonly string[] }): Promise<WorkspaceCheckpoint> => withWorkspaceMutation(workspace.root, async () => {
       await validateTurn(input);
       if (input.paths.length === 0 || input.paths.length > 20 || new Set(input.paths).size !== input.paths.length) throw new Error("Capture requires 1 to 20 unique existing text files.");

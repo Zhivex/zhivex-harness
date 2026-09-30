@@ -3,12 +3,13 @@ import { request } from "node:http";
 import { mkdtemp, mkdir, lstat, rm, readFile, writeFile } from "node:fs/promises";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
+import { inspectHarnessPolicy } from "../src/runtime/policy-inspection.js";
 import { createHarness } from "../src/runtime/harness.js";
 import { startHarnessLocalService, readHarnessLocalCredentials, requestHarnessLocalService } from "../src/client/local-service.js";
 
-const setup = async (modelInstance?: LanguageModel) => {
+const setup = async (modelInstance?: LanguageModel, toolPolicy?: import("../src/runtime/tool-policy.js").HarnessToolPolicy) => {
   const root = await mkdtemp("/tmp/har-service-"); const workspace=root+"/repo"; await mkdir(workspace);
-  const harness=await createHarness({workspace,provider:"openai",modelInstance:modelInstance??createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:"hello"},{type:"finish",finishReason:"stop"}]]}),subagentProfiles:[]});
+  const harness=await createHarness({...(toolPolicy?{toolPolicy}:{}),workspace,provider:"openai",modelInstance:modelInstance??createMockLanguageModel({streamEvents:[[{type:"text-delta",textDelta:"hello"},{type:"finish",finishReason:"stop"}]]}),subagentProfiles:[]});
   const service=await startHarnessLocalService(harness,{directory:root+"/socket"});
   const credentials=await readHarnessLocalCredentials(service.credentialsPath);
   const hello=await requestHarnessLocalService(credentials,"hello",{versions:[1]});
@@ -28,6 +29,7 @@ test("host pauses new mutations while preserving reads, explicit cancellation an
   const work=f.call({method:"run.start",sessionId:session.data.session.sessionId,expectedRevision:session.data.session.revision,idempotencyKey:"wait",prompt:"wait"});await started;
   expect(f.service.pauseAdmission()).toBe(true);
   await expect(f.call({method:"session.create",idempotencyKey:"blocked"})).rejects.toThrow("HTTP_503");
+  expect(await f.call({method:"policy.get"})).toMatchObject({ok:true,data:{kind:"policy",policy:inspectHarnessPolicy(f.harness)}});
   expect(await f.call({method:"session.list"})).toMatchObject({ok:true,data:{kind:"sessions"}});
   await f.service.cancelActive();await work;
   expect(f.service.pauseAdmission()).toBe(false);
@@ -119,3 +121,42 @@ test("another client cancels an active run using its durable revision",async()=>
   const result=await f.call({method:"run.get",sessionId,runId});expect(result).toMatchObject({ok:true,data:{run:{status:"cancelled"}}});
  }finally{await f.close();}
 },10000);
+
+
+test("policy query matches the host view without sessions, effects or caller authority", async () => {
+  const f = await setup();
+  try {
+    const before = await f.call({ method: 'session.list' });
+    expect(await f.call({ method: 'policy.get' })).toMatchObject({ ok: true, data: { kind: 'policy', policy: inspectHarnessPolicy(f.harness) } });
+    expect(await f.call({ method: 'policy.get', policy: { explicitReview: false } })).toMatchObject({ ok: false, error: { code: 'INVALID_REQUEST' } });
+    expect(await f.call({ method: 'policy.get', projectId: 'foreign-project' })).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
+    const after = await f.call({ method: 'session.list' });
+    if (!before.ok || !after.ok) throw new Error('session inspection failed');
+    expect(after.data).toEqual(before.data);
+    expect(f.harness.workspace.mutationAudit()).toHaveLength(0);
+  } finally { await f.close(); }
+});
+
+
+test('service publishes sanitized policy evaluation and replay cannot execute it', async () => {
+  const model = createMockLanguageModel({ streamEvents: [[
+    { type: 'tool-call', toolCall: { id: 'blocked-read', name: 'read_file', input: { path: 'private.txt' } } },
+    { type: 'finish', finishReason: 'tool-calls' }
+  ], [{ type: 'text-delta', textDelta: 'denied' }, { type: 'finish', finishReason: 'stop' }]] });
+  const f = await setup(model, { schemaVersion: 1, explicitReview: { schemaVersion: 1 }, rules: [{ id: 'private-read', tools: ['read_file'], decision: 'deny', reason: 'Do not read /private/customer/file.txt sk-testsecret123' }] });
+  try {
+    const created = await f.call({ method: 'session.create', idempotencyKey: 'policy-session' });
+    if (!created.ok || created.data.kind !== 'session') throw new Error('session');
+    const session = created.data.session;
+    const finished = await f.call({ method: 'run.start', sessionId: session.sessionId, expectedRevision: session.revision, idempotencyKey: 'policy-run', prompt: 'Try reading private.txt' });
+    expect(finished.ok).toBe(true);
+    const page = await requestHarnessLocalService(f.credentials, 'events', { projectId: f.hello.projectId, sessionId: session.sessionId, after: 0 });
+    const decisions = page.events.filter(event => event.activity.type === 'policy-decision');
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]?.activity).toMatchObject({ schemaVersion: 1, toolName: 'read_file', decision: 'deny', ruleIds: ['private-read'], approvalRequired: false, evidence: 'policy-evaluation', executionBackend: 'none' });
+    expect(JSON.stringify(decisions)).not.toContain('/private/customer');
+    expect(JSON.stringify(decisions)).not.toContain('sk-testsecret123');
+    expect(await requestHarnessLocalService(f.credentials, 'events', { projectId: f.hello.projectId, sessionId: session.sessionId, after: 0 })).toEqual(page);
+    expect(f.harness.workspace.mutationAudit()).toHaveLength(0);
+  } finally { await f.close(); }
+});

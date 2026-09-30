@@ -3,7 +3,7 @@ import { HarnessConfigError } from "../runtime/errors.js";
 
 /** Reserved regardless of which backend/skill subset is enabled. */
 export const LOCAL_TOOL_NAMES = new Set([
-  "list_files", "read_file", "read_files", "search_files", "search_many", "propose_edits", "apply_patch",
+  "discover_tools", "read_tool_result", "list_files", "read_file", "read_files", "search_files", "search_many", "propose_edits", "apply_patch",
   "move_file", "quarantine_file", "restore_file", "run_check", "git_diff", "mutation_audit", "load_skill",
   "run_environment_command", "run_environment_batch", "run_environment_shell", "environment_status",
   "apply_reviewed_edits", "apply_reviewed_replacement", "read_task", "repair_plan", "inspect_environment_patch",

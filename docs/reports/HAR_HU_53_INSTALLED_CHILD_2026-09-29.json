@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "sha256": "1eba2d6551ff3e29e96162c89c8b37d3a23b9fe27f37b2c1459a9cb0b5fe8dab",
+  "phases": [
+    {
+      "phase": "prepare",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "explicitReview": true,
+      "promotedChild": true
+    },
+    {
+      "phase": "resume",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "explicitReview": true,
+      "promotedChild": true
+    },
+    {
+      "phase": "verify",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "explicitReview": true,
+      "promotedChild": true
+    }
+  ],
+  "installed": true,
+  "liveProvider": false,
+  "published": false,
+  "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-explicit-installed-cvFK6K"
+}

@@ -1,13 +1,24 @@
 import { CLI_COMMAND_OPTION_CONTRACTS, type CliCommandOptionContractKey } from "./cli-options.js";
 
 const usage: Record<string, string> = {
+  "checkpoints:storage": "zhx checkpoints storage",
+  "checkpoints:prune-review": "zhx checkpoints prune-review <checkpoint:id|restore:id> [...]",
+  "checkpoints:prune-apply": "zhx checkpoints prune-apply <reviewedPlanId> <checkpoint:id|restore:id> [...]",
+  "checkpoints:list": "zhx checkpoints list <sessionId>",
+  "checkpoints:capture": "zhx checkpoints capture <sessionId> <turnId> <path> [paths...]",
+  "checkpoints:inspect": "zhx checkpoints inspect <checkpointId>",
+  "checkpoints:prepare": "zhx checkpoints prepare <checkpointId>",
+  "checkpoints:review": "zhx checkpoints review <operationId>",
+  "checkpoints:apply": "zhx checkpoints apply <operationId> <reviewedProposalId>",
+  "checkpoints:recover": "zhx checkpoints recover <operationId> <existingForkSessionId>",
   init: "zhx init [--provider <id>] [--model <id>] [--profile <name>] [--update]",
   run: 'zhx run [options] "task" | zhx run [options] -', review: 'zhx review [options] "review task" | zhx review [options] -',
   chat: "zhx [--continue | --session <id>]", providers: "zhx providers [--json]",
+  policy: "zhx policy [options] [--json]",
   doctor: "zhx doctor [options]", resume: "zhx resume <runId> --approve|--deny",
   "runs:list": "zhx runs list [options]", "runs:inspect": "zhx runs inspect <runId>",
   "runs:cancel": "zhx runs cancel <runId> [options]", "runs:cleanup": "zhx runs cleanup --before <date> [options]",
-  "runs:export": "zhx runs export <runId>", "sessions:list": "zhx sessions list [--search <text>]",
+  "runs:export": "zhx runs export <runId>", "runs:report": "zhx runs report <runId> [envelope.json] [--session <sessionId>] [--json]", "sessions:list": "zhx sessions list [--search <text>]",
   "sessions:inspect": "zhx sessions inspect <sessionId>", "sessions:rename": 'zhx sessions rename <sessionId> "title"',
   "sessions:fork": "zhx sessions fork <sessionId>", "sessions:archive": "zhx sessions archive <sessionId>",
   "changes:create": "zhx changes create <input.json> --patch <artifact>",
@@ -61,6 +72,7 @@ export function formatCliHelp(topic: string | undefined, version: string, full: 
     "--limit": "  --limit <n>                   Maximum number of results",
     "--search": "  --search <text>               Literal conversation title or ID filter",
     "--pricing-file": "  --pricing-file <file.json>    Operator-supplied price estimates",
+    "--tool-policy": "  --tool-policy <absolute.json> Host-owned tool policy outside the repository",
     "--usage-limit-usd": "  --usage-limit-usd <amount>    Per-run monetary limit; requires pricing",
     "--version": "  --version                     Show the installed version",
   };

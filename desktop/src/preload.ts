@@ -4,6 +4,9 @@ import {pullRequestBridge} from "./pr-bridge.js";
 import { contextBridge, ipcRenderer } from "electron";
 import type { DesktopBridge } from "./bridge.js";
 const bridge: DesktopBridge = Object.freeze({
+    reviewCheckpoint: (projectKey: string, sessionId: string, operationId: string) => ipcRenderer.invoke("harness:checkpoint-review", { projectKey, sessionId, operationId }),
+    reviewCheckpointRecovery: (projectKey: string, sessionId: string, operationId: string, forkSessionId: string) => ipcRenderer.invoke("harness:checkpoint-recovery-review", { projectKey, sessionId, operationId, forkSessionId }),
+    resolveCheckpointReview: (projectKey: string, ticketId: string, approve: boolean) => ipcRenderer.invoke("harness:checkpoint-resolve", { projectKey, ticketId, approve }),
     openExternal: (url: string) => ipcRenderer.invoke("harness:open-external", url),
     copyText: (text: string) => ipcRenderer.invoke("harness:copy-text", text),
     providers: () => ipcRenderer.invoke("harness:providers"),

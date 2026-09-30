@@ -1,3 +1,5 @@
+import { observeCliPolicy } from "./policy-decisions.js";
+import { publishPendingPolicyDecision } from "../runtime/policy-decisions.js";
 import { cliToolExecution } from "./tool-execution.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import {
@@ -7,6 +9,8 @@ import {
   type HarnessSubagentProfile
 } from "../runtime/config.js";
 import { createHarness, runHarness } from "../runtime/harness.js";
+import { issueAutomaticApprovalResponses } from "../approvals/explicit-review.js";
+import { requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
 import { openHarnessPersistence } from "../persistence/operations.js";
 import { validateStateDirectory } from "../persistence/state-directory.js";
 import { runHarnessReviewGroup } from "../runtime/orchestration.js";
@@ -43,7 +47,7 @@ export const runOnce = async (options: CliOptions) => {
   const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
   let closeAttempted = false;
   try {
-    const result = await runHarness(
+    const result = await observeCliPolicy(options, tracker, () => runHarness(
       harness,
       {
         prompt: options.prompt,
@@ -54,9 +58,9 @@ export const runOnce = async (options: CliOptions) => {
       },
       {
         onEvent: streamSink(options, tracker),
-        resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes)
+        resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, undefined, undefined, harness)
       }
-    );
+    ));
     closeAttempted = true;
     await harness.close();
     printTerminalResult(result, harness, options, tracker);
@@ -202,22 +206,26 @@ export const resumeRun = async (options: CliOptions) => {
     const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
     let harnessCloseAttempted = false;
     try {
-      const result = await runHarness(
+      const result = await observeCliPolicy(options, tracker, async () => {
+      for (const pending of state.pendingApprovals) await publishPendingPolicyDecision(harness, pending.name, pending.kind === 'subagent');
+      const explicitReview = requiresExplicitHostReview(harness);
+      const resumeApprovals = approve && explicitReview
+        ? await terminalApprovalResolver('ask', undefined, undefined, harness)(state.pendingApprovals, state)
+        : issueAutomaticApprovalResponses(harness, state, approvalResponses(state.pendingApprovals, approve, approve ? 'Approved by resume --approve.' : 'Denied by resume --deny.'), 'cli-resume');
+      if (!resumeApprovals) throw new CliUsageError('EXPLICIT_REVIEW_REQUIRED: resume needs an interactive review channel; operation remains pending.');
+      return runHarness(
         harness,
         {
           state,
           toolExecution: { ...cliToolExecution },
-          approvals: approvalResponses(
-            state.pendingApprovals,
-            approve,
-            approve ? "Approved by resume --approve." : "Denied by resume --deny."
-          )
+          approvals: resumeApprovals as import('@zhivex-ai/agents').AgentApprovalResponse[]
         },
         {
           onEvent: streamSink(options, tracker),
-          resolveApprovals: terminalApprovalResolver(approve ? "auto" : "restricted")
+          resolveApprovals: terminalApprovalResolver(approve ? (explicitReview ? 'ask' : 'auto') : 'restricted', undefined, undefined, harness)
         }
       );
+      });
       await updateIndexedSessionRun(harness.config, result.state.runId, result.status);
       harnessCloseAttempted = true;
       await harness.close();

@@ -230,7 +230,7 @@ for (const required of [
   "certify-live:",
   "environment: live-certification",
   "needs.certify-live.result == 'success'",
-  "ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai",
+  "ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai,anthropic,gemini,vertex",
   "bun run smoke:live",
   "bun run smoke:live:orchestration",
   "bun run smoke:live:routing",

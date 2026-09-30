@@ -20,6 +20,18 @@ function fixture(environment: NodeJS.ProcessEnv = {}) {
   return { keys, store, ui, accesses: () => accesses, output: () => output };
 }
 
+test("Vertex ADC configuration never reads or writes API-key storage", async () => {
+  const environment = { GOOGLE_CLOUD_PROJECT: "fixture-project", VERTEX_LOCATION: "global" };
+  const f = fixture(environment);
+  expect(await f.store.inspect("vertex")).toEqual({ source: "environment", configured: true });
+  expect(await f.store.providerEnvironment("vertex", f.ui([]))).toEqual(environment);
+  expect(await f.store.configure("vertex", f.ui([]))).toBe(true);
+  expect(f.accesses()).toBe(0);
+  const missing = fixture({});
+  expect((await missing.store.inspect("vertex")).configured).toBe(false);
+  await expect(missing.store.providerEnvironment("vertex", missing.ui([]))).rejects.toThrow("GOOGLE_CLOUD_PROJECT");
+});
+
 test("environment aliases win without touching the keychain or global environment", async () => {
   const f = fixture({ QWEN_API_KEY: "environment-key" });
   f.keys.set("qwen", "stored-key");

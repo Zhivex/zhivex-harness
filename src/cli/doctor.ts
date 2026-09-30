@@ -679,7 +679,11 @@ export const createDoctorReport = async (
       : provider.support === "provisional"
         ? "warn"
         : "pass";
-    const message = invalidEndpoint
+    const message = provider.id === "vertex"
+      ? configured
+        ? "Vertex project/location configured; host ADC and model access have not been checked. Live support is provisional."
+        : "Vertex requires GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION plus host Application Default Credentials. No API key is stored by zhx."
+      : invalidEndpoint
       ? `${provider.name} custom endpoint configuration is invalid.`
       : invalidRegion
       ? "Qwen region configuration is invalid."

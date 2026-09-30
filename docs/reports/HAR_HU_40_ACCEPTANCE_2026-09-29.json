@@ -1,0 +1,391 @@
+{
+  "scope": "Local deterministic installed acceptance on macOS arm64; not publication or remote CI",
+  "counts": {
+    "local": 16,
+    "global": 16,
+    "state": 6,
+    "historical_global": 4
+  },
+  "records": [
+    {
+      "group": "local",
+      "source": "/tmp/zhx-consumers-node22.json",
+      "reportSha256": "b14bd7570bc179029249f5b18309731c28dc59a3067105fa0b1a4a08a9b8c3f6",
+      "runtime": {
+        "node": "v22.13.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "manager": null,
+      "cases": 8,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "local",
+      "source": "/tmp/zhx-consumers-node24.json",
+      "reportSha256": "3fa16fe0770515a6bf7c5c199e60504684809f222ef301d8c823e675fe68668a",
+      "runtime": {
+        "node": "v24.11.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "manager": null,
+      "cases": 8,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-node22.json",
+      "reportSha256": "6ca84e13fa51b682c3a49258c90958586c9658e907542c4024056e33782cd304",
+      "runtime": "v22.13.0",
+      "manager": "1.4.0",
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-node24.json",
+      "reportSha256": "a9b9f550d04c7ae3d0f7b6cf96c4d0c59f680224d38fda1b80691c31a8c022ab",
+      "runtime": "v24.11.0",
+      "manager": "1.4.0",
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-npm-controlled.json",
+      "reportSha256": "c54a28348f5c7047a69bf3f9d1368ff63b5ef8b81fa5b1dc9095bfabf891f44a",
+      "runtime": "v22.13.0",
+      "manager": {
+        "name": "npm",
+        "version": "10.9.4"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-npm-controlled-node24.json",
+      "reportSha256": "a5f40fed999d3f2fe0a48d4b6a03136497e40abcae3e2901b5b0c440193c349e",
+      "runtime": "v24.11.0",
+      "manager": {
+        "name": "npm",
+        "version": "10.9.4"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-pnpm22-isolated.json",
+      "reportSha256": "c82f4314c1187438c4f2ab94d0dec77fcf80ceba570a4454578860056a567392",
+      "runtime": "v22.13.0",
+      "manager": {
+        "name": "pnpm",
+        "version": "11.25.0"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-pnpm24-isolated.json",
+      "reportSha256": "4626e7b858fddec3f3add45e476d0039c7a80e74d4221d206bf1a979664bc6e3",
+      "runtime": "v24.11.0",
+      "manager": {
+        "name": "pnpm",
+        "version": "11.25.0"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-yarn22-fixed.json",
+      "reportSha256": "9a630c8956d9bd6ed7e071497219cda39cfb4f560ee59866c0fe23030cec8a4e",
+      "runtime": "v22.13.0",
+      "manager": {
+        "name": "yarn",
+        "version": "1.22.22"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "global",
+      "source": "/tmp/zhx-global-yarn24-final.json",
+      "reportSha256": "fb0529d8ba1c110178770fb8866bcab7d984e66b90eb4f996d5c727e7507a050",
+      "runtime": "v24.11.0",
+      "manager": {
+        "name": "yarn",
+        "version": "1.22.22"
+      },
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-node22-compatible.log",
+      "reportSha256": "faaf367115dff8df4c42473eb08a7935dbab34257ea8988166cf63754c1322dd",
+      "runtime": {
+        "executable": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+        "version": "v22.13.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.3.0-rc.3",
+          "sha256": "b6f41a31a1c3aa1cbeed097743bd5e665ad88f71f9b9227f6fbcbb32c0f672d3"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-node22-incompatible.log",
+      "reportSha256": "d4af397d42523e18586c244b2e51c5c0e35710794b5fc2e5fbc1fe47ade0e692",
+      "runtime": {
+        "executable": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+        "version": "v22.13.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.2.0-rc.13",
+          "sha256": "a553e3db91fa236776f6cbb775718f82db73f3fdbc046e9e49eb6637cb55b4b2"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-node24-compatible.log",
+      "reportSha256": "d4d8c80794545223d4e20b44dc6ba97b9e29d6a8b8430c232b9cff24eaf5cba0",
+      "runtime": {
+        "executable": "/tmp/zhx-runtime-matrix/node-v24.11.0-darwin-arm64/bin/node",
+        "version": "v24.11.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.3.0-rc.3",
+          "sha256": "b6f41a31a1c3aa1cbeed097743bd5e665ad88f71f9b9227f6fbcbb32c0f672d3"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-node24-incompatible.log",
+      "reportSha256": "6cc5eabfc32889de46c3e3327c5fc3e3ae68c69539cd059b586ea20ea6143600",
+      "runtime": {
+        "executable": "/tmp/zhx-runtime-matrix/node-v24.11.0-darwin-arm64/bin/node",
+        "version": "v24.11.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.2.0-rc.13",
+          "sha256": "a553e3db91fa236776f6cbb775718f82db73f3fdbc046e9e49eb6637cb55b4b2"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-bun-compatible.log",
+      "reportSha256": "d6274a770996a4d90843220f0a32f73321c6803dfb390c9e44131387763f5132",
+      "runtime": {
+        "executable": "bun",
+        "version": "1.4.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.3.0-rc.3",
+          "sha256": "b6f41a31a1c3aa1cbeed097743bd5e665ad88f71f9b9227f6fbcbb32c0f672d3"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "state",
+      "source": "/tmp/zhx-state-bun-incompatible.log",
+      "reportSha256": "67357a84c40a47c4d0cfb3c665b78b55773a10d917d010d0ef7634428f5c6695",
+      "runtime": {
+        "executable": "bun",
+        "version": "1.4.0"
+      },
+      "manager": null,
+      "cases": 1,
+      "status": "passed",
+      "artifacts": [
+        {
+          "label": "historical",
+          "version": "1.2.0-rc.13",
+          "sha256": "a553e3db91fa236776f6cbb775718f82db73f3fdbc046e9e49eb6637cb55b4b2"
+        },
+        {
+          "label": "candidate",
+          "version": "1.3.0-rc.3",
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        }
+      ]
+    },
+    {
+      "group": "historical_global",
+      "source": "/tmp/zhx-global-historical-node22-final.log",
+      "reportSha256": "eebb04b858e49c6d3d20301c48fa4df60631f05452415ba54c64337e9a480273",
+      "runtime": "v22.13.0",
+      "manager": "1.4.0",
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        },
+        {
+          "sha256": "a553e3db91fa236776f6cbb775718f82db73f3fdbc046e9e49eb6637cb55b4b2"
+        }
+      ]
+    },
+    {
+      "group": "historical_global",
+      "source": "/tmp/zhx-global-historical-node24-final.log",
+      "reportSha256": "98f051c733f288466599e92350a946f41d0149f78c95a520f216081aaad3ab2b",
+      "runtime": "v24.11.0",
+      "manager": "1.4.0",
+      "cases": 2,
+      "status": "passed",
+      "artifacts": [
+        {
+          "sha256": "57575553156dcc3c7cda79040fe9d500618a0b76ef9196e062507ae39ff96f84"
+        },
+        {
+          "sha256": "0723b5e4f6918c6a867372b612f57afe762d547a3b6920da80951022ac6954b4"
+        },
+        {
+          "sha256": "a553e3db91fa236776f6cbb775718f82db73f3fdbc046e9e49eb6637cb55b4b2"
+        }
+      ]
+    }
+  ]
+}

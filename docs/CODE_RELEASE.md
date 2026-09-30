@@ -1,8 +1,8 @@
 # Code release procedure
 
 Code is released independently of Harness. The initial candidate is
-`@zhivex-ai/code@0.1.0-rc.1`, with the sole binary `zhivex-code`, npm tag `next`,
-and the exact dependency `@zhivex-ai/harness@1.3.0-rc.3`. Harness must first be
+`@zhivex-ai/code@0.1.0-rc.2`, with the sole binary `zhivex-code`, npm tag `next`,
+and the exact dependency `@zhivex-ai/harness@1.3.0-rc.4`. Harness must first be
 published and verified through its protected release workflow. This document
 records preparation, not successful publication.
 
@@ -13,13 +13,13 @@ records preparation, not successful publication.
    for the exact commit. Keep the Code manifest, version and engine pin unchanged
    after selecting that commit.
 3. From a clean checkout of that main commit, create an annotated
-   `code-v0.1.0-rc.1` tag and push it. Never move or overwrite release tags.
+   `code-v0.1.0-rc.2` tag and push it. Never move or overwrite release tags.
 4. Dispatch `release-code.yml` **at that tag**, with input `tag` matching it and
    `mode=bootstrap`. Dispatching main while supplying a different tag is rejected.
 
 ```sh
-gh workflow run release-code.yml --ref code-v0.1.0-rc.1 \
-  -f tag=code-v0.1.0-rc.1 -f mode=bootstrap -f confirm_publication=false
+gh workflow run release-code.yml --ref code-v0.1.0-rc.2 \
+  -f tag=code-v0.1.0-rc.2 -f mode=bootstrap -f confirm_publication=false
 ```
 
 The workflow validates tag identity, main ancestry, exact CI/CodeQL, Code source
@@ -51,7 +51,7 @@ commit SHA. Install npm 11.6.1 into an isolated tools directory and set
 ```sh
 (cd release-code-artifacts && shasum -a 512 -c SHA512SUMS)
 bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
-CODE_EXPECTED_SHA="$(git rev-list -n 1 code-v0.1.0-rc.1)" \
+CODE_EXPECTED_SHA="$(git rev-list -n 1 code-v0.1.0-rc.2)" \
   node scripts/code-bootstrap-provenance.cjs verify \
   release-code-artifacts/code.tgz release-code-artifacts/code.sigstore.json
 node "$CODE_PROVENANCE_NPM_ROOT/bin/npm-cli.js" publish \

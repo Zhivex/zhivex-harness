@@ -486,3 +486,18 @@ export { serveAcpStdio } from "../client/acp-stdio.js";
 export { openWorkspaceCheckpointStore } from "../persistence/workspace-checkpoints.js";
 export type { WorkspaceCheckpoint, WorkspaceRestoreOperation } from "../persistence/workspace-checkpoints.js";
 export type { HarnessMcpResourceClient } from "../integrations/mcp.js";
+
+/** Experimental read-only host policy view. */
+export { inspectHarnessPolicy } from "../runtime/policy-inspection.js";
+export type { HarnessPolicyInspection } from "../runtime/policy-inspection.js";
+
+/** Experimental application-owned task acceptance; enforcement is a separate layer. */
+export { taskAcceptanceContractSchema, compileTaskAcceptanceContract } from '../runtime/task-acceptance.js';
+export type { TaskAcceptanceContract } from '../runtime/task-acceptance.js';
+export { inspectHarnessTaskAcceptance, reviseHarnessTaskAcceptance } from '../runtime/task-acceptance-host.js';
+export type { TaskAcceptanceLedger } from '../runtime/task-acceptance-record.js';
+
+/** Experimental bounded portable governance projection. */
+export { exportHarnessGovernanceReport, harnessGovernanceReportSchema, renderHarnessGovernanceMarkdown } from '../persistence/governance-report.js';
+export type { HarnessGovernanceReport, HarnessGovernanceOptions } from '../persistence/governance-report.js';
+export type { GovernanceSessionSource } from '../persistence/governance-context.js';

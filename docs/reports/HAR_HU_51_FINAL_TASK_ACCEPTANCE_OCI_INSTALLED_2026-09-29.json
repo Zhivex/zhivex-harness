@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "cohort": "harness-task-contract-oci-v1",
+  "fixtureSha256": "5f5a98edcab4463ced19299dc238e65dbd7f022241c9bdd247cbfc56fd8016a3",
+  "artifactSha256": "1dc3375ab8c4a70a4c100fec45087ee9569d3522970e04be8b4ce65e5a5ea7ec",
+  "root": "/tmp/har-accept-oci-4NPcYk",
+  "phases": [
+    {
+      "scenario": "success",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "completed",
+      "acceptance": "verified",
+      "hostImported": true,
+      "runId": "run_b804c2a1-2a17-48b3-975a-7a341efc7592",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:39d804a11395fe269675ecdf3c116b9352d6e7f934d69ad621610f1faf6077f4",
+          "contractRevision": 1,
+          "runId": "run_b804c2a1-2a17-48b3-975a-7a341efc7592",
+          "executionIdentity": "sha256:419806843d481785fbd62db17d9f4f95b923416e4925db43cdcdd523864e9120",
+          "patchId": "sha256:08fc8f3b8932333ccf0398ec68fd735c10b079edad9f25c40204bd7b8d42d030",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718475523
+          }
+        }
+      ],
+      "delivery": {
+        "runId": "run_b804c2a1-2a17-48b3-975a-7a341efc7592",
+        "patchId": "sha256:08fc8f3b8932333ccf0398ec68fd735c10b079edad9f25c40204bd7b8d42d030",
+        "executionIdentity": "sha256:419806843d481785fbd62db17d9f4f95b923416e4925db43cdcdd523864e9120",
+        "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98"
+      }
+    },
+    {
+      "scenario": "human-review",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "completed",
+      "acceptance": "pending_review",
+      "hostImported": true,
+      "runId": "run_cd5dc2e3-0678-4c17-87f6-09e5fac065a8",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:ff2fac6116ead88785babbe017a336c19fbde98f0667cb75da48fb736eadd2f9",
+          "contractRevision": 1,
+          "runId": "run_cd5dc2e3-0678-4c17-87f6-09e5fac065a8",
+          "executionIdentity": "sha256:691d1a7b9dd3551a0b3d7be3d81b9d94471b60b9d9d91fce277c6544dfe67a01",
+          "patchId": "sha256:17bdc7c7bfeb95bbdabbb3378beb4a59ad79b83c558df595f740f02e52aa6b9c",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718476498
+          }
+        }
+      ],
+      "delivery": {
+        "runId": "run_cd5dc2e3-0678-4c17-87f6-09e5fac065a8",
+        "patchId": "sha256:17bdc7c7bfeb95bbdabbb3378beb4a59ad79b83c558df595f740f02e52aa6b9c",
+        "executionIdentity": "sha256:691d1a7b9dd3551a0b3d7be3d81b9d94471b60b9d9d91fce277c6544dfe67a01",
+        "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98"
+      }
+    },
+    {
+      "scenario": "missing-check",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_dbefc790-01e7-434b-9b19-e8f4fe3d55e2",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:a3d9e0f860a5f8d3cc4fe5fdf7e600a46c7732ceafe9bea1de6582c6f6feb48b",
+          "contractRevision": 1,
+          "runId": "run_dbefc790-01e7-434b-9b19-e8f4fe3d55e2",
+          "executionIdentity": "sha256:fe05686e1684ecdf465ea193155aad00b9e3cd94dffe94972ae4eccf03e8335c",
+          "patchId": "sha256:78a87484a755e5e66f4b44732d10458f7326ab8f05309a8695d3fe8b5a9153f9",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718477323
+          }
+        }
+      ],
+      "delivery": null
+    },
+    {
+      "scenario": "snapshot-drift",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_f5595d4e-8bbf-4e54-8b88-a3bca3d13659",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:7b58d5fa8747eb3faa524b8ee1197bd89ff6f6252dc0df7ff6bd316e4cee2aee",
+          "contractRevision": 1,
+          "runId": "run_f5595d4e-8bbf-4e54-8b88-a3bca3d13659",
+          "executionIdentity": "sha256:4df6c72178aee798dbef5b89632751369628c5b76c4bcb247671bc618b84c619",
+          "patchId": "sha256:75622f63c333f27ed271c177afdaccd4110cc2c861fd79afa6f48cf7850e011c",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:45b575a75e3535cb41173cd913910bb80dc7ad61345b18856ce02e4d23fcf1ec",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": false,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718478234
+          }
+        }
+      ],
+      "delivery": null
+    },
+    {
+      "scenario": "scope",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_732b8a54-577c-4ddb-86c3-a64b392e8452",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:73f47cacf94094f098091b8bfec8ec7f2644b1ea62afcb94e68766ebe16b0c20",
+          "contractRevision": 1,
+          "runId": "run_732b8a54-577c-4ddb-86c3-a64b392e8452",
+          "executionIdentity": "sha256:293b0f83b9ec4a20d1eb0b7270d6aaaa33279b2a25f614ba77b6250398980191",
+          "patchId": "sha256:18d760f4d0b249c62393e29272273b91ebd2ff351b50d305b56efa515c21bd11",
+          "snapshotDigest": "sha256:44d96c6d799dc90e3813a9eacba9355c1d1e7334eb3df3d90565229aaf437348",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718479088
+          }
+        }
+      ],
+      "delivery": null
+    },
+    {
+      "scenario": "altered-script",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_5fd555ad-cf03-42b2-99ad-05b5c4037130",
+      "checks": [],
+      "delivery": null
+    },
+    {
+      "scenario": "altered-test",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_a192ae51-3411-463b-bd7f-e5a2d69e30d8",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:07080e838e65ccd34e2e54bf80e479192807b775408d2b0be214199a7b5436e3",
+          "contractRevision": 1,
+          "runId": "run_a192ae51-3411-463b-bd7f-e5a2d69e30d8",
+          "executionIdentity": "sha256:35bb60dc8c3d853fd543bb902f7328ea7810c7f779b54d1b6e87ec276f438211",
+          "patchId": "sha256:83f8c22066017d16525a15c7aabcca8baf39f8c570b7750c551af26b3d6d4c1a",
+          "snapshotDigest": "sha256:97b6f6663af88b23886cb04153c883286e973c797f17171bb532480dbb08e785",
+          "argvDigest": "sha256:0ec81834fc8fe0e64f8c7ee16787f629f45cd1eb7cdb16151683217bb27ea9fc",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "deliver",
+            "name": "verify_and_apply_reviewed_edits",
+            "startedAt": 1790718480516
+          }
+        }
+      ],
+      "delivery": null
+    },
+    {
+      "scenario": "stale-patch",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_71e106e3-7913-4c4f-8df3-c4f8258e5a7b",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:7a49691384e6732dfd8a7843cde45db884c5411e5c02144c575897db13f58e57",
+          "contractRevision": 1,
+          "runId": "run_71e106e3-7913-4c4f-8df3-c4f8258e5a7b",
+          "executionIdentity": "sha256:46682d727d5fd5d3f42329a26163a04fb0080df8eed1caed6f19e51b076241cd",
+          "patchId": "sha256:1924b6b274b694666345f0ae61283f2bc10380325c59a5e4f955752f4266e388",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "sequence-2",
+            "name": "run_environment_command",
+            "startedAt": 1790718481535
+          }
+        }
+      ],
+      "delivery": null
+    },
+    {
+      "scenario": "post-check-drift",
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "runtime": "v22.13.0",
+      "status": "failed",
+      "acceptance": "failed",
+      "hostImported": false,
+      "runId": "run_82930cb3-3a9c-4064-b80d-81acc3a78c46",
+      "checks": [
+        {
+          "schemaVersion": 1,
+          "checkId": "content",
+          "contractDigest": "sha256:619f27304bd37902dad04254fe128eadeee1124cac89205fd43af67ad0ee278b",
+          "contractRevision": 1,
+          "runId": "run_82930cb3-3a9c-4064-b80d-81acc3a78c46",
+          "executionIdentity": "sha256:970580b8640b69a884c82b9c3f0038d83bc592011ea7bb3ae7e0d623be99ed73",
+          "patchId": "sha256:71b8b57998879a17be01b25248d27d9c4319bf61d7d9472f3b6a7b758c9fdee2",
+          "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+          "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+          "exitCode": 0,
+          "timedOut": false,
+          "unchanged": true,
+          "source": {
+            "id": "sequence-2",
+            "name": "run_environment_command",
+            "startedAt": 1790718482929
+          }
+        }
+      ],
+      "delivery": null
+    }
+  ],
+  "installed": true,
+  "realDocker": true,
+  "liveProvider": false,
+  "published": false
+}

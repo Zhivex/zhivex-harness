@@ -5,6 +5,12 @@ import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
 import type { ProjectRuntime } from "./runtime-host.js";
 export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<string, Promise<ProjectRuntime>>, reportDirectory: string) {
+    const capture = async () => {
+        window.show();
+        window.focus();
+        window.webContents.setBackgroundThrottling(false);
+        return window.webContents.capturePage(undefined, { stayHidden: false, stayAwake: true });
+    };
     const startedAt = Date.now();
     const phases: Array<{ phase: string; elapsedMs: number }> = [];
     const checkpoint = async (phase: string) => {
@@ -38,7 +44,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const wait = async (expression: string) => { for (let i = 0; i < 200; i++) { if (await js(expression)) return; await new Promise(r => setTimeout(r, 50)); } await writeFile(path.join(reportDirectory, "failure-view.txt"), await js("document.body.innerText")); throw new Error(`RENDERER_TIMEOUT: ${expression}`); };
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
     await wait('document.querySelector("[data-ready=true]") !== null');
-    const isolated = await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "checkUpdates,chooseProject,command,configureCredential,copyText,createPr,createTask,credentialStatus,deleteCredential,downloadUpdate,events,gitChanges,gitCommit,gitReconcile,gitReviewCommit,gitStage,initialProject,installUpdate,openExternal,openPr,openProject,openTask,probeCredential,projects,providers,push,reconcilePr,reconcilePush,remoteTargets,removeTask,resolveReview,review,reviewPr,reviewPush,reviewTaskRemoval,selectModel,tasks,updateStatus"'); assert(isolated);
+    const isolated = await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "checkUpdates,chooseProject,command,configureCredential,copyText,createPr,createTask,credentialStatus,deleteCredential,downloadUpdate,events,gitChanges,gitCommit,gitReconcile,gitReviewCommit,gitStage,initialProject,installUpdate,openExternal,openPr,openProject,openTask,probeCredential,projects,providers,push,reconcilePr,reconcilePush,remoteTargets,removeTask,resolveCheckpointReview,resolveReview,review,reviewCheckpoint,reviewCheckpointRecovery,reviewPr,reviewPush,reviewTaskRemoval,selectModel,tasks,updateStatus"'); assert(isolated);
     const updateStatus = await js('window.harness.updateStatus()');
     if (updateStatus.status === "unconfigured") {assert.deepEqual(await js('window.harness.checkUpdates()'), {status: "unconfigured"}); await wait('document.querySelector("[data-action=check-updates]")?.disabled === true');}
     const emptyStartup = !(await js('window.harness.projects()')).length;
@@ -91,6 +97,11 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const pendingSession = await first.command({ method: "session.get", sessionId }); assert(pendingSession.ok && pendingSession.data.kind === "session"); assert.equal(pendingSession.data.session.runs.length, runIds.length + 1);
     const probeId = pendingSession.data.session.runs.at(-1)!.runId;
     const pending = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(pending.ok && pending.data.kind === "run"); assert.equal(pending.data.run.status, "waiting_approval");
+    if (process.argv.includes('--fixture-explicit-review')) {
+        const blocked = await first.command({ method: 'approval.resolve', sessionId, runId: probeId, expectedRevision: pending.data.run.revision,
+            idempotencyKey: 'unreviewed-policy-probe', decisions: pending.data.run.approvals.map(a => ({ approvalId: a.approvalId, digest: a.digest, approve: true })) });
+        assert(!blocked.ok && blocked.error.code === 'EXPLICIT_REVIEW_REQUIRED');
+    }
     await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
     await first.setFixtureApprovalClock(3600000);
@@ -119,8 +130,10 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const finalSession = await first.command({ method: "session.get", sessionId }); assert(finalSession.ok && finalSession.data.kind === "session"); assert.equal(finalSession.data.session.runs.length, runIds.length + 1);
     await checkpoint("capture-chat");
     await js(`document.querySelector('[data-run="${probeId}"] [data-tool="run_check"]').scrollIntoView({block:"center"})`);
-    await js('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
-    await writeFile(path.join(reportDirectory, "screenshot-chat.png"), (await window.webContents.capturePage()).toPNG());
+    // DOM assertions already wait for the target state. capturePage requests the
+    // compositor snapshot directly; an extra requestAnimationFrame can stall
+    // indefinitely when macOS occludes the fixture window.
+    await writeFile(path.join(reportDirectory, "screenshot-chat.png"), (await capture()).toPNG());
     await checkpoint("response-loss");
     first.dropFixtureRunResponse();
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"response-loss-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
@@ -168,7 +181,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
         assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "context\r\nbefore\r\nlast");
         assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));
         assert.equal(await readFile(path.join(first.context.project.workspace, "review.txt"), "utf8"), "context\r\nbefore\r\nlast");
-        if (approve) { await js('document.querySelector(".review-file").scrollIntoView({block:"center"})'); await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))"); await writeFile(path.join(reportDirectory, "screenshot-review.png"), (await window.webContents.capturePage()).toPNG()); }
+        if (approve) { await js('document.querySelector(".review-file").scrollIntoView({block:"center"})'); await writeFile(path.join(reportDirectory, "screenshot-review.png"), (await capture()).toPNG()); }
         await click(approve ? '[data-action="approve-review"]' : '[data-action="deny-review"]');
         await wait('document.querySelector("[data-action=review]") === null && document.querySelector("#prompt").disabled === false');
         assert.equal(await readFile(path.join(first.context.project.workspace, "review.txt"), "utf8"), approve ? "context\r\nafter <img onerror=alert(1)>\r\nlast" : "context\r\nbefore\r\nlast");
@@ -184,11 +197,10 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
         await wait(`document.querySelector('[data-run="${item.runId}"] [data-decision-status="${item.status}"]') !== null`);
     }
     await js(`document.querySelector('[data-run="${decisionRuns[1]!.runId}"] .decision-history').scrollIntoView({block:"center"})`);
-    await js("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))");
-    await writeFile(path.join(reportDirectory, "screenshot-decisions.png"), (await window.webContents.capturePage()).toPNG());
+    await writeFile(path.join(reportDirectory, "screenshot-decisions.png"), (await capture()).toPNG());
     await checkpoint("final-evidence");
     const database = await stat(path.join(first.stateDirectory, "operations.sqlite"));
-    await writeFile(path.join(reportDirectory, "screenshot.png"), (await window.webContents.capturePage()).toPNG());
+    await writeFile(path.join(reportDirectory, "screenshot.png"), (await capture()).toPNG());
     await checkpoint("assertions-complete");
-    await writeFile(path.join(reportDirectory, "report.json"), JSON.stringify({ schemaVersion: 1, platform: process.platform, arch: process.arch, electron: process.versions.electron, hostNode: process.versions.node, runtimeNode: first.context.runtimeNode, separateProcess: true, isolatedRenderer: isolated, rejectedOverrides, sqliteBytes: database.size, streaming: true, cancellation: true, fileApprovalUI: true, fileRejectionUI: true, completePreimage: true, decisionHistoryReload: true, serviceCrashRecovered: true, activeCrashRecovered: true, liveLeaseCancellationRejected: true, orphanCancelledWithoutReplay: true, expiredApprovalRejected: true, staleApprovalRejected: true, duplicateSubmitPrevented: true, lostResponseReconciled: true, failedCheckVisible: true, redactedRenderer: true, literalRepositoryText: true, activeReconnect: true, expiredSnapshot: true, projectIsolation: true, singleInstance: true, emptyStartup, invalidProjectRecovery: true, selectionHasNoExecution: true, keyboardNavigation: true, rendererReload: true, recentProjects: 2, packaged: app.isPackaged, fixture: true }, null, 2));
+    await writeFile(path.join(reportDirectory, "report.json"), JSON.stringify({ schemaVersion: 1, explicitReviewRequired: process.argv.includes('--fixture-explicit-review'), platform: process.platform, arch: process.arch, electron: process.versions.electron, hostNode: process.versions.node, runtimeNode: first.context.runtimeNode, separateProcess: true, isolatedRenderer: isolated, rejectedOverrides, sqliteBytes: database.size, streaming: true, cancellation: true, fileApprovalUI: true, fileRejectionUI: true, completePreimage: true, decisionHistoryReload: true, serviceCrashRecovered: true, activeCrashRecovered: true, liveLeaseCancellationRejected: true, orphanCancelledWithoutReplay: true, expiredApprovalRejected: true, staleApprovalRejected: true, duplicateSubmitPrevented: true, lostResponseReconciled: true, failedCheckVisible: true, redactedRenderer: true, literalRepositoryText: true, activeReconnect: true, expiredSnapshot: true, projectIsolation: true, singleInstance: true, emptyStartup, invalidProjectRecovery: true, selectionHasNoExecution: true, keyboardNavigation: true, rendererReload: true, recentProjects: 2, packaged: app.isPackaged, fixture: true }, null, 2));
 }

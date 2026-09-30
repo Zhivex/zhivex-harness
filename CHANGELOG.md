@@ -4,6 +4,31 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.4 - 2026-09-29
+
+- Add experimental trusted tool policies, explicit review receipts, policy inspection, durable task acceptance with exact-byte OCI delivery, structured delegation validation, and sanitized portable governance reports.
+- Add reviewed CLI/Desktop checkpoint restoration and bounded capture/retention.
+- Prepare Code 0.1.0-rc.2 with an exact RC4 dependency; require all six provider routes, approval compaction, structured delegation, continuity and four mixed-provider edges in protected certification. Include consumer documentation and isolate Desktop candidate provisioning from public registry availability.
+
+- Reduce repeated request context with concise host instructions, progressive tool schemas and recoverable excerpts of durable tool evidence. Preserve host policy, approval and explicit catalogs; add bounded numeric request measurements and a same-budget Sonnet 5.5 follow-up pilot.
+
+- Add experimental host-only `/mcp/stdio/v1`: explicit OCI admission, private snapshots, bounded stdio lifecycle, durable tool approvals, scoped resource recovery and host-authorized reconciliation. Verify a real MCP server from an installed candidate on Node 22/24 and Bun; workspace JSON still cannot enable stdio.
+
+- Expand independent Harness/Code acceptance to both installation orders across local/global managers, historical session and approval boundaries, and Node/Bun runtime checks. Retain exact candidate identity through a read-only acceptance registry and preserve failed default-registry attempts separately.
+
+- Migrate Desktop to an installed Harness tarball through declared package exports, including the versioned host provider contract. Verify artifact identity during build/package, remove source rewriting, and validate packaged conversation, approval, restart and persisted diff behavior.
+
+- Move Desktop whole-database snapshot/validation logic into Harness persistence and add the narrow, versioned `/desktop/v1/state` host contract. Keep raw SQL and `SqliteDatabase` private; preserve recovery errors, permissions and cooperative lease checks.
+
+- Add the explicit beta `/models` package entrypoint for browser-safe catalog data, schemas and display helpers, with clean-consumer Node/type/browser verification.
+
+- Add provisional Vertex through Google Cloud ADC with refresh, explicit project/location, shared CLI/Desktop selection and sanitized diagnostics. Route changes invalidate durable approvals. Keep renderer catalog metadata separate from host authentication and transport dependencies.
+
+- Classify provider HTTP 402 as `payment_required` without leaking response data; add Gemini creation/update, nullable-digest, signed-continuation and durable approval regressions. Preserve the earlier Gemini 3.7 HTTP 402 reproduction; subsequent Gemini API 3.6 Flash candidate gates passed. Certification remains bound to each model and artifact.
+
+- Add provisional Anthropic direct API support via SDK 0.12.4, shared CLI/Desktop models, secret-store credentials and presence-only diagnostics. Preserve existing default transport fingerprints; signed provider data, tool IDs and usage remain intact.
+- Add a versioned common task acceptance suite with seven fixtures, protected independent checks, durable approval/restart/cancellation, explicit model/route/artifact/budgets and append-only attempt evidence. Failed first attempts remain failed when a later retry recovers. No live certification or publication is implied.
+
 ## 1.3.0-rc.3 - 2026-09-28
 
 - Release Meta stream deadlines after HTTP setup errors, stream completion, cancellation and early iterator closure; retain the original provider error and natural process exit.

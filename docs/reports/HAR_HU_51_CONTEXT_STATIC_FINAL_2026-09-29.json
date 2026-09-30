@@ -1,0 +1,35 @@
+{
+  "kind": "fixed-input-offline-context-comparison",
+  "limitations": [
+    "Serialized character counts, not provider tokens or billed usage",
+    "Identical synthetic initial input; not an outcome or paid live test"
+  ],
+  "rows": [
+    {
+      "candidate": "previous",
+      "context": {
+        "systemCharacters": 7039,
+        "userCharacters": 115,
+        "assistantCharacters": 0,
+        "toolResultCharacters": 0,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 14277,
+        "unmeasuredToolDefinitions": 0
+      },
+      "advertisedTools": 18
+    },
+    {
+      "candidate": "optimized",
+      "context": {
+        "systemCharacters": 3364,
+        "userCharacters": 115,
+        "assistantCharacters": 0,
+        "toolResultCharacters": 0,
+        "otherMessageCharacters": 0,
+        "toolDefinitionCharacters": 8313,
+        "unmeasuredToolDefinitions": 0
+      },
+      "advertisedTools": 11
+    }
+  ]
+}

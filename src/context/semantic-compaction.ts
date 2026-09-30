@@ -62,7 +62,7 @@ export function createSemanticCompactor(model: LanguageModel, options: {
     if (emittedSummaries.has(summaryIdentity(runId, body))) return text;
     try {
       const previous = record(JSON.parse(body.split(SEMANTIC_RECOLLECTION_SEPARATOR)[0]!));
-      if (!/^bounded-evidence-v[1-8]$/.test(String(previous.strategy))) throw new Error("Unknown envelope");
+      if (!/^bounded-evidence-v[1-9]$/.test(String(previous.strategy))) throw new Error("Unknown envelope");
       // User objectives and steering are conversation data. Previously derived
       // tool observations, locations, plans and recollections need fresh proof.
       return `[Compacted conversation context]\n${JSON.stringify({ strategy: previous.strategy,

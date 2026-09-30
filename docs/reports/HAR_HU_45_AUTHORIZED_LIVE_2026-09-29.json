@@ -1,0 +1,863 @@
+{
+  "schemaVersion": 1,
+  "kind": "authorized-live-campaign",
+  "status": "failed",
+  "releaseTag": "v1.3.0-rc.3",
+  "artifactSha256": "9f4502c85818f028aa4f6436d2b52257b031175a7b8dd3139c5d57ac6a85c355",
+  "moduleSha256": "18791883329ef42b2c719a20ea65339dacd92f874df8094d4bb9969175c7c010",
+  "installedEntrypointMatchesTarball": true,
+  "drivers": {
+    "provider": "a537760dc7be48ffb822d867586e9ea8d78337a8491fa150dc771663efceccea",
+    "orchestration": "c3bcfdbddfca82f596d71ea2bd265fe8709e27237b3e7b29606def79d392617d",
+    "execution": "a9cb101f6e98cf5bb7aae325fe740fee321114672541da0204ab10a7acbeb9ba",
+    "continuity": "f0351f2e074b00511cdc5beee4078715723d25aefd53d2922d4a9964039727ed",
+    "routing": "a67a6a3532ac3933d9e57dd669b6b87b4b6d1b873666b808bc32c2ae5391c9ef"
+  },
+  "gates": {
+    "provider": {
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-29T19:48:48.123Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        }
+      ]
+    },
+    "orchestration": {
+      "ok": false,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-29T19:49:31.951Z",
+      "providers": [
+        {
+          "ok": false,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "status": 400,
+            "details": {
+              "chain": [
+                {
+                  "checkpoint": "orchestration_status",
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "kind": "Error",
+                  "status": 400,
+                  "provider": {
+                    "reason": "invalid_request",
+                    "parameter": "none",
+                    "bodyState": "parsed"
+                  },
+                  "retryable": false
+                }
+              ]
+            },
+            "fingerprint": "sha256:5d3940d7a2a5ad25980803ae6192845cb27cc7f7f74f258fc56caa217f5b6e07"
+          }
+        },
+        {
+          "ok": false,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "details": {
+              "chain": [
+                {
+                  "checkpoint": "orchestration_status",
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "kind": "GuardrailTriggeredError",
+                  "budget": {
+                    "budgetLimit": "maxSteps",
+                    "limit": 4,
+                    "actual": 3,
+                    "required": 2,
+                    "remaining": 1,
+                    "operation": "model",
+                    "includeChildRuns": true
+                  }
+                }
+              ]
+            },
+            "fingerprint": "sha256:4ee5b776711b1f1a6efa1f1b7df9426622c720426837e713954068d3405b824c"
+          }
+        },
+        {
+          "ok": false,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "error": {
+            "code": "EXECUTION_FAILED",
+            "category": "execution",
+            "retryable": false,
+            "details": {
+              "chain": [
+                {
+                  "checkpoint": "orchestration_status",
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "code": "EXECUTION_FAILED",
+                  "retryable": false
+                },
+                {
+                  "kind": "GuardrailTriggeredError",
+                  "budget": {
+                    "budgetLimit": "maxToolCalls",
+                    "limit": 2,
+                    "actual": 0,
+                    "required": 3,
+                    "remaining": 2,
+                    "operation": "tool",
+                    "includeChildRuns": false
+                  }
+                }
+              ]
+            },
+            "fingerprint": "sha256:ca9574ae5a6d460332a537c7c9abeba388813f770a6aedf049157cf63bd8db2c"
+          }
+        }
+      ]
+    },
+    "execution": {
+      "ok": true,
+      "gate": "live-execution-smoke",
+      "certifiedAt": "2026-09-29T19:50:44.597Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "runId": "run_f2a5472c-1bfe-4a1e-bfd0-1b1bee3501e2",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5",
+          "runId": "run_5023651d-e395-4cac-a44e-41c21b39fe55",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "runId": "run_9558854d-b825-44f7-97aa-cb7b211ec480",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        }
+      ]
+    },
+    "continuity": {
+      "schemaVersion": 1,
+      "kind": "live-conversation-continuity",
+      "runtime": "selected-artifact",
+      "harnessVersion": "1.3.0-rc.3",
+      "observedAt": "2026-09-29T19:50:21.757Z",
+      "status": "failed",
+      "scriptSha256": "f0351f2e074b00511cdc5beee4078715723d25aefd53d2922d4a9964039727ed",
+      "rows": [
+        {
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 34554,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1176,
+              "outputTokens": 51,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1386,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "b70df3eb1eaeac2f037df1e34cba155ad07fe3d1a6ca4fcb652196bba29da9ee"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1460,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "61900e6fd1ad99583b44d34d1dcff1d8c3433bdcab9d5bac83da4f80bffde4b3"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1534,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "aa276c358319abb595e323b8e09300fb78969113017fb2867ad5a865b61f6d87"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1563,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "c365148a8fa3ee154b1228a54774b9dab90c743b81b88587b7a5e14dec2f7d88"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1593,
+              "outputTokens": 39,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "9f178db0253bc7e1f971ab04fdc8f0f6b5ad4272b429735f557538d3473891b3"
+            }
+          ]
+        },
+        {
+          "provider": "anthropic",
+          "model": "claude-sonnet-5",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 15944,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 2335,
+              "outputTokens": 284,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 2699,
+              "outputTokens": 56,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "28687b01ec7a86cf736b6a47f9fe5a87aa63c86394a18cd0076f0f2fe8b66890"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 2826,
+              "outputTokens": 55,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "76dbe695d8fbfdd25bc94e51aaa091cc044b7427da87ed19aa863486a285d56b"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 2954,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "8f5ebbbd5f65a347961b9eebcb0ddc54ec84ad452c631914afed3bbaeea29cae"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 3003,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "6b2e36389653c9b6a5a2a10b3a5476d370819b8ffa5472834b340dd1b68772d2"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 3055,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "1b255e0c5223b544d8bc7560bb8b2370836f6c4b52668199ff10221ce97b1a50"
+            }
+          ]
+        },
+        {
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "status": "failed",
+          "processStarts": 6,
+          "elapsedMs": 17116,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": false,
+                "noTools": true
+              },
+              "status": "failed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1167,
+              "outputTokens": 225,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1363,
+              "outputTokens": 242,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "499df91111a1d1c9dbcd0e8403c388af4b585768b28f25ea2aae6e64ebb821bd"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1427,
+              "outputTokens": 101,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "fa4062ce7fb674c3c4a8bec47faedc16e0e2dc011219acd9de4dc7fffc942217"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1491,
+              "outputTokens": 168,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "a840799c0980f4f3fb2287ce8f7db9993e0e5b782153de8b2102fce5dbfdc2be"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1517,
+              "outputTokens": 64,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "2ec365e63162b498b2531665ecf74d6936fa67378bb0bd9dd67af418cf138a64"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 12,
+              "inputTokens": 1545,
+              "outputTokens": 60,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "370288821ff8d3739ac904c56dc6d388f55cd0755d1bea65b39e51ddf8dea598"
+            }
+          ]
+        }
+      ],
+      "limits": {
+        "maxInputTokens": 24000,
+        "maxOutputTokens": 8192,
+        "maxTotalTokens": 32192,
+        "maxTokens": 8192,
+        "maxSteps": 2,
+        "timeoutMs": 90000,
+        "compactionMaxMessages": 5,
+        "compactionKeepRecentMessages": 2,
+        "compactionMaxEstimatedInputTokens": 12000
+      },
+      "requireVerifiedDelivery": false,
+      "comparisonNote": "Post-fix campaign raises generation/output ceilings to 8192 from the prior six-turn campaign's 2048/4096 to isolate memory behavior; success rates are not directly comparable.",
+      "moduleSha256": "18791883329ef42b2c719a20ea65339dacd92f874df8094d4bb9969175c7c010",
+      "limitations": [
+        "Six-turn synthetic memory scenario with forced compaction; not a natural long-session benchmark or release certification",
+        "Conversation restarts between completed runs; suspended approval resume is tested separately",
+        "Deterministic compaction; no auxiliary paid compactor"
+      ]
+    },
+    "routing-vertex": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "runId": "run_ed62146a-0ff0-495f-8e00-d60c75277f99"
+      },
+      "reviewer": {
+        "provider": "vertex",
+        "model": "gemini-3.7-flash",
+        "runId": "run_119d1fa9-16a1-4846-ad2f-b09704d68833"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    },
+    "routing-anthropic": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "runId": "run_0c226a15-9799-4c60-9719-76c96d9b2248"
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5",
+        "runId": "run_8cbdd59c-b42b-424e-9456-86922699ae17"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    }
+  },
+  "limitations": [
+    "Only Vertex, Anthropic and OpenAI authorized and run in this campaign; Gemini API route not tested.",
+    "Continuity is six synthetic turns and does not certify every private provider-specific state structure.",
+    "Structured delegation failures preserved without budget changes or retry-until-success.",
+    "Routing covers OpenAI parent to Vertex/Anthropic reviewer only.",
+    "Local installed candidate evidence; no publication, commit, push or PR."
+  ]
+}

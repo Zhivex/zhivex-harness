@@ -11,6 +11,7 @@ From the repository root:
 ```sh
 bun install --frozen-lockfile
 bun install --cwd desktop --frozen-lockfile
+bun run prepare:desktop
 bun run --cwd desktop build
 bun run --cwd desktop start
 # Optional starting repository:
@@ -21,6 +22,28 @@ CI installs dependencies with `--ignore-scripts`, then explicitly runs
 `node desktop/node_modules/electron/install.js` from the repository root. This
 installs the pinned, checksum-verified Electron binary needed by native tests;
 other dependency lifecycle scripts remain disabled.
+
+`prepare:desktop` builds Harness and installs its exact tarball in a private
+consumer under `desktop/.harness/`. Desktop uses the public package exports from
+that installation; it never links to repository source. To test an existing
+immutable candidate, use `bun run desktop/scripts/prepare-harness.ts /absolute/candidate.tgz`
+instead. Existing registry dependencies are preserved under `.harness/previous-*`
+before switching the managed package link. No installation or build publishes a package.
+
+The current exact candidate pin is `harness.version: 1.3.0-rc.4` in the private
+Desktop manifest. Harness is provisioned exclusively by `prepare:harness`, not
+by the Desktop registry lockfile, so clean PR CI can install renderer/tooling
+dependencies before the engine candidate is published. Build and packaging
+require that exact installed version and artifact identity, plus the required `/models` and
+`/desktop/v1/*` contracts. Those contracts are local additions after the deployed
+RC3: its registry artifact is insufficient and setup rejects it. This is an
+artifact-bound development candidate, not a claim that published RC3 already
+supports Desktop's new boundary. A subsequent release must update the pin and
+repeat acceptance. No broader compatible range is declared yet.
+
+Build bundles the installed candidate, records its version and SHA-256, and uses
+no source/version/SQLite rewrite plugin. Packaging rejects a different prepared
+candidate. Workers remain self-contained for recovery after application swap.
 
 ## Validate and package
 

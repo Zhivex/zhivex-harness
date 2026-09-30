@@ -1,5 +1,5 @@
 import {execFile} from "node:child_process";
-import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/internal/desktop/persistence.js";
+import { acquireSqliteAccess, type SqliteAccessLease } from "@zhivex-ai/harness/desktop/v1/state";
 import {createApplicationSwapper} from "./application-swap.js";
 import {findDesktopUpdateRecoveryJob, inspectDesktopUpdateJob, type DesktopUpdateJob} from "./update-job.js";
 import {prepareDesktopUpdateHandoff, waitForDesktopUpdateAcknowledgement} from "./update-handoff.js";

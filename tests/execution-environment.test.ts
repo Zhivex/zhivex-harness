@@ -25,6 +25,11 @@ import {
 import { createExecutionEnvironmentTools, createWorkspaceTools, createHarness, runHarness } from "../src/runtime/harness.js";
 import { HarnessExecutionError } from "../src/runtime/errors.js";
 import { Workspace } from "../src/workspace/workspace.js";
+import { inspectHarnessPolicy } from "../src/runtime/policy-inspection.js";
+import { observeHarnessPolicyDecisions, type HarnessPolicyDecisionEvent } from "../src/runtime/policy-decisions.js";
+import { withTaskAcceptanceDelivery, taskAcceptanceDeliveryDiagnostic, taskAcceptanceOutcome } from '../src/runtime/task-acceptance-delivery.js';
+import { nextTaskAcceptanceLedger, TASK_ACCEPTANCE_EVIDENCE_KEY } from '../src/runtime/task-acceptance-record.js';
+import { taskAcceptanceContractSchema } from '../src/runtime/task-acceptance.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -167,6 +172,159 @@ const workspaceFixture = async () => {
 };
 
 describe("enforced OCI execution environment", () => {
+  test('changed package check cannot mint an acceptance receipt through raw argv',async()=>{
+    const {root,workspace}=await workspaceFixture();
+    await writeFile(path.join(root,'package.json'),JSON.stringify({packageManager:'bun@1.4.0',scripts:{test:'bun test'}}));
+    const config=resolveHarnessConfig({workspace:root,executionBackend:'oci',ociAllowedCommands:['node','bun']});
+    if(config.execution.backend!=='oci')throw new Error('OCI required');
+    const runtime=new FakeOciRuntime();
+    const environment=await createHarnessOciExecutionEnvironment({config:config.execution,workspace,stateDirectory:config.stateDirectory,runtime});
+    const session=await environment.acquire({runId:'altered-check'});
+    const ledger=nextTaskAcceptanceLedger(undefined,{schemaVersion:1,taskId:'package-check',allowedWritePaths:['allowed.txt'],protectedFiles:['package.json'],humanReview:[],requiredChecks:[{
+      id:'test',kind:'package-script',script:'test',expectedScript:'bun test',command:'bun',args:['--no-env-file','run','test'],purpose:'Test',execution:{backend:'oci',approval:'required'}
+    }]});
+    try {
+      await writeFile(path.join(session.workspace.root,'package.json'),JSON.stringify({packageManager:'bun@1.4.0',scripts:{test:'echo fabricated-success'}}));
+      await withTaskAcceptanceDelivery(workspace.root,ledger,async()=>{
+        await expect(session.runCommand('bun',['--no-env-file','run','test'])).rejects.toThrow('script changed');
+      });
+      expect(runtime.requests).toHaveLength(0);
+      expect(await readFile(path.join(root,'package.json'),'utf8')).toContain('bun test');
+    }finally{await session.release?.({status:'failed'});}
+  });
+  for(const drift of [false,true])test(`contract import requires every check on identical snapshot bytes (drift=${drift})`,async()=>{
+    const {root,workspace}=await workspaceFixture();
+    const config=resolveHarnessConfig({workspace:root,executionBackend:'oci',ociAllowedCommands:['node','bun']});
+    if(config.execution.backend!=='oci')throw new Error('OCI required');
+    const runtime=new FakeOciRuntime();
+    const environment=await createHarnessOciExecutionEnvironment({config:config.execution,workspace,stateDirectory:config.stateDirectory,runtime});
+    const session=await environment.acquire({runId:'all-checks-'+drift});
+    const ledger=nextTaskAcceptanceLedger(undefined,{schemaVersion:1,taskId:'checks',allowedWritePaths:['allowed.txt'],protectedFiles:[],humanReview:[],requiredChecks:
+      ['--version','--help'].map((arg,index)=>({id:'check-'+index,kind:'argv',command:'node',args:[arg],purpose:'Fixture',execution:{backend:'oci',approval:'required',network:'none'}}))});
+    try {
+      await writeFile(path.join(session.workspace.root,'allowed.txt'),'verified');
+      const patch=await session.inspectPatch();
+      await withTaskAcceptanceDelivery(workspace.root,ledger,async()=>{
+        await session.runCommand('node',['--version']);
+        await expect(session.importPatch(workspace,patch.patchId)).rejects.toThrow('CHECKS_MISSING');
+        expect(await Bun.file(path.join(root,'allowed.txt')).exists()).toBe(false);
+        await session.runCommand('node',['--help']);
+        if(drift) {
+          // Excluded from the export patch, but still part of verified snapshot bytes.
+          await writeFile(path.join(session.workspace.root,'.env'),'changed verification input');
+          expect((await session.inspectPatch()).patchId).toBe(patch.patchId);
+          await expect(session.importPatch(workspace,patch.patchId)).rejects.toThrow('CHECKS_MISSING');
+          expect(await Bun.file(path.join(root,'allowed.txt')).exists()).toBe(false);
+        }else {
+          await session.importPatch(workspace,patch.patchId);
+          expect(await readFile(path.join(root,'allowed.txt'),'utf8')).toBe('verified');
+          const terminal={runId:'all-checks-'+drift,status:'completed' as const,finishReason:'stop' as const};
+          expect(await taskAcceptanceOutcome(terminal,ledger)).toMatchObject({status:'verified',delivery:{patchId:patch.patchId}});
+          await writeFile(path.join(root,'allowed.txt'),'host drift');
+          expect(await taskAcceptanceOutcome(terminal,ledger)).toMatchObject({status:'incomplete',reason:'TASK_ACCEPTANCE_DELIVERY_DRIFT'});
+          await writeFile(path.join(root,'allowed.txt'),'verified');
+          await writeFile(path.join(session.workspace.root,'.env'),'snapshot drift');
+          expect(await taskAcceptanceOutcome(terminal,ledger)).toMatchObject({status:'incomplete',reason:'TASK_ACCEPTANCE_DELIVERY_DRIFT'});
+        }
+      });
+      expect(runtime.requests).toHaveLength(2);
+    }finally{await session.release?.({status:'completed'});}
+  });
+  test('runtime acceptance authority blocks an approved out-of-scope OCI import and persists its diagnostic',async()=>{
+    const {root}=await workspaceFixture();
+    const contract=taskAcceptanceContractSchema.parse({schemaVersion:1,taskId:'restricted-edit',allowedWritePaths:['allowed.txt'],protectedFiles:[],
+      requiredChecks:[{id:'test',kind:'argv',command:'node',args:['--version'],purpose:'Fixture',execution:{backend:'oci',approval:'required',network:'none'}}],humanReview:[]});
+    const harness=await createHarness({workspace:root,subagentProfiles:[],executionBackend:'oci',ociAllowedCommands:['node','bun'],ociRuntimeAdapter:new FakeOciRuntime(),
+      modelInstance:createMockLanguageModel({streamEvents:[[
+        {type:'tool-call',toolCall:{id:'outside',name:'verify_and_apply_reviewed_edits',input:{changes:[{path:'outside.txt',expectedDigest:null,content:'blocked'}],command:'node',args:['--version']}}},
+        {type:'finish',finishReason:'tool-calls'}
+      ],...Array.from({length:5},()=>[{type:'text-delta' as const,textDelta:'done'},{type:'finish' as const,finishReason:'stop' as const}])]})});
+    try {
+      const result=await runHarness(harness,{prompt:'fixture'},{taskAcceptance:contract,
+        resolveApprovals:async approvals=>approvals.map(a=>({provider:a.provider,approvalRequestId:a.id,approve:true}))});
+      expect(result.status).not.toBe('completed');
+      expect(await Bun.file(path.join(root,'outside.txt')).exists()).toBe(false);
+      expect(harness.workspace.mutationAudit()).toHaveLength(0);
+      const durable=await harness.store.load(result.state.runId,harness.config.scope);
+      expect(durable?.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]).toMatchObject({status:'failed',diagnostic:{code:'TASK_ACCEPTANCE_SCOPE_VIOLATION',paths:['outside.txt']}});
+    }finally{await harness.close();}
+  });
+  for(const humanReview of [false,true])test(`runtime persists confirmed import acceptance (human review=${humanReview})`,async()=>{
+    const {root}=await workspaceFixture();
+    const contract=taskAcceptanceContractSchema.parse({schemaVersion:1,taskId:'verified-edit',allowedWritePaths:['allowed.txt'],protectedFiles:[],
+      requiredChecks:[{id:'test',kind:'argv',command:'node',args:['--version'],purpose:'Fixture',execution:{backend:'oci',approval:'required',network:'none'}}],
+      humanReview:humanReview?[{id:'review',requirement:'Review behavior',status:'pending'}]:[]});
+    const harness=await createHarness({workspace:root,subagentProfiles:[],executionBackend:'oci',ociAllowedCommands:['node','bun'],ociRuntimeAdapter:new FakeOciRuntime(),
+      modelInstance:createMockLanguageModel({streamEvents:[[
+        {type:'tool-call',toolCall:{id:'verified',name:'verify_and_apply_reviewed_edits',input:{changes:[{path:'allowed.txt',expectedDigest:null,content:'delivered'}],command:'node',args:['--version']}}},
+        {type:'finish',finishReason:'tool-calls'}
+      ],...Array.from({length:5},()=>[{type:'text-delta' as const,textDelta:'done'},{type:'finish' as const,finishReason:'stop' as const}])]})});
+    try {
+      const result=await runHarness(harness,{prompt:'fixture'},{taskAcceptance:contract,
+        resolveApprovals:async approvals=>approvals.map(a=>({provider:a.provider,approvalRequestId:a.id,approve:true}))});
+      expect(result.status).toBe('completed');
+      expect(await readFile(path.join(root,'allowed.txt'),'utf8')).toBe('delivered');
+      const durable=await harness.store.load(result.state.runId,harness.config.scope);
+      expect(durable?.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]).toMatchObject({status:humanReview?'pending_review':'verified',delivery:{runId:result.state.runId},checks:[{checkId:'test',exitCode:0}]});
+      expect(result.state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]).toEqual(durable?.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]);
+    }finally{await harness.close();}
+  });
+  for(const change of ['create','update','delete','move'] as const) test(`acceptance scope blocks ${change} outside the contract before host import`,async()=>{
+    const {root,workspace}=await workspaceFixture();
+    const config=resolveHarnessConfig({workspace:root,executionBackend:'oci'});
+    if(config.execution.backend!=='oci')throw new Error('OCI required');
+    const environment=await createHarnessOciExecutionEnvironment({config:config.execution,workspace,stateDirectory:config.stateDirectory,runtime:new FakeOciRuntime()});
+    const session=await environment.acquire({runId:'scope-'+change});
+    const ledger=nextTaskAcceptanceLedger(undefined,{schemaVersion:1,taskId:'scope',allowedWritePaths:['allowed.txt'],protectedFiles:['src/update.ts'],
+      requiredChecks:[{id:'check',kind:'argv',command:'node',args:['--version'],purpose:'Fixture',execution:{backend:'oci',approval:'required',network:'none'}}],humanReview:[]});
+    try {
+      await writeFile(path.join(session.workspace.root,'allowed.txt'),'allowed');
+      if(change==='create')await writeFile(path.join(session.workspace.root,'outside.txt'),'outside');
+      if(change==='update')await writeFile(path.join(session.workspace.root,'src/update.ts'),'changed');
+      if(change==='delete')await unlink(path.join(session.workspace.root,'src/delete.ts'));
+      if(change==='move')await rename(path.join(session.workspace.root,'src/delete.ts'),path.join(session.workspace.root,'moved.ts'));
+      const patch=await session.inspectPatch();
+      await withTaskAcceptanceDelivery(workspace.root,ledger,async()=>{
+        await expect(session.importPatch(workspace,patch.patchId)).rejects.toThrow('TASK_ACCEPTANCE_SCOPE_VIOLATION');
+        expect(taskAcceptanceDeliveryDiagnostic(ledger.revisions[0]!.digest,1)).toMatchObject({patchId:patch.patchId,code:'TASK_ACCEPTANCE_SCOPE_VIOLATION'});
+      });
+      expect(await readFile(path.join(root,'src/update.ts'),'utf8')).toBe('export const value = 1;\n');
+      expect(await readFile(path.join(root,'src/delete.ts'),'utf8')).toBe('delete me\n');
+      expect(await Bun.file(path.join(root,'allowed.txt')).exists()).toBe(false);
+      expect(await Bun.file(path.join(root,'outside.txt')).exists()).toBe(false);
+      expect(workspace.mutationAudit()).toHaveLength(0);
+    }finally{await session.release?.({status:'failed'});}
+  });
+  test("policy inspection and decisions distinguish configured OCI from command execution", async () => {
+    const { root } = await workspaceFixture();
+    const runtime = new FakeOciRuntime();
+    const harness = await createHarness({ workspace: root, subagentProfiles: [], executionBackend: "oci",
+      ociAllowedCommands: ["node", "bun"], ociRuntimeAdapter: runtime,
+      modelInstance: createMockLanguageModel({ streamEvents: [[
+        { type: "tool-call", toolCall: { id: "policy-command", name: "run_environment_command", input: { command: "node", args: ["--version"] } } },
+        { type: "finish", finishReason: "tool-calls" }
+      ], [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }]] }) });
+    try {
+      const view = inspectHarnessPolicy(harness);
+      expect(view.execution).toEqual({ configuredBackend: "oci", activeBackend: "oci", evidence: "configuration-only" });
+      expect(view.limits.oci?.maxMemoryMb).toBe(harness.config.execution.backend === "oci" ? harness.config.execution.maxMemoryMb : -1);
+      expect(JSON.stringify(view)).not.toContain(root);
+      expect(JSON.stringify(view)).not.toContain(runtime.image.imageReference);
+      expect(runtime.requests).toHaveLength(0);
+      const events: HarnessPolicyDecisionEvent[] = [];
+      const pending = await observeHarnessPolicyDecisions(event => { events.push(event); }, () => runHarness(harness, { prompt: "fixture" }));
+      expect(pending.status).toBe("waiting_approval");
+      expect(events).toContainEqual(expect.objectContaining({ phase: "approval-request", executionBackend: "oci", evidence: "policy-evaluation" }));
+      expect(runtime.requests).toHaveLength(0);
+      const result = await observeHarnessPolicyDecisions(event => { events.push(event); }, () => runHarness(harness, {
+        state: pending.state, approvals: pending.state.pendingApprovals.map(a => ({ provider: a.provider, approvalRequestId: a.id, approve: true }))
+      }));
+      expect(result.status).toBe("completed");
+      expect(runtime.requests).toHaveLength(1);
+      expect(events).toContainEqual(expect.objectContaining({ phase: "tool-entry", executionBackend: "oci", evidence: "policy-evaluation" }));
+      expect(inspectHarnessPolicy(harness)).toEqual(view);
+    } finally { await harness.close(); }
+  });
   test("types failures from the public OCI environment boundary", async () => {
     const { root, workspace } = await workspaceFixture();
     const config = resolveHarnessConfig({ workspace: root, executionBackend: "oci" });

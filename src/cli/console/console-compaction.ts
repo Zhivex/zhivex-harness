@@ -70,7 +70,7 @@ export async function handleConsoleCompaction(command: string, deps: ConsoleComp
   const provider = value.slice(0, separator);
   const model = value.slice(separator + 1);
   if (separator < 1 || !(PROVIDERS as readonly string[]).includes(provider) || !/^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,159}$/.test(model)) {
-    write("Use /compaction provider:model with openai, qwen, gemini or meta; /compaction off disables model-assisted compaction.");
+    write("Use /compaction provider:model with openai, qwen, gemini, meta, anthropic or vertex; /compaction off disables model-assisted compaction.");
     return true;
   }
   await deps.replaceOptions({...deps.options, compactionProvider: provider, compactionModel: model});

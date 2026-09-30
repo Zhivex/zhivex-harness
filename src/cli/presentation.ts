@@ -1,3 +1,4 @@
+import type { PolicyDecisionEvidence } from "../runtime/policy-decisions.js";
 import { ToolActivity, compactToolResult } from "./terminal/tool-activity.js";
 import type { ActivityHistory } from "./terminal/activity-history.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "../runtime/usage-ledger.js";
@@ -13,6 +14,8 @@ import {
   type AgentStreamEvent
 } from "@zhivex-ai/agents";
 import { type HarnessRunOptions, type ZhivexHarness } from "../runtime/harness.js";
+import { requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
+import { issueExplicitReviewResponses, issueAutomaticApprovalResponses, issueObservedApprovalResponses } from "../approvals/explicit-review.js";
 import { type AgentTelemetryObserver } from "@zhivex-ai/agents/ops";
 import { serializeStreamEvent, serializeStreamResult } from "./cli-stream.js";
 import {
@@ -68,20 +71,34 @@ export const approvalResponses = (
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select: import("./cli-credentials.js").CredentialInput["select"]; workspace: string; sessionGrants?: Set<string> }
+  ui?: { select: import("./cli-credentials.js").CredentialInput["select"]; workspace: string; sessionGrants?: Set<string> },
+  reviewHost?: ZhivexHarness
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
-  return async (approvals) => {
-    if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
+  return async (approvals, state) => {
+    const automatic = (approve: boolean, reason: string) => {
+      const responses = approvalResponses(approvals, approve, reason);
+      return reviewHost ? issueAutomaticApprovalResponses(reviewHost, state, responses, 'cli-automatic') : responses;
+    };
+    if (automaticallyApprove === "restricted") return automatic(false, "Denied by restricted approval mode.");
     if (automaticallyApprove === true || automaticallyApprove === "auto") {
-      return approvalResponses(approvals, true, "Approved by automatic mode.");
+      return automatic(true, "Approved by automatic mode.");
     }
     if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
     const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
     try {
-      return await resolveTerminalApprovals(approvals, {
+      const explicit = reviewHost !== undefined && requiresExplicitHostReview(reviewHost);
+      const startedAt = Date.now();
+      const snapshot = reviewHost ? structuredClone(state) : state;
+      const origins: ('interactive' | 'automatic')[] = [];
+      const responses = await resolveTerminalApprovals(explicit ? snapshot.pendingApprovals : approvals, {
         ask: ask ?? ((text: string) => readline!.question(text)),
-        write: text => process.stderr.write(text), ...ui
+        write: text => process.stderr.write(text), ...ui,
+        onDecisionOrigin: origin => origins.push(origin),
+        ...(explicit ? { requireCompleteReview: true } : {})
       });
+      if (!responses || !reviewHost) return responses;
+      return explicit ? issueExplicitReviewResponses(reviewHost, snapshot, responses, 'cli-terminal', startedAt)
+        : issueObservedApprovalResponses(reviewHost, snapshot, responses, 'cli-terminal', origins, startedAt);
     } finally {
       readline?.close();
     }
@@ -92,10 +109,10 @@ export const printTerminalResult = (
   result: AgentRunOutput,
   harness: ZhivexHarness,
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown }
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; policyEvidence?: PolicyDecisionEvidence }
 ) => {
   tracker.markdown?.flush();
-  const document = runResultDocument(result, harness);
+  const document = { ...runResultDocument(result, harness), ...(tracker.policyEvidence ? { policyEvidence: tracker.policyEvidence } : {}) };
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
     process.stdout.write(`${serializeStreamResult(document, tracker.sequence)}\n`);
@@ -139,8 +156,11 @@ export const streamSink = (
 ) => async (event: AgentStreamEvent) => {
   if (!output.json && !output.jsonl) tracker.activityHistory?.observe(event);
   if (output.jsonl) {
-    tracker.sequence = (tracker.sequence ?? 0) + 1;
-    process.stdout.write(`${serializeStreamEvent(event, tracker.sequence)}\n`);
+    const sequence = (tracker.sequence ?? 0) + 1;
+    const serialized = serializeStreamEvent(event, sequence);
+    if (serialized === undefined) return;
+    tracker.sequence = sequence;
+    process.stdout.write(`${serialized}\n`);
     return;
   }
   if (!output.json && compact && event.type === "agent-run-update") return;

@@ -1,4 +1,4 @@
-import { modelDescription } from "../../src/internal/desktop/providers.js";
+import { modelDescription } from "@zhivex-ai/harness/models";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Search, Sparkles, X } from "lucide-react";
 import type {

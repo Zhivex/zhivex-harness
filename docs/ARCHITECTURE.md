@@ -73,20 +73,28 @@ executable facade; they depend directly on the module owning a capability.
 
 ## Desktop integration
 
-Desktop consumes four explicitly enumerated surfaces in `src/internal/desktop/`:
+Desktop consumes declared exports from an installed Harness candidate:
 
 | Surface | Responsibility |
 | --- | --- |
-| `protocol.ts` | Browser-compatible request schema and erased client/activity types |
-| `providers.ts` | Provider catalog and host-side model/configuration construction |
-| `runtime.ts` | Host runtime construction and local-service transport |
-| `persistence.ts` | Host-only state validation, backup, file safety and SQLite ownership |
+| `/protocol` | Browser-compatible request schema and erased client/activity types |
+| `/engine` and `/desktop/v1/providers` | Model/configuration construction and host credential/catalog helpers |
+| `/models` | Renderer-only catalog metadata without provider/authentication imports |
+| `/service` | Local-service transport, authentication and recovery |
+| `/desktop/v1/state` | Host-only snapshots, state validation, file safety and SQLite ownership |
 
-Desktop source must not import other runtime source paths, even for types. Add a
-reviewed, named export to the appropriate surface when a new integration is needed.
-The surfaces are internal source interfaces, not independently versioned packages.
-Renderer code uses the protocol surface; host capabilities remain behind the
-existing preload/IPC boundary. The runtime never imports Desktop.
+Desktop cannot import Harness repository source (including internal bridges),
+undeclared deep package paths, the broad compatibility root, or Code. The gate
+enforces these rules for imports and re-exports, including type references.
+Renderer uses `/models` and `/protocol`; host capabilities remain behind preload/IPC.
+The runtime never imports Desktop. Existing internal bridge files are no longer
+consumed by the application.
+
+`prepare:desktop` installs the candidate tarball in a private consumer. Build
+bundles only that installed package and records its artifact hash; no source or
+version/SQLite rewrite plugins are used. See [Desktop development](../desktop/DEVELOPMENT.md)
+for the exact candidate compatibility constraint and the distinction from the
+previously deployed RC3 bytes.
 
 ## Code integration
 

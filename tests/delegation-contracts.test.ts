@@ -260,3 +260,25 @@ test("delegation recovery cannot execute registered hidden tools or a schema acc
   await expect(model.generate({ messages: [], tools: { hidden: { name: "hidden", schema: z.any(), execute: async () => null } } })).rejects.toThrow("DELEGATION_CONTRACT_VIOLATION");
   await expect(model.generate({ messages: [], tools: { delegate_reviewer: { name: "delegate_reviewer", schema: z.any(), execute: async () => null } } })).rejects.toThrow("object input execution schema");
 });
+
+test('public delegation task schema uses Vertex-compatible singleton enum without widening scope', async () => {
+  const mock = createMockLanguageModel({ responses: [{ text: 'done', finishReason: 'stop' }] });
+  let inspected = false;
+  const model = withDelegationContracts({ ...mock, generate: async input => {
+    const definition = input.tools?.delegate_reviewer;
+    if (!definition || !('schema' in definition)) throw new Error('Missing delegation schema');
+    const schema = definition.schema as z.ZodType;
+    expect(z.toJSONSchema(schema)).toMatchObject({ properties: { taskId: { type: 'string', enum: ['review'] } } });
+    expect(JSON.stringify(z.toJSONSchema(schema))).not.toContain('"const"');
+    expect(schema.safeParse({ taskId: 'review' }).success).toBe(true);
+    expect(schema.safeParse({ taskId: 'other' }).success).toBe(false);
+    expect(schema.safeParse({ taskId: 'review', prompt: 'override' }).success).toBe(false);
+    inspected = true;
+    return mock.generate(input);
+  } }, [contract]);
+  await model.generate({ messages: [], tools: { delegate_reviewer: {
+    name: 'delegate_reviewer', description: 'review', schema: z.strictObject({ prompt: z.string() }),
+    execute: async () => 'unused'
+  } } });
+  expect(inspected).toBe(true);
+});

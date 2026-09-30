@@ -14,13 +14,18 @@
     "smoke:restart": "bun run scripts/smoke-restart.ts",
     "smoke:restart:packaged": "bun run scripts/smoke-restart.ts --packaged",
     "smoke:worktrees": "bun run scripts/smoke-worktrees.ts",
-    "smoke:worktrees:packaged": "bun run scripts/smoke-worktrees.ts --packaged"
+    "smoke:worktrees:packaged": "bun run scripts/smoke-worktrees.ts --packaged",
+    "prepare:harness": "bun run scripts/prepare-harness.ts",
+    "smoke:checkpoints": "bun run scripts/smoke-checkpoints.ts",
+    "smoke:checkpoints:packaged": "bun run scripts/smoke-checkpoints.ts --packaged",
+    "smoke:checkpoint-cli": "bun run scripts/smoke-checkpoint-cli.ts",
+    "smoke:checkpoint-recovery": "bun run scripts/smoke-checkpoints.ts --interrupted-fork"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "diff": "^9.0.0",
-    "lucide-react": "1.47.0",
+    "lucide-react": "1.48.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0"
@@ -33,5 +38,8 @@
   },
   "trustedDependencies": [
     "electron"
-  ]
+  ],
+  "harness": {
+    "version": "1.3.0-rc.4"
+  }
 }

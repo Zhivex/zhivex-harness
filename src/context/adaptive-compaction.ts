@@ -43,11 +43,11 @@ export const safeRetentionCuts = (messages: readonly ModelMessage[]) => {
  */
 export const createAdaptiveCompaction = (config: {
   maxMessages: number; maxEstimatedInputTokens: number; keepRecentMessages: number;
-}, options: { tools?: ToolSet; remainingInputTokens?: () => number; compactor?: AgentCompactionOptions["compactor"]; auxiliary?: AgentCompactionOptions["auxiliary"] } = {}): AgentCompactionOptions => {
+}, options: { selectTools?: (messages: readonly ModelMessage[]) => ToolSet; tools?: ToolSet; remainingInputTokens?: () => number; compactor?: AgentCompactionOptions["compactor"]; auxiliary?: AgentCompactionOptions["auxiliary"] } = {}): AgentCompactionOptions => {
   let retained = config.keepRecentMessages;
   let systemTokens = 0;
   let protectedTailTokens = 1024;
-  const toolTokens = estimateContextTokens(measureContext({ messages: [], ...(options.tools ? { tools: options.tools } : {}) })) - 64;
+  let toolTokens = estimateContextTokens(measureContext({ messages: [], ...(options.tools ? { tools: options.tools } : {}) })) - 64;
   const summaryAllowance = 1500; // 4,000 characters plus the SDK envelope.
   const threshold = () => {
     const remaining = options.remainingInputTokens?.() ?? Infinity;
@@ -66,6 +66,7 @@ export const createAdaptiveCompaction = (config: {
     get maxEstimatedInputTokens() { return threshold(); },
     get keepRecentMessages() { return retained; },
     estimateTokens(messages) {
+      if (options.selectTools) toolTokens = estimateContextTokens(measureContext({ messages: [], tools: options.selectTools(messages) })) - 64;
       const measured = measureContext({ messages: [...messages] });
       systemTokens = Math.ceil(measured.systemCharacters / 3);
       const cuts = safeRetentionCuts(messages);
@@ -85,7 +86,12 @@ export const createAdaptiveCompaction = (config: {
       return estimateContextTokens(measured) + toolTokens;
     },
     compactor: options.compactor ?? (({ messages }) => {
-      const budget = Math.max(128, Math.min(4000, Math.floor(JSON.stringify(messages).length / 2)));
+      const sourceCharacters = JSON.stringify(messages).length;
+      // Repeatedly halving a small, already compacted task destroys its tail.
+      // Reserve useful task space while still shrinking the source enough to
+      // pay for the SDK's summary message envelope.
+      const budget = Math.max(128, Math.min(4000, sourceCharacters - 128,
+        Math.max(2048, Math.floor(sourceCharacters / 2))));
       const { summary, truncated } = summarizeHarnessMessages(messages, budget);
       return { summary, metadata: { strategy: COMPACTION_STRATEGY, policy: "adaptive-tokens-v2",
         sourceMessages: messages.length, truncated, targetRatio: 0.65, toolTokens } };

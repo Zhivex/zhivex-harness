@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { checkApprovalGrant } from '../src/cli/terminal/session-grants.js';
 
 import {
   DEFAULT_APPROVAL_SUMMARY_CHARACTERS,
@@ -295,4 +296,29 @@ test("check receipts name the validation without displaying arbitrary commands",
   const event = (command: string[]) => ({type:"tool-result",toolResult:{toolName:"run_check",output:{command,exitCode:0}}}) as never;
   expect(formatTerminalEvent(event(["bun","--no-env-file","run","typecheck"]))).toContain("check · typecheck · exit 0");
   expect(formatTerminalEvent(event(["curl","PRIVATE_URL"]))).not.toContain("PRIVATE_URL");
+});
+
+test('explicit terminal review ignores cached grants and shows the complete payload', async () => {
+  const request = approval('run_check', JSON.stringify({ check: 'test', expectedScript: 'bun test' }));
+  const sessionGrants = new Set([checkApprovalGrant(request, '/fixture')!]);
+  let prompts = 0; const output: string[] = [];
+  const decisions = await resolveTerminalApprovals([request], { requireCompleteReview: true, sessionGrants, workspace: '/fixture',
+    ask: async question => { prompts++; expect(question).not.toContain('[s]ession'); return 'y'; }, write: text => output.push(text) });
+  expect(prompts).toBe(1); expect(decisions?.[0]?.approve).toBe(true);
+  expect(output.join('')).toContain('"expectedScript": "bun test"');
+  const large = approval('unknown_tool', JSON.stringify({ content: 'x'.repeat(256 * 1024) }));
+  expect(await resolveTerminalApprovals([large], { requireCompleteReview: true, ask: async () => { throw new Error('must stay pending'); }, write: () => {} })).toBeUndefined();
+});
+
+test('terminal records cached session decisions separately from answers in one batch', async () => {
+  const cached = approval('run_check', JSON.stringify({ check: 'test', expectedScript: 'bun test' }));
+  const fresh = approval('run_check', JSON.stringify({ check: 'lint', expectedScript: 'bun run lint' }), { id: 'fresh' });
+  const origins: string[] = []; let prompts = 0;
+  const decisions = await resolveTerminalApprovals([cached, fresh], {
+    sessionGrants: new Set([checkApprovalGrant(cached, '/fixture')!]), workspace: '/fixture',
+    ask: async () => { prompts++; return 'n'; }, write: () => {}, onDecisionOrigin: origin => origins.push(origin)
+  });
+  expect(prompts).toBe(1);
+  expect(decisions?.map(response => response.approve)).toEqual([true, false]);
+  expect(origins).toEqual(['automatic', 'interactive']);
 });

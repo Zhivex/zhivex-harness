@@ -1,0 +1,54 @@
+{
+  "ok": false,
+  "gate": "live-orchestration-smoke",
+  "certifiedAt": "2026-09-29T20:06:07.463Z",
+  "providers": [
+    {
+      "ok": false,
+      "provider": "vertex",
+      "model": "gemini-3.7-flash",
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "checkpoint": "orchestration_status",
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "delegation": "acceptance",
+              "kind": "GuardrailTriggeredError"
+            }
+          ]
+        },
+        "fingerprint": "sha256:8bccb18c48a726c197f09ecb1aa8833914557545e569ebe772e41d09dcfc8747"
+      },
+      "acceptanceDiagnostics": [
+        {
+          "reason": "invalid_json",
+          "accepted": false,
+          "terminalEmpty": true,
+          "terminalFenced": false,
+          "terminalStartsObject": false,
+          "candidateReasons": [
+            "invalid_json"
+          ],
+          "candidateShapes": [
+            {
+              "empty": false,
+              "fenced": true,
+              "startsObject": false,
+              "fencedJsonValid": true
+            }
+          ],
+          "reads": 1,
+          "corrections": 1
+        }
+      ]
+    }
+  ],
+  "artifactSha256": "cc6f51188764c13ce3efe2ad560adf66214f4f3941c25291cdf49ae7df18b21e"
+}

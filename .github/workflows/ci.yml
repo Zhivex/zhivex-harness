@@ -54,6 +54,9 @@ jobs:
       - name: Install immutable desktop dependencies
         run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
 
+      - name: Prepare installed Harness candidate for Desktop
+        run: bun run prepare:desktop
+
       - name: Install pinned Electron runtime
         run: node desktop/node_modules/electron/install.js
 
@@ -66,10 +69,6 @@ jobs:
           bun run architecture:check
           bun run --cwd desktop typecheck
           bun test desktop/tests
-
-      # Restart/history smokes compare Desktop state through dist/cli.js.
-      - name: Build CLI for desktop interoperability smokes
-        run: bun run build
 
       - name: Package and exercise the desktop application
         run: |
@@ -117,6 +116,9 @@ jobs:
 
       - name: Install desktop test dependencies
         run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+
+      - name: Prepare installed Harness candidate for Desktop tests
+        run: bun run prepare:desktop
 
       - name: Prepare desktop native tests on macOS
         if: runner.os == 'macOS'
@@ -192,19 +194,36 @@ jobs:
           bun run typecheck:code
           bun run test:code
       - name: Install pinned consumer package managers
-        run: npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
+        run: |
+          mkdir -p "$RUNNER_TEMP/code-package-managers"
+          bun add --cwd "$RUNNER_TEMP/code-package-managers" --ignore-scripts pnpm@11.25.0 yarn@1.22.22
       - name: Verify npm, pnpm, Yarn and Bun consumers without Bun runtime
         run: bun run smoke:engine-code
         env:
           SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
           SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
           HARNESS_CODE_SMOKE_OUTPUT: ${{ runner.temp }}/engine-code-evidence
+      - name: Verify isolated global Bun installs with Node runtime
+        run: bun run smoke:global-code "$RUNNER_TEMP/engine-code-evidence/harness.tgz" "$RUNNER_TEMP/engine-code-evidence/code.tgz" > "$RUNNER_TEMP/engine-code-evidence/global-report.json"
+      - name: Verify isolated global npm installs with exact candidate registry
+        run: bun run smoke:global-code "$RUNNER_TEMP/engine-code-evidence/harness.tgz" "$RUNNER_TEMP/engine-code-evidence/code.tgz" > "$RUNNER_TEMP/engine-code-evidence/npm-global-report.json"
+        env:
+          HARNESS_GLOBAL_MANAGER: npm
+          HARNESS_GLOBAL_REGISTRY_FIXTURE: "1"
+      - name: Verify isolated global pnpm and Yarn consumers
+        run: |
+          HARNESS_GLOBAL_MANAGER=pnpm bun run smoke:global-code "$RUNNER_TEMP/engine-code-evidence/harness.tgz" "$RUNNER_TEMP/engine-code-evidence/code.tgz" > "$RUNNER_TEMP/engine-code-evidence/pnpm-global-report.json"
+          HARNESS_GLOBAL_MANAGER=yarn bun run smoke:global-code "$RUNNER_TEMP/engine-code-evidence/harness.tgz" "$RUNNER_TEMP/engine-code-evidence/code.tgz" > "$RUNNER_TEMP/engine-code-evidence/yarn-global-report.json"
+        env:
+          HARNESS_GLOBAL_REGISTRY_FIXTURE: "1"
+          SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
+          SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
       - name: Retain installed consumer report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: engine-code-node-${{ matrix.node }}
-          path: ${{ runner.temp }}/engine-code-evidence/report.json
+          path: ${{ runner.temp }}/engine-code-evidence/*report.json
           if-no-files-found: warn
       - name: Verify builds did not modify tracked files
         run: git diff --exit-code

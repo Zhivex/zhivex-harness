@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "interactiveDerivativeOpened": true,
+  "normalExit": true,
+  "artifactSha256": "6bb615581c711eb209a7e2a0f6558a92eeb0de1f779ef428e1f471ee3777f051",
+  "runtime": "Node 22.13.0",
+  "fixture": true,
+  "originalPreserved": true,
+  "singleDerivative": true,
+  "noAdditionalRun": true,
+  "evidenceDirectory": "/tmp/har-checkpoint-cli-yUOnI1"
+}

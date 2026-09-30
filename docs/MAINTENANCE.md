@@ -19,6 +19,7 @@ usage, start with [First use](FIRST_USE.md).
 
 ## Evaluation and history
 
+- [Common task acceptance](TASK_ACCEPTANCE.md): exact tarball, fixed fixtures, attempts and independent verification.
 - [Hostile repository demo](HOSTILE_REPOSITORY_DEMO.md).
 - [Benchmark guide](../benchmarks/README.md) and [Time-to-Safe-Fix protocol](TIME_TO_SAFE_FIX.md).
 - [Historical reports](reports/README.md) and [local results](../results/README.md).

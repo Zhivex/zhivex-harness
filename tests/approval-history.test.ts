@@ -1,10 +1,18 @@
 import { expect, test } from "bun:test";
 import type { AgentRunState, AgentToolCallJournalEntry } from "@zhivex-ai/core";
-import { APPROVAL_HISTORY_KEY, approvalInputDigest, approvalDecisionViews } from "../src/approvals/approval-history.js";
+import { APPROVAL_HISTORY_KEY, approvalInputDigest, approvalDecisionViews, readApprovalDecisions } from "../src/approvals/approval-history.js";
 const input = { check: "test", expectedScript: "bun test" };
 const row = { approvalId: "a", digest: "a".repeat(64), toolCallId: "provider-call", name: "run_check", inputDigest: approvalInputDigest(input), approved: true, decidedAt: 100, reviewedRevision: 2 };
 const state = (record = row) => ({ runId: "run", status: "completed", metadata: { [APPROVAL_HISTORY_KEY]: [record] } } as unknown as AgentRunState);
 const journal = (override: Partial<AgentToolCallJournalEntry> = {}): AgentToolCallJournalEntry => ({ runId: "run", toolCallId: "journal-call", providerToolCallId: "provider-call", toolName: "run_check", status: "completed", idempotencyKey: "unique", revision: 3, updatedAt: 101, input, output: { exitCode: 0, timedOut: false, stdout: "private output" }, ...override });
+test('historical decisions project unknown origin without rewriting stored evidence', () => {
+ const legacy=state();const before=JSON.stringify(legacy);
+ expect(readApprovalDecisions(legacy)[0]?.provenance).toEqual({schemaVersion:1,origin:'unknown',channel:'unknown',policyDigest:null});
+ expect(approvalDecisionViews(legacy,[journal()])[0]?.provenance?.origin).toBe('unknown');
+ expect(JSON.stringify(legacy)).toBe(before);
+ const invalid={...row,provenance:{schemaVersion:1,origin:'human-certified',channel:'client',policyDigest:null}};
+ expect(()=>readApprovalDecisions(state(invalid))).toThrow();
+});
 test("approval is not success: requires matching run, call, name, input and check receipt", () => {
     expect(approvalDecisionViews(state(), [])[0]!.status).toBe("unknown");
     for (const override of [{ runId: "other" }, { providerToolCallId: "other" }, { toolName: "other" }, { input: { check: "other" } }, { output: {} }]) expect(approvalDecisionViews(state(), [journal(override)])[0]!.status).toBe("unknown");

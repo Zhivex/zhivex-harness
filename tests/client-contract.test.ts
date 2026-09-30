@@ -4,9 +4,10 @@ import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness } from "../src/runtime/harness.js";
+import { createHarnessToolPolicy, type HarnessToolPolicy } from "../src/runtime/tool-policy.js";
 import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client/index.js";
 
-const fixture = async (options?: HarnessClientAdapterOptions) => {
+const fixture = async (options?: HarnessClientAdapterOptions, toolPolicy?: HarnessToolPolicy) => {
   const workspace = await mkdtemp(tmpdir()+"/har-client-");
   await writeFile(workspace+"/a.txt", "before\n");
   const model = createMockLanguageModel({ streamEvents: [[
@@ -14,7 +15,7 @@ const fixture = async (options?: HarnessClientAdapterOptions) => {
       path: "a.txt", expectedDigest: "sha256:"+createHash("sha256").update("before\n").digest("hex"), oldText: "before", newText: "after"
     } } }, { type: "finish", finishReason: "tool-calls" }
   ], [{ type: "text-delta", textDelta: "done" }, { type: "finish", finishReason: "stop" }], [{ type: "text-delta", textDelta: "summary" }, { type: "finish", finishReason: "stop" }]] });
-  const harness = await createHarness({ workspace, provider: "openai", modelInstance: model, subagentProfiles: [] });
+  const harness = await createHarness({ workspace, provider: "openai", modelInstance: model, subagentProfiles: [], ...(toolPolicy ? { toolPolicy } : {}) });
   const adapter = await createHarnessClientAdapter(harness, options);
   const hello = adapter.negotiate([2,1]); if (!hello.ok) throw new Error("negotiation failed");
   let seq=0;
@@ -182,10 +183,56 @@ test("durable decision admission survives lost storage acknowledgement and preve
   expect(await f.call(decision)).toMatchObject({ok:false,error:{code:"EXECUTION_FAILED"}});
   f.harness.store.save=original;f.adapter.close();reopened=await createHarnessClientAdapter(f.harness);const hello=reopened.negotiate([1]);if(!hello.ok)throw new Error();
   const stored=await f.harness.store.load(p.run.runId,f.harness.config.scope);
-  expect(stored!.metadata?.clientApprovalDecisionsV1).toMatchObject([{approved:true,reviewedRevision:p.run.revision}]);
+  expect(stored!.metadata?.clientApprovalDecisionsV1).toMatchObject([{approved:true,reviewedRevision:p.run.revision,provenance:{schemaVersion:1,origin:'application',channel:'client-protocol-v1',policyDigest:null}}]);
   expect(await reopened.dispatch({protocolVersion:1,requestId:"retry-after-restart",connectionId:hello.connectionId,command:{...decision,projectId:hello.projectId,expectedRevision:stored!.revision,idempotencyKey:"fresh-key"}})).toMatchObject({ok:false,error:{code:"APPROVAL_MISMATCH"}});
   expect(f.harness.workspace.mutationAudit()).toHaveLength(0);expect(await readFile(f.workspace+"/a.txt","utf8")).toBe("before\n");
  }finally{f.harness.store.save=original;reopened?.close();await f.close();}
+});
+
+test('host records application provenance and policy digest before effect, rejecting client origin claims', async () => {
+ const policy:HarnessToolPolicy={schemaVersion:1,rules:[{id:'review',tools:['apply_reviewed_replacement'],decision:'ask_user',reason:'Host review'}]};
+ const f=await fixture(undefined,policy);const save=f.harness.store.save.bind(f.harness.store);let witnessed=false;
+ try{
+  const p=await start(f);
+  const command={method:'approval.resolve' as const,sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:'provenance',decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
+  expect(await f.call({...command,provenance:{origin:'interactive'}})).toMatchObject({ok:false});
+  f.harness.store.save=async(state,options)=>{
+   if(!witnessed&&state.metadata?.clientApprovalDecisionsV1){
+    expect(state.metadata.clientApprovalDecisionsV1).toMatchObject([{provenance:{schemaVersion:1,origin:'application',channel:'client-protocol-v1',policyDigest:createHarnessToolPolicy(policy).digest}}]);
+    expect(await readFile(f.workspace+'/a.txt','utf8')).toBe('before\n');witnessed=true;
+   }
+   return save(state,options);
+  };
+  expect(await f.call(command)).toMatchObject({ok:true});expect(witnessed).toBe(true);
+  expect(await readFile(f.workspace+'/a.txt','utf8')).toBe('after\n');
+ }finally{f.harness.store.save=save;await f.close();}
+});
+
+test('client without an explicit review channel stays pending without recording a false approval', async () => {
+ const f=await fixture(undefined,{schemaVersion:1,explicitReview:{schemaVersion:1},rules:[]});
+ try{
+  const p=await start(f);
+  expect(await f.call({method:'approval.resolve',sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:'unsupported-review',decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))})).toMatchObject({ok:false,error:{code:'EXPLICIT_REVIEW_REQUIRED'}});
+  const persisted=await f.harness.store.load(p.run.runId,f.harness.config.scope);
+  expect(persisted?.status).toBe('waiting_approval');
+  expect(persisted?.metadata?.clientApprovalDecisionsV1).toBeUndefined();
+  expect(await readFile(f.workspace+'/a.txt','utf8')).toBe('before\n');
+ }finally{await f.close();}
+});
+
+test('trusted host review admits the exact batch once and preserves the displayed revision', async () => {
+ const f=await fixture(undefined,{schemaVersion:1,explicitReview:{schemaVersion:1},rules:[]});
+ try{
+  const p=await start(f);
+  const command={method:'approval.resolve' as const,sessionId:p.session.sessionId,runId:p.run.runId,expectedRevision:p.run.revision,idempotencyKey:'host-reviewed',decisions:p.run.approvals.map(a=>({approvalId:a.approvalId,digest:a.digest,approve:true}))};
+  expect(await f.adapter.dispatchReviewed!(f.request({...command,decisions:command.decisions.map(d=>({...d,digest:'a'.repeat(64)})),idempotencyKey:'altered-review'}))).toMatchObject({ok:false,error:{code:'APPROVAL_MISMATCH'}});
+  const done=data(await f.adapter.dispatchReviewed!(f.request(command)),'run');
+  expect(done.run.decisions).toMatchObject([{reviewedRevision:p.run.revision,provenance:{origin:'interactive',channel:'desktop-host'}}]);
+  expect(await readFile(f.workspace+'/a.txt','utf8')).toBe('after\n');
+  expect(await f.adapter.dispatchReviewed!(f.request(command))).toMatchObject({ok:true});
+  expect(await f.call(command)).toMatchObject({ok:false,error:{code:'IDEMPOTENCY_CONFLICT'}});
+  expect(f.harness.workspace.mutationAudit()).toHaveLength(1);
+ }finally{await f.close();}
 });
 
 test("applied decision and journal evidence are recovered by a newly opened harness",async()=>{

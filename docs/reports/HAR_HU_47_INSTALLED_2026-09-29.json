@@ -1,0 +1,61 @@
+{
+  "artifact": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/zhx-installed-mcp-uy8kgG/harness.tgz",
+  "version": "1.3.0-rc.3",
+  "sha256": "779c1bc612d8c233cac28c8286edb2a4529b2f5a0ddba2ea32510449e16f427f",
+  "evidence": [
+    {
+      "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+      "version": "v22.13.0",
+      "result": {
+        "status": "passed",
+        "checks": [
+          "host-session-binding",
+          "agent-pauses-before-dispatch",
+          "sqlite-reopen",
+          "fresh-mcp-session",
+          "persisted-approval-resume",
+          "single-journaled-dispatch",
+          "secret-redacted",
+          "harness-close-removes-resources"
+        ],
+        "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+      }
+    },
+    {
+      "runtime": "/tmp/zhx-runtime-matrix/node-v24.11.0-darwin-arm64/bin/node",
+      "version": "v24.11.0",
+      "result": {
+        "status": "passed",
+        "checks": [
+          "host-session-binding",
+          "agent-pauses-before-dispatch",
+          "sqlite-reopen",
+          "fresh-mcp-session",
+          "persisted-approval-resume",
+          "single-journaled-dispatch",
+          "secret-redacted",
+          "harness-close-removes-resources"
+        ],
+        "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+      }
+    },
+    {
+      "runtime": "bun",
+      "version": "1.4.0",
+      "result": {
+        "status": "passed",
+        "checks": [
+          "host-session-binding",
+          "agent-pauses-before-dispatch",
+          "sqlite-reopen",
+          "fresh-mcp-session",
+          "persisted-approval-resume",
+          "single-journaled-dispatch",
+          "secret-redacted",
+          "harness-close-removes-resources"
+        ],
+        "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+      }
+    }
+  ]
+}

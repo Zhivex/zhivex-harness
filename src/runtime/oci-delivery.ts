@@ -1,3 +1,4 @@
+import { withRuntimeInstruction } from "./runtime-instructions.js";
 import { randomUUID } from "node:crypto";
 import type { LanguageModelMiddleware, ModelMessage, StreamEvent, ToolCall } from "@zhivex-ai/core";
 import type { AgentRunState } from "@zhivex-ai/agents";
@@ -55,7 +56,7 @@ export const createOciDelivery = (pending: () => Promise<boolean>, metadata: Rec
   const middleware: LanguageModelMiddleware = {
     name: "harness-oci-delivery",
     async wrapGenerate(context, next) {
-      if (reminders && !declined) context.input.messages = [...context.input.messages, { role: "system", parts: [{ type: "text", text: reminderText }] }];
+      if (reminders && !declined) context.input.messages = withRuntimeInstruction(context.input.messages, reminderText);
       const result = await next();
       const messages = result.messages ?? (result.message ? [result.message] : []);
       const call = await remind(result.finishReason, messages.some(m => m.parts.some(p => p.type === "tool-call" || p.type === "tool-result")), Boolean(context.input.tools?.inspect_environment_patch), context.input.abortSignal);
@@ -65,7 +66,7 @@ export const createOciDelivery = (pending: () => Promise<boolean>, metadata: Rec
       return { ...result, message, messages: [...(last?.role === "assistant" ? messages.slice(0, -1) : messages), message], finishReason: "tool-calls", providerFinishReason: "harness-oci-delivery" };
     },
     async wrapStream(context, next) {
-      if (reminders && !declined) context.input.messages = [...context.input.messages, { role: "system", parts: [{ type: "text", text: reminderText }] }];
+      if (reminders && !declined) context.input.messages = withRuntimeInstruction(context.input.messages, reminderText);
       const stream = await next();
       return (async function* (): AsyncIterable<StreamEvent> {
         let sawTool = false;

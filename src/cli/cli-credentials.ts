@@ -1,6 +1,7 @@
 import { decodeQwenCredential, qwenEndpoint, selectQwenConnection } from "./qwen-connection.js";
 import { providerDescriptor, type HarnessProvider } from "../runtime/config.js";
 import { PROVIDERS } from "../providers/providers.js";
+import { vertexConfigured, vertexRoute } from "../providers/vertex-auth.js";
 
 export interface SecretEntry {
   getPassword(): Promise<string | null | undefined>;
@@ -64,13 +65,14 @@ export class CliCredentials {
   source(provider: HarnessProvider) { return this.sources.get(provider) ?? "missing"; }
   private endpointOverride(provider: HarnessProvider) {
     const variables: Record<string, string[]> = {
-      openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
+      anthropic: ["ANTHROPIC_BASE_URL"], openai: ["OPENAI_BASE_URL"], meta: ["META_BASE_URL"], gemini: ["GEMINI_BASE_URL"],
       qwen: ["QWEN_BASE_URL", "QWEN_REGION", "QWEN_WORKSPACE_ID"],
     };
     return (variables[provider] ?? []).some(name => this.environment[name]?.trim());
   }
   /** Presence only: never contacts a provider or returns a secret. */
   async inspect(provider: HarnessProvider): Promise<CredentialStatus> {
+    if (provider === "vertex") return { source: "environment", configured: vertexConfigured(this.environment) };
     if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) return { source: "environment", configured: true };
     if (this.endpointOverride(provider) && !(provider === "qwen" && this.qwenOverrideAccepted)) return { source: "blocked", configured: false };
     if (this.temporary.has(provider)) return { source: "temporary", configured: true };
@@ -78,6 +80,10 @@ export class CliCredentials {
     catch { return { source: "unavailable", configured: false }; }
   }
   async configure(provider: HarnessProvider, input: CredentialInput): Promise<boolean> {
+    if (provider === "vertex") {
+      this.write("Vertex uses Google Application Default Credentials. Configure ADC, GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION in the launching environment; no API key is stored here.\n");
+      return vertexConfigured(this.environment);
+    }
     for (;;) {
       try { return await this.configureOnce(provider, input); }
       catch (error) {
@@ -152,6 +158,11 @@ export class CliCredentials {
     return true;
   }
   async providerEnvironment(provider: HarnessProvider, input: CredentialInput): Promise<NodeJS.ProcessEnv> {
+    if (provider === "vertex") {
+      vertexRoute(this.environment);
+      this.sources.set(provider, "environment");
+      return { ...this.environment };
+    }
     if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) { this.destinations.delete(provider); this.sources.set(provider, "environment"); return { ...this.environment }; }
     // Managed credentials must not be redirected by shell-defined endpoint overrides.
     if (provider !== "qwen" && this.endpointOverride(provider)) {

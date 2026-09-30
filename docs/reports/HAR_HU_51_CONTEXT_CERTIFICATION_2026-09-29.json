@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 1,
+  "kind": "hu51-context-efficiency-anthropic-gates",
+  "artifactSha256": "560a1c379593fa5dfab85471ee02b7f70e749b06836be2b3cd0900f585ecc761",
+  "integrity": {
+    "artifactSha256": "560a1c379593fa5dfab85471ee02b7f70e749b06836be2b3cd0900f585ecc761",
+    "distFiles": 244,
+    "exactInstalledBytes": true
+  },
+  "selectedGatesPassed": true,
+  "releaseCertified": false,
+  "published": false,
+  "matrix": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "gates": [
+        "base",
+        "compaction",
+        "delegation",
+        "execution",
+        "continuity"
+      ]
+    }
+  ],
+  "observations": {
+    "base": {
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-29T22:24:32.784Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        }
+      ]
+    },
+    "compaction": {
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-29T22:24:39.961Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 0,
+            "toolMetadata": false
+          }
+        }
+      ]
+    },
+    "delegation": {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-29T22:24:51.612Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_b5bdf507-950b-493e-90ec-296e04490ddf",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 5383
+        }
+      ]
+    },
+    "execution": {
+      "ok": true,
+      "gate": "live-execution-smoke",
+      "certifiedAt": "2026-09-29T22:24:57.929Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "runId": "run_897ab261-e06d-4910-b03c-95e5111d3a46",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        }
+      ]
+    },
+    "continuity": {
+      "schemaVersion": 1,
+      "kind": "live-conversation-continuity",
+      "runtime": "selected-artifact",
+      "harnessVersion": "1.3.0-rc.3",
+      "observedAt": "2026-09-29T22:25:08.415Z",
+      "status": "passed",
+      "scriptSha256": "f0351f2e074b00511cdc5beee4078715723d25aefd53d2922d4a9964039727ed",
+      "rows": [
+        {
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 10354,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1639,
+              "outputTokens": 242,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1913,
+              "outputTokens": 111,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "f8134d5248e523b78a08b2622b48b7d8063021ac1f513d8b8d3b810060bcf29d"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2040,
+              "outputTokens": 55,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "09fbff638ec952927eae3536e108d6af5bd63f03cc09a800b0951c62a3d8e4e5"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2087,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "9cda29e9f10116e545174582623982691c04389fe6e92605e5d8420f5e3e0e41"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1983,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "99ca298e9c02ca34dc9a96dc8d53d50e76442e12e7bee34b40215df9d24297cb"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2010,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "e2f24dac8a28383b1c22ca637b1b5c0782af1a6289c9630f8d8df87e368fbc3c"
+            }
+          ]
+        }
+      ],
+      "limits": {
+        "maxInputTokens": 24000,
+        "maxOutputTokens": 8192,
+        "maxTotalTokens": 32192,
+        "maxTokens": 8192,
+        "maxSteps": 2,
+        "timeoutMs": 90000,
+        "compactionMaxMessages": 5,
+        "compactionKeepRecentMessages": 2,
+        "compactionMaxEstimatedInputTokens": 12000
+      },
+      "requireVerifiedDelivery": false,
+      "comparisonNote": "Post-fix campaign raises generation/output ceilings to 8192 from the prior six-turn campaign's 2048/4096 to isolate memory behavior; success rates are not directly comparable.",
+      "moduleSha256": "810a0939dd8340d048418cbed3eca251d0eb477bee480dc85febc7743fc3abd0",
+      "limitations": [
+        "Six-turn synthetic memory scenario with forced compaction; not a natural long-session benchmark or release certification",
+        "Conversation restarts between completed runs; suspended approval resume is tested separately",
+        "Deterministic compaction; no auxiliary paid compactor"
+      ]
+    }
+  },
+  "scope": "Five selected Anthropic gates only; prior six-provider evidence belongs to its historical artifact."
+}

@@ -18,6 +18,32 @@ const candidateModels = async () => {
 };
 
 const workspace = path.resolve(import.meta.dir, "..");
+test("six-route release gates require configuration, OIDC and every acceptance boundary", async () => {
+  const workflow = await readWorkflow("release.yml");
+  const job = workflow.jobs["certify-live"]!;
+  expect(job.env.ZHIVEX_HARNESS_LIVE_PROVIDERS!.split(",").sort()).toEqual(["anthropic", "gemini", "meta", "openai", "qwen", "vertex"]);
+  const steps = job.steps;
+  const config = steps.findIndex(step => step.run?.includes("check-live-release-config.ts"));
+  const auth = steps.findIndex(step => step.uses?.startsWith("google-github-actions/auth@"));
+  expect(config).toBeGreaterThanOrEqual(0);
+  expect(auth).toBeGreaterThan(config);
+  expect(steps[auth]!.uses).toMatch(/@[a-f0-9]{40}$/);
+  expect(steps[auth]!.with?.create_credentials_file).toBe(true);
+  const enforce = steps.find(step => step.name === "Enforce complete live certification result")!;
+  for (const id of ["base", "compaction", "orchestration", "execution", "continuity", "routing_vertex", "routing_anthropic", "routing_gemini", "routing_meta"]) {
+    const index = steps.findIndex(step => step.id === `live_${id}`);
+    expect(index).toBeGreaterThan(auth);
+    expect(steps[index]!.if).toBeUndefined();
+    expect(enforce.run).toContain(`steps.live_${id}.outcome`);
+  }
+  expect(steps.find(step => step.id === "live_compaction")!.env!.ZHIVEX_HARNESS_LIVE_APPROVAL_COMPACTION).toBe("1");
+  expect(steps.find(step => step.id === "live_orchestration")!.env!.ZHIVEX_HARNESS_LIVE_STRUCTURED_DELEGATION).toBe("1");
+  for (const reviewer of ["vertex", "anthropic", "gemini", "meta"]) {
+    const env = steps.find(step => step.id === `live_routing_${reviewer}`)!.env!;
+    expect(env.ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER).toBe(reviewer);
+    expect(env.ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER).toBe(reviewer === "meta" ? "qwen" : "openai");
+  }
+});
 const workflowPaths = [
   ".github/workflows/release.yml",
   ".github/workflows/live-certification.yml"
@@ -207,7 +233,7 @@ describe("release workflow version source", () => {
         "live_oci",
         "live_base",
         "live_orchestration",
-        "live_routing",
+        ...(workflowPath.endsWith("/release.yml") ? ["live_compaction", "live_continuity", "live_routing_vertex", "live_routing_anthropic", "live_routing_gemini", "live_routing_meta"] : ["live_routing"]),
         "live_execution"
       ]) {
         const diagnosticGate = gate.replace("live_", "").replaceAll("_", "-");
@@ -236,7 +262,7 @@ describe("release workflow version source", () => {
       expect(workflow).toContain('echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"');
       expect(workflow).toContain("name: Upload sanitized live diagnostics");
       expect(workflow).toContain("name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}");
-      expect(workflow).toContain("path: release-artifacts/live-diagnostics/*.json");
+      expect(workflow).toContain("release-artifacts/live-diagnostics/*.json");
     });
   }
 
@@ -377,7 +403,10 @@ test("Desktop CI exercises packaged restart, uncertain effects and worktree deli
   const packaged = steps.find(step => step.run?.includes("bun run --cwd desktop package"))!.run!;
   // Restart/history checks invoke the root CLI; Desktop packaging does not build it.
   const commands = steps.flatMap(step => (step.run ?? "").split("\n").map(line => line.trim()));
-  const cliBuild = commands.indexOf("bun run build");
+  const cliBuild = commands.indexOf("bun run prepare:desktop");
+  const manifest = await Bun.file(new URL("../package.json", import.meta.url)).json();
+  expect(manifest.scripts["prepare:desktop"]).toStartWith("bun run build && bun pm pack");
+  expect(manifest.scripts["prepare:desktop"]).toContain("desktop/scripts/prepare-harness.ts");
   expect(cliBuild).toBeGreaterThanOrEqual(0);
   expect(cliBuild).toBeLessThan(commands.indexOf("bun run --cwd desktop smoke:restart:packaged"));
   for (const scenario of ["smoke:restart:packaged", "smoke:restart:packaged --effect-crash", "smoke:restart:packaged --active-close", "smoke:worktrees:packaged"]) {

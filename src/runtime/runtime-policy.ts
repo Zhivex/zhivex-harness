@@ -1,3 +1,4 @@
+import { withRuntimeInstruction } from "./runtime-instructions.js";
 import type { LanguageModelMiddleware, ModelGenerateInput, TokenUsage } from "@zhivex-ai/core";
 import { createBudgetGuard, createProductionSafetyPolicy } from "@zhivex-ai/agents";
 import { estimateRequestTokens } from "./model-budget.js";
@@ -68,8 +69,7 @@ export const createCheckpointTokenCap = (
         observed.totalTokens + predicted > limits.maxTotalTokens * 0.7)) {
       delete input.tools;
       delete input.toolChoice;
-      input.messages = [...input.messages, { role: "system", parts: [{ type: "text",
-        text: "The run is approaching its cumulative token budget. Finish now using only the evidence already collected. State what was established and what remains unverified; do not claim that unfinished work is complete. No further tools are available." }] }];
+      input.messages = withRuntimeInstruction(input.messages, "The run is approaching its cumulative token budget. Finish now using only the evidence already collected. State what was established and what remains unverified; do not claim that unfinished work is complete. No further tools are available.");
       predicted = estimateRequestTokens(input);
     }
     if (predicted > remainingInput) throw new Error("maxInputTokens budget exhausted");

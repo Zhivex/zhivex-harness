@@ -8,7 +8,7 @@ import {openHarnessActivityStore} from "../../src/client/service-events.js";
 import {SqliteDatabase} from "../../src/persistence/sqlite-database.js";
 import {checkDesktopStateFormat} from "../src/state-format.js";
 import {prepareDesktopStateTransaction, armDesktopStateTransaction, restoreDesktopStateTransaction, finishDesktopStateTransaction, verifyDesktopStateTransaction} from "../src/state-transaction.js";
-import {acquireSqliteAccess, type SqliteAccessLease} from "../../src/persistence/sqlite-access.js";
+import {acquireSqliteAccess, type SqliteAccessLease} from "@zhivex-ai/harness/desktop/v1/state";
 
 async function fixture(run: (f: {root: string; userData: string; configs: ReturnType<typeof resolveHarnessConfig>[]}) => Promise<void>) {
  const root = await realpath(await mkdtemp("/tmp/har-state-transaction-")), userData = path.join(root, "profile"); await mkdir(userData);

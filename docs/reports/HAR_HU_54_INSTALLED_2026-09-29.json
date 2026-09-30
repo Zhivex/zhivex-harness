@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "7506bf9e4381a1b1e9c15046e0f3367b3214737fd0cfe6be826984e1f5c353e4",
+  "root": "/tmp/har-policy-installed-RrkdFe",
+  "phases": [
+    {
+      "phase": "prepare",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "queryParity": true,
+      "durableReplay": true,
+      "noQueryOrReplayExecution": true
+    },
+    {
+      "phase": "verify",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "queryParity": true,
+      "durableReplay": true,
+      "noQueryOrReplayExecution": true
+    },
+    {
+      "schemaVersion": 1,
+      "installed": true,
+      "realDocker": true,
+      "liveProvider": false,
+      "published": false,
+      "queryConfigurationOnly": true,
+      "pendingOci": true,
+      "toolEntryOci": true,
+      "commandOutputVerified": true,
+      "runtime": "v22.13.0"
+    }
+  ],
+  "installed": true,
+  "liveProvider": false,
+  "published": false
+}

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { wrapLanguageModel, type LanguageModel, type ModelGenerateInput, type ModelMessage, type ToolCall } from "@zhivex-ai/core";
+import { delegationResultContractSchema, type DelegationResultContract } from "./delegation-result.js";
 import { HarnessConfigError } from "./errors.js";
 
 /** Trusted application input, never constructed from a model tool call. */
@@ -10,6 +11,8 @@ export interface HarnessDelegationContract {
   prompt: string;
   allowedReadPaths: readonly string[];
   requiredOutput: string;
+  /** Opt-in experimental result evidence; legacy marker contracts remain unchanged. */
+  resultContract?: DelegationResultContract;
 }
 
 const relativeFile = z.string().min(1).max(1024).refine(value =>
@@ -20,21 +23,26 @@ const schema = z.array(z.strictObject({
   profile: z.enum(["reviewer", "explorer"]),
   prompt: z.string().min(1).max(16000),
   allowedReadPaths: z.array(relativeFile).min(1).max(32),
-  requiredOutput: z.string().min(1).max(256)
+  requiredOutput: z.string().min(1).max(256),
+  resultContract: delegationResultContractSchema.optional()
 })).min(1).max(2);
 
 export const normalizeDelegationContracts = (value?: readonly HarnessDelegationContract[]) => {
   if (value === undefined) return [];
   const parsed = schema.safeParse(value);
   if (!parsed.success || new Set(parsed.data.map(c => c.profile)).size !== parsed.data.length ||
-      new Set(parsed.data.map(c => c.taskId)).size !== parsed.data.length) {
+      new Set(parsed.data.map(c => c.taskId)).size !== parsed.data.length ||
+      parsed.data.some(c=>c.resultContract && (new Set(c.resultContract.requiredReadPaths).size!==c.resultContract.requiredReadPaths.length || c.resultContract.requiredReadPaths.some(path=>!c.allowedReadPaths.includes(path))))) {
     throw new HarnessConfigError("Delegation contracts require unique tasks/profiles and canonical relative file paths.");
   }
-  return parsed.data.map(c => Object.freeze({ ...c, allowedReadPaths: Object.freeze([...new Set(c.allowedReadPaths)].sort()) }));
+  return parsed.data.map(({resultContract,...c}) => Object.freeze({ ...c, allowedReadPaths: Object.freeze([...new Set(c.allowedReadPaths)].sort()),
+    ...(resultContract?{resultContract:Object.freeze({...resultContract,requiredReadPaths:Object.freeze([...resultContract.requiredReadPaths].sort())})}:{}) }));
 };
 
 export const delegationPrompt = (contract: HarnessDelegationContract) =>
-  `Application-owned task ${contract.taskId}:\n${contract.prompt}\nAllowed read paths: ${JSON.stringify(contract.allowedReadPaths)}.\nInclude this exact completion marker on its own line in the final response, without a label or prefix: ${contract.requiredOutput}`;
+  contract.resultContract
+    ? `Application-owned task ${contract.taskId}:\n${contract.prompt}\nAllowed read paths: ${JSON.stringify(contract.allowedReadPaths)}. Required complete file coverage: ${JSON.stringify(contract.resultContract.requiredReadPaths)}. Return one raw JSON object, without Markdown fences, backticks, or introductory/trailing prose, with schemaVersion:1, taskId:${JSON.stringify(contract.taskId)}, status:"completed" or "incomplete", inspectedFiles:[{path,digest,evidence:[{toolCallId,startLine,endLine}]}], findings:[{id,message,evidence:[{path,toolCallId,startLine,endLine}]}]. Cite the toolCallId returned inside each successful read_file receipt and its exact file digest and observed inclusive line ranges. Read every required file completely; multiple slices must have no gaps and the same digest. Do not invent evidence. Schema and coverage acceptance do not verify semantic correctness; human review is ${contract.resultContract.humanReviewRequired?'pending':'not requested'}.`
+    : `Application-owned task ${contract.taskId}:\n${contract.prompt}\nAllowed read paths: ${JSON.stringify(contract.allowedReadPaths)}.\nInclude this exact completion marker on its own line in the final response, without a label or prefix: ${contract.requiredOutput}`;
 
 export const delegationFingerprint = (contracts: readonly HarnessDelegationContract[]) =>
   createHash("sha256").update(JSON.stringify({ policy: "completion-marker-v4-recoverable-input", contracts })).digest("hex");
@@ -57,7 +65,8 @@ export const withDelegationContracts = (model: LanguageModel, contracts: readonl
       }
       return original ? [[name, { ...original,
         description: `Execute application-owned task ${contract.taskId}. Its scope and acceptance are fixed. Supply only taskId.`,
-        schema: z.strictObject({ taskId: z.literal(contract.taskId) })
+        // A singleton enum preserves exact validation and is accepted by Vertex schemas.
+        schema: z.strictObject({ taskId: z.enum([contract.taskId]) })
       }]] : [];
     }));
     const calls = new Map<string, string>();

@@ -1,0 +1,20 @@
+[
+  {
+    "textBytes": 0,
+    "thoughtParts": 0,
+    "toolCalls": 1,
+    "json": false,
+    "visibleJson": false,
+    "fenced": false,
+    "unfencedJson": false
+  },
+  {
+    "textBytes": 420,
+    "thoughtParts": 0,
+    "toolCalls": 0,
+    "json": false,
+    "visibleJson": false,
+    "fenced": true,
+    "unfencedJson": true
+  }
+]

@@ -1,6 +1,6 @@
-import type { CatalogModel } from "../../src/internal/desktop/providers.js";
-import type { HarnessClientResponse } from "../../src/internal/desktop/protocol.js";
-import type { HarnessActivityPage } from "../../src/internal/desktop/protocol.js";
+import type { CatalogModel } from "@zhivex-ai/harness/models";
+import type { HarnessClientResponse } from "@zhivex-ai/harness/protocol";
+import type { HarnessActivityPage } from "@zhivex-ai/harness/protocol";
 export interface DesktopModelSelection { provider: string; model: string }
 export interface DesktopProvider { id: string; name: string; defaultModel: string; support: "certified" | "provisional"; models?: CatalogModel[]; catalogRevision?: string; catalogSource?: string; catalogStale?: boolean }
 export interface DesktopProject { modelSelection?: DesktopModelSelection | undefined; key: string; workspace: string; name: string; lastOpenedAt: number }
@@ -8,6 +8,9 @@ export interface DesktopTask { id: string; sourceProjectKey: string; title: stri
 export interface DesktopTaskRemoval { ticketId: string; task: DesktopTask; head: string; integrationCommit: string; changedPaths: string[]; unmergedCommits: number; locked: boolean; canRemove: boolean; expiresAt: number }
 export interface DesktopContext { credentialConfigured?: boolean; modelSelection?: DesktopModelSelection | undefined; project: DesktopProject; projectId: string; runtimePid: number; runtimeNode: string; fixture: boolean; task?: DesktopTask }
 export interface DesktopBridge {
+    reviewCheckpoint(projectKey: string, sessionId: string, operationId: string): Promise<import("./checkpoint-review.js").CheckpointReview>;
+    reviewCheckpointRecovery(projectKey: string, sessionId: string, operationId: string, forkSessionId: string): Promise<import("./checkpoint-review.js").CheckpointReview>;
+    resolveCheckpointReview(projectKey: string, ticketId: string, approve: boolean): Promise<HarnessClientResponse | null>;
     openExternal(url: string): Promise<void>;
     copyText(text: string): Promise<void>;
     providers(): Promise<DesktopProvider[]>;

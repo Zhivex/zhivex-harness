@@ -29,7 +29,7 @@ export const sourceDependencies = (source: string): SourceDependency[] => {
   return dependencies;
 };
 
-const desktopSurfaces = new Set(["protocol", "providers", "runtime", "persistence"].map(name => `src/internal/desktop/${name}.ts`));
+const desktopPackageImports = new Set(["engine", "protocol", "client", "service", "models", "desktop/v1/state", "desktop/v1/providers"].map(name => `@zhivex-ai/harness/${name}`));
 const resolveSource = (file: string, target: string) => path.posix.normalize(path.posix.join(path.posix.dirname(file), target)).replace(/\.js$/, ".ts");
 
 export const architectureViolations = (file: string, source: string): string[] => {
@@ -40,8 +40,11 @@ export const architectureViolations = (file: string, source: string): string[] =
   for (const dependency of sourceDependencies(source)) {
     const target = dependency.target.startsWith(".") ? resolveSource(file, dependency.target) : dependency.target;
     const reject = (reason: string) => violations.push(`${file} -> ${dependency.target}: ${reason}`);
-    if (file.startsWith("desktop/src/") && target.startsWith("src/") && !desktopSurfaces.has(target)) {
-      reject("Desktop must consume an explicit internal/desktop surface");
+    if (file.startsWith("desktop/src/") && (target.startsWith("src/") || target.startsWith("packages/code/") || /^@zhivex-ai\/code(?:\/|$)/.test(target))) {
+      reject("Desktop must consume declared Harness package exports, never repository source or Code");
+    }
+    if (file.startsWith("desktop/src/") && /^@zhivex-ai\/harness(?:\/|$)/.test(target) && !desktopPackageImports.has(target)) {
+      reject("Desktop Harness import is not a declared integration entrypoint");
     }
     if (file.startsWith("src/") && target.startsWith("desktop/")) reject("the runtime must not depend on Desktop");
     if (file.startsWith("src/") && /^(packages\/code\/|@zhivex-ai\/code(?:\/|$))/.test(target)) reject("Harness must not depend on Code");
@@ -50,6 +53,9 @@ export const architectureViolations = (file: string, source: string): string[] =
     }
     if (file === "src/internal/desktop/protocol.ts" && !dependency.typeOnly && target !== "src/client/protocol.ts") {
       reject("the Desktop protocol surface must not load host implementations");
+    }
+    if (file === "src/internal/desktop/catalog.ts" && !dependency.typeOnly && target !== "src/models/catalog.ts") {
+      reject("the Desktop catalog surface must not load host implementations");
     }
     if (file.startsWith("src/cli/") && target === "src/cli.ts") reject("CLI modules must not import their executable facade");
     if (file.startsWith("src/tools/") && !dependency.typeOnly && target === "src/runtime/harness.ts") {
@@ -60,7 +66,7 @@ export const architectureViolations = (file: string, source: string): string[] =
 };
 
 /** Traverse every source edge, including erased type references and intermediary helpers. */
-export const engineBoundaryViolations = (sources: ReadonlyMap<string, string>, entries: readonly string[] = ["src/engine/index.ts", "src/engine/protocol.ts", "src/engine/client.ts", "src/engine/service.ts", "src/engine/acp.ts", "src/compat/code-support.ts"]): string[] => {
+export const engineBoundaryViolations = (sources: ReadonlyMap<string, string>, entries: readonly string[] = ["src/engine/index.ts", "src/engine/protocol.ts", "src/engine/client.ts", "src/engine/service.ts", "src/engine/acp.ts", "src/engine/models.ts", "src/engine/desktop-state-v1.ts", "src/engine/desktop-providers-v1.ts", "src/engine/mcp-stdio-v1.ts", "src/compat/code-support.ts"]): string[] => {
   const violations: string[] = [];
   const visited = new Set<string>();
   const visit = (file: string, chain: string[]): void => {

@@ -10,7 +10,7 @@ The machine-readable source is [`support-matrix.json`](./support-matrix.json). `
 | OCI | Docker on Linux | — | Podman | managed remote sandbox |
 | Target package manager | npm | Bun | pnpm, Yarn | — |
 | MCP | bounded Streamable HTTP | — | broader remote implementations | stdio |
-| Provider | Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, OpenAI `gpt-5.6-luna` | — | Gemini | undocumented providers |
+| Provider | Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, OpenAI `gpt-5.6-luna` | — | Gemini, Anthropic, Vertex (ADC) | undocumented providers |
 
 Provider evidence is release-, account-, endpoint-, model-, and date-bound. A provider is supported for a release only when the exact candidate passes base, orchestration, routing, and model-directed execution gates. The table does not imply upstream feature parity.
 

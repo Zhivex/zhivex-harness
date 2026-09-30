@@ -7,12 +7,18 @@ import {prepareModelTransition} from "../src/model-transition.js";
 import type {HarnessClientResponse} from "../../src/client/index.js";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
- expect(desktopProviders().map(p=>p.id).sort()).toEqual(["gemini","meta","openai","qwen"]);
- for(const [provider,key] of Object.entries({openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
+ expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","gemini","meta","openai","qwen","vertex"]);
+ for(const [provider,key] of Object.entries({anthropic:"ANTHROPIC_API_KEY",openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
   expect(providerEnvironment({provider,model:"test-model"},"fixture-secret")).toEqual({[key]:"fixture-secret"});
   expect(providerEnvironment({provider,model:"test-model"})).toEqual({});
  }
  for(const bad of [{provider:"deepseek",model:"test"},{provider:"qwen",model:""},{provider:"qwen",model:"x\ny"},{provider:"qwen",model:"test",baseURL:"https://untrusted.test"}]) expect(modelSelectionSchema.safeParse(bad).success).toBe(false);
+});
+
+test("Vertex Desktop passes only explicit host ADC route settings, never API keys", () => {
+ const env = { GOOGLE_CLOUD_PROJECT: "fixture-project", VERTEX_LOCATION: "global", GOOGLE_APPLICATION_CREDENTIALS: "/fixture/adc.json" };
+ expect(providerEnvironment({provider:"vertex",model:"gemini-3.7-flash"}, "unused-key", {...env, OPENAI_API_KEY:"secret", VERTEX_ACCESS_TOKEN:"ignored"})).toEqual(env);
+ expect(providerEnvironment({provider:"vertex",model:"gemini-3.7-flash"}, undefined, {})).toEqual({});
 });
 
 test("Qwen keeps Max as default while Flash is featured across Desktop and CLI", async () => {
@@ -56,7 +62,7 @@ test("switching rejects active execution and durable approvals, resuming admissi
 test("unconfigured providers open history but have no callable generation transport",async()=>{
  const {desktopProviderModel}=await import("../src/provider-model.js");
  for(const p of desktopProviders()){
-  const model=desktopProviderModel({provider:p.id,model:p.defaultModel});
+  const model=desktopProviderModel({provider:p.id,model:p.defaultModel}, undefined, {});
   expect(model.modelId).toBe(p.defaultModel);
   await expect(model.generate({messages:[]})).rejects.toThrow("MODEL_CREDENTIAL_REQUIRED");
   await expect(model.stream!({messages:[]})).rejects.toThrow("MODEL_CREDENTIAL_REQUIRED");

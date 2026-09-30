@@ -6,10 +6,16 @@ import { inspectProviderResponse } from "../scripts/time-to-safe-fix-model-obser
 for (const [body, status, reason, parameter] of [
   [{error:{type:"invalid_request_error",param:"previous_response_id",message:"Response SECRET expired"}},400,"previous_response_unavailable","previous_response_id"],
   [{error:{code:"context_length_exceeded",message:"SECRET"}},400,"context_length_exceeded","none"],
+  [{error:{message:"SECRET billing payload"}},402,"payment_required","none"],
   [{error:{type:"authentication_error",message:"SECRET"}},401,"authentication","none"],
   [{error:{status:"RESOURCE_EXHAUSTED",message:"SECRET"}},429,"rate_limit","none"],
   [{error:{status:"INVALID_ARGUMENT",message:"SECRET",param:"tools"}},400,"invalid_request","tools"],
   [{error:{code:"model_not_found",message:"SECRET"}},404,"model_unavailable","none"],
+  [{error:{code:404,status:"NOT_FOUND",message:"SECRET project/location/model"}},404,"model_unavailable","none"],
+  [{error:{code:403,status:"PERMISSION_DENIED",message:"SECRET identity"}},403,"permission","none"],
+  [{error:{code:429,status:"RESOURCE_EXHAUSTED",message:"SECRET quota"}},429,"rate_limit","none"],
+  [{error:{code:401,status:"UNAUTHENTICATED",message:"SECRET token"}},401,"authentication","none"],
+  [{error:{code:503,status:"UNAVAILABLE",message:"SECRET endpoint"}},503,"server_error","none"],
   [{error:{param:"SECRET",message:"SECRET"}},503,"server_error","other"]
 ] as const) test(`provider-independent diagnosis: ${reason}/${parameter}`, async () => {
   const response = new Response(JSON.stringify(body), {status});

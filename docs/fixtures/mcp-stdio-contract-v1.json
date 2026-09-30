@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "status": "design_only",
+  "cases": [
+    {
+      "id": "admitted_read",
+      "kind": "positive",
+      "given": "Host admits immutable image and read-only snapshot",
+      "when": "initialize, list and call allowed read tool",
+      "observationsRequired": [
+        "exact argv launched only inside OCI",
+        "bounded result returned",
+        "host digest unchanged",
+        "cleanup confirmed"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "admitted_write",
+      "kind": "positive",
+      "given": "Launch and mutating call approved separately",
+      "when": "write private snapshot and request delivery",
+      "observationsRequired": [
+        "no host change before import approval",
+        "reviewed preimage import applies once"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "secret_reference",
+      "kind": "positive",
+      "given": "Host admits one secret reference",
+      "when": "read allowed env name and emit canary diagnostics",
+      "observationsRequired": [
+        "only named secret inside process",
+        "canary absent from audit and exports"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "unadmitted_client",
+      "kind": "negative",
+      "given": "ACP/client supplies executable without host receipt",
+      "when": "open session and request discovery",
+      "observationsRequired": [
+        "no image pull",
+        "zero process starts",
+        "zero discovery calls"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "receipt_drift",
+      "kind": "negative",
+      "given": "Valid receipt then image, argv, snapshot or scope changes",
+      "when": "attempt launch for each independent mutation",
+      "observationsRequired": [
+        "rejected before process start"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "receipt_replay",
+      "kind": "negative",
+      "given": "Expired or consumed receipt",
+      "when": "attempt launch",
+      "observationsRequired": [
+        "rejected before process start"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "missing_backend",
+      "kind": "negative",
+      "given": "No interactive OCI capability or unavailable runtime",
+      "when": "admit request",
+      "observationsRequired": [
+        "unsupported error",
+        "no host fallback"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "environment_injection",
+      "kind": "negative",
+      "given": "Ambient credential canary and requested NODE_OPTIONS",
+      "when": "attempt admission",
+      "observationsRequired": [
+        "control variable rejected",
+        "ambient env never inherited"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "network_escape",
+      "kind": "negative",
+      "given": "Admitted malicious process",
+      "when": "probe DNS, public IP and metadata IP",
+      "observationsRequired": [
+        "all probes denied by real OCI",
+        "no host proxy"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "filesystem_escape",
+      "kind": "negative",
+      "given": "Snapshot contains symlink and traversal attempts",
+      "when": "read host home and write outside workspace",
+      "observationsRequired": [
+        "host files inaccessible",
+        "host digest unchanged",
+        "unsafe import denied"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "permission_escalation",
+      "kind": "negative",
+      "given": "Read tool annotation claims write is safe",
+      "when": "call undeclared or mutating tool",
+      "observationsRequired": [
+        "host permissions prevail",
+        "no mutation without approval"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "protocol_abuse",
+      "kind": "negative",
+      "given": "Noisy or hostile stdio server",
+      "when": "send oversized/incomplete frames, malformed UTF8, unknown/duplicate IDs and server requests",
+      "observationsRequired": [
+        "bounded buffers",
+        "typed error or unsupported-method response",
+        "no host execution"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "hung_call",
+      "kind": "negative",
+      "given": "Server receives an approved effectful call then hangs",
+      "when": "expire absolute deadline",
+      "observationsRequired": [
+        "unknown outcome retained",
+        "no automatic replay",
+        "process tree terminated"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "cancel_tree",
+      "kind": "negative",
+      "given": "Server forks children and ignores graceful termination",
+      "when": "cancel run",
+      "observationsRequired": [
+        "admission closed",
+        "forced removal after grace",
+        "no leaked descendants or leases"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "crash_restart",
+      "kind": "negative",
+      "given": "Host or server crashes after dispatch",
+      "when": "reopen host session",
+      "observationsRequired": [
+        "no replay",
+        "fresh admission required",
+        "orphan cleanup scoped to owner"
+      ],
+      "status": "specified_not_executed"
+    },
+    {
+      "id": "cleanup_failure",
+      "kind": "negative",
+      "given": "Runtime cannot confirm boundary removal",
+      "when": "close session",
+      "observationsRequired": [
+        "cleanup-required retained",
+        "no false closed-success",
+        "bounded reconciliation"
+      ],
+      "status": "specified_not_executed"
+    }
+  ]
+}

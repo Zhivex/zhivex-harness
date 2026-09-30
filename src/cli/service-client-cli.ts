@@ -1,3 +1,6 @@
+import { formatPolicyDecision } from "./policy-decisions.js";
+import { harnessPolicyDecisionEventSchema } from "../runtime/policy-decisions.js";
+import { printPolicyInspection } from "./policy.js";
 import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
 import { ToolActivity } from "./terminal/tool-activity.js";
 import { navigateConsole } from "./console/console-navigation.js";
@@ -30,6 +33,11 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
   const list=async(search?:string)=>{const r=await call({method:"session.list",...(search?{search}:{})});if(r.kind!=="sessions")throw new HarnessStateConflictError("Unexpected service response.");return r.sessions;};
   const create=async(idempotencyKey?:string)=>{const r=await call({method:"session.create",idempotencyKey:key("session",idempotencyKey)});if(r.kind!=="session")throw new HarnessStateConflictError("Unexpected service response.");return r.session;};
   const print=(document:unknown)=>process.stdout.write((options.json?JSON.stringify(document,null,2):sanitizeTerminalText(JSON.stringify(document,null,2)))+"\n");
+  if(options.command==="policy"){
+    const result=await call({method:"policy.get"});
+    if(result.kind!=="policy")throw new HarnessStateConflictError("Unexpected service policy response.");
+    printPolicyInspection(result.policy,options.json);return;
+  }
   if(options.command==="sessions"){
     if(options.sessionsCommand==="list"){
       const sessions=await list(options.sessionSearch);print({schemaVersion:1,kind:"session-list",sessions});return;
@@ -62,6 +70,10 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
     const activity = new ToolActivity(text => {process.stderr.write(text);}, Boolean(consoleInput && process.stdout.isTTY), () => process.stdout.columns || 80, () => consoleInput?.backgroundStatus ?? "");
     const observe = (a: Record<string, unknown>) => {
       if (options.json || options.jsonl) return;
+      if (a.type === "policy-decision") {
+        const decision = harnessPolicyDecisionEventSchema.safeParse(a);
+        if (decision.success) process.stderr.write(formatPolicyDecision(decision.data)+"\n");
+      }
       history.observeService(a);
       if (a.type === "agent-step-start" || a.type === "agent-run-start") activity.phase("Waiting for model response");
       else if (a.type === "agent-compaction") activity.phase("Updating context");

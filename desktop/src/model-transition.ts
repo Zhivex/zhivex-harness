@@ -1,5 +1,5 @@
 import type { DesktopModelSelection } from "./bridge.js";
-import type { HarnessClientResponse } from "../../src/internal/desktop/protocol.js";
+import type { HarnessClientResponse } from "@zhivex-ai/harness/protocol";
 interface Host {
     isAlive(): boolean;
     controlClose(action: "pause" | "resume"): Promise<boolean>;

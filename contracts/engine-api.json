@@ -2130,6 +2130,76 @@
           "name": "HarnessMcpResourceClient",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "inspectHarnessPolicy",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessPolicyInspection",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "taskAcceptanceContractSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "compileTaskAcceptanceContract",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TaskAcceptanceContract",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectHarnessTaskAcceptance",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "reviseHarnessTaskAcceptance",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TaskAcceptanceLedger",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "exportHarnessGovernanceReport",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessGovernanceReportSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "renderHarnessGovernanceMarkdown",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessGovernanceReport",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessGovernanceOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "GovernanceSessionSource",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },
@@ -2256,6 +2326,11 @@
           "name": "HarnessActivityPage",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "ApprovalDecisionView",
+          "kind": "type",
+          "tier": "beta"
         }
       ]
     },
@@ -2444,6 +2519,16 @@
           "name": "serveAcpStdio",
           "kind": "runtime",
           "tier": "experimental"
+        },
+        {
+          "name": "createAcpMcpHost",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "AcpMcpHostRule",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },
@@ -2578,6 +2663,255 @@
         },
         {
           "name": "readRegularFileNoFollow",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./models": {
+      "source": "src/engine/models.ts",
+      "environment": "browser",
+      "exports": [
+        {
+          "name": "bundledModelCatalog",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "bundledDefaultModel",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "catalogModelSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "modelCatalogSchema",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "catalogModels",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "modelDescription",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "CatalogModel",
+          "kind": "type",
+          "tier": "beta"
+        },
+        {
+          "name": "ModelCatalog",
+          "kind": "type",
+          "tier": "beta"
+        }
+      ]
+    },
+    "./desktop/v1/state": {
+      "source": "src/engine/desktop-state-v1.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "HOST_DATABASE_SNAPSHOT_LIMIT",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createHostDatabaseSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "verifyHostDatabaseSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "verifyHostDatabaseState",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HostDatabaseSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HostDatabaseSnapshotConfig",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HARNESS_SQLITE_FILE",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "validateStateDirectory",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "validateRecordedWorkspace",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "acquireSqliteAccess",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "adoptExclusiveSqliteAccess",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "exclusiveSqliteAccessDescriptor",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "SqliteAccessLease",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "protectPersistenceSecret",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readRegularFileNoFollow",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "statRegularFileNoFollow",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./desktop/v1/providers": {
+      "source": "src/engine/desktop-providers-v1.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "loadModelCatalog",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CatalogLoadOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "CatalogSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "vertexConfigured",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "vertexEnvironment",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "vertexTokenSource",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "vertexRoute",
+          "kind": "runtime",
+          "tier": "experimental"
+        }
+      ]
+    },
+    "./mcp/stdio/v1": {
+      "source": "src/engine/mcp-stdio-v1.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "createMcpStdioAdmissionAuthority",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpStdioAdmissionError",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpStdioLaunchProposal",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpStdioLaunchReceipt",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "prepareMcpWorkspaceSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "discardMcpWorkspaceSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpWorkspaceSnapshot",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "recoverDockerMcpResources",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createMcpReconciliationAuthority",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpReconciliationDecision",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "McpReconciliationReview",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessIsolatedMcpSession",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "IsolatedMcpLaunchOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "launchIsolatedMcpSession",
           "kind": "runtime",
           "tier": "experimental"
         }

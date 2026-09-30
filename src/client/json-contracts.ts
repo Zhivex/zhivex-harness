@@ -477,7 +477,17 @@ export const cliErrorDocumentSchema = observationalDocument({
  * Stable parser for final structured output. Observational documents retain
  * additive fields; the digest-bound change envelope remains strict.
  */
+const cliPolicyInspectionSchema = observationalDocument({
+  ...jsonBase, kind: z.literal('policy-inspection'), digest: digestSchema.nullable(),
+  source: z.enum(['operator-file', 'application', 'baseline']), explicitReviewRequired: z.boolean(),
+  tools: z.array(observationalDocument({ name: z.string(), requiresApproval: z.boolean() })),
+  restrictions: z.array(observationalDocument({ ruleId: z.string(), tools: z.array(z.string()), decision: z.enum(['allow', 'ask_user', 'deny']), reason: z.string(), pathCount: nonnegativeInteger })),
+  execution: observationalDocument({ configuredBackend: z.enum(['none', 'oci']), activeBackend: z.enum(['none', 'oci']), evidence: z.literal('configuration-only') }),
+  limits: observationalDocument({ maxSteps: nonnegativeInteger, timeoutMs: nonnegativeInteger, budget: jsonObjectSchema })
+});
+
 export const cliJsonDocumentSchema = z.union([
+  cliPolicyInspectionSchema,
   cliRunResultDocumentSchema,
   cliInitDocumentSchema,
   cliProviderDocumentSchema,
@@ -506,6 +516,12 @@ const runEvent = <Type extends string, T extends z.ZodRawShape>(type: Type, shap
 });
 
 export const cliRunEventDocumentSchema = z.discriminatedUnion("type", [
+  runEvent("policy-decision", {
+    phase: z.enum(['approval-request', 'tool-entry']), toolName: z.string(), decision: z.enum(['allow', 'ask_user', 'deny']),
+    ruleIds: z.array(z.string()), reason: z.string(), reasonTruncated: z.boolean(), policyDigest: digestSchema.nullable(),
+    source: z.enum(['operator-file', 'application', 'baseline']), approvalRequired: z.boolean(), explicitReviewRequired: z.boolean(),
+    executionBackend: z.enum(['none', 'oci']), evidence: z.literal('policy-evaluation')
+  }),
   runEvent("text-delta", { textDelta: z.string() }),
   runEvent("tool-call", {
     toolCallId: z.string().min(1),

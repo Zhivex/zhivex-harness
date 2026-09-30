@@ -1,3 +1,4 @@
+import { resolveAcpMcpSessionProvider, type AcpMcpSessionProvider } from './acp-mcp-session.js';
 import { randomUUID } from "node:crypto";
 import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
@@ -12,6 +13,8 @@ const permissionResult = z.object({ outcome: z.union([
 export interface AcpConnectionOptions {
   /** Fixed host-owned workspace. Client requests cannot change it. */
   workspace: string;
+  /** Opaque capability returned by the isolated MCP host factory. */
+  mcpSessionProvider?: AcpMcpSessionProvider;
   notify(message: { jsonrpc: "2.0"; method: "session/update"; params: Record<string, unknown> }): void | Promise<void>;
   requestPermission(params: Record<string, unknown>, signal?: AbortSignal): Promise<unknown>;
 }
@@ -19,13 +22,15 @@ type ProjectlessCommand = HarnessClientCommand extends infer C ? C extends { pro
 class AcpFault extends Error { constructor(readonly code: number, message: string) { super(message); } }
 
 /** Embedding adapter for ACP v1 text sessions, not a complete ACP implementation.
- * No transport, session loading, client filesystem/terminal, or client-supplied MCP.
+ * No transport, session loading or client filesystem/terminal. Client MCP requires a host capability.
  * Every approval remains bound to the existing adapter's revision/digest checks. */
 export const createAcpConnection = (adapter: HarnessClientAdapter, options: AcpConnectionOptions) => {
   if (!isAbsolute(options.workspace)) throw new Error("ACP workspace must be absolute");
   const negotiated = adapter.negotiate([1]);
   if (!negotiated.ok) throw new Error(negotiated.error.code);
+  const mcp = options.mcpSessionProvider ? resolveAcpMcpSessionProvider(options.mcpSessionProvider, adapter) : undefined;
   let initialized = false;
+  let creating = false;
   const sessions = new Set<string>();
   let active: { sessionId: string; cancelled: boolean; cancel: () => void; cancellation: Promise<void> } | undefined;
   const command = async (value: ProjectlessCommand): Promise<HarnessClientData> => {
@@ -42,18 +47,25 @@ export const createAcpConnection = (adapter: HarnessClientAdapter, options: AcpC
       initialized = true;
       return { protocolVersion: 1, agentCapabilities: { loadSession: false, promptCapabilities: { image: false, audio: false, embeddedContext: false }, mcpCapabilities: { http: false, sse: false } },
         authMethods: [], agentInfo: { name: "zhivex-harness", title: "Zhivex Harness (text-session subset)", version: "1" },
-        _meta: { zhivex: { subset: true, fixedWorkspace: true, clientMcp: false } } };
+        _meta: { zhivex: { subset: true, fixedWorkspace: true, clientMcp: !!mcp } } };
     }
     if (!initialized) throw new AcpFault(-32002, "Initialize first");
     if (method === "session/new") {
       if (sessions.size >= 256) throw new AcpFault(-32000, "Session capacity exceeded");
-      if (active) throw new AcpFault(-32000, "BUSY");
-      const input = z.object({ cwd: z.string(), mcpServers: z.array(z.unknown()).max(0) }).strict().parse(params);
+      if (active || creating) throw new AcpFault(-32000, "BUSY");
+      const input = z.object({ cwd: z.string(), mcpServers: z.array(z.unknown()).max(mcp ? 8 : 0) }).strict().parse(params);
       if (!isAbsolute(input.cwd) || resolve(input.cwd) !== resolve(options.workspace)) throw new AcpFault(-32602, "Workspace is host-owned");
-      const data = await command({ method: "session.create", idempotencyKey: randomUUID() });
-      if (data.kind !== "session") throw new AcpFault(-32603, "Invalid adapter response");
-      sessions.add(data.session.sessionId);
-      return { sessionId: data.session.sessionId };
+      let servers;
+      try { servers = mcp?.parse(input.mcpServers); }
+      catch { throw new AcpFault(-32602, 'MCP configuration was not accepted by the host'); }
+      creating = true;
+      try {
+        const data = await command({ method: "session.create", idempotencyKey: randomUUID() });
+        if (data.kind !== "session") throw new AcpFault(-32603, "Invalid adapter response");
+        if (mcp && servers) mcp.bind(data.session.sessionId, servers);
+        sessions.add(data.session.sessionId);
+        return { sessionId: data.session.sessionId };
+      } finally { creating = false; }
     }
     if (method === "session/cancel") {
       const input = sessionParams.parse(params); requireSession(input.sessionId);
@@ -65,7 +77,7 @@ export const createAcpConnection = (adapter: HarnessClientAdapter, options: AcpC
     requireSession(input.sessionId);
     const prompt = input.prompt.map(block => block.text).join("\n");
     if (!prompt.trim() || prompt.length > 64 * 1024) throw new AcpFault(-32602, "Invalid prompt size");
-    if (active) throw new AcpFault(-32000, "BUSY");
+    if (active || creating) throw new AcpFault(-32000, "BUSY");
     const permissionController = new AbortController();
     let cancel!: () => void;
     const current = { sessionId: input.sessionId, cancelled: false, cancellation: new Promise<void>(resolve => { cancel = resolve; }), cancel: () => { permissionController.abort(); cancel(); } };

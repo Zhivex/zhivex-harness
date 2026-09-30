@@ -1,8 +1,12 @@
 import { packager } from "@electron/packager";
 import { mkdtemp, cp, writeFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { installedHarness } from "./installed-harness.js";
 const root = path.resolve(import.meta.dir, "..");
 const meta = await Bun.file(path.join(root, "package.json")).json();
+const candidate = await installedHarness(root);
+const built = await Bun.file(path.join(root, "build/runtime-metadata.json")).json();
+if (built.harnessArtifactSha256 !== candidate.sha256) throw new Error("Build and package Harness candidates differ. Rebuild Desktop first.");
 const stage = await mkdtemp("/tmp/zhx-desktop-package-");
 try {
     await cp(path.join(root, "build"), path.join(stage, "build"), { recursive: true });

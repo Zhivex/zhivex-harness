@@ -3,7 +3,7 @@
 **Work on your code with an agent. Review consequential actions before approving them.**
 
 Zhivex Harness is a local terminal assistant and TypeScript library. It supports
-OpenAI, Qwen and Meta, with provisional Gemini support. Conversations and pending
+OpenAI, Qwen and Meta, with provisional Gemini, Anthropic and Vertex support. Conversations and pending
 approvals survive restarts.
 
 Use it to understand a repository, discuss a design, investigate a failure or
@@ -11,10 +11,10 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
-Version `1.3.0-rc.3` prepares the terminal-independent engine API and the local
+Version `1.3.0-rc.4` prepares the terminal-independent engine API and the local
 Code package for candidate validation on npm `next`. Publication remains pending
-the protected release workflow. This RC does not include the pending Anthropic,
-Gemini/Vertex, Desktop migration or independent Code publication milestones.
+the protected release workflow. RC4 includes Anthropic, Gemini/Vertex, Desktop package migration, isolated MCP/ACP,
+checkpoints and experimental governance controls. Code publication is independent.
 Stable `1.2.0` remains available under npm `latest`.
 Desktop retains its separate private alpha status.
 
@@ -23,7 +23,7 @@ Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.3.0-rc.3
+npm install -g @zhivex-ai/harness@1.3.0-rc.4
 cd /path/to/your/project
 zhx
 ```
@@ -67,7 +67,7 @@ The default runtime has no OS isolation and exposes no shell-class tools. Runnin
 commands in isolation requires an explicitly configured Docker or Podman environment;
 see [Execution environments](docs/EXECUTION_ENVIRONMENTS.md).
 
-Gemini remains provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
+Gemini, [Anthropic](docs/ANTHROPIC.md) and [Vertex](docs/VERTEX.md) remain provisional. See the [support matrix](docs/SUPPORT_MATRIX.md) and
 [security policy](SECURITY.md) for supported configurations and reporting concerns.
 
 ## Documentation

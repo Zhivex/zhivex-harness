@@ -663,3 +663,135 @@ Activity shows phase and total elapsed time. Preparing edits, waiting for approv
 applied file changes and verification are distinct states. `/diff` reviews workspace
 changes, including changes outside the current run; file receipts identify mutations
 recorded by this harness.
+## Trusted tool policy
+
+For an additional host-owned tool policy, use `--tool-policy <absolute-policy.json>`
+on run, chat, review or resume. The policy is experimental and must be outside the
+repository with private ownership/permissions. See [tool policy semantics](TOOL_POLICY.md).
+Clients using `--service` cannot supply this option; configure the service host.
+
+## Reviewed workspace checkpoints
+
+Use `zhx checkpoints capture <sessionId> <turnId> <path> [paths...]` to capture
+explicit files at an existing terminal conversation turn. Discover turn IDs with
+`zhx sessions inspect <sessionId>`. Capture stores the current contents; it does
+not reconstruct historical file versions. Checkpoints cover only the selected
+existing UTF-8 text files, at most 20 files of 64 KiB each. Creation, deletion,
+binary files and permission rollback are excluded. This is not a full snapshot.
+
+Capture is opt-in at the idle boundary between turns: wait for all source runs
+to terminate, select the files, capture, and only then start the next task or
+external edit. Capture does not start a run or authorize changes. If capture
+fails, no checkpoint was established; resolve the error before proceeding with
+work that needs a recovery point. There is no automatic capture on each turn.
+The stored manifest records the selected paths, digests, contents and modes;
+inspection reports file sizes, coverage and unsupported current files.
+
+```sh
+zhx checkpoints list <sessionId>
+zhx checkpoints inspect <checkpointId>
+zhx checkpoints prepare <checkpointId>
+zhx checkpoints review <operationId>
+# After reviewing the exact before/after diff:
+zhx checkpoints apply <operationId> <reviewedProposalId>
+```
+
+Preparation binds the current file digests without changing files. Apply requires
+the exact proposal identifier printed in the review; `--yes` cannot replace it.
+The digest is an identity check, not proof of human review. Read the diff before
+invoking apply. Subsequent file or permission changes cause a conflict. Missing,
+protected, binary or oversized files are shown as unavailable and are not recreated.
+
+Apply preserves the original conversation and returns its derivative. On an
+interactive terminal it opens that derivative in the console. With `--json`, it
+returns a versioned document containing the derivative session; noninteractive
+text output prints the command to open it later. These commands use local state
+without constructing a model or requiring provider credentials. Use the same
+`--workspace`, `--state-dir`, `--tenant`, `--user` and `--namespace` as the source.
+They currently do not support `--service`.
+
+After an interruption, list the source session's checkpoints and review the saved
+operation. Repeating apply for a completed operation returns the existing derivative.
+If its stage is `forking`, inspect the source's child conversations and reconcile
+the exact child titled `restore:<operationId>` using
+`zhx checkpoints recover <operationId> <existingForkSessionId>`. Recovery does not
+apply files; review and apply separately. Partial filesystem changes or a conflicting
+base require manual recovery and are never silently overwritten.
+
+### Checkpoint capacity and reviewed removal
+
+`zhx checkpoints storage` reports the current workspace/scope policy and capacity.
+The limit is 100 combined checkpoint and restore records, at most 2 MiB per
+serialized record. A capture uses one slot; preparing a restore uses another.
+Updating an existing restore can finish at capacity. There is no automatic
+eviction: a full store rejects new records while preserving existing evidence.
+Serialized bytes are logical record sizes, not SQLite file size or free disk space.
+
+Free slots by explicitly reviewing exact IDs; no age-based or implicit selection
+is performed. List a session to find its checkpoint and restore IDs. A checkpoint
+referenced by any retained restore cannot be removed. Pending restore evidence
+cannot be removed, even when the store is full. Completed restore records can be
+selected explicitly together with their checkpoint, after all references have
+been resolved.
+
+```sh
+zhx checkpoints storage
+zhx checkpoints prune-review checkpoint:<checkpointId> restore:<completedRestoreId>
+# Read the records, scope and counts in the review, then reuse that exact selection:
+zhx checkpoints prune-apply <reviewedPlanId> checkpoint:<checkpointId> restore:<completedRestoreId>
+```
+
+The review writes nothing and works at capacity. Apply requires the returned
+SHA-256 plan identity and checks the entire scoped inventory again in a SQLite
+transaction. Any inventory change requires a new review. A failed deletion rolls
+back the whole selection. Removal is permanent for those stored records; it does
+not delete workspace files, conversations or the restored derivative. The plan
+hash checks identity; it is not proof that a person reviewed the selection.
+
+State export preserves retained captures and completed restore records and
+refuses pending restore authority. Export/import never prune to fit capacity.
+Import accepts an empty destination or an identical prior import, not a merge
+with changed checkpoint history. These administrative retention commands run
+locally; Desktop can continue using the same retained checkpoints afterward.
+
+### Inspect the configured policy
+
+`zhx policy --json` returns the versioned `policy-inspection` document for a locally
+constructed host. It accepts the host's runtime settings, including `--tool-policy`.
+`zhx policy --service <credentials.json> --json` queries the existing host instead;
+runtime overrides are rejected in service mode. Omit `--json` for a readable
+summary. Neither form starts an agent run or authorizes a pending approval.
+The local form uses normal host initialization; the service form does not create
+a session. Backend and limits describe configuration, not successful OCI execution.
+
+`run`, `resume`, and local `chat` display policy explanations on stderr in text mode.
+In chat, `/approve` shows the explanation and opens complete review when the host
+requires it, including after restarting a pending conversation. The run/resume JSON
+final document includes `policyEvidence` scoped to the current invocation: at most
+64 events and 256 KiB, with `observed` and `truncated` indicating omitted evidence.
+JSONL emits policy decisions as versioned `run-event` records in the same sequence
+as other events. A service-backed run uses the same event projection and bounded
+final evidence. These observations do not replace durable tool execution receipts.
+
+### Portable governance report (Experimental)
+
+`zhx runs report <runId> [envelope.json] [--session <sessionId>] [--json]`
+exports a bounded projection from durable runs and their journals. Default output
+is Markdown; `--json` emits strict versioned `harness-governance-report` JSON.
+The existing `runs export` inspection format is unchanged. The command does not
+construct a provider, execute tools, resume runs, or inspect current workspace
+bytes. The optional envelope file is read as bounded regular-file JSON.
+
+Session selection verifies that the root run belongs to that session and includes
+retained policy decisions. Activity replay applies the existing retention policy;
+expired or truncated history is explicitly incomplete. The report excludes
+prompts, arguments, outputs, free-form errors and arbitrary metadata. Identifiers
+and paths become domain-separated hash references: pseudonyms, not anonymity.
+
+Execution completion, recorded delivery and pending semantic review are separate.
+Missing usage stays null; partial usage is labelled incomplete; costs are estimates,
+not invoices. The exporter version is not evidence of the execution artifact.
+An envelope link matches the recorded patch identifier; envelope integrity and
+expiry are checked separately. Patch bytes and producer authenticity remain
+unverified. No envelope v1 fields are added. Concurrent source changes and hard
+capacity limits reject export; bounded tree/history truncation is reported.

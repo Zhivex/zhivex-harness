@@ -1,3 +1,4 @@
+import { governanceReportCli } from './governance-report.js';
 import { inspectRuntimeDiagnostics } from "../runtime/runtime-diagnostics.js";
 import { formatUsageLedger } from "../runtime/usage-ledger.js";
 import { resolveHarnessConfig } from "../runtime/config.js";
@@ -62,6 +63,11 @@ export const manageRuns = async (options: CliOptions) => {
       case "inspect":
         document = await inspectHarnessRun(persistence.store, config, options.runId!);
         break;
+      case "report": {
+        const report = await governanceReportCli(options, config, persistence.store);
+        process.stdout.write(report);
+        return;
+      }
       case "export": {
         const inspection = await inspectHarnessRun(persistence.store, config, options.runId!);
         document = { ...inspection, kind: "run-export" as const };

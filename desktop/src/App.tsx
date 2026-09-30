@@ -1,3 +1,4 @@
+import { CheckpointPanel } from "./CheckpointPanel.js";
 import {
   ArrowUp,
   ArrowUpRight,
@@ -21,10 +22,7 @@ import type {
   DesktopProject,
   DesktopProvider,
 } from "./bridge.js";
-import type {
-  HarnessClientRun,
-  HarnessClientSession,
-} from "../../src/internal/desktop/protocol.js";
+import type { HarnessClientRun, HarnessClientSession } from "@zhivex-ai/harness/protocol";
 import { ReviewPanel } from "./ReviewPanel.js";
 import { Conversation } from "./Conversation.js";
 import { applyActivityPage, emptyActivity } from "./activity.js";
@@ -655,6 +653,13 @@ export function App() {
             projectKey={context?.project.key}
             sessionId={session?.sessionId}
           />
+          {context && session ? <CheckpointPanel key={`${context.project.key}:${session.sessionId}`} projectKey={context.project.key}
+            session={session} disabled={busy || loading || disconnected || reconcileRequired} onOpen={async id => {
+              const epoch = generation.current;
+              const items = await refreshSessions(context.project.key);
+              if (epoch !== generation.current) return;
+              setSessions(items); await selectSession(id);
+            }} /> : null}
           {context && session && run?.status === "waiting_approval" ? (
             <ReviewPanel
               key={`${context.project.key}:${session.sessionId}:${run.runId}:${run.revision}`}

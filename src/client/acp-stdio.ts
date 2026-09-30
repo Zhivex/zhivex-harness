@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { Readable, Writable } from "node:stream";
-import { createAcpConnection } from "./acp.js";
+import { createAcpConnection, type AcpConnectionOptions } from "./acp.js";
 import type { HarnessClientAdapter } from "./protocol.js";
 
 /** JSON-lines transport. Bounded frames and pending requests; stdout contains JSON-RPC only. */
 export const serveAcpStdio = async (adapter: HarnessClientAdapter, options: {
-  workspace: string; input: Readable; output: Writable; permissionTimeoutMs?: number;
+  workspace: string; mcpSessionProvider?: AcpConnectionOptions['mcpSessionProvider']; input: Readable; output: Writable; permissionTimeoutMs?: number;
 }) => {
   const timeoutMs = options.permissionTimeoutMs ?? 15 * 60_000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 15 * 60_000) throw new Error("Invalid ACP permission timeout");
@@ -18,6 +18,7 @@ export const serveAcpStdio = async (adapter: HarnessClientAdapter, options: {
   let transportFailure: unknown;
   const connection = createAcpConnection(adapter, {
     workspace: options.workspace,
+    ...(options.mcpSessionProvider ? { mcpSessionProvider: options.mcpSessionProvider } : {}),
     notify: write,
     requestPermission: async (params, signal) => {
       const id = `permission_${randomUUID()}`;

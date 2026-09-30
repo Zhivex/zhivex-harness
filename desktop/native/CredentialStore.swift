@@ -4,7 +4,7 @@ import AppKit
 
 // Secrets never appear in arguments, errors or configuration files.
 let service = "ai.zhivex.harness.providers"
-let providers = ["openai": "OpenAI", "qwen": "Qwen", "meta": "Meta", "gemini": "Gemini"]
+let providers = ["openai": "OpenAI", "qwen": "Qwen", "meta": "Meta", "gemini": "Gemini", "anthropic": "Anthropic"]
 var account = "openai"
 enum VaultError: Error { case status(OSStatus), invalid, cancelled }
 func check(_ status: OSStatus) throws { if status != errSecSuccess { throw VaultError.status(status) } }

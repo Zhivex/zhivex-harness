@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {constants} from "node:fs";
 import {lstat, mkdir, mkdtemp, open, readdir, realpath, rm} from "node:fs/promises";
 import path from "node:path";
-import {readRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
+import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 
 const fixed = ["projects/projects.json", "tasks/tasks.json", "state-compatibility/format.json"];
 const journalRoots = ["git-delivery", "remote-delivery", "pull-requests"];

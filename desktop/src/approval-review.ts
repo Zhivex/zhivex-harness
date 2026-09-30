@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { HarnessClientRun } from "../../src/internal/desktop/protocol.js";
+import type { HarnessClientRun } from "@zhivex-ai/harness/protocol";
 export interface ApprovalReviewFile { path: string; expectedDigest: string | null; before?: string; after?: string; view: "literal-replacement" | "replacement-contents" | "operation" | "full-file"; afterDigest?: string | null; beforeMode?: number; afterMode?: number; operation?: "create" | "update" | "delete" }
 export interface ApprovalReviewItem {
     approvalId: string; digest: string; expiresAt: number; name: string; payloadDigest: string;

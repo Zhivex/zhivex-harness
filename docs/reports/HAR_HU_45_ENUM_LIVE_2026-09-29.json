@@ -1,0 +1,105 @@
+{
+  "ok": false,
+  "gate": "live-orchestration-smoke",
+  "certifiedAt": "2026-09-29T19:55:47.312Z",
+  "providers": [
+    {
+      "ok": false,
+      "provider": "vertex",
+      "model": "gemini-3.7-flash",
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "checkpoint": "orchestration_status",
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "delegation": "acceptance",
+              "kind": "GuardrailTriggeredError"
+            }
+          ]
+        },
+        "fingerprint": "sha256:8bccb18c48a726c197f09ecb1aa8833914557545e569ebe772e41d09dcfc8747"
+      }
+    },
+    {
+      "ok": false,
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "checkpoint": "orchestration_status",
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "GuardrailTriggeredError",
+              "budget": {
+                "budgetLimit": "maxSteps",
+                "limit": 4,
+                "actual": 3,
+                "required": 2,
+                "remaining": 1,
+                "operation": "model",
+                "includeChildRuns": true
+              }
+            }
+          ]
+        },
+        "fingerprint": "sha256:4ee5b776711b1f1a6efa1f1b7df9426622c720426837e713954068d3405b824c"
+      }
+    },
+    {
+      "ok": false,
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "checkpoint": "orchestration_status",
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "GuardrailTriggeredError",
+              "budget": {
+                "budgetLimit": "maxSteps",
+                "limit": 4,
+                "actual": 3,
+                "required": 2,
+                "remaining": 1,
+                "operation": "model",
+                "includeChildRuns": true
+              }
+            }
+          ]
+        },
+        "fingerprint": "sha256:4ee5b776711b1f1a6efa1f1b7df9426622c720426837e713954068d3405b824c"
+      }
+    }
+  ],
+  "artifactSha256": "779dc9cb15d03b9e5344e70cf7c20d19a239018abb010c78d99a3d672dbd836b",
+  "limitation": "This attempt still had createHarness aggregate maxSteps=4; driver fixed afterwards, not yet live verified."
+}

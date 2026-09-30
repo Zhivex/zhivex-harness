@@ -305,3 +305,14 @@ test("actual adaptive re-compaction retains implementation context beside a stat
   expect(state.objective).toBe("What is the status?");
   expect(state.steering).toContain(implementation);
 });
+
+test('a bounded current request retains its final instruction across repeated compaction',()=>{
+  const request='Perform the requested reviewed edit. '+ 'Bounded task detail. '.repeat(39)+'After approval reply EXACT_COMPLETION_MARKER.';
+  expect(request.length).toBeGreaterThan(768);
+  const first=summarizeHarnessMessages([text(request)]);
+  expect(first.summary.length).toBeLessThanOrEqual(4000);
+  expect(first.summary).toContain('EXACT_COMPLETION_MARKER');
+  const second=summarizeHarnessMessages(compactMessages([text(request)]));
+  expect(second.summary).toContain('EXACT_COMPLETION_MARKER');
+  expect(second.summary.length).toBeLessThanOrEqual(4000);
+});

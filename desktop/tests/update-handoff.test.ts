@@ -6,7 +6,7 @@ import {prepareDesktopStateTransaction, armDesktopStateTransaction} from "../src
 import {prepareDesktopUpdateJob, inspectDesktopUpdateJob} from "../src/update-job.js";
 import {prepareDesktopUpdateHandoff, acknowledgeDesktopUpdateHandoff, waitForDesktopUpdateAcknowledgement, assertDesktopUpdateOwnersStopped, waitForDesktopUpdateOwners} from "../src/update-handoff.js";
 import {resolveHarnessConfig} from "../../src/runtime/config.js";
-import {acquireSqliteAccess} from "../../src/persistence/sqlite-access.js";
+import {acquireSqliteAccess} from "@zhivex-ai/harness/desktop/v1/state";
 import {HARNESS_SQLITE_FILE} from "../../src/persistence/operations.js";
 async function setup(withDatabases = false) {
  const userData = await realpath(await mkdtemp("/tmp/har-handoff-"));
