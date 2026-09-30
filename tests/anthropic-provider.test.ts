@@ -16,6 +16,68 @@ const call = { type: "tool_use", id: "toolu_fixture", name: "read_file", input: 
 const reply = { id: "msg_fixture", type: "message", role: "assistant", model: config.model,
   content: [thinking, call], stop_reason: "tool_use", usage: { input_tokens: 20, output_tokens: 7 } };
 
+for (const endpoint of [
+  { name: "absent", value: undefined, expected: "https://api.anthropic.com/v1/messages" },
+  { name: "empty", value: "", expected: "https://api.anthropic.com/v1/messages" },
+  { name: "whitespace", value: " \t ", expected: "https://api.anthropic.com/v1/messages" },
+  { name: "custom HTTPS", value: " https://proxy.example/v1/ ", expected: "https://proxy.example/v1/messages" }
+]) for (const mode of ["generate", "stream"] as const) {
+  test(`Anthropic ${mode} resolves ${endpoint.name} endpoint without inheriting ambient settings`, async () => {
+    const original = globalThis.fetch;
+    const previous = { endpoint: process.env.ANTHROPIC_BASE_URL, workspace: process.env.ANTHROPIC_WORKSPACE_ID };
+    process.env.ANTHROPIC_BASE_URL = "https://unselected.example/v1";
+    process.env.ANTHROPIC_WORKSPACE_ID = "unselected-workspace";
+    let requests = 0;
+    globalThis.fetch = Object.assign(async (url: unknown, init?: RequestInit) => {
+      requests++;
+      expect(String(url)).toBe(endpoint.expected);
+      const headers = new Headers(init?.headers);
+      expect(headers.get("x-api-key")).toBe(env.ANTHROPIC_API_KEY);
+      expect(headers.has("anthropic-workspace-id")).toBe(false);
+      expect(Boolean(JSON.parse(String(init?.body)).stream)).toBe(mode === "stream");
+      if (mode === "generate") return Response.json(reply);
+      return new Response([
+        `event: message_start\ndata: ${JSON.stringify({ message: { usage: reply.usage } })}\n\n`,
+        'event: message_delta\ndata: {"delta":{"stop_reason":"end_turn"}}\n\n',
+        'event: message_stop\ndata: {}\n\n'
+      ].join(""));
+    }, { preconnect: original.preconnect });
+    try {
+      const model = registry.createModel(config, {
+        ...env,
+        ...(endpoint.value === undefined ? {} : { ANTHROPIC_BASE_URL: endpoint.value })
+      });
+      const input = { messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "hello" }] }] };
+      if (mode === "generate") expect((await model.generate(input)).usage?.inputTokens).toBe(20);
+      else {
+        const events: StreamEvent[] = [];
+        for await (const event of await model.stream!(input)) events.push(event);
+        expect(events.some(event => event.type === "finish")).toBe(true);
+      }
+      expect(requests).toBe(1);
+    } finally {
+      globalThis.fetch = original;
+      if (previous.endpoint === undefined) delete process.env.ANTHROPIC_BASE_URL; else process.env.ANTHROPIC_BASE_URL = previous.endpoint;
+      if (previous.workspace === undefined) delete process.env.ANTHROPIC_WORKSPACE_ID; else process.env.ANTHROPIC_WORKSPACE_ID = previous.workspace;
+    }
+  });
+}
+
+for (const baseURL of ["http://example.com/v1", "https://127.0.0.1/v1", "https://fixture:dummy@example.com/v1"]) {
+  test(`Anthropic rejects unsafe endpoint ${baseURL} before fetch`, () => {
+    const original = globalThis.fetch;
+    let requests = 0;
+    globalThis.fetch = Object.assign(async () => {
+      requests++;
+      throw new Error("Unexpected fixture request");
+    }, { preconnect: original.preconnect });
+    try {
+      expect(() => registry.createModel(config, { ...env, ANTHROPIC_BASE_URL: baseURL })).toThrow();
+      expect(requests).toBe(0);
+    } finally { globalThis.fetch = original; }
+  });
+}
+
 test("Anthropic is shared, provisional, explicit and presence-only", () => {
   expect(resolveHarnessConfig({ provider: "anthropic" }).model).toBe(config.model);
   expect(registry.descriptor("anthropic")).toMatchObject({ support: "provisional", credentialNames: ["ANTHROPIC_API_KEY"] });

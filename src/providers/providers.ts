@@ -610,7 +610,7 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
       return withAnthropicContinuation(createAnthropic({
         apiKey: credentials.require(),
         // Keep the SDK inside this host's explicit environment/credential boundary.
-        baseURL: baseURL ?? "https://api.anthropic.com/v1",
+        baseURL: baseURL || "https://api.anthropic.com/v1",
         workspaceId: null
       })(model));
     }
