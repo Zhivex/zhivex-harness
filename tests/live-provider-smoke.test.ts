@@ -214,3 +214,41 @@ test("execution gate preserves message-only provider status without retaining pr
   expect(() => liveExecutionSmokeInternals.assertExecutionRunStatus({ status: "completed", outputText: "done" })).not.toThrow();
   expect(() => liveExecutionSmokeInternals.assertExecutionRunStatus({ status: "waiting_approval" })).toThrow();
 });
+
+test('structured delegation certification is opt-in and requires durable accepted evidence',async()=>{
+  const {reviewDelegationContract,assertStructuredDelegationEvidence}=await import('../scripts/live-orchestration-smoke.js');
+  expect(reviewDelegationContract('anthropic').resultContract).toBeUndefined();
+  expect(reviewDelegationContract('anthropic',true).resultContract).toEqual({schemaVersion:1,requiredReadPaths:['review-target.txt'],humanReviewRequired:true,maxCorrections:1});
+  const evaluation={taskId:'release-review',childRunId:'child',childStatus:'completed',accepted:true,semanticReview:'pending',correctionsUsed:1};
+  expect(()=>assertStructuredDelegationEvidence({schemaVersion:1,evaluations:[evaluation]},'child')).not.toThrow();
+  for(const change of [{accepted:false},{childRunId:'another'},{childStatus:'failed'},{semanticReview:'verified'},{correctionsUsed:2}]) {
+    expect(()=>assertStructuredDelegationEvidence({schemaVersion:1,evaluations:[{...evaluation,...change}]},'child')).toThrow();
+  }
+  expect(()=>assertStructuredDelegationEvidence(undefined,'child')).toThrow();
+});
+
+ test('Vertex live preflight accepts explicit route configuration without pretending ADC is validated',()=>{
+  expect(providerHasCredentials('vertex',{})).toBe(false);
+  expect(providerHasCredentials('vertex',{GOOGLE_CLOUD_PROJECT:'fixture-project',VERTEX_LOCATION:'global'})).toBe(true);
+  expect(providerHasCredentials('vertex',{GOOGLE_CLOUD_PROJECT:'invalid/path',VERTEX_LOCATION:'global'})).toBe(false);
+  expect(providerHasCredentials('anthropic',{})).toBe(false);
+  expect(providerHasCredentials('anthropic',{ANTHROPIC_API_KEY:'fixture-only'})).toBe(true);
+ });
+ test('live error redaction excludes Vertex routing identifiers and ADC paths',()=>{
+  const env={GOOGLE_CLOUD_PROJECT:'private-project',VERTEX_LOCATION:'private-location',GOOGLE_APPLICATION_CREDENTIALS:'/private/adc.json',ANTHROPIC_BASE_URL:'https://private.endpoint'};
+  expect(redacted(Object.values(env).join(' '),env)).toBe('[REDACTED] [REDACTED] [REDACTED] [REDACTED]');
+ });
+
+test('approval continuation evidence isolates the approved call and preserves private state exactly',async()=>{
+  const {approvalContinuation}=await import('../scripts/live-provider-smoke.js');
+  const messages: import('@zhivex-ai/core').ModelMessage[]=[{role:'assistant',parts:[
+    {type:'provider-data',provider:'anthropic',data:{type:'thinking',signature:'fixture-signature'}},
+    {type:'tool-call',toolCall:{id:'approved',name:'apply_patch',input:{},providerMetadata:{geminiThoughtSignature:'fixture-google'}}}
+  ]}];
+  const snapshot=approvalContinuation(messages,'approved');
+  expect(snapshot).toEqual({metadata:{geminiThoughtSignature:'fixture-google'},privateParts:[{type:'provider-data',provider:'anthropic',data:{type:'thinking',signature:'fixture-signature'}}]});
+  expect(()=>approvalContinuation(messages,'absent')).toThrow('Approved call must survive');
+  (messages[0]!.parts[0] as {data:unknown}).data={type:'thinking',signature:'mutated'};
+  expect(snapshot.privateParts[0]).toMatchObject({data:{signature:'fixture-signature'}});
+  expect(approvalContinuation(messages,'approved')).not.toEqual(snapshot);
+});

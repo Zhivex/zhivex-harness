@@ -7,6 +7,7 @@ import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { getAgentBudgetStatus } from "@zhivex-ai/agents";
 
+import { issueExplicitReviewResponses } from "../src/approvals/explicit-review.js";
 import { createEditProposal } from "../src/workspace/edit-contracts.js";
 import { HarnessConfigError } from "../src/runtime/errors.js";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
@@ -136,7 +137,7 @@ describe("bounded orchestration", () => {
     }
   });
 
-  test("promotes a child mutation approval and resumes the same child exactly once", async () => {
+  for (const explicit of [false, true]) test(`promotes a child mutation approval and resumes the same child exactly once (explicit=${explicit})`, async () => {
     const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-subapproval-"));
     try {
       const store = createInMemoryAgentRunStore();
@@ -181,7 +182,8 @@ describe("bounded orchestration", () => {
         modelInstance: parentModel,
         subagentModels: { implementer: implementerModel },
         subagentProfiles: ["implementer"],
-        store
+        store,
+        ...(explicit ? { toolPolicy: { schemaVersion: 1 as const, explicitReview: { schemaVersion: 1 as const }, rules: [] } } : {})
       });
       const waiting = await runHarness(harness, {
         runId: "parent-subapproval",
@@ -196,9 +198,16 @@ describe("bounded orchestration", () => {
       });
       await expect(readFile(path.join(workspace, "child.txt"), "utf8")).rejects.toThrow();
 
+      const ordinary = approveAll(waiting.state.pendingApprovals);
+      if (explicit) {
+        await expect(runHarness(harness, { state: waiting.state, approvals: ordinary })).rejects.toThrow('EXPLICIT_REVIEW_REQUIRED');
+        expect((await store.load(waiting.state.runId, harness.config.scope))?.status).toBe('waiting_approval');
+        await expect(readFile(path.join(workspace, 'child.txt'), 'utf8')).rejects.toThrow();
+      }
+      const reviewed = explicit ? issueExplicitReviewResponses(harness, waiting.state, ordinary, 'fixture-review') : ordinary;
       const completed = await runHarness(harness, {
         state: waiting.state,
-        approvals: approveAll(waiting.state.pendingApprovals)
+        approvals: reviewed
       });
       expect(completed.status).toBe("completed");
       expect(await readFile(path.join(workspace, "child.txt"), "utf8")).toBe("child-approved\n");
@@ -209,6 +218,12 @@ describe("bounded orchestration", () => {
         : [];
       expect(journal.filter((entry) => entry.toolName === "apply_patch" && entry.status === "completed"))
         .toHaveLength(1);
+      if (explicit) {
+        expect(completed.state.metadata?.clientApprovalDecisionsV1).toMatchObject([{ provenance: { origin: 'interactive', channel: 'fixture-review' } }]);
+        await expect(runHarness(harness, { state: waiting.state, approvals: reviewed })).rejects.toThrow('EXPLICIT_REVIEW_REQUIRED');
+        const afterReplay = await store.listToolCalls?.(child!.runId, harness.config.scope) ?? [];
+        expect(afterReplay.filter(entry => entry.toolName === 'apply_patch' && entry.status === 'completed')).toHaveLength(1);
+      }
       await harness.close();
     } finally {
       await rm(workspace, { recursive: true, force: true });

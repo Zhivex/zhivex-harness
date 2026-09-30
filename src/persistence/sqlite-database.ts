@@ -3,7 +3,9 @@ import {acquireSqliteAccess, validateSqliteAccess, retainSqliteAccess, type Sqli
 import { createRequire } from "node:module";
 import type { DatabaseSync as NodeDatabaseSync } from "node:sqlite";
 
-const require = createRequire(import.meta.url);
+// Only Node builtins are loaded here. Binding to the executable also supports
+// hosts that bundle the installed engine into CommonJS without source rewriting.
+const require = createRequire(process.execPath);
 let DatabaseSyncConstructor: typeof import("node:sqlite")["DatabaseSync"] | undefined;
 
 const loadDatabaseSync = () => {

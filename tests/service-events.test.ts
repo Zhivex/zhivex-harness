@@ -67,3 +67,21 @@ test("known credentials containing whitespace remain private across stream bound
   expect(store.replay("s").events.map(e=>e.activity.textDelta??"").join("")).toBe("answer [REDACTED] next ");store.close();
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('policy replay pages retain incompleteness after expiry and reopening', async () => {
+ const root=await mkdtemp('/tmp/har-policy-events-'); const config=resolveHarnessConfig({workspace:root});
+ const decision={schemaVersion:1 as const,type:'policy-decision' as const,phase:'tool-entry' as const,toolName:'read_file',decision:'deny' as const,
+  ruleIds:['private'],reason:'Denied by policy',reasonTruncated:false,policyDigest:null,source:'baseline' as const,
+  approvalRequired:false,explicitReviewRequired:false,executionBackend:'none' as const,evidence:'policy-evaluation' as const};
+ let store=await openHarnessActivityStore(config,{maxEvents:300});
+ try {
+  for(let i=0;i<201;i++)store.policyDecision('s','r',decision);
+  const first=store.replay('s');expect(first.events).toHaveLength(200);expect(first.hasMore).toBe(true);expect(first.policyEvidenceIncomplete).toBe(false);
+  const second=store.replay('s',first.nextCursor);expect(second.events).toHaveLength(1);expect(second.hasMore).toBe(false);
+  store.close();store=await openHarnessActivityStore(config,{maxEvents:1});
+  const expired=store.replay('s');expect(expired.cursorExpired).toBe(true);expect(expired.policyEvidenceIncomplete).toBe(true);
+  store.close();store=await openHarnessActivityStore(config,{maxEvents:1});
+  const recovered=store.replay('s',expired.nextCursor);expect(recovered.cursorExpired).toBe(false);expect(recovered.policyEvidenceIncomplete).toBe(true);
+  expect(recovered.events).toHaveLength(0);
+ }finally{store.close();await rm(root,{recursive:true,force:true});}
+});

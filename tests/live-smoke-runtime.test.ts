@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { loadLiveSmokeRuntime } from "../scripts/live-smoke-runtime.js";
 
-const functions = ["createHarness", "runHarness", "providerDescriptor", "parseProvider", "createEditProposal",
+const functions = ["createHarness", "runHarness", "providerDescriptor", "providerAvailability", "parseProvider", "createEditProposal",
   "inspectHarnessRun", "createHarnessRouteModels", "resolveHarnessModelRoutes", "HarnessConfigError", "HarnessExecutionError"];
 
 test("release live runtime cannot silently fall back to source", async () => {

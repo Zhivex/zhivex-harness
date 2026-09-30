@@ -4,3 +4,4 @@ export type { HarnessClientCommand, HarnessClientRequest, HarnessClientErrorCode
 export { CLI_JSON_SCHEMA_VERSION, CLI_EVENT_SCHEMA_VERSION, streamEventDocument, serializeStreamEvent, streamResultDocument, serializeStreamResult } from "../client/stream.js";
 export type { StreamRunResultSource } from "../client/stream.js";
 export type { HarnessActivityEvent, HarnessActivityRun, HarnessActivitySnapshot, HarnessActivityPage } from "../client/service-events.js";
+export type { ApprovalDecisionView } from "../approvals/approval-history.js";

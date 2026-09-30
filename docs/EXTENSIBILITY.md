@@ -75,7 +75,7 @@ The schema is versioned independently:
 
 Every server requires a non-empty tool or exact-resource allowlist and permission set. Tool discovery is paginated and bounded. Tool names are prefixed with `<server>_` unless an explicit safe prefix is supplied. Configuration contains environment-variable names rather than credential values; diagnostics and fingerprints never include resolved header values. Credential variables must use the dedicated `ZHIVEX_MCP_*` namespace, and HTTP authentication is limited to the canonical `authorization` and `x-api-key` headers so a workspace file cannot select unrelated process credentials or arbitrary outbound headers.
 
-The legacy built-in transport supports HTTPS and loopback HTTP; the opt-in SDK transport requires HTTPS. Redirects, URL credentials, unsafe configurable headers, oversized configuration, symlinked configuration, and configuration outside the workspace are rejected. `stdio` is intentionally unavailable because spawning an MCP server is process execution; it remains deferred until the enforced execution environment in `0.6.x`.
+The legacy built-in transport supports HTTPS and loopback HTTP; the opt-in SDK transport requires HTTPS. Redirects, URL credentials, unsafe configurable headers, oversized configuration, symlinked configuration, and configuration outside the workspace are rejected. `stdio` is intentionally unavailable because spawning an MCP server is process execution; the proposed admission and isolated-stream contract is documented in [ADR 0002](adr/0002-isolated-mcp-stdio.md). This design does not enable the transport.
 
 Library callers can inject a custom `McpClient`. Trusted read-only annotations are accepted only for an explicitly injected custom transport whose sole declared permission is `read`. HTTP always declares `network` and therefore always pauses for operator approval, even when a server claims a tool is read-only.
 
@@ -175,9 +175,52 @@ child must perform a successful allowed read and return `requiredOutput`; the pa
 without completed, accepted children for all configured contracts. The token
 checks a protocol condition, not the semantic correctness of the review.
 
+An opt-in experimental `resultContract` replaces marker acceptance with versioned
+JSON evidence for reviewer/explorer contracts:
+
+```ts
+resultContract: {
+  schemaVersion: 1,
+  requiredReadPaths: ["target.txt"],
+  humanReviewRequired: true,
+  maxCorrections: 0
+}
+```
+
+Required paths must be a subset of `allowedReadPaths`. The result contains
+`schemaVersion`, `taskId`, `status`, `inspectedFiles` and `findings`. Each inspected
+file declares its digest and evidence entries with `toolCallId`, `startLine` and
+`endLine`; findings reference those successful reads by path and call ID. Required
+files need complete line coverage from receipts with the same digest. Clipped
+lines, gaps, invented IDs, tool errors and invalid JSON cannot satisfy the
+contract. Results are bounded to 64 KiB, 32 files and 32 findings.
+
+The parent independently validates the durable child state and records
+`zhivexDelegationAcceptanceV1` evaluations containing child status, contract
+acceptance and semantic review status separately. An accepted schema and evidence
+coverage never certify the semantic correctness of findings. This option adds no
+write tools or arbitrary delegation authority.
+
+`maxCorrections` allows zero to two feedback attempts for invalid structured
+results. Each attempt remains in the same child run and consumes ordinary SDK
+steps, tokens and an internal feedback tool call; existing limits can stop it
+earlier. The model still sees only `read_file`. Invalid candidates remain in the
+durable history as data, and exhausted attempts fail acceptance. No tool or path
+permission is broadened for a correction.
+
+Installed deterministic acceptance is available with
+`bun run scripts/delegation-result-installed-smoke.ts <tarball> <node-path>`.
+The shared HU44 cohort covers fabricated evidence, incomplete reads, tool errors,
+invalid results, bounded correction, cancellation and durable reopen. It does not
+certify a provider route. For the separate live orchestration gate, set
+`ZHIVEX_HARNESS_LIVE_STRUCTURED_DELEGATION=1` alongside the normal live opt-in and
+installed-artifact runtime settings. That mode checks structured acceptance and
+pending semantic review before and after reopening; legacy marker certification
+remains the default. Missing credentials or failed calls are not successful gates.
+
 Contracts are copied at construction and bound into parent/child fingerprints;
 resuming under a different contract is rejected. This mode retains SDK child
-linkage, usage, cancellation and persistence. It does not retry invalid proposals
+linkage, usage, cancellation and persistence. Legacy marker contracts do not retry invalid proposals
 or increase a budget automatically. Callers without contracts keep the existing
 general-purpose delegation API, including approval-gated mutation profiles; the
 contract guarantees do not apply to that legacy mode. CLI configuration does not

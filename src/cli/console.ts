@@ -1,4 +1,8 @@
 import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
+import { observeCliPolicy } from "./policy-decisions.js";
+import { requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
+import { issueObservedApprovalResponses } from "../approvals/explicit-review.js";
+import { publishPendingPolicyDecision } from "../runtime/policy-decisions.js";
 import { chooseReasoning } from "./console/console-reasoning.js";
 import { reasoningEffortSchema } from "../providers/reasoning.js";
 import { cliToolExecution } from "./tool-execution.js";
@@ -154,7 +158,7 @@ export const chat = async (options: CliOptions) => {
     readline.stopBackground();
     try {
       return await terminalApprovalResolver(options.approvalMode ?? options.yes,
-        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants})(approvals, context);
+        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants}, harness)(approvals, context);
     } finally { if (activeController && !activeController.signal.aborted) readline.startBackground(); }
   };
 
@@ -257,23 +261,38 @@ export const chat = async (options: CliOptions) => {
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
-      result = await abortable((abortSignal) => runHarness(
+      result = await abortable((abortSignal) => observeCliPolicy({}, tracker, async () => {
+        for (const pending of state.pendingApprovals) {
+          await publishPendingPolicyDecision(harness, pending.name, pending.kind === "subagent");
+        }
+        let approvals;
+        if (approve && requiresExplicitHostReview(harness)) {
+          readline.stopBackground();
+          try {
+            approvals = await terminalApprovalResolver("ask", question => readline.question(question), {
+              select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants
+            }, harness)(state.pendingApprovals, state);
+          } finally { if (!abortSignal.aborted) readline.startBackground(); }
+          if (!approvals) throw new Error("EXPLICIT_REVIEW_REQUIRED");
+        } else {
+          approvals = issueObservedApprovalResponses(harness, state, approvalResponses(
+            state.pendingApprovals, approve, approve ? "Approved inline in chat." : "Denied inline in chat."
+          ), "cli-console-command", state.pendingApprovals.map(() => "interactive"));
+        }
+        return runHarness(
         harness,
         {
           state,
           toolExecution: { ...cliToolExecution },
           abortSignal,
-          approvals: approvalResponses(
-            state.pendingApprovals,
-            approve,
-            approve ? "Approved inline in chat." : "Denied inline in chat."
-          )
+          approvals: approvals as NonNullable<Parameters<typeof runHarness>[1]["approvals"]>
         },
         {
           onEvent,
           resolveApprovals: consoleApprovals
         }
-      ));
+        );
+      }));
     } catch {
       flushToolActivity(tracker);
       tracker.markdown?.flush();
@@ -729,7 +748,7 @@ export const chat = async (options: CliOptions) => {
         let markedRunning = false;
         let result: AgentRunOutput;
         try {
-          result = await abortable((abortSignal) => runHarness(
+          result = await abortable((abortSignal) => observeCliPolicy({}, tracker, () => runHarness(
             harness,
             messages.length === 0
               ? {
@@ -781,7 +800,7 @@ export const chat = async (options: CliOptions) => {
               },
               resolveApprovals: consoleApprovals
             }
-          ));
+          )));
         } catch (error) {
           flushToolActivity(tracker);
           tracker.markdown?.flush();

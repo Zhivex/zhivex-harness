@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "cohort": "provider-signed-compaction-v1",
+  "fixtureSha256": "c2435ad86e63b0880599c7524de0332969f7a5c5515a135b17073834c29af7c8",
+  "artifactSha256": "db853c7a960c419f24cbd8e881b83997252b832c120133b5e9616345f1a227ac",
+  "root": "/tmp/har-provider-compaction-6zCrGR",
+  "phases": [
+    {
+      "provider": "vertex",
+      "phase": "request",
+      "passed": true,
+      "signedContinuationRetained": false,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 0,
+      "compactionsAfter": 1
+    },
+    {
+      "provider": "vertex",
+      "phase": "resume",
+      "passed": true,
+      "signedContinuationRetained": true,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 1,
+      "compactionsAfter": 2
+    },
+    {
+      "provider": "anthropic",
+      "phase": "request",
+      "passed": true,
+      "signedContinuationRetained": false,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 0,
+      "compactionsAfter": 1
+    },
+    {
+      "provider": "anthropic",
+      "phase": "resume",
+      "passed": true,
+      "signedContinuationRetained": true,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 1,
+      "compactionsAfter": 2
+    },
+    {
+      "provider": "gemini",
+      "phase": "request",
+      "passed": true,
+      "signedContinuationRetained": false,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 0,
+      "compactionsAfter": 1
+    },
+    {
+      "provider": "gemini",
+      "phase": "resume",
+      "passed": true,
+      "signedContinuationRetained": true,
+      "network": false,
+      "requests": 1,
+      "compactionsBefore": 1,
+      "compactionsAfter": 2
+    }
+  ],
+  "installed": true,
+  "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+  "liveProvider": false,
+  "published": false,
+  "limitations": [
+    "Synthetic signatures and mocked transport; no provider server validation",
+    "Vertex adapter receives fixture ADC callback; not an ADC/IAM test"
+  ]
+}

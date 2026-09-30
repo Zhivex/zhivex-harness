@@ -3,7 +3,7 @@ import {constants, type Stats} from "node:fs";
 import {cp, lstat, mkdir, open, realpath, rename, unlink, rm, readdir} from "node:fs/promises";
 import path from "node:path";
 import {z} from "zod";
-import {readRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
+import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import {createMacApplicationVerifier} from "./mac-application-verifier.js";
 import {compareUpdateVersions} from "./update-manifest.js";
 

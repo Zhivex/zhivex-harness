@@ -1,3 +1,4 @@
+import { selectContinuityProviders } from './live-continuity-contract.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -11,7 +12,6 @@ import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 to authorize bounded provider requests.");
 const api = await loadLiveSmokeRuntime();
-const providers = ["openai", "qwen", "meta"] as const;
 const objectives = ["diagnose-parser", "design-cache", "review-api", "profile-parser", "implement-cache", "audit-contract"];
 const limits = { maxInputTokens: 24_000, maxOutputTokens: 8192, maxTotalTokens: 32_192, maxTokens: 8192,
   maxSteps: 2, timeoutMs: 90_000, compactionMaxMessages: 5, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 12_000 };
@@ -23,7 +23,7 @@ type Session = { messages: ModelMessage[]; metadata?: Record<string, JsonValue>;
 
 if (process.argv[2] === "--child") {
   const [providerArg, model, root, phaseArg] = process.argv.slice(3);
-  assert(providers.includes(providerArg as typeof providers[number]) && model && root && phaseArg);
+  assert(api.PROVIDERS.includes(providerArg as typeof api.PROVIDERS[number]) && model && root && phaseArg);
   const provider = providerArg as HarnessProvider;
   const phase = Number(phaseArg);
   assert(Number.isSafeInteger(phase) && phase >= 0 && phase < objectives.length);
@@ -81,12 +81,11 @@ if (process.argv[2] === "--child") {
 } else {
   const reportPath = path.resolve(process.argv[2] ?? "results/live-continuity.json");
   const rows: Record<string, unknown>[] = [];
-  const selected = process.env.ZHIVEX_HARNESS_LIVE_PROVIDERS?.split(",").map(value => value.trim()) ?? [...providers];
-  assert(selected.length > 0 && selected.every(provider => providers.includes(provider as typeof providers[number])), "Continuity scope is openai,qwen,meta only.");
-  for (const provider of selected as typeof providers[number][]) {
+  const selected = selectContinuityProviders(process.env, api.PROVIDERS);
+  for (const provider of selected) {
     const descriptor = api.providerDescriptor(provider);
     const model = process.env[`ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`]?.trim() || descriptor.defaultModel;
-    if (!descriptor.credentialNames.some(name => Boolean(process.env[name]?.trim()))) {
+    if (!api.providerAvailability(process.env).find(candidate => candidate.id === provider)?.configured) {
       rows.push({ provider, model, status: "missing_credentials" }); continue;
     }
     const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-continuity-"));

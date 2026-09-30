@@ -52,7 +52,7 @@ export const CLI_OPTION_NAMES = [
   "--input-cost-per-million", "--output-cost-per-million", "--allow-check", "--require-capability",
   "--subagent", "--reviewer", "--approval-mode", "--yes", "--approve", "--deny", "--json", "--jsonl", "--session",
   "--continue", "--update", "--status", "--limit", "--cursor", "--before", "--reason", "--cascade", "--final",
-  "--service", "--apply", "--help", "--version", "--search", "--pricing-file", "--usage-limit-usd"
+  "--service", "--apply", "--help", "--version", "--search", "--tool-policy", "--pricing-file", "--usage-limit-usd"
 ] as const;
 
 export type CliOptionName = (typeof CLI_OPTION_NAMES)[number];
@@ -88,7 +88,7 @@ const childBudgets = [
 ] as const;
 const agent = [
   "--compaction-model", "--compaction-provider",
-  "--pricing-file", "--usage-limit-usd",
+  "--tool-policy", "--pricing-file", "--usage-limit-usd",
   ...provider, ...profile, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
   "--require-capability", "--subagent"
 ] as const;
@@ -113,24 +113,37 @@ export const CLI_COMMAND_OPTION_CONTRACTS = {
   init: contract([...provider, ...profile, "--update", "--json"]),
   run: contract(["--service", "--session", ...agent, "--idempotency-key", "--approval-mode", "--yes", "--json", "--jsonl"]),
   review: contract([
-    "--pricing-file", "--usage-limit-usd",
+    "--tool-policy", "--pricing-file", "--usage-limit-usd",
     ...provider, ...profile, "--route", ...locator, "--context-config", "--no-project-context",
     ...childBudgets, "--max-parallel-reviews", "--require-capability", "--reviewer", "--json"
   ]),
   chat: contract(["--service", ...agent, "--approval-mode", "--yes", "--session", "--continue"]),
   providers: contract(["--json"]),
+  policy: contract(["--service", ...agent, "--json"]),
   doctor: contract([...provider, ...profile, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
-  resume: contract(["--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
+  resume: contract(["--tool-policy", "--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
   "runs:list": contract([...locator, "--status", "--limit", "--cursor", "--json"]),
   "runs:inspect": contract([...locator, "--json"]),
   "runs:cancel": contract([...locator, "--reason", "--cascade", "--final", "--json"]),
   "runs:cleanup": contract([...locator, "--before", "--status", "--limit", "--json"], ["--before"]),
   "runs:export": contract([...locator, "--json"]),
+  "runs:report": contract([...locator, "--json", "--session"]),
   "sessions:list": contract(["--service", ...locator, "--limit", "--json", "--search"]),
   "sessions:inspect": contract(["--service", ...locator, "--json"]),
   "sessions:rename": contract(["--service", ...locator, "--json"]),
   "sessions:fork": contract([...locator, "--json"]),
   "sessions:archive": contract([...locator, "--json"]),
+  "checkpoints:storage": contract([...locator, "--json"]),
+  "checkpoints:prune-review": contract([...locator, "--json"]),
+  "checkpoints:prune-apply": contract([...locator, "--json"]),
+  "checkpoints:list": contract([...locator, "--json"]),
+  "checkpoints:capture": contract([...locator, "--json"]),
+  "checkpoints:inspect": contract([...locator, "--json"]),
+  "checkpoints:prepare": contract([...locator, "--json"]),
+  "checkpoints:review": contract([...locator, "--json"]),
+  "checkpoints:apply": contract([...locator, "--json"]),
+  "checkpoints:recover": contract([...locator, "--json"]),
+
   "changes:create": contract(["--patch"], ["--patch"]),
   "changes:verify": contract(["--patch", "--preconditions", "--now"], ["--patch"]),
   "state:status": contract([...locator, "--json"]),

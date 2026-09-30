@@ -13,9 +13,9 @@ import { HarnessError } from "../runtime/errors.js";
 import { CLI_OPTION_DEFINITIONS, validateCliCommandOptions, type CliCommandOptionContractKey } from "./cli-options.js";
 import { validateCliProfileName } from "./cli-profiles.js";
 
-export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "resume", "runs", "sessions", "changes", "state", "help", "version"] as const;
+export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "policy", "resume", "runs", "sessions", "checkpoints", "changes", "state", "help", "version"] as const;
 
-export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export"] as const;
+export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export", "report"] as const;
 
 export const CLI_SESSIONS_COMMANDS = ["list", "inspect", "rename", "fork", "archive"] as const;
 
@@ -96,7 +96,10 @@ export interface CliOptions {
   runId?: string;
   idempotencyKey?: string;
   runsCommand?: RunsCommand;
+  reportEnvelopePath?: string;
   sessionsCommand?: SessionsCommand;
+  checkpointsCommand?: "list" | "capture" | "inspect" | "prepare" | "review" | "apply" | "recover" | "storage" | "prune-review" | "prune-apply";
+  checkpointArguments?: string[];
   changesCommand?: ChangesCommand;
   stateCommand?: StateCommand;
   artifactPath?: string;
@@ -108,6 +111,7 @@ export interface CliOptions {
   sessionTitle?: string;
   sessionSearch?: string;
   pricingFile?: string;
+  toolPolicyFile?: string;
   usageLimitUsd?: number;
   continueSession: boolean;
   implicitCommand: boolean;
@@ -208,7 +212,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     const first = words[0];
     const parts = first === "help" ? words.slice(1) :
       first && COMMANDS.has(first as Command)
-        ? words.slice(0, ["runs", "sessions", "changes", "state"].includes(first) ? 2 : 1) : [];
+        ? words.slice(0, ["runs", "sessions", "checkpoints", "changes", "state"].includes(first) ? 2 : 1) : [];
     try {
       const topic = resolveHelpTopic(parts, parts.length > 0);
       return { ...options, command: "help", ...(topic ? { helpTopic: topic } : {}) };
@@ -297,6 +301,10 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         break;
       case "--mcp-config":
         options.mcpConfigPath = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--tool-policy":
+        options.toolPolicyFile = optionValue(argv, index, argument);
         index += 1;
         break;
       case "--context-config":
@@ -680,16 +688,17 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
   } else if (options.command === "runs") {
     const runsCommand = positional.shift() as RunsCommand | undefined;
     if (!runsCommand || !RUNS_COMMANDS.has(runsCommand)) {
-      throw new CliUsageError("runs requires one of: list, inspect, cancel, cleanup, export.");
+      throw new CliUsageError("runs requires one of: list, inspect, cancel, cleanup, export, report.");
     }
     options.runsCommand = runsCommand;
-    if (runsCommand === "inspect" || runsCommand === "cancel" || runsCommand === "export") {
+    if (runsCommand === "inspect" || runsCommand === "cancel" || runsCommand === "export" || runsCommand === "report") {
       const runId = positional.shift();
       if (!runId) {
         throw new CliUsageError(`runs ${runsCommand} requires a runId.`);
       }
       options.runId = runId;
     }
+    if (runsCommand === "report" && positional.length) options.reportEnvelopePath = positional.shift()!;
     if (positional.length > 0) {
       throw new CliUsageError(`runs ${runsCommand} received unexpected positional arguments.`);
     }
@@ -713,6 +722,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`sessions ${sessionsCommand} received unexpected positional arguments.`);
     }
+  } else if (options.command === "checkpoints") {
+    const command = positional.shift();
+    const counts: Record<string, [number, number]> = { list: [1, 1], capture: [3, 22], inspect: [1, 1], prepare: [1, 1], review: [1, 1], apply: [2, 2], recover: [2, 2], storage: [0, 0], 'prune-review': [1, 100], 'prune-apply': [2, 101] };
+    if (!command || !Object.hasOwn(counts, command)) throw new CliUsageError("checkpoints requires list, capture, inspect, prepare, review, apply, recover, storage, prune-review or prune-apply.");
+    const [min, max] = counts[command]!;
+    if (positional.length < min || positional.length > max) throw new CliUsageError(`Invalid arguments for checkpoints ${command}; use --help.`);
+    options.checkpointsCommand = command as NonNullable<CliOptions["checkpointsCommand"]>;
+    options.checkpointArguments = positional.splice(0);
   } else if (options.command === "changes") {
     const changesCommand = positional.shift() as ChangesCommand | undefined;
     if (!changesCommand || !CHANGES_COMMANDS.has(changesCommand)) {
@@ -766,7 +783,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError("--session for run/resume requires --service.");
   }
 
-  const commandKey = options.command === "runs"
+  const commandKey = options.command === "checkpoints" ? `checkpoints:${options.checkpointsCommand}` : options.command === "runs"
     ? `runs:${options.runsCommand}`
     : options.command === "sessions"
       ? `sessions:${options.sessionsCommand}`

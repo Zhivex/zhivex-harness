@@ -1,0 +1,797 @@
+{
+  "schemaVersion": 1,
+  "model": "claude-sonnet-5-5",
+  "cause": "SDK memory insertion after the first system message splits repeated leading system instructions in a fresh run with prior history.",
+  "fix": "Lift leading text system messages into fresh input system before SDK memory insertion; remove only an exact current host-instruction prefix already prepended by SDK. Preserve opaque blocks, later system turns, operator constraints, and input history.",
+  "sourceDiagnostic": [
+    {
+      "call": 1,
+      "maxTokens": 8192,
+      "roles": [
+        "system",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 1,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8488,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 97,
+        "totalTokens": 8585,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 2,
+      "maxTokens": 8095,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 2,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8944,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 9023,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 3,
+      "maxTokens": 8016,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 3,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 9405,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 439,
+        "totalTokens": 9844,
+        "reasoningTokens": 187
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 4,
+      "maxTokens": 7577,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 4,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 10185,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 10264,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 5,
+      "maxTokens": 7498,
+      "roles": [
+        "system",
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        },
+        {
+          "index": 1,
+          "prefix": "The run is approaching its cumulative token budget. Finish now using only the evidence already colle"
+        }
+      ]
+    },
+    {
+      "call": 5,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 4069,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 342,
+        "totalTokens": 4411,
+        "reasoningTokens": 0
+      },
+      "finishReason": "stop"
+    },
+    {
+      "call": 6,
+      "maxTokens": 7156,
+      "roles": [
+        "system",
+        "assistant",
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        },
+        {
+          "index": 2,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 6,
+      "error": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": []
+        },
+        "fingerprint": "sha256:be00d8454796d2533d87bb09e4b42dc3b14dfcf064374b58f36a71b525263fcb"
+      },
+      "shape": {
+        "localMessage": "Provider \"anthropic\" only supports mid-conversation system messages immediately after a user turn on Claude Opus 4.8 or later, Claude Sonnet 5, Claude Fable 5, or Claude Mythos 5.",
+        "length": 179,
+        "terms": {
+          "max_tokens": false,
+          "thinking": false,
+          "tool_use": false,
+          "tool_result": false,
+          "signature": false,
+          "messages": true,
+          "content": false,
+          "temperature": false,
+          "budget": false,
+          "id": true,
+          "assistant": false,
+          "user": true,
+          "empty": false,
+          "required": false,
+          "must": false,
+          "unsupported": false,
+          "function": false,
+          "parameter": false,
+          "invalid": false,
+          "reasoning": false,
+          "stream": false,
+          "image": false,
+          "token": false,
+          "minimum": false
+        }
+      }
+    },
+    {
+      "driverError": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            }
+          ]
+        },
+        "fingerprint": "sha256:3328231f85ba0b2cfc5b64b499b9adee1a433d0c00a1f4a16990e59ebae85a77"
+      },
+      "guardCode": null
+    },
+    {
+      "result": {
+        "status": "failed",
+        "diagnostic": "provider_failed",
+        "independentTestsPassed": false,
+        "protectedFilesUnchanged": true,
+        "initialTestsFailed": true,
+        "automatedApprovals": 3,
+        "humanInterventions": 0,
+        "scriptedUserCorrections": 1,
+        "reopened": false,
+        "compactions": 0,
+        "failedCheck": true,
+        "steps": 6,
+        "toolCalls": 5,
+        "inputTokens": 41091,
+        "outputTokens": 1036,
+        "usageComplete": false,
+        "inFlight": false,
+        "budgetExhausted": false,
+        "durationMs": 11164
+      }
+    }
+  ],
+  "firstFixDiagnostic": [
+    {
+      "call": 1,
+      "maxTokens": 8192,
+      "roles": [
+        "system",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 1,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8488,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 97,
+        "totalTokens": 8585,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 2,
+      "maxTokens": 8095,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 2,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8944,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 9023,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 3,
+      "maxTokens": 8016,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 3,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 9405,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 455,
+        "totalTokens": 9860,
+        "reasoningTokens": 213
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 4,
+      "maxTokens": 7561,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 4,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 10214,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 10293,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 5,
+      "maxTokens": 7482,
+      "roles": [
+        "system",
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        },
+        {
+          "index": 1,
+          "prefix": "The run is approaching its cumulative token budget. Finish now using only the evidence already colle"
+        }
+      ]
+    },
+    {
+      "call": 5,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 4098,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 370,
+        "totalTokens": 4468,
+        "reasoningTokens": 0
+      },
+      "finishReason": "stop"
+    },
+    {
+      "call": 6,
+      "maxTokens": 7112,
+      "roles": [
+        "system",
+        "assistant",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 6,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 13300,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 320,
+        "totalTokens": 13620,
+        "reasoningTokens": 268
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "driverError": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "Error"
+            }
+          ]
+        },
+        "fingerprint": "sha256:1db2ef5333040b82fd9fec8bad630588ff975209db5ec690a0f477dd6b93fc21"
+      },
+      "guardCode": "PILOT_BUDGET_EXHAUSTED"
+    },
+    {
+      "result": {
+        "status": "failed",
+        "diagnostic": "budget_exhausted",
+        "independentTestsPassed": false,
+        "protectedFilesUnchanged": true,
+        "initialTestsFailed": true,
+        "automatedApprovals": 3,
+        "humanInterventions": 0,
+        "scriptedUserCorrections": 1,
+        "reopened": false,
+        "compactions": 0,
+        "failedCheck": true,
+        "steps": 6,
+        "toolCalls": 6,
+        "inputTokens": 54449,
+        "outputTokens": 1400,
+        "usageComplete": true,
+        "inFlight": false,
+        "budgetExhausted": true,
+        "durationMs": 16486
+      }
+    }
+  ],
+  "candidateSha256": "1dc3375ab8c4a70a4c100fec45087ee9569d3522970e04be8b4ce65e5a5ea7ec",
+  "productionRecommendation": false,
+  "deduplicatedCandidateDiagnostic": [
+    {
+      "call": 1,
+      "maxTokens": 8192,
+      "roles": [
+        "system",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 1,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8488,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 97,
+        "totalTokens": 8585,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 2,
+      "maxTokens": 8095,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 2,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 8944,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 9023,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 3,
+      "maxTokens": 8016,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 3,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 9406,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 378,
+        "totalTokens": 9784,
+        "reasoningTokens": 240
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 4,
+      "maxTokens": 7638,
+      "roles": [
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 4,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 10130,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 79,
+        "totalTokens": 10209,
+        "reasoningTokens": 0
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "call": 5,
+      "maxTokens": 7559,
+      "roles": [
+        "system",
+        "system",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        },
+        {
+          "index": 1,
+          "prefix": "The run is approaching its cumulative token budget. Finish now using only the evidence already colle"
+        }
+      ]
+    },
+    {
+      "call": 5,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 4014,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 352,
+        "totalTokens": 4366,
+        "reasoningTokens": 0
+      },
+      "finishReason": "stop"
+    },
+    {
+      "call": 6,
+      "maxTokens": 7207,
+      "roles": [
+        "system",
+        "assistant",
+        "user",
+        "assistant",
+        "tool",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "tool",
+        "assistant",
+        "user"
+      ],
+      "systems": [
+        {
+          "index": 0,
+          "prefix": "You are Zhivex Harness, a general-purpose programming assistant using the Zhivex SDK and provider to"
+        }
+      ]
+    },
+    {
+      "call": 6,
+      "type": "finish",
+      "usage": {
+        "inputTokens": 11084,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 274,
+        "totalTokens": 11358,
+        "reasoningTokens": 222
+      },
+      "finishReason": "tool-calls"
+    },
+    {
+      "driverError": {
+        "code": "EXECUTION_FAILED",
+        "category": "execution",
+        "retryable": false,
+        "details": {
+          "chain": [
+            {
+              "code": "EXECUTION_FAILED",
+              "retryable": false
+            },
+            {
+              "kind": "Error"
+            }
+          ]
+        },
+        "fingerprint": "sha256:1db2ef5333040b82fd9fec8bad630588ff975209db5ec690a0f477dd6b93fc21"
+      },
+      "guardCode": "PILOT_BUDGET_EXHAUSTED"
+    },
+    {
+      "result": {
+        "status": "failed",
+        "diagnostic": "budget_exhausted",
+        "independentTestsPassed": false,
+        "protectedFilesUnchanged": true,
+        "initialTestsFailed": true,
+        "automatedApprovals": 3,
+        "humanInterventions": 0,
+        "scriptedUserCorrections": 1,
+        "reopened": false,
+        "compactions": 0,
+        "failedCheck": true,
+        "steps": 6,
+        "toolCalls": 6,
+        "inputTokens": 52066,
+        "outputTokens": 1259,
+        "usageComplete": true,
+        "inFlight": false,
+        "budgetExhausted": true,
+        "durationMs": 18286
+      }
+    }
+  ],
+  "transportErrorResolved": true,
+  "casePassed": false,
+  "remainingFinding": "Shared case input budget rejects next request after 52066 reported input tokens; original 60000 limit retained. New candidate needs certification and complete campaign.",
+  "validation": {
+    "suiteBeforeFinalDedup": {
+      "passed": 1877,
+      "skipped": 1,
+      "failed": 0
+    },
+    "finalFocused": {
+      "passed": 28,
+      "failed": 0
+    }
+  }
+}

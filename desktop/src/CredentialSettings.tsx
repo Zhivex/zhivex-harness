@@ -50,7 +50,12 @@ export function CredentialSettings({
     try {
       const result = await operation();
       if (["saved", "deleted", "unavailable"].includes(result)) await changed();
-      setMessage(messages[result]);
+      setMessage(provider === "vertex" ? ({
+        present: "Vertex route configured. ADC is resolved by the host; model access remains unverified.",
+        missing: "Set GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION in the application's launching environment.",
+        "invalid-credential": "ADC could not be acquired or refreshed. Check your Google Cloud credentials.",
+        unsupported: "Vertex credentials are managed through Google Application Default Credentials."
+      } as Partial<Record<CredentialProbe, string>>)[result] ?? messages[result] : messages[result]);
     } catch {
       setMessage(
         "Work is active or its completion was not confirmed. Wait for it to finish before changing credentials; if the error persists, restart the application.",
@@ -106,8 +111,7 @@ export function CredentialSettings({
             </select>
           </label>
           <p>
-            Enter the key in a secure macOS dialog to save it in Keychain.
-            Finish active tasks before replacing or deleting it.
+            {provider === "vertex" ? "Vertex uses Google Application Default Credentials (ADC). Configure ADC, GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION before launching the app. Restart after changing the project or region. No API key is saved in Keychain." : "Enter the key in a secure macOS dialog to save it in Keychain. Finish active tasks before replacing or deleting it."}
           </p>
           <button
             disabled={busy}
@@ -117,10 +121,10 @@ export function CredentialSettings({
               void act(() => window.harness.credentialStatus(provider))
             }
           >
-            Check key status
+            {provider === "vertex" ? "Check route configuration" : "Check key status"}
           </button>
           <button
-            disabled={busy}
+            disabled={busy || provider === "vertex"}
             data-action="credential-configure"
             onClick={() =>
               void act(() => window.harness.configureCredential(provider))
@@ -136,10 +140,10 @@ export function CredentialSettings({
               void act(() => window.harness.probeCredential(provider))
             }
           >
-            Test connection
+            {provider === "vertex" ? "Check ADC access" : "Test connection"}
           </button>
           <button
-            disabled={busy}
+            disabled={busy || provider === "vertex"}
             className="secondary"
             data-action="credential-delete"
             onClick={() =>

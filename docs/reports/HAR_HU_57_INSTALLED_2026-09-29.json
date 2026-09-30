@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "cohort": "harness-delegation-results-v1",
+  "fixtureSha256": "a35f3423c2b76cd1cef60507a420030ce36025557de339c834b345200e132cc7",
+  "artifactSha256": "88f15fb0ca7fca85d9044951341ab1087fcccfba98e9da157d5f3dd389004135",
+  "root": "/tmp/har-delegation-installed-FGQePR",
+  "phases": [
+    {
+      "phase": "execute",
+      "scenario": "valid",
+      "accepted": true,
+      "parentStatus": "completed",
+      "childStatus": "completed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 6,
+        "outputTokens": 4,
+        "totalTokens": 10
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "valid",
+      "accepted": true,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "invented",
+      "accepted": false,
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 6,
+        "outputTokens": 4,
+        "totalTokens": 10
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "invented",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "partial",
+      "accepted": false,
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 6,
+        "outputTokens": 4,
+        "totalTokens": 10
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "partial",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "tool-error",
+      "accepted": false,
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 6,
+        "outputTokens": 4,
+        "totalTokens": 10
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "tool-error",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "invalid",
+      "accepted": false,
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 6,
+        "outputTokens": 4,
+        "totalTokens": 10
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "invalid",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "corrected",
+      "accepted": true,
+      "parentStatus": "completed",
+      "childStatus": "completed",
+      "childCalls": 3,
+      "corrections": 1,
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 6,
+        "totalTokens": 15
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "corrected",
+      "accepted": true,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "exhausted",
+      "accepted": false,
+      "parentStatus": "failed",
+      "childStatus": "failed",
+      "childCalls": 3,
+      "corrections": 1,
+      "usage": {
+        "inputTokens": 9,
+        "outputTokens": 6,
+        "totalTokens": 15
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "exhausted",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    },
+    {
+      "phase": "execute",
+      "scenario": "cancellation",
+      "accepted": false,
+      "parentStatus": "cancelled",
+      "childStatus": "failed",
+      "childCalls": 2,
+      "corrections": 0,
+      "usage": {
+        "inputTokens": 3,
+        "outputTokens": 2,
+        "totalTokens": 5
+      }
+    },
+    {
+      "phase": "inspect",
+      "scenario": "cancellation",
+      "accepted": false,
+      "reopened": true,
+      "evidencePreserved": true,
+      "modelCalls": 0
+    }
+  ],
+  "installed": true,
+  "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+  "liveProvider": false,
+  "published": false
+}

@@ -1,0 +1,56 @@
+{
+  "status": "passed",
+  "packaged": false,
+  "fixture": true,
+  "interruptedFork": true,
+  "wholeAppRestart": true,
+  "explicitReview": true,
+  "oldTicketRejected": true,
+  "originalPreserved": true,
+  "derivativeOpened": true,
+  "singleDerivative": true,
+  "workersExited": true,
+  "phases": [
+    {
+      "phase": "prepare",
+      "appPid": 74934,
+      "runtimePid": 74959,
+      "source": "ses_221002c7-b477-48b1-9c66-82bd21906f72",
+      "operationId": "51bafc2d-beb8-410b-9253-e699c5371a8e",
+      "packaged": false,
+      "status": "passed"
+    },
+    {
+      "phase": "recover",
+      "appPid": 74962,
+      "runtimePid": 74977,
+      "source": "ses_221002c7-b477-48b1-9c66-82bd21906f72",
+      "operationId": "51bafc2d-beb8-410b-9253-e699c5371a8e",
+      "packaged": false,
+      "status": "passed"
+    },
+    {
+      "phase": "apply",
+      "appPid": 74979,
+      "runtimePid": 75042,
+      "source": "ses_221002c7-b477-48b1-9c66-82bd21906f72",
+      "operationId": "51bafc2d-beb8-410b-9253-e699c5371a8e",
+      "derivative": "ses_386afd86-4eda-45fa-8c91-b86f76a2be79",
+      "packaged": false,
+      "status": "passed"
+    },
+    {
+      "phase": "history",
+      "appPid": 75144,
+      "runtimePid": 75245,
+      "source": "ses_221002c7-b477-48b1-9c66-82bd21906f72",
+      "operationId": "51bafc2d-beb8-410b-9253-e699c5371a8e",
+      "derivative": "ses_386afd86-4eda-45fa-8c91-b86f76a2be79",
+      "packaged": false,
+      "status": "passed"
+    }
+  ],
+  "evidenceDirectory": "/tmp/har-checkpoints-fIXioW/report",
+  "harnessArtifactSha256": "6bb615581c711eb209a7e2a0f6558a92eeb0de1f779ef428e1f471ee3777f051",
+  "faultInjection": "Exception immediately after durable conversation fork, before restore journal records child identity; app then closes and each recovery phase runs in a new process"
+}

@@ -1,4 +1,6 @@
 import { EnvironmentPatchDriftError } from "./patch-diagnostics.js";
+import { assertTaskAcceptanceImport, taskAcceptanceChecks, confirmTaskAcceptanceImport } from '../runtime/task-acceptance-delivery.js';
+import { acceptanceSnapshotDigest } from './acceptance-snapshot.js';
 import { observeOciPhase } from "./oci-observability.js";
 import { withWorkspaceMutation } from "../workspace/workspace-mutation-lock.js";
 import { boundedBatches } from "../workspace/bounded-reads.js";
@@ -64,6 +66,7 @@ const EXECUTION_ARTIFACT_DIRECTORY_PATTERN = /^[a-f0-9]{24}$/;
 const STAGED_EXECUTION_ARTIFACT_DIRECTORY_PATTERN =
   /^\.cleanup-([a-f0-9]{24})-[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
 const BUILT_IN_TOOL_NAMES = new Set([
+  "__harness_result_feedback",
   "read_dependency",
   "read_task",
   "repair_plan",
@@ -1179,10 +1182,11 @@ export interface HarnessExecutionIoMetrics {
 const SNAPSHOT_INVENTORY_PAGE_SIZE = 5_000;
 const COPY_ON_WRITE_UNSUPPORTED_CODES = new Set(["EINVAL", "ENOSYS", "ENOTSUP", "EOPNOTSUPP"]);
 
-const collectSnapshotInventory = async (
+export const collectSnapshotInventory = async (
   workspace: Workspace,
   maxWorkspaceBytes: number,
-  metrics?: HarnessExecutionIoMetrics
+  metrics?: HarnessExecutionIoMetrics,
+  maxEntries = Number.MAX_SAFE_INTEGER
 ): Promise<Map<string, SnapshotFileMetadata>> => {
   const files = new Map<string, SnapshotFileMetadata>();
   if (metrics) metrics.inventoryPasses += 1;
@@ -1218,17 +1222,21 @@ const collectSnapshotInventory = async (
           throw new Error(`Snapshot inventory file changed while being read: ${file.path}.`);
         }
         return { path: file.path, digest: digest(stable.contents), mode: stable.stat.mode & 0o777, bytes: stable.contents.byteLength };
-      }, 4)) for (const file of batch) files.set(file.path, file);
+      }, 4)) for (const file of batch) {
+        if (files.size >= maxEntries) throw new Error('Workspace snapshot entry limit exceeded.');
+        files.set(file.path, file);
+      }
     }
     cursor = page.nextCursor;
   } while (cursor);
   return files;
 };
 
-const readSnapshotFile = async (
+export const readSnapshotFile = async (
   workspace: Workspace,
   expected: SnapshotFileMetadata,
-  metrics?: HarnessExecutionIoMetrics
+  metrics?: HarnessExecutionIoMetrics,
+  requireSingleLink = false
 ): Promise<SnapshotFile> => {
   // A fresh verified read binds copied/imported bytes to the inventory without
   // retaining every repository file in memory.
@@ -1239,7 +1247,8 @@ const readSnapshotFile = async (
   if (await realpath(absolute) !== absolute) throw new Error("Snapshot source path traverses a symbolic link.");
   const file = await readRegularFileNoFollow(absolute, {
     label: `Snapshot source ${expected.path}`,
-    maxBytes: expected.bytes
+    maxBytes: expected.bytes,
+    requireSingleLink
   });
   const { contents } = file;
   const entry = file.stat;
@@ -1480,6 +1489,9 @@ const importPatch = async (
     throw new EnvironmentPatchDriftError(expectedPatchId, patch.patchId, lastInspectedPatchId);
   }
   if (patch.entries.length === 0) throw new Error("Environment patch contains no changes.");
+  const acceptanceBinding=taskAcceptanceChecks()?{runId,patchId:patch.patchId,executionIdentity:identity??runId,
+    snapshotDigest:await acceptanceSnapshotDigest(current.root,maxWorkspaceBytes)}:undefined;
+  assertTaskAcceptanceImport({workspace:host.root,runId,patchId:patch.patchId,entries:patch.entries,...acceptanceBinding});
   for (const entry of patch.entries) {
     await inspectHostPrecondition(host, entry.path, entry.beforeDigest, entry.beforeMode);
   }
@@ -1547,6 +1559,18 @@ const importPatch = async (
     }
     throw error;
   }
+  if(acceptanceBinding)confirmTaskAcceptanceImport(acceptanceBinding,()=>withWorkspaceMutation(host.root,async()=>{
+    if(await acceptanceSnapshotDigest(current.root,maxWorkspaceBytes)!==acceptanceBinding.snapshotDigest)return false;
+    for(const entry of patch.entries) {
+      try {
+        const delivered=await host.inspectFile(entry.path);
+        if(entry.operation==='delete' || delivered.digest!==entry.afterDigest || delivered.mode!==entry.afterMode)return false;
+      } catch(error) {
+        if(entry.operation!=='delete' || (error as NodeJS.ErrnoException).code!=='ENOENT')throw error;
+      }
+    }
+    return true;
+  }));
   return {
     schemaVersion: HARNESS_EXECUTION_ARTIFACT_SCHEMA_VERSION,
     kind: "environment-patch-import",
@@ -1907,10 +1931,28 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
         command: string,
         args: readonly string[],
         context?: ToolExecutionContext
-      ) => normalizeResult(await runtime.run({
-        ...sharedRunRequest(context),
-        command: validateCommand(command, args)
-      }));
+      ) => {
+        const argv=validateCommand(command,args);
+        const checks=taskAcceptanceChecks(),matching=checks?.matching(command,args)??[];
+        checks?.begin(matching.map(check=>check.id));
+        const binding=async()=>({runId:request.runId,executionIdentity:identity,
+          patchId:(await createEnvironmentPatch(request.runId,base,workspace,options.config.maxFileWriteBytes,options.config.maxWorkspaceBytes,ioMetrics,identity)).patchId,
+          snapshotDigest:await acceptanceSnapshotDigest(workspace.root,options.config.maxWorkspaceBytes)});
+        for(const check of matching)if(check.kind==='package-script') {
+          const file=await readRegularFileNoFollow(path.join(workspace.root,'package.json'),{label:'Acceptance package manifest',maxBytes:256*1024,requireSingleLink:true});
+          const manifestDocument=JSON.parse(file.contents.toString('utf8'));
+          const resolved=await resolvePackageCheckCommand(workspace.root,manifestDocument,check.script,check.expectedScript,[check.script]);
+          if(JSON.stringify(resolved.command)!==JSON.stringify(argv))throw new Error('TASK_ACCEPTANCE_CHECK_CHANGED');
+        }
+        const before=matching.length?await binding():undefined;
+        const startedAt=Date.now();
+        const result=normalizeResult(await runtime.run({...sharedRunRequest(context),command:argv}));
+        if(before && checks) {
+          const after=await binding();
+          for(const check of matching)checks.record(check.id,before,after,result,context?.toolCall?{id:context.toolCall.id,name:context.toolCall.name,startedAt}:undefined);
+        }
+        return result;
+      };
       const runCommandBatch = async (
         commands: readonly { command: string; args: readonly string[] }[],
         context?: ToolExecutionContext
@@ -1922,7 +1964,7 @@ const createHarnessOciExecutionEnvironmentUnsafe = async (
           throw new Error("OCI command batch exceeds the bounded argument-count contract.");
         }
         const argvCommands = commands.map(({ command, args }) => validateCommand(command, args));
-        if (runtime.runBatch) {
+        if (runtime.runBatch && !taskAcceptanceChecks()) {
           return normalizeResult(await runtime.runBatch({
             ...sharedRunRequest(context),
             commands: argvCommands

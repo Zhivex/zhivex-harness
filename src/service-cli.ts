@@ -7,11 +7,11 @@ const main = async () => {
   for(let i=0;i<args.length;i++){
     const name=args[i]!;
     if(name==="--recover"){recover=true;continue;}
-    if(!["--workspace","--directory","--provider","--model"].includes(name)||!args[i+1]||values[name]!==undefined)throw new Error("SERVICE_USAGE_INVALID");
+    if(!["--workspace","--directory","--provider","--model","--tool-policy"].includes(name)||!args[i+1]||values[name]!==undefined)throw new Error("SERVICE_USAGE_INVALID");
     values[name]=args[++i]!;
   }
   if(!values["--workspace"]||!values["--directory"])throw new Error("SERVICE_USAGE_INVALID");
-  const harness=await createHarness({workspace:values["--workspace"],...(values["--provider"]?{provider:values["--provider"]}:{}),...(values["--model"]?{model:values["--model"]}:{})});
+  const harness=await createHarness({workspace:values["--workspace"],...(values["--tool-policy"]?{toolPolicyFile:values["--tool-policy"]}:{}),...(values["--provider"]?{provider:values["--provider"]}:{}),...(values["--model"]?{model:values["--model"]}:{})});
   try{
     if(recover)await recoverHarnessLocalService(harness,values["--directory"]);
     const service=await startHarnessLocalService(harness,{directory:values["--directory"]});

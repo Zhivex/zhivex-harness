@@ -85,6 +85,38 @@ or a replacement for the engine's signed approval validation.
 | run.get | projectId, sessionId, runId | run | NOT_FOUND |
 | approval.resolve | projectId, sessionId, runId, expectedRevision, idempotencyKey, decisions | run | APPROVAL_MISMATCH |
 | run.cancel | projectId, sessionId, runId, expectedRevision, idempotencyKey | run | REVISION_CONFLICT |
+| checkpoint.list | projectId, sessionId | checkpoints | NOT_FOUND |
+| checkpoint.inspect | projectId, sessionId, checkpointId | checkpoint | NOT_FOUND |
+| checkpoint.capture | projectId, sessionId, expectedRevision, idempotencyKey, turnId, paths | checkpoint | EXECUTION_FAILED |
+| restore.prepare | projectId, sessionId, checkpointId, expectedRevision, idempotencyKey, expected (path/digest map) | restore | REVISION_CONFLICT |
+| restore.get | projectId, sessionId, operationId | restore | NOT_FOUND |
+| restore.apply | projectId, sessionId, operationId, expectedRevision, idempotencyKey, reviewedProposalId | restore | EXECUTION_FAILED |
+| restore.recoverFork | projectId, sessionId, operationId, expectedRevision, idempotencyKey, forkSessionId | restore | EXECUTION_FAILED |
+
+Checkpoint mutations use the source session revision. Checkpoint/restore IDs must
+belong to that session and the host workspace/scope. Capture requires an existing
+terminal turn and explicit paths (at most twenty existing text files, 64 KiB each).
+Inspection reports unavailable files and mode conflicts and explicitly excludes
+creation, deletion, binary files, mode rollback and full workspace snapshots.
+
+Prepare uses the exact digests observed during inspection and returns the prepared
+operation plus a diff. Clients must show that diff and obtain explicit review before
+sending its `reviewedProposalId` to apply. A digest identifies content; it is not proof
+of a human decision. Hosts must enforce their UI review boundary. The Desktop generic
+command IPC does not accept apply/recover requests; its dedicated review flow is required.
+Local CLI checkpoint commands use the same engine API. Desktop exposes checkpoint
+review through dedicated host-issued tickets; generic IPC cannot apply or reconcile
+a restore. The CLI does not yet route checkpoint commands through `--service`.
+
+Restore responses contain operation metadata and an available/unavailable preview,
+without duplicating the captured contents. Successful apply includes the derivative
+session to open and preserves the original. Listing includes interrupted and completed
+operations. After reconnecting, query the same operation before resuming: completion
+is durable and applying again returns the existing derivative. An uncertain fork must
+be reconciled with its exact existing child ID via `restore.recoverFork`; this does not
+apply files or authorize a subsequent restore. Stale contents, missing files, mode
+changes and partial filesystem outcomes fail closed. Apply/recovery also reject source
+conversations with unfinished durable runs.
 
 Session documents contain sessionId, revision, optional title and ordered runId/status
 references. Lists use the existing bounded session store (default 50; no pagination
@@ -210,3 +242,16 @@ The local-service constructor optionally accepts a trusted `approvalNow` clock.
 It is not a client command or IPC capability. Desktop expiry tests advance only
 the service clock to prove server-side rejection while the review receipt remains
 unexpired in the main process.
+
+### Experimental policy inspection
+
+`policy.get` takes only `projectId` and returns `{ kind: "policy", policy }`.
+The versioned policy document is the same host snapshot returned by
+`inspectHarnessPolicy` from `@zhivex-ai/harness/engine`. It contains configuration,
+not proof of tool or OCI execution. Clients cannot supply policy overrides in
+this command. The read remains available while mutation admission is paused or
+a run is active, and does not create a session, authorize an approval or execute
+a tool. Rule paths and host filesystem locations are omitted.
+While a host-prepared runtime is active, the query reflects that runtime. Before
+preparation and after release it reflects the base host; decision events retain
+the digest and backend of the runtime that evaluated them.

@@ -1,5 +1,11 @@
 # Historical reports
 
+Internal working notes, diagnostic plans and intermediate investigations belong
+in the Git-ignored `.local-docs/docs/reports/` directory at the repository root.
+That local archive is not available in a fresh clone or in the published package.
+Keep final acceptance, release, security and consolidated campaign evidence here,
+along with any evidence referenced by maintained documentation or validation gates.
+
 These reports preserve findings and measurements from specific checkouts and runs. Read each report's scope and limitations before reusing its claims. Local remediation does not certify a new published artifact or update an earlier model score. Maintained behavior is documented in the [documentation index](../README.md).
 
 These source archives and their JSON evidence are excluded from the installed

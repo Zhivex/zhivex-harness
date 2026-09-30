@@ -1,20 +1,20 @@
-import {defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
+import {defaultModelSelection, modelSelectionSchema, providerEnvironment} from "./model-selection.js";
 import type {DesktopModelSelection} from "./bridge.js";
-import {protectPersistenceSecret} from "../../src/internal/desktop/persistence.js";
+import { protectPersistenceSecret } from "@zhivex-ai/harness/desktop/v1/state";
 import {desktopProviderModel} from "./provider-model.js";
 import { fixtureOciRuntime } from "./fixture-oci.js";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { hostSensitiveValues } from "./redaction.js";
-import { createHarness } from "../../src/internal/desktop/runtime.js";
-import { startHarnessLocalService, recoverHarnessLocalService } from "../../src/internal/desktop/runtime.js";
+import { createHarness } from "@zhivex-ai/harness/engine";
+import { startHarnessLocalService, recoverHarnessLocalService } from "@zhivex-ai/harness/service";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
 
 const parent = (process as NodeJS.Process & { parentPort: { postMessage(value: unknown): void; on(event: "message", listener: (event: { data: unknown }) => void): void } }).parentPort;
 async function boot() {
-    const config = JSON.parse(process.argv[2]!) as { modelSelection?: DesktopModelSelection; workspace: string; directory: string; fixture: boolean; fixtureOci?: boolean; fixtureEffectCrash?: boolean; stateDirectory?: string; recover: boolean };
+    const config = JSON.parse(process.argv[2]!) as { toolPolicyFile?: string; modelSelection?: DesktopModelSelection; workspace: string; directory: string; fixture: boolean; fixtureOci?: boolean; fixtureEffectCrash?: boolean; stateDirectory?: string; recover: boolean };
     const bootstrap=await new Promise<{secret?:string}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("BOOTSTRAP_TIMEOUT")),10000);parent.on("message",event=>{const value=event.data;if(!value||typeof value!=="object"||!("kind" in value)||value.kind!=="credential-bootstrap")return;clearTimeout(timer);if(Object.keys(value).some(k=>!["kind","secret"].includes(k))||("secret" in value&&(typeof value.secret!=="string"||!value.secret||value.secret.length>8192)))return reject(new Error("BOOTSTRAP_INVALID"));resolve(value as {secret?:string});});});
  const modelSelection = modelSelectionSchema.parse(config.modelSelection ?? defaultModelSelection());
 
@@ -52,7 +52,7 @@ async function boot() {
         }
     };
     let fixtureClockOffset = 0;
-    const harness = await createHarness({env:{},storeBackend:"sqlite", workspace: config.workspace, ...(config.stateDirectory ? { stateDirectory: config.stateDirectory } : {}), ...modelSelection, modelInstance:config.fixture?mock:desktopProviderModel(modelSelection,bootstrap.secret), subagentProfiles: [], ...(config.fixture && config.fixtureOci ? { executionBackend: "oci", ociAllowedCommands: ["node", "bun"], ociRuntimeAdapter: fixtureOciRuntime() } : {}) });
+    const harness = await createHarness({...(config.toolPolicyFile ? { toolPolicyFile: config.toolPolicyFile } : {}),env:config.fixture ? {} : providerEnvironment(modelSelection, bootstrap.secret),storeBackend:"sqlite", workspace: config.workspace, ...(config.stateDirectory ? { stateDirectory: config.stateDirectory } : {}), ...modelSelection, modelInstance:config.fixture?mock:desktopProviderModel(modelSelection,bootstrap.secret), subagentProfiles: [], ...(config.fixture && config.fixtureOci ? { executionBackend: "oci", ociAllowedCommands: ["node", "bun"], ociRuntimeAdapter: fixtureOciRuntime() } : {}) });
     try {
         if (config.recover) try { await recoverHarnessLocalService(harness, config.directory); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
         const service = await startHarnessLocalService(harness, { directory: config.directory, sensitiveValues: [...hostSensitiveValues(process.env),...(bootstrap.secret?[bootstrap.secret]:[])], ...(config.fixture ? { maxEvents: 8, approvalNow: () => Date.now() + fixtureClockOffset } : {}) });
@@ -68,6 +68,18 @@ async function boot() {
             };
         }
         parent.postMessage({ kind: "ready",...(config.fixture&&bootstrap.secret?{credentialProof:{digest:createHash("sha256").update(bootstrap.secret).digest("hex"),argvClean:!process.argv.some(value=>value.includes(bootstrap.secret!)),envClean:!Object.values(process.env).some(value=>value?.includes(bootstrap.secret!))}}:{}), credentialsPath: service.credentialsPath, pid: process.pid, node: process.versions.node, stateDirectory: harness.config.stateDirectory });
+        // Only the Electron main process owns parentPort. HTTP clients and the
+        // renderer cannot turn an ordinary command into reviewed authority.
+        parent.on('message', event => {
+            if (!event.data || typeof event.data !== 'object' || !('kind' in event.data) || event.data.kind !== 'reviewed-approval') return;
+            const value = event.data as { requestId?: unknown; request?: unknown };
+            if (typeof value.requestId !== 'string' || !/^[a-f0-9-]{36}$/.test(value.requestId)) return;
+            const requestId = value.requestId;
+            void service.dispatchReviewed(value.request).then(
+                response => parent.postMessage({ kind: 'reviewed-approval-result', requestId, response }),
+                () => parent.postMessage({ kind: 'reviewed-approval-result', requestId, error: 'REVIEW_DISPATCH_FAILED' })
+            );
+        });
         parent.on("message", event => {
             if (!event.data || typeof event.data !== "object" || event.data.kind !== "close-control") return;
             const { requestId, operation } = event.data as { requestId: unknown; operation: unknown };

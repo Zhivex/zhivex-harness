@@ -1,4 +1,4 @@
-import { readRegularFileNoFollow } from "../../src/internal/desktop/persistence.js";
+import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";

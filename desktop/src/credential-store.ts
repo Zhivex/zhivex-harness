@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
+import { vertexConfigured, vertexRoute, vertexTokenSource } from "@zhivex-ai/harness/desktop/v1/providers";
 const statusSchema = z.enum(["present", "missing", "saved", "deleted", "cancelled", "locked", "unavailable", "invalid", "unsupported"]);
 export type CredentialStatus = z.infer<typeof statusSchema>;
 export type CredentialProbe = CredentialStatus | "connected" | "invalid-credential" | "forbidden" | "rate-limited" | "network-error";
@@ -12,6 +13,26 @@ const responseSchema = z.object({ status: statusSchema, secret: z.string().min(1
 /** Host-only. Never expose read() or helper stdout through the renderer bridge. */
 export function openCredentialStore(helper: string, options: { provider?: string; platform?: string; request?: typeof fetch; timeoutMs?: number } = {}) {
     const provider = modelSelectionSchema.shape.provider.parse(options.provider ?? "openai");
+    if (provider === "vertex") {
+        const status = (): CredentialStatus => vertexConfigured(process.env) ? "present" : "missing";
+        return {
+            status: async () => status(),
+            configure: async (): Promise<CredentialStatus> => "unsupported",
+            delete: async (): Promise<CredentialStatus> => "unsupported",
+            read: async (): Promise<z.infer<typeof responseSchema>> => ({ status: status() }),
+            probe: async (): Promise<CredentialProbe> => {
+                if (status() === "missing") return "missing";
+                let timer: ReturnType<typeof setTimeout> | undefined;
+                try {
+                    const timeout = new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("ADC_TIMEOUT")), options.timeoutMs ?? 10000); });
+                    await Promise.race([vertexTokenSource(process.env, vertexRoute(process.env))(), timeout]);
+                    return "present";
+                }
+                catch { return "invalid-credential"; }
+                finally { if (timer) clearTimeout(timer); }
+            }
+        };
+    }
     const endpoints = {
         anthropic: "https://api.anthropic.com/v1/models",
         openai: "https://api.openai.com/v1/models",

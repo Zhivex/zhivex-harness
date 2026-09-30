@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "sha256": "75597166e99824e8c6b4e4c39374d029b51153094fb61d91378f2ffa7896cc0a",
+  "phases": [
+    {
+      "phase": "prepare",
+      "ok": true,
+      "runtime": "v22.13.0"
+    },
+    {
+      "phase": "incompatible",
+      "ok": true,
+      "runtime": "v22.13.0"
+    },
+    {
+      "phase": "resume",
+      "ok": true,
+      "runtime": "v22.13.0"
+    }
+  ],
+  "installed": true,
+  "liveProvider": false,
+  "published": false,
+  "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-policy-installed-C2HgvZ"
+}

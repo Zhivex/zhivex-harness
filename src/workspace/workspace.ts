@@ -33,7 +33,7 @@ import { resolvePackageCheckCommand } from "../execution/package-manager.js";
 import { runPortableProcess } from "../execution/process-runtime.js";
 import { HarnessWorkspaceError } from "../runtime/errors.js";
 
-const HARD_IGNORES = new Set([".git", ".next", ".turbo", ".zhivex-harness", "coverage", "dist", "node_modules"]);
+import { HARD_IGNORES, isSensitiveName, isHardIgnored } from './path-policy.js';
 const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
 const DEFAULT_CHECKS = ["test", "typecheck", "lint", "build"] as const;
 const MAX_FILE_BYTES = 1024 * 1024;
@@ -53,22 +53,6 @@ const MAX_GIT_DISCOVERY_OUTPUT = 1_000_000;
 const MAX_GIT_DIFF_PATHS = 2_048;
 const MAX_GIT_DIFF_ARGV_CHARACTERS = 128_000;
 const GIT_SAFE_PREFIX = ["git", "-c", "core.fsmonitor=false"] as const;
-
-const isSensitiveName = (name: string) => {
-  const normalized = name.toLocaleLowerCase();
-  return normalized === ".env" ||
-    (normalized.startsWith(".env.") && normalized !== ".env.example") ||
-    normalized === ".npmrc" ||
-    normalized === "id_rsa" ||
-    normalized === "id_ed25519" ||
-    normalized.endsWith(".key") ||
-    normalized.endsWith(".pem") ||
-    normalized.endsWith(".p12") ||
-    normalized.endsWith(".pfx");
-};
-
-const isHardIgnored = (relativePath: string) =>
-  relativePath.split("/").some((segment) => HARD_IGNORES.has(segment.toLocaleLowerCase()) || isSensitiveName(segment));
 
 export type HarnessCheck = string;
 

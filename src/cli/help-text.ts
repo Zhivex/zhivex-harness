@@ -17,13 +17,25 @@ Everyday commands:
   zhx chat [options] [--continue|--session <id>]
   zhx providers [--json]
   zhx doctor [options] [--json]
+  zhx policy [options] [--json]
 
 Advanced operations and automation:
   zhx resume [options] <runId> --approve|--deny
   zhx runs list [--status <status>] [--limit <n>] [--json]
   zhx sessions list|inspect|rename|fork|archive
   zhx sessions list --search <literal title or session ID>
+  zhx checkpoints storage
+  zhx checkpoints prune-review <checkpoint:id|restore:id> [...]
+  zhx checkpoints prune-apply <reviewedPlanId> <checkpoint:id|restore:id> [...]
+  zhx checkpoints list <sessionId>
+  zhx checkpoints capture <sessionId> <turnId> <path> [paths...]
+  zhx checkpoints inspect <checkpointId>
+  zhx checkpoints prepare <checkpointId>
+  zhx checkpoints review <operationId>
+  zhx checkpoints apply <operationId> <reviewedProposalId>
+  zhx checkpoints recover <operationId> <existingForkSessionId>
   zhx run --pricing-file <prices.json> --usage-limit-usd <amount> <task>
+  zhx run --tool-policy <absolute-policy.json> <task>
   zhx changes create <input.json> --patch <artifact>
   zhx changes verify <envelope.json> --patch <artifact> [--preconditions <file>]
   zhx state status

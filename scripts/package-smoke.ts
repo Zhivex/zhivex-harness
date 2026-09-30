@@ -174,7 +174,70 @@ try {
   await run(["git", "init", "--quiet"], { cwd: consumer });
   await run(["bun", "add", "--ignore-scripts", tarball], { cwd: consumer });
 
+  // Verify the renderer contract from installed bytes, not a checkout alias.
+  const modelsConsumer = path.join(consumer, "models-consumer.mjs");
+  await writeFile(modelsConsumer, `
+import assert from "node:assert/strict";
+globalThis.fetch = () => { throw new Error("Catalog import attempted network access"); };
+const models = await import("@zhivex-ai/harness/models");
+assert.deepEqual(Object.keys(models).sort(), ["bundledDefaultModel", "bundledModelCatalog", "catalogModelSchema", "catalogModels", "modelCatalogSchema", "modelDescription"].sort());
+assert.equal(models.modelCatalogSchema.safeParse(models.bundledModelCatalog).success, true);
+for (const provider of models.bundledModelCatalog.providers) {
+  assert.equal(models.bundledDefaultModel(provider.id), provider.defaultModel);
+  assert(models.catalogModels(models.bundledModelCatalog, provider.id).some(model => model.id === provider.defaultModel));
+}
+console.log("INSTALLED_MODELS_OK");
+`);
+  assert((await run(["node", modelsConsumer], { cwd: consumer })).stdout.includes("INSTALLED_MODELS_OK"));
+  const rendererConsumer = path.join(consumer, "renderer-catalog.js");
+  const rendererBundle = path.join(consumer, "renderer-catalog-bundle.js");
+  await writeFile(rendererConsumer, 'export { bundledModelCatalog, modelDescription } from "@zhivex-ai/harness/models";\n');
+  await run(["bun", "build", rendererConsumer, "--target", "browser", "--outfile", rendererBundle], { cwd: consumer });
+  assert(!/google-auth-library|@grpc\/grpc-js|node:fs|createVertexModel/.test(await readFile(rendererBundle, "utf8")), "renderer catalog contains host implementation");
+
+  const desktopStateConsumer = path.join(consumer, "desktop-state-consumer.mjs");
+  await writeFile(desktopStateConsumer, `
+import assert from "node:assert/strict";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { resolveHarnessConfig, openHarnessPersistence, openCliSessionStore } from "@zhivex-ai/harness/engine";
+import { openHarnessActivityStore } from "@zhivex-ai/harness/service";
+import * as state from "@zhivex-ai/harness/desktop/v1/state";
+assert.equal("SqliteDatabase" in state, false);
+const workspace = path.resolve("desktop-state-workspace"), stateDirectory = path.resolve("desktop-state-data");
+await mkdir(workspace); await mkdir(stateDirectory, {mode: 0o700});
+const config = resolveHarnessConfig({ workspace, stateDirectory, provider: "openai", storeBackend: "sqlite" });
+const persistence = await openHarnessPersistence(config);
+const run = {schemaVersion:1, revision:0, runId:"snapshot-run", provider:"openai", modelId:"fixture", status:"completed", messages:[], steps:[], toolResults:[], currentStep:0, maxSteps:2, outputText:"finished", pendingApprovals:[], compactions:[], scope:config.scope, startedAt:1000, updatedAt:2000};
+await persistence.store.save(run); persistence.close();
+const sessions = await openCliSessionStore({workspace, stateDirectory, scope:config.scope});
+const session = await sessions.create({title:"Packaged snapshot", initialRun:{runId:run.runId, provider:"openai", model:"fixture", status:"completed"}}); sessions.close();
+const activity = await openHarnessActivityStore(config);
+activity.prompt(session.sessionId, run.runId, "Retain the conversation"); activity.checkpoint(session.sessionId, run.runId, "completed"); activity.close();
+const database = path.join(stateDirectory, state.HARNESS_SQLITE_FILE);
+const lease = state.acquireSqliteAccess(database, true);
+try {
+  const bound = {...config, ...(lease ? {accessLease:lease} : {})};
+  const backup = await state.createHostDatabaseSnapshot(bound, path.resolve("desktop-state-backups"));
+  await state.verifyHostDatabaseSnapshot(backup);
+  if (lease) {
+    assert(Number.isInteger(state.exclusiveSqliteAccessDescriptor(lease, database)));
+    await state.verifyHostDatabaseState(bound);
+  }
+  const restored = await openCliSessionStore({workspace, stateDirectory:backup.directory, scope:config.scope});
+  assert.equal((await restored.get(session.sessionId)).title, "Packaged snapshot"); restored.close();
+  const snapshotFile = path.join(backup.directory, state.HARNESS_SQLITE_FILE);
+  const bytes = await readFile(snapshotFile); bytes[0] ^= 255; await writeFile(snapshotFile, bytes);
+  await assert.rejects(state.verifyHostDatabaseSnapshot(backup), /DESKTOP_BACKUP_INVALID/);
+} finally { lease?.close(); }
+console.log("INSTALLED_DESKTOP_STATE_OK");
+`);
+  assert((await run(["node", desktopStateConsumer], { cwd: consumer })).stdout.includes("INSTALLED_DESKTOP_STATE_OK"));
+
   const installedTypeConsumer = `
+import { bundledModelCatalog, type ModelCatalog } from "@zhivex-ai/harness/models";
+const catalog: ModelCatalog = bundledModelCatalog;
+void catalog;
 import {
   CLI_COMMAND_OPTION_CONTRACTS,
   HarnessConfigError,

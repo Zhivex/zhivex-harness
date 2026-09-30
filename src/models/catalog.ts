@@ -60,13 +60,13 @@ export const modelCatalogSchema = z.object({
   schemaVersion: z.literal(1),
   revision: z.string().min(1).max(80).regex(/^[a-zA-Z0-9._-]+$/),
   providers: z.array(z.object({
-    id: z.enum(["openai", "qwen", "gemini", "meta", "anthropic"]),
+    id: z.enum(["openai", "qwen", "gemini", "meta", "anthropic", "vertex"]),
     defaultModel: modelId,
     models: z.array(catalogModelSchema).min(1).max(500),
-  }).strict()).length(5),
+  }).strict()).length(6),
 }).strict().superRefine((catalog, ctx) => {
   const invalid = (message: string) => ctx.addIssue({code: "custom", message});
-  if (new Set(catalog.providers.map(p => p.id)).size !== 5) invalid("Duplicate providers");
+  if (new Set(catalog.providers.map(p => p.id)).size !== 6) invalid("Duplicate providers");
   for (const provider of catalog.providers) {
     const ids = new Set(provider.models.map(m => m.id));
     if (ids.size !== provider.models.length) invalid(`Duplicate models: ${provider.id}`);

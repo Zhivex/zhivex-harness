@@ -1,3 +1,5 @@
+import type { HarnessPolicyDecisionEvent } from "../runtime/policy-decisions.js";
+import type { HarnessPolicyInspection } from "../runtime/policy-inspection.js";
 import { type ApprovalDecisionView } from "../approvals/approval-history.js";
 import { type ApprovalFilePreview } from "../approvals/approval-preview.js";
 import { z } from "zod";
@@ -17,14 +19,29 @@ const session = { ...scoped, sessionId: id };
 const run = { ...session, runId: id };
 
 const mutation = { idempotencyKey: id };
+const checkpoint = { ...session, checkpointId: z.string().uuid() };
+const restore = { ...session, operationId: z.string().uuid() };
+const fileDigest = z.string().regex(/^sha256:[a-f0-9]{64}$/);
+type CheckpointStore = Awaited<ReturnType<typeof import('../persistence/workspace-checkpoints.js').openWorkspaceCheckpointStore>>;
+type RestoreSummary = ReturnType<CheckpointStore['listRestores']>[number];
 
 /** Strict command union; configuration, credentials and filesystem paths are host-owned. */
 export const harnessClientCommandSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("project.get"), ...scoped }).strict(),
+  z.object({ method: z.literal("policy.get"), ...scoped }).strict(),
   z.object({ method: z.literal("session.list"), ...scoped, search: z.string().max(256).optional() }).strict(),
   z.object({ method: z.literal("session.create"), ...scoped, ...mutation, title: z.string().max(256).optional() }).strict(),
   z.object({ method: z.literal("session.get"), ...session }).strict(),
   z.object({ method: z.literal("session.rename"), ...session, ...mutation, expectedRevision: revision, title: z.string().max(256) }).strict(),
+  z.object({ method: z.literal("checkpoint.list"), ...session }).strict(),
+  z.object({ method: z.literal("checkpoint.inspect"), ...checkpoint }).strict(),
+  z.object({ method: z.literal("checkpoint.capture"), ...session, ...mutation, expectedRevision: revision,
+    turnId: id, paths: z.array(z.string().min(1).max(1024)).min(1).max(20) }).strict(),
+  z.object({ method: z.literal("restore.prepare"), ...checkpoint, ...mutation, expectedRevision: revision,
+    expected: z.record(z.string().min(1).max(1024), fileDigest).refine(value => Object.keys(value).length >= 1 && Object.keys(value).length <= 20) }).strict(),
+  z.object({ method: z.literal("restore.get"), ...restore }).strict(),
+  z.object({ method: z.literal("restore.apply"), ...restore, ...mutation, expectedRevision: revision, reviewedProposalId: fileDigest }).strict(),
+  z.object({ method: z.literal("restore.recoverFork"), ...restore, ...mutation, expectedRevision: revision, forkSessionId: id }).strict(),
   z.object({ method: z.literal("run.start"), ...session, ...mutation, expectedRevision: revision, prompt: z.string().min(1).max(64 * 1024) }).strict(),
   z.object({ method: z.literal("run.get"), ...run, includeReview: z.boolean().optional(), includeDiff: z.boolean().optional(), decisionOffset: z.number().int().min(0).max(512).optional() }).strict(),
   z.object({ method: z.literal("approval.resolve"), ...run, ...mutation, expectedRevision: revision,
@@ -41,7 +58,7 @@ export type HarnessClientCommand = z.infer<typeof harnessClientCommandSchema>;
 
 export type HarnessClientRequest = z.infer<typeof harnessClientRequestSchema>;
 
-export type HarnessClientErrorCode = "INVALID_REQUEST" | "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" | "NOT_FOUND" | "REVISION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "CAPACITY_EXCEEDED" | "APPROVAL_MISMATCH" | "INVALID_STATE" | "BUSY" | "EXECUTION_FAILED";
+export type HarnessClientErrorCode = "INVALID_REQUEST" | "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" | "NOT_FOUND" | "REVISION_CONFLICT" | "IDEMPOTENCY_CONFLICT" | "CAPACITY_EXCEEDED" | "APPROVAL_MISMATCH" | "EXPLICIT_REVIEW_REQUIRED" | "INVALID_STATE" | "BUSY" | "EXECUTION_FAILED";
 
 export interface HarnessClientSession extends CliSession {}
 
@@ -52,8 +69,12 @@ export interface HarnessClientRun {
 
 export type HarnessClientData =
   | { kind: "project"; projectId: string }
+  | { kind: "policy"; policy: HarnessPolicyInspection }
   | { kind: "session"; session: HarnessClientSession }
   | { kind: "sessions"; sessions: HarnessClientSession[] }
+  | { kind: "checkpoints"; checkpoints: ReturnType<CheckpointStore['listCheckpoints']>; restores: ReturnType<CheckpointStore['listRestores']> }
+  | { kind: "checkpoint"; inspection: Awaited<ReturnType<CheckpointStore['inspectCheckpoint']>> }
+  | { kind: "restore"; operation: RestoreSummary; preview: { status: "available"; diff: Awaited<ReturnType<CheckpointStore['previewRestore']>> } | { status: "unavailable" }; session?: HarnessClientSession }
   | { kind: "run"; session: HarnessClientSession; run: HarnessClientRun };
 
 export type HarnessClientResponse = { protocolVersion: 1; requestId: string | null } & (
@@ -68,6 +89,7 @@ export type HarnessClientNegotiation =
 export interface HarnessClientAdapterOptions {
   approvalMaxAgeMs?: number;
   now?: () => number;
+  onPolicyDecision?: (sessionId: string, runId: string, event: HarnessPolicyDecisionEvent) => void | Promise<void>;
   onPrompt?: (sessionId: string, runId: string, prompt: string) => void | Promise<void>;
   onEvent?: (sessionId: string, runId: string, event: AgentStreamEvent) => void | Promise<void>;
   onCheckpoint?: (sessionId: string, runId: string, status: string) => void | Promise<void>;
@@ -76,9 +98,10 @@ export interface HarnessClientAdapterOptions {
 export interface HarnessClientAdapter {
   negotiate(versions: readonly number[]): HarnessClientNegotiation;
   dispatch(request: unknown): Promise<HarnessClientResponse>;
+  /** Trusted in-process host only, after complete interactive review. Not a transport command. */
+  dispatchReviewed?(request: unknown): Promise<HarnessClientResponse>;
   /** Trusted host shutdown control; requests cancellation without finalizing effects. */
   cancelActive(): Promise<void>;
   /** Closes this connection and its session index, not the host-owned harness. */
   close(): void;
 }
-

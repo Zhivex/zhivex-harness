@@ -15,7 +15,9 @@ export function providerDiagnostic(body: unknown, status?: number): z.infer<type
   try {
     const parsed = JSON.parse(body);
     const detail = parsed?.error ?? parsed;
-    const code = detail?.code ?? detail?.status ?? detail?.type;
+    // Google uses a numeric HTTP code alongside a symbolic status. Numeric code
+    // must not hide PERMISSION_DENIED, RESOURCE_EXHAUSTED or NOT_FOUND.
+    const code = [detail?.code, detail?.status, detail?.type].find(value => typeof value === "string") ?? "";
     const message = typeof detail?.message === "string" ? detail.message : "";
     const param = providerDiagnosticSchema.shape.parameter.safeParse(detail?.param);
     parameter = param.success ? param.data : detail?.param == null ? "none" : "other";
@@ -24,7 +26,7 @@ export function providerDiagnostic(body: unknown, status?: number): z.infer<type
     else if (["invalid_api_key", "authentication_error", "UNAUTHENTICATED"].includes(code)) reason = "authentication";
     else if (["permission_denied", "permission_error", "PERMISSION_DENIED"].includes(code)) reason = "permission";
     else if (["rate_limit_exceeded", "rate_limit_error", "RESOURCE_EXHAUSTED"].includes(code)) reason = "rate_limit";
-    else if (["model_not_found", "model_not_available"].includes(code)) reason = "model_unavailable";
+    else if (["model_not_found", "model_not_available", "NOT_FOUND"].includes(code)) reason = "model_unavailable";
     else if (["invalid_request_error", "INVALID_ARGUMENT"].includes(code) || status === 400 || status === 422) reason = "invalid_request";
     return { reason, parameter, bodyState: "parsed" };
   } catch { return { reason, parameter, bodyState: "malformed" }; }

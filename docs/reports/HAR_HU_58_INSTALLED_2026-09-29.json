@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "cohort": "harness-governance-v1",
+  "fixtureSha256": "a9256703eac246df0e78b1237dc978fb3adc0a662309dafde2f98054e25d168c",
+  "artifactSha256": "9f4502c85818f028aa4f6436d2b52257b031175a7b8dd3139c5d57ac6a85c355",
+  "root": "/tmp/har-governance-installed-S1UAh5",
+  "phases": [
+    {
+      "phase": "execute",
+      "scenario": "completed",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "completed",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "execute",
+      "scenario": "failed",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "failed",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "execute",
+      "scenario": "rejected",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "rejected",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "execute",
+      "scenario": "partial",
+      "runs": 2,
+      "retention": "retained",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "partial",
+      "runs": 2,
+      "retention": "retained",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "execute",
+      "scenario": "legacy",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "legacy",
+      "runs": 1,
+      "retention": "retained",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "execute",
+      "scenario": "expired",
+      "runs": 1,
+      "retention": "expired",
+      "reopened": false,
+      "consumerValidated": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "inspect",
+      "scenario": "expired",
+      "runs": 1,
+      "retention": "expired",
+      "reopened": true,
+      "consumerValidated": true,
+      "liveProvider": false
+    }
+  ],
+  "installed": true,
+  "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+  "liveProvider": false,
+  "published": false
+}

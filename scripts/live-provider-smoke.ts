@@ -1,9 +1,11 @@
+import { HarnessConfigError as DriverConfigError } from '../src/runtime/errors.js';
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { createTextMessage, type ModelMessage } from "@zhivex-ai/core";
 import type { AgentRunInput } from "@zhivex-ai/agents";
 
 import type { HarnessProvider } from "../src/runtime/config.js";
@@ -12,7 +14,7 @@ import {
   sanitizeOperationalError
 } from "./release-diagnostics.js";
 
-const { PROVIDERS, PROVIDER_DESCRIPTORS, providerDescriptor, createEditProposal, HarnessConfigError, HarnessExecutionError, createHarness, runHarness } = await loadLiveSmokeRuntime();
+const { PROVIDERS, PROVIDER_DESCRIPTORS, providerAvailability, providerDescriptor, createEditProposal, HarnessExecutionError, createHarness, runHarness } = await loadLiveSmokeRuntime();
 
 const OPT_IN_VARIABLE = "ZHIVEX_HARNESS_LIVE";
 const PROVIDERS_VARIABLE = "ZHIVEX_HARNESS_LIVE_PROVIDERS";
@@ -45,6 +47,7 @@ interface ResumePhaseOutput {
   runId: string;
   toolExecutions: number;
   journalEntries: number;
+  compaction?: { before: number; after: number; privateParts: number; toolMetadata: boolean };
 }
 
 type PhaseOutput = RequestPhaseOutput | ResumePhaseOutput;
@@ -72,17 +75,17 @@ const selectedProviders = (env: NodeJS.ProcessEnv): HarnessProvider[] => {
 };
 
 const providerHasCredentials = (provider: HarnessProvider, env: NodeJS.ProcessEnv) => {
-  const descriptor = providerDescriptor(provider);
-  return descriptor.credentialNames.some((name) => Boolean(env[name]?.trim()));
+  // Configuration presence only: ADC validity and provider capacity require a real request.
+  return providerAvailability(env).find(candidate => candidate.id === provider)?.configured === true;
 };
 
 const providerCredentialFailure = (provider: HarnessProvider) =>
-  sanitizeOperationalError(new HarnessConfigError(`Missing live credentials for ${provider}.`));
+  sanitizeOperationalError(new DriverConfigError(`Missing live configuration for ${provider}.`));
 
 const requireCredentials = (providers: readonly HarnessProvider[], env: NodeJS.ProcessEnv) => {
   const missing = providers.filter((provider) => !providerHasCredentials(provider, env));
   if (missing.length > 0) {
-    throw new HarnessConfigError(`Missing live credentials for: ${missing.join(", ")}.`);
+    throw new DriverConfigError(`Missing live configuration for: ${missing.join(", ")}.`);
   }
 };
 
@@ -123,6 +126,10 @@ const throwTransientRunFailure = (result: { status: string; error?: unknown }) =
 const redacted = (value: string, env: NodeJS.ProcessEnv) => {
   let result = value;
   const sensitiveNames = new Set([
+    "ANTHROPIC_BASE_URL",
+    "GOOGLE_CLOUD_PROJECT",
+    "VERTEX_LOCATION",
+    "GOOGLE_APPLICATION_CREDENTIALS",
     "META_BASE_URL",
     "OPENAI_BASE_URL",
     "GEMINI_BASE_URL",
@@ -248,11 +255,22 @@ const assertApprovalArguments = (actual: unknown, expected: ReturnType<typeof ex
   }
 };
 
+const compactApproval = () => process.env.ZHIVEX_HARNESS_LIVE_APPROVAL_COMPACTION === "1";
+
+export const approvalContinuation = (messages: readonly ModelMessage[], id: string) => {
+  const message = messages.find(m => m.parts.some(p => p.type === "tool-call" && p.toolCall.id === id));
+  assert(message, "Approved call must survive compaction");
+  const part = message.parts.find(p => p.type === "tool-call" && p.toolCall.id === id);
+  assert(part?.type === "tool-call");
+  return structuredClone({ metadata: part.toolCall.providerMetadata ?? null, privateParts: message.parts.filter(p => p.type === "provider-data") });
+};
+
 const createLiveHarness = async (args: PhaseArguments) => createHarness({
   provider: args.provider,
   model: args.model,
   workspace: args.workspace,
   stateDirectory: args.stateDirectory,
+  ...(compactApproval() ? { compactionMaxMessages: 4, compactionKeepRecentMessages: 2 } : {}),
   toolNames: ["propose_edits", "apply_patch"],
   maxSteps: 4,
   // This matrix preserves the 0.4 single-agent certification contract. The
@@ -267,8 +285,13 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
   let checkpoint = "request_status";
   try {
     const expected = expectedApprovalArguments(args.provider);
+    const { prompt: _prompt, messages: _messages, ...baseInput } = providerRunInput(args.provider, certificationPrompt(args.provider));
+    const input: AgentRunInput = compactApproval() ? { ...baseInput, messages: [
+      ...Array.from({ length: 8 }, (_, i) => createTextMessage(i % 2 ? "assistant" : "user", "Synthetic earlier context " + i)),
+      createTextMessage("user", certificationPrompt(args.provider))
+    ] } : { ...baseInput, prompt: certificationPrompt(args.provider) };
     const result = await runHarness(harness, {
-      ...providerRunInput(args.provider, certificationPrompt(args.provider)),
+      ...input,
       scope: harness.config.scope,
       idempotencyKey: `live-certification-${args.provider}`
     });
@@ -287,6 +310,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
         })))}; error=${JSON.stringify(result.error?.message)}`
     );
     checkpoint = "request_approval";
+    if (compactApproval()) assert((result.state.compactions?.length ?? 0) > 0);
     const approval = result.state.pendingApprovals.find((candidate) => candidate.name === "apply_patch");
     assert.ok(approval, "The provider did not request the apply_patch approval.");
     assert.equal(approval.kind, "local-tool");
@@ -385,6 +409,8 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     assertApprovalArguments(JSON.parse(approval.arguments), expectedApprovalArguments(args.provider));
     // Snapshot before resume: a new validation failure after approval is not a recovered receipt.
     assert.ok(approval.toolCallId);
+    const beforeCompactions = state.compactions?.length ?? 0;
+    const protectedContinuation = compactApproval() ? approvalContinuation(state.messages, approval.toolCallId) : undefined;
     const approvalContext: ApprovalReceiptContext = {
       approvedToolCallId: approval.toolCallId,
       priorResults: state.toolResults.map(receipt => ({ toolName: receipt.toolName,
@@ -408,6 +434,10 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     throwTransientRunFailure(result);
 
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
+    if (protectedContinuation) {
+      assert((result.state.compactions?.length ?? 0) > beforeCompactions, "Resume must compact after the pending approval");
+      assert.deepEqual(approvalContinuation(result.state.messages, approval.toolCallId), protectedContinuation);
+    }
     checkpoint = "resume_output";
     assert.ok(result.outputText.includes(completionToken(args.provider)), result.outputText);
     checkpoint = "resume_journal_read";
@@ -422,7 +452,9 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
       model: args.model,
       runId: args.runId,
       toolExecutions: effect.toolExecutions,
-      journalEntries: effect.journalEntries
+      journalEntries: effect.journalEntries,
+      ...(protectedContinuation ? { compaction: { before: beforeCompactions, after: result.state.compactions?.length ?? 0,
+        privateParts: protectedContinuation.privateParts.length, toolMetadata: protectedContinuation.metadata !== null } } : {})
     };
   } catch (error) {
     throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
@@ -552,7 +584,8 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
           approvalPersisted: true,
           processRestarted: true,
           toolExecutions: entry.toolExecutions,
-          journalEntries: entry.journalEntries
+          journalEntries: entry.journalEntries,
+          ...(entry.compaction ? { compaction: entry.compaction } : {})
         }
       : entry)
   }, null, 2)}\n`);

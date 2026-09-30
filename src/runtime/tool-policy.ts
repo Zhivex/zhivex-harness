@@ -7,6 +7,7 @@ const normalizedPath = workspaceFilePathSchema.refine((value) => !value.includes
 const nameSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/);
 export const harnessToolPolicySchema = z.strictObject({
   schemaVersion: z.literal(1),
+  explicitReview: z.strictObject({ schemaVersion: z.literal(1) }).optional(),
   rules: z.array(z.strictObject({
     id: nameSchema,
     tools: z.array(nameSchema).min(1).max(128),
@@ -30,7 +31,7 @@ const rank = { allow: 0, ask_user: 1, deny: 2 } as const;
 /** Trusted application configuration only. No rule can grant a missing permission. */
 export const createHarnessToolPolicy = (input: HarnessToolPolicy) => {
   const policy = harnessToolPolicySchema.parse(input);
-  const canonical = { schemaVersion: 1, rules: policy.rules.map((rule) => ({
+  const canonical = { schemaVersion: 1, ...(policy.explicitReview ? { explicitReview: policy.explicitReview } : {}), rules: policy.rules.map((rule) => ({
     ...rule, tools: [...new Set(rule.tools)].sort(), ...(rule.paths ? { paths: [...new Set(rule.paths)].sort() } : {})
   })).sort((a, b) => a.id.localeCompare(b.id)) };
   const digest = `sha256:${createHash("sha256").update(JSON.stringify(canonical)).digest("hex")}`;

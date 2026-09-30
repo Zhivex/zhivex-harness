@@ -1,5 +1,7 @@
 import { z } from "zod";
-import { bundledModelCatalog, catalogModels, type ModelCatalog, PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "../../src/internal/desktop/providers.js";
+import { bundledModelCatalog, catalogModels, type ModelCatalog } from "@zhivex-ai/harness/models";
+import { PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "@zhivex-ai/harness/engine";
+import { vertexEnvironment } from "@zhivex-ai/harness/desktop/v1/providers";
 import type { DesktopModelSelection, DesktopProvider } from "./bridge.js";
 
 export const modelSelectionSchema = z.object({
@@ -11,8 +13,9 @@ export const desktopProviders = (catalog: ModelCatalog = bundledModelCatalog): D
     id: p.id, name: p.name, defaultModel: catalog.providers.find(entry => entry.id === p.id)?.defaultModel ?? p.defaultModel, support: p.support,
     models: catalogModels(catalog, p.id), catalogRevision: catalog.revision
 }));
-export function providerEnvironment(selection: DesktopModelSelection, secret?: string): NodeJS.ProcessEnv {
+export function providerEnvironment(selection: DesktopModelSelection, secret?: string, host: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
     const parsed = modelSelectionSchema.parse(selection);
+    if (parsed.provider === "vertex") return vertexEnvironment(host);
     const credential = DEFAULT_PROVIDER_REGISTRY.descriptor(parsed.provider).credentialNames[0]!;
     return secret ? {[credential]: secret} : {};
 }

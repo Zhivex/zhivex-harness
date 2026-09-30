@@ -3,6 +3,7 @@ import { tool, serializeJsonValue, type ModelMessage, type ToolExecutionContext 
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import { z } from "zod";
 import { verifierSchema } from "../runtime/repair-verifier.js";
+import { readTaskAcceptanceLedger } from '../runtime/task-acceptance-record.js';
 
 const redact = createRedactionPolicy({ includeEmails: true });
 export const TASK_SOURCE_KEY = "zhivexTaskSources";
@@ -45,7 +46,9 @@ export const createTaskTools = () => ({
       const source = id ? sources.find(s => s.id === id) : sources.at(-1);
       if (!source) throw new Error("Requested task source is not bound to this run.");
       const start = sourceOffset ?? Math.max(0, sources.length - 64);
+      const acceptance=readTaskAcceptanceLedger(context?.metadata?{metadata:context.metadata}:{})?.revisions.at(-1);
       return { id: source.id, sourceIds: sources.slice(start, start + 64).map(s => s.id),
+        ...(acceptance?{acceptance:serializeJsonValue(acceptance)}:{}),
         firstSourceId: (sources.find(item => item.original) ?? sources[0])!.id, sourceOffset: start, totalSources: sources.length,
         nextSourceOffset: start + 64 < sources.length ? start + 64 : null,
         content: source.text.slice(offset, offset + 4000), offset,

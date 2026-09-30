@@ -14,7 +14,11 @@ test("Desktop cannot bypass the surface with direct, dynamic, or re-exported imp
     'const runtime = require("../../src/runtime/harness.js");',
     'type Runtime = import("../../src/runtime/harness.js").ZhivexHarness;',
   ]) expect(architectureViolations("desktop/src/runtime.ts", source)).toHaveLength(1);
-  expect(architectureViolations("desktop/src/runtime.ts", 'import { createHarness } from "../../src/internal/desktop/runtime.js";')).toEqual([]);
+  expect(architectureViolations("desktop/src/runtime.ts", 'import { createHarness } from "../../src/internal/desktop/runtime.js";')).toHaveLength(1);
+  expect(architectureViolations("desktop/src/runtime.ts", 'import { createHarness } from "@zhivex-ai/harness/engine";')).toEqual([]);
+  for (const target of ["@zhivex-ai/harness", "@zhivex-ai/harness/dist/engine/index.js", "@zhivex-ai/code"]) {
+    expect(architectureViolations("desktop/src/runtime.ts", `import anything from "${target}";`)).toHaveLength(1);
+  }
 });
 
 test("protocol boundaries distinguish erased type references from runtime loading", () => {
@@ -24,6 +28,19 @@ test("protocol boundaries distinguish erased type references from runtime loadin
     expect(architectureViolations("src/client/protocol.ts", source)).toHaveLength(1);
   }
   expect(architectureViolations("src/internal/desktop/protocol.ts", 'export { createHarness } from "../../runtime/harness.js";')).toHaveLength(1);
+});
+
+test("Desktop renderer catalog cannot load authentication or transport dependencies", async () => {
+  expect(architectureViolations("src/internal/desktop/catalog.ts", 'export { createVertexModel } from "../../providers/vertex-auth.js";')).toHaveLength(1);
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/internal/desktop/catalog.ts")], target: "browser" });
+  expect(result.success).toBe(true);
+});
+
+test("public model catalog bundles for browsers without provider transport or Node dependencies", async () => {
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../src/engine/models.ts")], target: "browser" });
+  expect(result.success).toBe(true);
+  const output = await result.outputs[0]!.text();
+  expect(output).not.toMatch(/google-auth-library|@grpc\/grpc-js|node:fs|createVertexModel/);
 });
 
 test("implementation modules cannot depend back on their composition roots", () => {

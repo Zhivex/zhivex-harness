@@ -33,3 +33,25 @@ export const ACCEPTANCE_FIXTURES: readonly AcceptanceFixture[] = [
   { ...bug, id: "approval", mode: "approval" },
   { ...bug, id: "cancellation", mode: "cancellation" }
 ];
+
+/** Contract-enforced OCI cohort. Keep distinct from provider-quality/live task scores. */
+export const OCI_ACCEPTANCE_REVISION = 'harness-task-contract-oci-v1';
+export const OCI_ACCEPTANCE_FIXTURES = [
+  {id:'success',expectedAcceptance:'verified',hostImport:true},
+  {id:'human-review',expectedAcceptance:'pending_review',hostImport:true},
+  {id:'missing-check',expectedAcceptance:'failed',hostImport:false},
+  {id:'snapshot-drift',expectedAcceptance:'failed',hostImport:false},
+  {id:'scope',expectedAcceptance:'failed',hostImport:false},
+  {id:'altered-script',expectedAcceptance:'failed',hostImport:false},
+  {id:'altered-test',expectedAcceptance:'failed',hostImport:false},
+  {id:'stale-patch',expectedAcceptance:'failed',hostImport:false},
+  {id:'post-check-drift',expectedAcceptance:'failed',hostImport:false}
+] as const;
+
+/** Structured read-only delegation cohort; fixture models are not live route certification. */
+export const DELEGATION_ACCEPTANCE_REVISION='harness-delegation-results-v1';
+export const DELEGATION_ACCEPTANCE_FIXTURES=[
+  {id:'valid',accepted:true},{id:'invented',accepted:false},{id:'partial',accepted:false},
+  {id:'tool-error',accepted:false},{id:'invalid',accepted:false},{id:'corrected',accepted:true},
+  {id:'exhausted',accepted:false},{id:'cancellation',accepted:false},{id:'correction-cancel',accepted:false}
+] as const;

@@ -9,6 +9,7 @@ import { parseCliArgs } from "./cli/arguments.js";
 import { annotateCliStreamError, cliStreamErrorSequence, terminalErrorMessage } from "./cli/presentation.js";
 import { initializeCli, listProviders } from "./cli/setup.js";
 import { CLI_FULL_HELP_TEXT } from "./cli/help-text.js";
+import { inspectCliPolicy } from "./cli/policy.js";
 import { doctor } from "./cli/doctor.js";
 import { chat } from "./cli/console.js";
 import { resumeRun, reviewOnce, runOnce } from "./cli/run-commands.js";
@@ -16,6 +17,7 @@ import { manageRuns } from "./cli/run-management.js";
 import { manageSessions } from "./cli/session-management.js";
 import { manageChanges } from "./cli/changes.js";
 import { manageState } from "./cli/state.js";
+import { manageCheckpoints } from "./cli/checkpoints.js";
 import { cliExitCodeForError, cliRecoveryHint } from "./cli/errors.js";
 import { readStdinTask } from "./cli/task-input.js";
 
@@ -65,6 +67,9 @@ export const main = async (argv = process.argv.slice(2)) => {
     case "providers":
       listProviders(options.json);
       return;
+    case "policy":
+      await inspectCliPolicy(options);
+      return;
     case "doctor":
       await doctor(options);
       return;
@@ -80,6 +85,11 @@ export const main = async (argv = process.argv.slice(2)) => {
     case "sessions":
       await manageSessions(options);
       return;
+    case "checkpoints": {
+      const restored = await manageCheckpoints(options);
+      if (restored && interactive && !options.json) await chat({ ...options, command: 'chat', sessionId: restored.sessionId });
+      return;
+    }
     case "changes":
       await manageChanges(options);
       return;

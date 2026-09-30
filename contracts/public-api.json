@@ -899,9 +899,11 @@
       "chat",
       "providers",
       "doctor",
+      "policy",
       "resume",
       "runs",
       "sessions",
+      "checkpoints",
       "changes",
       "state",
       "help",
@@ -913,7 +915,8 @@
         "inspect",
         "cancel",
         "cleanup",
-        "export"
+        "export",
+        "report"
       ],
       "sessions": [
         "list",
@@ -930,6 +933,18 @@
         "status",
         "export",
         "import"
+      ],
+      "checkpoints": [
+        "list",
+        "capture",
+        "inspect",
+        "prepare",
+        "review",
+        "apply",
+        "recover",
+        "storage",
+        "prune-review",
+        "prune-apply"
       ]
     },
     "binaries": [
@@ -962,6 +977,7 @@
           "--session",
           "--compaction-model",
           "--compaction-provider",
+          "--tool-policy",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1066,6 +1082,7 @@
       },
       "review": {
         "allowed": [
+          "--tool-policy",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1107,6 +1124,7 @@
           "--service",
           "--compaction-model",
           "--compaction-provider",
+          "--tool-policy",
           "--pricing-file",
           "--usage-limit-usd",
           "--provider",
@@ -1216,6 +1234,98 @@
         "repeatable": [],
         "conflicts": {}
       },
+      "policy": {
+        "allowed": [
+          "--service",
+          "--compaction-model",
+          "--compaction-provider",
+          "--tool-policy",
+          "--pricing-file",
+          "--usage-limit-usd",
+          "--provider",
+          "--model",
+          "--reasoning",
+          "--profile",
+          "--route",
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--mcp-config",
+          "--context-config",
+          "--no-project-context",
+          "--require-verified-delivery",
+          "--execution",
+          "--oci-runtime",
+          "--oci-image",
+          "--oci-allow-command",
+          "--oci-shell",
+          "--oci-max-process-runtime-ms",
+          "--oci-max-process-output-bytes",
+          "--oci-max-memory-mb",
+          "--oci-max-pids",
+          "--oci-max-cpus",
+          "--oci-max-workspace-bytes",
+          "--oci-max-file-write-bytes",
+          "--oci-tmpfs-mb",
+          "--token-budget",
+          "--context-tokens",
+          "--no-token-budget",
+          "--max-steps",
+          "--timeout-ms",
+          "--max-tool-calls",
+          "--max-tool-errors",
+          "--max-input-tokens",
+          "--max-output-tokens",
+          "--max-total-tokens",
+          "--max-cost-usd",
+          "--input-cost-per-million",
+          "--output-cost-per-million",
+          "--subagent-max-steps",
+          "--subagent-max-tool-calls",
+          "--subagent-max-tool-errors",
+          "--subagent-max-input-tokens",
+          "--subagent-max-output-tokens",
+          "--subagent-max-total-tokens",
+          "--subagent-timeout-ms",
+          "--allow-check",
+          "--require-capability",
+          "--subagent",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [
+          "--route",
+          "--oci-allow-command",
+          "--allow-check",
+          "--require-capability",
+          "--subagent"
+        ],
+        "conflicts": {
+          "--usage-limit-usd": [
+            "--max-cost-usd",
+            "--input-cost-per-million",
+            "--output-cost-per-million"
+          ],
+          "--token-budget": [
+            "--no-token-budget"
+          ],
+          "--no-token-budget": [
+            "--token-budget"
+          ],
+          "--max-cost-usd": [
+            "--usage-limit-usd"
+          ],
+          "--input-cost-per-million": [
+            "--usage-limit-usd"
+          ],
+          "--output-cost-per-million": [
+            "--usage-limit-usd"
+          ]
+        }
+      },
       "doctor": {
         "allowed": [
           "--provider",
@@ -1288,6 +1398,7 @@
       },
       "resume": {
         "allowed": [
+          "--tool-policy",
           "--service",
           "--session",
           "--workspace",
@@ -1408,6 +1519,21 @@
         "repeatable": [],
         "conflicts": {}
       },
+      "runs:report": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json",
+          "--session"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
       "sessions:list": {
         "allowed": [
           "--service",
@@ -1470,6 +1596,146 @@
         "conflicts": {}
       },
       "sessions:archive": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:storage": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:prune-review": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:prune-apply": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:list": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:capture": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:inspect": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:prepare": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:review": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:apply": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "checkpoints:recover": {
         "allowed": [
           "--workspace",
           "--state-dir",

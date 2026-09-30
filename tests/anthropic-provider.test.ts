@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import {createPilotModel} from '../scripts/acceptance/pilot-adapters.js';
+import * as engineApi from '../src/engine/index.js';
 import { assembleAnthropicContinuation } from "../src/providers/anthropic-continuation.js";
 import type { StreamEvent } from "@zhivex-ai/core";
 import type { ModelMessage } from "@zhivex-ai/core";
@@ -48,7 +50,7 @@ for (const mode of ["generate", "stream"] as const) test(`Anthropic ${mode} pres
     return new Response(events.map(([name, data]) => `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`).join(""));
   }, { preconnect: original.preconnect });
   try {
-    const model = registry.createModel(config, env);
+    const model = createPilotModel(engineApi, 'claude-sonnet-5-5', env.ANTHROPIC_API_KEY);
     const messages: ModelMessage[] = [{ role: "user", parts: [{ type: "text", text: "Read the file" }] }];
     let assistant: ModelMessage;
     if (mode === "generate") {
@@ -66,7 +68,8 @@ for (const mode of ["generate", "stream"] as const) test(`Anthropic ${mode} pres
     expect(assistant.parts).toContainEqual({ type: "tool-call", toolCall: { id: call.id, name: call.name, input: call.input } });
     messages.push(assistant, { role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: call.id, toolName: call.name, output: "contents", isError: false } }] });
     await model.generate({ messages });
-    expect(bodies[1].messages[1].content).toContainEqual(thinking);
+    expect(bodies[0].model).toBe('claude-sonnet-5-5');
+    expect(bodies[1].messages[1].content).toEqual([thinking,call]);
     expect(bodies[1].messages[2].content[0]).toMatchObject({ type: "tool_result", tool_use_id: call.id });
   } finally { globalThis.fetch = original; }
 });

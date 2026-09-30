@@ -1,4 +1,5 @@
-import { loadModelCatalog } from "../../src/internal/desktop/providers.js";
+import { verifyDesktopCheckpoints } from "./smoke-checkpoints-verification.js";
+import { loadModelCatalog } from "@zhivex-ai/harness/desktop/v1/providers";
 import { externalUrl } from "./external-url.js";
 import {verifyDesktopModelsSmoke} from "./smoke-models-verification.js";
 import {desktopProviders, defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
@@ -36,6 +37,7 @@ import { verifyDesktopSmoke } from "./smoke-verification.js";
 
 const argument = (name: string) => { const i = process.argv.indexOf(name); return i < 0 ? undefined : process.argv[i + 1]; };
 const fixture = process.argv.includes("--smoke-test"), workspaceArgument = argument("--workspace");
+const operatorToolPolicyFile = argument("--tool-policy");
 const reportDirectory = fixture ? argument("--report-directory") : undefined;
 if (fixture && reportDirectory) app.setPath("userData", path.join(reportDirectory, "user-data"));
 if (!app.requestSingleInstanceLock()) app.exit(0);
@@ -83,7 +85,7 @@ void app.whenReady().then(async () => {
         if (pending && !((await pending).isAlive())) { runtimes.delete(key); pending = undefined; }
         if (closing || removing.has(project.workspace)) throw new Error("PROJECT_UNAVAILABLE");
         if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE");
-if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"), buildDirectory, directory, fixture, ...(task ? { stateDirectory: task.stateDirectory } : {}), fixtureOci: fixture && process.argv.includes("--fixture-oci"), fixtureEffectCrash: fixture && process.argv.includes("--fixture-effect-crash"), recover: true }); runtimes.set(key, pending); void pending.catch(() => { if (runtimes.get(key) === pending) runtimes.delete(key); }); }
+if (!pending) { pending = launchProjectRuntime(project, {...(operatorToolPolicyFile ? { toolPolicyFile: operatorToolPolicyFile } : {}),credentialHelper:app.isPackaged?path.join(process.resourcesPath,"credential-store"):path.join(buildDirectory,"credential-store"), buildDirectory, directory, fixture, ...(task ? { stateDirectory: task.stateDirectory } : {}), fixtureOci: fixture && process.argv.includes("--fixture-oci"), fixtureEffectCrash: fixture && process.argv.includes("--fixture-effect-crash"), recover: true }); runtimes.set(key, pending); void pending.catch(() => { if (runtimes.get(key) === pending) runtimes.delete(key); }); }
         return { ...(await pending).context, ...(task ? { task: taskView(task) } : {}) };
     };
     const runtime = async (key: unknown) => {if(credentials.changing)throw new Error("CREDENTIAL_WORK_ACTIVE"); if (typeof key !== "string" || !runtimes.has(key)) throw new Error("PROJECT_NOT_OPEN"); return runtimes.get(key)!; };
@@ -180,7 +182,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         old = await runtimes.get(project.key);
         if (old) {await prepareModelTransition(old); await old.close(); closed = true; runtimes.delete(project.key);}
         const task = tasks.list().find(t => t.workspace === project.workspace);
-        const pending = launchProjectRuntime({...project,modelSelection:selection},{credentialHelper,buildDirectory,directory,fixture,recover:true,...(task?{stateDirectory:task.stateDirectory}:{})});
+        const pending = launchProjectRuntime({...project,modelSelection:selection},{...(operatorToolPolicyFile ? { toolPolicyFile: operatorToolPolicyFile } : {}),credentialHelper,buildDirectory,directory,fixture,recover:true,...(task?{stateDirectory:task.stateDirectory}:{})});
         next = await pending;
         const saved = await registry.setModel(project.key, selection);
         runtimes.set(project.key,Promise.resolve(next));
@@ -245,7 +247,7 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
     });
     workIpc.handle("harness:command", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "command,projectKey") throw new Error("INVALID_COMMAND");
-        const value = payload as { projectKey: unknown; command: unknown }; if (value.command && typeof value.command === "object" && "method" in value.command && value.command.method === "approval.resolve") throw new Error("REVIEW_REQUIRED"); return (await runtime(value.projectKey)).command(value.command);
+        const value = payload as { projectKey: unknown; command: unknown }; if (value.command && typeof value.command === "object" && "method" in value.command && ["approval.resolve", "restore.apply", "restore.recoverFork"].includes(String(value.command.method))) throw new Error("REVIEW_REQUIRED"); return (await runtime(value.projectKey)).command(value.command);
     });
     workIpc.handle("harness:review", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "projectKey,runId,sessionId") throw new Error("INVALID_REVIEW");
@@ -255,11 +257,23 @@ if (!pending) { pending = launchProjectRuntime(project, {credentialHelper:app.is
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "approve,projectKey,ticketId") throw new Error("INVALID_DECISION");
         const value = payload as { projectKey: unknown; ticketId: unknown; approve: unknown }; return (await runtime(value.projectKey)).resolveReview(value.ticketId, value.approve);
     });
+    workIpc.handle("harness:checkpoint-review", async (event, payload: unknown) => {
+        validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "operationId,projectKey,sessionId") throw new Error("INVALID_REVIEW");
+        const value = payload as { projectKey: unknown; sessionId: unknown; operationId: unknown }; return (await runtime(value.projectKey)).reviewCheckpoint(value.sessionId, value.operationId);
+    });
+    workIpc.handle("harness:checkpoint-recovery-review", async (event, payload: unknown) => {
+        validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "forkSessionId,operationId,projectKey,sessionId") throw new Error("INVALID_REVIEW");
+        const value = payload as { projectKey: unknown; sessionId: unknown; operationId: unknown; forkSessionId: unknown }; return (await runtime(value.projectKey)).reviewCheckpointRecovery(value.sessionId, value.operationId, value.forkSessionId);
+    });
+    workIpc.handle("harness:checkpoint-resolve", async (event, payload: unknown) => {
+        validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "approve,projectKey,ticketId") throw new Error("INVALID_DECISION");
+        const value = payload as { projectKey: unknown; ticketId: unknown; approve: unknown }; return (await runtime(value.projectKey)).resolveCheckpointReview(value.ticketId, value.approve);
+    });
     workIpc.handle("harness:events", async (event, payload: unknown) => {
         validateSender(event); if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).sort().join(",") !== "after,projectKey,sessionId") throw new Error("INVALID_CURSOR");
         const value = payload as { projectKey: unknown; sessionId: unknown; after: unknown }; return (await runtime(value.projectKey)).events({ sessionId: value.sessionId, after: value.after });
     });
     window.once("ready-to-show", () => window.show()); await window.loadFile(index);
-    if (fixture && reportDirectory) { await mkdir(reportDirectory, { recursive: true }); const restartPhase = argument("--fixture-restart-phase"); if (restartPhase?.startsWith("tasks-")) await verifyDesktopWorktreesSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase?.startsWith("effect-")) await verifyDesktopEffectCrashSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase) await verifyDesktopRestartSmoke(window, runtimes, reportDirectory, restartPhase, argument("--fixture-cli")); else { await (process.argv.includes("--fixture-models") ? verifyDesktopModelsSmoke : process.argv.includes("--fixture-oci") ? verifyDesktopOciSmoke : verifyDesktopSmoke)(window, runtimes, reportDirectory); app.quit(); } }
+    if (fixture && reportDirectory) { await mkdir(reportDirectory, { recursive: true }); const restartPhase = argument("--fixture-restart-phase"); if (argument("--fixture-checkpoints")) await verifyDesktopCheckpoints(window, runtimes, reportDirectory, argument("--fixture-checkpoints")!); else if (restartPhase?.startsWith("tasks-")) await verifyDesktopWorktreesSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase?.startsWith("effect-")) await verifyDesktopEffectCrashSmoke(window, runtimes, reportDirectory, restartPhase); else if (restartPhase) await verifyDesktopRestartSmoke(window, runtimes, reportDirectory, restartPhase, argument("--fixture-cli")); else { await (process.argv.includes("--fixture-models") ? verifyDesktopModelsSmoke : process.argv.includes("--fixture-oci") ? verifyDesktopOciSmoke : verifyDesktopSmoke)(window, runtimes, reportDirectory); app.quit(); } }
 }).catch(async (error) => { if(error instanceof DesktopStateError){ if(!fixture) dialog.showErrorBox("Cannot open this state", "This version cannot open the saved state or a migration requires recovery. Use a compatible version and preserve your data and backups. Code: " + error.code); if(reportDirectory) await writeFile(path.join(reportDirectory,"state-format-failure.json"),JSON.stringify({code:error.code})).catch(()=>{}); app.exit(1); return; } if (fixture) console.error(error); if (reportDirectory) await writeFile(path.join(reportDirectory, "failure.json"), JSON.stringify({ code: "DESKTOP_VERIFICATION_FAILED" })).catch(() => { }); process.stderr.write("Desktop could not start or verify. Check workspace access and runtime ownership.\n"); app.exit(1); });
 app.on("window-all-closed", () => app.quit());

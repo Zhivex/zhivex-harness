@@ -3,7 +3,7 @@ import {createHash, randomUUID} from "node:crypto";
 import {mkdir, mkdtemp, realpath, rm, symlink, writeFile, readFile} from "node:fs/promises";
 import path from "node:path";
 import {collectDesktopUpdateInventory, prepareDesktopUpdateState, prepareExclusiveDesktopUpdateState} from "../src/update-inventory.js";
-import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor} from "../../src/persistence/sqlite-access.js";
+import {acquireSqliteAccess, exclusiveSqliteAccessDescriptor} from "@zhivex-ai/harness/desktop/v1/state";
 import {resolveHarnessConfig} from "../../src/runtime/config.js";
 import {openHarnessPersistence, HARNESS_SQLITE_FILE} from "../../src/persistence/operations.js";
 import {openCliSessionStore} from "../../src/persistence/sessions.js";

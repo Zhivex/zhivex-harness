@@ -19,6 +19,8 @@ export interface HarnessLocalService {
   resumeAdmission(): void;
   /** Requests cancellation of this host's active invocation; never force-finalizes it. */
   cancelActive(): Promise<void>;
+  /** Trusted host channel after full review; never exposed by the HTTP router. */
+  dispatchReviewed(request: unknown): Promise<HarnessClientResponse>;
   /** Stops admission, drains accepted commands, closes adapter and host runtime. */
   close(): Promise<void>;
 }
@@ -97,7 +99,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       }
       const parsed=harnessClientRequestSchema.safeParse(value);
       const method=parsed.success?parsed.data.command.method:undefined;
-      const mutation=method!==undefined&&!["project.get","session.list","session.get","run.get"].includes(method);
+      const mutation=method!==undefined&&!["project.get","policy.get","session.list","session.get","run.get","checkpoint.list","checkpoint.inspect","restore.get"].includes(method);
       if(paused&&mutation&&method!=="run.cancel")return send(res,503,fault("SERVICE_PAUSED"));
       if(mutation)activeMutations++;
       try{return send(res, 200, await adapter!.dispatch(value));}
@@ -121,6 +123,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
     });
     adapter = await createHarnessClientAdapter(harness, {
       ...(options.approvalNow?{now:options.approvalNow}:{}),
+      onPolicyDecision: (sessionId,runId,event) => activity!.policyDecision(sessionId,runId,event),
       onPrompt: (sessionId,runId,prompt) => activity!.prompt(sessionId,runId,prompt),
       onEvent: (sessionId,runId,event) => activity!.append(sessionId,runId,event),
       onCheckpoint: (sessionId,runId,status) => activity!.checkpoint(sessionId,runId,status)
@@ -130,6 +133,15 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
     await chmod(socketPath, 0o600);
     await privateFile(credentialsPath, JSON.stringify({ schemaVersion: 1, socketPath, token })); ownsCredentials = true;
     return { socketPath, credentialsPath,
+      async dispatchReviewed(request) {
+        if (closing || paused) throw new Error('SERVICE_ADMISSION_PAUSED');
+        if (!adapter?.dispatchReviewed) throw new Error('EXPLICIT_REVIEW_UNAVAILABLE');
+        activeMutations++;
+        const operation = adapter.dispatchReviewed(request);
+        const tracked = operation.then(() => {}, () => {});
+        pending.add(tracked);
+        try { return await operation; } finally { pending.delete(tracked); activeMutations--; }
+      },
       pauseAdmission(){if(closing)throw new Error("SERVICE_CLOSING");paused=true;return activeMutations>0;},
       resumeAdmission(){if(closing)throw new Error("SERVICE_CLOSING");paused=false;},
       cancelActive(){return adapter!.cancelActive();},

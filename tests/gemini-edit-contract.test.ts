@@ -25,7 +25,8 @@ for (const existing of [false, true]) test(`Gemini 3.7 streamed ${existing ? "up
       : { text: "done" };
     return new Response(`data: ${JSON.stringify({ candidates: [{ content: { role: "model", parts: [part] }, finishReason: "STOP" }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 3, totalTokenCount: 13 } })}\n\n`);
   }, { preconnect: originalFetch.preconnect });
-  const options = { provider: "gemini", model: "gemini-3.7-flash", workspace: root, env: { GEMINI_API_KEY: "synthetic-gemini-key" }, projectContext: false };
+  // Pin the transport contract catalog; progressive discovery is exercised separately.
+  const options = { toolNames: ["propose_edits", "apply_patch"], provider: "gemini", model: "gemini-3.7-flash", workspace: root, env: { GEMINI_API_KEY: "synthetic-gemini-key" }, projectContext: false };
   try {
     if (existing) await writeFile(path.join(root, "target.txt"), before);
     harness = await createHarness(options);

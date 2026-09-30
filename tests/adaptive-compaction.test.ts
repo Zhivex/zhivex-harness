@@ -165,3 +165,26 @@ test("adaptive SDK compaction retains a user correction when its half-input summ
   expect(result.status).toBe("completed");
   expect(result.state.compactions).toHaveLength(1);
 });
+
+test("adaptive approval compaction retains the end of an ordinary user task across resume", async () => {
+  const marker = "EXACT_COMPLETION_MARKER";
+  const task = "Follow this reviewed workflow. " + "Required task detail. ".repeat(35) + ` Finish with ${marker}.`;
+  const store = createInMemoryAgentRunStore();
+  const tools = {
+    inspect: tool({ name: "inspect", schema: z.object({}), execute: () => ({ proposal: "synthetic" }) }),
+    apply: tool({ name: "apply", schema: z.object({}), requiresApproval: true, approvalMode: "interrupt", execute: () => ({ applied: true }) })
+  };
+  const call = (name: string) => ({ messages: [{ role: "assistant" as const, parts: [{ type: "tool-call" as const, toolCall: { id: name, name, input: {} } }] }], finishReason: "tool-calls" as const });
+  const model = createMockLanguageModel({ responses: [call("inspect"), call("apply"), { text: marker, messages: [createTextMessage("assistant", marker)], finishReason: "stop" }] });
+  const generate = model.generate.bind(model);
+  model.generate = async input => {
+    expect(JSON.stringify(input.messages)).toContain(marker);
+    return generate(input);
+  };
+  const agent = new Agent({ model, tools, store, maxSteps: 4, compaction: createAdaptiveCompaction({ ...config, maxMessages: 4, keepRecentMessages: 2 }, { tools }) });
+  const first = await agent.run({ messages: [...Array.from({ length: 8 }, (_, i) => createTextMessage(i % 2 ? "assistant" : "user", `Synthetic earlier context ${i}`)), createTextMessage("user", task)] });
+  expect(first.status).toBe("waiting_approval");
+  const result = await agent.resume({ state: (await store.load(first.state.runId))!, approvals: first.state.pendingApprovals.map(a => ({ provider: a.provider, approvalRequestId: a.id, approve: true })) });
+  expect(result.status).toBe("completed");
+  expect(result.state.compactions!.length).toBeGreaterThan(first.state.compactions!.length);
+});

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "dce2d4fbc7441c1d583c92b866ff788ec0c8a7d7c8df8a17f77f4a42f946439e",
+  "root": "/tmp/har-task-installed-QddSn9",
+  "phases": [
+    {
+      "phase": "prepare",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "installed": true,
+      "fixture": true,
+      "liveProvider": false
+    },
+    {
+      "phase": "resume",
+      "ok": true,
+      "runtime": "v22.13.0",
+      "installed": true,
+      "fixture": true,
+      "liveProvider": false
+    }
+  ],
+  "installed": true,
+  "published": false,
+  "liveProvider": false
+}

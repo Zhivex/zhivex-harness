@@ -1,4 +1,4 @@
-import { createRequire } from "node:module";
+import metadata from "../package.json";
 
 interface PackageMetadata {
   version?: unknown;
@@ -8,7 +8,7 @@ interface PackageMetadata {
   };
 }
 
-const packageMetadata = createRequire(import.meta.url)("../package.json") as PackageMetadata;
+const packageMetadata = metadata as PackageMetadata;
 
 if (typeof packageMetadata.version !== "string" || packageMetadata.version.length === 0) {
   throw new Error("package.json must contain a non-empty version.");

@@ -429,6 +429,7 @@ test("portable backups preserve checkpoint captures and completed restores, reje
   try {
     expect(restored.getCheckpoint(checkpointId!).files[0]?.content).toBe("original");
     expect(restored.getOperation(operationId!).stage).toBe("completed");
+    expect(() => restored.prepareRetention({ checkpointIds: [checkpointId!], completedRestoreIds: [] })).toThrow('referenced');
   } finally { restored.close(); restoredSessions.close(); }
   const invalid = structuredClone(bundle);
   invalid.records.workspaceCheckpoints![0]!.scopeKey = "0".repeat(64);
@@ -437,6 +438,20 @@ test("portable backups preserve checkpoint captures and completed restores, reje
   const operation = unfinished.records.workspaceCheckpoints!.find((entry) => entry.kind === "restore")!;
   if (operation.kind === "restore") operation.body.stage = "prepared";
   await expect(importHarnessStateBackup(target, withChecksum(unfinished))).rejects.toThrow("unfinished");
+  const retainedSessions = await openCliSessionStore({ workspace: target.workspace, stateDirectory: target.stateDirectory, scope: target.scope });
+  const retained = await openWorkspaceCheckpointStore(workspace, retainedSessions);
+  try {
+    const before = await retainedSessions.list();
+    const review = retained.prepareRetention({ checkpointIds: [checkpointId!], completedRestoreIds: [operationId!] });
+    await retained.applyRetention(review.selection, review.planId);
+    expect(await retainedSessions.list()).toEqual(before);
+    expect(retained.storageStatus().records).toBe(0);
+  } finally { retained.close(); retainedSessions.close(); }
+  const afterRetention = await createHarnessStateBackup(target);
+  expect(afterRetention.records.workspaceCheckpoints ?? []).toHaveLength(0);
+  expect(afterRetention.records.sessions).toHaveLength(bundle.records.sessions.length);
+  // An old backup cannot silently merge deleted evidence back into an existing scope.
+  await expect(importHarnessStateBackup(target, bundle)).rejects.toThrow('empty destination');
 });
 
 test("portable backups preserve shared budget receipts and auxiliary usage without resetting spent tokens", async () => {

@@ -1127,3 +1127,11 @@ pre {
 .file-diff { min-width: 0; margin: 12px 0; }
 
 .model-others[open] > summary { margin-bottom: 12px; }
+.checkpoint-panel fieldset { min-width: 0; margin-top: 12px; padding: 16px; border: 1px solid #393640; border-radius: 12px; }
+.checkpoint-panel label { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; font-size: 13px; }
+.checkpoint-panel select, .checkpoint-panel textarea, .checkpoint-panel input:not([type="checkbox"]) { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; color: inherit; background: #1b1a1e; border: 1px solid #45414c; border-radius: 8px; font: inherit; }
+.checkpoint-panel textarea { min-height: 80px; resize: vertical; }
+.checkpoint-panel button { margin: 4px 8px 4px 0; }
+.checkpoint-panel label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
+.checkpoint-panel [aria-label="Review checkpoint restoration"] { padding: 12px 0; scroll-margin-top: 16px; outline-offset: 4px; }
+.checkpoint-panel p { overflow-wrap: anywhere; }

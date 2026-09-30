@@ -1,4 +1,5 @@
 import { withAnthropicContinuation } from "./anthropic-continuation.js";
+import { createVertexModel, vertexConfigured, VERTEX_ENVIRONMENT } from "./vertex-auth.js";
 import { withQwenHostedPolicy } from "./qwen-hosted-policy.js";
 import { createMetaContinuationFetch } from "./meta-continuation.js";
 import { createMetaReplayModel } from "./meta-replay.js";
@@ -20,7 +21,7 @@ import { createGemini } from "@zhivex-ai/gemini";
 import { createOpenAI } from "@zhivex-ai/openai";
 import { createQwen, type QwenRegion } from "@zhivex-ai/qwen";
 
-export const PROVIDERS = ["meta", "qwen", "openai", "gemini", "anthropic"] as const;
+export const PROVIDERS = ["meta", "qwen", "openai", "gemini", "anthropic", "vertex"] as const;
 
 export type BuiltInHarnessProvider = (typeof PROVIDERS)[number];
 export type HarnessProvider = BuiltInHarnessProvider | (string & {});
@@ -396,7 +397,7 @@ export const createProviderRegistry = (
         ));
         return Object.freeze({
           ...registration.descriptor,
-          configured: credentials.length === 0 || credentials.some((credential) => credential.present),
+          configured: registration.descriptor.id === "vertex" ? vertexConfigured(env) : credentials.length === 0 || credentials.some((credential) => credential.present),
           credentials,
           configuration: providerConfiguration(registration.diagnostics, env)
         });
@@ -406,7 +407,8 @@ export const createProviderRegistry = (
       // Preserve pre-Anthropic transport bindings when the new route uses its default.
       // An explicit endpoint remains part of the binding and invalidates stale resumes.
       const transport = frozenRegistrations.filter(registration =>
-        registration.descriptor.id !== "anthropic" || Boolean(env.ANTHROPIC_BASE_URL?.trim())
+        (registration.descriptor.id !== "anthropic" || Boolean(env.ANTHROPIC_BASE_URL?.trim())) &&
+        (registration.descriptor.id !== "vertex" || VERTEX_ENVIRONMENT.some(name => Boolean(env[name]?.trim())))
       ).map((registration) => {
         const names = [
           registration.diagnostics.endpointEnvironmentVariable,
@@ -580,6 +582,19 @@ const withMetaResponses = (model: LanguageModel): LanguageModel => wrapLanguageM
 }]);
 
 export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = Object.freeze([
+  {
+    descriptor: {
+      id: "vertex", name: "Google Cloud Vertex AI",
+      defaultModel: bundledDefaultModel("vertex"), credentialNames: [],
+      capabilities: HARNESS_PROVIDER_CAPABILITIES, support: "provisional"
+    },
+    diagnostics: { presence: [
+      { key: "project", environmentVariable: "GOOGLE_CLOUD_PROJECT" },
+      { key: "location", environmentVariable: "VERTEX_LOCATION" },
+      { key: "adcFile", environmentVariable: "GOOGLE_APPLICATION_CREDENTIALS" }
+    ] },
+    factory: ({ model, env }) => createVertexModel(model, env)
+  },
   {
     descriptor: {
       id: "anthropic",

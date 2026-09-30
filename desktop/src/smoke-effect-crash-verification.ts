@@ -1,7 +1,7 @@
 import { app, type BrowserWindow } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import {readRegularFileNoFollow} from "../../src/internal/desktop/persistence.js";
+import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import assert from "node:assert/strict";
 import type { ProjectRuntime } from "./runtime-host.js";
 

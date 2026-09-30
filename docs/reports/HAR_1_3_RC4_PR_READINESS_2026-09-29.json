@@ -1,0 +1,4521 @@
+{
+  "schemaVersion": 1,
+  "kind": "rc4-pr-readiness",
+  "observedAt": "2026-09-30T00:20:12.665610+00:00",
+  "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+  "harnessVersion": "1.3.0-rc.4",
+  "codeVersion": "0.1.0-rc.2",
+  "codeSha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0",
+  "distFiles": 244,
+  "exactCurrentBuildBytes": true,
+  "localAcceptancePassed": true,
+  "remoteCiPassed": false,
+  "releaseCertified": false,
+  "published": false,
+  "matrix": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "gates": 5,
+      "continuityPhases": 6
+    },
+    {
+      "provider": "vertex",
+      "model": "gemini-3.7-flash",
+      "gates": 5,
+      "continuityPhases": 6
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "gates": 5,
+      "continuityPhases": 6
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "gates": 5,
+      "continuityPhases": 6
+    },
+    {
+      "provider": "qwen",
+      "model": "qwen3.8-max",
+      "gates": 5,
+      "continuityPhases": 6
+    },
+    {
+      "provider": "meta",
+      "model": "muse-spark-1.3",
+      "gates": 5,
+      "continuityPhases": 6
+    }
+  ],
+  "liveResults": {
+    "base": {
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-30T00:07:01.039Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        },
+        {
+          "ok": true,
+          "provider": "meta",
+          "model": "muse-spark-1.3",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1
+        }
+      ]
+    },
+    "compaction": {
+      "ok": true,
+      "gate": "live-provider-smoke",
+      "certifiedAt": "2026-09-30T00:08:18.750Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 0,
+            "toolMetadata": false
+          }
+        },
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 0,
+            "toolMetadata": true
+          }
+        },
+        {
+          "ok": true,
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 0,
+            "toolMetadata": true
+          }
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 2,
+            "toolMetadata": false
+          }
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 2,
+            "toolMetadata": false
+          }
+        },
+        {
+          "ok": true,
+          "provider": "meta",
+          "model": "muse-spark-1.3",
+          "approvalPersisted": true,
+          "processRestarted": true,
+          "toolExecutions": 1,
+          "journalEntries": 1,
+          "compaction": {
+            "before": 2,
+            "after": 3,
+            "privateParts": 2,
+            "toolMetadata": false
+          }
+        }
+      ]
+    },
+    "delegation": {
+      "ok": true,
+      "gate": "live-orchestration-smoke",
+      "certifiedAt": "2026-09-30T00:11:16.259Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_addfaa35-a619-4439-8a2c-b8fb09c8fee2",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 5397
+        },
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_40e5d8fc-dfe9-481d-a6a8-e827cf407f1c",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 3279
+        },
+        {
+          "ok": true,
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_7ebc3c34-35f4-4743-8a30-f6268d5cafd5",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 4551
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_823c93f0-bd85-4db8-865d-d75460d4cb9a",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 2441
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_2b55b837-9e58-4977-8d14-ac2a2809cb94",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 4769
+        },
+        {
+          "ok": true,
+          "provider": "meta",
+          "model": "muse-spark-1.3",
+          "parentRunId": "live-orchestration-parent",
+          "childRunId": "run_df288ba2-ae97-49fe-a81f-f0797b02a8af",
+          "structuredResult": true,
+          "delegationExecutions": 1,
+          "childPersisted": true,
+          "processReopened": true,
+          "hierarchyRuns": 2,
+          "childToolCalls": 1,
+          "aggregateTokens": 6120
+        }
+      ]
+    },
+    "execution": {
+      "ok": true,
+      "gate": "live-execution-smoke",
+      "certifiedAt": "2026-09-30T00:12:32.990Z",
+      "providers": [
+        {
+          "ok": true,
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "runId": "run_40dd09e8-07e1-48c1-b81a-419d07141e96",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "runId": "run_a6e2dc8c-8e53-497e-a995-e77d1f48fec2",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "runId": "run_5ab41271-39a2-4de9-be7e-798d09e7efae",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "runId": "run_53a44431-73a5-4157-bb60-8635fe724711",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "runId": "run_29f83e62-75e2-4bc4-9a56-1237f68d451b",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        },
+        {
+          "ok": true,
+          "provider": "meta",
+          "model": "muse-spark-1.3",
+          "runId": "run_527e7460-1de9-4b4a-a93a-21cf90f77cbb",
+          "imageDigest": "sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402",
+          "approvals": [
+            "run_environment_command",
+            "apply_environment_patch"
+          ],
+          "toolSequence": [
+            "run_environment_command",
+            "inspect_environment_patch",
+            "apply_environment_patch"
+          ],
+          "hostImportVerified": true,
+          "environmentBound": true
+        }
+      ]
+    },
+    "continuity": {
+      "schemaVersion": 1,
+      "kind": "live-conversation-continuity",
+      "runtime": "selected-artifact",
+      "harnessVersion": "1.3.0-rc.4",
+      "observedAt": "2026-09-30T00:17:09.233Z",
+      "status": "passed",
+      "scriptSha256": "f0351f2e074b00511cdc5beee4078715723d25aefd53d2922d4a9964039727ed",
+      "rows": [
+        {
+          "provider": "anthropic",
+          "model": "claude-sonnet-5-5",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 10224,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1639,
+              "outputTokens": 262,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1913,
+              "outputTokens": 138,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "42fff0b6c0908d1772603529342d028066da1a558deeae41ea641d12cdf02204"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2040,
+              "outputTokens": 55,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "ad91b3417f1c0b7d996104b9c4b6dd1afb21ce3552fa397912f3d60ca838ff0b"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2087,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "9cda29e9f10116e545174582623982691c04389fe6e92605e5d8420f5e3e0e41"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1983,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "99ca298e9c02ca34dc9a96dc8d53d50e76442e12e7bee34b40215df9d24297cb"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 2010,
+              "outputTokens": 57,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "e2f24dac8a28383b1c22ca637b1b5c0782af1a6289c9630f8d8df87e368fbc3c"
+            }
+          ]
+        },
+        {
+          "provider": "vertex",
+          "model": "gemini-3.7-flash",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 24804,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 761,
+              "outputTokens": 51,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 927,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "b94aaaaf7dc6a53d08cec127b0270b3fb6b8f148dba6c575ba8bbd09bcc8e085"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1001,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "74408f33ede6b17c71201488fde8dbb671a1cce730f3dbbe7413d4021b5691bb"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 986,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "f1459816e64cf7b78d6a21caf0374bb93b00a9613cc30b932df24b7d1acdd88d"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 972,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "c9e8717f0f544e09cd6bf9c3cb9ed25540364be31e919e9874f74f2cebb23f13"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 988,
+              "outputTokens": 50,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "67962dfc5ba82eb0c1b6bcf0db0d22d8a3bd301ade3e8fd19a31e906e3062216"
+            }
+          ]
+        },
+        {
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 22971,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 812,
+              "outputTokens": 51,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 978,
+              "outputTokens": 39,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "b94aaaaf7dc6a53d08cec127b0270b3fb6b8f148dba6c575ba8bbd09bcc8e085"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1052,
+              "outputTokens": 39,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "1d3d9aae731821f511ce66838f98d35d4279f7701678dd6b4f130d1947e6e28f"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1037,
+              "outputTokens": 39,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "874f43a47eb8552c43ee9d3ed2f5ea30bd99690c44b93a277968752c90dc54ad"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1023,
+              "outputTokens": 32,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "14c4913e81a2f0e066f11b2578a5316f6b075460ebb099b13b93bab53f1e2754"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1039,
+              "outputTokens": 39,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "e2f24dac8a28383b1c22ca637b1b5c0782af1a6289c9630f8d8df87e368fbc3c"
+            }
+          ]
+        },
+        {
+          "provider": "openai",
+          "model": "gpt-6-luna",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 12516,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 766,
+              "outputTokens": 187,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 917,
+              "outputTokens": 77,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "8d90fc9e499923b60254800d425286244deb174ca27a17663666bd522fc9d39a"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 981,
+              "outputTokens": 125,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "5c8e5b999b0458a151d5f6bfa09effda9cf22cbdb093564152f046901eb0dde4"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1045,
+              "outputTokens": 62,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "2837e0968058b48ceda6f068f7d1dc7540fdddbd2c3a1d0071e828c6478b12c5"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1072,
+              "outputTokens": 87,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "e9c4c07925615eabff8d3435a1c15b91cf5d8dc35ad5adeb73e569c0f3e854dc"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1100,
+              "outputTokens": 64,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "60ff141e4058f7c6ffcdf4a67a37fd7735ec2a7bcc06ae965019a45958e06ead"
+            }
+          ]
+        },
+        {
+          "provider": "qwen",
+          "model": "qwen3.8-max",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 39328,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1108,
+              "outputTokens": 152,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1275,
+              "outputTokens": 124,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "9a6c944ad6dd506820a5f4fdcb688edbbb906856ad31235157ccfcdfbe53d766"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1350,
+              "outputTokens": 144,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "5ffcaa52d294ff822d66ddc546271b0777903a2602f40c76f11e54edb608acb6"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1425,
+              "outputTokens": 405,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "d2de94ddc7398e4e4de73c7c7b7b227c949a5fafc114e5c4dc17cd69e3f323b8"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1451,
+              "outputTokens": 118,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "1f6720d998bbbc5bc8f3fd7701a33472d0026c4c96e8715ea38fd981a3c6afe0"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1480,
+              "outputTokens": 101,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "bf2c64fe90f5d0baff739c447150a08071840ebef83f6f44ef52c18f106d1a01"
+            }
+          ]
+        },
+        {
+          "provider": "meta",
+          "model": "muse-spark-1.3",
+          "status": "passed",
+          "processStarts": 6,
+          "elapsedMs": 166207,
+          "phases": [
+            {
+              "phase": 0,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 6,
+              "inputTokens": 1282,
+              "outputTokens": 1555,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": false,
+                "userCorrectionPresent": false,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": false,
+              "sourceDigest": "feabb25fb2627061c535852fc90ca04f4f18e7d9e3f140e89760dd367aebfea9"
+            },
+            {
+              "phase": 1,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1433,
+              "outputTokens": 6566,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "ac4d6c962a62a52b76d981a1b041353dee6f2ce8694c661d0b5ba4ad058e1def"
+            },
+            {
+              "phase": 2,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1496,
+              "outputTokens": 1659,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "18940a4dbb32cc3d45dde7c091bda60ef62ccdde591eead6fe39e8620f93113d"
+            },
+            {
+              "phase": 3,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1559,
+              "outputTokens": 898,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "2638e7822b18bdbf7f6a192e2d46e25c7cc693c1cdc25c3dff9f1393db0f6864"
+            },
+            {
+              "phase": 4,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1586,
+              "outputTokens": 633,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "ce2cb52bb360be790222780c0723369133fc32097354432f31fe231466a8a952"
+            },
+            {
+              "phase": 5,
+              "checks": {
+                "completed": true,
+                "compacted": true,
+                "codename": true,
+                "compatibility": true,
+                "rejectedApproach": true,
+                "objective": true,
+                "noTools": true
+              },
+              "status": "passed",
+              "compactions": 1,
+              "compactedMessages": 11,
+              "inputTokens": 1614,
+              "outputTokens": 948,
+              "finishReason": "stop",
+              "answerJsonParsed": true,
+              "retainedContext": {
+                "initialFactPresent": true,
+                "correctedFactPresent": true,
+                "userCorrectionPresent": true,
+                "currentObjectivePresent": true,
+                "compatibilityPresent": true,
+                "rejectedApproachPresent": true,
+                "explicitContextPriority": true
+              },
+              "checkpointRestored": true,
+              "sourceDigest": "cbf6c1d2482831fcf62d6e119a7810c2e8c76dfe74a6e6a06b9f971815ee5c0f"
+            }
+          ]
+        }
+      ],
+      "limits": {
+        "maxInputTokens": 24000,
+        "maxOutputTokens": 8192,
+        "maxTotalTokens": 32192,
+        "maxTokens": 8192,
+        "maxSteps": 2,
+        "timeoutMs": 90000,
+        "compactionMaxMessages": 5,
+        "compactionKeepRecentMessages": 2,
+        "compactionMaxEstimatedInputTokens": 12000
+      },
+      "requireVerifiedDelivery": false,
+      "comparisonNote": "Post-fix campaign raises generation/output ceilings to 8192 from the prior six-turn campaign's 2048/4096 to isolate memory behavior; success rates are not directly comparable.",
+      "moduleSha256": "4f4469ff51bdee693e1b0afe836fbf6189abf65ee7e691915b0bb2fcab102ffe",
+      "limitations": [
+        "Six-turn synthetic memory scenario with forced compaction; not a natural long-session benchmark or release certification",
+        "Conversation restarts between completed runs; suspended approval resume is tested separately",
+        "Deterministic compaction; no auxiliary paid compactor"
+      ]
+    },
+    "routing-vertex": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "runId": "run_5aa2571d-8210-4353-89c1-a9d69c601259"
+      },
+      "reviewer": {
+        "provider": "vertex",
+        "model": "gemini-3.7-flash",
+        "runId": "run_75300229-8765-458c-a6e6-24ffe734c9e4"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    },
+    "routing-anthropic": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "runId": "run_f8a7c4e7-3663-4a81-8e34-308efe6e6103"
+      },
+      "reviewer": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "runId": "run_e1c2f4f6-0af6-4799-a9e1-58735472bdc8"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    },
+    "routing-gemini": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "openai",
+        "model": "gpt-6-luna",
+        "runId": "run_123dd90f-16f1-4abb-95ea-d86e7d5f4b6c"
+      },
+      "reviewer": {
+        "provider": "gemini",
+        "model": "gemini-3.6-flash",
+        "runId": "run_82091b6a-3e56-4374-bb0b-b9b8821d3b25"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    },
+    "routing-meta": {
+      "ok": true,
+      "gate": "live-routing-smoke",
+      "parent": {
+        "provider": "qwen",
+        "model": "qwen3.8-max",
+        "runId": "run_829fc5a9-0e89-4c6c-a2ed-002bb966f046"
+      },
+      "reviewer": {
+        "provider": "meta",
+        "model": "muse-spark-1.3",
+        "runId": "run_ddff4147-e605-4595-934e-4316b75c8d2c"
+      },
+      "delegationExecutions": 1,
+      "childToolCalls": 1
+    }
+  },
+  "liveSources": {
+    "base": {
+      "path": "/tmp/hu45-rc4-pr-certification/base.json",
+      "sha256": "c888fb3dc31ce3ac2292cd61264517bf1d703b18fea9173d798c2190ff0fd4cd"
+    },
+    "compaction": {
+      "path": "/tmp/hu45-rc4-pr-certification/compaction.json",
+      "sha256": "f866697ef024b16b2362888e77172a467ac0db092d5a27686734402a3c7fbaf0"
+    },
+    "delegation": {
+      "path": "/tmp/hu45-rc4-pr-certification/delegation.json",
+      "sha256": "d0cc228353a2abd40025e7001a0a6febf711fce41241364200f74285dd633433"
+    },
+    "execution": {
+      "path": "/tmp/hu45-rc4-pr-certification/execution.json",
+      "sha256": "616e4a6e0ea3775108542b5949bd856cef1c9ead5bd77611752d6e2d265df915"
+    },
+    "continuity": {
+      "path": "/tmp/hu45-rc4-pr-certification/continuity.json",
+      "sha256": "17da24c319e80ee160b156828d72fc88173623a6076839a3dc39ee1e92ef5e5c"
+    },
+    "routing-vertex": {
+      "path": "/tmp/hu45-rc4-pr-certification/routing-vertex.json",
+      "sha256": "dfb9eb30bb0168d4a4f0cc7a21bc71d049ad47a53fae9f7558605b00eb31776a"
+    },
+    "routing-anthropic": {
+      "path": "/tmp/hu45-rc4-pr-certification/routing-anthropic.json",
+      "sha256": "46cb06861a70c1dcf04d37d9b484fd3e132378ef23a28e37770d020fa33a6823"
+    },
+    "routing-gemini": {
+      "path": "/tmp/hu45-rc4-pr-certification/routing-gemini.json",
+      "sha256": "f3f1016462d51e7bec573f543d78840f0b4fc8e8f1052007c01806ef16ec5e9b"
+    },
+    "routing-meta": {
+      "path": "/tmp/hu45-rc4-pr-certification/routing-meta.json",
+      "sha256": "2f23135da973c27269a505a33a158f764d188b3ed3b23c90a9e54f0376bcbbff"
+    }
+  },
+  "installed": {
+    "policy": {
+      "sourceSha256": "fa07b202da5b654171b2282e9e289f374cafed34539a3031c9699cb2148da8b7",
+      "result": {
+        "schemaVersion": 1,
+        "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "phases": [
+          {
+            "phase": "prepare",
+            "ok": true,
+            "runtime": "v22.13.0"
+          },
+          {
+            "phase": "incompatible",
+            "ok": true,
+            "runtime": "v22.13.0"
+          },
+          {
+            "phase": "resume",
+            "ok": true,
+            "runtime": "v22.13.0"
+          }
+        ],
+        "installed": true,
+        "liveProvider": false,
+        "published": false,
+        "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-policy-installed-RbU1gl"
+      }
+    },
+    "review": {
+      "sourceSha256": "6426cfc9bd66c00c21b530a3cf63e2c5bf16f1a44d89ac8dc63b5ae29627fefa",
+      "result": {
+        "schemaVersion": 1,
+        "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "phases": [
+          {
+            "phase": "prepare",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "explicitReview": true,
+            "promotedChild": true
+          },
+          {
+            "phase": "resume",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "explicitReview": true,
+            "promotedChild": true
+          },
+          {
+            "phase": "verify",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "explicitReview": true,
+            "promotedChild": true
+          }
+        ],
+        "installed": true,
+        "liveProvider": false,
+        "published": false,
+        "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-explicit-installed-HbMyH4"
+      }
+    },
+    "observation": {
+      "sourceSha256": "c7e8ccdf34ef49c5b35b60a172d3fe660cd2d1cfcaf82c10d7d56d17135f12fb",
+      "result": {
+        "schemaVersion": 1,
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-policy-installed-h7RjP7",
+        "phases": [
+          {
+            "phase": "prepare",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "queryParity": true,
+            "durableReplay": true,
+            "noQueryOrReplayExecution": true
+          },
+          {
+            "phase": "verify",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "queryParity": true,
+            "durableReplay": true,
+            "noQueryOrReplayExecution": true
+          },
+          {
+            "schemaVersion": 1,
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "queryConfigurationOnly": true,
+            "pendingOci": true,
+            "toolEntryOci": true,
+            "commandOutputVerified": true,
+            "runtime": "v22.13.0"
+          }
+        ],
+        "installed": true,
+        "liveProvider": false,
+        "published": false
+      }
+    },
+    "contract": {
+      "sourceSha256": "8cf24dc993982ce9bf1e185b3c68d2aa6f3926020921fa77463263fdbdb7b95a",
+      "result": {
+        "schemaVersion": 1,
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-task-installed-1l5Bgb",
+        "phases": [
+          {
+            "phase": "prepare",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "installed": true,
+            "fixture": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "resume",
+            "ok": true,
+            "runtime": "v22.13.0",
+            "installed": true,
+            "fixture": true,
+            "liveProvider": false
+          }
+        ],
+        "installed": true,
+        "published": false,
+        "liveProvider": false
+      }
+    },
+    "acceptance": {
+      "sourceSha256": "be21981e8d99f1bb435d2b65eecb7c087736c9460d4ce60a60ad56bd57349330",
+      "result": {
+        "schemaVersion": 1,
+        "cohort": "harness-task-contract-oci-v1",
+        "fixtureSha256": "5f5a98edcab4463ced19299dc238e65dbd7f022241c9bdd247cbfc56fd8016a3",
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-accept-oci-CxzcNT",
+        "phases": [
+          {
+            "scenario": "success",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "completed",
+            "acceptance": "verified",
+            "hostImported": true,
+            "runId": "run_4be527dc-aded-4a3c-8d2e-a5626dd78d2a",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:39d804a11395fe269675ecdf3c116b9352d6e7f934d69ad621610f1faf6077f4",
+                "contractRevision": 1,
+                "runId": "run_4be527dc-aded-4a3c-8d2e-a5626dd78d2a",
+                "executionIdentity": "sha256:38f8fd0039b0d5cdd14c14be939c35b5331d3c309ffe0164deb906139df37965",
+                "patchId": "sha256:7e515ea7e6f7dba0e18004ca895f7dd6100d94723ef4088477417d10998da33c",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727147534
+                }
+              }
+            ],
+            "delivery": {
+              "runId": "run_4be527dc-aded-4a3c-8d2e-a5626dd78d2a",
+              "patchId": "sha256:7e515ea7e6f7dba0e18004ca895f7dd6100d94723ef4088477417d10998da33c",
+              "executionIdentity": "sha256:38f8fd0039b0d5cdd14c14be939c35b5331d3c309ffe0164deb906139df37965",
+              "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98"
+            }
+          },
+          {
+            "scenario": "human-review",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "completed",
+            "acceptance": "pending_review",
+            "hostImported": true,
+            "runId": "run_40dec704-5333-4fbf-b490-3e678899c01a",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:ff2fac6116ead88785babbe017a336c19fbde98f0667cb75da48fb736eadd2f9",
+                "contractRevision": 1,
+                "runId": "run_40dec704-5333-4fbf-b490-3e678899c01a",
+                "executionIdentity": "sha256:c9e194f32622f9a5a08f80eb1660cdc28717fa9a287cc9c35c4dd40087164d9b",
+                "patchId": "sha256:2d1a86e2c1fca7d980468a57edd1db3c7476c1ee3b7ceee73df21d48dcd13923",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727148331
+                }
+              }
+            ],
+            "delivery": {
+              "runId": "run_40dec704-5333-4fbf-b490-3e678899c01a",
+              "patchId": "sha256:2d1a86e2c1fca7d980468a57edd1db3c7476c1ee3b7ceee73df21d48dcd13923",
+              "executionIdentity": "sha256:c9e194f32622f9a5a08f80eb1660cdc28717fa9a287cc9c35c4dd40087164d9b",
+              "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98"
+            }
+          },
+          {
+            "scenario": "missing-check",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_6fdaae53-0ce3-4042-9fb3-85378e106b0b",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:a3d9e0f860a5f8d3cc4fe5fdf7e600a46c7732ceafe9bea1de6582c6f6feb48b",
+                "contractRevision": 1,
+                "runId": "run_6fdaae53-0ce3-4042-9fb3-85378e106b0b",
+                "executionIdentity": "sha256:04c1a0528c1cf8bc4c4b4381ad091e0ae9d1175ac5b99a22342b598af3475c4d",
+                "patchId": "sha256:e0bbf7d56e827255b3c1898febfffa56015d3f741525165b0b2deae7b190af54",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727149267
+                }
+              }
+            ],
+            "delivery": null
+          },
+          {
+            "scenario": "snapshot-drift",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_257a803f-fdfd-4a75-9d75-062b781493e9",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:7b58d5fa8747eb3faa524b8ee1197bd89ff6f6252dc0df7ff6bd316e4cee2aee",
+                "contractRevision": 1,
+                "runId": "run_257a803f-fdfd-4a75-9d75-062b781493e9",
+                "executionIdentity": "sha256:10332dd54aa07c34bf157f6c32f512e9e37e65630d34673cecf4e7b8a1507072",
+                "patchId": "sha256:125dba08c2d59e5878a0ae8cba2cdb8e97d37c46d667310cffe29cb9edb965f7",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:45b575a75e3535cb41173cd913910bb80dc7ad61345b18856ce02e4d23fcf1ec",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": false,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727150072
+                }
+              }
+            ],
+            "delivery": null
+          },
+          {
+            "scenario": "scope",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_d97b941b-8338-4e98-981f-216a1eb69803",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:73f47cacf94094f098091b8bfec8ec7f2644b1ea62afcb94e68766ebe16b0c20",
+                "contractRevision": 1,
+                "runId": "run_d97b941b-8338-4e98-981f-216a1eb69803",
+                "executionIdentity": "sha256:0900d5cf42492a2489655e13e3744bf0a086d71c4484e3e01cd6235952c4e7f9",
+                "patchId": "sha256:6a7327b31447d8da5b3c66e7927d5472db3c261f42061fabf4522acebd224dcc",
+                "snapshotDigest": "sha256:44d96c6d799dc90e3813a9eacba9355c1d1e7334eb3df3d90565229aaf437348",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727150808
+                }
+              }
+            ],
+            "delivery": null
+          },
+          {
+            "scenario": "altered-script",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_91a4b3bc-736e-45e1-9240-0c0a80208345",
+            "checks": [],
+            "delivery": null
+          },
+          {
+            "scenario": "altered-test",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_38f85f0d-5d8b-429b-a743-1401c2d6a534",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:07080e838e65ccd34e2e54bf80e479192807b775408d2b0be214199a7b5436e3",
+                "contractRevision": 1,
+                "runId": "run_38f85f0d-5d8b-429b-a743-1401c2d6a534",
+                "executionIdentity": "sha256:250b0cdf7ff6fca080c39427b07029dbeea392e8d679258229989cf53e0201b1",
+                "patchId": "sha256:07bc2be3c62b439fbb9d28bcc44d6f7c8f34da876ec87f20f6e5038fa27fcf46",
+                "snapshotDigest": "sha256:97b6f6663af88b23886cb04153c883286e973c797f17171bb532480dbb08e785",
+                "argvDigest": "sha256:0ec81834fc8fe0e64f8c7ee16787f629f45cd1eb7cdb16151683217bb27ea9fc",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "deliver",
+                  "name": "verify_and_apply_reviewed_edits",
+                  "startedAt": 1790727152382
+                }
+              }
+            ],
+            "delivery": null
+          },
+          {
+            "scenario": "stale-patch",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_ce28080d-af44-4707-b76b-40ebe4df5f10",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:7a49691384e6732dfd8a7843cde45db884c5411e5c02144c575897db13f58e57",
+                "contractRevision": 1,
+                "runId": "run_ce28080d-af44-4707-b76b-40ebe4df5f10",
+                "executionIdentity": "sha256:962c8385e7ea7f2cc368467a7d41066d235aa9fcabcae3000ef116a4e8f549e3",
+                "patchId": "sha256:33d21b6422097efd11198bfc4962c0b2017050b4eda6abec1fd21906a9cc88c0",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "sequence-2",
+                  "name": "run_environment_command",
+                  "startedAt": 1790727153456
+                }
+              }
+            ],
+            "delivery": null
+          },
+          {
+            "scenario": "post-check-drift",
+            "installed": true,
+            "realDocker": true,
+            "liveProvider": false,
+            "published": false,
+            "runtime": "v22.13.0",
+            "status": "failed",
+            "acceptance": "failed",
+            "hostImported": false,
+            "runId": "run_fc317c7c-5be6-4bca-8882-d93b245603ca",
+            "checks": [
+              {
+                "schemaVersion": 1,
+                "checkId": "content",
+                "contractDigest": "sha256:619f27304bd37902dad04254fe128eadeee1124cac89205fd43af67ad0ee278b",
+                "contractRevision": 1,
+                "runId": "run_fc317c7c-5be6-4bca-8882-d93b245603ca",
+                "executionIdentity": "sha256:e967d40e2cbea415c08708f56f1fe3bc722f5f0bdd6b197b370eaa94bb0edfbb",
+                "patchId": "sha256:39601dd0006c0cb96061cfeb0844fb8297df4aa24b955e6d8da182141cd0f52d",
+                "snapshotDigest": "sha256:f5c836a8b6cbac23371d5d8d8bf9a2b16cf2069882ad3b1e304b322f98a6bb98",
+                "argvDigest": "sha256:8626beb30d241e93d3ca01ebe082d0d86d03db6c89536f719b6df3ce7f313355",
+                "exitCode": 0,
+                "timedOut": false,
+                "unchanged": true,
+                "source": {
+                  "id": "sequence-2",
+                  "name": "run_environment_command",
+                  "startedAt": 1790727154945
+                }
+              }
+            ],
+            "delivery": null
+          }
+        ],
+        "installed": true,
+        "realDocker": true,
+        "liveProvider": false,
+        "published": false
+      }
+    },
+    "recovery": {
+      "sourceSha256": "b0af98b2d51a22dbe69bb0eff66fb26e94e2417a826ac759e07370784d5fb4dd",
+      "result": {
+        "schemaVersion": 1,
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-accept-recovery-56CDoc",
+        "phases": [
+          {
+            "phase": "prepare",
+            "scenario": "restart",
+            "runId": "recovery-restart",
+            "status": "waiting_approval",
+            "checksPreserved": true
+          },
+          {
+            "phase": "resume",
+            "scenario": "restart",
+            "runId": "recovery-restart",
+            "status": "completed",
+            "acceptance": "verified",
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "rejection",
+            "runId": "recovery-rejection",
+            "status": "waiting_approval",
+            "checksPreserved": true
+          },
+          {
+            "phase": "resume",
+            "scenario": "rejection",
+            "runId": "recovery-rejection",
+            "status": "failed",
+            "acceptance": "failed",
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "uncertain",
+            "runId": "recovery-uncertain",
+            "status": "waiting_approval",
+            "checksPreserved": true
+          },
+          {
+            "phase": "resume",
+            "scenario": "uncertain",
+            "runId": "recovery-uncertain",
+            "status": "failed",
+            "acceptance": "failed",
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "timeout",
+            "runId": "recovery-timeout",
+            "status": "failed",
+            "acceptance": "failed",
+            "noHostImport": true
+          },
+          {
+            "phase": "inspect",
+            "scenario": "timeout",
+            "runId": "recovery-timeout",
+            "status": "failed",
+            "evidencePreserved": true,
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "cancellation",
+            "runId": "recovery-cancellation",
+            "status": "cancelled",
+            "acceptance": "incomplete",
+            "noHostImport": true
+          },
+          {
+            "phase": "inspect",
+            "scenario": "cancellation",
+            "runId": "recovery-cancellation",
+            "status": "cancelled",
+            "evidencePreserved": true,
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "budget",
+            "runId": "recovery-budget",
+            "status": "failed",
+            "acceptance": "failed",
+            "noHostImport": true
+          },
+          {
+            "phase": "inspect",
+            "scenario": "budget",
+            "runId": "recovery-budget",
+            "status": "failed",
+            "evidencePreserved": true,
+            "noRepeatedCommands": true
+          },
+          {
+            "phase": "prepare",
+            "scenario": "import-crash",
+            "runId": "recovery-import-crash",
+            "status": "waiting_approval",
+            "checksPreserved": true
+          },
+          {
+            "phase": "import-crash",
+            "scenario": "import-crash",
+            "runId": "recovery-import-crash",
+            "completedImportJournalPreserved": true
+          },
+          {
+            "phase": "resume",
+            "scenario": "import-crash",
+            "runId": "recovery-import-crash",
+            "status": "completed",
+            "acceptance": "incomplete",
+            "noRepeatedCommands": true
+          }
+        ],
+        "installed": true,
+        "realDocker": true,
+        "liveProvider": false,
+        "published": false
+      }
+    },
+    "delegation": {
+      "sourceSha256": "80e937b66c1c138e057e0c097f60885d64ba17649ac25cc63560e4d63eb1bb6e",
+      "result": {
+        "schemaVersion": 1,
+        "cohort": "harness-delegation-results-v1",
+        "fixtureSha256": "284ffab6f8eb7436898d65ae3a11c72cd12ec334147674906072eff2a120cf98",
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-delegation-installed-F5ftYE",
+        "phases": [
+          {
+            "phase": "execute",
+            "scenario": "valid",
+            "accepted": true,
+            "parentStatus": "completed",
+            "childStatus": "completed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "valid",
+            "accepted": true,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "invented",
+            "accepted": false,
+            "parentStatus": "failed",
+            "childStatus": "failed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "invented",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "partial",
+            "accepted": false,
+            "parentStatus": "failed",
+            "childStatus": "failed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "partial",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "tool-error",
+            "accepted": false,
+            "parentStatus": "failed",
+            "childStatus": "failed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "tool-error",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "invalid",
+            "accepted": false,
+            "parentStatus": "failed",
+            "childStatus": "failed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "invalid",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "corrected",
+            "accepted": true,
+            "parentStatus": "completed",
+            "childStatus": "completed",
+            "childCalls": 3,
+            "corrections": 1,
+            "usage": {
+              "inputTokens": 9,
+              "outputTokens": 6,
+              "totalTokens": 15
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "corrected",
+            "accepted": true,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "exhausted",
+            "accepted": false,
+            "parentStatus": "failed",
+            "childStatus": "failed",
+            "childCalls": 3,
+            "corrections": 1,
+            "usage": {
+              "inputTokens": 9,
+              "outputTokens": 6,
+              "totalTokens": 15
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "exhausted",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "cancellation",
+            "accepted": false,
+            "parentStatus": "cancelled",
+            "childStatus": "failed",
+            "childCalls": 2,
+            "corrections": 0,
+            "usage": {
+              "inputTokens": 3,
+              "outputTokens": 2,
+              "totalTokens": 5
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "cancellation",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          },
+          {
+            "phase": "execute",
+            "scenario": "correction-cancel",
+            "accepted": false,
+            "parentStatus": "cancelled",
+            "childStatus": "failed",
+            "childCalls": 3,
+            "corrections": 1,
+            "usage": {
+              "inputTokens": 6,
+              "outputTokens": 4,
+              "totalTokens": 10
+            }
+          },
+          {
+            "phase": "inspect",
+            "scenario": "correction-cancel",
+            "accepted": false,
+            "reopened": true,
+            "evidencePreserved": true,
+            "modelCalls": 0
+          }
+        ],
+        "installed": true,
+        "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+        "liveProvider": false,
+        "published": false
+      }
+    },
+    "governance": {
+      "sourceSha256": "9e1d1a20f07e5b5b9e810aa874b9afbf0e389e22eba776c2f25837eeb4f940b1",
+      "result": {
+        "schemaVersion": 1,
+        "cohort": "harness-governance-v1",
+        "fixtureSha256": "a9256703eac246df0e78b1237dc978fb3adc0a662309dafde2f98054e25d168c",
+        "artifactSha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+        "root": "/tmp/har-governance-installed-tvT787",
+        "phases": [
+          {
+            "phase": "execute",
+            "scenario": "completed",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "completed",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "execute",
+            "scenario": "failed",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "failed",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "execute",
+            "scenario": "rejected",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "rejected",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "execute",
+            "scenario": "partial",
+            "runs": 2,
+            "retention": "retained",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "partial",
+            "runs": 2,
+            "retention": "retained",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "execute",
+            "scenario": "legacy",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "legacy",
+            "runs": 1,
+            "retention": "retained",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "execute",
+            "scenario": "expired",
+            "runs": 1,
+            "retention": "expired",
+            "reopened": false,
+            "consumerValidated": true,
+            "liveProvider": false
+          },
+          {
+            "phase": "inspect",
+            "scenario": "expired",
+            "runs": 1,
+            "retention": "expired",
+            "reopened": true,
+            "consumerValidated": true,
+            "liveProvider": false
+          }
+        ],
+        "installed": true,
+        "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+        "liveProvider": false,
+        "published": false
+      }
+    }
+  },
+  "consumers": {
+    "local-node22": {
+      "runtime": {
+        "node": "v22.13.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "consumers": [
+        {
+          "manager": "npm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.9.4",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "npm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.9.4",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.19.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.19.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "yarn",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json resolutions",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.22.22",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "yarn",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json resolutions",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.22.22",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "bun",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.4.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "bun",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.4.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        }
+      ]
+    },
+    "pnpm11-node22": {
+      "runtime": {
+        "node": "v22.13.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "consumers": [
+        {
+          "manager": "pnpm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "11.25.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "11.25.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        }
+      ]
+    },
+    "local-node24": {
+      "runtime": {
+        "node": "v24.11.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "consumers": [
+        {
+          "manager": "npm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.9.4",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "npm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.9.4",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.19.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "10.19.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "yarn",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json resolutions",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.22.22",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "yarn",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json resolutions",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.22.22",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "bun",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.4.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "bun",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "package.json overrides and direct file dependencies",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "1.4.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        }
+      ]
+    },
+    "pnpm11-node24": {
+      "runtime": {
+        "node": "v24.11.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "consumers": [
+        {
+          "manager": "pnpm",
+          "order": "harness-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "11.25.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        },
+        {
+          "manager": "pnpm",
+          "order": "code-first",
+          "status": "passed",
+          "transitiveArtifactOverride": {
+            "config": "pnpm-workspace.yaml",
+            "selector": "@zhivex-ai/harness",
+            "resolution": "file:/tmp/harness-rc4-pr-candidate.tgz"
+          },
+          "version": "11.25.0",
+          "installSteps": [
+            {
+              "installed": "@zhivex-ai/code",
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "installed": "@zhivex-ai/harness",
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ],
+          "localTransitiveOverride": "@zhivex-ai/harness resolved to supplied tarball (unpublished prerelease)",
+          "installedVersions": {
+            "harness": "1.3.0-rc.4",
+            "code": "0.1.0-rc.2"
+          },
+          "verifiedHarnessCopies": 1,
+          "checks": [
+            "ordered-local-install",
+            "manager-bin-launchers",
+            "disjoint-bin-ownership",
+            "imports",
+            "no-bun-in-path",
+            "approval-before-write",
+            "cross-process-durable-resume",
+            "cancel-persisted",
+            "cli-help",
+            "cli-execution",
+            "cli-durable-cancellation"
+          ]
+        }
+      ]
+    }
+  },
+  "globalConsumers": {
+    "22.13.0-npm": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "npm",
+        "version": "10.9.4"
+      },
+      "node": "v22.13.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-mhOu28"
+    },
+    "22.13.0-pnpm": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "pnpm",
+        "version": "11.25.0"
+      },
+      "node": "v22.13.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-ybaU2E"
+    },
+    "24.11.0-bun": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "bun",
+        "version": "1.4.0"
+      },
+      "node": "v24.11.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-QPPWrT"
+    },
+    "22.13.0-yarn": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "yarn",
+        "version": "1.22.22"
+      },
+      "node": "v22.13.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-EqChHk"
+    },
+    "24.11.0-npm": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "npm",
+        "version": "10.9.4"
+      },
+      "node": "v24.11.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-Ks8v3V"
+    },
+    "24.11.0-pnpm": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "pnpm",
+        "version": "11.25.0"
+      },
+      "node": "v24.11.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-oAkjVn"
+    },
+    "24.11.0-yarn": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "yarn",
+        "version": "1.22.22"
+      },
+      "node": "v24.11.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-gZMfvF"
+    },
+    "22.13.0-bun": {
+      "artifacts": [
+        {
+          "file": "/tmp/harness-rc4-pr-candidate.tgz",
+          "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+        },
+        {
+          "file": "/tmp/pr-ready-code-consumers/code.tgz",
+          "sha256": "12f0c5584a53b0371a338fb63748a7f238cdcbd8dd2850b5026b541f7dc1ccc0"
+        }
+      ],
+      "registryMode": "loopback-exact-candidate",
+      "manager": {
+        "name": "bun",
+        "version": "1.4.0"
+      },
+      "node": "v22.13.0",
+      "rows": [
+        {
+          "order": [
+            0,
+            1
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp"
+              ]
+            },
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        },
+        {
+          "order": [
+            1,
+            0
+          ],
+          "status": "passed",
+          "steps": [
+            {
+              "artifact": 1,
+              "launchers": [
+                "zhivex-code"
+              ]
+            },
+            {
+              "artifact": 0,
+              "launchers": [
+                "zhx",
+                "zhivex-harness",
+                "zhx-acp",
+                "zhivex-code"
+              ]
+            }
+          ]
+        }
+      ],
+      "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-global-code-k6GP42"
+    }
+  },
+  "mcp": {
+    "artifact": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/zhx-installed-mcp-6VWDa0/harness.tgz",
+    "version": "1.3.0-rc.4",
+    "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32",
+    "evidence": [
+      {
+        "runtime": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+        "version": "v22.13.0",
+        "result": {
+          "status": "passed",
+          "checks": [
+            "host-session-binding",
+            "agent-pauses-before-dispatch",
+            "sqlite-reopen",
+            "fresh-mcp-session",
+            "persisted-approval-resume",
+            "single-journaled-dispatch",
+            "secret-redacted",
+            "harness-close-removes-resources"
+          ],
+          "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+        }
+      },
+      {
+        "runtime": "/tmp/zhx-runtime-matrix/node-v24.11.0-darwin-arm64/bin/node",
+        "version": "v24.11.0",
+        "result": {
+          "status": "passed",
+          "checks": [
+            "host-session-binding",
+            "agent-pauses-before-dispatch",
+            "sqlite-reopen",
+            "fresh-mcp-session",
+            "persisted-approval-resume",
+            "single-journaled-dispatch",
+            "secret-redacted",
+            "harness-close-removes-resources"
+          ],
+          "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+        }
+      },
+      {
+        "runtime": "bun",
+        "version": "1.4.0",
+        "result": {
+          "status": "passed",
+          "checks": [
+            "host-session-binding",
+            "agent-pauses-before-dispatch",
+            "sqlite-reopen",
+            "fresh-mcp-session",
+            "persisted-approval-resume",
+            "single-journaled-dispatch",
+            "secret-redacted",
+            "harness-close-removes-resources"
+          ],
+          "scope": "Installed tarball public APIs, real Docker, actual harness approval and SQLite resume"
+        }
+      }
+    ]
+  },
+  "desktop": {
+    "conversation": {
+      "logSha256": "b430b2523605dc99cda8fcead28d2a24c4cc1fd72bdb30409bf5364648c67689",
+      "result": {
+        "schemaVersion": 1,
+        "explicitReviewRequired": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "electron": "44.4.5",
+        "hostNode": "24.21.0",
+        "runtimeNode": "24.21.0",
+        "separateProcess": true,
+        "isolatedRenderer": true,
+        "rejectedOverrides": true,
+        "sqliteBytes": 290816,
+        "streaming": true,
+        "cancellation": true,
+        "fileApprovalUI": true,
+        "fileRejectionUI": true,
+        "completePreimage": true,
+        "decisionHistoryReload": true,
+        "serviceCrashRecovered": true,
+        "activeCrashRecovered": true,
+        "liveLeaseCancellationRejected": true,
+        "orphanCancelledWithoutReplay": true,
+        "expiredApprovalRejected": true,
+        "staleApprovalRejected": true,
+        "duplicateSubmitPrevented": true,
+        "lostResponseReconciled": true,
+        "failedCheckVisible": true,
+        "redactedRenderer": true,
+        "literalRepositoryText": true,
+        "activeReconnect": true,
+        "expiredSnapshot": true,
+        "projectIsolation": true,
+        "singleInstance": true,
+        "emptyStartup": false,
+        "invalidProjectRecovery": true,
+        "selectionHasNoExecution": true,
+        "keyboardNavigation": true,
+        "rendererReload": true,
+        "recentProjects": 2,
+        "packaged": true,
+        "fixture": true,
+        "evidenceDirectory": "/tmp/har-electron-t8e4HX/report"
+      }
+    },
+    "restart": {
+      "logSha256": "eb6c5399e9eecdaa18b3078d4849033ae05941b326b8051577f7c9a2aef0a2ec",
+      "result": {
+        "schemaVersion": 1,
+        "packaged": true,
+        "platform": "darwin",
+        "arch": "arm64",
+        "fixture": true,
+        "rendererCrashRecovered": true,
+        "pendingApprovalPreserved": true,
+        "oldReviewReceiptRejected": true,
+        "freshExplicitApproval": true,
+        "singleAppliedDecisionAfterRestart": true,
+        "cliPendingAndCompletedSessionMatched": true,
+        "cliRenameVisibleInDesktop": true,
+        "wholeAppRestart": true,
+        "nativeWindowClose": true,
+        "workersExited": true,
+        "recentProjectRestored": true,
+        "phases": [
+          {
+            "schemaVersion": 1,
+            "phase": "prepare",
+            "packaged": true,
+            "appPid": 77565,
+            "runtimePid": 77632,
+            "sessionId": "ses_48ccf5c4-3097-46c8-9d93-46aee82cc012",
+            "runId": "run_47f0c1b5-a1e3-43b4-8ff7-a4dab36b895c",
+            "rendererCrashRecovered": true,
+            "rendererExitReason": "killed",
+            "cliSessionMatched": false,
+            "cliRenameVisible": false,
+            "persistedFinalDiff": false,
+            "laterChangesExcluded": false,
+            "windowCloseRequested": true,
+            "fixture": true
+          },
+          {
+            "schemaVersion": 1,
+            "phase": "approve",
+            "packaged": true,
+            "appPid": 77696,
+            "runtimePid": 77727,
+            "sessionId": "ses_48ccf5c4-3097-46c8-9d93-46aee82cc012",
+            "runId": "run_47f0c1b5-a1e3-43b4-8ff7-a4dab36b895c",
+            "rendererCrashRecovered": false,
+            "cliSessionMatched": true,
+            "cliRenameVisible": false,
+            "persistedFinalDiff": false,
+            "laterChangesExcluded": false,
+            "windowCloseRequested": true,
+            "fixture": true
+          },
+          {
+            "schemaVersion": 1,
+            "phase": "history",
+            "packaged": true,
+            "appPid": 77738,
+            "runtimePid": 77770,
+            "sessionId": "ses_48ccf5c4-3097-46c8-9d93-46aee82cc012",
+            "runId": "run_47f0c1b5-a1e3-43b4-8ff7-a4dab36b895c",
+            "rendererCrashRecovered": false,
+            "cliSessionMatched": true,
+            "cliRenameVisible": true,
+            "persistedFinalDiff": true,
+            "laterChangesExcluded": true,
+            "windowCloseRequested": true,
+            "fixture": true
+          }
+        ],
+        "evidenceDirectory": "/tmp/har-restart-1pqcg6/report"
+      }
+    },
+    "checkpoints": {
+      "logSha256": "29681913e02b971d3f5bace2fd2c5751ca6cfafa0d343451405391b1443845a2",
+      "result": {
+        "status": "passed",
+        "packaged": true,
+        "fixture": true,
+        "interruptedFork": false,
+        "wholeAppRestart": true,
+        "explicitReview": true,
+        "oldTicketRejected": true,
+        "originalPreserved": true,
+        "derivativeOpened": true,
+        "singleDerivative": true,
+        "workersExited": true,
+        "phases": [
+          {
+            "phase": "prepare",
+            "appPid": 79743,
+            "runtimePid": 79809,
+            "source": "ses_1d00fbfe-e467-43a8-ab3d-fd582019334f",
+            "operationId": "aa94c0c7-da13-45e3-8414-eae5db02ff48",
+            "packaged": true,
+            "status": "passed"
+          },
+          {
+            "phase": "apply",
+            "appPid": 79827,
+            "runtimePid": 79862,
+            "source": "ses_1d00fbfe-e467-43a8-ab3d-fd582019334f",
+            "operationId": "aa94c0c7-da13-45e3-8414-eae5db02ff48",
+            "derivative": "ses_91f98c94-7610-4477-a994-fa4d01b7e966",
+            "packaged": true,
+            "status": "passed"
+          },
+          {
+            "phase": "history",
+            "appPid": 79869,
+            "runtimePid": 79912,
+            "source": "ses_1d00fbfe-e467-43a8-ab3d-fd582019334f",
+            "operationId": "aa94c0c7-da13-45e3-8414-eae5db02ff48",
+            "derivative": "ses_91f98c94-7610-4477-a994-fa4d01b7e966",
+            "packaged": true,
+            "status": "passed"
+          }
+        ],
+        "evidenceDirectory": "/tmp/har-checkpoints-QqkWDm/report"
+      }
+    },
+    "explicitReview": {
+      "logSha256": "b654c3bf682c6165072c637be2261dfead1b7a4a4ee085f04c1a1e733495f099",
+      "result": {
+        "schemaVersion": 1,
+        "explicitReviewRequired": true,
+        "platform": "darwin",
+        "arch": "arm64",
+        "electron": "44.4.5",
+        "hostNode": "24.21.0",
+        "runtimeNode": "24.21.0",
+        "separateProcess": true,
+        "isolatedRenderer": true,
+        "rejectedOverrides": true,
+        "sqliteBytes": 286720,
+        "streaming": true,
+        "cancellation": true,
+        "fileApprovalUI": true,
+        "fileRejectionUI": true,
+        "completePreimage": true,
+        "decisionHistoryReload": true,
+        "serviceCrashRecovered": true,
+        "activeCrashRecovered": true,
+        "liveLeaseCancellationRejected": true,
+        "orphanCancelledWithoutReplay": true,
+        "expiredApprovalRejected": true,
+        "staleApprovalRejected": true,
+        "duplicateSubmitPrevented": true,
+        "lostResponseReconciled": true,
+        "failedCheckVisible": true,
+        "redactedRenderer": true,
+        "literalRepositoryText": true,
+        "activeReconnect": true,
+        "expiredSnapshot": true,
+        "projectIsolation": true,
+        "singleInstance": true,
+        "emptyStartup": false,
+        "invalidProjectRecovery": true,
+        "selectionHasNoExecution": true,
+        "keyboardNavigation": true,
+        "rendererReload": true,
+        "recentProjects": 2,
+        "packaged": true,
+        "fixture": true,
+        "evidenceDirectory": "/tmp/har-electron-kzR1G9/report"
+      }
+    }
+  },
+  "historicalStateUpgrade": {
+    "status": "passed",
+    "expectation": "incompatible",
+    "artifacts": [
+      {
+        "label": "historical",
+        "version": "1.3.0-rc.3",
+        "sha256": "2f4af7d422825d466bafa2ab3f08b9675d024471924a258c46b07005b001bafc"
+      },
+      {
+        "label": "candidate",
+        "version": "1.3.0-rc.4",
+        "sha256": "cd43a2e313b56303bb9476011574ac172b08a4fc0bfc624e2f97b9cb848a1b32"
+      }
+    ],
+    "runtime": {
+      "executable": "/tmp/zhx-runtime-matrix/node-v22.13.0-darwin-arm64/bin/node",
+      "version": "v22.13.0"
+    },
+    "checks": [
+      "historical-session-preserved",
+      "historical-pending-approval",
+      "candidate-rejects-version-mismatch",
+      "no-model-or-file-effect",
+      "pending-state-preserved",
+      "historical-explicit-resume"
+    ],
+    "root": "/var/folders/3r/4kmljhgs5932wmtqkfltd5940000gn/T/harness-state-upgrade-GfrR4E"
+  },
+  "check": {
+    "passed": 1891,
+    "skipped": 1,
+    "failed": 0,
+    "logSha256": "082c2c836675db1a1da5de597aee39415a9fd8855ca4477c21a84327b979fc6c",
+    "scope": "Full normative check passed before the final screenshot-only smoke fixture correction; targeted watchdog and packaged flow verify that correction."
+  },
+  "remainingReleaseRequirements": [
+    "Protected Anthropic/Gemini secrets and Vertex workload identity configuration",
+    "Review, integration and remote CI/CodeQL on the final commit",
+    "Protected certification, representative evaluation and publication with provenance"
+  ],
+  "preservedAttempts": [
+    "Yarn missing from PATH in first local consumer run",
+    "Six native tests lacked Electron after ignore-scripts installation; binary restored and full check passed",
+    "MCP initial invocation passed tarball as runtime; final invocation uses explicit immutable artifact",
+    "Three explicit-review smoke timeouts awaiting animation frames and one compositor failure; final fixture uses capturePage with visible awake window after existing DOM assertions"
+  ],
+  "retryPolicy": "One invocation of each live gate; base/compaction retain up to three internal transient attempts, so first-attempt success is not claimed."
+}

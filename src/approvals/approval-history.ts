@@ -6,7 +6,13 @@ import type { AppliedDiff } from "./approval-diff.js";
 export const APPROVAL_HISTORY_KEY = "clientApprovalDecisionsV1";
 const canonical = (value: unknown): string => Array.isArray(value) ? `[${value.map(canonical).join(",")}]` : value && typeof value === "object" ? `{${Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}` : JSON.stringify(value) ?? "null";
 export const approvalInputDigest = (value: unknown) => createHash("sha256").update(canonical(value)).digest("hex");
-const rowSchema = z.object({ approvalId: z.string().max(256), digest: z.string().regex(/^[a-f0-9]{64}$/), toolCallId: z.string().max(256).optional(), name: z.string().max(256), inputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(), approved: z.boolean(), decidedAt: z.number().int().nonnegative(), reviewedRevision: z.number().int().nonnegative() }).strict();
+export const approvalProvenanceSchema = z.strictObject({
+    schemaVersion: z.literal(1),
+    origin: z.enum(['interactive', 'automatic', 'application', 'unknown']),
+    channel: z.string().regex(/^[a-z][a-z0-9._-]{0,79}$/),
+    policyDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable()
+});
+const rowSchema = z.object({ approvalId: z.string().max(256), digest: z.string().regex(/^[a-f0-9]{64}$/), toolCallId: z.string().max(256).optional(), name: z.string().max(256), inputDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(), approved: z.boolean(), decidedAt: z.number().int().nonnegative(), reviewedRevision: z.number().int().nonnegative(), provenance: approvalProvenanceSchema.optional() }).strict();
 export type ApprovalDecisionRecord = z.infer<typeof rowSchema>;
 export interface ApprovalDecisionView extends ApprovalDecisionRecord {
     status: "rejected" | "approved" | "applied" | "succeeded" | "failed" | "unknown";
@@ -15,7 +21,9 @@ export interface ApprovalDecisionView extends ApprovalDecisionRecord {
 }
 export function readApprovalDecisions(state: AgentRunState): ApprovalDecisionRecord[] {
     const value = state.metadata?.[APPROVAL_HISTORY_KEY]; if (value === undefined) return [];
-    return z.array(rowSchema).max(512).parse(value);
+    return z.array(rowSchema).max(512).parse(value).map(row => ({ ...row, provenance: row.provenance ?? {
+        schemaVersion: 1 as const, origin: 'unknown' as const, channel: 'unknown', policyDigest: null
+    } }));
 }
 export function approvalDecisionViews(state: AgentRunState, journal: readonly AgentToolCallJournalEntry[], offset = 0): ApprovalDecisionView[] {
     return readApprovalDecisions(state).slice(offset, offset + 25).map(row => {

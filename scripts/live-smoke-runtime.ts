@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 type HarnessRuntime = typeof import("../src/index.js");
-const functions = ["createHarness", "runHarness", "providerDescriptor", "parseProvider",
+const functions = ["createHarness", "runHarness", "providerDescriptor", "providerAvailability", "parseProvider",
   "createEditProposal", "inspectHarnessRun", "createHarnessRouteModels", "resolveHarnessModelRoutes",
   "HarnessConfigError", "HarnessExecutionError"] as const;
 

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "artifactSha256": "4a59f9895a4f165d906789918b4d2d728b9762cb93a554bb9509053e19f606eb",
+  "root": "/tmp/har-accept-recovery-i08qpa",
+  "phases": [
+    {
+      "phase": "prepare",
+      "scenario": "restart",
+      "runId": "recovery-restart",
+      "status": "waiting_approval",
+      "checksPreserved": true
+    },
+    {
+      "phase": "resume",
+      "scenario": "restart",
+      "runId": "recovery-restart",
+      "status": "completed",
+      "acceptance": "verified",
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "rejection",
+      "runId": "recovery-rejection",
+      "status": "waiting_approval",
+      "checksPreserved": true
+    },
+    {
+      "phase": "resume",
+      "scenario": "rejection",
+      "runId": "recovery-rejection",
+      "status": "failed",
+      "acceptance": "failed",
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "uncertain",
+      "runId": "recovery-uncertain",
+      "status": "waiting_approval",
+      "checksPreserved": true
+    },
+    {
+      "phase": "resume",
+      "scenario": "uncertain",
+      "runId": "recovery-uncertain",
+      "status": "failed",
+      "acceptance": "failed",
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "timeout",
+      "runId": "recovery-timeout",
+      "status": "failed",
+      "acceptance": "failed",
+      "noHostImport": true
+    },
+    {
+      "phase": "inspect",
+      "scenario": "timeout",
+      "runId": "recovery-timeout",
+      "status": "failed",
+      "evidencePreserved": true,
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "cancellation",
+      "runId": "recovery-cancellation",
+      "status": "cancelled",
+      "acceptance": "incomplete",
+      "noHostImport": true
+    },
+    {
+      "phase": "inspect",
+      "scenario": "cancellation",
+      "runId": "recovery-cancellation",
+      "status": "cancelled",
+      "evidencePreserved": true,
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "budget",
+      "runId": "recovery-budget",
+      "status": "failed",
+      "acceptance": "failed",
+      "noHostImport": true
+    },
+    {
+      "phase": "inspect",
+      "scenario": "budget",
+      "runId": "recovery-budget",
+      "status": "failed",
+      "evidencePreserved": true,
+      "noRepeatedCommands": true
+    },
+    {
+      "phase": "prepare",
+      "scenario": "import-crash",
+      "runId": "recovery-import-crash",
+      "status": "waiting_approval",
+      "checksPreserved": true
+    },
+    {
+      "phase": "import-crash",
+      "scenario": "import-crash",
+      "runId": "recovery-import-crash",
+      "completedImportJournalPreserved": true
+    },
+    {
+      "phase": "resume",
+      "scenario": "import-crash",
+      "runId": "recovery-import-crash",
+      "status": "completed",
+      "acceptance": "incomplete",
+      "noRepeatedCommands": true
+    }
+  ],
+  "installed": true,
+  "realDocker": true,
+  "liveProvider": false,
+  "published": false
+}
