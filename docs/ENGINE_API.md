@@ -1,7 +1,7 @@
 # Engine API and Code integration
 
 This checkout adds terminal-independent package entrypoints for
-Harness 1.3.0-rc.4. They are not present in the previously published Harness 1.2.0.
+Harness 1.3.0-rc.5. They are not present in the previously published Harness 1.2.0.
 Publication is pending the protected workflow; use the documented
 local candidate smoke to validate these bytes. Do not install registry 1.2.0 and
 expect the new entrypoints to exist.
@@ -69,7 +69,7 @@ switching presentation does not migrate state or authorize new effects.
 
 `packages/code` is the independently built terminal product. Its current version
 is `0.1.0-rc.2`, prepared for independent publication to `next` with the exact
-engine dependency `@zhivex-ai/harness@1.3.0-rc.4`. Publication remains gated by
+engine dependency `@zhivex-ai/harness@1.3.0-rc.5`. Publication remains gated by
 reviewed main, CI and registry evidence in the [Code release procedure](CODE_RELEASE.md).
 Code imports declared package APIs, never Harness source paths. Its build leaves
 Harness external.

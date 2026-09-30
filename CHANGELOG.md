@@ -4,9 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.3.0-rc.5 - 2026-09-30
 
 - Use the explicit Anthropic default endpoint when `ANTHROPIC_BASE_URL` is empty or whitespace-only, including empty optional workflow secrets. Preserve host environment isolation and rejection of unsafe custom endpoints.
+
+- Restore Qwen `qwen3.8-flash` and Meta `muse-spark-1.3-contributor` for protected certification, representative evidence and task acceptance. Preserve historical model mappings and CLI/Desktop/registry defaults; retain Gemini API 3.6 Flash and Vertex 3.7 Flash.
+- Prepare RC5 metadata and exact Harness pins for Code and Desktop, with regressions against certification model drift. Paid live certification and publication require separate approval; this preparation does not certify the new artifact.
 
 ## 1.3.0-rc.4 - 2026-09-29
 

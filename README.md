@@ -11,7 +11,7 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
-Version `1.3.0-rc.4` prepares the terminal-independent engine API and the local
+Version `1.3.0-rc.5` prepares the terminal-independent engine API and the local
 Code package for candidate validation on npm `next`. Publication remains pending
 the protected release workflow. RC4 includes Anthropic, Gemini/Vertex, Desktop package migration, isolated MCP/ACP,
 checkpoints and experimental governance controls. Code publication is independent.
@@ -23,7 +23,7 @@ Desktop retains its separate private alpha status.
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
 ```sh
-npm install -g @zhivex-ai/harness@1.3.0-rc.4
+npm install -g @zhivex-ai/harness@1.3.0-rc.5
 cd /path/to/your/project
 zhx
 ```

@@ -2,16 +2,16 @@
 
 `@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## 1.3.0-rc.4 preparation
+## 1.3.0-rc.5 preparation
 
-The source version is `1.3.0-rc.4`, targeting npm `next` through annotated tag
-`v1.3.0-rc.4` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
+The source version is `1.3.0-rc.5`, targeting npm `next` through annotated tag
+`v1.3.0-rc.5` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
 `latest`. RC3 includes HAR-HU-36–38: public engine boundaries, compatibility
 bridges and an independently built local Code package.
 
-RC4 incorporates the provider, Desktop, MCP/ACP, checkpoint and governance
-increments. The protected live cohort pins Qwen `qwen3.8-max`, Meta
-`muse-spark-1.3`, OpenAI `gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API
+RC5 incorporates the provider, Desktop, MCP/ACP, checkpoint and governance
+increments. The protected live cohort pins Qwen `qwen3.8-flash`, Meta
+`muse-spark-1.3-contributor`, OpenAI `gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API
 `gemini-3.6-flash` and Vertex `gemini-3.7-flash`. All six must pass base,
 approval compaction, structured delegation, OCI execution and multi-process
 continuity. Four routing gates cover OpenAI to Vertex/Anthropic/Gemini and Qwen
@@ -26,11 +26,19 @@ certify new bytes. Do not overwrite immutable versions or advance `latest`.
 The engine/Code installed gate uses the exact release tarball without changing
 its manifest version; Code is packed only for consumer acceptance, not published.
 
-RC3 and Code RC1 are already published. RC4 and Code RC2 remain unpublished;
+RC3 and Code RC1 are already published. RC5 and Code RC2 remain unpublished;
 their evidence must bind their own bytes. Historical records, including
-`release-status.json`, must not be interpreted as RC4 certification.
+`release-status.json`, must not be interpreted as RC5 certification.
 
-### Protected configuration before RC4 release
+RC4 at `f83e88f55e9f865c43abfc636e9b797c845fe258` failed; its tag and
+model mapping remain historical evidence. RC5 includes the empty Anthropic
+endpoint fix from PR #149 and restores the Flash/Contributor certification pins.
+User model defaults and the catalog are unchanged. Gemini API 3.6 Flash and
+Vertex 3.7 Flash remain pinned; the conditional cost-based 3.8 change is not
+part of this candidate. Preparation does not authorize paid live runs, tagging,
+release dispatch or publication; those steps require separate approval.
+
+### Protected configuration before RC5 release
 
 The `live-certification` environment requires secrets `OPENAI_API_KEY`,
 `MODEL_API_KEY`, `DASHSCOPE_API_KEY` (or `QWEN_API_KEY`), `ANTHROPIC_API_KEY`

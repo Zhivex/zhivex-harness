@@ -3,20 +3,38 @@ import { loadReleaseMetadata, validateReleaseMetadata, type ReleaseMetadata } fr
 import { prepareRelease, type Command } from "../scripts/prepare-release.js";
 import { bundledDefaultModel } from "../src/models/catalog.js";
 import path from "node:path";
+import { readFile } from "node:fs/promises";
 
-test("RC4 certification updates the stable provider cohort without changing historical pins or user defaults", async () => {
+test("RC5 certification restores Flash and Contributor without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
   validateReleaseMetadata(input, false, "next");
-  expect(input.version).toBe("1.3.0-rc.4");
+  expect(input.version).toBe("1.3.0-rc.5");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
-    .toEqual({meta: "muse-spark-1.3", qwen: "qwen3.8-max", openai: "gpt-6-luna"});
+    .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0")?.models)
     .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.1.4")?.models.qwen).toBe("qwen3.8-max");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0-rc.4")?.models.meta).toBe("muse-spark-1.3");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0-rc.5")?.models.meta).toBe("muse-spark-1.3");
+  expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.3.0-rc.4")?.models)
+    .toEqual({meta: "muse-spark-1.3", qwen: "qwen3.8-max", openai: "gpt-6-luna"});
   expect(bundledDefaultModel("meta")).toBe("muse-spark-1.3");
   expect(bundledDefaultModel("qwen")).toBe("qwen3.8-max");
+});
+
+test("manual certification and task acceptance retain the release model pins", async () => {
+  const root = path.resolve(import.meta.dir, "..");
+  const input = await loadReleaseMetadata(root);
+  const manual = Bun.YAML.parse(await readFile(path.join(root, ".github/workflows/live-certification.yml"), "utf8")) as ReleaseMetadata["workflow"];
+  const routes = JSON.parse(await readFile(path.join(root, "evaluations/task-acceptance-routes.json"), "utf8")) as { provider: string; model: string }[];
+  const models = { meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna" };
+  for (const [provider, model] of Object.entries(models)) {
+    const variable = `ZHIVEX_HARNESS_LIVE_${provider.toUpperCase()}_MODEL`;
+    expect(Object.values(manual.jobs).some(job => job.env?.[variable] === model)).toBe(true);
+    expect(routes.filter(route => route.provider === provider).map(route => route.model)).toEqual([model]);
+  }
+  expect(input.workflow.jobs["certify-live"]?.env?.ZHIVEX_HARNESS_LIVE_GEMINI_MODEL).toBe("gemini-3.6-flash");
+  expect(input.workflow.jobs["certify-live"]?.env?.ZHIVEX_HARNESS_LIVE_VERTEX_MODEL).toBe("gemini-3.7-flash");
 });
 
 function metadata(): ReleaseMetadata {

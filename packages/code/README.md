@@ -1,7 +1,7 @@
 # Zhivex Code
 
 The terminal product for the Zhivex Harness engine. Version `0.1.0-rc.2` is
-prepared for the npm `next` channel and pins `@zhivex-ai/harness@1.3.0-rc.4`.
+prepared for the npm `next` channel and pins `@zhivex-ai/harness@1.3.0-rc.5`.
 Publication remains pending the protected release workflow and registry checks.
 
 After publication, install with `npm install -g @zhivex-ai/code@next`.
@@ -30,7 +30,7 @@ then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contrib
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest is now `1.3.0-rc.4`; this link is local API development
+The root manifest is now `1.3.0-rc.5`; this link is local API development
 evidence only. Installed acceptance tests the exact unpublished Harness RC tarball
 without rewriting its version, which matches Code's exact engine pin.
 

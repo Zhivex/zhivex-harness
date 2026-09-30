@@ -22,7 +22,7 @@ test("Desktop build requires the pinned installed candidate and rejects changed 
     await writeFile(path.join(install, "harness.tgz"), "changed");
     await expect(installedHarness(root)).rejects.toThrow("artifact changed");
     await writeFile(path.join(install, "harness.tgz"), "fixture tarball");
-    await writeFile(path.join(root, "package.json"), JSON.stringify({ harness: { version: "1.3.0-rc.4" } }));
+    await writeFile(path.join(root, "package.json"), JSON.stringify({ harness: { version: "1.3.0-rc.5" } }));
     await expect(installedHarness(root)).rejects.toThrow("version or package identity");
     await rm(link); await symlink(root, link, "dir");
     await expect(installedHarness(root)).rejects.toThrow("not a source link");
