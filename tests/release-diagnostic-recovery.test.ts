@@ -1,4 +1,5 @@
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
+import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -70,6 +71,47 @@ test("live assertion checkpoints survive sanitization without copying arbitrary 
   ]);
   error.checkpoint = "PRIVATE_CREDENTIAL_DO_NOT_LOG";
   expect(JSON.stringify(sanitizeOperationalError(error))).not.toContain("PRIVATE_CREDENTIAL_DO_NOT_LOG");
+});
+
+test("execution argument structure survives release sanitization without command or key contents", () => {
+  const expected = liveExecutionSmokeInternals.executionCommandInput("qwen");
+  const privateCommand = "PRIVATE_COMMAND /private/credential/path";
+  const privateArgument = "PRIVATE_SCRIPT_TOKEN /private/workspace/task.txt";
+  const privateKey = "PRIVATE_UNAPPROVED_KEY";
+  const actual = {
+    ...expected,
+    command: privateCommand,
+    args: [...expected.args.slice(0, 2), privateArgument],
+    [privateKey]: "PRIVATE_EXTRA_VALUE"
+  };
+  let failure: unknown;
+  try {
+    liveExecutionSmokeInternals.assertExecutionCommandArguments(actual, "qwen");
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toBeInstanceOf(Error);
+  const original = sanitizeOperationalError(failure);
+  expect(original.details?.chain).toMatchObject([{
+    kind: "AssertionError",
+    executionArguments: {
+      rootType: "object",
+      commandPresent: true,
+      commandMatchesExpected: false,
+      argsPresent: true,
+      argsType: "array",
+      expectedArgCount: 3,
+      actualArgCount: 3,
+      extraArgCount: 0,
+      extraFieldCount: 1,
+      argumentMismatches: [{ index: 2, actualType: "string", matchesExpected: false }]
+    }
+  }]);
+  const serialized = JSON.stringify(original);
+  for (const privateValue of [privateCommand, privateArgument, privateKey, "PRIVATE_EXTRA_VALUE", "/private/"]) {
+    expect(serialized).not.toContain(privateValue);
+  }
+  expect(sanitizeOperationalError(restoreSanitizedOperationalError(original))).toEqual(original);
 });
 
 for (const failReportWrite of [false, true]) {

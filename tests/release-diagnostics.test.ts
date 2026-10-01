@@ -13,6 +13,7 @@ import {
   summarizeReleaseGates,
   writeLiveGateDiagnostic
 } from "../scripts/release-diagnostics.js";
+import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 import { HarnessExecutionError, HarnessProviderError } from "../src/runtime/errors.js";
 
 const artifactSha512 = `sha512-${Buffer.alloc(64, 1).toString("base64")}`;
@@ -269,6 +270,45 @@ describe("release diagnostics", () => {
       expect(result.rows[0]?.detail).toContain("PROVIDER_UNAVAILABLE [category=provider, retryable=true]");
       const persisted = await readFile(out, "utf8");
       expect(persisted).not.toContain("raw docker output");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("persists safe execution argument shape in a release artifact without arbitrary input", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-execution-argument-diagnostic-"));
+    try {
+      const out = path.join(directory, "execution.json");
+      const expected = liveExecutionSmokeInternals.executionCommandInput("qwen");
+      const privateInput = "PRIVATE_SCRIPT_CONTENT /private/task/path";
+      let failure: unknown;
+      try {
+        liveExecutionSmokeInternals.assertExecutionCommandArguments({
+          ...expected,
+          args: [...expected.args.slice(0, 2), privateInput],
+          PRIVATE_ARBITRARY_FIELD: "PRIVATE_FIELD_VALUE"
+        }, "qwen");
+      } catch (error) {
+        failure = Object.assign(new Error("Live execution certification failed."), {
+          checkpoint: "execution_command_arguments",
+          cause: error
+        });
+      }
+      expect(failure).toBeInstanceOf(Error);
+      await writeLiveGateDiagnostic({
+        out,
+        binding: workflowBinding,
+        gate: "execution",
+        status: "failed",
+        outcomes: [{ provider: "qwen", status: "failed", error: sanitizeOperationalError(failure) }]
+      });
+      const persisted = await readFile(out, "utf8");
+      expect(persisted).toContain('"checkpoint": "execution_command_arguments"');
+      expect(persisted).toContain('"extraFieldCount": 1');
+      expect(persisted).toContain('"index": 2');
+      for (const privateValue of [privateInput, "PRIVATE_ARBITRARY_FIELD", "PRIVATE_FIELD_VALUE", "/private/"]) {
+        expect(persisted).not.toContain(privateValue);
+      }
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
