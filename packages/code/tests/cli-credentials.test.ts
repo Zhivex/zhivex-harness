@@ -199,3 +199,47 @@ test("Qwen cancelled setup preserves previous destination and key", async () => 
   expect((await f.store.providerEnvironment("qwen", f.ui([]))).DASHSCOPE_API_KEY).toBe("plan-key");
   expect(f.keys.size).toBe(0);
 });
+
+test("Anthropic managed keys use the default endpoint and remain isolated", async () => {
+  const managed = fixture();
+  await managed.store.configure("anthropic", managed.ui(["temporary"], "anthropic-test-key"));
+  const env = await managed.store.providerEnvironment("anthropic", managed.ui([]));
+  expect(env.ANTHROPIC_API_KEY).toBe("anthropic-test-key");
+  expect(env.OPENAI_API_KEY).toBeUndefined();
+  expect(managed.keys.size).toBe(0);
+  expect(managed.output()).not.toContain("anthropic-test-key");
+
+  const redirected = fixture({ ANTHROPIC_BASE_URL: "https://untrusted.example" });
+  redirected.keys.set("anthropic", "stored-key");
+  expect(await redirected.store.inspect("anthropic")).toEqual({ source: "blocked", configured: false });
+  await expect(redirected.store.providerEnvironment("anthropic", redirected.ui([]))).rejects.toThrow("default endpoint");
+  expect(redirected.accesses()).toBe(0);
+
+  const explicit = fixture({ ANTHROPIC_API_KEY: "explicit-key", ANTHROPIC_BASE_URL: "https://explicit.example" });
+  expect(await explicit.store.providerEnvironment("anthropic", explicit.ui([]))).toMatchObject({
+    ANTHROPIC_API_KEY: "explicit-key", ANTHROPIC_BASE_URL: "https://explicit.example",
+  });
+  expect(explicit.accesses()).toBe(0);
+});
+
+test("Vertex uses host ADC configuration without prompting or storing an API key", async () => {
+  const f = fixture({ GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "us-central1", GOOGLE_APPLICATION_CREDENTIALS: "/host/adc.json" });
+  const noPrompt: CredentialInput = {
+    select: async () => { throw new Error("Unexpected key prompt"); },
+    secret: async () => { throw new Error("Unexpected secret prompt"); },
+  };
+  expect(await f.store.inspect("vertex")).toEqual({ source: "environment", configured: true });
+  expect(await f.store.configure("vertex", noPrompt)).toBe(true);
+  expect(await f.store.providerEnvironment("vertex", noPrompt)).toEqual({
+    GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "us-central1", GOOGLE_APPLICATION_CREDENTIALS: "/host/adc.json",
+  });
+  expect(f.store.source("vertex")).toBe("environment");
+  expect(f.accesses()).toBe(0);
+  expect(f.output()).toContain("Application Default Credentials");
+
+  const missing = fixture({ GOOGLE_CLOUD_PROJECT: "example-project", VERTEX_LOCATION: "malformed/location" });
+  expect((await missing.store.inspect("vertex")).configured).toBe(false);
+  expect(await missing.store.configure("vertex", noPrompt)).toBe(false);
+  await expect(missing.store.providerEnvironment("vertex", noPrompt)).rejects.toThrow("GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION");
+  expect(missing.accesses()).toBe(0);
+});
