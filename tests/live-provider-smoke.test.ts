@@ -324,3 +324,9 @@ test('approval continuation evidence isolates the approved call and preserves pr
   expect(snapshot.privateParts[0]).toMatchObject({data:{signature:'fixture-signature'}});
   expect(approvalContinuation(messages,'approved')).not.toEqual(snapshot);
 });
+
+test("Qwen contract certification pins zero sampling temperature without changing other routes", () => {
+  expect(providerRunInput("qwen", "fixture")).toMatchObject({temperature:0,providerOptions:{apiMode:"responses"},maxSteps:4});
+  expect(providerRunInput("openai", "fixture")).not.toHaveProperty("temperature");
+  expect(providerRunInput("anthropic", "fixture")).not.toHaveProperty("temperature");
+});

@@ -44,7 +44,7 @@ if (process.argv[2] === "--child") {
     const result = await api.runHarness(harness, { messages: history, metadata: session.metadata ?? {},
       maxTokens: limits.maxTokens, abortSignal: AbortSignal.timeout(limits.timeoutMs),
       ...(provider === "openai" ? { providerOptions: { apiMode: "responses" } }
-        : provider === "qwen" ? { providerOptions: { apiMode: "chat" } } : {}) });
+        : provider === "qwen" ? { temperature: 0, providerOptions: { apiMode: "chat" } } : {}) });
     const text = result.outputText.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
     let answer: Record<string, unknown> = {};
     try { answer = JSON.parse(text); } catch { /* The report records only the failed shape, never provider text. */ }
@@ -71,6 +71,8 @@ if (process.argv[2] === "--child") {
       status: Object.values(checks).every(Boolean) ? "passed" : "failed", compactions: result.state.compactions?.length ?? 0,
       compactedMessages: result.state.compactions?.reduce((sum, item) => sum + item.compactedMessageCount, 0) ?? 0,
       inputTokens: result.usage?.inputTokens ?? null, outputTokens: result.usage?.outputTokens ?? null,
+      samplingTemperature: provider === "qwen" ? 0 : null,
+      observedObjective: objectives.includes(String(answer.objective)) ? answer.objective : "other",
       finishReason: result.finishReason ?? null, answerJsonParsed: Object.keys(answer).length > 0,
       retainedContext,
       checkpointRestored: phase > 0, sourceDigest: createHash("sha256").update(JSON.stringify(history)).digest("hex") }));

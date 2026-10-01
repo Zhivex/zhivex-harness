@@ -202,7 +202,7 @@ const completionToken = (provider: HarnessProvider) => `ZHIVEX_HARNESS_${provide
 const liveProviderOptions = (provider: HarnessProvider) => provider === "openai"
   ? { providerOptions: { apiMode: "responses" } }
   : provider === "qwen"
-    ? { providerOptions: { apiMode: "responses" } }
+    ? { temperature: 0, providerOptions: { apiMode: "responses" } }
     : {};
 
 const providerRunInput = (provider: HarnessProvider, prompt: string): AgentRunInput => ({
@@ -280,9 +280,17 @@ const createLiveHarness = async (args: PhaseArguments) => createHarness({
   env: process.env
 });
 
+const liveRunState = (result: Awaited<ReturnType<typeof runHarness>>) => ({
+  status: result.status, steps: result.steps.length, maxSteps: result.state.maxSteps,
+  pendingApprovals: result.state.pendingApprovals.length, toolResults: result.toolResults.length,
+  toolErrors: result.toolResults.filter(receipt => receipt.isError).length,
+  compactions: result.state.compactions?.length ?? 0
+});
+
 const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> => {
   const harness = await createLiveHarness(args);
   let checkpoint = "request_status";
+  let observedRun: ReturnType<typeof liveRunState> | undefined;
   try {
     const expected = expectedApprovalArguments(args.provider);
     const { prompt: _prompt, messages: _messages, ...baseInput } = providerRunInput(args.provider, certificationPrompt(args.provider));
@@ -295,6 +303,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
       scope: harness.config.scope,
       idempotencyKey: `live-certification-${args.provider}`
     });
+    observedRun = liveRunState(result);
     throwTransientRunFailure(result);
 
     assert.equal(
@@ -331,7 +340,7 @@ const requestPhase = async (args: PhaseArguments): Promise<RequestPhaseOutput> =
       approvalId: approval.id
     };
   } catch (error) {
-    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
+    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint, ...(observedRun ? { liveRunState: observedRun } : {}) });
   } finally {
     await harness.close();
   }
@@ -400,6 +409,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
   assert.ok(args.runId);
   const harness = await createLiveHarness(args);
   let checkpoint = "resume_state";
+  let observedRun: ReturnType<typeof liveRunState> | undefined;
   try {
     const state = await harness.store.load(args.runId, harness.config.scope);
     assert.equal(state?.status, "waiting_approval");
@@ -421,6 +431,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
     assert.equal((beforeJournal ?? []).filter(entry => entry.toolName === "apply_patch").length, 0);
     checkpoint = "resume_status";
 
+    let terminalError: unknown;
     const result = await runHarness(harness, {
       state,
       ...liveProviderOptions(args.provider),
@@ -430,12 +441,16 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
         approve: true,
         reason: "Opt-in live provider certification."
       }]
-    });
+    }, { onEvent: event => { if (event.type === "error") terminalError = event.error; } });
+    observedRun = liveRunState(result);
+    if (result.status === "failed" && terminalError) throw terminalError;
     throwTransientRunFailure(result);
 
     assert.equal(result.status, "completed", result.outputText || result.error?.message || "Unexpected run status");
     if (protectedContinuation) {
+      checkpoint = "resume_compaction";
       assert((result.state.compactions?.length ?? 0) > beforeCompactions, "Resume must compact after the pending approval");
+      checkpoint = "resume_continuation";
       assert.deepEqual(approvalContinuation(result.state.messages, approval.toolCallId), protectedContinuation);
     }
     checkpoint = "resume_output";
@@ -457,7 +472,7 @@ const resumePhase = async (args: PhaseArguments): Promise<ResumePhaseOutput> => 
         privateParts: protectedContinuation.privateParts.length, toolMetadata: protectedContinuation.metadata !== null } } : {})
     };
   } catch (error) {
-    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint });
+    throw Object.assign(new HarnessExecutionError("Live certification failed.", { cause: error }), { checkpoint, ...(observedRun ? { liveRunState: observedRun } : {}) });
   } finally {
     await harness.close();
   }

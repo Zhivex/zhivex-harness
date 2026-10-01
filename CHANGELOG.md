@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.7 - 2026-10-01
+
+- Pin Qwen contract certification to zero sampling temperature in approval and conversation continuity smokes, preserving all approval, compaction, effect and context assertions. Application model defaults remain unchanged.
+- Distinguish approval resume status, compaction and private continuation failures; retain sanitized run counters and typed provider causes without publishing model output or messages.
+- Prepare RC7 with exact Code/Desktop pins and historical representative mappings preserved. Prior failed RC6 evidence remains historical; RC7 requires its own exact-artifact and protected release gates.
+
 ## 1.3.0-rc.6 - 2026-09-30
 
 - Make protected OCI execution certification use a host-owned Node fixture while retaining exact command, patch, approval and journal checks.

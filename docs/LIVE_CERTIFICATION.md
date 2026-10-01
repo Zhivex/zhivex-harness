@@ -2,7 +2,7 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
-## Prepared 1.3.0-rc.6 cohort
+## Prepared 1.3.0-rc.7 cohort
 
 RC5 restores Meta `muse-spark-1.3-contributor` and Qwen `qwen3.8-flash`
 in the protected release and manual certification workflows, representative
