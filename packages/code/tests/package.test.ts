@@ -35,7 +35,13 @@ describe("standalone Node terminal product", () => {
   test("provider JSON and usage errors retain schema and exit contracts", () => {
     const providers = run(["providers", "--json"]);
     expect(providers.status).toBe(0);
-    expect(JSON.parse(providers.stdout)).toMatchObject({schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "providers"});
+    const document = JSON.parse(providers.stdout);
+    expect(document).toMatchObject({schemaVersion: CLI_JSON_SCHEMA_VERSION, kind: "providers"});
+    expect(document.providers).toEqual(expect.arrayContaining([
+      expect.objectContaining({id: "anthropic", credentialNames: ["ANTHROPIC_API_KEY"]}),
+      expect.objectContaining({id: "vertex", credentialNames: [], configured: false}),
+    ]));
+    expect(run(["providers"]).stdout).toContain("missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION");
     for (const args of [["run", "--json", "--bogus"], ["run", "--json", "--jsonl", "task"]]) {
       const result = run(args);
       expect(result.status).toBe(2);

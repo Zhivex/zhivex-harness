@@ -44,3 +44,15 @@ test("Qwen frontier models appear on the first page even with an older current m
  expect(ids.slice(0,5)).toEqual(["qwen3.8-flash","qwen3.8-max","glm-5.3","deepseek-v4.1-flash","kimi-k3"]);
  expect(pages[0]!.find(item=>(item.value as {id:string}).id==="glm-5.3")?.detail).toContain("Zhipu");
 });
+
+test("Anthropic can be selected from the shared provider and model catalog", async () => {
+ const prompts: Array<{title:string;values:unknown[]}> = [];
+ const answers: unknown[] = ["anthropic",{kind:"model",id:"claude-sonnet-5"},"default"];
+ const input = {select:async(title:string,items:readonly {value:unknown}[])=>{
+   prompts.push({title,values:items.map(item=>item.value)});
+   return answers.shift();
+ },question:async()=>""} as unknown as Pick<ConsoleInput,"select"|"question">;
+ expect(await navigateConsole(input,{entry:"provider",providers:providerAvailability({}),current:{provider:"openai",model:"gpt-6-luna"},sessions:async()=>[]})).toEqual({provider:"anthropic",model:"claude-sonnet-5",reasoningEffort:"default"});
+ expect(prompts[0]!.values).toContain("anthropic");
+ expect(prompts[1]!.values).toContainEqual({kind:"model",id:"claude-sonnet-5"});
+});

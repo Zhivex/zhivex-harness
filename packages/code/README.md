@@ -31,8 +31,8 @@ command links the built root package into Code's ignored `node_modules`, validat
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
 The root manifest is now `1.3.0-rc.7`; this link is local API development
-evidence only. Installed acceptance tests the exact unpublished Harness RC tarball
-without rewriting its version, which matches Code's exact engine pin.
+evidence only. Installed acceptance must test the exact Harness version pinned by
+Code, without rewriting its version.
 
 The resulting tarball runs on Node >=22.13.0 without Bun, TypeScript, or install
 scripts. Bun is contribution tooling only. The independent build deliberately
@@ -63,6 +63,12 @@ projection and continuation reconstruction. Code consumes named Harness exports;
 experimental `/code-support` supplies bounded host helpers. The diagnostic SQLite
 helper returns a read-only projection, never a connection or arbitrary SQL API.
 The historical Harness CLI remains an independent compatibility snapshot.
+
+Anthropic is available through the engine provider registry and shared model catalog.
+Configure `ANTHROPIC_API_KEY`, or use `/credentials` for a system keychain or
+temporary key. Managed keys require the default Anthropic endpoint. Vertex uses
+host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
+`VERTEX_LOCATION`; Code does not ask for or store a Vertex API key.
 
 ## Release status
 

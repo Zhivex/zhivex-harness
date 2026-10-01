@@ -86,7 +86,9 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
   process.stdout.write([
     `${options.updateProfile ? "Updated" : "Created"} personal profile ${profileName} at ${created.path}.`,
     `Provider: ${created.profile.provider} · Model: ${created.profile.model} · Reasoning: ${created.profile.reasoningEffort ?? "default"}`,
-    availability?.configured
+    provider === "vertex"
+      ? "Vertex uses host ADC. Set GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION; route presence does not verify credentials or model access."
+      : availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
       : `Open zhivex-code to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
     "Next:",
@@ -105,7 +107,7 @@ export const listProviders = (json: boolean) => {
   }
   for (const provider of document.providers) {
     process.stdout.write(
-      `${provider.id.padEnd(7)} ${provider.defaultModel.padEnd(22)} ${provider.support.padEnd(11)} ${provider.configured ? "configured" : `missing ${provider.credentialNames.join("/")}`}\n`
+      `${provider.id.padEnd(7)} ${provider.defaultModel.padEnd(22)} ${provider.support.padEnd(11)} ${provider.id === "vertex" ? provider.configured ? "route configured; ADC not checked" : "missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION" : provider.configured ? "configured" : `missing ${provider.credentialNames.join("/")}`}\n`
     );
   }
 };
