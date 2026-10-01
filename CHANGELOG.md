@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0-rc.6 - 2026-09-30
+
+- Make protected OCI execution certification use a host-owned Node fixture while retaining exact command, patch, approval and journal checks.
+- Align manual certification with all six protected provider routes and preserve typed, sanitized continuity failures in the aggregate release diagnostics.
+- Admit future canonical release tags through the reviewed Vertex WIF identity condition, retaining repository, owner, environment, event and workflow bindings.
+- Prepare RC6 metadata, representative model mapping and exact Harness pins for Code and Desktop. Publication requires new release-bound artifact, live and representative evidence.
+
 ## 1.3.0-rc.5 - 2026-09-30
 
 - Use the explicit Anthropic default endpoint when `ANTHROPIC_BASE_URL` is empty or whitespace-only, including empty optional workflow secrets. Preserve host environment isolation and rejection of unsafe custom endpoints.
