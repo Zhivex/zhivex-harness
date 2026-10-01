@@ -285,7 +285,7 @@ describe("release diagnostics", () => {
       try {
         liveExecutionSmokeInternals.assertExecutionCommandArguments({
           ...expected,
-          args: [...expected.args.slice(0, 2), privateInput],
+          args: [...expected.args.slice(0, 0), privateInput],
           PRIVATE_ARBITRARY_FIELD: "PRIVATE_FIELD_VALUE"
         }, "qwen");
       } catch (error) {
@@ -305,7 +305,7 @@ describe("release diagnostics", () => {
       const persisted = await readFile(out, "utf8");
       expect(persisted).toContain('"checkpoint": "execution_command_arguments"');
       expect(persisted).toContain('"extraFieldCount": 1');
-      expect(persisted).toContain('"index": 2');
+      expect(persisted).toContain('"index": 0');
       for (const privateValue of [privateInput, "PRIVATE_ARBITRARY_FIELD", "PRIVATE_FIELD_VALUE", "/private/"]) {
         expect(persisted).not.toContain(privateValue);
       }

@@ -1,6 +1,6 @@
 import { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -30,13 +30,20 @@ const executionContent = (provider: HarnessProvider) => `${provider} enforced OC
 const completionToken = (provider: HarnessProvider) =>
   `ZHIVEX_HARNESS_${provider.toUpperCase()}_OCI_LIVE_OK`;
 
+export const EXECUTION_FIXTURE_NAME = "live-execution-fixture.mjs";
+// The host owns the program. The model selects a reviewed argv, rather than
+// reproducing JavaScript source whose harmless rewrites invalidate certification.
+export const executionFixtureSource = (provider: HarnessProvider) => `import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+const provider = ${JSON.stringify(provider)};
+assert(${JSON.stringify(PROVIDERS)}.includes(provider));
+await mkdir('live-execution', { recursive: true });
+await writeFile('live-execution/' + provider + '.txt', provider + ' enforced OCI live smoke\\n');
+`;
+
 export const executionCommandInput = (provider: HarnessProvider) => ({
   command: "node",
-  args: [
-    "--input-type=module",
-    "-e",
-    `import { mkdir, writeFile } from 'node:fs/promises'; await mkdir('live-execution',{recursive:true}); await writeFile(${JSON.stringify(executionPath(provider))},${JSON.stringify(executionContent(provider))})`
-  ]
+  args: [EXECUTION_FIXTURE_NAME]
 });
 
 const executionArgumentValueType = (value: unknown) => {
@@ -116,6 +123,7 @@ const certifyProvider = async (
   workspace: string,
   stateDirectory: string
 ) => {
+  await writeFile(path.join(workspace, EXECUTION_FIXTURE_NAME), executionFixtureSource(provider), { mode: 0o444 });
   const harness = await createHarness({
     provider,
     model,
@@ -134,6 +142,7 @@ const certifyProvider = async (
     ociTmpfsMb: 64,
     maxSteps: 6,
     maxToolCalls: 8,
+    toolNames: ["run_environment_command", "inspect_environment_patch", "apply_environment_patch"],
     subagentProfiles: [],
     env: process.env
   });
@@ -194,6 +203,8 @@ const certifyProvider = async (
       await readFile(path.join(workspace, executionPath(provider)), "utf8"),
       executionContent(provider)
     );
+    assert.equal(await readFile(path.join(workspace, EXECUTION_FIXTURE_NAME), "utf8"), executionFixtureSource(provider),
+      "The approved OCI command must not modify its host-owned fixture.");
     checkpoint = "execution_environment_binding";
     assert.deepEqual(
       result.state.executionEnvironment,

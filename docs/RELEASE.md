@@ -54,10 +54,36 @@ Vertex route. Local user ADC is not copied to GitHub. Auth-generated credential
 files are ignored and never included in artifact uploads. The job requires
 `id-token: write`; authentication failure blocks every subsequent paid gate.
 
-On 29/09 the environment inventory contained only the original three provider
-secrets and none of these Vertex variables. New environment configuration must
-be provisioned before dispatch. Workflow coverage in a PR is not proof that
-protected credentials, cloud access or remote certification have passed.
+The Vertex WIF condition must admit future canonical release tags rather than
+enumerating individual RC refs. Generate the reviewed condition with
+`bun run scripts/vertex-release-identity.ts`. It requires the repository and
+owner numeric IDs, the protected `live-certification` environment subject,
+`workflow_dispatch`, a canonical `vX.Y.Z` / `vX.Y.Z-rc.N` tag and an exact
+workflow/ref binding for `release.yml` or `live-certification.yml`. Branches,
+pull requests, other workflows, environments and repositories remain excluded.
+Apply this condition to the configured provider through an authorized IAM
+change, retain the previous condition for rollback and re-read it afterwards.
+Presence checks do not verify IAM; successful GitHub OIDC authentication remains
+required before paid provider gates. Local cloud access is not GitHub identity
+certification.
+
+Manual live certification defaults to all six routes and runs the same base,
+approval compaction, structured delegation, mixed routing, OCI execution and
+conversation continuity gates as the release. A diagnostic provider subset
+limits the per-provider gates; the four fixed mixed routes still require the
+complete six-route configuration and Vertex authentication. Manual evidence
+does not replace the release-bound representative matrix or published-byte
+verification.
+
+The execution smoke uses a host-owned `live-execution-fixture.mjs` in the OCI
+snapshot. The model must submit the exact reviewed `node` argv, inspect its
+patch and obtain separate host-import approval. Certification checks the final
+provider file, unchanged fixture, execution binding, tool sequence and unique
+journal entries. Keeping JavaScript out of the model-authored argv avoids false
+failures from source rewriting without accepting arbitrary programs.
+Continuity emits one sanitized JSON envelope per campaign, preserving provider,
+failed phase, allowlisted failed checks and typed provider diagnostics in the
+aggregate gate; raw conversation and provider output remain excluded.
 
 The previous `v1.3.0-rc.1` attempt failed the Qwen base certification because
 its pending `apply_patch` proposal ID differed from the expected ID. npm was

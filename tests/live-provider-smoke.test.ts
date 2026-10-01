@@ -185,8 +185,8 @@ describe("live provider smoke contract", () => {
     const prompt = liveExecutionSmokeInternals.executionPrompt("qwen");
     const command = liveExecutionSmokeInternals.executionCommandInput("qwen");
     expect(command.command).toBe("node");
-    expect(command.args).toContain("--input-type=module");
-    expect(command.args.join(" ")).toContain("live-execution/qwen.txt");
+    expect(command.args).toEqual(["live-execution-fixture.mjs"]);
+    expect(command.args).not.toContain("-e");
     expect(prompt).toContain(JSON.stringify(command));
     expect(prompt.indexOf("run_environment_command")).toBeLessThan(
       prompt.indexOf("inspect_environment_patch")
@@ -207,16 +207,16 @@ describe("live provider smoke contract", () => {
       },
       {
         label: "argv content",
-        actual: { ...expected, args: [...expected.args.slice(0, 2), "PRIVATE_SCRIPT /private/source"] },
-        expectedDiagnostic: { argumentMismatches: [{ index: 2, actualType: "string", matchesExpected: false }] }
+        actual: { ...expected, args: [...expected.args.slice(0, 0), "PRIVATE_SCRIPT /private/source"] },
+        expectedDiagnostic: { argumentMismatches: [{ index: 0, actualType: "string", matchesExpected: false }] }
       },
       {
         label: "argv count",
-        actual: { ...expected, args: expected.args.slice(0, 2) },
+        actual: { ...expected, args: expected.args.slice(0, 0) },
         expectedDiagnostic: {
-          actualArgCount: 2,
+          actualArgCount: 0,
           extraArgCount: 0,
-          argumentMismatches: [{ index: 2, actualType: "undefined", matchesExpected: false }]
+          argumentMismatches: [{ index: 0, actualType: "undefined", matchesExpected: false }]
         }
       },
       {
@@ -226,9 +226,9 @@ describe("live provider smoke contract", () => {
       },
       {
         label: "nested argv value",
-        actual: { ...expected, args: [...expected.args.slice(0, 2), { PRIVATE_FIELD: "PRIVATE_NESTED_VALUE" }] },
+        actual: { ...expected, args: [...expected.args.slice(0, 0), { PRIVATE_FIELD: "PRIVATE_NESTED_VALUE" }] },
         expectedDiagnostic: {
-          argumentMismatches: [{ index: 2, actualType: "object", matchesExpected: false, nestedMemberCount: 1 }]
+          argumentMismatches: [{ index: 0, actualType: "object", matchesExpected: false, nestedMemberCount: 1 }]
         }
       },
       {
@@ -239,7 +239,7 @@ describe("live provider smoke contract", () => {
       {
         label: "extra argv item",
         actual: { ...expected, args: [...expected.args, "PRIVATE_EXTRA_ARG"] },
-        expectedDiagnostic: { actualArgCount: 4, extraArgCount: 1 }
+        expectedDiagnostic: { actualArgCount: 2, extraArgCount: 1 }
       },
       {
         label: "root shape",

@@ -18,6 +18,31 @@ const candidateModels = async () => {
 };
 
 const workspace = path.resolve(import.meta.dir, "..");
+test('manual certification covers the release live gates, model pins, route credentials and Vertex authentication', async () => {
+  const release = (await readWorkflow('release.yml')).jobs['certify-live']!;
+  const manualWorkflow = await readWorkflow('live-certification.yml');
+  const manual = manualWorkflow.jobs.certify!;
+  const yaml = Bun.YAML.parse(await readFile(path.join(workspace, '.github/workflows/live-certification.yml'), 'utf8')) as {
+    on: {workflow_dispatch: {inputs: {providers: {default: string}}}}; permissions: Record<string,string>
+  };
+  expect(yaml.on.workflow_dispatch.inputs.providers.default).toBe(release.env.ZHIVEX_HARNESS_LIVE_PROVIDERS!);
+  expect(yaml.permissions['id-token']).toBe('write');
+  for (const [key, value] of Object.entries(release.env)) {
+    if (key.endsWith('_MODEL') || key.startsWith('VERTEX_') || key === 'GOOGLE_CLOUD_PROJECT') expect(manual.env[key]).toBe(value);
+  }
+  const releaseGates = release.steps.filter(step => step.id?.startsWith('live_'));
+  const manualGates = manual.steps.filter(step => step.id?.startsWith('live_') && step.id !== 'live_config');
+  expect(manualGates.map(step => step.id)).toEqual(releaseGates.map(step => step.id));
+  for (const step of releaseGates) {
+    const target = manualGates.find(row => row.id === step.id)!;
+    expect(target.run).toBe(step.run);
+    expect(target.env).toEqual(step.env);
+  }
+  const auth = manual.steps.find(step => step.uses?.startsWith('google-github-actions/auth@'))!;
+  expect(auth.with).toEqual(release.steps.find(step => step.uses?.startsWith('google-github-actions/auth@'))!.with);
+  const config = manual.steps.find(step => step.id === 'live_config')!;
+  expect(config.env!.ZHIVEX_HARNESS_LIVE_PROVIDERS).toBe(release.env.ZHIVEX_HARNESS_LIVE_PROVIDERS!);
+});
 test("six-route release gates require configuration, OIDC and every acceptance boundary", async () => {
   const workflow = await readWorkflow("release.yml");
   const job = workflow.jobs["certify-live"]!;
@@ -233,7 +258,7 @@ describe("release workflow version source", () => {
         "live_oci",
         "live_base",
         "live_orchestration",
-        ...(workflowPath.endsWith("/release.yml") ? ["live_compaction", "live_continuity", "live_routing_vertex", "live_routing_anthropic", "live_routing_gemini", "live_routing_meta"] : ["live_routing"]),
+        "live_compaction", "live_continuity", "live_routing_vertex", "live_routing_anthropic", "live_routing_gemini", "live_routing_meta",
         "live_execution"
       ]) {
         const diagnosticGate = gate.replace("live_", "").replaceAll("_", "-");
@@ -273,7 +298,7 @@ describe("release workflow version source", () => {
     const releaseLive = release.slice(release.indexOf("  certify-live:"), release.indexOf("  representative-evaluation:"));
     const manualBinding = manual.slice(
       manual.indexOf("      - name: Bind immutable live diagnostic identity"),
-      manual.indexOf("      - name: Preload OCI execution image")
+      manual.indexOf("      - name: Validate protected provider configuration")
     );
     expect(releaseLive).toContain("name: Download immutable validated artifact");
     expect(releaseLive).toContain("shasum -a 512 -c SHA512SUMS");

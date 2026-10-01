@@ -81,7 +81,7 @@ test("execution argument structure survives release sanitization without command
   const actual = {
     ...expected,
     command: privateCommand,
-    args: [...expected.args.slice(0, 2), privateArgument],
+    args: [...expected.args.slice(0, 0), privateArgument],
     [privateKey]: "PRIVATE_EXTRA_VALUE"
   };
   let failure: unknown;
@@ -100,11 +100,11 @@ test("execution argument structure survives release sanitization without command
       commandMatchesExpected: false,
       argsPresent: true,
       argsType: "array",
-      expectedArgCount: 3,
-      actualArgCount: 3,
+      expectedArgCount: 1,
+      actualArgCount: 1,
       extraArgCount: 0,
       extraFieldCount: 1,
-      argumentMismatches: [{ index: 2, actualType: "string", matchesExpected: false }]
+      argumentMismatches: [{ index: 0, actualType: "string", matchesExpected: false }]
     }
   }]);
   const serialized = JSON.stringify(original);
