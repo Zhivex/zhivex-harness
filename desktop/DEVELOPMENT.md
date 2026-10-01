@@ -30,7 +30,7 @@ immutable candidate, use `bun run desktop/scripts/prepare-harness.ts /absolute/c
 instead. Existing registry dependencies are preserved under `.harness/previous-*`
 before switching the managed package link. No installation or build publishes a package.
 
-The current exact candidate pin is `harness.version: 1.3.0-rc.5` in the private
+The current exact candidate pin is `harness.version: 1.3.0-rc.6` in the private
 Desktop manifest. Harness is provisioned exclusively by `prepare:harness`, not
 by the Desktop registry lockfile, so clean PR CI can install renderer/tooling
 dependencies before the engine candidate is published. Build and packaging
