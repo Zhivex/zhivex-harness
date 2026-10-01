@@ -39,6 +39,61 @@ export const executionCommandInput = (provider: HarnessProvider) => ({
   ]
 });
 
+const executionArgumentValueType = (value: unknown) => {
+  if (value === null) return "null" as const;
+  if (Array.isArray(value)) return "array" as const;
+  if (value === undefined) return "undefined" as const;
+  return typeof value as "boolean" | "number" | "object" | "string";
+};
+
+const executionArgumentsDiagnostic = (actual: unknown, expected: ReturnType<typeof executionCommandInput>) => {
+  const isRecord = actual !== null && typeof actual === "object" && !Array.isArray(actual);
+  const record = isRecord ? actual as Record<string, unknown> : undefined;
+  const commandPresent = record !== undefined && Object.hasOwn(record, "command");
+  const argsPresent = record !== undefined && Object.hasOwn(record, "args");
+  const command = record?.command;
+  const args = record?.args;
+  const arrayArgs = Array.isArray(args) ? args as unknown[] : undefined;
+  const argumentMismatches = arrayArgs
+    ? expected.args.flatMap((expectedValue, index) => {
+        const value = Object.hasOwn(arrayArgs, index) ? arrayArgs[index] : undefined;
+        const actualType = executionArgumentValueType(value);
+        const matchesExpected = typeof value === "string" && value === expectedValue;
+        if (matchesExpected) return [];
+        const nestedMemberCount = value !== null && typeof value === "object"
+          ? Math.min(Array.isArray(value) ? value.length : Object.keys(value).length, 1_000)
+          : undefined;
+        return [{ index, actualType, matchesExpected, ...(nestedMemberCount === undefined ? {} : { nestedMemberCount }) }];
+      })
+    : [];
+  const rootKeys = record ? Object.keys(record) : [];
+  return {
+    rootType: executionArgumentValueType(actual),
+    commandPresent,
+    commandType: executionArgumentValueType(commandPresent ? command : undefined),
+    commandMatchesExpected: typeof command === "string" && command === expected.command,
+    argsPresent,
+    argsType: executionArgumentValueType(argsPresent ? args : undefined),
+    expectedArgCount: expected.args.length,
+    ...(arrayArgs ? { actualArgCount: Math.min(arrayArgs.length, 1_000) } : {}),
+    extraArgCount: arrayArgs ? Math.min(Math.max(0, arrayArgs.length - expected.args.length), 1_000) : 0,
+    extraFieldCount: Math.min(rootKeys.filter((key) => key !== "command" && key !== "args").length, 1_000),
+    argumentMismatches
+  };
+};
+
+const assertExecutionCommandArguments = (actual: unknown, provider: HarnessProvider) => {
+  const expected = executionCommandInput(provider);
+  try {
+    assert.deepEqual(actual, expected);
+  } catch (error) {
+    if (error && typeof error === "object") {
+      Object.assign(error, { executionArguments: executionArgumentsDiagnostic(actual, expected) });
+    }
+    throw error;
+  }
+};
+
 export const executionPrompt = (provider: HarnessProvider) =>
   `Perform this exact enforced-environment workflow:
 1. Call run_environment_command exactly once with this exact JSON input: ${JSON.stringify(executionCommandInput(provider))}.
@@ -101,7 +156,7 @@ const certifyProvider = async (
         approvals.push({ name: approval.name, arguments: argumentsValue });
         if (approval.name === "run_environment_command") {
           checkpoint = "execution_command_arguments";
-          assert.deepEqual(argumentsValue, executionCommandInput(provider));
+          assertExecutionCommandArguments(argumentsValue, provider);
         } else {
           checkpoint = "execution_import_reference";
           assert.match((argumentsValue as { patchId?: string }).patchId ?? "", /^sha256:[a-f0-9]{64}$/);
@@ -212,6 +267,8 @@ const run = async (env: NodeJS.ProcessEnv) => {
 
 export const liveExecutionSmokeInternals = {
   assertExecutionRunStatus,
+  assertExecutionCommandArguments,
+  executionArgumentsDiagnostic,
   executionCommandInput,
   executionPrompt,
   completionToken

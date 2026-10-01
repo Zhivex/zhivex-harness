@@ -197,6 +197,78 @@ describe("live provider smoke contract", () => {
     expect(prompt).toContain(liveExecutionSmokeInternals.completionToken("qwen"));
   });
 
+  test("rejects command argument mismatches while exposing only bounded structural evidence", () => {
+    const expected = liveExecutionSmokeInternals.executionCommandInput("qwen");
+    const cases = [
+      {
+        label: "command value",
+        actual: { ...expected, command: "PRIVATE_COMMAND /private/home/secret" },
+        expectedDiagnostic: { commandMatchesExpected: false }
+      },
+      {
+        label: "argv content",
+        actual: { ...expected, args: [...expected.args.slice(0, 2), "PRIVATE_SCRIPT /private/source"] },
+        expectedDiagnostic: { argumentMismatches: [{ index: 2, actualType: "string", matchesExpected: false }] }
+      },
+      {
+        label: "argv count",
+        actual: { ...expected, args: expected.args.slice(0, 2) },
+        expectedDiagnostic: {
+          actualArgCount: 2,
+          extraArgCount: 0,
+          argumentMismatches: [{ index: 2, actualType: "undefined", matchesExpected: false }]
+        }
+      },
+      {
+        label: "argv type",
+        actual: { ...expected, args: "PRIVATE_ARGUMENTS" },
+        expectedDiagnostic: { argsType: "string" }
+      },
+      {
+        label: "nested argv value",
+        actual: { ...expected, args: [...expected.args.slice(0, 2), { PRIVATE_FIELD: "PRIVATE_NESTED_VALUE" }] },
+        expectedDiagnostic: {
+          argumentMismatches: [{ index: 2, actualType: "object", matchesExpected: false, nestedMemberCount: 1 }]
+        }
+      },
+      {
+        label: "extra root field",
+        actual: { ...expected, PRIVATE_FIELD: "PRIVATE_EXTRA_VALUE" },
+        expectedDiagnostic: { extraFieldCount: 1 }
+      },
+      {
+        label: "extra argv item",
+        actual: { ...expected, args: [...expected.args, "PRIVATE_EXTRA_ARG"] },
+        expectedDiagnostic: { actualArgCount: 4, extraArgCount: 1 }
+      },
+      {
+        label: "root shape",
+        actual: ["PRIVATE_ROOT_VALUE"],
+        expectedDiagnostic: { rootType: "array", commandPresent: false, argsPresent: false }
+      }
+    ] as const;
+
+    for (const mismatch of cases) {
+      let failure: unknown;
+      try {
+        liveExecutionSmokeInternals.assertExecutionCommandArguments(mismatch.actual, "qwen");
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure, mismatch.label).toBeInstanceOf(Error);
+      const diagnostic = liveExecutionSmokeInternals.executionArgumentsDiagnostic(
+        mismatch.actual,
+        expected
+      );
+      expect(diagnostic, mismatch.label).toMatchObject(mismatch.expectedDiagnostic);
+      const serialized = JSON.stringify(diagnostic);
+      expect(serialized, mismatch.label).not.toContain("PRIVATE_");
+      expect(serialized, mismatch.label).not.toContain("/private/");
+    }
+
+    expect(() => liveExecutionSmokeInternals.assertExecutionCommandArguments(expected, "qwen")).not.toThrow();
+  });
+
   test("keeps the default mixed route inside the certified provider cohort", () => {
     expect(LIVE_ROUTING_DEFAULTS).toEqual({ parent: "openai", reviewer: "qwen" });
   });
