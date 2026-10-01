@@ -8,13 +8,14 @@ on:
         required: true
         type: string
       providers:
-        description: Comma-separated certified providers; keep the default for full release evidence
+        description: Providers for per-provider gates; mixed routing always covers all six routes
         required: true
-        default: meta,qwen,openai
+        default: meta,qwen,openai,anthropic,gemini,vertex
         type: string
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: live-provider-certification-${{ inputs.tag }}
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   certify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     environment: live-certification
 
     env:
@@ -33,6 +34,13 @@ jobs:
       ZHIVEX_HARNESS_LIVE_QWEN_MODEL: qwen3.8-flash
       ZHIVEX_HARNESS_LIVE_OPENAI_MODEL: gpt-6-luna
       ZHIVEX_HARNESS_LIVE_PROVIDERS: ${{ inputs.providers }}
+      ZHIVEX_HARNESS_LIVE_ANTHROPIC_MODEL: claude-sonnet-5-5
+      ZHIVEX_HARNESS_LIVE_GEMINI_MODEL: gemini-3.6-flash
+      ZHIVEX_HARNESS_LIVE_VERTEX_MODEL: gemini-3.7-flash
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+      VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION }}
+      VERTEX_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.VERTEX_WORKLOAD_IDENTITY_PROVIDER }}
+      VERTEX_SERVICE_ACCOUNT: ${{ vars.VERTEX_SERVICE_ACCOUNT }}
       WORKFLOW_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
@@ -77,7 +85,36 @@ jobs:
           echo "ZHIVEX_HARNESS_LIVE_REQUIRE_ARTIFACT=1" >> "$GITHUB_ENV"
           echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Preload OCI execution image
+      - name: Validate protected provider configuration
+        id: live_config
+        run: bun run scripts/check-live-release-config.ts
+        env:
+          # Mixed routing requires the complete route configuration even for a diagnostic subset.
+          ZHIVEX_HARNESS_LIVE_PROVIDERS: meta,qwen,openai,anthropic,gemini,vertex
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Authenticate Vertex using workload identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.VERTEX_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.VERTEX_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GOOGLE_CLOUD_PROJECT }}
+          create_credentials_file: true
+          export_environment_variables: true
+
+      - name: Preload enforced execution image
         id: live_oci_preload
         continue-on-error: true
         run: >-
@@ -86,7 +123,7 @@ jobs:
           --out release-artifacts/live-diagnostics/oci-preload.json
           -- docker pull node:24-bookworm-slim
 
-      - name: Certify enforced OCI boundaries
+      - name: Certify deterministic OCI boundary
         id: live_oci
         continue-on-error: true
         run: >-
@@ -107,8 +144,6 @@ jobs:
           -- bun run smoke:live
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
@@ -117,6 +152,33 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify approval continuity after compaction
+        id: live_compaction
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate compaction
+          --out release-artifacts/live-diagnostics/compaction.json
+          -- bun run smoke:live
+        env:
+          ZHIVEX_HARNESS_LIVE_APPROVAL_COMPACTION: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
 
       - name: Certify bounded reviewer orchestration
@@ -128,9 +190,8 @@ jobs:
           --out release-artifacts/live-diagnostics/orchestration.json
           -- bun run smoke:live:orchestration
         env:
+          ZHIVEX_HARNESS_LIVE_STRUCTURED_DELEGATION: "1"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
@@ -139,20 +200,25 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
 
-      - name: Certify mixed-provider routing
-        id: live_routing
+      - name: Certify mixed-provider routing openai to vertex
+        id: live_routing_vertex
         continue-on-error: true
         run: >-
           bun run scripts/run-release-gate.ts
-          --gate routing
-          --out release-artifacts/live-diagnostics/routing.json
+          --gate routing-vertex
+          --out release-artifacts/live-diagnostics/routing-vertex.json
           -- bun run smoke:live:routing
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER: openai
+          ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER: vertex
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
@@ -161,6 +227,82 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify mixed-provider routing openai to anthropic
+        id: live_routing_anthropic
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate routing-anthropic
+          --out release-artifacts/live-diagnostics/routing-anthropic.json
+          -- bun run smoke:live:routing
+        env:
+          ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER: openai
+          ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER: anthropic
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify mixed-provider routing openai to gemini
+        id: live_routing_gemini
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate routing-gemini
+          --out release-artifacts/live-diagnostics/routing-gemini.json
+          -- bun run smoke:live:routing
+        env:
+          ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER: openai
+          ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER: gemini
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify mixed-provider routing qwen to meta
+        id: live_routing_meta
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate routing-meta
+          --out release-artifacts/live-diagnostics/routing-meta.json
+          -- bun run smoke:live:routing
+        env:
+          ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER: qwen
+          ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER: meta
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
 
       - name: Certify model-directed execution
@@ -173,8 +315,6 @@ jobs:
           -- bun run smoke:live:execution
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
@@ -183,6 +323,32 @@ jobs:
           QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
           QWEN_REGION: ${{ secrets.QWEN_REGION }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
+
+      - name: Certify multi-process conversation continuity
+        id: live_continuity
+        continue-on-error: true
+        run: >-
+          bun run scripts/run-release-gate.ts
+          --gate continuity
+          --out release-artifacts/live-diagnostics/continuity.json
+          -- bun run scripts/live-continuity-smoke.ts release-artifacts/continuity-evidence.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          META_BASE_URL: ${{ secrets.META_BASE_URL }}
+          QWEN_BASE_URL: ${{ secrets.QWEN_BASE_URL }}
+          QWEN_WORKSPACE_ID: ${{ secrets.QWEN_WORKSPACE_ID }}
+          QWEN_REGION: ${{ secrets.QWEN_REGION }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
           GEMINI_BASE_URL: ${{ secrets.GEMINI_BASE_URL }}
 
       - name: Enforce complete live certification result
@@ -194,8 +360,13 @@ jobs:
           --gate "oci-preload=${{ steps.live_oci_preload.outcome }}"
           --gate "oci=${{ steps.live_oci.outcome }}"
           --gate "base=${{ steps.live_base.outcome }}"
+          --gate "compaction=${{ steps.live_compaction.outcome }}"
+          --gate "continuity=${{ steps.live_continuity.outcome }}"
           --gate "orchestration=${{ steps.live_orchestration.outcome }}"
-          --gate "routing=${{ steps.live_routing.outcome }}"
+          --gate "routing-vertex=${{ steps.live_routing_vertex.outcome }}"
+          --gate "routing-anthropic=${{ steps.live_routing_anthropic.outcome }}"
+          --gate "routing-gemini=${{ steps.live_routing_gemini.outcome }}"
+          --gate "routing-meta=${{ steps.live_routing_meta.outcome }}"
           --gate "execution=${{ steps.live_execution.outcome }}"
 
       - name: Upload sanitized live diagnostics
@@ -203,7 +374,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
-          path: release-artifacts/live-diagnostics/*.json
+          path: |
+            release-artifacts/live-diagnostics/*.json
+            release-artifacts/continuity-evidence.json
           if-no-files-found: warn
           retention-days: 30
           compression-level: 0

@@ -1,4 +1,4 @@
-import { selectContinuityProviders } from './live-continuity-contract.js';
+import { continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -15,8 +15,8 @@ const api = await loadLiveSmokeRuntime();
 const objectives = ["diagnose-parser", "design-cache", "review-api", "profile-parser", "implement-cache", "audit-contract"];
 const limits = { maxInputTokens: 24_000, maxOutputTokens: 8192, maxTotalTokens: 32_192, maxTokens: 8192,
   maxSteps: 2, timeoutMs: 90_000, compactionMaxMessages: 5, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 12_000 };
-const initial = "Project codename: ORCHID-742. Required compatibility: keep-public-api. Rejected approach: schema-rewrite. Initial objective: diagnose-parser. Retain these project facts for later turns.";
-const finalPrompt = "Return one JSON object with exactly codename, compatibility, rejectedApproach, objective. Recover the first three values from prior conversation and set objective to the most recent user objective. Do not use tools. No prose.";
+const initial = "Project codename: ORCHID-742. Required compatibility: keep-public-api. Rejected approach: schema-rewrite. Active project objective: diagnose-parser. Retain these project facts for later turns.";
+const finalPrompt = "Return one JSON object with exactly codename, compatibility, rejectedApproach, objective. Recover the first three values from prior conversation and set objective to the most recent active project objective stated by the user earlier in the conversation. This reporting request and temporary presentation discussion do not change the project objective. Do not use tools. No prose.";
 const noise = (): ModelMessage[] => Array.from({ length: 6 }, (_, i) => createTextMessage(i % 2 ? "assistant" : "user",
   i % 2 ? "Temporary observation recorded; no change to project facts or objective." : "Temporary discussion: presentation wording is nonbinding; project facts and objective remain unchanged."));
 type Session = { messages: ModelMessage[]; metadata?: Record<string, JsonValue>; turns: number };
@@ -109,7 +109,6 @@ if (process.argv[2] === "--child") {
       rows.push({ provider, model, status: phases.length === objectives.length && phases.every(item => item.status === "passed") ? "passed" : "failed",
         processStarts: phases.length, elapsedMs: Date.now() - started, phases });
     } finally { await rm(root, { recursive: true, force: true }); }
-    process.stdout.write(`${provider}: ${rows.at(-1)!.status}\n`);
   }
   const report = { schemaVersion: 1, kind: "live-conversation-continuity", runtime: process.env.ZHIVEX_HARNESS_LIVE_RUNTIME ? "selected-artifact" : "source",
     harnessVersion: api.HARNESS_VERSION, observedAt: new Date().toISOString(), status: rows.every(row => row.status === "passed") ? "passed" : "failed",
@@ -120,6 +119,7 @@ if (process.argv[2] === "--child") {
     limitations: ["Six-turn synthetic memory scenario with forced compaction; not a natural long-session benchmark or release certification", "Conversation restarts between completed runs; suspended approval resume is tested separately", "Deterministic compaction; no auxiliary paid compactor"] };
   await mkdir(path.dirname(reportPath), { recursive: true });
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
-  process.stdout.write(`Sanitized evidence: ${reportPath}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: report.status === "passed", gate: "live-continuity-smoke",
+    providers: rows.map(continuityGateOutcome) }, null, 2)}\n`);
   if (report.status !== "passed") process.exitCode = 1;
 }

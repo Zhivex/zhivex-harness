@@ -14,7 +14,7 @@ const budgetDiagnosticSchema = z.object({
   operation: z.enum(["model", "tool"]).optional(),
   includeChildRuns: z.boolean().optional()
 });
-const checkpoints = ["execution_approval_tool", "execution_command_arguments", "execution_import_reference", "execution_run_status", "execution_completion_marker", "execution_approval_sequence", "execution_tool_sequence", "execution_tool_success", "execution_host_content", "execution_environment_binding", "execution_journal", "request_status", "request_approval", "request_arguments", "request_persistence", "resume_state", "resume_arguments", "resume_status", "resume_output", "resume_effect", "resume_result_count", "resume_result_success", "resume_file_read", "resume_file_content", "resume_journal_read", "resume_journal_count", "resume_journal_status", "resume_journal", "orchestration_status", "orchestration_output", "orchestration_delegation", "orchestration_child", "orchestration_budget", "orchestration_reopen"] as const;
+const checkpoints = ["continuity_phase", "execution_approval_tool", "execution_command_arguments", "execution_import_reference", "execution_run_status", "execution_completion_marker", "execution_approval_sequence", "execution_tool_sequence", "execution_tool_success", "execution_host_content", "execution_environment_binding", "execution_journal", "request_status", "request_approval", "request_arguments", "request_persistence", "resume_state", "resume_arguments", "resume_status", "resume_output", "resume_effect", "resume_result_count", "resume_result_success", "resume_file_read", "resume_file_content", "resume_journal_read", "resume_journal_count", "resume_journal_status", "resume_journal", "orchestration_status", "orchestration_output", "orchestration_delegation", "orchestration_child", "orchestration_budget", "orchestration_reopen"] as const;
 const acceptanceReasons = ["parent_missing_child", "parent_child_failed", "parent_child_marker", "child_missing_read", "child_missing_marker", "child_missing_read_and_marker"] as const;
 const approvalFields = ["proposalId", "change_count", "path", "content", "expectedDigest", "unknown_fields", "shape"] as const;
 const executionArgumentValueTypes = ["array", "boolean", "null", "number", "object", "string", "undefined"] as const;
@@ -100,6 +100,10 @@ export const errorDetailsSchema = z.strictObject({
     editEffect: editEffectSchema.optional(),
     approvalFields: z.array(z.enum(approvalFields)).max(approvalFields.length).optional(),
     executionArguments: executionArgumentsSchema.optional(),
+    continuity: z.strictObject({
+      phase: z.number().int().min(0).max(5),
+      failedChecks: z.array(z.enum(["completed", "compacted", "codename", "compatibility", "rejectedApproach", "objective", "noTools"])).max(7)
+    }).optional(),
     budget: budgetDiagnosticSchema.strict().optional()
   })).max(5),
   validation: z.strictObject({
@@ -130,6 +134,8 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
       if (parsed.success) benchmarkProgress = parsed.data;
     }
     const entry: (typeof chain)[number] = {};
+    const continuity = errorDetailsSchema.shape.chain.element.shape.continuity.safeParse(record.continuity);
+    if (continuity.success && continuity.data) entry.continuity = continuity.data;
     const executionArguments = executionArgumentsSchema.safeParse(record.executionArguments);
     if (executionArguments.success) entry.executionArguments = executionArguments.data;
     const editEffect = editEffectSchema.safeParse(record.editEffect);
