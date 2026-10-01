@@ -1,3 +1,4 @@
+import { HarnessExecutionError } from "../src/runtime/errors.js";
 import { liveProviderSmokeInternals } from "../scripts/live-provider-smoke.js";
 import { liveExecutionSmokeInternals } from "../scripts/live-execution-smoke.js";
 import { expect, test } from "bun:test";
@@ -296,3 +297,24 @@ for (const [name, results, context, journal, content] of [
     await expect(liveProviderSmokeInternals.assertResumeEffect(results, journal, async () => content, "ok", context)).rejects.toThrow();
   });
 }
+
+for (const checkpoint of ["resume_status", "resume_compaction", "resume_continuation"] as const) {
+  test(`approval resume failure retains ${checkpoint} without private context`, () => {
+    const cause = Object.assign(new Error("PRIVATE_PROVIDER_CONTEXT"), { name: "AssertionError" });
+    const error = Object.assign(new HarnessExecutionError("PRIVATE_OUTPUT", { cause }), { checkpoint });
+    const safe = sanitizeOperationalError(error);
+    expect(safe.details?.chain?.[0]?.checkpoint).toBe(checkpoint);
+    expect(safe.details?.chain?.[1]?.kind).toBe("AssertionError");
+    expect(JSON.stringify(safe)).not.toContain("PRIVATE_");
+    expect(restoreSanitizedOperationalError(safe)).toBeInstanceOf(Error);
+  });
+}
+
+test("live run counters distinguish terminal state without exposing model payloads", () => {
+  const counters = { status: "failed", steps: 4, maxSteps: 4, pendingApprovals: 0,
+    toolResults: 3, toolErrors: 2, compactions: 3 } as const;
+  expect(sanitizedErrorDetails({liveRunState:counters, output:"PRIVATE"}).chain).toEqual([{liveRunState:counters}]);
+  for (const liveRunState of [{...counters,steps:-1},{...counters,status:"PRIVATE"},{...counters,output:"PRIVATE"}]) {
+    expect(sanitizedErrorDetails({liveRunState}).chain).toEqual([]);
+  }
+});
