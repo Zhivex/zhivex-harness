@@ -1,10 +1,11 @@
 # Zhivex Code
 
 The terminal product for the Zhivex Harness engine. Version `0.1.0` is
-prepared for the npm `latest` channel and pins `@zhivex-ai/harness@1.3.0`.
-Publication remains pending the protected release workflow and registry checks.
+published and verified on npm `latest` and pins `@zhivex-ai/harness@1.3.0`.
+The protected workflow verified registry bytes, source-bound provenance and
+actual engine dependency resolution.
 
-After publication, install with `npm install -g @zhivex-ai/code@0.1.0`.
+Install with `npm install -g @zhivex-ai/code@0.1.0`.
 Node >=22.13.0 is required; consumers do not need Bun.
 
 The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.1.0`,
@@ -25,7 +26,7 @@ the distinction between installed acceptance and publication/provenance.
 Install a compatible Harness package and the declared dependencies, then run
 `bun run build`, `bun run typecheck`, and `bun test tests` from this directory.
 The build reads only Code source and leaves all package dependencies external.
-For this prepared stable monorepo checkout, run `bun run build` at the repository root,
+For this stable monorepo checkout, run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
@@ -80,8 +81,8 @@ both without dependency overrides and with the four package managers.
 Stable 0.1.0 uses the existing npm Trusted Publishing configuration and protected
 `npm` environment. Historical first-publication bootstrap is documented separately. See
 [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
-Code RC2 is already published on next (RC1 remains on latest). Stable 0.1.0
-requires new exact-artifact acceptance after Harness 1.3.0 publication. The local
+Code 0.1.0 is published and verified on latest; RC2 remains on next and RC1 is
+historical. Stable acceptance used the published Harness 1.3.0 dependency. The local
 four-manager matrix covers both install orders; it does not certify other engine
 versions, upstream provider parity or registry provenance. Beta/experimental
 engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.

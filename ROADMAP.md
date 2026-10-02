@@ -1,25 +1,24 @@
 # Zhivex Harness Roadmap
 
-- Status: active
+- Status: published on npm as `latest`
 - Baseline date: 2026-09-20
 
-Version `1.2.0` is published on npm as `latest`; `release-status.json` records
-its verified registry bytes, source and protected release evidence. Harness RC7
-and Code RC2 are published on `next`; Code's initial RC1 remains on `latest`
-until stable Code publication.
+Version `1.3.0` and Code `0.1.0` are published and verified on npm `latest`;
+`release-status.json` records the Harness registry bytes, source and protected
+release evidence. Harness RC7 and Code RC2 remain published on `next`.
 
-## Next version: 1.3.0
+## Current release: 1.3.0
 
-Source version: `1.3.0` (stable publication to `latest` pending), with independent
+Source version: `1.3.0` (stable publication to `latest` verified), with independent
 Code CLI `0.1.0` pinned exactly to Harness `1.3.0`. This is release closure:
 engine boundaries and the existing terminal behavior retain their recorded
 contracts and stability tiers. Beta/experimental APIs and provisional provider
 routes do not become stable. Desktop keeps `0.1.0-alpha.1` and private distribution.
 
-RC7 passed all protected live gates and 42/42 representative cases; Code RC2
-passed installed and registry/provenance acceptance. Stable artifacts require
-new evidence. See [release evidence](docs/LIVE_CERTIFICATION.md) and the
-[release procedure](docs/RELEASE.md) for scope and pending gates.
+Stable 1.3.0 passed all protected live gates and 42/42 representative cases;
+Code 0.1.0 passed real registry dependency resolution, installed acceptance and
+registry/provenance verification. See [release evidence](docs/LIVE_CERTIFICATION.md)
+and the [release procedure](docs/RELEASE.md) for scope and the historical attempts.
 Earlier preparation and failed attempts remain historical evidence.
 
 ## Planning principles
@@ -72,8 +71,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Published on npm | L |
 | `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Published on npm | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Published on npm; superseded on `latest` | L |
-| `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Published on npm as `latest` | L |
-| `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Pending stable publication | M |
+| `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Published on npm; superseded on `latest` | L |
+| `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Published on npm as `latest` | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

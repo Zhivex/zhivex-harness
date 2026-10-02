@@ -1,9 +1,9 @@
 # Engine API and Code integration
 
 This checkout adds terminal-independent package entrypoints for
-Harness 1.3.0 (prepared for `latest`). They are not present in the previously published Harness 1.2.0.
-Stable publication is pending the protected workflow; use the documented
-local candidate smoke to validate these bytes. Do not install registry 1.2.0 and
+Harness 1.3.0 (published and verified on `latest`). They are not present in the previously published Harness 1.2.0.
+The protected workflow validated the exact stable tarball, live gates and
+registry integrity/provenance; local candidate smoke remains contributor evidence. Do not install registry 1.2.0 and
 expect the new entrypoints to exist.
 
 ## Entry points
@@ -68,9 +68,9 @@ switching presentation does not migrate state or authorize new effects.
 ## Terminal product
 
 `packages/code` is the independently built terminal product. Its current version
-is `0.1.0`, prepared for independent publication to `latest` with the exact
-engine dependency `@zhivex-ai/harness@1.3.0`. Publication remains gated by
-reviewed main, CI and registry evidence in the [Code release procedure](CODE_RELEASE.md).
+is `0.1.0`, independently published and verified on `latest` with the exact
+engine dependency `@zhivex-ai/harness@1.3.0`. Reviewed main, CI and registry
+evidence are recorded in the [Code release procedure](CODE_RELEASE.md).
 Code imports declared package APIs, never Harness source paths. Its build leaves
 Harness external.
 
@@ -115,7 +115,7 @@ The new subpaths were introduced after RC3 and are published in RC7. Stable
 1.3.0 retains their declared tiers.
 Desktop migration and packaged acceptance are documented in
 the repository-only report `docs/reports/HAR_HU_39_2026-09-29.md`. Its dependency is pinned to the
-exact prepared engine version and checked for required contracts/artifact identity; this does
+exact engine version and checked for required contracts/artifact identity; this does
 not claim compatibility with the earlier published RC3 bytes or a broader range.
 
 ```sh

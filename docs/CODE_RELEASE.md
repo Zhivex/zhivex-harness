@@ -1,14 +1,16 @@
 # Code release procedure
 
-Code is released independently of Harness. The prepared stable release is
+Code is released independently of Harness. The verified stable release is
 `@zhivex-ai/code@0.1.0`, with the sole binary `zhivex-code`, npm tag `latest`,
-and the exact dependency `@zhivex-ai/harness@1.3.0`. Harness must first be
-published and verified through its protected release workflow. Code RC2 is
-already published on `next` and RC1 is still on `latest`; trusted
-publishing succeeded in [run 36902929707](https://github.com/Zhivex/zhivex-harness/actions/runs/36902929707).
-The stable release uses that existing OIDC path; no new credentials or publisher
-configuration are part of preparation. This document records preparation, not
-successful stable publication.
+and the exact dependency `@zhivex-ai/harness@1.3.0`. Harness was published and
+verified first in [run 37031040747](https://github.com/Zhivex/zhivex-harness/actions/runs/37031040747). Code passed real registry
+resolution, four-manager installed acceptance and source-bound provenance in
+[run 37036369187](https://github.com/Zhivex/zhivex-harness/actions/runs/37036369187) at `aa86de8d700f893253559b00c1f7191e7dab48b9`.
+Attempt 1 accepted publication but failed while registry metadata still reported
+the version absent. Attempt 2 recovered only the failed publish job using the
+retained artifact; identical bytes skipped npm publication and verification passed.
+Code RC2 remains on `next`; RC1 is historical. The existing OIDC publisher and
+protected environment were preserved. See [publication evidence](reports/evidence/stable-publication-2026-10-02.json).
 
 ## Release preparation
 

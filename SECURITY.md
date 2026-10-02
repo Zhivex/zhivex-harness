@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published stable Harness minor (currently `1.2.x`; `1.3.x` after verified publication) and the latest stable Code `0.1.x` patch after its publication. RCs on `next` are validation candidates; older minors and private checkpoints are not supported release channels. Desktop remains a separate private alpha. Beta and experimental features retain their documented limitations. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+Security fixes are provided for the latest published `1.3.x` patch of Harness and the latest stable Code `0.1.x` patch. RCs on `next` are validation candidates; older minors and private checkpoints are not supported release channels. Desktop remains a separate private alpha. Beta and experimental features retain their documented limitations. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Reporting a vulnerability
 
