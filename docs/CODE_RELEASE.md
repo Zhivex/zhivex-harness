@@ -17,7 +17,7 @@ successful stable publication.
    for the exact commit. Keep the Code manifest, version and engine pin unchanged
    after selecting that commit.
 3. Wait for Harness `1.3.0` publication and successful registry/provenance
-   verification as ordered in [the Harness release procedure](RELEASE.md).
+   verification as ordered in [the Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md).
    From a clean checkout of that main commit, create an annotated
    `code-v0.1.0` tag and push it. Never move or overwrite release tags.
 4. Dispatch `release-code.yml` **at that tag**, with input `tag` matching it and
