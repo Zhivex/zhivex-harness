@@ -1,4 +1,5 @@
 import { cliToolExecution } from "./tool-execution.js";
+import { approvalFileDiff } from "./terminal/file-diff.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import { resolveHarnessConfig, type HarnessConfigInput, type HarnessProvider, type HarnessSubagentProfile } from "@zhivex-ai/harness/engine";
 import { createHarness, runHarness } from "@zhivex-ai/harness/engine";
@@ -49,7 +50,8 @@ export const runOnce = async (options: CliOptions) => {
       },
       {
         onEvent: streamSink(options, tracker),
-        resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes)
+        resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, undefined,
+          { workspace: harness.config.workspace, fileDiff: approval => approvalFileDiff(harness.workspace, approval) })
       }
     );
     closeAttempted = true;

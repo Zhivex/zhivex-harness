@@ -124,6 +124,7 @@ export interface TerminalApprovalResolverOptions {
   ask(question: string): Promise<string>;
   select?: import("../cli-credentials.js").CredentialInput["select"];
   workspace?: string;
+  fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>;
   sessionGrants?: Set<string>;
   write(text: string): void;
   maxSummaryCharacters?: number;
@@ -168,6 +169,9 @@ export const resolveTerminalApprovals = async (
           : {})
       })}\n`
     );
+
+    const diff = await options.fileDiff?.(approval);
+    if (diff) options.write(`\n${diff}\n`);
 
     if (options.workspace) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
     for (;;) {

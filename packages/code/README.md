@@ -86,3 +86,81 @@ historical. Stable acceptance used the published Harness 1.3.0 dependency. The l
 four-manager matrix covers both install orders; it does not certify other engine
 versions, upstream provider parity or registry provenance. Beta/experimental
 engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.
+
+## Guided runs (next-version development)
+
+This branch adds console workflows on published Harness 1.3.0 APIs. It does not
+change the published 0.1.0 release or prepare a new tag.
+
+Approvals for local reviewed edits, patches and replacements show a per-file
+changed-region diff from the engine's digest-validated preview. The complete
+approval payload remains available. Unavailable or oversized previews are labeled
+explicitly; the engine still rechecks preconditions when applying changes.
+
+Use `/checkpoint` to capture, list, review or restore files. Capture requires a
+terminal conversation turn and explicitly selected existing UTF-8 text files:
+1–20 files, at most 64 KiB each. For example:
+
+```text
+/checkpoint capture ["src/greeting.mjs", "src/greeting.test.mjs"]
+/checkpoint list
+/checkpoint review
+/checkpoint restore
+```
+
+Restore displays current contents, captured contents and current digests. Typing
+`prepare` explicitly adopts those displayed preconditions. A second review shows
+the exact prepared proposal; typing `restore` applies it and switches to a fork
+of the captured conversation. Original conversations remain intact. Leaving the
+second prompt empty retains the operation; `/checkpoint retry` reviews its original
+digests again. Conflicts, missing files and partial operations fail closed. The UI
+never silently refreshes digests, narrows the file set or rolls back files. Uncertain
+conversation forks require manual engine recovery. Creation, deletion, binary files
+and mode changes are outside checkpoint coverage. The engine bounds storage to 100
+records per scope, 2 MiB per record, without automatic eviction; reviewed retention
+remains an engine API operation.
+
+Model selection displays advisory USD prices where the shared catalog supplies
+them; `/pricing` shows their scope, checked date and source. Missing prices say
+`unknown`. These prices do not automatically configure a monetary policy.
+Use `/budget` or `/budget 1` to review an operator pricing JSON file and configure
+an estimated USD limit for each new run. `/budget off` disables that monetary
+limit. Existing `--pricing-file` and `--usage-limit-usd` flags work for automation.
+See the offline fixture's `prices.json` for the schema; its rates are synthetic
+and must not be used as real provider prices.
+
+Usage appears after model steps and in `/usage`. A pending run retains its original
+ledger policy across approval resumption and restart. A new turn, `/continue`, or
+review group receives a new run budget; there is no session-wide financial cap.
+The engine reserves estimated requests with an output cap of up to 2048 tokens
+and blocks insufficient estimated budget, missing/stale prices and uncertain usage.
+Actual tokenization, provider billing, cached tokens and pricing tiers can differ.
+Estimates are not invoices or guaranteed financial caps. Other step, token, tool
+and time limits continue to apply.
+
+## First use with Node and an offline fixture
+
+The next-version tarball includes a tutorial that needs Node >=22.13.0 and npm.
+It does not need Bun, Python, Git, credentials or a paid provider. In an empty
+directory, install the candidate tarball from this PR (or pack a contributor build):
+
+```sh
+npm install --ignore-scripts /absolute/path/to/zhivex-ai-code-0.1.0.tgz
+node node_modules/@zhivex-ai/code/examples/first-use.mjs
+```
+
+The launcher creates a temporary workspace and prints a guided sequence: inspect,
+capture a checkpoint, set a per-run budget, request a fix, review/approve its diff,
+review/approve a Node test, inspect usage, interrupt with Ctrl+C, exit/reopen and
+`/continue`. Finally, review and restore the checkpoint. It prints a command to
+reopen the same workspace and never overwrites existing fixture files. The preload
+replaces fetch entirely, rejecting unexpected endpoints; all responses, token counts
+and rates are synthetic. The actual Code console, engine persistence, approvals,
+file edits and Node check commands still run. Removing the temporary workspace is
+the user's explicit cleanup step.
+
+Contributors run `bun run build`, `bun run typecheck`, `bun run test`, then
+`bun run smoke:installed` in this package. The installed acceptance driver packs
+Code, installs it with npm and the exact published Harness 1.3.0 dependency (no
+override or source link), then exercises the tutorial in a Linux/macOS PTY. Python
+3 is test tooling only. Set `CODE_JOURNEY_OUTPUT` to retain its report and transcript.
