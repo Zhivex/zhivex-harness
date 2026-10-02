@@ -10,7 +10,7 @@ Attempt 1 accepted publication but failed while registry metadata still reported
 the version absent. Attempt 2 recovered only the failed publish job using the
 retained artifact; identical bytes skipped npm publication and verification passed.
 Code RC2 remains on `next`; RC1 is historical. The existing OIDC publisher and
-protected environment were preserved. See [publication evidence](reports/evidence/stable-publication-2026-10-02.json).
+protected environment were preserved. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/stable-publication-2026-10-02.json).
 
 ## Release preparation
 
