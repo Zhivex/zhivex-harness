@@ -4,9 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Annotated code-v0.x.y-rc.N tag on main with passing CI and CodeQL
+        description: Annotated code-v0.x.y or code-v0.x.y-rc.N tag on main with passing CI and CodeQL
         required: true
         type: string
+      channel:
+        description: Stable uses latest; RC uses next (validated against the manifest)
+        required: true
+        default: next
+        type: choice
+        options: [latest, next]
       mode:
         description: Bootstrap retains the validated artifact for the first authenticated publication
         required: true
@@ -29,6 +35,7 @@ concurrency:
 
 env:
   RELEASE_TAG: ${{ inputs.tag }}
+  RELEASE_CHANNEL: ${{ inputs.channel }}
 
 jobs:
   validate:
@@ -150,7 +157,7 @@ jobs:
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
       - name: Publish exact bytes with npm Trusted Publishing
         if: steps.registry.outputs.status == 'absent'
-        run: node "$RUNNER_TEMP/code-npm-client/node_modules/npm/bin/npm-cli.js" publish ./release-code-artifacts/code.tgz --ignore-scripts --access public --provenance --tag next
+        run: node "$RUNNER_TEMP/code-npm-client/node_modules/npm/bin/npm-cli.js" publish ./release-code-artifacts/code.tgz --ignore-scripts --access public --provenance --tag "$RELEASE_CHANNEL"
       - name: Verify registry bytes, distribution tag and provenance
         run: |
           for attempt in 1 2 3 4 5 6; do

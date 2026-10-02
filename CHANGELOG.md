@@ -4,6 +4,14 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.3.0 - 2026-10-02
+
+- Prepare Harness 1.3.0 and the independent Code CLI 0.1.0 for protected publication to npm `latest`; Code pins exactly Harness 1.3.0 and must publish after its verified engine dependency.
+- Preserve the RC7 runtime and Code RC2 provider/terminal fixes; no new product features or changes to historical Harness binaries, state contracts or stable API signatures.
+- Validate Code stable/latest and RC/next channels, canonical versions, exact engine pins, channel ordering and immutable artifact recovery. Preserve annotated-tag, exact main CI/CodeQL, installed acceptance, integrity and provenance gates.
+- Keep beta and experimental API tiers, provisional Anthropic/Gemini/Vertex support and private Desktop alpha unchanged. RC7's six-provider live gates and Meta/Qwen/OpenAI 42-case representative evidence remain bound to RC7; stable artifacts require new protected evidence.
+- Refresh the recorded verified latest publication to Harness 1.2.0 without fabricating an uncreated GitHub Release, and align active release/installation documentation without claiming that the prepared stable versions are already published.
+
 ## 1.3.0-rc.7 - 2026-10-01
 
 - Pin Qwen contract certification to zero sampling temperature in approval and conversation continuity smokes, preserving all approval, compaction, effect and context assertions. Application model defaults remain unchanged.

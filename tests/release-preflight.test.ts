@@ -5,10 +5,10 @@ import { bundledDefaultModel } from "../src/models/catalog.js";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 
-test("RC5 certification restores Flash and Contributor without changing historical pins or user defaults", async () => {
+test("Stable certification retains Flash and Contributor without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
-  validateReleaseMetadata(input, false, "next");
-  expect(input.version).toBe("1.3.0-rc.7");
+  validateReleaseMetadata(input, false, "latest");
+  expect(input.version).toBe("1.3.0");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
     .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0")?.models)

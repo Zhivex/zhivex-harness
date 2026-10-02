@@ -32,6 +32,12 @@ describe("release status", () => {
     expect(parseReleaseStatus(status)).toEqual(status);
   });
 
+  test("npm publication does not fabricate a GitHub Release that was never created", () => {
+    const { githubRelease, ...npmOnly } = status;
+    expect(parseReleaseStatus(npmOnly)).toEqual(npmOnly);
+    expect(() => parseReleaseStatus({ ...npmOnly, githubRelease: "not-a-url" })).toThrow();
+  });
+
   test("rejects tag/version drift and unverified published provenance", () => {
     expect(() => parseReleaseStatus({
       ...status,

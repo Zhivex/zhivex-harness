@@ -1,8 +1,8 @@
 # Engine API and Code integration
 
 This checkout adds terminal-independent package entrypoints for
-Harness 1.3.0-rc.7. They are not present in the previously published Harness 1.2.0.
-Publication is pending the protected workflow; use the documented
+Harness 1.3.0 (prepared for `latest`). They are not present in the previously published Harness 1.2.0.
+Stable publication is pending the protected workflow; use the documented
 local candidate smoke to validate these bytes. Do not install registry 1.2.0 and
 expect the new entrypoints to exist.
 
@@ -32,9 +32,9 @@ prompt for credentials. Hosts explicitly construct and close the runtime, supply
 credentials/model instances, resolve approvals and choose their storage policy.
 Importing the engine does not itself execute a task or grant permissions.
 
-The `/models` subpath is an **unpublished addition after RC3**, introduced for
-HAR-HU-39. It is present in local candidate tarballs from this checkout, not the
-previously deployed RC3 bytes. Its six runtime exports and two types are listed
+The beta `/models` subpath was introduced after RC3 for HAR-HU-39 and is
+published in RC7. Stable 1.3.0 retains its beta tier; previous RC3 bytes do not
+contain it. Its six runtime exports and two types are listed
 in `contracts/engine-api.json`. It performs no file access, credential resolution,
 provider requests or process startup. Remote catalog loading remains host-owned.
 Installed-package smoke compiles the public subpath for a browser and checks its
@@ -68,8 +68,8 @@ switching presentation does not migrate state or authorize new effects.
 ## Terminal product
 
 `packages/code` is the independently built terminal product. Its current version
-is `0.1.0-rc.2`, prepared for independent publication to `next` with the exact
-engine dependency `@zhivex-ai/harness@1.3.0-rc.7`. Publication remains gated by
+is `0.1.0`, prepared for independent publication to `latest` with the exact
+engine dependency `@zhivex-ai/harness@1.3.0`. Publication remains gated by
 reviewed main, CI and registry evidence in the [Code release procedure](CODE_RELEASE.md).
 Code imports declared package APIs, never Harness source paths. Its build leaves
 Harness external.
@@ -111,10 +111,11 @@ verifies that engine and state entrypoints in one installation share ownership.
 Compatibility with older clients that do not participate in this locking
 protocol is not implied.
 
-The new subpaths are unpublished local additions after the deployed RC3.
+The new subpaths were introduced after RC3 and are published in RC7. Stable
+1.3.0 retains their declared tiers.
 Desktop migration and packaged acceptance are documented in
 the repository-only report `docs/reports/HAR_HU_39_2026-09-29.md`. Its dependency is pinned to the
-candidate version and checked for required contracts/artifact identity; this does
+exact prepared engine version and checked for required contracts/artifact identity; this does
 not claim compatibility with the earlier published RC3 bytes or a broader range.
 
 ```sh

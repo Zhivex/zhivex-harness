@@ -3,23 +3,24 @@
 - Status: active
 - Baseline date: 2026-09-20
 
-Version `1.1.1` is published on npm as `latest`. Status: published on npm as `latest`. The `release-status.json` record still preserves the verified `1.0.0` publication; it has not been refreshed to describe `1.1.1`. The protected 1.0.0 release passed live certification and all 42 representative cases on the authorized second attempt, with byte-identical registry integrity and SLSA provenance verified. Preserve the [first failed attempt](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md); see the [published evidence](docs/LIVE_CERTIFICATION.md).
+Version `1.2.0` is published on npm as `latest`; `release-status.json` records
+its verified registry bytes, source and protected release evidence. Harness RC7
+and Code RC2 are published on `next`; Code's initial RC1 remains on `latest`
+until stable Code publication.
 
-## Next version: 1.2.0
+## Next version: 1.3.0
 
-Source version: `1.2.0` (stable publication to `latest` pending). RC13 is published
-on npm `next` after passing its complete protected release workflow. Stable
-preparation retains that runtime, including incremental durable history and
-Core 1.26.0 / Agents 1.10.1. Scope: daily CLI usability, authenticated local
-service/replay and an experimental Desktop client. Verified delivery remains an
-independent option; the runtime profile selector was removed during the RC cycle.
-State format 1 remains unchanged. Desktop keeps its separate `0.1.0-alpha.1`
-version and private distribution status.
+Source version: `1.3.0` (stable publication to `latest` pending), with independent
+Code CLI `0.1.0` pinned exactly to Harness `1.3.0`. This is release closure:
+engine boundaries and the existing terminal behavior retain their recorded
+contracts and stability tiers. Beta/experimental APIs and provisional provider
+routes do not become stable. Desktop keeps `0.1.0-alpha.1` and private distribution.
 
-See [release evidence](docs/LIVE_CERTIFICATION.md) and the
-[release procedure](docs/RELEASE.md) for validation evidence and remaining gates.
-Earlier RC preparation notes are linked from the [historical archive](docs/reports/README.md).
-The 1.0.0 publication record is preserved separately.
+RC7 passed all protected live gates and 42/42 representative cases; Code RC2
+passed installed and registry/provenance acceptance. Stable artifacts require
+new evidence. See [release evidence](docs/LIVE_CERTIFICATION.md) and the
+[release procedure](docs/RELEASE.md) for scope and pending gates.
+Earlier preparation and failed attempts remain historical evidence.
 
 ## Planning principles
 
@@ -71,7 +72,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.11.0` | Daily-driver foundations | Richer terminal operation, governed context/skills/hooks, and opt-in OCI shell | Published on npm | L |
 | `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Published on npm | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Published on npm; superseded on `latest` | L |
-| `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Pending stable publication | L |
+| `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Published on npm as `latest` | L |
+| `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Pending stable publication | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

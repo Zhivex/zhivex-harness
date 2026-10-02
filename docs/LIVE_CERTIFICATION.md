@@ -2,18 +2,25 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
-## Prepared 1.3.0-rc.7 cohort
+## Prepared stable 1.3.0 cohort
 
-RC5 restores Meta `muse-spark-1.3-contributor` and Qwen `qwen3.8-flash`
-in the protected release and manual certification workflows, representative
-evidence and task acceptance routes. OpenAI remains `gpt-6-luna`; the release
-cohort also retains Anthropic `claude-sonnet-5-5`, Gemini API `gemini-3.6-flash`
-and Vertex `gemini-3.7-flash`. See [Release process](RELEASE.md) for coverage.
+Harness RC7 passed exact-artifact, all six live-provider gates and the 42-case
+Meta/Qwen/OpenAI representative matrix in [run 36852432470](https://github.com/Zhivex/zhivex-harness/actions/runs/36852432470).
+The release used Meta `muse-spark-1.3-contributor`, Qwen `qwen3.8-flash`, OpenAI
+`gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API `gemini-3.6-flash` and
+Vertex `gemini-3.7-flash`. Four mixed routing edges cover OpenAI to
+Vertex/Anthropic/Gemini and Qwen to Meta. Anthropic/Gemini/Vertex have live gate
+evidence but do not have the separate three-provider representative matrix;
+these routes remain provisional. No provider parity or universal reliability is
+implied. Earlier failed campaigns remain historical failures.
 
-RC4 failed and its historical tag/model mapping is unchanged. RC5 has no live
-certification yet: paid execution and publication remain pending separate
-approval. Earlier results cannot certify the new bytes. CLI/Desktop defaults
-and saved model selections are unchanged.
+Stable 1.3.0 retains those pins and all mandatory gates, but its new tarball
+requires its own source-bound campaign. Code RC2 installed and provenance checks
+passed [run 36902929707](https://github.com/Zhivex/zhivex-harness/actions/runs/36902929707);
+Code stable 0.1.0 must repeat registry acceptance after Harness stable publication.
+Paid stable certification and publication require fresh approval. See
+[Release process](RELEASE.md) for exact order and proposed spending scope.
+CLI/Desktop defaults and saved model selections remain unchanged.
 
 ## Prepared 1.2.0 cohort
 

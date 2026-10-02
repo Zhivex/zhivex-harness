@@ -1,49 +1,102 @@
 # Release process
 
-`@zhivex-ai/harness@1.2.0` is the latest public npm release. The historical `v1.0.0` publication and its exact source, registry integrity, SLSA provenance, GitHub Release and release-bound live evidence remain recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
+`@zhivex-ai/harness@1.2.0` is the latest public npm release. The verified `v1.2.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## 1.3.0-rc.7 preparation
+## Harness 1.3.0 and Code 0.1.0 stable preparation
 
-The source version is `1.3.0-rc.7`, targeting npm `next` through annotated tag
-`v1.3.0-rc.7` and the protected GitHub Actions workflow. Stable 1.2.0 remains on
-`latest`. RC3 includes HAR-HU-36–38: public engine boundaries, compatibility
-bridges and an independently built local Code package.
+The source version is `1.3.0`, targeting npm `latest` through annotated tag
+`v1.3.0`. Code `0.1.0` pins exactly Harness `1.3.0` and targets `latest` through
+`code-v0.1.0`. This closure introduces no new product features. Stable version
+numbers preserve the recorded API tiers, provisional Anthropic/Gemini/Vertex
+support and private Desktop `0.1.0-alpha.1` status.
 
-RC5 incorporates the provider, Desktop, MCP/ACP, checkpoint and governance
-increments. The protected live cohort pins Qwen `qwen3.8-flash`, Meta
-`muse-spark-1.3-contributor`, OpenAI `gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API
-`gemini-3.6-flash` and Vertex `gemini-3.7-flash`. All six must pass base,
-approval compaction, structured delegation, OCI execution and multi-process
-continuity. Four routing gates cover OpenAI to Vertex/Anthropic/Gemini and Qwen
-to Meta. Representative repository evaluation remains the separate three-route
-Meta/Qwen/OpenAI cohort; its model pins match the live cohort.
-Code `0.1.0-rc.2` is now prepared for a separate `release-code.yml` workflow and
-its own annotated tag; see [Code release procedure](CODE_RELEASE.md).
+Harness RC7 was published on `next` after [run 36852432470](https://github.com/Zhivex/zhivex-harness/actions/runs/36852432470)
+passed artifact, live and representative gates. Code RC2 was published on `next`
+with registry resolution and provenance in [run 36902929707](https://github.com/Zhivex/zhivex-harness/actions/runs/36902929707).
+RC6/earlier failed campaigns stay failed. Registry-propagation verification
+retries do not represent a product fix or certify the stable bytes.
 
-Each later RC must bind its own source SHA, exact tarball, CI/CodeQL, installed
-acceptance and protected live/representative evidence. Previous RC results do not
-certify new bytes. Do not overwrite immutable versions or advance `latest`.
-The engine/Code installed gate uses the exact release tarball without changing
-its manifest version; Code is packed only for consumer acceptance, not published.
+### Exact order after review and new approval
 
-RC3 and Code RC1 are already published. RC4, RC5 and RC6 failed before publication.
-RC7 and Code RC2 remain unpublished; their evidence must bind their own bytes.
-Historical records, including `release-status.json`, do not certify RC7.
-RC6 includes PR #152 execution, manual-cohort, continuity-diagnostics and
-canonical-tag WIF fixes, preserving the RC5 model pins.
-RC7 pins Qwen contract-smoke sampling to temperature zero and adds distinct
-resume status, compaction and continuation checkpoints with bounded run counters.
-This reduces test sampling variance; it does not guarantee provider availability
-or waive a failed assertion. Every prior failed campaign remains failed.
-The source and application model defaults are unchanged by smoke sampling.
+The following commands are the pending operator procedure, **not permission to
+execute it during PR preparation**. Merge, release tags, publication and paid
+workflow dispatch all require fresh approval; RC5 approvals do not carry over.
 
-RC4 at `f83e88f55e9f865c43abfc636e9b797c845fe258` failed; its tag and
-model mapping remain historical evidence. RC5 includes the empty Anthropic
-endpoint fix from PR #149 and restores the Flash/Contributor certification pins.
-User model defaults and the catalog are unchanged. Gemini API 3.6 Flash and
-Vertex 3.7 Flash remain pinned; the conditional cost-based 3.8 change is not
-part of this candidate. Preparation does not authorize paid live runs, tagging,
-release dispatch or publication; those steps require separate approval.
+1. Review and merge the PR; wait for the latest `ci.yml` and `codeql.yml` main
+   push runs on the selected full merge SHA. Use the existing cloud checkout.
+2. From that clean `main` checkout run read-only Harness preparation:
+   `bun run release:prepare --sha <full-main-sha>`. No tag or workflow is created.
+3. After explicit approval for the stable campaign/publication run
+   `bun run release:prepare --sha <full-main-sha> --publish`. This creates or
+   verifies the immutable annotated `v1.3.0` tag and dispatches `release.yml` at
+   that tag with `tag=v1.3.0`, `channel=latest`, `confirm_publication=true`.
+4. Require every exact-artifact, OCI, six-route live and representative gate to
+   pass, protected npm approval, registry integrity and source-bound provenance.
+   Wait until Harness `1.3.0` is actually published and verified on `latest`.
+5. At the same reviewed SHA, create and push the independent annotated Code tag:
+   `git tag -a code-v0.1.0 <full-main-sha> -m 'Release Code 0.1.0'`, then
+   `git push origin refs/tags/code-v0.1.0`. Do not overwrite an existing tag.
+6. Dispatch Code with the existing protected Trusted Publishing configuration:
+
+```sh
+gh workflow run release-code.yml --repo Zhivex/zhivex-harness --ref code-v0.1.0 \
+  -f tag=code-v0.1.0 -f channel=latest -f mode=oidc -f confirm_publication=true
+```
+
+7. Require the Code workflow to download the real Harness `1.3.0` tarball,
+   verify engine identity/integrity/provenance, test standalone registry resolution
+   without overrides and installed four-manager acceptance, publish only its
+   retained tarball, then verify Code `latest`, exact bytes and provenance.
+8. Only after both verifications update the mutable publication record and
+   current release/support wording to the observed registry outcome. Preserve
+   the historical record and all failed attempts. If publication succeeded but
+   verification is pending, retry verification/the failed publish job using its
+   original retained bytes; do not rebuild, move tags or rerun paid gates merely
+   for registry propagation.
+
+### What can pass before Harness exists in the registry
+
+PR CI and local checks build Harness, explicitly link the built public package
+for Code contributor compilation, and pack both unchanged stable manifests.
+The installed local/global matrix uses exact supplied tarballs and explicit
+consumer overrides or a read-only loopback registry fixture. This validates
+versions, export contracts, launchers, both install orders, approvals, execution
+and state behavior without paid calls. It does not verify public availability or
+registry provenance. The Harness release gate likewise tests its exact tarball
+with Code before publishing Harness, so there is no dependency publication cycle.
+
+Code `engine` and `smoke-registry` deliberately require the **published** exact
+Harness version. They remain blocked before step 4 and are mandatory in step 7;
+local acceptance never bypasses or replaces them.
+
+### Live scope and proposed spending boundary
+
+A single new Harness campaign uses Meta `muse-spark-1.3-contributor`, Qwen
+`qwen3.8-flash`, OpenAI `gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API
+`gemini-3.6-flash` and Vertex `gemini-3.7-flash` for base approval/restart,
+approval compaction, structured reviewer delegation, model-directed OCI execution
+and multi-process conversation continuity. Four mixed routes are OpenAI to
+Vertex/Anthropic/Gemini and Qwen to Meta. Representative evaluation is **only**
+Meta/Qwen/OpenAI: seven fixtures, clean and hostile variants, one repetition,
+42 cases total. Six-route live success does not establish representative coverage
+or feature parity for Anthropic/Gemini/Vertex.
+
+Proposed approval scope: **one Harness campaign, no paid reruns**, with an
+operator budget ceiling of **US$25 total**, monitored in provider billing. This
+is a proposed limit, not a price estimate or a workflow-enforced dollar cap:
+current scripts bound steps/tokens/time, but do not enforce aggregate invoiced
+USD across providers. If a hard dollar cap is required, approval remains blocked
+until the operator confirms an existing enforceable provider budget; no credential
+or IAM/budget changes are authorized here. Do not infer permission to spend from
+RC5 or prior paid campaigns. Code release gates make no live-provider calls;
+GitHub/npm/registry authentication is separate from model spend. No paid calls
+were made during preparation.
+
+### Historical RC7 preparation
+
+RC7 retained the RC5 model pins, zero Qwen smoke sampling temperature, distinct
+resume/compaction/continuation diagnostics and unchanged application defaults.
+Its successful evidence remains bound to `23978731d84712972ad47dfd65ce9255872f8246`.
 
 ### Protected configuration before RC7 release
 

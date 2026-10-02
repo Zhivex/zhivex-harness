@@ -5,6 +5,7 @@ import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ProvenanceStatement } from "./release-provenance.js";
+import { assertReleaseProvenance } from "./release-provenance.js";
 
 const root = path.resolve(import.meta.dir, "..");
 const repository = "Zhivex/zhivex-harness";
@@ -23,21 +24,43 @@ interface RegistryVersion {
 interface RegistryDocument {
   versions?: Record<string, RegistryVersion>; "dist-tags"?: Record<string, string>;
 }
+const versionPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-rc\.([1-9]\d*))?$/;
+function releaseParts(version: string): number[] {
+  const match = versionPattern.exec(version);
+  assert(match, "Expected canonical stable SemVer or X.Y.Z-rc.N");
+  const parts = match.slice(1, 4).map(Number);
+  // A stable version sorts after every RC of the same version.
+  parts.push(match[4] === undefined ? Infinity : Number(match[4]));
+  assert(parts.slice(0, 3).every(Number.isSafeInteger) &&
+    (match[4] === undefined || Number.isSafeInteger(parts[3])), "Release numbers must be safe integers");
+  return parts;
+}
+export function codeReleaseChannel(version: string): "latest" | "next" {
+  const parts = releaseParts(version);
+  assert.equal(parts[0], 0, "Code release must be on the explicit 0.x line");
+  return parts[3] === Infinity ? "latest" : "next";
+}
+export function assertCodeReleaseChannel(version: string, channel: string): void {
+  assert.equal(channel, codeReleaseChannel(version), "Stable Code must use latest; RC Code must use next");
+}
 export function assertCodeManifest(manifest: Manifest): void {
   assert.equal(manifest.name, packageName);
-  assert.match(manifest.version, /^0\.[0-9]+\.[0-9]+-rc\.[1-9][0-9]*$/, "Code release must be an explicit 0.x RC");
+  const channel = codeReleaseChannel(manifest.version);
   assert.notEqual(manifest.private, true);
-  assert.match(manifest.dependencies["@zhivex-ai/harness"] ?? "", /^1\.[0-9]+\.[0-9]+(?:-rc\.[1-9][0-9]*)?$/, "Code pins one exact published engine");
+  const engine = releaseParts(manifest.dependencies["@zhivex-ai/harness"] ?? "");
+  assert.equal(engine[0], 1, "Code pins one exact Harness 1.x engine");
+  if (channel === "latest") assert.equal(engine[3], Infinity, "Stable Code requires a stable Harness dependency");
   assert.deepEqual(manifest.bin, { "zhivex-code": "./dist/cli.js" });
-  assert.deepEqual(manifest.publishConfig, { access: "public", registry, tag: "next" });
+  assert.deepEqual(manifest.publishConfig, { access: "public", registry, tag: channel });
   for (const hook of ["preinstall", "install", "postinstall", "prepare"]) assert(!manifest.scripts?.[hook], `Forbidden lifecycle: ${hook}`);
 }
 export async function assertCodeReleaseIdentity(options: {
-  version: string; tag: string; sha: string; ref: string; repository: string;
+  version: string; channel: string; tag: string; sha: string; ref: string; repository: string;
   run: (command: string[]) => string;
   api: (endpoint: string) => Promise<{ workflow_runs?: Array<{ head_sha: string; status: string; conclusion: string }> }>;
 }): Promise<void> {
   const { run, api, sha, tag } = options;
+  assertCodeReleaseChannel(options.version, options.channel);
   assert.equal(options.repository, repository);
   assert.equal(tag, `code-v${options.version}`);
   assert.equal(options.ref, `refs/tags/${tag}`, "Dispatch the exact annotated Code tag");
@@ -54,15 +77,14 @@ export async function assertCodeReleaseIdentity(options: {
   }
 }
 export function assertCodeRegistryState(document: RegistryDocument, version: string, integrity: string): "absent" | "identical" {
-  const next = document["dist-tags"]?.next;
-  if (next && next !== version) {
-    const candidate = /^([0-9]+)\.([0-9]+)\.([0-9]+)-rc\.([1-9][0-9]*)$/.exec(version);
-    const current = /^([0-9]+)\.([0-9]+)\.([0-9]+)-rc\.([1-9][0-9]*)$/.exec(next);
-    assert(candidate && current, "Cannot order next safely; investigate registry state");
-    const wanted = candidate.slice(1).map(Number), existing = current.slice(1).map(Number);
-    assert(wanted.every(Number.isSafeInteger) && existing.every(Number.isSafeInteger));
+  const channel = codeReleaseChannel(version);
+  const current = document["dist-tags"]?.[channel];
+  if (current && current !== version) {
+    const wanted = releaseParts(version), existing = releaseParts(current);
+    assert.equal(existing[0], 0, "Cannot order Code channel safely; investigate registry state");
+    if (channel === "next") assert.notEqual(existing[3], Infinity, "Cannot order next safely; investigate registry state");
     const firstDifference = wanted.findIndex((value, index) => value !== existing[index]);
-    assert(firstDifference >= 0 && wanted[firstDifference]! > existing[firstDifference]!, "Refusing to move next back to an older Code candidate");
+    assert(firstDifference >= 0 && wanted[firstDifference]! > existing[firstDifference]!, `Refusing to move ${channel} back to an older Code release`);
   }
   const found = document.versions?.[version];
   if (!found) return "absent";
@@ -112,9 +134,12 @@ async function main() {
   const [mode, input] = process.argv.slice(2);
   const manifest = JSON.parse(await readFile(path.join(root, "packages/code/package.json"), "utf8")) as Manifest;
   assertCodeManifest(manifest);
+  const channel = codeReleaseChannel(manifest.version);
+  if (process.env.RELEASE_CHANNEL !== undefined) assertCodeReleaseChannel(manifest.version, process.env.RELEASE_CHANNEL);
   const engineVersion = manifest.dependencies["@zhivex-ai/harness"]!;
+  if (mode === "channel") { console.log(channel); return; }
   if (mode === "identity") {
-    await assertCodeReleaseIdentity({ version: manifest.version, tag: process.env.RELEASE_TAG ?? "", sha: process.env.GITHUB_SHA ?? "", ref: process.env.GITHUB_REF ?? "", repository: process.env.GITHUB_REPOSITORY ?? "", run,
+    await assertCodeReleaseIdentity({ version: manifest.version, channel: process.env.RELEASE_CHANNEL ?? "", tag: process.env.RELEASE_TAG ?? "", sha: process.env.GITHUB_SHA ?? "", ref: process.env.GITHUB_REF ?? "", repository: process.env.GITHUB_REPOSITORY ?? "", run,
       api: endpoint => json(`https://api.github.com/repos/${repository}/${endpoint}`, false, true) });
     console.log("Code release identity and main CI/CodeQL verified."); return;
   }
@@ -137,9 +162,16 @@ async function main() {
       assert.equal(`sha512-${createHash("sha512").update(bytes).digest("base64")}`, engine.dist.integrity);
       const installed = JSON.parse(run(["tar", "-xOf", downloaded, "package/package.json"])) as Manifest;
       assert.equal(installed.name, "@zhivex-ai/harness"); assert.equal(installed.version, engineVersion);
+      const attestation = await json<{ attestations?: Array<{ predicateType?: string; bundle?: { dsseEnvelope?: { payload?: string } } }> }>(npmUrl(engine.dist.attestations.url));
+      const payload = attestation.attestations?.find(item => item.predicateType === "https://slsa.dev/provenance/v1")?.bundle?.dsseEnvelope?.payload;
+      assert(payload, "Engine requires SLSA provenance bound to its artifact and release tag");
+      const engineTag = `v${engineVersion}`;
+      assert.equal(run(["git", "cat-file", "-t", engineTag]), "tag", "Engine tag must be annotated");
+      assertReleaseProvenance({ statement: JSON.parse(Buffer.from(payload, "base64").toString("utf8")), version: engineVersion,
+        sha512Hex: createHash("sha512").update(bytes).digest("hex"), releaseCommit: run(["git", "rev-list", "-n", "1", engineTag]) });
       await copyFile(downloaded, input);
     } finally { await rm(download, { recursive: true, force: true }); }
-    console.log(`Downloaded published Harness ${engineVersion} with verified integrity.`); return;
+    console.log(`Downloaded published Harness ${engineVersion} with verified integrity and source-bound provenance.`); return;
   }
   assert(input, "Provide exact Code artifact path");
   const artifact = path.resolve(input);
@@ -165,7 +197,7 @@ async function main() {
   const document = await json<RegistryDocument>(`${registry}%40zhivex-ai%2Fcode`, true);
   const status = assertCodeRegistryState(document, manifest.version, integrity);
   if (mode === "status") { console.log(status); return; }
-  assert.equal(status, "identical"); assert.equal(document["dist-tags"]?.next, manifest.version);
+  assert.equal(status, "identical"); assert.equal(document["dist-tags"]?.[channel], manifest.version);
   const published = document.versions![manifest.version]!;
   assert(published.dist?.tarball);
   const response = await fetch(npmUrl(published.dist.tarball), { signal: AbortSignal.timeout(60_000) }); assert(response.ok);
@@ -179,6 +211,6 @@ async function main() {
     assert.equal(run(["git", "cat-file", "-t", tag]), "tag");
     assertCodeProvenance(JSON.parse(Buffer.from(payload, "base64").toString("utf8")), sha512Hex, manifest.version, run(["git", "rev-list", "-n", "1", tag]));
   }
-  console.log(`Verified Code ${manifest.version}: exact registry bytes and next, GitHub provenance.`);
+  console.log(`Verified Code ${manifest.version}: exact registry bytes and ${channel}, GitHub provenance.`);
 }
 if (import.meta.main) await main();

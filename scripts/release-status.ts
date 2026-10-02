@@ -48,7 +48,8 @@ const publishedReleaseStatusSchema = z.object({
   status: z.literal("published"),
   registryIntegrity: z.string().regex(/^sha512-[A-Za-z0-9+/]+={0,2}$/),
   provenance: z.literal("verified"),
-  githubRelease: z.url(),
+  // npm publication may have a tag and provenance without a GitHub Release.
+  githubRelease: z.url().optional(),
   publishedAt: z.iso.datetime(),
   liveCertification: z.object({
     ...liveCertificationBaseShape,
