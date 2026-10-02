@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `1.2.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable `release-status.json` record records the verified 1.2.0 publication. Harness 1.3.0 and Code 0.1.0 are prepared for latest but remain pending their protected workflows.
+Zhivex Harness `1.3.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable `release-status.json` record records the verified 1.3.0 publication. Harness 1.3.0 and Code 0.1.0 are published and verified on latest through their protected workflows.
 
 The 1.1 support scope is tracked in the [machine-readable support matrix](./docs/support-matrix-1.1.json) and its [human-readable view](./docs/SUPPORT_MATRIX_1_1.md). The [1.0 matrix](./docs/SUPPORT_MATRIX.md) remains historical. Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) for the published 1.x line.
 
@@ -13,7 +13,7 @@ The 1.1 support scope is tracked in the [machine-readable support matrix](./docs
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published stable minor receives routine fixes. The exact `v1.2.0` tag passed the protected artifact, live-provider and representative release jobs. After verified publication, 1.3.x and Code 0.1.x become the supported stable lines. Gemini, Anthropic and Vertex remain provisional despite RC7 live gates; the representative repository matrix covers only Meta, Qwen and OpenAI. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+Only the most recent published stable minor receives routine fixes. The exact `v1.3.0` tag passed the protected artifact, six-provider live and 42-case representative release jobs. Harness 1.3.x and Code 0.1.x are the supported stable lines. Gemini, Anthropic and Vertex remain provisional despite the release-bound live gates; the representative repository matrix covers only Meta, Qwen and OpenAI. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Installation diagnostics
 

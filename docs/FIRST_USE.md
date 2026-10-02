@@ -1,6 +1,6 @@
 # First use
 
-This guide targets the prepared stable `1.3.0` release. These exact-version commands become available after protected publication to npm `latest`; currently latest resolves to 1.2.0.
+This guide targets the published stable `1.3.0` release, verified on npm `latest`.
 
 ## Install and start
 

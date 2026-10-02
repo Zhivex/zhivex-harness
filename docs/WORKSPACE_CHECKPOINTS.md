@@ -24,4 +24,14 @@ After interruption in `applying`, retry checks every captured file. If all have 
 
 There is no single transaction spanning SQLite and filesystem updates. Journaling exposes that boundary and makes recovery conservative. An interrupted partial filesystem update is detected, not automatically rolled back.
 
-Snapshot storage is bounded to 100 records per workspace/scope (captures and restores combined), 2 MiB per record. There is currently no automatic eviction or checkpoint deletion API. Portable state export/import preserves captures and completed restore records with workspace/scope and conversation lineage validation. Unfinished restore operations block export and import because their filesystem recovery state and reviewed authorization are local to the original database. Older bundles without checkpoint records remain readable. Close the checkpoint store before state maintenance or update operations.
+## Reviewed retention
+
+Snapshot storage is bounded to 100 records per workspace/scope (captures and restores combined), 2 MiB per record. There is no automatic eviction. The existing host API supports explicit reviewed removal of stored checkpoint records and completed restore records:
+
+1. Call `prepareRetention({ checkpointIds, completedRestoreIds })` with the exact selected record IDs. It returns the normalized `selection`, affected `records`, record counts, serialized bytes removed and a `planId` bound to the complete scoped inventory.
+2. Present that plan to the operator and enforce explicit review in the integrating host. Possession of the plan ID does not itself grant authorization.
+3. Call `applyRetention(plan.selection, plan.planId)` to revalidate the inventory and remove the reviewed records in one SQLite transaction under the workspace mutation lock.
+
+Pending or unknown restore evidence cannot be removed. A checkpoint referenced by a retained restore operation cannot be removed; completed referencing operations must be included in the reviewed selection or removed first. Inventory changes invalidate the plan, and a failure rolls back the entire selected database removal. Retention changes neither workspace files nor conversation sessions. It does not provide general filesystem deletion or repository rollback.
+
+Portable state export/import preserves captures and completed restore records with workspace/scope and conversation lineage validation. Unfinished restore operations block export and import because their filesystem recovery state and reviewed authorization are local to the original database. Older bundles without checkpoint records remain readable. Close the checkpoint store before state maintenance or update operations.

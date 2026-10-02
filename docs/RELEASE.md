@@ -1,8 +1,31 @@
 # Release process
 
-`@zhivex-ai/harness@1.2.0` is the latest public npm release. The verified `v1.2.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
+`@zhivex-ai/harness@1.3.0` is the latest public npm release. The verified `v1.3.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).
 
-## Harness 1.3.0 and Code 0.1.0 stable preparation
+## Verified stable publication on 2026-10-02
+
+Harness `1.3.0` and Code `0.1.0` are published on `latest` from
+`aa86de8d700f893253559b00c1f7191e7dab48b9`, through annotated tags `v1.3.0` and `code-v0.1.0`.
+The [Harness run](https://github.com/Zhivex/zhivex-harness/actions/runs/37031040747) passed all exact-artifact, OCI,
+six-provider live and 42/42 representative gates in attempt 1.
+The [Code run](https://github.com/Zhivex/zhivex-harness/actions/runs/37036369187) verified the published Harness dependency,
+standalone registry resolution and both installation orders with four managers.
+Code attempt 1 accepted publication but failed verification while npm still
+reported the version absent. Attempt 2 recovered only the failed publish job
+with its retained tarball: identical bytes skipped publication and complete
+registry/provenance verification passed. This did not rebuild or rerun paid gates.
+Both retained tarballs independently matched npm SHA-512 and source-bound SLSA
+provenance. Harness `next` remains `1.3.0-rc.7`; Code `next` remains `0.1.0-rc.2`.
+See [publication evidence](reports/evidence/stable-publication-2026-10-02.json); historical attempts and the previous
+verified latest record are preserved there and in Git history.
+
+The user authorized one campaign estimated at US$25 without an automatic
+monetary cap, with no paid reruns. No paid reruns occurred. Actual invoiced cost
+is unavailable in retained evidence. Desktop stays private alpha, beta and
+experimental contracts retain their tiers, and Anthropic/Gemini/Vertex remain
+provisional with no representative-matrix or feature-parity claim.
+
+## Historical Harness 1.3.0 and Code 0.1.0 stable preparation
 
 The source version is `1.3.0`, targeting npm `latest` through annotated tag
 `v1.3.0`. Code `0.1.0` pins exactly Harness `1.3.0` and targets `latest` through

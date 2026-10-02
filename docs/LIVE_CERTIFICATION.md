@@ -2,7 +2,7 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
-## Prepared stable 1.3.0 cohort
+## Stable 1.3.0 cohort
 
 Harness RC7 passed exact-artifact, all six live-provider gates and the 42-case
 Meta/Qwen/OpenAI representative matrix in [run 36852432470](https://github.com/Zhivex/zhivex-harness/actions/runs/36852432470).
@@ -14,12 +14,14 @@ evidence but do not have the separate three-provider representative matrix;
 these routes remain provisional. No provider parity or universal reliability is
 implied. Earlier failed campaigns remain historical failures.
 
-Stable 1.3.0 retains those pins and all mandatory gates, but its new tarball
-requires its own source-bound campaign. Code RC2 installed and provenance checks
-passed [run 36902929707](https://github.com/Zhivex/zhivex-harness/actions/runs/36902929707);
-Code stable 0.1.0 must repeat registry acceptance after Harness stable publication.
-Paid stable certification and publication require fresh approval. See
-[Release process](RELEASE.md) for exact order and proposed spending scope.
+Stable 1.3.0 retained those pins and passed its own source-bound campaign in
+[run 37031040747](https://github.com/Zhivex/zhivex-harness/actions/runs/37031040747): all six-provider live gates and 42/42
+Meta/Qwen/OpenAI representative cases passed on the exact stable tarball.
+Code 0.1.0 passed real registry acceptance after Harness stable publication in
+[run 37036369187](https://github.com/Zhivex/zhivex-harness/actions/runs/37036369187). Both packages are published and verified on
+latest. Code's propagation-only recovery reused the original tarball and skipped
+publication of identical bytes. No paid reruns occurred. See [Release process](RELEASE.md)
+for the publication record, authorized scope and historical preparation.
 CLI/Desktop defaults and saved model selections remain unchanged.
 
 ## Prepared 1.2.0 cohort
@@ -89,7 +91,17 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 ## Current public status
 
-`@zhivex-ai/harness@1.1.1` is the current npm `latest` version as of 2026-09-24. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35941193290) passed exact-artifact validation, live-provider certification, the complete representative matrix and publication. The mutable `release-status.json` record has not been refreshed from 1.0.0; it must not be presented as current 1.1.1 evidence. The failed `v1.1.2` and `v1.1.3` attempts did not publish.
+Harness `1.3.0` and Code `0.1.0` are verified on npm `latest` as of 2026-10-02,
+from `aa86de8d700f893253559b00c1f7191e7dab48b9`. The mutable `release-status.json` records Harness 1.3.0;
+[publication evidence](reports/evidence/stable-publication-2026-10-02.json) records both package digests, source-bound SLSA
+provenance, successful workflows and the Code propagation-only recovery.
+Harness RC7 and Code RC2 remain on `next`. The representative matrix covers only
+Meta/Qwen/OpenAI; Anthropic/Gemini/Vertex remain provisional. Desktop remains
+private alpha and beta/experimental API tiers are unchanged.
+
+## Historical public status on 2026-09-24
+
+`@zhivex-ai/harness@1.1.1` was the npm `latest` version recorded on 2026-09-24. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35941193290) passed exact-artifact validation, live-provider certification, the complete representative matrix and publication. At that time, the mutable `release-status.json` record had not been refreshed from 1.0.0 and did not establish 1.1.1 evidence. The failed `v1.1.2` and `v1.1.3` attempts did not publish.
 
 ### Historical 1.0.0 publication evidence
 
@@ -97,7 +109,7 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 Independent verification matched published bytes, `latest`, SHA-512 `sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==` and SLSA source/workflow provenance. See the [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/ga-publication-verified-2026-09-20.json) and [complete representative evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/ga-representative-2026-09-20.json). Live evidence belongs to attempt 1; representative and publication evidence belong to attempt 2 of the same workflow and immutable artifact.
 
-RC.10 is on npm `next` as of 2026-09-24. RC.14's completed security review used the explicit [delegated-AI exception](RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Gemini remains provisional. The separate exploratory SWE-bench result remains Harness 0/5 versus control 1/5. The prior stable `0.11.1` remains an immutable historical release and rollback reference.
+The failed RC.10 campaign did not publish or certify its artifact; its release-bound failure is preserved below. RC.14's completed security review used the explicit [delegated-AI exception](RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Gemini remains provisional. The separate exploratory SWE-bench result remains Harness 0/5 versus control 1/5. The prior stable `0.11.1` remains an immutable historical release and rollback reference.
 
 The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
 

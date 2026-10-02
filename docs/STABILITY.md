@@ -4,7 +4,7 @@ The additive [engine entrypoints](ENGINE_API.md) are enumerated in
 [`../contracts/engine-api.json`](../contracts/engine-api.json). Aliases preserve
 their existing root tiers; newly exposed helpers have explicit tiers. The root
 compatibility surface remains unchanged. These entrypoints are source changes
-for the prepared 1.3.0 release and are available in the published RC7; they are absent from registry 1.2.0. Stable package numbering does not upgrade any export tier.
+for the published 1.3.0 release and were available in the published RC7; they are absent from registry 1.2.0. Stable package numbering does not upgrade any export tier.
 
 [`../contracts/public-api.json`](../contracts/public-api.json) is the machine-checked 1.0 baseline for the package root, binaries, CLI commands/subcommands, exit codes, and document schemas. Every runtime and type export is present in the snapshot and belongs to exactly one explicit tier. Exports listed as stable form the intended 1.x compatibility surface; Time-to-Safe-Fix exports are experimental; the explicitly listed beta exports may evolve under the policy below.
 

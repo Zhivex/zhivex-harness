@@ -1,8 +1,8 @@
-# Examples for Zhivex Harness 1.2
+# Examples for Zhivex Harness 1.3
 
 ## Isolated Bun installation
 
-Requirements: Bun 1.4.0+, Node.js 22.13.0+, and Git on macOS or Linux. After protected 1.3.0 publication, this installs the stable artifact in a temporary consumer, without building the source checkout or changing global tools:
+Requirements: Bun 1.4.0+, Node.js 22.13.0+, and Git on macOS or Linux. This installs the published stable 1.3.0 artifact in a temporary consumer, without building the source checkout or changing global tools:
 
 ```bash
 harness_demo_dir=$(mktemp -d)
