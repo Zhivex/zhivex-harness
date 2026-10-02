@@ -131,17 +131,23 @@ try:
     console.permission("Allow once")
     checked = console.prompt()
     assert "exit 0" in checked and "1 passed, 0 failed" in checked
+    checked_usage = console.command("/usage")
+    assert "2 calls" in checked_usage and "0.000060 / 1 limit" in checked_usage
     assert "run_check" in console.command("/activity") or "check" in console.command("/activity")
     console.send("Interrupt fixture\n")
     console.read("press Ctrl+C now")
     console.send("\x03")
     interrupted = console.prompt()
     assert "Progress saved" in interrupted or "Session retained" in interrupted
+    interrupted_usage = console.command("/usage")
+    assert "INCOMPLETE" in interrupted_usage and "estimated USD unknown / 1 limit" in interrupted_usage
     console.close()
     console = Console()
     console.prompt()
     continued = console.command("/continue")
     assert "new run" in continued and "Offline check task finished" in continued
+    continued_usage = console.command("/usage")
+    assert "1 calls" in continued_usage and "0.000030 / 1 limit" in continued_usage
 
     review = console.command("/checkpoint review " + checkpoint)
     assert "Current digest:" in review and "-export const greeting" in review and "+export const greeting" in review

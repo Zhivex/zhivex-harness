@@ -25,7 +25,7 @@ try {
   assert.equal(manifest.dependencies["@zhivex-ai/harness"], "1.3.0");
   const harness = path.join(scratch, "node_modules/@zhivex-ai/harness");
   assert.equal(JSON.parse(await readFile(path.join(harness, "package.json"), "utf8")).version, "1.3.0");
-  assert.ok((await realpath(harness)).startsWith(scratch + path.sep), "Harness must be installed from the registry, not the checkout");
+  assert.ok((await realpath(harness)).startsWith((await realpath(scratch)) + path.sep), "Harness must be installed from the registry, not the checkout");
   run("python3", [path.join(root, "scripts/installed-journey.py"), installed, evidence]);
   const report = { status: "passed", node: process.version, codeVersion: manifest.version, harnessVersion: "1.3.0",
     installation: "npm tarball with published dependency, no overrides or install scripts", offline: true,
