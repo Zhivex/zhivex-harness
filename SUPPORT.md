@@ -1,6 +1,6 @@
 # Support
 
-Zhivex Harness `1.1.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable `release-status.json` record preserves the verified 1.0.0 release; check npm for the current published version.
+Zhivex Harness `1.2.x` is the latest supported Node-first CLI and TypeScript library. Stable 1.x contracts follow [the stability policy](./docs/STABILITY.md); incompatible changes require a major release except documented urgent security corrections. Beta and experimental surfaces retain their declared policies. The mutable machine-readable `release-status.json` record records the verified 1.2.0 publication. Harness 1.3.0 and Code 0.1.0 are prepared for latest but remain pending their protected workflows.
 
 The 1.1 support scope is tracked in the [machine-readable support matrix](./docs/support-matrix-1.1.json) and its [human-readable view](./docs/SUPPORT_MATRIX_1_1.md). The [1.0 matrix](./docs/SUPPORT_MATRIX.md) remains historical. Compatibility and removals follow [DEPRECATIONS.md](./docs/DEPRECATIONS.md) for the published 1.x line.
 
@@ -13,11 +13,11 @@ The 1.1 support scope is tracked in the [machine-readable support matrix](./docs
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published `1.1.x` patch receives routine fixes. The exact `v1.1.1` tag passed the protected artifact, live-provider and representative release jobs. Gemini remains provisional until its complete harness live matrix passes against an exact release candidate. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+Only the most recent published stable minor receives routine fixes. The exact `v1.2.0` tag passed the protected artifact, live-provider and representative release jobs. After verified publication, 1.3.x and Code 0.1.x become the supported stable lines. Gemini, Anthropic and Vertex remain provisional despite RC7 live gates; the representative repository matrix covers only Meta, Qwen and OpenAI. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Installation diagnostics
 
-Follow the [stable installation commands](./README.md#installation) or [isolated Bun example](./examples/README.md). Run `zhx --version`, `zhx --help`, and `zhx doctor` before reporting an installation issue. Doctor is local: a missing provider credential produces a diagnostic failure until that credential is configured. Include the version, OS, Node/Bun versions and sanitized diagnostics in a report; never include keys or your `.env` file.
+Follow the [stable installation commands](./README.md#quick-start) or [isolated Bun example](./examples/README.md). Run `zhx --version`, `zhx --help`, and `zhx doctor` before reporting an installation issue. Doctor is local: a missing provider credential produces a diagnostic failure until that credential is configured. Include the version, OS, Node/Bun versions and sanitized diagnostics in a report; never include keys or your `.env` file.
 
 ## Support channels
 
@@ -25,4 +25,4 @@ Use [GitHub Issues](https://github.com/Zhivex/zhivex-harness/issues) for reprodu
 
 ## Explicit limits
 
-The harness does not promise arbitrary shell access, `stdio` MCP, permanent deletion, Windows support, a managed sandbox, a desktop UI, or exact feature parity between upstream providers. Tools run with the permissions of the local harness process unless an application supplies a stronger execution environment.
+The harness does not promise arbitrary shell access, general-purpose `stdio` MCP interoperability, permanent deletion, Windows support, a managed sandbox, a stable desktop UI, or exact feature parity between upstream providers. Tools run with the permissions of the local harness process unless an application supplies a stronger execution environment.

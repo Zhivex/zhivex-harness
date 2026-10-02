@@ -1,22 +1,22 @@
 # Zhivex Code
 
-The terminal product for the Zhivex Harness engine. Version `0.1.0-rc.2` is
-prepared for the npm `next` channel and pins `@zhivex-ai/harness@1.3.0-rc.7`.
+The terminal product for the Zhivex Harness engine. Version `0.1.0` is
+prepared for the npm `latest` channel and pins `@zhivex-ai/harness@1.3.0`.
 Publication remains pending the protected release workflow and registry checks.
 
-After publication, install with `npm install -g @zhivex-ai/code@next`.
+After publication, install with `npm install -g @zhivex-ai/code@0.1.0`.
 Node >=22.13.0 is required; consumers do not need Bun.
 
-The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@next`,
-`yarn global add @zhivex-ai/code@next` (Yarn Classic), and
-`bun add -g @zhivex-ai/code@next`. Choose the project's existing manager for local
+The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.1.0`,
+`yarn global add @zhivex-ai/code@0.1.0` (Yarn Classic), and
+`bun add -g @zhivex-ai/code@0.1.0`. Choose the project's existing manager for local
 installation: `npm install`, `pnpm add`, `yarn add`, or `bun add`, followed by
-`@zhivex-ai/code@next`. Harness keeps `zhx` and `zhivex-harness`; Code owns
+`@zhivex-ai/code@0.1.0`. Harness keeps `zhx` and `zhivex-harness`; Code owns
 `zhivex-code`, so installing both does not replace those aliases.
 
 The local candidate matrix covers npm, pnpm 11, Yarn Classic 1 and Bun 1.4 on
 Node 22.13 and 24.11. It uses exact tarballs and a temporary registry where needed;
-these results do not establish that unpublished changes are available from `next`.
+these results do not establish that the stable versions are available from `latest`.
 See [engine acceptance](../../docs/ENGINE_API.md) for reproducible commands and
 the distinction between installed acceptance and publication/provenance.
 
@@ -25,12 +25,12 @@ the distinction between installed acceptance and publication/provenance.
 Install a compatible Harness package and the declared dependencies, then run
 `bun run build`, `bun run typecheck`, and `bun test tests` from this directory.
 The build reads only Code source and leaves all package dependencies external.
-For this pre-release monorepo checkout, run `bun run build` at the repository root,
+For this prepared stable monorepo checkout, run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest is now `1.3.0-rc.7`; this link is local API development
+The root manifest is now `1.3.0`; this link is local API development
 evidence only. Installed acceptance must test the exact Harness version pinned by
 Code, without rewriting its version.
 
@@ -73,13 +73,15 @@ host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
 ## Release status
 
 Packing and local tests are not a registry release. The independent Code workflow
-validates an annotated `code-v0.1.0-rc.2` tag on reviewed main, its exact CI/CodeQL
+validates an annotated `code-v0.1.0` tag on reviewed main, its exact CI/CodeQL
 results, and the published engine dependency. It tests one immutable Code tarball
 both without dependency overrides and with the four package managers.
 
-The first publication uses the retained validated tarball and its GitHub-generated
-npm provenance bundle with an authenticated scope owner. Later publications use
-npm Trusted Publishing with the protected `npm` environment. See
+Stable 0.1.0 uses the existing npm Trusted Publishing configuration and protected
+`npm` environment. Historical first-publication bootstrap is documented separately. See
 [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
-HAR-HU-40 remains responsible for broader compatibility and install-order coverage;
-this initial RC pins one engine version and does not claim the complete matrix.
+Code RC2 is already published on next (RC1 remains on latest). Stable 0.1.0
+requires new exact-artifact acceptance after Harness 1.3.0 publication. The local
+four-manager matrix covers both install orders; it does not certify other engine
+versions, upstream provider parity or registry provenance. Beta/experimental
+engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.

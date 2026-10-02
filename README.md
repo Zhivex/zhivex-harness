@@ -11,19 +11,21 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
-Version `1.3.0-rc.7` prepares the terminal-independent engine API and the local
-Code package for candidate validation on npm `next`. Publication remains pending
-the protected release workflow. RC4 includes Anthropic, Gemini/Vertex, Desktop package migration, isolated MCP/ACP,
-checkpoints and experimental governance controls. Code publication is independent.
-Stable `1.2.0` remains available under npm `latest`.
-Desktop retains its separate private alpha status.
+Version `1.3.0` is prepared for npm `latest`, with terminal-independent engine
+entrypoints and the separately released Code CLI `0.1.0`. Publication remains
+pending the protected workflow. Harness `1.2.0` is currently published on `latest`;
+Harness RC7 and Code RC2 are published on `next`. Stable package numbering does
+not change API stability tiers: beta and experimental APIs retain their policies,
+Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
 ## Quick start
 
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
+After protected publication of 1.3.0:
+
 ```sh
-npm install -g @zhivex-ai/harness@1.3.0-rc.7
+npm install -g @zhivex-ai/harness@1.3.0
 cd /path/to/your/project
 zhx
 ```
@@ -81,5 +83,5 @@ Gemini, [Anthropic](docs/ANTHROPIC.md) and [Vertex](docs/VERTEX.md) remain provi
 Version `1.2.0` is the current stable public npm release. Source checkout changes can be
 newer than the published package. Consult the [changelog](CHANGELOG.md) and
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
-for the recorded 1.0.0 release; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)
+for the verified 1.2.0 publication; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)
 records validation scope and limitations.
