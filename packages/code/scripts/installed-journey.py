@@ -136,6 +136,8 @@ try:
     assert "run_check" in console.command("/activity") or "check" in console.command("/activity")
     console.send("Interrupt fixture\n")
     console.read("press Ctrl+C now")
+    # An in-flight request has no final usage receipt: never present it as free.
+    console.read("Run est. unknown INCOMPLETE")
     console.send("\x03")
     interrupted = console.prompt()
     assert "Progress saved" in interrupted or "Session retained" in interrupted

@@ -81,7 +81,7 @@ export const chat = async (options: CliOptions) => {
     readline.startBackground();
     runView?.begin();
     try { return await operation(controller.signal); }
-    finally { runView?.end(); readline.stopBackground(); activeController = undefined; }
+    finally { runView?.end(); readline.stopBackground(); activeController = undefined; requestInFlight = false; }
   };
   let verbose = false;
   const sessionGrants = new Set<string>();
@@ -148,6 +148,7 @@ export const chat = async (options: CliOptions) => {
   }
 
   let displayLedger = inspectUsageLedger((await latestState(session))?.metadata?.[USAGE_LEDGER_KEY]);
+  let requestInFlight = false;
   let contextTokens = estimateMessages(messages);
   let rejectedDecisions = 0;
   let consoleIssue: string | undefined;
@@ -159,7 +160,7 @@ export const chat = async (options: CliOptions) => {
     attachments: attachments.list().length,
     automaticApprovals: options.yes === true,
     ...(options.approvalMode ? {approvalMode: options.approvalMode} : {}),
-    ...(displayLedger ? {runUsage: displayLedger} : {}),
+    ...(displayLedger ? {runUsage: requestInFlight ? {...displayLedger, estimatedUsd: null, usageComplete: false} : displayLedger} : {}),
     nextLimitUsd: runtimeOptions.usageLimitUsd ?? null,
     contextTokens,
   });
@@ -193,6 +194,8 @@ export const chat = async (options: CliOptions) => {
     return {tracker, outcome: (result: AgentRunOutput) => formatConsoleOutcome(result,
       harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions),
       onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
+      if (event.type === "agent-step-start") requestInFlight = true;
+      if (event.type === "agent-step-finish" || event.type === "agent-run-finish") requestInFlight = false;
       if (event.type === "agent-step-finish" || event.type === "agent-run-finish") displayLedger = inspectUsageLedger(harness.usageLedger?.summary(runId));
       if (event.type === "agent-run-finish") contextTokens = estimateMessages(event.state.messages);
       runView.observe(event);

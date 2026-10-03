@@ -6,6 +6,8 @@ original limit, the next-run limit, retained conversation tokens and attachments
 current phase, elapsed time, step and draft/queue state. Context excludes request
 instructions and tool schemas. Missing monetary estimates remain unknown; a
 limit is an estimate-based runtime policy, not a guaranteed invoice ceiling.
+While a request is in flight, the live run total stays unknown/incomplete until
+its usage receipt arrives; a previously confirmed zero is not shown as its cost.
 
 Reviewed local file changes open a transient terminal review screen with the
 validated diff first. The complete payload, original input digests and preview
