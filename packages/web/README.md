@@ -18,7 +18,9 @@ for credentials, creates a credential entry, or sends provider requests during
 startup. If credentials are missing or locked, configure/unlock them using the
 existing CLI and restart. The launcher opens the browser with a single-use,
 two-minute capability in its fragment, removes it before rendering, then uses
-an in-memory HTTP session and HttpOnly SameSite=Strict cookie. The terminal
+an in-memory HTTP session and HttpOnly SameSite=Strict cookie. The CSRF secret
+is retained only in origin/port-bound tab sessionStorage for reload; cookies
+alone cannot recover the session. A new unrelated tab must be paired again. The terminal
 prints only the base URL. If browser opening fails, startup shuts down with
 `WEB_BROWSER_OPEN_FAILED`; fix the OS opener and relaunch. `--no-open` is for
 supervision; it intentionally does not print a pairing capability.
@@ -74,7 +76,8 @@ Loopback HTTP is not automatically secure. The listener accepts only
 `127.0.0.1`, refuses nonlocal bind configuration, verifies the exact numeric Host
 including port and the peer address, requires same-origin POST plus a custom
 header, rejects foreign Origin/fetch metadata, and checks per-session CSRF for
-actions. There is no CORS permission, WebSocket transport, general command
+all authenticated routes, including context/reload. This avoids relying on a
+localhost cookie that can also be sent to other ports. There is no CORS permission, WebSocket transport, general command
 dispatch, arbitrary file API, or browser-controlled runtime configuration.
 Upgrade requests are closed. Authentication expires after 12 hours and rotates
 on relaunch; pairing cannot be replayed. Provider and private Unix transport

@@ -241,7 +241,7 @@ export async function startWebServer(options: {
           clients.set(identity, { csrf, expires: now() + 12 * 3600_000 });
           res.setHeader(
             "set-cookie",
-            `${cookieName}=${identity}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200`,
+            `${cookieName}=${identity}; HttpOnly; SameSite=Strict; Path=/`,
           );
           return send(res, 200, {
             csrf,
@@ -260,6 +260,9 @@ export async function startWebServer(options: {
           for (const r of runtimes.values()) r.forgetIdentity(identity);
           return fault(res, 401, "WEB_PAIRING_REQUIRED");
         }
+        // Cookies ignore ports. The tab/origin-bound secret is required even for context/reload.
+        if (!equal(req.headers["x-zhivex-csrf"], client.csrf))
+          return fault(res, 403, "WEB_CSRF_REJECTED");
         if (route === "/api/context") {
           const parsed = z
             .object({})
@@ -271,8 +274,6 @@ export async function startWebServer(options: {
             workspaces: options.runtimes.map((r) => r.workspace),
           });
         }
-        if (!equal(req.headers["x-zhivex-csrf"], client.csrf))
-          return fault(res, 403, "WEB_CSRF_REJECTED");
         if (route !== "/api/action") return fault(res, 404, "WEB_NOT_FOUND");
         const parsed = actions.safeParse(await body(req));
         if (!parsed.success) return fault(res, 400, "WEB_INVALID_REQUEST");

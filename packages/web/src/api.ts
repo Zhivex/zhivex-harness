@@ -1,5 +1,6 @@
 import type { WebContext } from "./contracts.js";
-let csrf = "";
+const storageKey = "zhivex-web-csrf";
+let csrf = sessionStorage.getItem(storageKey) ?? "";
 export async function request<T>(route: string, value: unknown): Promise<T> {
   const response = await fetch(`/api/${route}`, {
     method: "POST",
@@ -24,6 +25,7 @@ const initial = request<WebContext>(
   pairing ? { token: pairing } : {},
 ).then((context) => {
   csrf = context.csrf;
+  sessionStorage.setItem(storageKey, csrf);
   return context;
 });
 export const context = () => initial;

@@ -30,7 +30,7 @@ const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "WEB_REQUEST_FAILED";
 const recovery: Record<string, string> = {
   WEB_PAIRING_REQUIRED:
-    "Restart zhivex-code web to open a freshly paired browser.",
+    "Use the paired browser tab, or restart zhivex-code web to pair again.",
   WEB_REQUEST_FAILED:
     "Reconnect to read durable state before trying a new action.",
   REVISION_CONFLICT: "The run changed. Refresh its review before deciding.",

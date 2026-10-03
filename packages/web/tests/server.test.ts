@@ -163,11 +163,20 @@ test("HTTP security rejects unauthenticated actions, CSRF, rebinding, foreign Or
     (
       await fetch(f.origin + "/api/context", {
         method: "POST",
-        headers: { ...f.headers, cookie: f.cookie },
+        headers: { ...f.headers, cookie: f.cookie, "x-zhivex-csrf": f.csrf },
         body: "{}",
       })
     ).status,
   ).toBe(200);
+  expect(
+    (
+      await fetch(f.origin + "/api/context", {
+        method: "POST",
+        headers: { ...f.headers, cookie: f.cookie },
+        body: "{}",
+      })
+    ).status,
+  ).toBe(403);
   const html = await fetch(f.origin);
   expect(html.headers.get("content-security-policy")).toContain(
     "frame-ancestors 'none'",
