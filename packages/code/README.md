@@ -1,6 +1,7 @@
 # Zhivex Code
 
-The terminal product for the Zhivex Harness engine. Version `0.1.0` is
+The terminal product for the Zhivex Harness engine. This checkout prepares
+`0.2.0`, pinned to `@zhivex-ai/harness@1.3.0`; publication is pending. Version `0.1.0` is
 published and verified on npm `latest` and pins `@zhivex-ai/harness@1.3.0`.
 The protected workflow verified registry bytes, source-bound provenance and
 actual engine dependency resolution.
@@ -18,7 +19,7 @@ installation: `npm install`, `pnpm add`, `yarn add`, or `bun add`, followed by
 The local candidate matrix covers npm, pnpm 11, Yarn Classic 1 and Bun 1.4 on
 Node 22.13 and 24.11. It uses exact tarballs and a temporary registry where needed;
 these results do not establish that the stable versions are available from `latest`.
-See [engine acceptance](../../docs/ENGINE_API.md) for reproducible commands and
+See [engine acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ENGINE_API.md) for reproducible commands and
 the distinction between installed acceptance and publication/provenance.
 
 ## Build and run
@@ -74,11 +75,11 @@ host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
 ## Release status
 
 Packing and local tests are not a registry release. The independent Code workflow
-validates an annotated `code-v0.1.0` tag on reviewed main, its exact CI/CodeQL
-results, and the published engine dependency. It tests one immutable Code tarball
+validates an annotated `code-v0.2.0` tag on reviewed main, its exact CI/CodeQL
+and installed-journey results, and the published engine dependency. It tests one immutable Code tarball
 both without dependency overrides and with the four package managers.
 
-Stable 0.1.0 uses the existing npm Trusted Publishing configuration and protected
+The prepared stable 0.2.0 uses the existing npm Trusted Publishing configuration and protected
 `npm` environment. Historical first-publication bootstrap is documented separately. See
 [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
 Code 0.1.0 is published and verified on latest; RC2 remains on next and RC1 is
@@ -87,10 +88,11 @@ four-manager matrix covers both install orders; it does not certify other engine
 versions, upstream provider parity or registry provenance. Beta/experimental
 engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.
 
-## Guided runs (next-version development)
+## Guided runs in the 0.2.0 candidate
 
-This branch adds console workflows on published Harness 1.3.0 APIs. It does not
-change the published 0.1.0 release or prepare a new tag.
+The 0.2.0 candidate adds console workflows on published Harness 1.3.0 APIs.
+Use the candidate tarball to try these features before publication. See the
+[Code changelog](CHANGELOG.md) for migration notes.
 
 Approvals for local reviewed edits, patches and replacements show a per-file
 changed-region diff from the engine's digest-validated preview. The complete
@@ -140,12 +142,12 @@ and time limits continue to apply.
 
 ## First use with Node and an offline fixture
 
-The next-version tarball includes a tutorial that needs Node >=22.13.0 and npm.
+The 0.2.0 candidate tarball includes a tutorial that needs Node >=22.13.0 and npm.
 It does not need Bun, Python, Git, credentials or a paid provider. In an empty
 directory, install the candidate tarball from this PR (or pack a contributor build):
 
 ```sh
-npm install --ignore-scripts /absolute/path/to/zhivex-ai-code-0.1.0.tgz
+npm install --ignore-scripts /absolute/path/to/zhivex-ai-code-0.2.0.tgz
 node node_modules/@zhivex-ai/code/examples/first-use.mjs
 ```
 
@@ -164,3 +166,8 @@ Contributors run `bun run build`, `bun run typecheck`, `bun run test`, then
 Code, installs it with npm and the exact published Harness 1.3.0 dependency (no
 override or source link), then exercises the tutorial in a Linux/macOS PTY. Python
 3 is test tooling only. Set `CODE_JOURNEY_OUTPUT` to retain its report and transcript.
+
+To test an already retained artifact without repacking, run
+`node scripts/installed-journey.mjs /absolute/path/to/code.tgz`. The report binds
+the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
+Release validation uses this mode on the same bytes that will be published.

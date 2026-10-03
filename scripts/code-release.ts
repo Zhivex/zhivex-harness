@@ -70,7 +70,7 @@ export async function assertCodeReleaseIdentity(options: {
   assert.equal(run(["git", "rev-list", "-n", "1", tag]), sha);
   run(["git", "merge-base", "--is-ancestor", sha, "origin/main"]);
   assert.equal(run(["git", "status", "--porcelain=v1", "--untracked-files=all"]), "", "Release source must be clean");
-  for (const workflow of ["ci.yml", "codeql.yml"]) {
+  for (const workflow of ["ci.yml", "codeql.yml", "code-journey.yml"]) {
     const response = await api(`actions/workflows/${workflow}/runs?head_sha=${sha}&branch=main&event=push&per_page=100`);
     const latest = response.workflow_runs?.[0];
     assert(latest?.head_sha === sha && latest.status === "completed" && latest.conclusion === "success", `${workflow} latest main push must pass for the exact release SHA`);
@@ -116,13 +116,27 @@ function npmUrl(url: string): string {
   assert.equal(new URL(url).origin, new URL(registry).origin, "Registry artifacts must use npmjs.org HTTPS");
   return url;
 }
-async function inspect(artifact: string, manifest: Manifest) {
+const codePayloadFiles = [
+  "package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
+  "package/examples/first-use.mjs", "package/examples/offline-provider.mjs",
+];
+export function assertCodePayload(names: string[]): void {
+  assert.equal(new Set(names).size, names.length, "Duplicate Code payload entries");
+  for (const name of names) {
+    assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/"].includes(name) ||
+      /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name), `Unexpected Code payload: ${name}`);
+  }
+  for (const name of codePayloadFiles) assert(names.includes(name), `Missing ${name}`);
+}
+export async function inspectCodeArtifact(artifact: string, manifest: Manifest) {
   const bytes = await readFile(artifact);
   const names = run(["tar", "-tzf", artifact]).split("\n");
-  for (const name of names) {
-    assert(!name.includes("..") && /^(package\/|package\/(package.json|README.md|LICENSE)|package\/dist\/[\w.-]+\.js)$/.test(name), `Unexpected Code payload: ${name}`);
+  assertCodePayload(names);
+  const entries = run(["tar", "-tvzf", artifact]).split("\n");
+  assert.equal(entries.length, names.length);
+  for (const [index, entry] of entries.entries()) {
+    assert.equal(entry[0], names[index]!.endsWith("/") ? "d" : "-", "Code payload must contain only regular files and named directories");
   }
-  for (const name of ["package/package.json", "package/README.md", "package/LICENSE", "package/dist/cli.js"]) assert(names.includes(name), `Missing ${name}`);
   const packed = JSON.parse(run(["tar", "-xOf", artifact, "package/package.json"])) as Manifest;
   assertCodeManifest(packed);
   assert.deepEqual(packed, manifest, "Packed manifest differs from checked-out release");
@@ -175,7 +189,7 @@ async function main() {
   }
   assert(input, "Provide exact Code artifact path");
   const artifact = path.resolve(input);
-  const { sha512Hex, integrity } = await inspect(artifact, manifest);
+  const { sha512Hex, integrity } = await inspectCodeArtifact(artifact, manifest);
   if (mode === "inspect") {
     await writeFile(path.join(path.dirname(artifact), "SHA512SUMS"), `${sha512Hex}  ${path.basename(artifact)}\n`);
     console.log(`${manifest.name}@${manifest.version}: ${integrity}`); return;

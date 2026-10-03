@@ -18,6 +18,10 @@ Code RC2 remain published on `next`. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
+Code `0.2.0` is being prepared with the same exact Harness `1.3.0` dependency.
+Its guided console workflows and offline tutorial are described in the
+[Code candidate guide](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md); publication is pending.
+
 ## Quick start
 
 Requires Node.js 22.13.0 or newer, Git and a provider API key.

@@ -2,14 +2,8 @@ name: Code installed journeys
 
 on:
   pull_request:
-    paths:
-      - "packages/code/**"
-      - ".github/workflows/code-journey.yml"
   push:
     branches: [main]
-    paths:
-      - "packages/code/**"
-      - ".github/workflows/code-journey.yml"
 
 permissions:
   contents: read
@@ -27,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
@@ -36,7 +31,7 @@ jobs:
         with:
           bun-version: 1.4.0
       - name: Install Code with its published engine dependency
-        run: bun install --cwd packages/code --ignore-scripts
+        run: bun install --cwd packages/code --frozen-lockfile --ignore-scripts
       - name: Types, regression tests and independent build
         working-directory: packages/code
         run: |
@@ -47,6 +42,10 @@ jobs:
         run: node scripts/installed-journey.mjs
         env:
           CODE_JOURNEY_OUTPUT: ${{ runner.temp }}/code-journey
+      - name: Validate the exact tested Code payload and digest
+        run: bun run scripts/code-release.ts inspect "$RUNNER_TEMP/code-journey/code.tgz"
+      - name: Verify build and install left tracked source unchanged
+        run: git diff --exit-code
       - name: Retain report and terminal transcript
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

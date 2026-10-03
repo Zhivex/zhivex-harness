@@ -12,38 +12,57 @@ retained artifact; identical bytes skipped npm publication and verification pass
 Code RC2 remains on `next`; RC1 is historical. The existing OIDC publisher and
 protected environment were preserved. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/stable-publication-2026-10-02.json).
 
+## Code 0.2.0 candidate
+
+This checkout prepares `@zhivex-ai/code@0.2.0` with the same exact published
+Harness `1.3.0` dependency. Code `0.1.0` remains the verified npm `latest` release
+until a separately approved publication succeeds. The candidate adds guided
+approval diffs, reviewed checkpoints, per-run estimated budgets and the offline
+first-use tutorial. See the [candidate changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/CHANGELOG.md)
+and [release readiness](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CODE_0_2_0_READINESS_2026-10-03.md).
+
+This is a Code-only release: no Harness version change or new paid six-provider
+certification campaign is required. Engine API tiers and provisional provider
+support remain unchanged; estimated budgets are not guaranteed financial caps.
+
 ## Release preparation
 
 1. Merge the Code release PR after required review and successful checks.
-2. Wait for the latest `ci.yml` and `codeql.yml` **push runs on main** to succeed
+2. Wait for the latest `ci.yml`, `codeql.yml` and `code-journey.yml` **push runs on main** to succeed
    for the exact commit. Keep the Code manifest, version and engine pin unchanged
    after selecting that commit.
 3. Wait for Harness `1.3.0` publication and successful registry/provenance
    verification as ordered in [the Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md).
    From a clean checkout of that main commit, create an annotated
-   `code-v0.1.0` tag and push it. Never move or overwrite release tags.
+   `code-v0.2.0` tag and push it. Never move or overwrite release tags.
 4. Dispatch `release-code.yml` **at that tag**, with input `tag` matching it and
    `channel=latest`, `mode=oidc`, and `confirm_publication=true`. Dispatching
    main while supplying a different tag is rejected.
 
 ```sh
-gh workflow run release-code.yml --ref code-v0.1.0 \
-  -f tag=code-v0.1.0 -f channel=latest -f mode=oidc -f confirm_publication=true
+gh workflow run release-code.yml --ref code-v0.2.0 \
+  -f tag=code-v0.2.0 -f channel=latest -f mode=oidc -f confirm_publication=true
 ```
 
-The workflow validates tag identity, main ancestry, exact CI/CodeQL, Code source
+The workflow validates tag identity, main ancestry, exact CI/CodeQL/installed journeys, Code source
 and package boundaries. It downloads the pinned Harness version from npm and
 verifies its integrity and SLSA artifact/workflow/tag/source binding; missing
 publication or provenance stops the release.
-It builds Code once, inspects package contents, installs it against the actual
+It builds Code once, admits only metadata, flat built JavaScript and the two
+named tutorial modules, and installs it against the actual
 registry dependency without overrides, and tests the retained Code and Harness
 artifacts with npm, pnpm, Yarn and Bun. The paired matrix uses explicit engine
 artifact overrides; the separate standalone installation proves npm resolution.
-This does not claim every future engine version or installation order is certified.
+The retained Code tarball also passes offline installed PTY journeys without
+repacking. The separate `code-journey.yml` workflow runs on every PR and main
+push on Linux/macOS with Node 22.13.0/24, retaining the tested tarball, digest,
+report and transcript. Removing path filters ensures each selected main SHA can
+produce its own journey evidence. This does not claim every future engine
+version or installation order is certified.
 
 The workflow generates genuine npm/Sigstore provenance using pinned npm 11.6.1
 inside the GitHub-hosted build job. It retains `code.tgz`, `code.sigstore.json`,
-`SHA512SUMS`, and installed acceptance in `code-release-<full-source-sha>`.
+`SHA512SUMS`, installed acceptance, and the offline PTY report/transcript in `code-release-<full-source-sha>`.
 Bootstrap mode **does not publish**. No npm token is copied into GitHub.
 
 ## Historical first publication / future package bootstrap
@@ -66,7 +85,7 @@ commit SHA. Install npm 11.6.1 into an isolated tools directory and set
 ```sh
 (cd release-code-artifacts && shasum -a 512 -c SHA512SUMS)
 bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
-CODE_EXPECTED_SHA="$(git rev-list -n 1 code-v0.1.0)" \
+CODE_EXPECTED_SHA="$(git rev-list -n 1 code-v0.2.0)" \
   node scripts/code-bootstrap-provenance.cjs verify \
   release-code-artifacts/code.tgz release-code-artifacts/code.sigstore.json
 node "$CODE_PROVENANCE_NPM_ROOT/bin/npm-cli.js" publish \
