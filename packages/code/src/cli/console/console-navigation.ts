@@ -4,6 +4,7 @@ import type { ConsoleInput } from "./console-input.js";
 import { bundledModelCatalog, catalogModels, modelDescription, type ModelCatalog } from "@zhivex-ai/harness/code-support";
 import { loadModelCatalog } from "@zhivex-ai/harness/code-support";
 import type { ProviderAvailability } from "@zhivex-ai/harness/engine";
+import { catalogPrice } from "./console-pricing.js";
 
 export const consoleModelChoices = (provider: string, defaultModel: string, current?: string, catalog: ModelCatalog = bundledModelCatalog) => {
   const models = catalogModels(catalog, provider, current).sort((a, b) => Number(b.group === "primary") - Number(a.group === "primary"));
@@ -13,7 +14,7 @@ export const consoleModelChoices = (provider: string, defaultModel: string, curr
       value: model, label: entry?.name ?? model,
       group: entry?.group ?? "other",
       detail: [entry?.name !== model ? model : "", model === current ? "Current" : "", model === defaultModel ? "Recommended default" : "",
-        entry ? modelDescription(entry) : "Unverified"].filter(Boolean).join(" · "),
+        entry ? modelDescription(entry) : "Unverified", catalogPrice(entry)].filter(Boolean).join(" · "),
     };
   });
 };
@@ -41,6 +42,9 @@ export const navigateConsole = async (
           {value:"provider",label:"Providers",detail:"Browse providers and their models"},
           {value:"model",label:"Models",detail:`Browse ${options.current.provider} models`},
           {value:"/limits",label:"Execution limits",detail:"Steps available per turn"},
+          {value:"/budget",label:"Run budget",detail:"Estimated USD limit and operator pricing"},
+          {value:"/pricing",label:"Model pricing",detail:"Source and scope of advisory prices"},
+          {value:"/checkpoint",label:"Checkpoints",detail:"Capture, review and explicitly restore selected text files"},
           {value:"/approvals",label:"Approval mode",detail:"Ask, auto, or restricted for this session"},
           {value:"/connection",label:"Test connection",detail:"Optional small request to the selected model"},
           {value:"/credentials",label:"Credentials",detail:"System keychain or temporary API keys"},

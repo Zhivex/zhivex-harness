@@ -28,9 +28,10 @@ export const restoreConsoleOptions = (current: CliOptions, saved: Partial<CliOpt
 
 export const formatConsoleBudget = (config: HarnessConfig, usage?: TokenUsage) => {
   const lines = [`Step limit: ${config.maxSteps} model iterations per turn.`, config.budget.unlimitedTokens
-    ? "Cumulative token budget: unlimited (step, tool, time and monetary limits still apply)."
+    ? "Cumulative token budget per run: unlimited (step, tool, time and monetary limits still apply)."
     : `Cumulative token limits per run: input ${config.budget.maxInputTokens}; output ${config.budget.maxOutputTokens}; total ${config.budget.maxTotalTokens}.`];
   lines.push(`Tool limits: ${config.budget.maxToolCalls} calls / ${config.budget.maxToolErrors} errors; time: ${Math.round(config.timeoutMs / 60000)} minutes per run.`);
+  if (config.costBudget) lines.push(`Legacy measured-cost limit: $${config.costBudget.maxCostUsd} per run (estimate, not an invoice or guaranteed financial cap).`);
   if (!usage) return [...lines, "Latest run usage: unavailable."].join("\n");
   const input = usage.inputTokens, output = usage.outputTokens;
   const total = usage.totalTokens ?? (input !== undefined && output !== undefined ? input + output : undefined);

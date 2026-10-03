@@ -10,6 +10,9 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/route", "Configure specialist model routes", false],
   ["/status", "Inspect the current session and run", true],
   ["/diff", "Review workspace changes", false],
+  ["/checkpoint", "Capture, review and restore selected text files", false],
+  ["/budget", "Set estimated USD policy for each next run", false],
+  ["/pricing", "Inspect advisory model prices and their source", false],
   ["/review", "Review a task", false],
   ["/resume", "Reopen a conversation by session ID", true],
   ["/pending", "Inspect pending approvals", true],
@@ -53,6 +56,8 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 
 const argumentsFor: Readonly<Record<string, string>> = {
   "/limits": "[positive integer]",
+  "/budget": "[USD|off]",
+  "/checkpoint": "[capture|list|review|restore|retry]",
   "/compaction": "[provider:model|off|recommend]",
   "/approvals": "[ask|auto|restricted]",
   "/provider": "[id]", "/model": "[id]", "/route": "[role=provider[:model] | clear [role]]",

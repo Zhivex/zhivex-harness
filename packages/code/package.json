@@ -14,6 +14,7 @@
   },
   "files": [
     "dist",
+    "examples",
     "README.md",
     "LICENSE"
   ],
@@ -21,7 +22,8 @@
     "build": "bun run scripts/build.ts",
     "prepack": "bun run build",
     "typecheck": "tsc --noEmit",
-    "test": "bun run build && bun test tests"
+    "test": "bun run build && bun test tests",
+    "smoke:installed": "node scripts/installed-journey.mjs"
   },
   "engines": {
     "node": ">=22.13.0"

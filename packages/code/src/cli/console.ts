@@ -1,3 +1,7 @@
+import { approvalFileDiff } from "./terminal/file-diff.js";
+import { handleConsoleCheckpoint } from "./console/console-checkpoints.js";
+import { handleConsoleBudget } from "./console/console-pricing.js";
+import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "./console/console-run-policy.js";
 import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
 import { chooseReasoning } from "./console/console-reasoning.js";
 import { reasoningEffortSchema } from "@zhivex-ai/harness/code-support";
@@ -122,6 +126,7 @@ export const chat = async (options: CliOptions) => {
       runtimeOptions = restoreConsoleOptions(runtimeOptions, {
         ...persistedCliOptions(persisted), provider: restored.provider, model: restored.modelId
       });
+      runtimeOptions = restoreConsoleRunPolicy(runtimeOptions, restored);
       routes = readHarnessResumeRoutes(restored);
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
@@ -140,16 +145,25 @@ export const chat = async (options: CliOptions) => {
     readline.stopBackground();
     try {
       return await terminalApprovalResolver(options.approvalMode ?? options.yes,
-        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants})(approvals, context);
+        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants, fileDiff: approval => approvalFileDiff(harness.workspace, approval)})(approvals, context);
     } finally { if (activeController && !activeController.signal.aborted) readline.startBackground(); }
   };
 
-  const createTracker = () => {
+  const createTracker = (runId: string) => {
+    let reportedCalls = -1;
     let offset = harness.workspace.mutationAudit().length;
     const tracker: Parameters<typeof streamSink>[1] = {streamedText: false,
       activityHistory, inputStatus: () => readline.backgroundStatus};
     return {tracker, onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
       await streamSink({json: false, jsonl: false}, tracker, !verbose)(event);
+      if (event.type === "agent-step-finish" || event.type === "agent-run-finish") {
+        const ledger = harness.usageLedger?.summary(runId);
+        if (ledger && ledger.calls !== reportedCalls) {
+          flushToolActivity(tracker); tracker.markdown?.flush();
+          process.stderr.write("\n" + formatUsageLedger(ledger) + "\n");
+          reportedCalls = ledger.calls;
+        }
+      }
       if (event.type === "tool-result") {
         const audit = harness.workspace.mutationAudit();
         const receipt = formatAppliedFiles(audit.slice(offset));
@@ -220,7 +234,7 @@ export const chat = async (options: CliOptions) => {
     const state = await latestState(selected);
     const persisted = state ? readHarnessResumeConfig(state) : undefined;
     const nextOptions = state
-      ? restoreConsoleOptions(runtimeOptions, { ...persistedCliOptions(persisted), provider: state.provider, model: state.modelId })
+      ? restoreConsoleRunPolicy(restoreConsoleOptions(runtimeOptions, { ...persistedCliOptions(persisted), provider: state.provider, model: state.modelId }), state)
       : runtimeOptions;
     const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
     await replaceHarness(nextOptions, nextRoutes);
@@ -239,7 +253,7 @@ export const chat = async (options: CliOptions) => {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
-    const { tracker, onEvent } = createTracker();
+    const { tracker, onEvent } = createTracker(state.runId);
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
@@ -322,6 +336,8 @@ export const chat = async (options: CliOptions) => {
     process.stderr.write(`Run ${sanitizeTerminalText(state.runId)} · durable status: ${state.status}\n`);
     for (const approval of state.pendingApprovals) {
       process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+      const diff = await approvalFileDiff(harness.workspace, approval);
+      if (diff) process.stderr.write(diff);
     }
   };
 
@@ -365,6 +381,11 @@ export const chat = async (options: CliOptions) => {
             continue;
           }
         }
+        if (await handleConsoleCheckpoint(command, { workspace: harness.workspace, sessions: sessionStore,
+          session: await refreshSession(), input: readline, hasActiveTurn, restoreSession })) continue;
+        if (await handleConsoleBudget(command, { options: runtimeOptions, provider: harness.config.provider,
+          model: harness.config.model, input: readline, hasActiveTurn,
+          replaceOptions: next => replaceHarness(next, routes) })) continue;
         if (await handleConsoleCompaction(command, { config: harness.config, options: runtimeOptions,
           hasActiveTurn, replaceOptions: next => replaceHarness(next, routes),
           inspectCredential: provider => credentials.store.inspect(provider) })) continue;
@@ -445,8 +466,10 @@ export const chat = async (options: CliOptions) => {
           const ledger = inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]);
           const usage = ledger ? (ledger.usageComplete ? { inputTokens: ledger.inputTokens, outputTokens: ledger.outputTokens,
             totalTokens: ledger.inputTokens + ledger.outputTokens } : undefined) : state?.usage;
-          process.stdout.write(formatConsoleBudget(harness.config, usage) + "\n");
-          process.stdout.write(sanitizeTerminalText(JSON.stringify(ledger ?? { message: "No transport ledger recorded for this run." }, null, 2)) + "\n");
+          const saved = state ? readHarnessResumeConfig(state) : undefined;
+          process.stdout.write(formatConsoleBudget(saved ? resolveHarnessConfig(saved) : harness.config, usage) + "\n");
+          process.stdout.write(formatUsageLedger(ledger) + "\n");
+          process.stdout.write(`Next run estimated USD limit: ${runtimeOptions.usageLimitUsd ?? "off"}. Use /budget to change it. Pending runs retain their original policy.\n`);
           continue;
         }
         if (command === "/sessions" || command.startsWith("/sessions ")) {
@@ -520,6 +543,8 @@ export const chat = async (options: CliOptions) => {
           } else {
             for (const approval of state.pendingApprovals) {
               process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
+              const diff = await approvalFileDiff(harness.workspace, approval);
+              if (diff) process.stderr.write(diff);
             }
           }
           continue;
@@ -710,7 +735,7 @@ export const chat = async (options: CliOptions) => {
         });
         const turn = session.runs.at(-1)!;
 
-        const { tracker, onEvent } = createTracker();
+        const { tracker, onEvent } = createTracker(runId);
         const progress = consoleProgressGuard();
         let markedRunning = false;
         let result: AgentRunOutput;
@@ -728,6 +753,7 @@ export const chat = async (options: CliOptions) => {
                   scope: harness.config.scope,
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
+                    ...consoleRunPolicyMetadata(runtimeOptions),
                     [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexCliSession: {
                       schemaVersion: 1,
@@ -747,6 +773,7 @@ export const chat = async (options: CliOptions) => {
                   scope: harness.config.scope,
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
+                    ...consoleRunPolicyMetadata(runtimeOptions),
                     [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexCliSession: {
                       schemaVersion: 1,
