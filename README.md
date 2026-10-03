@@ -20,7 +20,7 @@ Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
 Code `0.2.0` is being prepared with the same exact Harness `1.3.0` dependency.
 Its guided console workflows and offline tutorial are described in the
-[Code candidate guide](packages/code/README.md); publication is pending.
+[Code candidate guide](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md); publication is pending.
 
 ## Quick start
 

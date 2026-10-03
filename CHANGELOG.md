@@ -9,7 +9,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Prepare the independent Code package at 0.2.0, pinned to published Harness 1.3.0. Harness stays at 1.3.0.
 - Include guided approval diffs, reviewed checkpoints, per-run estimated budgets and a Node-only offline tutorial from PR158; estimates are not guaranteed financial caps.
 - Fix exact Code payload inspection, add deterministic packaging regressions, require exact-main installed journeys, and validate the retained release tarball with offline PTY acceptance.
-- See [Code changelog](packages/code/CHANGELOG.md) for migration notes and publication status.
+- See [Code changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/CHANGELOG.md) for migration notes and publication status.
 
 ## 1.3.0 - 2026-10-02
 

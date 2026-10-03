@@ -74,6 +74,14 @@ CI runs determine full-suite acceptance without changing Harness code or
 weakening its tests for this Code-only preparation.
 
 Local consumer reports and exact-commit remote results are recorded in the draft PR.
+The first remote attempt passed CodeQL, all four Code journeys, installed
+consumers and the complete Linux/macOS unit suites (1,906 and 1,926 passed,
+zero failed). Its final Harness artifact check rejected relative links added
+by this preparation to Code documents excluded from the Harness tarball.
+Those references now use source-repository URLs; the corrected local Harness
+artifact passed its 322-file validation. The final PR SHA requires its own
+terminal CI, CodeQL and journey results; earlier successes are not reused.
+
 Successful PR checks do not authorize publication or substitute for main push
 checks after merge. The release operator must:
 
