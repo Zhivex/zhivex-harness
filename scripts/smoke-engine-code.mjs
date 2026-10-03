@@ -103,6 +103,10 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
           harnessCopies++;
         }
         for (const entry of await readdir(directory, { withFileTypes: true })) {
+          // Bun's cache index contains version-link directories, not installed
+          // package roots. Installed symlinks are verified through their public
+          // node_modules paths and still resolve to the cached artifact bytes.
+          if (entry.name === '.cache') continue;
           if (entry.isDirectory()) await verifyHarnessCopies(path.join(directory, entry.name));
           else if (entry.isSymbolicLink()) {
             try { await verifyHarnessCopies(path.join(directory, entry.name)); }
@@ -138,8 +142,11 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
         const inspection = await run(process.execPath, [entry, 'runs', 'inspect', runId, '--state-dir', path.join(cancelDirectory, '.state'), '--json'], cancelDirectory, nodeEnv);
         assert.equal(JSON.parse(inspection.stdout).run.status, 'cancelled', `${binary} cancellation was not durable`);
       }
+      const memoryFixture = path.join(consumer, 'memory.mjs');
+      await copyFile(fileURLToPath(new URL('./installed-memory-consumer.mjs', import.meta.url)), memoryFixture);
+      await run(process.execPath, [memoryFixture], consumer, nodeEnv);
       console.error(`${manager} installed consumer passed`);
-      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation'];
+      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation', 'offline-project-memory-journeys'];
     } catch (error) { row.error = String(error); console.error(`${manager} failed: ${row.error}`); }
   }
 console.log(JSON.stringify(report, null, 2));

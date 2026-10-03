@@ -25,6 +25,8 @@ import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources } from "../c
 import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
 import { createContextRuntime } from "./context-runtime.js";
+import { openHarnessProjectMemory, type HarnessProjectMemory } from "../persistence/project-memory.js";
+import { createProjectMemoryMiddleware } from "../context/project-memory-context.js";
 import { scheduleLocalReads } from "./tool-scheduling.js";
 import { harnessToolExecution } from "./tool-execution.js";
 import { publishHarnessPolicyDecision, publishPendingPolicyDecision, observeBaselineToolPolicy } from "./policy-decisions.js";
@@ -211,6 +213,9 @@ export const renderHarnessInstructions = (names: readonly string[]) => {
 };
 
 export interface CreateHarnessOptions extends HarnessConfigInput {
+  /** Experimental: opt into curated local project memory. Omission preserves
+   * the historical SDK memory integration; CLI hosts explicitly enable this mode. */
+  projectMemory?: boolean;
   /** Experimental: absolute host-owned policy path outside repository authority. */
   toolPolicyFile?: string;
   toolPolicy?: HarnessToolPolicy;
@@ -348,6 +353,7 @@ const createProviderCompatibleBudget = (config: HarnessConfig) => createRuntimeB
 const semanticSourceProvenance = new WeakMap<HarnessConfig, ReturnType<typeof createSemanticSourceProvenance>>();
 
 const isolatedSessions = new WeakMap<HarnessConfig, ReturnType<typeof resolveMcpHostSession>>();
+const projectMemories = new WeakMap<HarnessConfig, HarnessProjectMemory>();
 export const createHarness = async (options: CreateHarnessOptions = {}): Promise<ZhivexHarness> => {
   try { return await createHarnessOwned(options); }
   catch (error) {
@@ -535,7 +541,15 @@ const createHarnessOwned = async (options: CreateHarnessOptions): Promise<Zhivex
     : options.subagentModels;
   if (usageLedger) model = usageLedger.model(model);
   if (compactionModel && usageLedger) compactionModel = usageLedger.model(compactionModel);
-  const memory = options.memory ?? persistence?.memory;
+  // Preserve the stable host default. The new mode uses the same table with
+  // explicit writes and ephemeral context, without automatic assistant capture.
+  const memory = options.memory ?? (options.projectMemory === true ? undefined : persistence?.memory);
+  let projectMemory: HarnessProjectMemory | undefined;
+  if (options.projectMemory === true) {
+    try { projectMemory = await openHarnessProjectMemory(config); }
+    catch (error) { persistence?.close(); usageLedger?.close(); throw error; }
+    projectMemories.set(config, projectMemory);
+  }
   const traceCollector = createProductionTraceCollector({
     maxRuns: 100,
     maxEventsPerRun: 2_000,
@@ -651,6 +665,7 @@ const createHarnessOwned = async (options: CreateHarnessOptions): Promise<Zhivex
   } catch (error) {
     persistence?.close();
     usageLedger?.close();
+    projectMemory?.close();
     throw error;
   }
   let closed = false;
@@ -674,7 +689,7 @@ const createHarnessOwned = async (options: CreateHarnessOptions): Promise<Zhivex
       if (closed) return;
       closed = true;
       try { if (options.isolatedMcpSession) await closeMcpHostSession(options.isolatedMcpSession); }
-      finally { persistence?.close(); usageLedger?.close(); }
+      finally { projectMemory?.close(); persistence?.close(); usageLedger?.close(); }
       await dispatchLifecycle({ type: "harness-closed" });
     }
   };
@@ -1272,7 +1287,8 @@ const runHarnessInternal = async (
   const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
-    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware])
+    tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware,
+      ...(projectMemories.get(harness.config) ? [createProjectMemoryMiddleware(projectMemories.get(harness.config)!)] : [])])
   }) };
   if (input.tools) input = { ...input, tools: runtimeTools };
   const projection = createRequestProjection(async () => harness.store.load(runId, deliveryScope), harness.config.requireVerifiedDelivery ? ["repair_plan", "read_task"] : []);
