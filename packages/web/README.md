@@ -83,8 +83,11 @@ Upgrade requests are closed. Authentication expires after 12 hours and rotates
 on relaunch; pairing cannot be replayed. Provider and private Unix transport
 credentials never enter browser assets, responses or launcher logs.
 
-Static assets are an exact startup inventory of regular, singly linked files
-with canonical boundary, no-symlink and descriptor/inode checks. Requests do not
+Static assets are an exact startup inventory of regular, singly linked files.
+The existing public Harness host read primitive rejects symlink ancestors,
+opens nonblocking, bounds positional reads, and checks identity, length and
+timestamps after EOF. The inventory also rejects path replacement after the read.
+Requests do not
 resolve filesystem paths. Traversal, encoded paths and unknown files fail closed.
 Workspace file operations remain inside the existing engine boundary. Tool/model
 text is escaped React text; no raw HTML, remote fonts, CDN or third-party browser
@@ -101,6 +104,13 @@ persistence as a sanitized export. Serve one owner per workspace/scope; running
 a parallel direct CLI writer is unsupported by the existing exclusive-owner
 contract. Worktrees, delivery/PR actions and credential management are outside
 this bounded MVP.
+
+The pairing exchange and opaque browser-session cookie travel over unencrypted
+loopback HTTP. The cookie contains only a random credential for this in-memory
+host session, has no persistent lifetime attribute, and expires server-side after
+12 hours or shutdown. Encrypting the cookie value would not prevent bearer replay.
+Host/origin/CSRF checks constrain browser access; they do not provide confidentiality
+against a compromised OS account or a process able to observe loopback traffic.
 
 ## Contributor verification
 

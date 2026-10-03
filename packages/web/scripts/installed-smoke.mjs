@@ -11,6 +11,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
+import { loopbackRequest, pairingToken } from "./local-smoke-http.mjs";
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const root = await mkdtemp("/tmp/zcw-installed-");
 let child;
@@ -82,7 +83,7 @@ async function launch(binary, workspace, open = false) {
     for (let i = 0; i < 100; i++) {
       try {
         const link = await readFile(pairingFile, "utf8");
-        assert(link.startsWith(origin + "/#connect="));
+        pairingToken(link, origin);
         break;
       } catch {
         await new Promise((r) => setTimeout(r, 20));
@@ -126,18 +127,19 @@ try {
   const workspace = root + "/repo";
   await mkdir(workspace);
   const first = await launch(binary, workspace, true);
-  const html = await fetch(first.origin);
+  const html = await loopbackRequest(first.origin, "/");
   assert.equal(html.status, 200);
   const page = await html.text();
   assert(page.includes("Zhivex Code"));
   const asset = page.match(/src="([^"]+\.js)"/)[1];
-  const script = await (await fetch(first.origin + asset)).text();
+  const script = await (await loopbackRequest(first.origin, asset)).text();
   assert(!script.includes("sk-offline-fixture-never-sent"));
   assert(!/createProviderModel|OPENAI_API_KEY|Bearer/.test(script));
-  const token = new URL(await readFile(root + "/pairing", "utf8")).hash.slice(
-    9,
+  const token = pairingToken(
+    await readFile(root + "/pairing", "utf8"),
+    first.origin,
   );
-  const connect = await fetch(first.origin + "/api/connect", {
+  const connect = await loopbackRequest(first.origin, "/api/connect", {
     method: "POST",
     headers: {
       origin: first.origin,
@@ -152,7 +154,7 @@ try {
   assert(!first.logs().includes("sk-offline-fixture-never-sent"));
   assert.equal(first.errors(), "");
   await first.stop();
-  await assert.rejects(fetch(first.origin));
+  await assert.rejects(loopbackRequest(first.origin, "/"));
   const second = await launch(binary, workspace);
   await second.stop();
   const evidence = {

@@ -4,10 +4,10 @@ import {
   type ServerResponse,
 } from "node:http";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { constants } from "node:fs";
-import { lstat, open, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import type { WebRuntime } from "./runtime.js";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
@@ -105,7 +105,10 @@ async function body(req: IncomingMessage) {
 }
 
 /** Static files are an exact startup inventory, never a workspace filesystem endpoint. */
-export async function staticInventory(directory: string) {
+export async function staticInventory(
+  directory: string,
+  readAsset = readRegularFileNoFollow,
+) {
   const root = await realpath(directory);
   if ((await lstat(directory)).isSymbolicLink())
     throw new Error("WEB_ASSETS_UNSAFE");
@@ -125,17 +128,31 @@ export async function staticInventory(directory: string) {
       const canonical = await realpath(filename);
       if (!canonical.startsWith(root + path.sep))
         throw new Error("WEB_ASSETS_UNSAFE");
-      const descriptor = await open(
-        filename,
-        constants.O_RDONLY | constants.O_NOFOLLOW,
-      );
       try {
-        const bound = await descriptor.stat();
+        // The existing public host primitive rejects symlink ancestors and FIFOs,
+        // bounds positional reads, and verifies inode/size/timestamps at EOF.
+        const { contents, stat: bound } = await readAsset(filename, {
+          label: "WEB_ASSETS_UNSAFE",
+          maxBytes: 4 * 1024 * 1024,
+          requireSingleLink: true,
+        });
+        const retained = await lstat(filename);
         if (
           bound.ino !== info.ino ||
           bound.dev !== info.dev ||
-          !bound.isFile() ||
-          bound.nlink !== 1
+          bound.size !== info.size ||
+          bound.mtimeMs !== info.mtimeMs ||
+          bound.ctimeMs !== info.ctimeMs ||
+          bound.mode !== info.mode ||
+          retained.ino !== bound.ino ||
+          retained.dev !== bound.dev ||
+          retained.size !== bound.size ||
+          retained.mtimeMs !== bound.mtimeMs ||
+          retained.ctimeMs !== bound.ctimeMs ||
+          retained.mode !== bound.mode ||
+          retained.nlink !== 1 ||
+          !retained.isFile() ||
+          (await realpath(filename)) !== canonical
         )
           throw new Error("WEB_ASSETS_UNSAFE");
         const types: Record<string, string> = {
@@ -147,12 +164,12 @@ export async function staticInventory(directory: string) {
         files.set(
           "/" + path.relative(root, canonical).split(path.sep).join("/"),
           {
-            bytes: await descriptor.readFile(),
+            bytes: contents,
             type: types[path.extname(filename)] ?? "application/octet-stream",
           },
         );
-      } finally {
-        await descriptor.close();
+      } catch {
+        throw new Error("WEB_ASSETS_UNSAFE");
       }
     }
   }

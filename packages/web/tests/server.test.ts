@@ -197,6 +197,84 @@ test("HTTP security rejects unauthenticated actions, CSRF, rebinding, foreign Or
     error: { code: "WEB_WORKSPACE_REJECTED" },
   });
 });
+test("opaque HTTP session credentials expire, require CSRF and rotate on shutdown", async () => {
+  let clock = 1000;
+  const options = {
+    runtimes: [],
+    assetsDirectory: new URL("../dist/", import.meta.url).pathname,
+    now: () => clock,
+  };
+  const host = await startWebServer(options);
+  cleanups.push(() => host.close());
+  const headers = {
+    origin: host.origin,
+    "content-type": "application/json",
+    "x-zhivex-web": "1",
+  };
+  const response = await fetch(host.origin + "/api/connect", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ token: new URL(host.launchUrl).hash.slice(9) }),
+  });
+  expect(response.status).toBe(200);
+  const cookie = response.headers.get("set-cookie")!;
+  expect(cookie).toContain("HttpOnly; SameSite=Strict; Path=/");
+  expect(cookie).not.toMatch(/Max-Age|Expires/i);
+  const context = (await response.json()) as { csrf: string };
+  const credentials = {
+    ...headers,
+    cookie: cookie.split(";")[0]!,
+    "x-zhivex-csrf": context.csrf,
+  };
+  const read = (origin: string, proof = credentials) =>
+    fetch(origin + "/api/context", {
+      method: "POST",
+      headers: { ...proof, origin },
+      body: "{}",
+    });
+  expect((await read(host.origin)).status).toBe(200);
+  expect(
+    (await read(host.origin, { ...credentials, "x-zhivex-csrf": "" })).status,
+  ).toBe(403);
+  clock += 12 * 3600_000;
+  expect((await read(host.origin)).status).toBe(401);
+  await host.close();
+  const restarted = await startWebServer(options);
+  cleanups.push(() => restarted.close());
+  expect((await read(restarted.origin)).status).toBe(401);
+  const fresh = await fetch(restarted.origin + "/api/connect", {
+    method: "POST",
+    headers: { ...headers, origin: restarted.origin },
+    body: JSON.stringify({ token: new URL(restarted.launchUrl).hash.slice(9) }),
+  });
+  expect(fresh.status).toBe(200);
+  expect(fresh.headers.get("set-cookie")).not.toBe(cookie);
+  expect(((await fresh.json()) as { csrf: string }).csrf).not.toBe(
+    context.csrf,
+  );
+});
+
+test("an expired launch capability cannot create an HTTP session", async () => {
+  let clock = 1000;
+  const host = await startWebServer({
+    runtimes: [],
+    assetsDirectory: new URL("../dist/", import.meta.url).pathname,
+    now: () => clock,
+  });
+  cleanups.push(() => host.close());
+  clock += 120_000;
+  const response = await fetch(host.origin + "/api/connect", {
+    method: "POST",
+    headers: {
+      origin: host.origin,
+      "content-type": "application/json",
+      "x-zhivex-web": "1",
+    },
+    body: JSON.stringify({ token: new URL(host.launchUrl).hash.slice(9) }),
+  });
+  expect(response.status).toBe(401);
+  expect(response.headers.get("set-cookie")).toBeNull();
+});
 test("real engine approval is scoped, single-use, durable on restart and rejects stale or cross-session tickets", async () => {
   const f = await setup();
   const sessionId = f.session.sessionId;
