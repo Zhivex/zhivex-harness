@@ -2,10 +2,12 @@ import { createInterface, type Interface, type Key } from "node:readline";
 import { PassThrough, type Readable, Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
+import { terminalCellWidth } from "../terminal/terminal-table.js";
 
-import { CONSOLE_SHORTCUTS, consoleLabel, chooseConsoleItem, formatComposer, formatComposerFooter,
+import { CONSOLE_SHORTCUTS, consoleLabel, consoleLines, consoleWidth, chooseConsoleItem, formatComposer, formatComposerFooter,
   formatComposerPlaceholder, type ConsoleComposerInput } from "./console-presentation.js";
 import { consoleCommands, searchConsoleCommands, type ConsoleMode } from "./console-commands.js";
+import { reviewFrame, type ConsoleReview } from "./console-review.js";
 
 export const CONSOLE_COMMANDS = consoleCommands().map(([name]) => name);
 export const MAX_CONSOLE_INPUT_BYTES = 64 * 1024;
@@ -51,7 +53,7 @@ export class ConsoleInput {
       // The destination already queues writes. Waiting for its completion here
       // creates a second queue: direct menu output can then overtake readline's
       // pending clear-screen/prompt chunks and be erased on the first render.
-      if (!(this.background && !this.pending)) output.write(chunk, encoding);
+      if (!this.reviewing && !(this.background && !this.pending)) output.write(chunk, encoding);
       callback();
     } });
     Object.defineProperty(this.display, "columns", {
@@ -124,6 +126,10 @@ export class ConsoleInput {
   }
 
   private selection: { title: string; items: readonly {label: string; detail?: string}[] } | undefined;
+  private reviewing: ConsoleReview | undefined;
+  private reviewOffset = 0;
+  private reviewPage = 1;
+  private reviewWrapped: {columns: number; lines: readonly string[]} | undefined;
   private selectionMatches() {
     const query = this.reader.line.toLowerCase();
     return this.selection?.items.map((item, index) => ({...item, index}))
@@ -147,12 +153,30 @@ export class ConsoleInput {
     this.selection = {title, items};
     this.menuSelection = 0;
     try {
-      this.output.write(`\n${sanitizeTerminalText(title)}\n`);
+      if (!this.reviewing) this.output.write(`\n${sanitizeTerminalText(title)}\n`);
       const answer = this.question("Filter > ", true);
       this.renderMenu();
       const value = await answer;
       return value === "" ? undefined : items[Number(value)]?.value;
     } finally { this.hideMenu(); this.selection = undefined; }
+  }
+  async review<T>(review: ConsoleReview, items: readonly {value: T; label: string; detail?: string}[]): Promise<T | undefined> {
+    if (!this.terminal || process.env.TERM === "dumb" || ((this.output as Writable & {rows?: number}).rows ?? 24) < 24 ||
+      ((this.output as Writable & {columns?: number}).columns ?? 80) < 32) {
+      this.output.write(review.body + "\n");
+      return this.select(review.title, items);
+    }
+    this.hideMenu();
+    this.reviewing = review;
+    this.reviewOffset = 0;
+    this.reviewWrapped = undefined;
+    this.output.write("\x1b[?1049h");
+    try { return await this.select(review.title, items); }
+    finally {
+      this.reviewing = undefined;
+      this.reviewWrapped = undefined;
+      this.output.write("\x1b[?1049l");
+    }
   }
   private taskPrompt = "";
   private shortcutsShown = false;
@@ -184,6 +208,7 @@ export class ConsoleInput {
   private standaloneMenuEscape = false;
 
   private hideMenu() {
+    if (this.reviewing) return;
     if (this.placeholderVisible) this.output.write("\u001b[K");
     if (this.menuVisible) {
       const { rows } = this.draftPosition();
@@ -227,6 +252,29 @@ export class ConsoleInput {
   }
 
   private renderMenu() {
+    if (this.reviewing && this.selection && this.pending) {
+      if (this.menuQuery !== this.reader.line) { this.menuSelection = 0; this.menuQuery = this.reader.line; }
+      const matches = this.selectionMatches();
+      this.menuSelection = Math.max(0, Math.min(this.menuSelection, matches.length - 1));
+      const columns = (this.output as Writable & {columns?: number}).columns ?? 80;
+      if (!this.reviewWrapped || this.reviewWrapped.columns !== columns) this.reviewWrapped = {
+        columns, lines: consoleLines(this.reviewing.body, consoleWidth(columns)),
+      };
+      const frame = reviewFrame(this.reviewing, matches, this.menuSelection, this.reader.line, this.reviewOffset,
+        columns, (this.output as Writable & {rows?: number}).rows ?? 24, this.reviewWrapped.lines);
+      this.reviewOffset = frame.offset;
+      this.reviewPage = frame.capacity;
+      const color = terminalSupportsColor(this.terminal);
+      const style = (line: string) => {
+        const code = line.startsWith("( Z )") ? "1;38;5;210" : line.startsWith("+") ? "38;5;120"
+          : line.startsWith("-") ? "38;5;210" : line.startsWith("@@") ? "38;5;117"
+          : line.startsWith("> ") || line.startsWith("Permission required") ? "1;38;5;222" : "";
+        return color && code ? `\x1b[${code}m${line}\x1b[0m` : line;
+      };
+      this.output.write("\x1b[H" + frame.lines.map(line => style(line) + "\x1b[K").join("\r\n") +
+        `\x1b[J\x1b[${frame.filterRow};${1 + terminalCellWidth(frame.lines[frame.filterRow - 1] ?? "Filter > ")}H`);
+      return;
+    }
     this.hideMenu();
     const query = this.reader.line;
     if (query !== this.menuQuery) {
@@ -344,7 +392,7 @@ export class ConsoleInput {
           this.hideMenu();
           this.clipboard = "";
           this.clipboardBytes = 0;
-          this.clipboardAllowed = Boolean(this.pending && this.completeCommands) || Boolean(this.paste) || this.background;
+          this.clipboardAllowed = Boolean(this.pending && this.completeCommands && !this.selection) || Boolean(this.paste) || this.background;
         } else {
           const clipboard = this.clipboard;
           this.clipboard = undefined;
@@ -425,7 +473,10 @@ export class ConsoleInput {
     }
     if (!this.pending || !this.completeCommands) return;
     if (this.selection) {
-      if (["up", "down", "tab"].includes(key.name ?? "")) {
+      if (this.reviewing && ["pageup", "pagedown"].includes(key.name ?? "")) {
+        this.reviewOffset += key.name === "pageup" ? -this.reviewPage : this.reviewPage;
+        key.name = "console-review"; key.meta = true;
+      } else if (["up", "down", "tab"].includes(key.name ?? "")) {
         const previous = key.name === "up";
         key.name = "console-select"; key.meta = true;
         const count = Math.max(1, this.selectionMatches().length);

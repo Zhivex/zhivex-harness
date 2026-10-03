@@ -22,9 +22,9 @@ transcript = bytearray()
 
 
 class Console:
-    def __init__(self, target=workspace):
+    def __init__(self, target=workspace, columns=110, rows=30):
         self.master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 110, 0, 0))
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
         self.child = subprocess.Popen(["node", str(installed / "examples/first-use.mjs"), "--workspace", str(target)],
                                       stdin=slave, stdout=slave, stderr=slave, cwd=target, env=env)
         os.close(slave)
@@ -61,7 +61,7 @@ class Console:
         self.send(text + "\n")
         marker = ("Captured checkpoint" if text.startswith("/checkpoint capture") else
                   "Current digest:" if text.startswith("/checkpoint review") else
-                  "Session retained" if text.startswith("/checkpoint retry") else {
+                  "RESTORE BLOCKED" if text.startswith("/checkpoint retry") else {
                     "Inspect fixture": "Offline fixture ready.", "/pricing": "Catalog prices are advisory.",
                     "/pending": "Pending approval:", "/budget off": "Finish or deny",
                     "/approve": "Offline edit task finished.", "/usage": "Next run estimated USD limit:",
@@ -71,7 +71,7 @@ class Console:
         return prefix + self.prompt()
 
     def permission(self, decision):
-        frame = self.read("↑↓ navigate")
+        frame = self.read("PgUp/PgDn review")
         assert "Reject" in frame and "Allow once" in frame
         self.send(decision + "\r")
 
@@ -184,6 +184,29 @@ try:
     assert "Hi, ${name}" in (other / "greeting.mjs").read_text()
     assert "estimated USD unknown" in console.command("/usage")
     console.close()
+    # Narrow and ordinary terminal review uses the same installed artifact.
+    # Paging, resize and clipboard packets must not submit approval decisions.
+    for columns in (44, 80):
+        narrow = pathlib.Path(tempfile.mkdtemp(prefix="code-review-width-"))
+        console = Console(narrow, columns=columns, rows=24)
+        console.prompt()
+        console.send("Fix greeting\n")
+        frame = console.read("PgUp/PgDn review")
+        assert "Reject" in frame and "Allow once" in frame and "Leave pending" in frame
+        assert "Model openai/gpt-5.6-luna" in frame and "Context ~" in frame
+        assert "estimatedUsd" not in frame  # Diff before technical JSON.
+        console.send("\x1b[6~")
+        console.read("PgUp/PgDn review")
+        console.send("\x1b[200~Allow once\x1b[201~\r")
+        time.sleep(.1)
+        assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
+        console.permission("Reject")
+        rejected = console.prompt()
+        assert "1 rejected decisions" in rejected and "Conversation: completed" in rejected
+        assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
+        console.close()
+        import shutil
+        shutil.rmtree(narrow)
     console = None
     import shutil
     shutil.rmtree(other)

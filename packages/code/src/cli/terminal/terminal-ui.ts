@@ -123,6 +123,7 @@ export const formatApproval = (
 export interface TerminalApprovalResolverOptions {
   ask(question: string): Promise<string>;
   select?: import("../cli-credentials.js").CredentialInput["select"];
+  review?: (review: { title: string; body: string }, items: readonly {value: string; label: string; detail?: string}[]) => Promise<string | undefined>;
   workspace?: string;
   fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>;
   sessionGrants?: Set<string>;
@@ -160,7 +161,8 @@ export const resolveTerminalApprovals = async (
       responses.push({ provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Exact check approved for this CLI session." });
       continue;
     }
-    options.write(
+    const diff = await options.fileDiff?.(approval);
+    if (!options.review) options.write(
       `\nApproval required ${index + 1}/${approvals.length}:\n` +
       `${formatApproval(approval, {
         detail: "summary",
@@ -170,20 +172,37 @@ export const resolveTerminalApprovals = async (
       })}\n`
     );
 
-    const diff = await options.fileDiff?.(approval);
-    if (diff) options.write(`\n${diff}\n`);
+    if (diff && !options.review) options.write(`\n${diff}\n`);
 
-    if (options.workspace) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
+    if (options.workspace && !options.review) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
+    let technical = false;
     for (;;) {
       let answer: string;
       try {
-        const received = options.select ? await options.select("Permission required", [
+        const items = [
           { value: "n", label: "Reject" },
           { value: "y", label: "Allow once", detail: "Only the action shown above" },
-          ...(grant ? [{ value: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
-          { value: "v", label: "View technical details" },
+          ...(grant ? [{ value: "s", label: options.review ? "Allow exact check this session" : "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
+          { value: "v", label: technical ? "Back to action review" : "View technical details" },
           { value: "q", label: "Leave pending" },
-        ]) : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
+        ];
+        // Only a validated local preview can replace the exact payload in the
+        // primary view. Unknown tools and failed previews keep it fully visible.
+        const trustedDiff = approval.kind === "local-tool" && diff?.startsWith("Reviewed file diff · ");
+        const checkSummary = approval.kind === "local-tool" && approval.name === "run_check"
+          ? formatApproval(approval, {detail: "summary"}) : undefined;
+        const conditional = approval.name.startsWith("verify_and_apply_");
+        const body = technical ? `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}`
+          : trustedDiff && diff ? `${conditional ? "Checks pending · conditional apply" : "Not applied · reviewed changes"}\n${diff.replace(/^Reviewed file diff · [^\n]+\n/, "")}\n` +
+            (conditional ? formatApproval(approval, {detail: "full"})
+              : `Tool: ${sanitizeTerminalText(approval.name)} · exact action\nOriginal input and digests: technical details.`)
+          : checkSummary?.startsWith("Run check: ") ? checkSummary
+          : `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}`;
+        const received = options.review ? await options.review({
+          title: `Permission required ${index + 1}/${approvals.length}${technical ? " · details" : ""}`,
+          body: `${body}\n${options.workspace ? `Workspace: ${sanitizeTerminalText(options.workspace)}` : ""}`,
+        }, items) : options.select ? await options.select("Permission required", items)
+          : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
         if (typeof received !== "string") return undefined;
         answer = normalizedDecision(received);
       } catch (error) {
@@ -192,7 +211,8 @@ export const resolveTerminalApprovals = async (
       }
 
       if (answer === "v" || answer === "view") {
-        options.write(`\nComplete approval payload:\n${formatApproval(approval, { detail: "full" })}\n`);
+        if (options.review) technical = !technical;
+        else options.write(`\nComplete approval payload:\n${formatApproval(approval, { detail: "full" })}\n`);
         continue;
       }
       if (answer === "q" || answer === "quit") {

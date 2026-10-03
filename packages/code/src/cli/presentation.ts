@@ -68,7 +68,7 @@ export const approvalResponses = (
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined> }
+  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; review?: NonNullable<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions["review"]>; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined> }
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
   return async (approvals) => {
     if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
@@ -134,7 +134,7 @@ export const flushToolActivity = (tracker: object) => toolActivities.get(tracker
 
 export const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string },
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string; consoleView?: boolean },
   compact = false
 ) => async (event: AgentStreamEvent) => {
   if (!output.json && !output.jsonl) tracker.activityHistory?.observe(event);
@@ -148,7 +148,7 @@ export const streamSink = (
     let activity = toolActivities.get(tracker);
     if (!activity) {
       activity = new ToolActivity(text => { process.stderr.write(text); },
-        Boolean(process.stderr.isTTY && process.stdout.isTTY), () => process.stderr.columns || 80, tracker.inputStatus);
+        Boolean(process.stderr.isTTY && process.stdout.isTTY && !tracker.consoleView), () => process.stderr.columns || 80, tracker.inputStatus);
       toolActivities.set(tracker, activity);
     }
     if (event.type === "agent-compaction") {
@@ -211,6 +211,7 @@ export const streamSink = (
     return;
   }
   if (!output.json) {
+    if (tracker.consoleView && event.type === "agent-run-finish" && event.status === "completed") return;
     if (compact && ["provider-data", "finish", "agent-run-start", "agent-step-start", "agent-step-finish", "tool-approval-request", "agent-approval-request", "agent-approval-resolved"].includes(event.type)) return;
     if (compact && event.type === "agent-run-finish" && event.status === "waiting_approval") return;
     tracker.markdown?.flush();
