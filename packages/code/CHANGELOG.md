@@ -1,0 +1,27 @@
+# Code changelog
+
+## 0.2.0 - pending publication
+
+- Show per-file changed-region diffs for reviewed local edits using Harness
+  precondition-validated previews; approvals and apply-time checks remain required.
+- Add reviewed checkpoint capture, review and restoration on Harness 1.3.0 APIs.
+  Restoration requires two explicit reviews, preserves the original conversation,
+  and rejects stale preconditions and partial-operation retries.
+- Show advisory catalog pricing and configure estimated USD limits per new run.
+  Resumed runs retain their original policy; estimates are not invoices or
+  guaranteed financial caps. Synthetic tutorial rates are not provider prices.
+- Ship a Node-only offline first-use tutorial with deterministic transport fixtures.
+- Correct release inspection to admit exactly the two tutorial modules and reject
+  arbitrary payloads. Require exact-main installed journeys and test the retained
+  release tarball in an offline PTY without repacking it.
+
+Migration: the sole binary remains `zhivex-code`; Node >=22.13.0 and the exact
+`@zhivex-ai/harness@1.3.0` dependency remain required. Existing persisted sessions,
+approval semantics and provider support tiers are unchanged. Monetary defaults
+apply to each new run, not the entire conversation.
+
+## 0.1.0 - 2026-10-02
+
+- First verified stable release on npm `latest`, pinned to Harness 1.3.0.
+- Independent Node terminal product with provider selection, durable approvals,
+  continuation, credentials and installed acceptance across four package managers.

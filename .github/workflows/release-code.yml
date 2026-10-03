@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: "24"
           package-manager-cache: false
-      - name: Verify annotated tag and exact main push CI and CodeQL
+      - name: Verify annotated tag and exact main push CI, CodeQL and installed journeys
         run: bun run scripts/code-release.ts identity
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -81,6 +81,10 @@ jobs:
           bun run scripts/code-release.ts inspect release-code-artifacts/code.tgz
       - name: Test actual registry resolution without engine overrides
         run: bun run scripts/code-release.ts smoke-registry release-code-artifacts/code.tgz
+      - name: Test the retained Code artifact with offline installed PTY journeys
+        run: node packages/code/scripts/installed-journey.mjs release-code-artifacts/code.tgz
+        env:
+          CODE_JOURNEY_OUTPUT: ${{ github.workspace }}/release-code-artifacts
       - name: Test installed products across package managers
         run: |
           npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
@@ -103,6 +107,8 @@ jobs:
             release-code-artifacts/code.sigstore.json
             release-code-artifacts/SHA512SUMS
             release-code-artifacts/acceptance.json
+            release-code-artifacts/installed-journey-report.json
+            release-code-artifacts/installed-journey-transcript.txt
           if-no-files-found: error
           retention-days: 30
           compression-level: 0

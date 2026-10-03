@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Zhivex terminal product powered by the Harness engine",
   "type": "module",
   "license": "MIT",
@@ -14,8 +14,10 @@
   },
   "files": [
     "dist",
-    "examples",
+    "examples/first-use.mjs",
+    "examples/offline-provider.mjs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
