@@ -171,3 +171,13 @@ To test an already retained artifact without repacking, run
 `node scripts/installed-journey.mjs /absolute/path/to/code.tgz`. The report binds
 the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
 Release validation uses this mode on the same bytes that will be published.
+
+## Local browser workspace (experimental)
+
+`zhivex-code web` opens a local React workspace with prebuilt assets. Select
+CLI-allowlisted workspaces and existing sessions, follow tasks, review exact
+operations/diffs, approve or deny, inspect checks and cancel runs using the same
+Harness service. Use `zhivex-code web --help` for host/profile and recovery flags.
+Configure credentials through the existing CLI or launching environment first;
+credentials remain on the server. macOS/Linux only. See the
+[local web client](../web/README.md) for the security boundary and contributor checks.

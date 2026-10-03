@@ -32,6 +32,8 @@ jobs:
           bun-version: 1.4.0
       - name: Install Code with its published engine dependency
         run: bun install --cwd packages/code --frozen-lockfile --ignore-scripts
+      - name: Install immutable browser build dependencies
+        run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
       - name: Types, regression tests and independent build
         working-directory: packages/code
         run: |

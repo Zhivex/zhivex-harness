@@ -77,7 +77,7 @@ describe("standalone Node terminal product", () => {
 test("built Code imports only declared dependencies and public Harness subpaths", async () => {
   const { readdir } = await import("node:fs/promises");
   const dependencies = new Set([...Object.keys(manifest.dependencies), ...Object.keys(manifest.optionalDependencies)]);
-  const allowedHarness = new Set(["@zhivex-ai/harness/engine", "@zhivex-ai/harness/client", "@zhivex-ai/harness/code-support"]);
+  const allowedHarness = new Set(["@zhivex-ai/harness/engine", "@zhivex-ai/harness/client", "@zhivex-ai/harness/code-support", "@zhivex-ai/harness/protocol", "@zhivex-ai/harness/service", "@zhivex-ai/harness/desktop/v1/state"]);
   const transpiler = new Bun.Transpiler({loader: "js"});
   let harnessImports = 0;
   for (const file of await readdir(path.join(packageRoot, "dist"))) {

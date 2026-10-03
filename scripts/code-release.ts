@@ -124,7 +124,9 @@ export function assertCodePayload(names: string[]): void {
   assert.equal(new Set(names).size, names.length, "Duplicate Code payload entries");
   for (const name of names) {
     assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/"].includes(name) ||
-      /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name), `Unexpected Code payload: ${name}`);
+      /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name) ||
+      ["package/dist/web-assets/", "package/dist/web-assets/assets/", "package/dist/web-assets/index.html"].includes(name) ||
+      /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css)$/.test(name), `Unexpected Code payload: ${name}`);
   }
   for (const name of codePayloadFiles) assert(names.includes(name), `Missing ${name}`);
 }
