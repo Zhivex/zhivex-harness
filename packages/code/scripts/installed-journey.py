@@ -200,9 +200,11 @@ try:
         console.send("\x1b[6~")
         console.read("PgUp/PgDn review")
         console.send("\x1b[200~Allow once\x1b[201~\r")
-        time.sleep(.1)
+        # Wait for actual paste processing, not a buffered pager redraw: macOS
+        # may otherwise coalesce the fresh answer into the discarded packet.
+        console.read("Paste ignored · fresh keys required")
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
-        console.permission("Reject")
+        console.send("Reject\r")
         rejected = console.prompt()
         assert "1 rejected decisions" in rejected and "Conversation: completed" in rejected
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()

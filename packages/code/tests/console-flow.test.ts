@@ -48,6 +48,7 @@ test("approval pager keeps a fresh reject default after paste, resize and detail
     input.write("\x1b[200~Allow once\x1b[201~\r");
     await new Promise(resolve => setImmediate(resolve));
     expect(answered).toBe(false);
+    expect(rendered).toContain("Paste ignored · fresh keys required");
     input.write("\x1b[6~");
     expect(rendered).toContain("Review lines");
     Object.assign(output, {columns: 80}); output.emit("resize");

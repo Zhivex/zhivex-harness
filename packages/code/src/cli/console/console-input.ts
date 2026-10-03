@@ -129,6 +129,7 @@ export class ConsoleInput {
   private reviewing: ConsoleReview | undefined;
   private reviewOffset = 0;
   private reviewPage = 1;
+  private reviewNotice: string | undefined;
   private reviewWrapped: {columns: number; lines: readonly string[]} | undefined;
   private selectionMatches() {
     const query = this.reader.line.toLowerCase();
@@ -169,6 +170,7 @@ export class ConsoleInput {
     this.hideMenu();
     this.reviewing = review;
     this.reviewOffset = 0;
+    this.reviewNotice = undefined;
     this.reviewWrapped = undefined;
     this.output.write("\x1b[?1049h");
     try { return await this.select(review.title, items); }
@@ -260,7 +262,7 @@ export class ConsoleInput {
       if (!this.reviewWrapped || this.reviewWrapped.columns !== columns) this.reviewWrapped = {
         columns, lines: consoleLines(this.reviewing.body, consoleWidth(columns)),
       };
-      const frame = reviewFrame(this.reviewing, matches, this.menuSelection, this.reader.line, this.reviewOffset,
+      const frame = reviewFrame({...this.reviewing, ...(this.reviewNotice ? {notice: this.reviewNotice} : {})}, matches, this.menuSelection, this.reader.line, this.reviewOffset,
         columns, (this.output as Writable & {rows?: number}).rows ?? 24, this.reviewWrapped.lines);
       this.reviewOffset = frame.offset;
       this.reviewPage = frame.capacity;
@@ -409,6 +411,7 @@ export class ConsoleInput {
               this.draftWasPaste = true;
             }
           } else if (this.clipboardAllowed) this.output.write("\nPaste exceeds 64 KiB; clipboard discarded.\n");
+          else if (this.reviewing) this.reviewNotice = "Paste ignored · fresh keys required";
           this.renderMenu();
           // A send/approval appended to the same clipboard packet is not a fresh key.
           return;
@@ -421,6 +424,7 @@ export class ConsoleInput {
         this.clipboardBytes += Buffer.byteLength(plain);
         if (this.clipboardAllowed && this.clipboardBytes <= MAX_CONSOLE_INPUT_BYTES) this.clipboard += plain;
       } else if (this.pending || this.paste || this.background) {
+        this.reviewNotice = undefined;
         this.hideMenu();
         if (this.selection && !/[\u0000-\u001f\u007f]/.test(plain) &&
             Buffer.byteLength(this.reader.line) + Buffer.byteLength(plain) > MAX_CONSOLE_INPUT_BYTES) continue;
