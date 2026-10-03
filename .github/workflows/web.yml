@@ -36,4 +36,8 @@ jobs:
         if: always()
         with:
           name: local-web-evidence-${{ github.sha }}
-          path: packages/web/.test-output/
+          path: |
+            packages/web/.test-output/*.png
+            packages/web/.test-output/*-report.json
+          include-hidden-files: true
+          if-no-files-found: error

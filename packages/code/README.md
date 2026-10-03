@@ -26,7 +26,11 @@ the distinction between installed acceptance and publication/provenance.
 
 Install a compatible Harness package and the declared dependencies, then run
 `bun run build`, `bun run typecheck`, and `bun test tests` from this directory.
-The build reads only Code source and leaves all package dependencies external.
+Install the immutable frontend build dependencies first with
+`bun install --cwd ../web --frozen-lockfile --ignore-scripts`. The build bundles
+the local browser host and compiled UI, including the reused Desktop presentation
+modules. It leaves Harness and server package dependencies external and never
+reads or bundles engine source. See [browser contributor verification](../web/README.md#contributor-verification).
 For this stable monorepo checkout, run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates
