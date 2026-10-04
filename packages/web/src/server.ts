@@ -9,6 +9,7 @@ import path from "node:path";
 import { z } from "zod";
 import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import type { WebRuntime } from "./runtime.js";
+import { createSessionCookieCipher } from "./session-cookie.js";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const base = { workspaceKey: id };
@@ -199,7 +200,9 @@ export async function startWebServer(options: {
     options.runtimes.map((runtime) => [runtime.workspace.key, runtime]),
   );
   const bootstrap = secret();
-  const cookieName = `zhivex_web_${secret().slice(0, 16)}`;
+  // This public cookie label is not a credential. Its value is sealed below.
+  const cookieName = `zhivex_web_${randomBytes(8).toString("hex")}`;
+  const cookieCipher = createSessionCookieCipher();
   const clients = new Map<string, { csrf: string; expires: number }>();
   const now = options.now ?? Date.now;
   const bootstrapExpiry = now() + 120_000;
@@ -256,21 +259,24 @@ export async function startWebServer(options: {
           const identity = secret();
           const csrf = secret();
           clients.set(identity, { csrf, expires: now() + 12 * 3600_000 });
+          const cookie = cookieCipher.seal(identity, `${origin}/${cookieName}`);
           res.setHeader(
             "set-cookie",
-            `${cookieName}=${identity}; HttpOnly; SameSite=Strict; Path=/`,
+            `${cookieName}=${cookie}; HttpOnly; SameSite=Strict; Path=/`,
           );
           return send(res, 200, {
             csrf,
             workspaces: options.runtimes.map((r) => r.workspace),
           });
         }
-        const identity =
+        const cookie =
           (req.headers.cookie ?? "")
             .split(";")
             .map((s) => s.trim())
             .find((s) => s.startsWith(cookieName + "="))
             ?.slice(cookieName.length + 1) ?? "";
+        const identity =
+          cookieCipher.open(cookie, `${origin}/${cookieName}`) ?? "";
         const client = clients.get(identity);
         if (!client || now() >= client.expires) {
           clients.delete(identity);
@@ -390,6 +396,9 @@ export async function startWebServer(options: {
       server.off("error", reject);
       resolve();
     });
+  }).catch((error) => {
+    cookieCipher.destroy();
+    throw error;
   });
   const address = server.address();
   if (!address || typeof address === "string")
@@ -412,6 +421,7 @@ export async function startWebServer(options: {
         await Promise.allSettled([...pending]);
         server.closeAllConnections();
         await stopped;
+        cookieCipher.destroy();
         clients.clear();
         const failed = results.find((r) => r.status === "rejected");
         if (failed?.status === "rejected") throw failed.reason;

@@ -254,6 +254,27 @@ test("opaque HTTP session credentials expire, require CSRF and rotate on shutdow
   );
 });
 
+test("HTTP authentication rejects tampered and plaintext cookies without invalidating the paired session", async () => {
+  const f = await setup();
+  const [label, value] = f.cookie.split("=");
+  expect(value).toMatch(
+    /^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{43}\.[A-Za-z0-9_-]{22}$/,
+  );
+  const parts = value!.split(".");
+  const changed = Buffer.from(parts[3]!, "base64url");
+  changed[0] = changed[0]! ^ 1;
+  parts[3] = changed.toString("base64url");
+  const read = (cookie: string) =>
+    fetch(f.origin + "/api/context", {
+      method: "POST",
+      headers: { ...f.headers, cookie, "x-zhivex-csrf": f.csrf },
+      body: "{}",
+    });
+  expect((await read(`${label}=${parts.join(".")}`)).status).toBe(401);
+  expect((await read(`${label}=${"a".repeat(64)}`)).status).toBe(401);
+  expect((await read(f.cookie)).status).toBe(200);
+});
+
 test("an expired launch capability cannot create an HTTP session", async () => {
   let clock = 1000;
   const host = await startWebServer({

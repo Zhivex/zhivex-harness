@@ -105,10 +105,14 @@ a parallel direct CLI writer is unsupported by the existing exclusive-owner
 contract. Worktrees, delivery/PR actions and credential management are outside
 this bounded MVP.
 
-The pairing exchange and opaque browser-session cookie travel over unencrypted
-loopback HTTP. The cookie contains only a random credential for this in-memory
-host session, has no persistent lifetime attribute, and expires server-side after
-12 hours or shutdown. Encrypting the cookie value would not prevent bearer replay.
+The pairing exchange and browser-session cookie travel over unencrypted
+loopback HTTP. The cookie seals the internal random session identity with
+AES-256-GCM, a fresh nonce and an in-memory per-launch key; the exact origin/port
+and cookie name are authenticated as associated data. The host rejects plaintext,
+tampered and cross-launch values and destroys its key on shutdown. The cookie has
+no persistent lifetime attribute and expires server-side after 12 hours or shutdown.
+Cookie encryption protects stored contents; it does not prevent bearer replay
+or encrypt HTTP traffic.
 Host/origin/CSRF checks constrain browser access; they do not provide confidentiality
 against a compromised OS account or a process able to observe loopback traffic.
 
@@ -138,3 +142,10 @@ provider tests run. The installed smoke packs Code, installs with npm and
 lifecycle scripts disabled, starts the real installed command and pairs through
 the opener, checks assets/logs and verifies SIGTERM plus restart. It initializes
 a synthetic provider credential only in the child environment and sends no task.
+
+Review evidence must include the exact commit's check runs and code-scanning
+conclusion. GitHub Advanced Security's CodeQL check is separate from the Actions
+analysis job: the workflow can finish successfully while an open alert fails the
+security check. Verify its summary and accessible PR alert state; resolving a
+review thread does not fix or dismiss a code-scanning alert. Record any source
+that could not be accessed.
