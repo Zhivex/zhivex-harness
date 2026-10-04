@@ -3,6 +3,7 @@ import { readTaskContinuity } from './task-continuity.js';
 import { compileTaskAcceptanceContract } from './task-acceptance.js';
 import { bindHarnessTaskBudget, openHarnessTaskBudget } from './task-budget-host.js';
 import { createTaskTelemetry, type TaskTelemetrySnapshot } from './task-telemetry.js';
+import { withSharedBudget, type HarnessSharedBudgetOptions } from "./shared-budget.js";
 import { createRequestMeasurements } from '../context/request-measurements.js';
 import { createRequestContextTools, createRequestProjection, selectRequestTools, REQUEST_PROJECTION_VERSION } from '../context/request-projection.js';
 import { withFreshSystemInstructions } from "./runtime-instructions.js";
@@ -281,6 +282,8 @@ export interface HarnessRunDiagnostics {
 }
 
 export interface HarnessRunOptions {
+  /** Opt-in host-owned shared SDK token reservations across primary, children and compaction. */
+  sharedBudget?: HarnessSharedBudgetOptions;
   /** Experimental, application-owned requirements for a new run. */
   taskAcceptance?: TaskAcceptanceContract;
   onDiagnostics?: (diagnostics: HarnessRunDiagnostics) => void;
@@ -1243,7 +1246,12 @@ const runHarnessAuthorized = async (
     }
     if (!('state' in input)) input = { ...input, scope };
   }
-  const invocation = "state" in input ? input : { ...input, runId };
+  let invocation = "state" in input ? input : { ...input, runId };
+  if (options.sharedBudget) {
+    const shared = await withSharedBudget(harness, runId, invocation, options.sharedBudget);
+    harness = shared.harness;
+    invocation = shared.input;
+  }
   if (harness.usageLedger && "state" in input && input.state.metadata?.[USAGE_LEDGER_KEY]) harness.usageLedger.assertResume(taskBudget?.accountRunId ?? runId);
   const ownerId = taskBudget?.accountRunId ?? runId;
   const result = await (harness.usageLedger
@@ -1301,8 +1309,16 @@ const runHarnessInternal = async (
   const interruption = composeRunInterruption(callerSignal, invocationSignal, executionFailure.signal);
   const combinedSignal = interruption.signal, interruptionKind = interruption.kind;
   try {
+  const scheduling = { ...harnessToolExecution, ...harness.agent.toolExecution, ...input.toolExecution };
+  // Until a shared coordinator is supplied, semantic auxiliary calls and
+  // subagents use the SDK's compatible serial path. Keep its safety guard intact.
+  const semantic = input.compaction !== false && (harness.compactionModel || input.compaction?.auxiliary);
+  if (semantic && harness.agent.subagents?.length && !input.policy?.budgetCoordinator && !harness.agent.policy?.budgetCoordinator) {
+    scheduling.parallel = false;
+    scheduling.maxConcurrency = 1;
+  }
   input = { ...input,
-    toolExecution: { ...harnessToolExecution, ...harness.agent.toolExecution, ...input.toolExecution },
+    toolExecution: scheduling,
     abortSignal: combinedSignal };
   if (!("state" in input)) {
     const messages: ModelMessage[] = input.messages ?? (input.prompt ? [{ role: "user", parts: [{ type: "text", text: input.prompt }] }] : []);
