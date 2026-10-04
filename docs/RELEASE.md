@@ -7,10 +7,18 @@ The source version is `1.4.0-rc.1`, pending publication to `next`.
 This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`, both on
 `next`, with Code pinned exactly to the Harness candidate. npm currently reports
 Harness `1.3.0` and Code `0.2.0` on `latest`; those stable tags must not move.
-The candidates are not published. The procedures and older publication statuses
-below are historical; follow the [current RC checkpoints](reports/RC_1_4_0_READINESS_2026-10-04.md)
-for this release. Main integration, exact-SHA checks, an approved paid Harness
-campaign, protected publication and registry/provenance verification remain required.
+The candidates are not published. Review and integrate the preparation PR, then
+require the latest successful `ci.yml`, `codeql.yml`, `code-journey.yml` and
+`web.yml` main-push runs for the exact release SHA, including the separate CodeQL
+security result. Run Harness's existing preparation and protected release workflow
+for annotated `v1.4.0-rc.1` with `channel=next`. Its exact-artifact, OCI, live and
+representative gates remain mandatory. Paid certification requires separate
+campaign approval. After Harness registry integrity and provenance verification,
+run Code's protected OIDC workflow at annotated `code-v0.3.0-rc.1` on the same SHA,
+with `channel=next`, `mode=oidc` and publication confirmation. Code must resolve
+the real published engine without overrides and pass retained-artifact terminal
+and web acceptance, four-manager checks and provenance verification. Keep stable
+`latest` unchanged. The older publication records below are historical.
 
 
 `@zhivex-ai/harness@1.3.0` is the latest public npm release. The verified `v1.3.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](LIVE_CERTIFICATION.md).

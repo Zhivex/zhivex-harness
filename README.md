@@ -17,7 +17,7 @@ Code RC2 remain published on `next`. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
-This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [RC readiness report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RC_1_4_0_READINESS_2026-10-04.md). The candidates are not yet published.
+This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). The candidates are not yet published.
 
 ## Quick start
 
