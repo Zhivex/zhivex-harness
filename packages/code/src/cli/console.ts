@@ -75,11 +75,11 @@ export const chat = async (options: CliOptions) => {
   };
   readline.onInterrupt = interrupt;
   process.on("SIGINT", interrupt);
-  const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+  const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>, phase?: string): Promise<T> => {
     const controller = new AbortController();
     activeController = controller;
     readline.startBackground();
-    runView?.begin();
+    runView?.begin(phase);
     try { return await operation(controller.signal); }
     finally { runView?.end(); readline.stopBackground(); activeController = undefined; requestInFlight = false; }
   };
@@ -181,7 +181,7 @@ export const chat = async (options: CliOptions) => {
       if (decisions) process.stderr.write(`Approval decisions: ${decisions.filter(item => item.approve).length} allowed · ${decisions.filter(item => !item.approve).length} rejected\n`);
       else process.stderr.write("Approval pending · no decisions submitted · /pending to inspect\n");
       return decisions;
-    } finally { if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.begin(); } }
+    } finally { if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); } }
   };
 
   const createTracker = (runId: string) => {
@@ -480,7 +480,7 @@ export const chat = async (options: CliOptions) => {
             await abortable(async signal => {
               await model.generate({ messages: [{ role: "user", parts: [{ type: "text", text: "Reply OK." }] }], maxTokens: 16,
                 maxRetries: 0, timeoutMs: 15_000, abortSignal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) });
-            });
+            }, "Testing connection");
             process.stderr.write("Connection verified: the selected model accepted a request. Tool support and other models were not tested.\n");
           }
           continue;
@@ -731,7 +731,7 @@ export const chat = async (options: CliOptions) => {
               harness,
               { prompt: reviewPrompt, scope: harness.config.scope, abortSignal },
               ["explorer", "reviewer"]
-            ))
+            ), "Running review")
           );
           for (const output of review.outputs) {
             process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { PassThrough } from "node:stream";
 import { ConsoleInput } from "../src/cli/console/console-input.js";
 import { consoleLines, consoleLabel, consoleStateLines } from "../src/cli/console/console-presentation.js";
@@ -129,4 +129,56 @@ test("live state dock restores scroll region and removes resize/timers on interr
     output.emit("resize"); expect(rendered).toBe(after); expect(output.listenerCount("resize")).toBe(0);
     expect(after).toContain("\x1b[r");
   } finally {view.end(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm;}
+});
+
+test("a new operation resets the dock phase, step and elapsed time", () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const clock = spyOn(Date, "now").mockReturnValue(1000);
+  const output = new PassThrough(); Object.assign(output, {isTTY: true, columns: 80, rows: 28});
+  let rendered = ""; output.on("data", chunk => {rendered += chunk.toString();});
+  const view = new ConsoleRunView(output, () => state, () => "No queued tasks");
+  try {
+    view.begin();
+    view.observe({type: "agent-step-start", stepIndex: 2});
+    view.observe({type: "text-delta", textDelta: "Previous response"});
+    view.end(); rendered = "";
+    clock.mockReturnValue(12000);
+    view.begin();
+    expect(rendered).toContain("Waiting for model response · 0s · step 0");
+    expect(rendered).not.toContain("Receiving response");
+    expect(rendered).not.toContain("step 3");
+    view.end(); rendered = "";
+    view.begin("Running review");
+    expect(rendered).toContain("Running review · 0s · step 0");
+    expect(rendered).not.toContain("Waiting for model response");
+    view.end(); rendered = "";
+    view.begin("Testing connection");
+    expect(rendered).toContain("Testing connection · 0s · step 0");
+  } finally {
+    view.end(); clock.mockRestore();
+    if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm;
+  }
+});
+
+test("restoring the dock after approval preserves the current operation's phase, step and clock", () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const clock = spyOn(Date, "now").mockReturnValue(1000);
+  const output = new PassThrough(); Object.assign(output, {isTTY: true, columns: 80, rows: 28});
+  let rendered = ""; output.on("data", chunk => {rendered += chunk.toString();});
+  const view = new ConsoleRunView(output, () => state, () => "No queued tasks");
+  try {
+    view.begin();
+    view.observe({type: "agent-step-start", stepIndex: 2});
+    view.observe({type: "text-delta", textDelta: "Current response"});
+    view.end(); rendered = "";
+    clock.mockReturnValue(12000);
+    view.resume();
+    expect(rendered).toContain("Receiving response · 11s · step 3");
+    expect(output.listenerCount("resize")).toBe(1);
+    view.resume();
+    expect(output.listenerCount("resize")).toBe(1);
+  } finally {
+    view.end(); clock.mockRestore();
+    if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm;
+  }
 });

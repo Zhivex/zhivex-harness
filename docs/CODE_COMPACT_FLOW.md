@@ -8,6 +8,9 @@ instructions and tool schemas. Missing monetary estimates remain unknown; a
 limit is an estimate-based runtime policy, not a guaranteed invoice ceiling.
 While a request is in flight, the live run total stays unknown/incomplete until
 its usage receipt arrives; a previously confirmed zero is not shown as its cost.
+Each new operation resets its phase, step and elapsed time. Review groups and
+connection tests show their own phase even without streamed events. Returning
+from an approval restores the current operation's progress and elapsed time.
 
 Reviewed local file changes open a transient terminal review screen with the
 validated diff first. The complete payload, original input digests and preview

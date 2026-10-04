@@ -99,6 +99,9 @@ try:
     console = Console()
     console.prompt()
     assert "Offline fixture ready" in console.command("Inspect fixture")
+    review = console.command("/review Inspect fixture")
+    assert "Running review · 0s · step 0" in review
+    assert "[explorer]" in review and "[reviewer]" in review
     capture = console.command('/checkpoint capture ["greeting.mjs"]')
     checkpoint = re.search(r"Captured checkpoint ([a-f0-9-]+)", capture).group(1)
     assert "Price: unknown" in console.command("/pricing") or "Estimated USD" in console.command("/pricing")
@@ -111,6 +114,7 @@ try:
 
     console.send("Fix greeting\n")
     diff = console.read("Permission required")
+    assert "Waiting for model response · 0s · step 0" in diff
     assert "---" in diff and "+++" in diff and "-export const greeting" in diff and "+export const greeting" in diff
     assert "Hi, ${name}" in (workspace / "greeting.mjs").read_text()
     console.permission("Leave pending")

@@ -12,9 +12,16 @@ export class ConsoleRunView {
   constructor(private readonly output: Writable & { isTTY?: boolean; rows?: number; columns?: number },
     private readonly state: () => ConsoleComposerInput, private readonly draft: () => string) {}
 
-  begin() {
-    if (this.timer || !this.output.isTTY || process.env.TERM === "dumb" || (this.output.rows ?? 24) < 18 || (this.output.columns ?? 80) < 32) return;
+  begin(phase = "Waiting for model response") {
+    if (this.timer) return;
     this.started = Date.now();
+    this.phase = phase;
+    this.step = 0;
+    this.resume();
+  }
+  /** Restore the dock after approval without restarting the current operation. */
+  resume() {
+    if (this.timer || !this.output.isTTY || process.env.TERM === "dumb" || (this.output.rows ?? 24) < 18 || (this.output.columns ?? 80) < 32) return;
     this.layout();
     this.output.on("resize", this.resize);
     this.timer = setInterval(() => this.draw(), 250);
