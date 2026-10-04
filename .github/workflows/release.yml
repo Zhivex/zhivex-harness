@@ -108,6 +108,9 @@ jobs:
           bun run test:code
           npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
           HARNESS_CODE_HARNESS_ARTIFACT="$ARTIFACT" bun run smoke:engine-code
+          CODE_JOURNEY_OUTPUT="$RUNNER_TEMP/engine-code-release-evidence" node packages/code/scripts/installed-journey.mjs "$RUNNER_TEMP/engine-code-release-evidence/code.tgz" --candidate-engine "$ARTIFACT"
+          CODE_CANDIDATE_ENGINE="$GITHUB_WORKSPACE/$ARTIFACT" CODE_WEB_ARTIFACT="$RUNNER_TEMP/engine-code-release-evidence/code.tgz" node packages/web/scripts/installed-smoke.mjs
+          cp packages/web/.test-output/installed-report.json "$RUNNER_TEMP/engine-code-release-evidence/installed-web-report.json"
         env:
           SMOKE_PNPM_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/pnpm
           SMOKE_YARN_PATH: ${{ runner.temp }}/code-package-managers/node_modules/.bin/yarn
@@ -118,7 +121,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: engine-code-release-evidence
-          path: ${{ runner.temp }}/engine-code-release-evidence/report.json
+          path: |
+            ${{ runner.temp }}/engine-code-release-evidence/*report.json
+            ${{ runner.temp }}/engine-code-release-evidence/installed-journey-transcript.txt
           if-no-files-found: warn
 
       - name: Upload immutable validated artifact

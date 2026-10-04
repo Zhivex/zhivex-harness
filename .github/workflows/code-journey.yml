@@ -30,8 +30,11 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.4.0
-      - name: Install Code with its published engine dependency
-        run: bun install --cwd packages/code --frozen-lockfile --ignore-scripts
+      - name: Prepare exact candidate engine with immutable contributor dependencies
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build
+          bun run packages/code/scripts/link-local-engine.ts
       - name: Install immutable browser build dependencies
         run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
       - name: Types, regression tests and independent build
@@ -41,7 +44,9 @@ jobs:
           bun run test
       - name: npm tarball install and offline terminal journeys
         working-directory: packages/code
-        run: node scripts/installed-journey.mjs
+        run: |
+          bun pm pack --cwd ../.. --ignore-scripts --filename "$RUNNER_TEMP/harness-candidate.tgz"
+          node scripts/installed-journey.mjs --candidate-engine "$RUNNER_TEMP/harness-candidate.tgz"
         env:
           CODE_JOURNEY_OUTPUT: ${{ runner.temp }}/code-journey
       - name: Validate the exact tested Code payload and digest

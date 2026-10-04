@@ -23,14 +23,18 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bun install --cwd packages/code --frozen-lockfile --ignore-scripts
+      - run: bun run build && bun run packages/code/scripts/link-local-engine.ts
       - run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
       - run: bun run --cwd packages/web typecheck && bun run --cwd packages/web lint
       - run: bun run --cwd packages/code typecheck && bun run --cwd packages/code test
       - run: bun test packages/web/tests
       - run: packages/web/node_modules/.bin/playwright install --with-deps chromium
       - run: bun run --cwd packages/web test:browser
-      - run: node packages/web/scripts/installed-smoke.mjs
+      - run: |
+          bun pm pack --ignore-scripts --filename "$RUNNER_TEMP/harness-candidate.tgz"
+          node packages/web/scripts/installed-smoke.mjs
+        env:
+          CODE_CANDIDATE_ENGINE: ${{ runner.temp }}/harness-candidate.tgz
       - run: git diff --exit-code
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()

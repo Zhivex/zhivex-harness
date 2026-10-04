@@ -102,8 +102,8 @@ async function launch(binary, workspace, open = false) {
   };
 }
 try {
-  const tar = root + "/code.tgz";
-  run(
+  const tar = process.env.CODE_WEB_ARTIFACT ? path.resolve(process.env.CODE_WEB_ARTIFACT) : root + "/code.tgz";
+  if (!process.env.CODE_WEB_ARTIFACT) run(
     "bun",
     ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", tar],
     repo + "/packages/code",
@@ -113,12 +113,24 @@ try {
   assert(files.some((f) => /web-assets\/assets\/.*\.js$/.test(f)));
   assert(!files.some((f) => /node_modules|\.map$|fixture|\.env/.test(f)));
   await mkdir(root + "/consumer");
-  await writeFile(root + "/consumer/package.json", '{"private":true}');
+  const candidateEngine = process.env.CODE_CANDIDATE_ENGINE;
+  const codeManifest = JSON.parse(run("tar", ["-xOf", tar, "package/package.json"]));
+  assert.deepEqual(codeManifest, JSON.parse(await readFile(repo + "/packages/code/package.json", "utf8")));
+  const testedDigest = createHash("sha512").update(await readFile(tar)).digest("hex");
+  if (candidateEngine) {
+    const engine = JSON.parse(run("tar", ["-xOf", candidateEngine, "package/package.json"]));
+    assert.equal(engine.name, "@zhivex-ai/harness");
+    assert.equal(engine.version, codeManifest.dependencies["@zhivex-ai/harness"]);
+  }
+  await writeFile(root + "/consumer/package.json", JSON.stringify({ private: true,
+    ...(candidateEngine ? { overrides: { "@zhivex-ai/harness": `file:${path.resolve(candidateEngine)}` } } : {}) }));
   run(
     "npm",
     ["install", "--ignore-scripts", "--no-audit", "--no-fund", tar],
     root + "/consumer",
   );
+  const installedEngine = JSON.parse(await readFile(root + "/consumer/node_modules/@zhivex-ai/harness/package.json", "utf8"));
+  assert.equal(installedEngine.version, codeManifest.dependencies["@zhivex-ai/harness"]);
   const binary = root + "/consumer/node_modules/@zhivex-ai/code/dist/cli.js";
   assert.match(
     run("node", [binary, "web", "--help"]),
@@ -157,8 +169,14 @@ try {
   await assert.rejects(loopbackRequest(first.origin, "/"));
   const second = await launch(binary, workspace);
   await second.stop();
+  assert.equal(createHash("sha512").update(await readFile(tar)).digest("hex"), testedDigest);
   const evidence = {
     passed: true,
+    installation: candidateEngine ? "explicit exact candidate engine override" : "published registry engine",
+    codeVersion: codeManifest.version,
+    harnessVersion: codeManifest.dependencies["@zhivex-ai/harness"],
+    sourceSha: run("git", ["rev-parse", "HEAD"], repo).trim(),
+    packageSha512: testedDigest,
     packageSha256: createHash("sha256")
       .update(await readFile(tar))
       .digest("hex"),

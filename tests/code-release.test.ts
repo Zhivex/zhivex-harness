@@ -99,8 +99,9 @@ function identity(overrides: Partial<Parameters<typeof assertCodeReleaseIdentity
 }
 test("Code release requires matching channel, exact stable engine, unique binary, no install hooks", () => {
   assertCodeManifest(manifest);
+  const stable = { ...manifest, version: "0.2.0", dependencies: { "@zhivex-ai/harness": "1.3.0" }, publishConfig: { ...manifest.publishConfig, tag: "latest" } };
   for (const change of [{ private: true }, { version: "0.1.0-rc.1" }, { dependencies: { "@zhivex-ai/harness": "^1.3.0" } }, { dependencies: { "@zhivex-ai/harness": "1.3.0-rc.7" } }, { dependencies: { "@zhivex-ai/harness": "1.03.0" } }, { bin: { zhx: "./dist/cli.js" } }, { scripts: { postinstall: "build" } }, { publishConfig: { access: "public", registry: "https://registry.npmjs.org/", tag: "next" } }]) {
-    expect(() => assertCodeManifest({ ...manifest, ...change })).toThrow();
+    expect(() => assertCodeManifest({ ...stable, ...change })).toThrow();
   }
 });
 test("Code preserves RC/next and rejects noncanonical versions and channel drift", () => {
@@ -115,7 +116,7 @@ test("Code preserves RC/next and rejects noncanonical versions and channel drift
 });
 test("Code release refuses mismatched refs, commits, forks, unreviewed or failed CI", async () => {
   await assertCodeReleaseIdentity(identity());
-  for (const change of [{ channel: "next" }, { ref: "refs/heads/main" }, { repository: "fork/harness" }, { tag: "v0.1.0-rc.1" }, { sha: "b".repeat(40) }, { api: async () => ({ workflow_runs: [] }) }, { api: async () => ({ workflow_runs: [{ head_sha: sha, status: "completed", conclusion: "failure" }] }) }, { run: () => "commit" }]) {
+  for (const change of [{ channel: codeReleaseChannel(manifest.version) === "next" ? "latest" : "next" }, { ref: "refs/heads/main" }, { repository: "fork/harness" }, { tag: "v0.1.0-rc.1" }, { sha: "b".repeat(40) }, { api: async () => ({ workflow_runs: [] }) }, { api: async () => ({ workflow_runs: [{ head_sha: sha, status: "completed", conclusion: "failure" }] }) }, { run: () => "commit" }]) {
     await expect(assertCodeReleaseIdentity(identity(change))).rejects.toThrow();
   }
   await expect(assertCodeReleaseIdentity(identity({ run: command => { if (command[1] === "merge-base") throw new Error("not on main"); return identity().run(command); } }))).rejects.toThrow();
@@ -193,7 +194,8 @@ test("Installed journey evidence is available for every main SHA across supporte
   expect(workflow.on.push.branches).toEqual(["main"]);
   expect(workflow.jobs.journey.strategy.matrix).toEqual({ os: ["ubuntu-latest", "macos-latest"], node: ["22.13.0", "24"] });
   const steps = workflow.jobs.journey.steps;
-  expect(steps.some((s: any) => s.run === "bun install --cwd packages/code --frozen-lockfile --ignore-scripts")).toBe(true);
+  expect(steps.some((s: any) => s.run?.includes("bun install --frozen-lockfile --ignore-scripts") && s.run?.includes("link-local-engine.ts"))).toBe(true);
+  expect(steps.some((s: any) => s.run?.includes('--candidate-engine "$RUNNER_TEMP/harness-candidate.tgz"'))).toBe(true);
   expect(steps.some((s: any) => s.run?.includes('code-release.ts inspect "$RUNNER_TEMP/code-journey/code.tgz"'))).toBe(true);
 });
 test("Registry retries accept only identical immutable artifacts", () => {

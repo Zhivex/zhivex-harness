@@ -1,4 +1,4 @@
-# Project memory (experimental, unreleased)
+# Project memory (experimental, RC candidate)
 
 Project memory keeps explicit operator notes across separate sessions. It is
 local, inspectable and correctable. No provider calls, external database,
@@ -7,7 +7,7 @@ generated automatically; hosts may submit a suggestion for operator review.
 
 ## CLI
 
-Use `zhx` or `zhivex-code` with a matched next-version Harness engine. Commands
+Use `zhx` or `zhivex-code` with Harness 1.4.0-rc.1 (Code 0.3.0-rc.1), pending publication. Commands
 print bounded JSON, including the selected workspace/scope hashes. Quote content
 as one argument. Memory commands do not start a model or read credentials.
 
