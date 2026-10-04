@@ -1,4 +1,8 @@
 /** Terminal-free host engine surface. Named aliases retain their historical stability tiers. */
+/** Experimental operator-owned project memory. See docs/PROJECT_MEMORY.md. */
+export { HARNESS_PROJECT_MEMORY_SCHEMA_VERSION, HARNESS_PROJECT_MEMORY_LIMITS, openHarnessProjectMemory } from "../persistence/project-memory.js";
+export type { HarnessProjectMemory, HarnessProjectMemoryEntry, HarnessProjectMemoryInput, HarnessProjectMemoryOptions, HarnessProjectMemoryView } from "../persistence/project-memory.js";
+export { HARNESS_MEMORY_COMMANDS, executeHarnessMemoryCommand } from "../persistence/project-memory-command.js";
 export {
   DEFAULT_ALLOWED_CHECKS,
   DEFAULT_OCI_EXECUTION,

@@ -13,7 +13,7 @@
     },
     {
       "name": "CLI_COMMAND_OPTION_CONTRACTS",
-      "sha256": "sha256:70276d37fde1bb3f48c953a82ce137b6b2887753118586717077f1c6eb5d08a6"
+      "sha256": "sha256:0ea9c36f10d66fa7f4b5dc3c1d500d12f1e2f80c14d65125d3349980a1f2e192"
     },
     {
       "name": "CLI_EVENT_SCHEMA_VERSION",
@@ -25,11 +25,11 @@
     },
     {
       "name": "CLI_OPTION_DEFINITIONS",
-      "sha256": "sha256:3f9a3159e27e86ceadaa64aabc97ae3f6c8cbe98d03098dfbe3076e6f07460e8"
+      "sha256": "sha256:369aa10cdaaab6721aacb248c99fa0f33d6b47a2135b7f7b64312fa2da4e5e59"
     },
     {
       "name": "CLI_OPTION_NAMES",
-      "sha256": "sha256:389d1612d9eca7df782fc865344b1651e21023a27d0e9180d493d6d915cf793d"
+      "sha256": "sha256:7dd7e64d26a693a5aff7366a9c3a0197eee33cda5da93ff2e5c1a577d00d4bb8"
     },
     {
       "name": "DEFAULT_ALLOWED_CHECKS",
@@ -165,7 +165,7 @@
     },
     {
       "name": "createHarness",
-      "sha256": "sha256:4b2a4e758dd0aef816771f5324758abbea04a13c12530f1ee83daeab439e6e73"
+      "sha256": "sha256:b237f9c2a28c01dbc7e929afd2195af7082bb5533020bf151eba16a5626eba61"
     },
     {
       "name": "createHarnessMcpTools",
@@ -289,7 +289,7 @@
     },
     {
       "name": "validateCliCommandOptions",
-      "sha256": "sha256:eed6e681ab10a33c4f762b08d944a46b321da474763708f6354f45e6e41de087"
+      "sha256": "sha256:db01336efeae394b41ff8585f9c8a496f4dc2a0b98a2b7c581435773939186ed"
     },
     {
       "name": "verifyChangeEnvelope",
@@ -311,7 +311,7 @@
     },
     {
       "name": "CliCommandOptionContractKey",
-      "sha256": "sha256:aa76f78f6e8f82b5d01a3bb1a3cb24ed090cca69ca91a26774f0d88943a324e5"
+      "sha256": "sha256:f8d27a7efeac758dea77cde2c92806815db92d91ac18a1173f67f2e2062875d6"
     },
     {
       "name": "CliInitDocument",
@@ -331,7 +331,7 @@
     },
     {
       "name": "CliOptionName",
-      "sha256": "sha256:4f9f167f8dc6106edb7c5df0904ebabc70407b1d9bf09b4a6ffbdfe6769d6aa5"
+      "sha256": "sha256:70faf9b4c1b10264dd8ac85a87aef4d66871eae592118a29469c79addd024d22"
     },
     {
       "name": "CliReviewGroupDocument",
@@ -375,7 +375,7 @@
     },
     {
       "name": "CreateHarnessOptions",
-      "sha256": "sha256:1be891ae7f190c9b2d03c3e72723f3384c6115fb6f4b83da79c7c710193eab70"
+      "sha256": "sha256:596b95a410a0bd84feb53ae0188177c934b1f7432c155684f7d33e9d49fff898"
     },
     {
       "name": "HarnessBudget",
@@ -490,5 +490,5 @@
       "sha256": "sha256:76de0209fbf835d1427b6ab2764a919e8e814237a1be7b15c9bc0dc002f8fd6e"
     }
   ],
-  "digest": "sha256:6ce71e29460e14ee146eff67d5877129d13cef3817ed9148c0ba46ce15ede59e"
+  "digest": "sha256:0c2cec6bd1dd8de467e8619c18b25e48d56416dec1866ff5a124798525b1a52b"
 }

@@ -318,3 +318,7 @@ input/output/cache tokens and terminal completion for the current invocation.
 It retains at most 128 requests plus an omitted count and contains no prompt or
 result text. Missing usage is null, including an interrupted paid request; these
 measurements do not claim invoice accuracy or provider tokenizer equivalence.
+
+## Experimental project memory
+
+The `/engine` surface exports `openHarnessProjectMemory`, `executeHarnessMemoryCommand`, `HARNESS_MEMORY_COMMANDS`, `HARNESS_PROJECT_MEMORY_SCHEMA_VERSION`, `HARNESS_PROJECT_MEMORY_LIMITS` and their memory types. `createHarness` accepts the experimental `projectMemory: true` host opt-in option. These additions use existing local persistence; no client protocol change is required. See [Project memory](PROJECT_MEMORY.md) for contracts and release implications.

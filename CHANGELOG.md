@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Add experimental, project-scoped operator memory in the existing SQLite memory table, with explicit corrections/deletion, reviewed suggestions, provenance, freshness and bounded per-request retrieval.
+- Add local `memory` commands and `--no-memory` to Harness/Code without terminal layout changes. Curated mode stops automatic last-assistant capture; the stable engine default and explicit SDK memory integrations remain supported.
+- Preserve old state and import compatibility; document active deletion versus separately retained histories/backups and next-release engine pairing. See [Project memory](docs/PROJECT_MEMORY.md). No versions are published by this change.
+
 ## Code 0.2.0 - pending publication
 
 - Prepare the independent Code package at 0.2.0, pinned to published Harness 1.3.0. Harness stays at 1.3.0.

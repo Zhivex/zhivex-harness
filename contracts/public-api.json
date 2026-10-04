@@ -906,6 +906,7 @@
       "checkpoints",
       "changes",
       "state",
+      "memory",
       "help",
       "version"
     ],
@@ -975,6 +976,7 @@
         "allowed": [
           "--service",
           "--session",
+          "--no-memory",
           "--compaction-model",
           "--compaction-provider",
           "--tool-policy",
@@ -1122,6 +1124,7 @@
       "chat": {
         "allowed": [
           "--service",
+          "--no-memory",
           "--compaction-model",
           "--compaction-provider",
           "--tool-policy",
@@ -1237,6 +1240,7 @@
       "policy": {
         "allowed": [
           "--service",
+          "--no-memory",
           "--compaction-model",
           "--compaction-provider",
           "--tool-policy",
@@ -1398,6 +1402,7 @@
       },
       "resume": {
         "allowed": [
+          "--no-memory",
           "--tool-policy",
           "--service",
           "--session",
@@ -1768,6 +1773,163 @@
         "required": [
           "--patch"
         ],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:remember": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json",
+          "--source"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:suggest": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json",
+          "--source"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:list": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:read": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:update": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json",
+          "--source"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:forget": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:accept": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:clear": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:enable": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:disable": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
+        "repeatable": [],
+        "conflicts": {}
+      },
+      "memory:context": {
+        "allowed": [
+          "--workspace",
+          "--state-dir",
+          "--store",
+          "--tenant",
+          "--user",
+          "--namespace",
+          "--json"
+        ],
+        "required": [],
         "repeatable": [],
         "conflicts": {}
       },

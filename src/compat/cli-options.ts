@@ -40,6 +40,7 @@ const conflicts: Readonly<Record<string, readonly string[]>> = {
 export const CLI_OPTION_NAMES = [
   "--compaction-model", "--compaction-provider",
   "--provider", "--model", "--reasoning", "--profile", "--route", "--workspace", "--state-dir", "--mcp-config",
+  "--no-memory", "--source",
   "--context-config", "--no-project-context", "--patch", "--preconditions", "--now",
   "--require-verified-delivery", "--execution", "--oci-runtime", "--oci-image", "--oci-allow-command", "--oci-shell",
   "--oci-max-process-runtime-ms", "--oci-max-process-output-bytes", "--oci-max-memory-mb",
@@ -87,6 +88,7 @@ const childBudgets = [
   "--subagent-timeout-ms"
 ] as const;
 const agent = [
+  "--no-memory",
   "--compaction-model", "--compaction-provider",
   "--tool-policy", "--pricing-file", "--usage-limit-usd",
   ...provider, ...profile, "--route", ...locator, ...project, ...execution, ...budgets, "--allow-check",
@@ -121,7 +123,7 @@ export const CLI_COMMAND_OPTION_CONTRACTS = {
   providers: contract(["--json"]),
   policy: contract(["--service", ...agent, "--json"]),
   doctor: contract([...provider, ...profile, ...locator, ...project, ...execution, ...budgets, "--allow-check", "--require-capability", "--subagent", "--json"]),
-  resume: contract(["--tool-policy", "--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
+  resume: contract(["--no-memory", "--tool-policy", "--service", "--session", ...locator, "--approve", "--deny", "--json", "--jsonl"], [["--approve", "--deny"]]),
   "runs:list": contract([...locator, "--status", "--limit", "--cursor", "--json"]),
   "runs:inspect": contract([...locator, "--json"]),
   "runs:cancel": contract([...locator, "--reason", "--cascade", "--final", "--json"]),
@@ -146,6 +148,17 @@ export const CLI_COMMAND_OPTION_CONTRACTS = {
 
   "changes:create": contract(["--patch"], ["--patch"]),
   "changes:verify": contract(["--patch", "--preconditions", "--now"], ["--patch"]),
+  "memory:remember": contract([...locator, "--json", "--source"]),
+  "memory:suggest": contract([...locator, "--json", "--source"]),
+  "memory:list": contract([...locator, "--json"]),
+  "memory:read": contract([...locator, "--json"]),
+  "memory:update": contract([...locator, "--json", "--source"]),
+  "memory:forget": contract([...locator, "--json"]),
+  "memory:accept": contract([...locator, "--json"]),
+  "memory:clear": contract([...locator, "--json"]),
+  "memory:enable": contract([...locator, "--json"]),
+  "memory:disable": contract([...locator, "--json"]),
+  "memory:context": contract([...locator, "--json"]),
   "state:status": contract([...locator, "--json"]),
   "state:export": contract([...locator, "--json"]),
   "state:import": contract([...locator, "--apply", "--json"]),

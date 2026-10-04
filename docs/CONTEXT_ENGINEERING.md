@@ -426,3 +426,5 @@ that `endLine` is an absolute line number, not a count. The runtime does not
 execute, rename or silently repair malformed calls. Durable error receipts stay
 unchanged; the model must issue a corrected request, and edits still require
 current read evidence and approval.
+
+Project memory is a separate kind of explicit operator context in the existing durable memory table. It is projected per request as untrusted data, with revision-based review and hard byte/entry budgets. It does not become project instructions or skills. See [Project memory](PROJECT_MEMORY.md).

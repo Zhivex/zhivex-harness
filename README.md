@@ -89,3 +89,5 @@ newer than the published package. Consult the [changelog](CHANGELOG.md) and
 [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json)
 for the verified 1.3.0 publication; [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md)
 records validation scope and limitations.
+
+Experimental next-version work includes [project memory](docs/PROJECT_MEMORY.md): explicit, reviewable notes scoped to one project, with bounded retrieval and deletion controls.
