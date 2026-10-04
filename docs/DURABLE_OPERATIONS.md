@@ -275,6 +275,10 @@ between recorded admission and child persistence remains `cancel_requested`
 because the claim is uncertain; this tranche does not provide an automatic
 reconciliation API for that cut. Repeated cancellation rechecks the fixed roster.
 
+Generic cancellation of the root also closes group admission, but callers should
+use the group cancellation API to preserve terminal member receipts; the SDK
+'s generic tree-cancellation semantics are unchanged.
+
 This fence applies to the opt-in application-owned review group. It does not fix
 the SDK's general parent/subagent admission and cancellation primitives. No
 exactly-once guarantee for external effects, distributed scheduling or research

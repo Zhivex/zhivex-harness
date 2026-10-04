@@ -20,6 +20,9 @@ const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(va
 const readRecord = (state: AgentRunState): Record => {
   const value = recordSchema.safeParse(state.metadata?.[KEY]);
   if (!value.success || state.agentId !== "zhivex-harness-review-group") throw new HarnessStateConflictError("Not a durable Harness review group.");
+  // Existing run-cancellation operations also close this group's admission.
+  // Their generic tree/terminal semantics remain owned by the SDK.
+  if (state.status === "cancel_requested" || state.status === "cancelled") value.data.cancellationRequested = true;
   return value.data;
 };
 const requireStore = (store: AgentRunStore) => {
