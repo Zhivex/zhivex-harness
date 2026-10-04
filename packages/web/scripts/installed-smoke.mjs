@@ -5,6 +5,8 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
+  lstat,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -14,6 +16,13 @@ import { createHash } from "node:crypto";
 import { loopbackRequest, pairingToken } from "./local-smoke-http.mjs";
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const root = await mkdtemp("/tmp/zcw-installed-");
+const shortTemp = root + "/short-tmp";
+await mkdir(shortTemp, { mode: 0o700 });
+const canonicalRoot = await realpath(root);
+const serviceName = `zhivex-code-web-${process.getuid?.() ?? "user"}`;
+const socketSuffix = `/${serviceName}/${"0".repeat(20)}.sock`;
+const longTemp = canonicalRoot + "/" + "t".repeat(102 - Buffer.byteLength(canonicalRoot + "/" + socketSuffix));
+await mkdir(longTemp, { mode: 0o700 });
 let child;
 function run(command, args, cwd = root) {
   const r = spawnSync(command, args, {
@@ -25,15 +34,16 @@ function run(command, args, cwd = root) {
   assert.equal(r.status, 0, r.stderr);
   return r.stdout;
 }
-async function launch(binary, workspace, open = false) {
+async function launch(binary, workspace, open = false, temporaryDirectory = shortTemp) {
   const binDir = root + "/bin";
   await mkdir(binDir, { recursive: true });
   const pairingFile = root + "/pairing";
+  const opener = binDir + (process.platform === "darwin" ? "/open" : "/xdg-open");
   await writeFile(
-    binDir + "/xdg-open",
+    opener,
     `#!/usr/bin/env node\nimport{writeFileSync}from'node:fs';writeFileSync(${JSON.stringify(pairingFile)},process.argv[2],{mode:0o600});\n`,
   );
-  await chmod(binDir + "/xdg-open", 0o755);
+  await chmod(opener, 0o755);
   child = spawn(
     "node",
     [
@@ -50,6 +60,7 @@ async function launch(binary, workspace, open = false) {
     {
       env: {
         PATH: binDir + ":" + process.env.PATH,
+        TMPDIR: temporaryDirectory,
         OPENAI_API_KEY: "sk-offline-fixture-never-sent",
         NODE_NO_WARNINGS: "1",
         ZHIVEX_HARNESS_CONFIG_DIR: root + "/config",
@@ -92,6 +103,13 @@ async function launch(binary, workspace, open = false) {
   }
   return {
     origin,
+    env: {
+      PATH: binDir + ":" + process.env.PATH,
+      TMPDIR: temporaryDirectory,
+      OPENAI_API_KEY: "sk-offline-fixture-never-sent",
+      NODE_NO_WARNINGS: "1",
+      ZHIVEX_HARNESS_CONFIG_DIR: root + "/config",
+    },
     logs: () => logs,
     errors: () => errors,
     async stop() {
@@ -165,10 +183,44 @@ try {
   assert(!first.logs().includes(token));
   assert(!first.logs().includes("sk-offline-fixture-never-sent"));
   assert.equal(first.errors(), "");
+  // A duplicate launch must fail without stealing/removing the active owner's state.
+  const duplicate = spawnSync("node", [binary, "web", "--workspace", workspace,
+    "--provider", "openai", "--model", "gpt-6-luna", "--no-open"], {
+    env: first.env, encoding: "utf8", timeout: 10000,
+  });
+  assert.equal(duplicate.status, 1);
+  assert.match(duplicate.stderr, /WEB_START_FAILED \(SERVICE_STATE_EXISTS\)/);
+  assert(!duplicate.stderr.includes(root));
+  assert.equal((await loopbackRequest(first.origin, "/")).status, 200);
   await first.stop();
   await assert.rejects(loopbackRequest(first.origin, "/"));
   const second = await launch(binary, workspace);
   await second.stop();
+  assert.equal(Buffer.byteLength(path.join(await realpath(longTemp), serviceName,
+    "0".repeat(20) + ".sock")), 102);
+  const long = await launch(binary, workspace, false, longTemp);
+  const fallback = await realpath(path.join("/tmp", serviceName));
+  const fallbackInfo = await lstat(fallback);
+  assert.equal(fallbackInfo.mode & 0o777, 0o700);
+  assert.equal(fallbackInfo.uid, process.getuid?.());
+  assert(Buffer.byteLength(path.join(fallback, "0".repeat(20) + ".sock")) <= 100);
+  assert.equal((await loopbackRequest(long.origin, "/")).status, 200);
+  await long.stop();
+  const longRestart = await launch(binary, workspace, false, longTemp);
+  await longRestart.stop();
+  // Browser failure remains distinct from socket startup, then releases its own service.
+  const opener = root + "/bin/" + (process.platform === "darwin" ? "open" : "xdg-open");
+  await writeFile(opener, "#!/bin/sh\nexit 7\n", { mode: 0o755 });
+  const browserFailure = spawnSync("node", [binary, "web", "--workspace", workspace,
+    "--provider", "openai", "--model", "gpt-6-luna"], {
+    env: first.env, encoding: "utf8", timeout: 10000,
+  });
+  assert.equal(browserFailure.status, 1);
+  assert.match(browserFailure.stdout, /Zhivex Code web listening/);
+  assert.match(browserFailure.stderr, /WEB_BROWSER_OPEN_FAILED/);
+  assert(!browserFailure.stderr.includes(root));
+  const afterBrowserFailure = await launch(binary, workspace);
+  await afterBrowserFailure.stop();
   assert.equal(createHash("sha512").update(await readFile(tar)).digest("hex"), testedDigest);
   const evidence = {
     passed: true,
@@ -189,6 +241,10 @@ try {
       "no provider call",
       "no credentials in assets or logs",
       "SIGTERM shutdown and fresh restart",
+      "duplicate launcher preserves active service owner",
+      "102-byte canonical preferred socket uses private short fallback",
+      "long TMPDIR restart with existing workspace state",
+      "browser opener failure is distinct and releases its own service",
     ],
   };
   const output = repo + "/packages/web/.test-output";
