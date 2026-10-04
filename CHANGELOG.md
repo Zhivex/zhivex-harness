@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Retain finite stage, assertion and provider-route identities in mixed-routing release diagnostics, preserve typed operational causes across artifact class boundaries, and keep cleanup failures from masking the original gate failure. Add offline fault coverage; historical release evidence remains unchanged.
+
 ## 1.4.0-rc.2 - 2026-10-04
 
 - Recover bounded prior assistant reports and plans through `read_task` after local session compaction, including immediate manual compaction of the first report and continued sessions after reconnect or host restart. Keep recovered text untrusted and separate from operator requests, approvals and acceptance evidence.

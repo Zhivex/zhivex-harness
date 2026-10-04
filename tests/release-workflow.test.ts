@@ -415,7 +415,11 @@ test("all live release gates select the checked artifact and prohibit source fal
   }
   for (const name of ["provider", "orchestration", "routing", "execution"]) {
     const source = await readFile(path.join(workspace, `scripts/live-${name}-smoke.ts`), "utf8");
-    expect(source).toContain("await loadLiveSmokeRuntime()");
+    expect(source).toMatch(/await loadLiveSmokeRuntime\((?:env)?\)/);
+    if (name === "routing") {
+      expect(source).toContain("= loadDependencies");
+      expect(source).toContain("runLiveRoutingSmoke(process.env)");
+    }
     expect(source).not.toContain('from "../src/runtime/harness.js"');
   }
 });
