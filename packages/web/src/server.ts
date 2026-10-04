@@ -14,6 +14,10 @@ import { createSessionCookieCipher } from "./session-cookie.js";
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const base = { workspaceKey: id };
 const actions = z.discriminatedUnion("action", [
+  z.object({action: z.literal("models"), ...base}).strict(),
+  z.object({action: z.literal("selectModel"), ...base,
+    provider: z.string().min(1).max(80), model: z.string().min(1).max(160),
+  }).strict(),
   z.object({ action: z.literal("sessions"), ...base }).strict(),
   z
     .object({
@@ -161,6 +165,7 @@ export async function staticInventory(
           ".js": "text/javascript; charset=utf-8",
           ".css": "text/css; charset=utf-8",
           ".svg": "image/svg+xml",
+          ".png": "image/png",
         };
         files.set(
           "/" + path.relative(root, canonical).split(path.sep).join("/"),
@@ -304,6 +309,13 @@ export async function startWebServer(options: {
         const runtime = runtimes.get(workspaceKey);
         if (!runtime) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
         switch (action) {
+          case "models":
+            return send(res, 200, {choices: await runtime.modelChoices?.() ?? [],
+              current: {provider: runtime.workspace.provider, model: runtime.workspace.model}});
+          case "selectModel":
+            if (!runtime.selectModel) return fault(res, 400, "WEB_MODEL_UNAVAILABLE");
+            await runtime.selectModel(args as {provider: string; model: string});
+            return send(res, 200, {workspace: runtime.workspace});
           case "events":
             return send(
               res,
@@ -375,6 +387,8 @@ export async function startWebServer(options: {
           "REVIEW_INCOMPLETE",
           "INVALID_DECISION",
           "WEB_REVIEW_UNAVAILABLE",
+          "WEB_MODEL_CHANGE_IN_PROGRESS", "WEB_MODEL_UNAVAILABLE", "WEB_MODEL_CHANGE_BUSY",
+          "WEB_MODEL_NOT_CONFIGURED", "WEB_MODEL_SWITCH_FAILED", "WEB_CREDENTIALS_REQUIRED",
         ].includes(error.message)
           ? error.message
           : "WEB_REQUEST_FAILED";

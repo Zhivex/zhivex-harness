@@ -14,6 +14,7 @@ import {
 } from "../../../desktop/src/redaction.js";
 import { projectApprovalReview } from "../../../desktop/src/approval-review.js";
 import { ReviewTickets } from "../../../desktop/src/review-tickets.js";
+import type { WebModelChoice, WebModelSelection } from "./contracts.js";
 
 /** Server-owned workspace, identity, policy and provider. No browser configuration enters Harness. */
 export async function attachRuntime(
@@ -117,4 +118,7 @@ export async function attachRuntime(
     throw e;
   }
 }
-export type WebRuntime = Awaited<ReturnType<typeof attachRuntime>>;
+export type WebRuntime = Awaited<ReturnType<typeof attachRuntime>> & {
+  modelChoices?(): Promise<WebModelChoice[]>;
+  selectModel?(selection: WebModelSelection): Promise<void>;
+};

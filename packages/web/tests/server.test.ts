@@ -96,6 +96,32 @@ test("strict loopback options, immutable asset inventory and symlink rejection",
   await symlink("/etc/passwd", dir + "/assets/escape");
   await expect(staticInventory(dir)).rejects.toThrow("UNSAFE");
 });
+test("configured model selection stays behind pairing/CSRF and preserves pending exact review", async () => {
+  const f = await setup();
+  const choices = await f.call("models") as unknown as {choices: {provider: string;model: string;configured: boolean}[]};
+  expect(choices.choices).toHaveLength(3);
+  expect(JSON.stringify(choices)).not.toContain("sk-never-expose-fixturetoken");
+  const forbidden = await fetch(f.origin + "/api/action", {
+    method:"POST",headers:{...f.headers,cookie:f.cookie},
+    body:JSON.stringify({action:"selectModel",workspaceKey:f.workspaceKey,provider:"anthropic",model:"fixture-next"}),
+  });
+  expect(forbidden.status).toBe(403);
+  const unconfigured = await f.call("selectModel",{provider:"gemini",model:"fixture-missing"}) as unknown as {error:{code:string}};
+  expect(unconfigured.error.code).toBe("WEB_MODEL_NOT_CONFIGURED");
+  const pending = await f.call("start",{sessionId:f.session.sessionId,expectedRevision:f.session.revision,
+    idempotencyKey:"model-pending",prompt:"edit-probe: review before switching"});
+  expect(pending.data.run.status).toBe("waiting_approval");
+  const review = await f.call("review",{sessionId:f.session.sessionId,runId:pending.data.run.runId}) as unknown as {ticketId:string};
+  const busy = await f.call("selectModel",{provider:"anthropic",model:"fixture-next"}) as unknown as {error:{code:string}};
+  expect(busy.error.code).toBe("WEB_MODEL_CHANGE_BUSY");
+  // The same complete review remains consumable because a rejected switch did not touch its owner.
+  await f.call("decide",{ticketId:review.ticketId,approve:false});
+  const changed = await f.call("selectModel",{provider:"anthropic",model:"fixture-next"}) as unknown as {workspace:{provider:string;model:string;key:string}};
+  expect(changed.workspace.provider).toBe("anthropic");expect(changed.workspace.model).toBe("fixture-next");
+  expect(changed.workspace.key).toBe(f.workspaceKey);
+  const retained = await f.call("session",{sessionId:f.session.sessionId});
+  expect(retained.data.session.sessionId).toBe(f.session.sessionId);
+});
 test("HTTP security rejects unauthenticated actions, CSRF, rebinding, foreign Origin and traversal", async () => {
   const f = await setup();
   const body = JSON.stringify({

@@ -6,8 +6,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #d7d9e0;
-  background: #0e1014;
+  color: #ffffff;
+  background: #0e0e0f;
   font-synthesis: none;
   font-size: 14px;
   line-height: 1.5;
@@ -41,7 +41,7 @@ summary {
   outline-offset: 4px;
 }
 *:focus-visible {
-  outline: 2px solid #a9a4ff;
+  outline: 2px solid #b6a0ff;
 }
 a {
   color: inherit;
@@ -57,7 +57,7 @@ input,
 select,
 textarea {
   color: inherit;
-  background: #17191f;
+  background: #1a1b1e;
   border: 1px solid #2a2d37;
   border-radius: 7px;
 }
@@ -469,7 +469,7 @@ h2 {
 }
 .quiet-state {
   text-align: center;
-  color: #a6a9b5;
+  color: #adaaab;
   padding: 18px 0 14px;
   font-size: 11px;
 }
@@ -891,3 +891,166 @@ h2 {
     max-height: 240px;
   }
 }
+
+/* Keep state and recovery visible beside the draft at every breakpoint. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 12px;
+  background: #b8a5e4;
+  color: #1c172a;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0;
+}
+.skip-link:focus {
+  clip-path: none;
+  width: auto;
+  height: auto;
+  padding: 12px;
+}
+.session-empty,
+.loading-state {
+  padding: 12px 8px;
+  color: #adaaab;
+  font-size: 12px;
+}
+.operation-status {
+  padding: 10px 24px;
+  border-bottom: 1px solid #3b394c;
+  background: #242231;
+  color: #d5c9ef;
+  font-size: 12px;
+}
+.state-guidance {
+  margin: -8px 0 16px;
+  color: #adb2c2;
+  font-size: 12px;
+}
+.review-jump {
+  align-self: flex-start;
+  margin-bottom: 16px;
+  color: #e0c39c;
+}
+.pill.attention {
+  color: #e0c39c;
+  border-color: #68543a;
+  background: #282119;
+}
+.pill.warning {
+  color: #e3b4bd;
+  border-color: #60434b;
+  background: #34232a;
+}
+.review-scope {
+  color: #bcc0ce;
+  margin-bottom: 8px;
+}
+.review-operation {
+  font: inherit;
+  font-weight: 650;
+  font-size: 14px;
+}
+#review-panel,
+#task-workspace {
+  scroll-margin-top: 16px;
+}
+.topbar > button {
+  flex-shrink: 0;
+}
+.diff-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-content {
+  font-size: 12px;
+}
+.review-content pre,
+.diff-line {
+  font-size: 12px;
+}
+@media (min-width: 1121px) {
+  .content-grid.with-review {
+    grid-template-columns: minmax(340px, 1fr) minmax(360px, 450px);
+  }
+}
+@media (max-width: 600px) {
+  .workspace-picker label,
+  .session-search,
+  .sidebar-bottom {
+    display: block;
+  }
+  .sidebar-bottom {
+    padding-top: 12px;
+  }
+  .sidebar-bottom small {
+    display: none;
+  }
+  .section-heading {
+    gap: 12px;
+  }
+  .pill {
+    text-align: right;
+  }
+  .composer-actions {
+    flex-wrap: wrap;
+  }
+  .composer-actions > span {
+    max-width: 100%;
+    flex: 1 1 150px;
+  }
+  .composer-note {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+  }
+  .decision-actions button,
+  .diff-toolbar button,
+  .icon-button {
+    min-height: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Zhivex Chat reference: local logo, dark surfaces and rounded composer. */
+.brand-mark { object-fit: contain; background: transparent; border: 0; border-radius: 8px; }
+.workspace-glyph { object-fit: contain; background: transparent; border: 0; }
+.composer { background: #1a1b1e; border-radius: 24px; border-color: rgb(182 160 255 / 0.16); box-shadow: 0 12px 40px -18px rgb(0 0 0 / 0.8); }
+.composer:focus-within { border-color: #b6a0ff; }
+.composer .primary { border-radius: 999px; }
+.model-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1; }
+.model-picker select { width: 100%; max-width: 330px; min-width: 0; font-size: 12px; border-radius: 10px; }
+.model-picker button { border-color: #b6a0ff; padding: 5px 8px; font-size: 12px; }
+.model-help { font-size: 11px; color: #adaaab; padding: 4px 4px 10px; }
+.assistant-response { padding: 16px 6px; line-height: 1.7; font-size: 14px; min-width: 0; }
+.message-markdown { overflow-wrap: anywhere; }
+.message-markdown > * + * { margin-top: 12px; }
+.message-markdown h1 { font-size: 22px; }
+.message-markdown h2 { font-size: 19px; }
+.message-markdown h3 { font-size: 16px; }
+.message-markdown ul, .message-markdown ol { padding-left: 24px; }
+.message-markdown li + li { margin-top: 6px; }
+.message-markdown pre { background: #1a1b1e; border: 1px solid rgb(182 160 255 / 0.12); border-radius: 12px; padding: 12px; white-space: pre; overflow: auto; max-width: 100%; }
+.message-markdown code { background: #201f21; border-radius: 4px; padding: 2px 4px; }
+.message-markdown pre code { background: transparent; padding: 0; }
+.message-markdown a { color: #b6a0ff; text-decoration: underline; }
+.message-markdown table { border-collapse: collapse; display: block; overflow: auto; max-width: 100%; }
+.message-markdown td, .message-markdown th { border: 1px solid #38343f; padding: 8px; }
+.message-markdown blockquote { border-left: 3px solid #b6a0ff; padding-left: 12px; color: #adaaab; margin-left: 0; }
+
+.brand-mark { width: 36px; height: 36px; padding: 0; display: block; }
+.workspace-glyph { width: 56px; height: 56px; padding: 0; margin-left: auto; margin-right: auto; }
+.sidebar { background: #131314; }
+.conversation { background: #111214; }
+.primary { background: #b6a0ff; color: #340090; border-color: #b6a0ff; }

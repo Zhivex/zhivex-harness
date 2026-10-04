@@ -12,6 +12,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import type { LanguageModel } from "@zhivex-ai/agents";
 import type { JsonValue } from "@zhivex-ai/core";
 import { attachRuntime } from "../src/runtime.js";
+import { manageWebRuntime } from "../src/managed-runtime.js";
 import { startWebServer } from "../src/server.js";
 
 export async function fixture() {
@@ -36,6 +37,10 @@ export async function fixture() {
         const user = input.messages.findLastIndex((m) => m.role === "user");
         const prompt = JSON.stringify(input.messages[user]);
         const history = JSON.stringify(input.messages.slice(user + 1));
+        if (prompt.includes("markdown-probe")) {
+          yield {type:"text-delta" as const,textDelta:'## Short-term plan\n1. **Enable critical conformance gates**\n2. Verify `npm test`\n\n```js\nconst text = "<script>";\n```\n\n[Docs](https://example.com/docs)\n\n[execute](javascript:alert%281%29)\n\n![probe](https://attacker.invalid/track)\n\n<img src=x onerror=alert(1)>\n<script>alert(1)</script>'};
+          yield {type:"finish" as const,finishReason:"stop" as const};return;
+        }
         const call = (name: string, args: Record<string, JsonValue>) => ({
           type: "tool-call" as const,
           toolCall: { id: `${name}-${user}`, name, input: args },
@@ -134,9 +139,20 @@ export async function fixture() {
       allowedChecks: ["test"],
       timeoutMs: 15_000,
     });
-    const runtime = await attachRuntime(harness, root + "/socket", false, [
+    const initial = await attachRuntime(harness, root + "/socket", false, [
       "sk-never-expose-fixturetoken",
     ]);
+    const runtime = manageWebRuntime(initial, async () => [
+      {provider:"openai",providerName:"OpenAI",model:harness.config.model,name:"Fixture current",configured:true,capabilities:["chat","tools"],validation:"verified"},
+      {provider:"anthropic",providerName:"Anthropic",model:"fixture-next",name:"Fixture next",configured:true,capabilities:["chat","tools"],validation:"unverified"},
+      {provider:"gemini",providerName:"Gemini",model:"fixture-missing",name:"Fixture missing",configured:false,capabilities:["chat","tools"],validation:"unverified"},
+    ], async selection => {
+      const next = await createHarness({workspace,modelInstance:model,
+        provider: selection.provider as "openai" | "anthropic", model: selection.model,
+        subagentProfiles:[],allowedChecks:["test"],timeoutMs:15000});
+      return {attach: () => attachRuntime(next,root + "/socket",false,["sk-never-expose-fixturetoken"]),
+        dispose: () => next.close()};
+    });
     const secondWorkspace = root + "/beacon";
     await mkdir(secondWorkspace, { recursive: true });
     const secondHarness = await createHarness({

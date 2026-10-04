@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 const webPayload = {
+  "package/dist/web-assets/zhivex-icon.png": await readFile(new URL("../packages/web/public/zhivex-icon.png", import.meta.url)),
   "package/dist/web-assets/index.html": '<script type="module" src="/assets/index-abc123.js"></script><link rel="stylesheet" href="/assets/index-abc123.css">',
   "package/dist/web-assets/assets/index-abc123.js": "export {};\n",
   "package/dist/web-assets/assets/index-abc123.css": "body { color: white; }\n",
@@ -33,6 +34,10 @@ test("Code artifact accepts the two shipped offline examples and binds exact byt
     expect(await inspectCodeArtifact(artifact, manifest)).toEqual({
       sha512Hex: digest, integrity: `sha512-${Buffer.from(digest, "hex").toString("base64")}`,
     });
+    await writeFile(path.join(directory, "package/dist/web-assets/zhivex-icon.png"), "unexpected bytes");
+    expect(spawnSync("tar", ["-czf", artifact, "-C", directory, ...Object.keys(files)]).status).toBe(0);
+    await expect(inspectCodeArtifact(artifact, manifest)).rejects.toThrow("Invalid bundled Zhivex icon");
+    await writeFile(path.join(directory, "package/dist/web-assets/zhivex-icon.png"), webPayload["package/dist/web-assets/zhivex-icon.png"]);
     await rm(path.join(directory, "package/examples/offline-provider.mjs"));
     await symlink("../dist/cli.js", path.join(directory, "package/examples/offline-provider.mjs"));
     expect(spawnSync("tar", ["-czf", artifact, "-C", directory, ...Object.keys(files)]).status).toBe(0);
@@ -46,7 +51,7 @@ test("Code payload rejects arbitrary examples, source, secrets, traversal, neste
   assertCodePayload([...required, "package/", "package/dist/", "package/examples/", "package/dist/chunk-abc123.js"]);
   for (const unexpected of ["package/examples/other.mjs", "package/examples/.env", "package/examples/nested/first-use.mjs",
     "package/src/cli.ts", "package/dist/cli.js.map", "package/dist/.hidden.js", "package/dist/nested/cli.js",
-    "package/dist/../secret.js", "package/../secret", "/package/dist/cli.js", "package/dist/cliXjs", "package/README.md.bak"]) {
+    "package/dist/../secret.js", "package/../secret", "/package/dist/cli.js", "package/dist/cliXjs", "package/README.md.bak", "package/dist/web-assets/other.png", "package/dist/web-assets/zhivex-icon.png.js"]) {
     expect(() => assertCodePayload([...required, unexpected])).toThrow("Unexpected Code payload");
   }
   for (const missing of required) expect(() => assertCodePayload(required.filter(name => name !== missing))).toThrow("Missing");

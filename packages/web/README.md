@@ -44,7 +44,20 @@ requires reconciliation or a new session rather than showing an older run.
 Check success uses exit
 code zero and absence of timeout; a successful tool transport alone is not a
 passing check. Browser-selected IDs and revisions never override host workspace,
-scope, provider, credentials or tool policy. An optional `--tool-policy` selects
+scope, credentials or tool policy. The provider/model picker applies an explicit
+selection to future tasks in the current workspace using a host-issued catalogue
+of non-retired chat/tool models and existing configured credentials. It never
+writes credentials or changes execution grants. Credential presence does not
+verify account access or a model's support tier. Selection is blocked while any
+workspace session has an unfinished run, including pending approval; a service
+change validates configuration first and preserves existing durable sessions.
+An explicit host rejection leaves the model unchanged and keeps session
+navigation and cancellation available. A lost response or a failure to read
+context after an admitted change requires reconciliation before another action;
+the browser never repeats the model change automatically.
+Failed attachment attempts restore the previous service or fail closed with
+restart guidance. The current custom host model remains visible when absent
+from the catalogue. An optional `--tool-policy` selects
 the existing Harness policy on the host. No new execution policy is introduced.
 
 ## Reuse assessment
@@ -78,7 +91,9 @@ including port and the peer address, requires same-origin POST plus a custom
 header, rejects foreign Origin/fetch metadata, and checks per-session CSRF for
 all authenticated routes, including context/reload. This avoids relying on a
 localhost cookie that can also be sent to other ports. There is no CORS permission, WebSocket transport, general command
-dispatch, arbitrary file API, or browser-controlled runtime configuration.
+dispatch or arbitrary file API. Browser model choices are limited to host-issued
+configured provider/model pairs; workspace, scope, tool policy and credentials
+remain host-owned.
 Upgrade requests are closed. Authentication expires after 12 hours and rotates
 on relaunch; pairing cannot be replayed. Provider and private Unix transport
 credentials never enter browser assets, responses or launcher logs.
@@ -90,8 +105,12 @@ timestamps after EOF. The inventory also rejects path replacement after the read
 Requests do not
 resolve filesystem paths. Traversal, encoded paths and unknown files fail closed.
 Workspace file operations remain inside the existing engine boundary. Tool/model
-text is escaped React text; no raw HTML, remote fonts, CDN or third-party browser
-resources are loaded. CSP denies framing, outside connections and inline scripts.
+text uses escaped React rendering. Assistant messages render Markdown headings,
+lists, tables and code using the same Markdown libraries as Zhivex Chat; raw HTML
+is skipped, unsafe link schemes are removed and external images become text
+placeholders. Links open separately with noopener/noreferrer. The authentic
+Zhivex icon and Chat dark/purple palette are bundled locally. No remote fonts,
+CDN or third-party browser resources are loaded. CSP denies framing, outside connections and inline scripts.
 
 Review tickets are scoped to one authenticated browser identity and workspace,
 expire, and are consumed before dispatch. Only a complete supported Desktop
@@ -150,7 +169,8 @@ installed reports/screenshots go to `.test-output/` (ignored). Fixtures use the
 real published Harness dependency with offline model doubles; no paid/live
 provider tests run. The installed smoke packs Code, installs with npm and
 lifecycle scripts disabled, starts the real installed command and pairs through
-the opener, checks assets/logs and verifies SIGTERM plus restart. It initializes
+the opener, checks assets/logs, exercises configured model selection without any
+provider request and verifies SIGTERM plus restart. It initializes
 a synthetic provider credential only in the child environment and sends no task.
 
 Review evidence must include the exact commit's check runs and code-scanning
@@ -159,3 +179,22 @@ analysis job: the workflow can finish successfully while an open alert fails the
 security check. Verify its summary and accessible PR alert state; resolving a
 review thread does not fix or dismiss a code-scanning alert. Record any source
 that could not be accessed.
+
+### State, drafts and recovery
+
+The task stream distinguishes loading, disconnection, unreadable run state and
+an unconfirmed command response. Reconnect reads context, sessions and the
+latest run before enabling another mutation. It does not resubmit tasks,
+decisions or cancellation requests. A failed start retains its editable draft;
+drafts are kept only in this tab's memory, scoped to each workspace/session,
+and are lost on reload. During a long host response, activity keeps updating
+and active cancellation remains available.
+
+Pending review has a keyboard-accessible jump link on narrow layouts. Loading
+an exact review focuses its heading; Next change focuses the changed diff
+block. Stale, expired or disconnected reviews disable both decisions and explain
+how to obtain a fresh review. The host still enforces the exact pending set,
+revision, digests and single-use ticket. Search and connection status remain
+available on mobile. Offline browser acceptance covers response loss after
+admission, repeated activation, stale/expired review, reconnection, cancellation,
+draft isolation and layouts from 320 to 1440 pixels.

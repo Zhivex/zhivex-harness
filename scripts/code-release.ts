@@ -120,6 +120,7 @@ const codePayloadFiles = [
   "package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
   "package/examples/first-use.mjs", "package/examples/offline-provider.mjs",
   "package/dist/web-assets/index.html",
+  "package/dist/web-assets/zhivex-icon.png",
 ];
 export function assertCodePayload(names: string[]): void {
   assert.equal(new Set(names).size, names.length, "Duplicate Code payload entries");
@@ -159,6 +160,10 @@ export async function inspectCodeArtifact(artifact: string, manifest: Manifest) 
     assert(names.includes(entry), `Missing referenced web asset: ${entry}`);
     assert(run(["tar", "-xOf", artifact, entry]).length, `Empty web asset: ${entry}`);
   }
+  const logo = spawnSync("tar", ["-xOf", artifact, "package/dist/web-assets/zhivex-icon.png"], { timeout: 10_000 });
+  assert.equal(logo.status, 0, "Missing bundled Zhivex icon");
+  assert.equal(createHash("sha256").update(logo.stdout).digest("hex"),
+    "b4e2b4da0a8a2866e2c27bac3165e4e86510fd8dc0d50b02c0a9c8374150a96f", "Invalid bundled Zhivex icon");
   const sha512Hex = createHash("sha512").update(bytes).digest("hex");
   return { sha512Hex, integrity: `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}` };
 }

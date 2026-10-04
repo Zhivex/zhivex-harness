@@ -1,4 +1,5 @@
 import type { WebContext } from "./contracts.js";
+import { modelSelectionRejection } from "./request-failure.js";
 const storageKey = "zhivex-web-csrf";
 let csrf = sessionStorage.getItem(storageKey) ?? "";
 export async function request<T>(route: string, value: unknown): Promise<T> {
@@ -11,10 +12,15 @@ export async function request<T>(route: string, value: unknown): Promise<T> {
       "x-zhivex-csrf": csrf,
     },
     body: JSON.stringify(value),
+  }).catch(() => {
+    throw new Error("WEB_REQUEST_FAILED");
   });
-  const document = await response.json();
+  const document = await response.json().catch(() => {
+    throw new Error("WEB_REQUEST_FAILED");
+  });
   if (!response.ok || document.ok === false)
-    throw new Error(document.error?.code ?? "WEB_REQUEST_FAILED");
+    throw modelSelectionRejection(route, value, response.status, document) ??
+      new Error(document.error?.code ?? "WEB_REQUEST_FAILED");
   return document as T;
 }
 // Remove capability before rendering or loading any optional resource; never persist it.

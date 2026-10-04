@@ -64,6 +64,9 @@ async function launch(binary, workspace, open = false, temporaryDirectory = shor
         OPENAI_API_KEY: "sk-offline-fixture-never-sent",
         NODE_NO_WARNINGS: "1",
         ZHIVEX_HARNESS_CONFIG_DIR: root + "/config",
+        ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled",
+        NODE_OPTIONS: `--import=${root}/deny-provider.mjs`,
+        CODE_WEB_PROVIDER_ATTEMPTS_FILE: root + "/provider-attempts",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -156,6 +159,9 @@ try {
   );
   const workspace = root + "/repo";
   await mkdir(workspace);
+  await writeFile(root + "/deny-provider.mjs", await readFile(
+    new URL("./offline-provider-guard.mjs", import.meta.url),
+  ));
   const first = await launch(binary, workspace, true);
   const html = await loopbackRequest(first.origin, "/");
   assert.equal(html.status, 200);
@@ -180,6 +186,30 @@ try {
   });
   assert.equal(connect.status, 200);
   assert(connect.headers.get("set-cookie").includes("HttpOnly"));
+  const context = await connect.json();
+  const workspaceKey = context.workspaces[0].key;
+  async function configuredAction(action, args = {}) {
+    const response = await fetch(first.origin + "/api/action", {
+      method: "POST", redirect: "error", headers: {
+        origin: first.origin, "content-type": "application/json", "x-zhivex-web": "1",
+        "x-zhivex-csrf": context.csrf, cookie: connect.headers.get("set-cookie").split(";")[0],
+      }, body: JSON.stringify({ workspaceKey, action, ...args }),
+    });
+    const result = await response.json(); assert.equal(response.status, 200, JSON.stringify(result)); return result;
+  }
+  const catalog = await configuredAction("models");
+  assert(catalog.choices.length > 0);
+  assert(catalog.choices.every(c => c.capabilities.includes("chat") && c.capabilities.includes("tools")));
+  assert(!JSON.stringify(catalog).includes("sk-offline-fixture-never-sent"));
+  assert(catalog.choices.filter(c => c.configured).every(c => c.provider === "openai"));
+  const alternative = catalog.choices.find(c => c.configured && c.model !== "gpt-6-luna");
+  assert(alternative);
+  const changed = await configuredAction("selectModel", { provider: alternative.provider, model: alternative.model });
+  assert.equal(changed.workspace.key, workspaceKey);
+  assert.equal(changed.workspace.model, alternative.model);
+  const restored = await configuredAction("selectModel", { provider: "openai", model: "gpt-6-luna" });
+  assert.equal(restored.workspace.model, "gpt-6-luna");
+  assert.equal(await readFile(root + "/provider-attempts", "utf8").catch(() => ""), "");
   assert(!first.logs().includes(token));
   assert(!first.logs().includes("sk-offline-fixture-never-sent"));
   assert.equal(first.errors(), "");
@@ -238,7 +268,9 @@ try {
       "installed web command help",
       "browser opener invocation",
       "loopback launch and authenticated pairing",
-      "no provider call",
+      "configured host model catalogue and selection preserve workspace identity",
+      "unconfigured providers disabled and credentials absent from metadata",
+      "provider fetch denied with zero attempts",
       "no credentials in assets or logs",
       "SIGTERM shutdown and fresh restart",
       "duplicate launcher preserves active service owner",
