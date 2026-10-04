@@ -4,6 +4,8 @@
 
 - Start the local web launcher with a secure short socket location when the canonical temporary path exceeds Harness's unchanged 100-byte limit. Preserve existing service ownership and fail closed on unsafe or occupied locations.
 - Show allowlisted startup reason codes without exposing filesystem paths or configuration secrets.
+- Clarify web task, connection and review states, keep unconfirmed actions behind reconciliation, retain tab drafts and improve keyboard/mobile diff review.
+- Align the local browser with Zhivex Chat branding, render safe assistant Markdown, and select configured host-issued provider/model choices for future tasks without changing credentials, permissions or pending approvals.
 
 ## 0.3.0-rc.1 - 2026-10-04
 

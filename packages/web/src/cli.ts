@@ -8,6 +8,8 @@ import type {
 import { attachRuntime, type WebRuntime } from "./runtime.js";
 import { startWebServer } from "./server.js";
 import { selectWebServiceDirectory, webStartupDiagnostic } from "./service-directory.js";
+import { manageWebRuntime } from "./managed-runtime.js";
+import type { WebModelChoice } from "./contracts.js";
 
 export const WEB_HELP = `Usage: zhivex-code web [options]
 
@@ -99,6 +101,7 @@ export async function runWebCli(
     input: HarnessConfigInput,
     profile?: string,
   ) => Promise<{ harness: ZhivexHarness; secrets: readonly string[] }>,
+  modelChoices?: () => Promise<WebModelChoice[]>,
 ) {
   const runtimes: WebRuntime[] = [];
   try {
@@ -117,8 +120,7 @@ export async function runWebCli(
         throw new Error("WEB_WORKSPACE_INVALID");
       seen.add(workspace);
       const v = parsed.values;
-      const configured = await create(
-        {
+      const configuration: HarnessConfigInput = {
           workspace,
           ...(v["--provider"] ? { provider: v["--provider"] } : {}),
           ...(v["--model"] ? { model: v["--model"] } : {}),
@@ -128,18 +130,22 @@ export async function runWebCli(
           ...(v["--tool-policy"]
             ? { toolPolicyFile: path.resolve(v["--tool-policy"]) }
             : {}),
-        },
-        v["--profile"],
-      );
+        };
+      const configured = await create(configuration, v["--profile"]);
       try {
-        runtimes.push(
-          await attachRuntime(
+        const runtime = await attachRuntime(
             configured.harness,
             serviceDirectory,
             parsed.recover,
             configured.secrets,
-          ),
-        );
+          );
+        runtimes.push(modelChoices ? manageWebRuntime(runtime, modelChoices, async selection => {
+          const next = await create({...configuration, ...selection}, v["--profile"]);
+          return {
+            attach: () => attachRuntime(next.harness, serviceDirectory, false, next.secrets),
+            dispose: () => next.harness.close(),
+          };
+        }) : runtime);
       } catch (e) {
         await configured.harness.close();
         throw e;

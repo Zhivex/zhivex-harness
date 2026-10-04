@@ -7,12 +7,14 @@ import {
   type ConversationActivity,
 } from "../../../desktop/src/activity.js";
 import { action, context, reconnect } from "./api.js";
+import { MessageMarkdown } from "./MessageMarkdown.js";
 import type {
   WebContext,
   HarnessClientRun,
   HarnessClientSession,
   HarnessActivityPage,
   TicketedApprovalReview,
+  WebModelChoice,
 } from "./contracts.js";
 
 type Sessions = {
@@ -29,6 +31,10 @@ const active = (status: string) =>
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "WEB_REQUEST_FAILED";
 const recovery: Record<string, string> = {
+  WEB_MODEL_CHANGE_BUSY: "Finish or cancel all active and pending-approval runs in this workspace before changing model.",
+  WEB_MODEL_NOT_CONFIGURED: "Configure this provider in the CLI first. Credential values are never entered here.",
+  WEB_MODEL_SWITCH_FAILED: "The model change failed. Reconnect to inspect the host configuration before another action.",
+  WEB_MODEL_UNAVAILABLE: "The host configuration is unavailable. Restart the local launcher and pair again.",
   WEB_PAIRING_REQUIRED:
     "Use the paired browser tab, or restart zhivex-code web to pair again.",
   WEB_REQUEST_FAILED:
@@ -44,6 +50,10 @@ const recovery: Record<string, string> = {
 };
 
 export function App() {
+  const [modelChoices, setModelChoices] = useState<WebModelChoice[]>([]);
+  const [modelChoice, setModelChoice] = useState("");
+  const [modelError, setModelError] = useState("");
+  const [modelsLoading, setModelsLoading] = useState(false);
   const [ctx, setContext] = useState<WebContext>();
   const [workspaceKey, setWorkspaceKey] = useState("");
   const [sessions, setSessions] = useState<HarnessClientSession[]>([]);
@@ -468,6 +478,27 @@ export function App() {
     }
   }
   const workspace = ctx?.workspaces.find((w) => w.key === workspaceKey);
+  const currentModel = JSON.stringify([workspace?.provider, workspace?.model]);
+  useEffect(() => {
+    if (!workspaceKey || !connected) return;
+    let stopped = false;
+    setModelChoices([]); setModelError(""); setModelChoice(currentModel); setModelsLoading(true);
+    void action<{choices: WebModelChoice[]}>(workspaceKey, "models")
+      .then(result => { if (!stopped) setModelChoices(result.choices); })
+      .catch(error => { if (!stopped) setModelError(errorText(error)); })
+      .finally(() => { if (!stopped) setModelsLoading(false); });
+    return () => { stopped = true; };
+  }, [workspaceKey, connected, currentModel, ctx]);
+  async function selectModel() {
+    if (!canMutate || busy || review || !modelChoice || modelChoice === currentModel) return;
+    const [provider, model] = JSON.parse(modelChoice) as string[];
+    await perform("Applying model for future tasks…", async () => {
+      await action(workspaceKey, "selectModel", {provider, model});
+      setReview(undefined);
+      const c = await reconnect(); setContext(c);
+      setRefresh(n => n + 1);
+    }, true);
+  }
   const stateLabel = loading
     ? "Loading state…"
     : !connected
@@ -520,7 +551,7 @@ export function App() {
       </a>
       <aside className="sidebar" aria-label="Workspace navigation">
         <a href="/" className="brand" aria-label="Zhivex Code home">
-          <span className="brand-mark">Z</span>
+          <img className="brand-mark" src="/zhivex-icon.png" alt="" width={36} height={36} />
           <span>
             zhivex<span className="brand-code">code</span>
           </span>
@@ -703,7 +734,7 @@ export function App() {
                 connected &&
                 !session?.runs.length && (
                   <div className="empty-state">
-                    <div className="workspace-glyph">⌘</div>
+                    <img className="workspace-glyph" src="/zhivex-icon.png" alt="" width={56} height={56} />
                     <p className="eyebrow">YOUR CODE. YOUR WORKSPACE.</p>
                     <h2>What are we building?</h2>
                     <p>
@@ -762,28 +793,11 @@ export function App() {
                         }}
                       />
                     )}
-                    <Message
-                      showActions={false}
-                      showStatus={false}
-                      message={{
-                        id,
-                        role: "assistant",
-                        parts: [
-                          {
-                            type: "text",
-                            text:
-                              r.text ||
-                              (r.status === "waiting_approval"
-                                ? "The proposed operation is ready for your review."
-                                : active(r.status)
-                                  ? "Working in your local workspace…"
-                                  : "No text output recorded."),
-                          },
-                        ],
-                        createdAt: 0,
-                        status: active(r.status) ? "streaming" : "complete",
-                      }}
-                    />
+                    <article className="assistant-response" aria-label="Assistant response" aria-busy={active(r.status)}>
+                      <MessageMarkdown text={r.text || (r.status === "waiting_approval"
+                        ? "The proposed operation is ready for your review."
+                        : active(r.status) ? "Working in your local workspace…" : "No text output recorded.")} />
+                    </article>
                     {r.truncated && (
                       <p className="muted">Retained output is truncated.</p>
                     )}
@@ -831,10 +845,26 @@ export function App() {
                 }}
               />
               <div className="composer-actions">
-                <span>
-                  {workspace?.provider}{" "}
-                  <span className="muted">/ {workspace?.model}</span>
-                </span>
+                <div className="model-picker">
+                  <label className="sr-only" htmlFor="model-choice">Provider and model</label>
+                  <select id="model-choice" value={modelChoice || currentModel}
+                    disabled={!canMutate || busy || run?.status === "waiting_approval" || !modelChoices.length}
+                    aria-describedby="model-help" onChange={e => setModelChoice(e.target.value)}>
+                    {!modelChoices.some(c => JSON.stringify([c.provider,c.model]) === currentModel) &&
+                      <option value={currentModel}>{workspace?.provider} / {workspace?.model} (current host model)</option>}
+                    {[...new Set(modelChoices.map(c => c.provider))].map(provider => {
+                      const items = modelChoices.filter(c => c.provider === provider);
+                      return <optgroup key={provider} label={items[0]!.providerName}>
+                        {items.map(c => <option key={c.model} value={JSON.stringify([c.provider,c.model])} disabled={!c.configured}>
+                          {c.name}{!c.configured ? " · credential unavailable" : c.validation === "unverified" ? " · unverified" : ""}
+                        </option>)}
+                      </optgroup>;
+                    })}
+                  </select>
+                  {modelChoice && modelChoice !== currentModel && <button type="button"
+                    disabled={!canMutate || busy || run?.status === "waiting_approval"}
+                    onClick={() => void selectModel()}>Apply model</button>}
+                </div>
                 <button
                   className="primary"
                   disabled={!session || !prompt.trim() || !canMutate || busy}
@@ -848,6 +878,11 @@ export function App() {
               <span>⌘ / Ctrl + Enter to run</span>
               <span>Credentials stay on the host</span>
             </div>
+            <p id="model-help" className="model-help">
+              {modelsLoading ? "Reading configured providers and model choices…" : modelError ? "Model choices unavailable. Reconnect to refresh." : !modelChoices.length
+                ? "Using the host model. No selectable catalog is available."
+                : "Applies to future tasks in this workspace. Credential presence does not verify model access."}
+            </p>
           </ChatRoot>
           <aside className="inspector" aria-label="Review and activity">
             <section

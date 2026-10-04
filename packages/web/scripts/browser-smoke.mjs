@@ -172,7 +172,7 @@ try {
     fullPage: true,
   });
   assert.match(await page.getByLabel("Approval review").innerText(), /before/);
-  assert.equal(await page.locator("img").count(), 0);
+  assert(await page.locator("img").evaluateAll(images => images.every(img => new URL(img.src).pathname === "/zhivex-icon.png")));
   await page
     .getByRole("button", { name: "Next change", exact: true })
     .press("Enter");
@@ -239,7 +239,7 @@ try {
       document.querySelector(".pill")?.textContent,
     ),
   );
-  assert.equal(await page.locator("img").count(), 0);
+  assert(await page.locator("img").evaluateAll(images => images.every(img => new URL(img.src).pathname === "/zhivex-icon.png")));
   steps.push("engine workspace boundary");
   await task("error-probe");
   await page.waitForFunction(
@@ -276,13 +276,13 @@ try {
     false,
   );
   steps.push("mobile layout without horizontal overflow");
-  await page.getByRole("combobox").selectOption({ label: "beacon" });
+  await page.getByRole("combobox", { name: "WORKSPACE", exact: true }).selectOption({ label: "beacon" });
   await page
     .getByRole("button", { name: "Create a session", exact: true })
     .waitFor();
   steps.push("allowlisted workspace switch");
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.getByRole("combobox").selectOption({ label: "atlas" });
+  await page.getByRole("combobox", { name: "WORKSPACE", exact: true }).selectOption({ label: "atlas" });
   await page
     .getByRole("button", { name: "New session", exact: true })
     .waitFor();
@@ -433,7 +433,7 @@ try {
   );
 
   await page.getByLabel("Task prompt").fill("draft for atlas");
-  await page.getByRole("combobox").selectOption({ label: "beacon" });
+  await page.getByRole("combobox", { name: "WORKSPACE", exact: true }).selectOption({ label: "beacon" });
   await page
     .getByRole("button", { name: "Create a session", exact: true })
     .waitFor();
@@ -457,10 +457,50 @@ try {
     await page.getByLabel("Task prompt").inputValue(),
     "draft for beacon",
   );
-  await page.getByRole("combobox").selectOption({ label: "atlas" });
+  await page.getByRole("combobox", { name: "WORKSPACE", exact: true }).selectOption({ label: "atlas" });
   await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "completed");
   assert.equal(await page.getByLabel("Task prompt").inputValue(), "draft for atlas");
   steps.push("in-memory drafts stay scoped to the selected session and workspace");
+  await page.getByLabel("Provider and model").waitFor();
+  await page.waitForFunction(() => document.querySelector("#model-choice")?.querySelectorAll("option").length === 3);
+  const picker = page.getByLabel("Provider and model");
+  assert.equal(await picker.locator('option', {hasText: "Fixture missing"}).isDisabled(), true);
+  const originalModel = await picker.inputValue();
+  await picker.selectOption(JSON.stringify(["anthropic", "fixture-next"]));
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "draft for atlas");
+  await page.getByRole("button", {name: "Apply model", exact: true}).click();
+  await page.waitForFunction(() => document.querySelector("#model-choice")?.value === JSON.stringify(["anthropic", "fixture-next"]) && !document.querySelector("#model-choice")?.disabled);
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector("#model-choice")?.value === JSON.stringify(["anthropic", "fixture-next"]) && !document.querySelector("#model-choice")?.disabled);
+  steps.push("configured provider/model changes explicitly apply to future tasks and survive reload; unavailable credentials stay disabled");
+  await task("markdown-probe: show the numbered plan safely");
+  await page.getByRole("heading", {name: "Short-term plan", exact: true}).waitFor();
+  await complete();
+  assert.equal(await page.locator(".assistant-response strong", {hasText: "Enable critical conformance gates"}).count(), 1);
+  assert.equal(await page.locator(".assistant-response img, .assistant-response script").count(), 0);
+  assert.equal(await page.locator('.assistant-response a[href^="javascript:"]').count(), 0);
+  assert.equal(await page.locator('.assistant-response a[href="https://example.com/docs"]').getAttribute("rel"), "noreferrer noopener");
+  await page.setViewportSize({width:1440,height:1000});
+  await capture("web-chat-markdown-desktop.png");
+  await page.setViewportSize({width:390,height:844});
+  await capture("web-chat-markdown-mobile.png");
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({width:1440,height:1000});
+  steps.push("Chat logo and safe Markdown render numbered plans/code/links without executable HTML, script URLs or remote image loads");
+  await writeFile(ready.workspace + "/review.txt", "before\n");
+  await task("edit-probe: preserve pending approval model");
+  await wait();
+  assert.equal(await picker.isDisabled(), true);
+  steps.push("provider/model selection stays disabled while exact approval is pending");
+  await page.getByRole("button", {name:"Review proposed operation"}).click();
+  await page.getByRole("button", {name:"Deny operation"}).click();
+  await page.waitForFunction(() => ["completed", "failed", "cancelled", "Reconciliation required"].includes(document.querySelector(".pill")?.textContent));
+  await page.getByRole("button", { name: "Reconnect" }).click();
+  await page.waitForFunction(() => !document.querySelector("#model-choice")?.disabled);
+  await picker.selectOption(originalModel);
+  await page.getByRole("button", {name:"Apply model",exact:true}).click();
+  await page.waitForFunction(value => document.querySelector("#model-choice")?.value === value && !document.querySelector("#model-choice")?.disabled, originalModel);
+
   assert.deepEqual(errors, []);
   const report = {
     passed: true,

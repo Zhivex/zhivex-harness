@@ -21,3 +21,16 @@ export interface WebContext {
   csrf: string;
   workspaces: WebWorkspace[];
 }
+export interface WebModelChoice {
+  provider: string;
+  providerName: string;
+  model: string;
+  name: string;
+  configured: boolean;
+  capabilities: string[];
+  validation: string;
+}
+export interface WebModelSelection {
+  provider: string;
+  model: string;
+}
