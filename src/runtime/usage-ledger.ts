@@ -143,7 +143,10 @@ export class UsageLedger {
       if (provider === "qwen" && input.providerOptions?.apiMode !== "chat" && input.maxTokens === undefined) {
         throw new Error("USAGE_OUTPUT_CAP_UNAVAILABLE: select a route with a supported output cap.");
       }
-      input.maxTokens = Math.min(input.maxTokens ?? 2048, 2048);
+      input.maxTokens ??= 2048;
+      if (!Number.isSafeInteger(input.maxTokens) || input.maxTokens <= 0) {
+        throw new Error("USAGE_OUTPUT_CAP_INVALID: monetary reservations require a positive finite integer output cap.");
+      }
       reserved = (estimateRequestTokens(input) * usable.inputUsdPerMillion + input.maxTokens * usable.outputUsdPerMillion) / 1e6;
     }
     const id = randomUUID();
