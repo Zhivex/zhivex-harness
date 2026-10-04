@@ -118,6 +118,16 @@ against a compromised OS account or a process able to observe loopback traffic.
 
 ## Contributor verification
 
+The launcher checks the canonical Unix socket path before starting Harness. If
+the temporary path is too long and its private service directory is empty, it
+uses an owner-private directory under `/tmp`. Owner, mode and final-directory
+symlink checks still apply; the Harness 100-byte limit is unchanged. Existing
+state in an overlong preferred location produces `WEB_SERVICE_LOCATION_OCCUPIED`
+instead of being moved or recovered automatically. Startup failures expose only
+allowlisted reason codes, such as `PERMISSION_DENIED` or `SERVICE_STATE_EXISTS`,
+never the original filesystem/configuration error. Browser opener failures remain
+`WEB_BROWSER_OPEN_FAILED` and can be separated with `--no-open`.
+
 From the repository root:
 
 ```sh
