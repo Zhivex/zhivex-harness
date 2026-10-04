@@ -7,6 +7,7 @@ import {
   type ConversationActivity,
 } from "../../../desktop/src/activity.js";
 import { action, context, reconnect } from "./api.js";
+import { ModelSelectionRejectedError } from "./request-failure.js";
 import { MessageMarkdown } from "./MessageMarkdown.js";
 import type {
   WebContext,
@@ -53,6 +54,7 @@ export function App() {
   const [modelChoices, setModelChoices] = useState<WebModelChoice[]>([]);
   const [modelChoice, setModelChoice] = useState("");
   const [modelError, setModelError] = useState("");
+  const [modelSelectionError, setModelSelectionError] = useState("");
   const [modelsLoading, setModelsLoading] = useState(false);
   const [ctx, setContext] = useState<WebContext>();
   const [workspaceKey, setWorkspaceKey] = useState("");
@@ -482,7 +484,7 @@ export function App() {
   useEffect(() => {
     if (!workspaceKey || !connected) return;
     let stopped = false;
-    setModelChoices([]); setModelError(""); setModelChoice(currentModel); setModelsLoading(true);
+    setModelChoices([]); setModelError(""); setModelSelectionError(""); setModelChoice(currentModel); setModelsLoading(true);
     void action<{choices: WebModelChoice[]}>(workspaceKey, "models")
       .then(result => { if (!stopped) setModelChoices(result.choices); })
       .catch(error => { if (!stopped) setModelError(errorText(error)); })
@@ -492,8 +494,25 @@ export function App() {
   async function selectModel() {
     if (!canMutate || busy || review || !modelChoice || modelChoice === currentModel) return;
     const [provider, model] = JSON.parse(modelChoice) as string[];
+    setModelSelectionError("");
     await perform("Applying model for future tasks…", async () => {
-      await action(workspaceKey, "selectModel", {provider, model});
+      try {
+        await action(workspaceKey, "selectModel", {provider, model});
+      } catch (error) {
+        // This response belongs to model admission, not the later context read.
+        // Definitive pre-change rejection leaves navigation/cancel available.
+        if (error instanceof ModelSelectionRejectedError) {
+          const reasons: Record<string, string> = {
+            WEB_MODEL_CHANGE_BUSY: "Finish or cancel active work in this workspace before changing the model.",
+            WEB_MODEL_CHANGE_IN_PROGRESS: "Another model change is in progress; try again once it finishes.",
+            WEB_MODEL_NOT_CONFIGURED: "That provider and model are no longer configured on the host. Choose another option.",
+            WEB_CREDENTIALS_REQUIRED: "Configure the provider credentials on the host before trying again.",
+          };
+          setModelSelectionError(`Model unchanged. ${reasons[error.message] ?? "The host rejected this selection."}`);
+          return;
+        }
+        throw error;
+      }
       setReview(undefined);
       const c = await reconnect(); setContext(c);
       setRefresh(n => n + 1);
@@ -849,7 +868,8 @@ export function App() {
                   <label className="sr-only" htmlFor="model-choice">Provider and model</label>
                   <select id="model-choice" value={modelChoice || currentModel}
                     disabled={!canMutate || busy || run?.status === "waiting_approval" || !modelChoices.length}
-                    aria-describedby="model-help" onChange={e => setModelChoice(e.target.value)}>
+                    aria-describedby={modelSelectionError ? "model-help model-selection-error" : "model-help"}
+                    onChange={e => { setModelChoice(e.target.value); setModelSelectionError(""); }}>
                     {!modelChoices.some(c => JSON.stringify([c.provider,c.model]) === currentModel) &&
                       <option value={currentModel}>{workspace?.provider} / {workspace?.model} (current host model)</option>}
                     {[...new Set(modelChoices.map(c => c.provider))].map(provider => {
@@ -883,6 +903,7 @@ export function App() {
                 ? "Using the host model. No selectable catalog is available."
                 : "Applies to future tasks in this workspace. Credential presence does not verify model access."}
             </p>
+            {modelSelectionError && <p id="model-selection-error" className="model-help" role="alert">{modelSelectionError}</p>}
           </ChatRoot>
           <aside className="inspector" aria-label="Review and activity">
             <section

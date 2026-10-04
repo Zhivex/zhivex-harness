@@ -8,6 +8,7 @@
 - Show allowlisted startup reason codes without exposing filesystem paths or configuration secrets.
 - Clarify web task, connection and review states, keep unconfirmed actions behind reconciliation, retain tab drafts and improve keyboard/mobile diff review.
 - Align the local browser with Zhivex Chat branding, render safe assistant Markdown, and select configured host-issued provider/model choices for future tasks without changing credentials, permissions or pending approvals.
+- Keep navigation and cancellation available after a definitive model-selection rejection; require reconciliation for lost or otherwise uncertain mutation outcomes.
 
 ## 0.3.0-rc.1 - 2026-10-04
 

@@ -51,6 +51,10 @@ writes credentials or changes execution grants. Credential presence does not
 verify account access or a model's support tier. Selection is blocked while any
 workspace session has an unfinished run, including pending approval; a service
 change validates configuration first and preserves existing durable sessions.
+An explicit host rejection leaves the model unchanged and keeps session
+navigation and cancellation available. A lost response or a failure to read
+context after an admitted change requires reconciliation before another action;
+the browser never repeats the model change automatically.
 Failed attachment attempts restore the previous service or fail closed with
 restart guidance. The current custom host model remains visible when absent
 from the catalogue. An optional `--tool-policy` selects

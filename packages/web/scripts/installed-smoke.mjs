@@ -66,6 +66,7 @@ async function launch(binary, workspace, open = false, temporaryDirectory = shor
         ZHIVEX_HARNESS_CONFIG_DIR: root + "/config",
         ZHIVEX_HARNESS_CREDENTIAL_STORE: "disabled",
         NODE_OPTIONS: `--import=${root}/deny-provider.mjs`,
+        CODE_WEB_PROVIDER_ATTEMPTS_FILE: root + "/provider-attempts",
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -158,7 +159,9 @@ try {
   );
   const workspace = root + "/repo";
   await mkdir(workspace);
-  await writeFile(root + "/deny-provider.mjs", `import {appendFileSync} from "node:fs"; globalThis.fetch = async () => { appendFileSync(${JSON.stringify(root + "/provider-attempts")}, "attempt\\n"); throw new Error("INSTALLED_SMOKE_NETWORK_DENIED"); };`);
+  await writeFile(root + "/deny-provider.mjs", await readFile(
+    new URL("./offline-provider-guard.mjs", import.meta.url),
+  ));
   const first = await launch(binary, workspace, true);
   const html = await loopbackRequest(first.origin, "/");
   assert.equal(html.status, 200);

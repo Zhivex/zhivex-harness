@@ -59,11 +59,14 @@ const commands = [];
 let fault;
 await page.route("**/api/action", async (route) => {
   const body = route.request().postDataJSON();
-  if (["create", "rename", "start", "decide", "cancel"].includes(body.action))
+  if (["create", "rename", "start", "decide", "cancel", "selectModel"].includes(body.action))
     commands.push(body.action);
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
   fault = undefined;
+  if (selectedFault.mode === "rejected") return route.fulfill({
+    status: 400, json: { ok: false, error: { code: selectedFault.code } },
+  });
   if (selectedFault.mode === "delay")
     await new Promise((resolve) => setTimeout(resolve, 500));
   if (selectedFault.mode === "lost" && body.action === "start") {
@@ -500,6 +503,75 @@ try {
   await picker.selectOption(originalModel);
   await page.getByRole("button", {name:"Apply model",exact:true}).click();
   await page.waitForFunction(value => document.querySelector("#model-choice")?.value === value && !document.querySelector("#model-choice")?.disabled, originalModel);
+
+  // Another paired tab has active work while this tab sees an idle session.
+  // The real host rejects the switch before replacing its owner.
+  const background = await context.newPage();
+  await background.addInitScript(csrf => {
+    if (csrf) sessionStorage.setItem("zhivex-web-csrf", csrf);
+  }, await page.evaluate(() => sessionStorage.getItem("zhivex-web-csrf")));
+  await background.goto(ready.origin);
+  await background.locator('.session-row').filter({hasText:"wait-for-cancel: preserve this draft"}).click();
+  await background.waitForFunction(() => document.querySelector(".pill")?.textContent === "cancelled");
+  await background.getByLabel("Task prompt").fill("wait-for-cancel: background active run");
+  await background.getByRole("button", {name:"Run task", exact:false}).click();
+  await background.waitForFunction(() => document.querySelector(".pill")?.textContent === "running");
+  await picker.selectOption(JSON.stringify(["anthropic", "fixture-next"]));
+  const busyResponse = page.waitForResponse(response => response.url().endsWith("/api/action") && response.request().postDataJSON()?.action === "selectModel");
+  await page.getByRole("button", {name:"Apply model",exact:true}).click();
+  assert.equal((await (await busyResponse).json()).error.code, "WEB_MODEL_CHANGE_BUSY");
+  await page.getByRole("alert").filter({hasText:/Model unchanged/}).waitFor();
+  assert.equal(await picker.isEnabled(), true);
+  assert.equal(await page.locator('.session-row:disabled').count(), 0);
+  assert.notEqual(await page.locator('.pill').textContent(), "Reconciliation required");
+  await capture("web-model-rejected-desktop.png");
+  await page.locator('.session-row').filter({hasText:"wait-for-cancel: preserve this draft"}).click();
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "running");
+  assert.equal(await page.getByRole("button", {name:"Cancel run",exact:true}).isEnabled(), true);
+  const modelRejectCancels = commands.filter(c => c === "cancel").length;
+  await page.getByRole("button", {name:"Cancel run",exact:true}).click();
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "cancelled");
+  assert.equal(commands.filter(c => c === "cancel").length, modelRejectCancels + 1);
+  await background.close();
+  steps.push("real cross-session busy model rejection preserves navigation and cancellation without reconnect or owner change");
+
+  fault = {action:"selectModel",mode:"rejected",code:"WEB_MODEL_NOT_CONFIGURED"};
+  await page.getByRole("button", {name:"Apply model",exact:true}).click();
+  await page.getByRole("alert").filter({hasText:/no longer configured/}).waitFor();
+  assert.equal(await picker.isEnabled(), true);
+  assert.equal(await page.locator('.session-row:disabled').count(), 0);
+  assert.equal(await page.getByRole("combobox", {name:"WORKSPACE",exact:true}).isEnabled(), true);
+  await createSession();
+  steps.push("definitive unconfigured model rejection keeps workspace/session actions available");
+
+  const switchesBeforeLoss = commands.filter(c => c === "selectModel").length;
+  fault = {action:"selectModel",mode:"lost"};
+  await picker.selectOption(JSON.stringify(["anthropic", "fixture-next"]));
+  await page.getByRole("button", {name:"Apply model",exact:true}).click();
+  await page.getByRole("alert").getByText("WEB REQUEST FAILED", {exact:true}).waitFor();
+  assert.equal(await picker.isDisabled(), true);
+  assert(await page.locator('.session-row:disabled').count() > 0);
+  await capture("web-model-uncertain-desktop.png");
+  await reconnectState();
+  await page.waitForFunction(() => document.querySelector("#model-choice")?.value === JSON.stringify(["anthropic", "fixture-next"]) && !document.querySelector("#model-choice")?.disabled);
+  assert.equal(commands.filter(c => c === "selectModel").length, switchesBeforeLoss + 1);
+  steps.push("lost admitted model-switch response requires reconciliation and confirms the new host model without replay");
+
+  // A matching code from the later context read is not a model rejection.
+  await page.route("**/api/context", async route => {
+    await page.unroute("**/api/context");
+    await route.fulfill({status:400,json:{ok:false,error:{code:"WEB_MODEL_CHANGE_BUSY"}}});
+  });
+  await picker.selectOption(originalModel);
+  const switchesBeforeContext = commands.filter(c => c === "selectModel").length;
+  await page.getByRole("button", {name:"Apply model",exact:true}).click();
+  await page.getByRole("alert").getByText("WEB MODEL CHANGE BUSY", {exact:true}).waitFor();
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === "Reconciliation required");
+  assert.equal(await picker.isDisabled(), true);
+  await reconnectState();
+  await page.waitForFunction(value => document.querySelector("#model-choice")?.value === value && !document.querySelector("#model-choice")?.disabled, originalModel);
+  assert.equal(commands.filter(c => c === "selectModel").length, switchesBeforeContext + 1);
+  steps.push("context failure after an admitted model switch remains uncertain even with a pre-admission-looking error code");
 
   assert.deepEqual(errors, []);
   const report = {
