@@ -213,8 +213,9 @@ export const renderHarnessInstructions = (names: readonly string[]) => {
 };
 
 export interface CreateHarnessOptions extends HarnessConfigInput {
-  /** Experimental: opt into curated local project memory. Omission preserves
-   * the historical SDK memory integration; CLI hosts explicitly enable this mode. */
+  /** Experimental: true enables curated local project memory; false disables
+   * curated and SDK memory, including caller-supplied memory. Omission preserves
+   * the historical SDK integration; CLI hosts explicitly enable curated mode. */
   projectMemory?: boolean;
   /** Experimental: absolute host-owned policy path outside repository authority. */
   toolPolicyFile?: string;
@@ -541,9 +542,10 @@ const createHarnessOwned = async (options: CreateHarnessOptions): Promise<Zhivex
     : options.subagentModels;
   if (usageLedger) model = usageLedger.model(model);
   if (compactionModel && usageLedger) compactionModel = usageLedger.model(compactionModel);
-  // Preserve the stable host default. The new mode uses the same table with
-  // explicit writes and ephemeral context, without automatic assistant capture.
-  const memory = options.memory ?? (options.projectMemory === true ? undefined : persistence?.memory);
+  // Omission preserves the stable host default; explicit opt-out must not fall
+  // back to legacy capture. Built-in curated mode avoids assistant capture.
+  const memory = options.projectMemory === false ? undefined
+    : options.memory ?? (options.projectMemory === undefined ? persistence?.memory : undefined);
   let projectMemory: HarnessProjectMemory | undefined;
   if (options.projectMemory === true) {
     try { projectMemory = await openHarnessProjectMemory(config); }

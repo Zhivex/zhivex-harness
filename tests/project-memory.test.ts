@@ -182,7 +182,7 @@ test("stable engine default retains SDK memory; curated host opt-in never captur
   const { root } = await fixture();
   for (const curated of [false, true]) {
     const model = createMockLanguageModel({ streamEvents: [[{ type: "text-delta", textDelta: "explicit-model-fixture" }, { type: "finish", finishReason: "stop" }]] });
-    const harness = await createHarness({ workspace: root, stateDirectory: path.join(root, curated ? ".curated" : ".legacy"), modelInstance: model, subagentProfiles: [], projectMemory: curated });
+    const harness = await createHarness({ workspace: root, stateDirectory: path.join(root, curated ? ".curated" : ".legacy"), modelInstance: model, subagentProfiles: [], ...(curated ? { projectMemory: true } : {}) });
     cleanups.push(() => harness.close());
     const run = await runHarness(harness, { prompt: "sqlite request" });
     const stored = await harness.persistence!.memory.load({ runId: run.state.runId, scope: harness.config.scope,
@@ -190,6 +190,76 @@ test("stable engine default retains SDK memory; curated host opt-in never captur
     expect(JSON.stringify(stored).includes("explicit-model-fixture")).toBe(!curated);
     expect((await open(harness.config)).list().entries).toEqual([]);
   }
+});
+
+test("explicit opt-out neither loads legacy memory nor saves new responses, including resumed and custom-memory runs", async () => {
+  const { root, config } = await fixture(), memory = await open(config);
+  memory.remember(input("sqlite curated opt-out sentinel"));
+  const options = { workspace: root, stateDirectory: config.stateDirectory, namespace: config.scope.namespace!, userId: config.scope.userId!, subagentProfiles: [] };
+  const seed = await createHarness({ ...options, modelInstance: createMockLanguageModel({ streamEvents: [[{ type: "text-delta", textDelta: "legacy opt-out sentinel" }, { type: "finish", finishReason: "stop" }]] }) });
+  cleanups.push(() => seed.close());
+  const seeded = await runHarness(seed, { prompt: "seed legacy memory" });
+  const context = { runId: seeded.state.runId, scope: seed.config.scope, ...(seed.agent.id ? { agentId: seed.agent.id } : {}) };
+  const before = await seed.persistence!.memory.load(context);
+  expect(JSON.stringify(before)).toContain("legacy opt-out sentinel");
+  await seed.close();
+  for (const custom of [false, true]) {
+    const model = createMockLanguageModel({ streamEvents: [
+      [{ type: "tool-call", toolCall: { id: "edit", name: "apply_reviewed_edits", input: { changes: [{ path: "never-written.txt", expectedDigest: null, content: "fixture" }] } } }, { type: "finish", finishReason: "tool-calls" }],
+      [{ type: "text-delta", textDelta: "opt-out response" }, { type: "finish", finishReason: "stop" }]
+    ] });
+    const original = model.stream!;
+    model.stream = value => {
+      expect(JSON.stringify(value.messages)).not.toContain("opt-out sentinel");
+      return original(value);
+    };
+    let loads = 0, saves = 0;
+    const harness = await createHarness({ ...options, projectMemory: false, modelInstance: model,
+      ...(custom ? { memory: { load: () => { loads++; return before; }, save: () => { saves++; } } } : {}) });
+    cleanups.push(() => harness.close());
+    const waiting = await runHarness(harness, { prompt: "sqlite request" });
+    expect(waiting.status).toBe("waiting_approval");
+    await harness.close();
+    const resumed = await createHarness({ ...options, projectMemory: false, modelInstance: model,
+      ...(custom ? { memory: { load: () => { loads++; return before; }, save: () => { saves++; } } } : {}) });
+    cleanups.push(() => resumed.close());
+    const result = await runHarness(resumed, { state: waiting.state, approvals: waiting.state.pendingApprovals.map(approval => ({ provider: approval.provider, approvalRequestId: approval.id, approve: false })) });
+    expect(result.status).toBe("completed");
+    expect(await resumed.persistence!.memory.load(context)).toEqual(before);
+    expect(loads).toBe(0); expect(saves).toBe(0);
+  }
+});
+
+test("project document cannot collide with scoped SDK run or agent keys and both kinds survive backup", async () => {
+  const { root, config } = await fixture();
+  const harness = await createHarness({ workspace: root, stateDirectory: config.stateDirectory, namespace: config.scope.namespace!, userId: config.scope.userId!, projectMemory: true,
+    modelInstance: createMockLanguageModel({ streamEvents: [[{ type: "text-delta", textDelta: "ordinary SDK memory" }, { type: "finish", finishReason: "stop" }]] }), subagentProfiles: [] });
+  cleanups.push(() => harness.close());
+  const run = await runHarness(harness, { prompt: "sqlite request" }), binding = projectMemoryBinding(harness.config.workspace, harness.config.scope);
+  const previousSuffix = `__project_memory_v1_${binding.workspaceKey}_${binding.scopeKey}`;
+  const memory = await open(harness.config);
+  for (const id of [previousSuffix, binding.memoryKey]) {
+    const state = { ...run.state, runId: id };
+    delete state.agentId;
+    await harness.store.save(state);
+    const sdkContext = { runId: id, scope: harness.config.scope, state };
+    await harness.persistence!.memory.save!(sdkContext);
+    expect(memory.list().entries).toEqual([]);
+  }
+  const note = memory.remember(input("sqlite reviewed project document"));
+  for (const id of [previousSuffix, binding.memoryKey]) {
+    const state = { ...run.state, runId: id };
+    await harness.persistence!.memory.save!({ runId: run.state.runId, agentId: id, scope: harness.config.scope, state });
+    expect(JSON.stringify(await harness.persistence!.memory.load({ runId: id, scope: harness.config.scope }))).toContain("ordinary SDK memory");
+    expect(memory.read(note.id).content).toBe(note.content);
+  }
+  memory.close();
+  expect((await open(harness.config)).read(note.id).content).toBe(note.content);
+  const bundle = await createHarnessStateBackup(harness.config);
+  expect(bundle.records.memory).toHaveLength(3);
+  const destination = { ...harness.config, stateDirectory: path.join(root, ".collision-restored") };
+  await importHarnessStateBackup(destination, bundle, { dryRun: false });
+  expect((await open(destination)).read(note.id).content).toBe(note.content);
 });
 
 test("CLI follows existing explicit scope and rejects wrong counts, ambiguous options and unsupported commands", () => {

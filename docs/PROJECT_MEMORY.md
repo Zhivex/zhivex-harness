@@ -39,8 +39,9 @@ can specify `expiresAt`; expired entries remain inspectable but are not retrieve
 `disable` persists opt-out for this project and scope and blocks writes/acceptance.
 Read, list, forget and clear remain available. `clear` removes all pending and
 accepted entries while preserving the opt-out setting. `--no-memory` disables
-retrieval for one local run/chat/resume invocation. Service mode does not accept
-this flag: the service host owns runtime configuration.
+curated retrieval and SDK memory loading/capture for one local run/chat/resume
+invocation. It does not remove messages already in a resumed run's history.
+Service mode does not accept this flag: the service host owns runtime configuration.
 
 ## Scope and bounds
 
@@ -91,10 +92,11 @@ try {
 are experimental `/engine` additions. No client protocol commands or remote
 service endpoints are added. Local CLI hosts explicitly enable curated project memory and project relevant
 notes on every model request, including resumed runs. Engine hosts opt in with
-`createHarness({ projectMemory: true, ... })`; false or omission preserves the
-historical SDK memory integration and opens no curated store. This also applies
-to caller-supplied run stores. Caller-supplied SDK `memory` remains an explicit
-host integration and is independent of this feature's opt-out setting.
+`createHarness({ projectMemory: true, ... })`. Omitting the option preserves the
+historical SDK memory integration and opens no curated store. Explicit `false`
+disables both curated and SDK memory, including caller-supplied `memory`.
+These rules also apply to caller-supplied run stores. With `true` or omission,
+caller-supplied SDK `memory` remains an explicit host integration.
 
 Memory reaches the model in a labelled user-context message before the current
 user request, never as system instructions. The projection is ephemeral and is
@@ -113,8 +115,10 @@ text. Do not store credentials or private material you do not want retained.
 ## Storage, deletion and compatibility
 
 Memory reuses `operations.sqlite` and the SDK's existing `zhivex_agent_memory`
-table with a reserved, fully project/scope-bound key. A versioned envelope in the
-existing row format holds current records and the enabled setting. There is no
+table with a fully project/scope-bound key outside the SDK's scoped run/agent key
+namespace. Its leading colon cannot match a nonempty URI-encoded SDK namespace,
+regardless of the run or agent ID. A versioned envelope in the existing row format
+holds current records and the enabled setting. There is no
 second memory database or vector store. File-backed run hosts use the same SQLite
 state index that already serves sessions. Writes use SQLite transactions and
 expected revisions so concurrent edits cannot silently replace newer records.
@@ -139,8 +143,9 @@ already include the row. There is no configuration or SQL table schema migration
 Legacy automatic last-assistant SDK records are not promoted into curated memory.
 The stable engine default preserves its historical SDK memory integration.
 Explicit curated mode, including local CLI hosts, stops automatic last-assistant
-capture; caller-provided SDK memory remains supported. The API additions can
-ship in a future Harness minor release with a matched next Code release and
+capture; caller-provided SDK memory remains supported unless memory is explicitly
+disabled. The API additions can ship in a future Harness minor release with a
+matched next Code release and
 updated exact engine dependency. Any broader removal of the stable SDK memory
 default would require a major release under [API stability](STABILITY.md). Candidate package versions remain Harness
 1.3.0 / Code 0.2.0 for development only: they are not publishable replacements for

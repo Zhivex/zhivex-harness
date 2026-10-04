@@ -44,10 +44,12 @@ export interface HarnessProjectMemory {
   close(): void;
 }
 
-export const projectMemoryRecordKey = (binding: { scopePrefix: string; workspaceKey: string; scopeKey: string }) =>
-  `${binding.scopePrefix}__project_memory_v1_${binding.workspaceKey}_${binding.scopeKey}`;
+// SDK scoped keys always start with a nonempty URI-encoded namespace. A leading
+// colon cannot occur there, even when a caller controls the full run/agent ID.
+export const projectMemoryRecordKey = (binding: { workspaceKey: string; scopeKey: string }) =>
+  `:project-memory:v1:${binding.workspaceKey}:${binding.scopeKey}`;
 
-// Match session binding keys and the SDK namespace prefix. Workspace binding is
+// Match session binding keys. Workspace binding is
 // independent of namespace, so explicitly reusing a namespace never merges projects.
 export const projectMemoryBinding = (workspace: string, scope: AgentStoreScope) => {
   const segment = (value: string) => boundedText(240).refine(text => !/[\x00-\x1f\x7f]/.test(text), "Invalid scope segment").parse(value);
@@ -58,8 +60,7 @@ export const projectMemoryBinding = (workspace: string, scope: AgentStoreScope) 
   const key = (kind: string, value: string) => createHash("sha256").update(kind).update("\0").update(value).digest("hex");
   const workspaceKey = key("workspace", workspace);
   const scopeKey = key("scope", `${scope.tenantId}\0${scope.userId ?? ""}\0${scope.namespace ?? ""}`);
-  const prefix = `${encodeURIComponent(scope.namespace ?? "default")}:${encodeURIComponent(scope.tenantId)}:${encodeURIComponent(scope.userId ?? "*")}:`;
-  return { workspaceKey, scopeKey, memoryKey: projectMemoryRecordKey({ scopePrefix: prefix, workspaceKey, scopeKey }) };
+  return { workspaceKey, scopeKey, memoryKey: projectMemoryRecordKey({ workspaceKey, scopeKey }) };
 };
 
 // Reuse the SDK memory row format and table. This envelope is never loaded as SDK
