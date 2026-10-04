@@ -131,3 +131,27 @@ for (const known of [true, false]) test(`member auxiliary compaction shares the 
     expect(result.members[0]?.output?.state.compactionAttempts?.[0]?.status).toBe(known ? "confirmed" : "unknown");
   } finally { await f.cleanup(); }
 });
+
+test("terminal root recovery preserves the shared pool and receipt loss cannot reserve a replacement", async () => {
+  const f = await fixture(); const h = f.harness;
+  try {
+    const save = f.store.save.bind(f.store);
+    f.store.save = async (state, options) => {
+      if (state.runId === input.groupId && state.metadata?.harnessReviewGroupStatusV1 === "completed") throw new Error("cut before shared root projection");
+      return save(state, options);
+    };
+    await expect(runHarnessDurableReviewGroup(h, input)).rejects.toThrow("cut before shared root projection");
+    f.store.save = save;
+    const ledger = await f.store.load(f.location.runId, f.location.scope);
+    const result = await runHarnessDurableReviewGroup(h, input);
+    expect(result.status).toBe("completed"); expect(result.sharedBudget?.status).toBe("ready");
+    const root = (await f.store.load(input.groupId, h.config.scope))!;
+    expect(root.status).toBe("completed"); expect(root.childRuns).toHaveLength(2);
+    expect(root.budgetCoordinatorId).toBe(result.sharedBudget?.coordinatorId);
+    expect(await f.store.load(f.location.runId, f.location.scope)).toEqual(ledger);
+    await f.store.delete!(result.members[0]!.runId, h.config.scope);
+    await expect(runHarnessDurableReviewGroup(h, input)).rejects.toThrow("checkpoint is missing");
+    expect(f.calls).toEqual({ explorer: 1, reviewer: 1 });
+    expect(await f.store.load(f.location.runId, f.location.scope)).toEqual(ledger);
+  } finally { await f.cleanup(); }
+});
