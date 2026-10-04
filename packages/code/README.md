@@ -26,7 +26,11 @@ the distinction between installed acceptance and publication/provenance.
 
 Install a compatible Harness package and the declared dependencies, then run
 `bun run build`, `bun run typecheck`, and `bun test tests` from this directory.
-The build reads only Code source and leaves all package dependencies external.
+Install the immutable frontend build dependencies first with
+`bun install --cwd ../web --frozen-lockfile --ignore-scripts`. The build bundles
+the local browser host and compiled UI, including the reused Desktop presentation
+modules. It leaves Harness and server package dependencies external and never
+reads or bundles engine source. See [browser contributor verification](../web/README.md#contributor-verification).
 For this stable monorepo checkout, run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates
@@ -173,3 +177,13 @@ the source SHA, Node version, tarball size and SHA-512 to the offline PTY result
 Release validation uses this mode on the same bytes that will be published.
 
 Experimental next-version project memory uses `zhivex-code memory --help` and the matched next Harness engine. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This development source does not change published package versions.
+
+## Local browser workspace (experimental)
+
+`zhivex-code web` opens a local React workspace with prebuilt assets. Select
+CLI-allowlisted workspaces and existing sessions, follow tasks, review exact
+operations/diffs, approve or deny, inspect checks and cancel runs using the same
+Harness service. Use `zhivex-code web --help` for host/profile and recovery flags.
+Configure credentials through the existing CLI or launching environment first;
+credentials remain on the server. macOS/Linux only. See the
+[local web client](../web/README.md) for the security boundary and contributor checks.

@@ -6,6 +6,11 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+const webPayload = {
+  "package/dist/web-assets/index.html": '<script type="module" src="/assets/index-abc123.js"></script><link rel="stylesheet" href="/assets/index-abc123.css">',
+  "package/dist/web-assets/assets/index-abc123.js": "export {};\n",
+  "package/dist/web-assets/assets/index-abc123.css": "body { color: white; }\n",
+};
 
 test("Code artifact accepts the two shipped offline examples and binds exact bytes", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "code-pack-regression-"));
@@ -15,6 +20,7 @@ test("Code artifact accepts the two shipped offline examples and binds exact byt
       "package/CHANGELOG.md": "Code changes\n",
       "package/dist/cli.js": "#!/usr/bin/env node\n", "package/dist/chunk-abc123.js": "export {};\n",
       "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n",
+      ...webPayload,
     };
     for (const [name, content] of Object.entries(files)) {
       await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
@@ -36,7 +42,7 @@ test("Code artifact accepts the two shipped offline examples and binds exact byt
 
 test("Code payload rejects arbitrary examples, source, secrets, traversal, nested output and duplicates", () => {
   const required = ["package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
-    "package/examples/first-use.mjs", "package/examples/offline-provider.mjs"];
+    "package/examples/first-use.mjs", "package/examples/offline-provider.mjs", ...Object.keys(webPayload)];
   assertCodePayload([...required, "package/", "package/dist/", "package/examples/", "package/dist/chunk-abc123.js"]);
   for (const unexpected of ["package/examples/other.mjs", "package/examples/.env", "package/examples/nested/first-use.mjs",
     "package/src/cli.ts", "package/dist/cli.js.map", "package/dist/.hidden.js", "package/dist/nested/cli.js",
@@ -45,6 +51,42 @@ test("Code payload rejects arbitrary examples, source, secrets, traversal, neste
   }
   for (const missing of required) expect(() => assertCodePayload(required.filter(name => name !== missing))).toThrow("Missing");
   expect(() => assertCodePayload([...required, required[0]!])).toThrow("Duplicate");
+});
+
+test("Code artifact requires the browser payload and valid nonempty index dependencies", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "code-web-pack-regression-"));
+  try {
+    const files = {
+      "package/package.json": JSON.stringify(manifest), "package/README.md": "Code\n", "package/LICENSE": "MIT\n",
+      "package/CHANGELOG.md": "Code changes\n", "package/dist/cli.js": "#!/usr/bin/env node\n",
+      "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n", ...webPayload,
+    };
+    for (const [name, content] of Object.entries(files)) {
+      await mkdir(path.dirname(path.join(directory, name)), { recursive: true });
+      await writeFile(path.join(directory, name), content);
+    }
+    const artifact = path.join(directory, "code.tgz");
+    const pack = (names = Object.keys(files)) => {
+      expect(spawnSync("tar", ["-czf", artifact, "-C", directory, ...names]).status).toBe(0);
+    };
+    for (const absent of [Object.keys(webPayload), ...Object.keys(webPayload).map(name => [name])]) {
+      pack(Object.keys(files).filter(name => !absent.includes(name)));
+      await expect(inspectCodeArtifact(artifact, manifest)).rejects.toThrow("Missing");
+    }
+    for (const [html, error] of [
+      ['<script src="/assets/missing.js"></script><link href="/assets/index-abc123.css">', "Missing referenced"],
+      ['<script src="https://evil.invalid/app.js"></script><link href="/assets/index-abc123.css">', "Invalid web asset"],
+      ['<script src="/assets/index-abc123.js"></script>', "Missing web index css"],
+    ]) {
+      await writeFile(path.join(directory, "package/dist/web-assets/index.html"), html!);
+      pack();
+      await expect(inspectCodeArtifact(artifact, manifest)).rejects.toThrow(error!);
+    }
+    await writeFile(path.join(directory, "package/dist/web-assets/index.html"), webPayload["package/dist/web-assets/index.html"]);
+    await writeFile(path.join(directory, "package/dist/web-assets/assets/index-abc123.js"), "");
+    pack();
+    await expect(inspectCodeArtifact(artifact, manifest)).rejects.toThrow("Empty web asset");
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
 const sha = "a".repeat(40);
@@ -91,6 +133,21 @@ test("Code identity requires the latest installed journeys for the exact main SH
     [{ head_sha: sha, status: "completed", conclusion: "failure" }, ...((await identity().api("")).workflow_runs!)]]) {
     await expect(assertCodeReleaseIdentity(identity({ api: async endpoint => endpoint.includes("code-journey.yml") ?
       { workflow_runs: result } : identity().api("") }))).rejects.toThrow("code-journey.yml");
+  }
+});
+
+test("Code identity requires the latest offline web checks for the exact main SHA", async () => {
+  const queried: string[] = [];
+  await assertCodeReleaseIdentity(identity({ api: async endpoint => {
+    queried.push(endpoint);
+    return identity().api("");
+  } }));
+  expect(queried).toContain(`actions/workflows/web.yml/runs?head_sha=${sha}&branch=main&event=push&per_page=100`);
+  for (const result of [[], [{ head_sha: "b".repeat(40), status: "completed", conclusion: "success" }],
+    [{ head_sha: sha, status: "in_progress", conclusion: "" }], [{ head_sha: sha, status: "completed", conclusion: "failure" }],
+    [{ head_sha: sha, status: "completed", conclusion: "failure" }, ...((await identity().api("")).workflow_runs!)]]) {
+    await expect(assertCodeReleaseIdentity(identity({ api: async endpoint => endpoint.includes("web.yml") ?
+      { workflow_runs: result } : identity().api("") }))).rejects.toThrow("web.yml");
   }
 });
 test("Stable registry channel permits promotion from initial RC latest without consulting next", () => {

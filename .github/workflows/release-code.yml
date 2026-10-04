@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: "24"
           package-manager-cache: false
-      - name: Verify annotated tag and exact main push CI, CodeQL and installed journeys
+      - name: Verify annotated tag and exact main push CI, CodeQL, installed and web journeys
         run: bun run scripts/code-release.ts identity
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -69,6 +69,7 @@ jobs:
           bun install --frozen-lockfile --ignore-scripts
           bun run build
           bun run packages/code/scripts/link-local-engine.ts
+          bun install --cwd packages/web --frozen-lockfile --ignore-scripts
           bun run build:code
           bun run typecheck:code
           bun run test:code

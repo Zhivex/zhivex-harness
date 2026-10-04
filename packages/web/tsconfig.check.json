@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "react": [
+        "./node_modules/@types/react/index.d.ts"
+      ],
+      "react/jsx-runtime": [
+        "./node_modules/@types/react/jsx-runtime.d.ts"
+      ],
+      "diff": [
+        "./node_modules/diff/libesm/index.d.ts"
+      ],
+      "@zhivex-ai/harness/protocol": [
+        "../code/node_modules/@zhivex-ai/harness/dist/engine/protocol.d.ts"
+      ],
+      "@zhivex-ai/harness/engine": [
+        "../code/node_modules/@zhivex-ai/harness/dist/engine/index.d.ts"
+      ],
+      "@zhivex-ai/harness/service": [
+        "../code/node_modules/@zhivex-ai/harness/dist/engine/service.d.ts"
+      ],
+      "@zhivex-ai/agents": [
+        "./node_modules/@zhivex-ai/agents/dist/index.d.ts"
+      ]
+    }
+  }
+}

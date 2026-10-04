@@ -23,7 +23,7 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "prepack": "bun run build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.check.json",
     "test": "bun run build && bun test tests",
     "smoke:installed": "node scripts/installed-journey.mjs"
   },

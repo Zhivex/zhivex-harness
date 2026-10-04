@@ -102,6 +102,7 @@ jobs:
       - name: Validate engine and Code against the exact release artifact
         run: |
           bun run packages/code/scripts/link-local-engine.ts
+          bun install --cwd packages/web --frozen-lockfile --ignore-scripts
           bun run build:code
           bun run typecheck:code
           bun run test:code

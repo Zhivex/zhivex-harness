@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@zhivex-ai/harness/protocol": [
+        "./node_modules/@zhivex-ai/harness/dist/engine/protocol.d.ts"
+      ],
+      "@zhivex-ai/harness/engine": [
+        "./node_modules/@zhivex-ai/harness/dist/engine/index.d.ts"
+      ],
+      "@zhivex-ai/harness/service": [
+        "./node_modules/@zhivex-ai/harness/dist/engine/service.d.ts"
+      ],
+      "@zhivex-ai/agents": [
+        "./node_modules/@zhivex-ai/agents/dist/index.d.ts"
+      ]
+    },
+    "noEmit": true
+  }
+}

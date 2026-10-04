@@ -1,0 +1,43 @@
+name: Local Code web
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  offline-web:
+    name: Offline web security, browser and installed CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd packages/code --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
+      - run: bun run --cwd packages/web typecheck && bun run --cwd packages/web lint
+      - run: bun run --cwd packages/code typecheck && bun run --cwd packages/code test
+      - run: bun test packages/web/tests
+      - run: packages/web/node_modules/.bin/playwright install --with-deps chromium
+      - run: bun run --cwd packages/web test:browser
+      - run: node packages/web/scripts/installed-smoke.mjs
+      - run: git diff --exit-code
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: local-web-evidence-${{ github.sha }}
+          path: |
+            packages/web/.test-output/*.png
+            packages/web/.test-output/*-report.json
+          include-hidden-files: true
+          if-no-files-found: error
