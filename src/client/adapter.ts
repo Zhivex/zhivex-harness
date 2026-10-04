@@ -9,6 +9,7 @@ import {
 } from "../approvals/approval-history.js";
 import { APPROVAL_DIFFS_KEY, captureApprovalDiffs, attachAppliedDiffs } from "../approvals/approval-diff.js";
 import { terminalContinuationMessages } from "./continuation.js";
+import { ASSISTANT_RESPONSE_KEY, assistantResponses } from "../context/task-memory.js";
 import { attachApprovalPreviews } from "../approvals/approval-preview.js";
 import { hostPolicyIdentity, requiresExplicitHostReview } from "../approvals/host-policy-identity.js";
 import { issueExplicitReviewResponses, issueRecordedApprovalResponses } from "../approvals/explicit-review.js";
@@ -210,7 +211,11 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
       await options.onPrompt?.(s.sessionId, runId, c.prompt);
-      const result = await invoke(s.sessionId, { runId, scope: harness.config.scope, messages: appendUserMessage(terminalContinuationMessages(previous?.messages ?? []), c.prompt) });
+      const result = await invoke(s.sessionId, { runId, scope: harness.config.scope,
+        // getRun above binds the previous run to this exact session and scope.
+        // Carry only bounded assistant context, never approval/acceptance metadata.
+        metadata: { [ASSISTANT_RESPONSE_KEY]: assistantResponses(previous?.metadata) },
+        messages: appendUserMessage(terminalContinuationMessages(previous?.messages ?? []), c.prompt) });
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
       return { kind: "run", session: sessionDocument(s), run: await documentRun(result.state) };
     }

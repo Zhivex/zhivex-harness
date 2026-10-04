@@ -1,5 +1,5 @@
 import { LOCAL_TOOL_NAMES } from "../tools/tool-registry.js";
-import { captureTaskSources } from "./task-memory.js";
+import { ASSISTANT_RESPONSE_KEY, captureAssistantResponses, captureTaskSources } from "./task-memory.js";
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { ModelMessage } from "@zhivex-ai/core";
 
@@ -273,11 +273,20 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
 // run metadata before compaction. They never become an unbounded provider prompt.
 const sourceRequests = new WeakMap<readonly ModelMessage[], ReturnType<typeof captureTaskSources>>();
 export const compactedTaskSources = (messages: readonly ModelMessage[]) => sourceRequests.get(messages);
+// Bind to the host-created summary object so appending a new user message does
+// not lose the association. No assistant text is embedded in the provider prompt.
+const responseSources = new WeakMap<ModelMessage, ReturnType<typeof captureAssistantResponses>>();
+export const compactedAssistantResponses = (messages: readonly ModelMessage[]) => {
+  const summary = messages.find(message => responseSources.has(message));
+  return summary ? responseSources.get(summary) : undefined;
+};
 export const compactMessages = (messages: readonly ModelMessage[]): ModelMessage[] => {
   if (!messages.length) return [];
   const sources = captureTaskSources({ zhivexTaskSources: sourceRequests.get(messages) ?? [] }, messages);
+  const responses = captureAssistantResponses({ [ASSISTANT_RESPONSE_KEY]: compactedAssistantResponses(messages) ?? [] }, messages);
   const compacted: ModelMessage[] = [{ role: "user", parts: [{ type: "text",
     text: `${PREFIX}${summarizeHarnessMessages(messages).summary}` }] }];
   sourceRequests.set(compacted, sources);
+  responseSources.set(compacted[0]!, responses);
   return compacted;
 };

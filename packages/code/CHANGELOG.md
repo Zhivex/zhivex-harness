@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retain bounded assistant report context through immediate `/compact` and session restart with the matched Harness candidate; `/clear` resets the context. Recovered text grants no approval or acceptance authority.
+
 - Start the local web launcher with a secure short socket location when the canonical temporary path exceeds Harness's unchanged 100-byte limit. Preserve existing service ownership and fail closed on unsafe or occupied locations.
 - Show allowlisted startup reason codes without exposing filesystem paths or configuration secrets.
 - Clarify web task, connection and review states, keep unconfirmed actions behind reconciliation, retain tab drafts and improve keyboard/mobile diff review.
