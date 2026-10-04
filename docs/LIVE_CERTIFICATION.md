@@ -91,10 +91,11 @@ A missing credential, unavailable container runtime, upstream failure, incomplet
 
 Mixed-routing failures also retain an optional strict `routing` projection with
 finite stage, assertion, parent/reviewer provider identities and at most two
-typed cleanup failures. The driver retains the first typed runtime error event
-when a returned parent run fails, including artifact errors with a different
-class identity. Model output and serialized human-readable error messages never
-become assertion evidence. Cleanup still runs after a failure and cannot replace
+typed cleanup failures. The driver retains the first recognized typed operational
+error from runtime events or the terminal returned/rejected failure, using the
+first generic error only as a fallback. This includes artifact errors with a
+different class identity. Model output and serialized human-readable error
+messages never become assertion evidence. Cleanup still runs after a failure and cannot replace
 the primary failure; success is emitted only after cleanup succeeds. The summary
 includes the stage/assertion, route and available numeric HTTP status. These
 fields do not change routing acceptance, model pins, budgets or retry policy.

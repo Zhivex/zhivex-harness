@@ -143,6 +143,53 @@ describe("offline mixed routing certification diagnostics", () => {
     expect(await failed(f)).toMatchObject({ code: "PROVIDER_UNAVAILABLE", status: 503, routing: { stage: "parent_run" } });
   });
 
+  for (const ending of ["returned", "rejected"] as const) {
+    test(`keeps searching after a generic event for a ${ending} run`, async () => {
+      const f = fixture();
+      const typed = Object.assign(new Error(privateValue), { code: "PROVIDER_UNAVAILABLE", category: "provider",
+        retryable: false, cause: Object.assign(new Error(privateValue), { status: 429 }) });
+      f.dependencies.runtime.runHarness = async (_harness, _input, options) => {
+        await options?.onEvent?.({ type: "error", error: new Error(privateValue) } as never);
+        await options?.onEvent?.({ type: "error", error: typed } as never);
+        await options?.onEvent?.({ type: "error", error: new HarnessProviderError(privateValue, {
+          cause: Object.assign(new Error(privateValue), { status: 503 }), retryable: true
+        }) } as never);
+        if (ending === "rejected") throw new Error(privateValue);
+        return { ...f.result, status: "failed", error: { message: privateValue } } as never;
+      };
+      expect(await failed(f)).toMatchObject({ code: "PROVIDER_UNAVAILABLE", category: "provider", retryable: false, status: 429,
+        routing: { stage: ending === "returned" ? "verification" : "parent_run",
+          ...(ending === "returned" ? { assertion: "parent_completed" } : {}) } });
+    });
+  }
+
+  for (const ending of ["returned", "rejected"] as const) {
+    test(`prefers a typed ${ending} error when every event is generic`, async () => {
+      const f = fixture();
+      const typed = Object.assign(new Error(privateValue), { code: "STATE_CONFLICT", category: "state", retryable: false });
+      f.dependencies.runtime.runHarness = async (_harness, _input, options) => {
+        await options?.onEvent?.({ type: "error", error: new Error(privateValue) } as never);
+        if (ending === "rejected") throw typed;
+        return { ...f.result, status: "failed", error: typed } as never;
+      };
+      expect(await failed(f)).toMatchObject({ code: "STATE_CONFLICT", category: "state", retryable: false });
+    });
+  }
+
+  test("uses the first generic event only when no operational failure is recognized", async () => {
+    const f = fixture();
+    f.dependencies.runtime.runHarness = async (_harness, _input, options) => {
+      await options?.onEvent?.({ type: "error", error: new TypeError(privateValue) } as never);
+      await options?.onEvent?.({ type: "error", error: Object.assign(new Error(privateValue), {
+        code: "PROVIDER_UNAVAILABLE", category: "provider", retryable: privateValue
+      }) } as never);
+      throw new Error(privateValue);
+    };
+    const diagnostic = await failed(f);
+    expect(diagnostic).toMatchObject({ code: "EXECUTION_FAILED", category: "execution", retryable: false });
+    expect(diagnostic.details?.chain.some(item => item.kind === "TypeError")).toBe(true);
+  });
+
   const cases: Array<[string, (f: ReturnType<typeof fixture>) => void]> = [
     ["parent_completed", f => { f.result.status = "cancelled"; }],
     ["parent_provider", f => { f.result.state.provider = privateValue; }],

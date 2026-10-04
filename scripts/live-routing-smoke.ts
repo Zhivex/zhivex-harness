@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { sanitizeOperationalError } from "./release-diagnostics.js";
-import { attachRoutingDiagnostic, routingDiagnosticFor, routingFailure, routingProviderSchema, type RoutingDiagnostic } from "./live-routing-diagnostics.js";
+import { attachRoutingDiagnostic, createRoutingErrorCollector, routingDiagnosticFor, routingFailure, routingProviderSchema, type RoutingDiagnostic } from "./live-routing-diagnostics.js";
 import type { loadLiveSmokeRuntime } from "./live-smoke-runtime.js";
 import type { liveProviderSmokeInternals } from "./live-provider-smoke.js";
 import type * as orchestration from "./live-orchestration-smoke.js";
@@ -92,15 +92,18 @@ export const runLiveRoutingSmoke = async (
       subagentModels: runtime.createHarnessRouteModels(routes, env), env
     });
     stage("parent_run");
-    let terminalError: unknown;
+    const errors = createRoutingErrorCollector();
     const result = await runtime.runHarness(harness, {
       ...provider.providerRunInput(parentProvider, orchestration.orchestrationPrompt(parentProvider)),
       scope: harness.config.scope, idempotencyKey: `live-routing-${parentProvider}-${reviewerProvider}`
     }, { onEvent: (event) => {
-      if (event.type === "error") terminalError ??= event.error;
-    } }).catch((error: unknown) => { throw terminalError ?? error; });
+      if (event.type === "error") errors.observe(event.error);
+    } }).catch((error: unknown) => { throw errors.select(error); });
     assertion("parent_completed");
-    if (result.status !== "completed" && (terminalError || result.error)) throw terminalError ?? result.error;
+    if (result.status !== "completed") {
+      const terminalError = errors.select(result.error);
+      if (terminalError !== undefined) throw terminalError;
+    }
     assert.equal(result.status, "completed", "Unexpected parent run status.");
     assertion("parent_provider");
     assert.equal(result.state.provider, parentProvider);

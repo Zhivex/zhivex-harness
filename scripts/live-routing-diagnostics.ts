@@ -57,6 +57,25 @@ export const routingOperationalCause = (error: unknown): unknown => {
   return fallback ?? error;
 };
 
+/** Retain two bounded candidates: the first generic fallback and first typed operation. */
+export const createRoutingErrorCollector = () => {
+  let fallback: unknown;
+  let operational: unknown;
+  const observe = (error: unknown) => {
+    fallback ??= error;
+    if (operational === undefined && routingOperationalCause(error) instanceof HarnessError) {
+      operational = error;
+    }
+  };
+  return {
+    observe,
+    select(error?: unknown) {
+      observe(error);
+      return operational ?? fallback;
+    }
+  };
+};
+
 export const routingFailure = (error: unknown, context: RoutingDiagnostic) => {
   const failure = new Error("Live routing certification failed.", { cause: routingOperationalCause(error) });
   attachRoutingDiagnostic(failure, context);
