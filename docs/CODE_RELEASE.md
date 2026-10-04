@@ -2,24 +2,29 @@
 
 ## Current RC preparation: 2026-10-04
 
-This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`, both on
+This checkout prepares Harness `1.4.0-rc.2` and Code `0.3.0-rc.2`, both on
 `next`, with Code pinned exactly to the Harness candidate. npm currently reports
 Harness `1.3.0` and Code `0.2.0` on `latest`; those stable tags must not move.
-The candidates are not published. Review and integrate the preparation PR, then
+Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` are already published on `next`
+from `9a1b1d25296567262438178d25cccfc474643aeb`; preserve those immutable
+versions and annotated tags. The RC.2 candidates are not published.
+Review and integrate the preparation PR, then
 require the latest successful `ci.yml`, `codeql.yml`, `code-journey.yml` and
 `web.yml` main-push runs for the exact release SHA, including the separate CodeQL
 security result. Run Harness's existing preparation and protected release workflow
-for annotated `v1.4.0-rc.1` with `channel=next`. Its exact-artifact, OCI, live and
+for annotated `v1.4.0-rc.2` with `channel=next`. Its exact-artifact, OCI, live and
 representative gates remain mandatory. Paid certification requires separate
 campaign approval. After Harness registry integrity and provenance verification,
-run Code's protected OIDC workflow at annotated `code-v0.3.0-rc.1` on the same SHA,
+run Code's protected OIDC workflow at annotated `code-v0.3.0-rc.2` on the same SHA,
 with `channel=next`, `mode=oidc` and publication confirmation. Code must resolve
 the real published engine without overrides and pass retained-artifact terminal
 and web acceptance, four-manager checks and provenance verification. Keep stable
 `latest` unchanged. The older publication records below are historical.
 
 
-Code is released independently of Harness. The verified stable release is
+## Historical stable publication on 2026-10-02
+
+Code is released independently of Harness. The recorded October 2 stable release is
 `@zhivex-ai/code@0.1.0`, with the sole binary `zhivex-code`, npm tag `latest`,
 and the exact dependency `@zhivex-ai/harness@1.3.0`. Harness was published and
 verified first in [run 37031040747](https://github.com/Zhivex/zhivex-harness/actions/runs/37031040747). Code passed real registry
@@ -28,23 +33,23 @@ resolution, four-manager installed acceptance and source-bound provenance in
 Attempt 1 accepted publication but failed while registry metadata still reported
 the version absent. Attempt 2 recovered only the failed publish job using the
 retained artifact; identical bytes skipped npm publication and verification passed.
-Code RC2 remains on `next`; RC1 is historical. The existing OIDC publisher and
+At that publication, Code `0.1.0-rc.2` remained on `next`; `0.1.0-rc.1` was historical. The existing OIDC publisher and
 protected environment were preserved. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/stable-publication-2026-10-02.json).
 
-## Code 0.2.0 candidate
+## Historical Code 0.2.0 preparation
 
-This checkout prepares `@zhivex-ai/code@0.2.0` with the same exact published
-Harness `1.3.0` dependency. Code `0.1.0` remains the verified npm `latest` release
-until a separately approved publication succeeds. The candidate adds guided
+That preparation used `@zhivex-ai/code@0.2.0` with the same exact published
+Harness `1.3.0` dependency. Code `0.1.0` was the verified npm `latest` release
+until the separately approved `0.2.0` publication. That candidate added guided
 approval diffs, reviewed checkpoints, per-run estimated budgets and the offline
 first-use tutorial. See the [candidate changelog](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/CHANGELOG.md)
 and [release readiness](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/CODE_0_2_0_READINESS_2026-10-03.md).
 
-This is a Code-only release: no Harness version change or new paid six-provider
+That was a Code-only release: no Harness version change or new paid six-provider
 certification campaign is required. Engine API tiers and provisional provider
 support remain unchanged; estimated budgets are not guaranteed financial caps.
 
-## Release preparation
+## Historical Code 0.2.0 release procedure
 
 1. Merge the Code release PR after required review and successful checks.
 2. Wait for the latest `ci.yml`, `codeql.yml` and `code-journey.yml` **push runs on main** to succeed

@@ -4,15 +4,17 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.4.0-rc.2 - 2026-10-04
 
 - Recover bounded prior assistant reports and plans through `read_task` after local session compaction, including immediate manual compaction of the first report and continued sessions after reconnect or host restart. Keep recovered text untrusted and separate from operator requests, approvals and acceptance evidence.
+
+- Prepare the matched Harness 1.4.0-rc.2 and Code 0.3.0-rc.2 for npm `next`, retaining exact engine pins, historical model mappings and provider support tiers. Publication requires new release-bound artifact, OCI, live and representative gates.
 
 ## 1.4.0-rc.1 - 2026-10-04
 
 - Add experimental, project-scoped operator memory in the existing SQLite memory table, with explicit corrections/deletion, reviewed suggestions, provenance, freshness and bounded per-request retrieval.
 - Add local `memory` commands and `--no-memory` to Harness/Code without terminal layout changes. Curated mode stops automatic last-assistant capture; the stable engine default and explicit SDK memory integrations remain supported.
-- Preserve old state and import compatibility; document active deletion versus separately retained histories/backups and next-release engine pairing. See [Project memory](docs/PROJECT_MEMORY.md). The candidate is not yet published.
+- Preserve old state and import compatibility; document active deletion versus separately retained histories/backups and next-release engine pairing. See [Project memory](docs/PROJECT_MEMORY.md). Published to npm `next` on 2026-10-04.
 
 - Pair with Code 0.3.0-rc.1 for compact terminal flow, pageable approval review and the local browser workspace with packaged assets. Publish Harness first to `next`; preserve stable `latest`.
 
