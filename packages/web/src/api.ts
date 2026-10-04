@@ -11,8 +11,12 @@ export async function request<T>(route: string, value: unknown): Promise<T> {
       "x-zhivex-csrf": csrf,
     },
     body: JSON.stringify(value),
+  }).catch(() => {
+    throw new Error("WEB_REQUEST_FAILED");
   });
-  const document = await response.json();
+  const document = await response.json().catch(() => {
+    throw new Error("WEB_REQUEST_FAILED");
+  });
   if (!response.ok || document.ok === false)
     throw new Error(document.error?.code ?? "WEB_REQUEST_FAILED");
   return document as T;

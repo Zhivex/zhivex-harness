@@ -891,3 +891,134 @@ h2 {
     max-height: 240px;
   }
 }
+
+/* Keep state and recovery visible beside the draft at every breakpoint. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 12px;
+  background: #b8a5e4;
+  color: #1c172a;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0;
+}
+.skip-link:focus {
+  clip-path: none;
+  width: auto;
+  height: auto;
+  padding: 12px;
+}
+.session-empty,
+.loading-state {
+  padding: 12px 8px;
+  color: #a6a9b5;
+  font-size: 12px;
+}
+.operation-status {
+  padding: 10px 24px;
+  border-bottom: 1px solid #3b394c;
+  background: #242231;
+  color: #d5c9ef;
+  font-size: 12px;
+}
+.state-guidance {
+  margin: -8px 0 16px;
+  color: #adb2c2;
+  font-size: 12px;
+}
+.review-jump {
+  align-self: flex-start;
+  margin-bottom: 16px;
+  color: #e0c39c;
+}
+.pill.attention {
+  color: #e0c39c;
+  border-color: #68543a;
+  background: #282119;
+}
+.pill.warning {
+  color: #e3b4bd;
+  border-color: #60434b;
+  background: #34232a;
+}
+.review-scope {
+  color: #bcc0ce;
+  margin-bottom: 8px;
+}
+.review-operation {
+  font: inherit;
+  font-weight: 650;
+  font-size: 14px;
+}
+#review-panel,
+#task-workspace {
+  scroll-margin-top: 16px;
+}
+.topbar > button {
+  flex-shrink: 0;
+}
+.diff-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.review-content {
+  font-size: 12px;
+}
+.review-content pre,
+.diff-line {
+  font-size: 12px;
+}
+@media (min-width: 1121px) {
+  .content-grid.with-review {
+    grid-template-columns: minmax(340px, 1fr) minmax(360px, 450px);
+  }
+}
+@media (max-width: 600px) {
+  .workspace-picker label,
+  .session-search,
+  .sidebar-bottom {
+    display: block;
+  }
+  .sidebar-bottom {
+    padding-top: 12px;
+  }
+  .sidebar-bottom small {
+    display: none;
+  }
+  .section-heading {
+    gap: 12px;
+  }
+  .pill {
+    text-align: right;
+  }
+  .composer-actions {
+    flex-wrap: wrap;
+  }
+  .composer-actions > span {
+    max-width: 100%;
+    flex: 1 1 150px;
+  }
+  .composer-note {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 10px;
+  }
+  .decision-actions button,
+  .diff-toolbar button,
+  .icon-button {
+    min-height: 36px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

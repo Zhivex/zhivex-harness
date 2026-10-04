@@ -159,3 +159,22 @@ analysis job: the workflow can finish successfully while an open alert fails the
 security check. Verify its summary and accessible PR alert state; resolving a
 review thread does not fix or dismiss a code-scanning alert. Record any source
 that could not be accessed.
+
+### State, drafts and recovery
+
+The task stream distinguishes loading, disconnection, unreadable run state and
+an unconfirmed command response. Reconnect reads context, sessions and the
+latest run before enabling another mutation. It does not resubmit tasks,
+decisions or cancellation requests. A failed start retains its editable draft;
+drafts are kept only in this tab's memory, scoped to each workspace/session,
+and are lost on reload. During a long host response, activity keeps updating
+and active cancellation remains available.
+
+Pending review has a keyboard-accessible jump link on narrow layouts. Loading
+an exact review focuses its heading; Next change focuses the changed diff
+block. Stale, expired or disconnected reviews disable both decisions and explain
+how to obtain a fresh review. The host still enforces the exact pending set,
+revision, digests and single-use ticket. Search and connection status remain
+available on mobile. Offline browser acceptance covers response loss after
+admission, repeated activation, stale/expired review, reconnection, cancellation,
+draft isolation and layouts from 320 to 1440 pixels.
