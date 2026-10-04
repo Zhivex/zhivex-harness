@@ -2,19 +2,22 @@
 
 ## Current RC preparation: 2026-10-04
 
-The source version is `1.4.0-rc.1`, pending publication to `next`.
+The source version is `1.4.0-rc.2`, pending publication to `next`.
 
-This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`, both on
+This checkout prepares Harness `1.4.0-rc.2` and Code `0.3.0-rc.2`, both on
 `next`, with Code pinned exactly to the Harness candidate. npm currently reports
 Harness `1.3.0` and Code `0.2.0` on `latest`; those stable tags must not move.
-The candidates are not published. Review and integrate the preparation PR, then
+Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` are already published on `next`
+from `9a1b1d25296567262438178d25cccfc474643aeb`; preserve those immutable
+versions and annotated tags. The RC.2 candidates are not published.
+Review and integrate the preparation PR, then
 require the latest successful `ci.yml`, `codeql.yml`, `code-journey.yml` and
 `web.yml` main-push runs for the exact release SHA, including the separate CodeQL
 security result. Run Harness's existing preparation and protected release workflow
-for annotated `v1.4.0-rc.1` with `channel=next`. Its exact-artifact, OCI, live and
+for annotated `v1.4.0-rc.2` with `channel=next`. Its exact-artifact, OCI, live and
 representative gates remain mandatory. Paid certification requires separate
 campaign approval. After Harness registry integrity and provenance verification,
-run Code's protected OIDC workflow at annotated `code-v0.3.0-rc.1` on the same SHA,
+run Code's protected OIDC workflow at annotated `code-v0.3.0-rc.2` on the same SHA,
 with `channel=next`, `mode=oidc` and publication confirmation. Code must resolve
 the real published engine without overrides and pass retained-artifact terminal
 and web acceptance, four-manager checks and provenance verification. Keep stable

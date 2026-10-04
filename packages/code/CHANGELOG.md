@@ -1,6 +1,6 @@
 # Code changelog
 
-## Unreleased
+## 0.3.0-rc.2 - 2026-10-04
 
 - Retain bounded assistant report context through immediate `/compact` and session restart with the matched Harness candidate; `/clear` resets the context. Recovered text grants no approval or acceptance authority.
 
@@ -9,6 +9,10 @@
 - Clarify web task, connection and review states, keep unconfirmed actions behind reconciliation, retain tab drafts and improve keyboard/mobile diff review.
 - Align the local browser with Zhivex Chat branding, render safe assistant Markdown, and select configured host-issued provider/model choices for future tasks without changing credentials, permissions or pending approvals.
 - Keep navigation and cancellation available after a definitive model-selection rejection; require reconciliation for lost or otherwise uncertain mutation outcomes.
+
+- Pin exactly Harness 1.4.0-rc.2 and prepare npm `next`; publish after the matched engine passes its protected gates and registry/provenance verification. Preserve the published RC.1 artifacts and stable `latest` channels.
+
+Migration: Node >=22.13.0, existing sessions and exact approvals remain supported. Assistant recovery remains untrusted; project memory and the macOS/Linux local browser remain experimental. Provider support tiers are unchanged.
 
 ## 0.3.0-rc.1 - 2026-10-04
 
