@@ -120,11 +120,11 @@ test("concurrent orchestration callers cannot execute the same group twice", asy
   } finally { await f.cleanup(); }
 });
 
-for (const cancel of [false, true]) test(`SQLite fences separate processes and survives restart (cancel=${cancel})`, async () => {
+for (const shared of [false, true]) for (const cancel of [false, true]) test(`SQLite fences separate processes and survives restart (cancel=${cancel}, shared=${shared})`, async () => {
   const { access, writeFile, readFile } = await import("node:fs/promises");
   const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-review-workers-"));
   const workerScript = path.join(import.meta.dir, "fixtures/durable-review-worker.ts");
-  const worker = Bun.spawn([process.execPath, workerScript, workspace], { stdout: "pipe", stderr: "pipe" });
+  const worker = Bun.spawn([process.execPath, workerScript, workspace, shared ? "shared" : "legacy"], { stdout: "pipe", stderr: "pipe" });
   let harness: Awaited<ReturnType<typeof createHarness>> | undefined;
   const open = () => createHarness({ provider: "openai", workspace, modelInstance: createMockLanguageModel(),
     subagentModels: { explorer: createMockLanguageModel(), reviewer: createMockLanguageModel() } });
@@ -141,7 +141,7 @@ for (const cancel of [false, true]) test(`SQLite fences separate processes and s
     expect((await inspectHarnessReviewGroup(harness, "worker-group")).status).toBe("running");
     if (cancel) await cancelHarnessReviewGroup(harness, "worker-group");
     else {
-      const contender = Bun.spawn([process.execPath, workerScript, workspace], { stdout: "pipe", stderr: "pipe" });
+      const contender = Bun.spawn([process.execPath, workerScript, workspace, shared ? "shared" : "legacy"], { stdout: "pipe", stderr: "pipe" });
       const stderr = new Response(contender.stderr).text();
       expect(await contender.exited).not.toBe(0);
       expect(await stderr).toContain("already executing");
@@ -156,8 +156,9 @@ for (const cancel of [false, true]) test(`SQLite fences separate processes and s
     await stderr;
     await harness.close();
     harness = await open();
-    const restarted = await runHarnessDurableReviewGroup(harness, { groupId: "worker-group", prompt: "inspect" });
+    const restarted = await runHarnessDurableReviewGroup(harness, { groupId: "worker-group", prompt: "inspect", ...(shared ? { sharedBudget: { modelReservation: { inputTokens: 10_000, outputTokens: 1000, totalTokens: 11_000 } } } : {}) });
     expect(restarted.status).toBe(result.status);
+    if (shared) expect(restarted.sharedBudget?.status).toBe("ready");
     expect(restarted.members.map(m => m.runId)).toEqual(result.members.map((m: { runId: string }) => m.runId));
     expect(await readFile(path.join(workspace, "calls.txt"), "utf8")).toBe(cancel ? "explorer\n" : "explorer\nreviewer\n");
   } finally {

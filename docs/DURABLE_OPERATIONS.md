@@ -285,3 +285,53 @@ exactly-once guarantee for external effects, distributed scheduling or research
 workflow acceptance is implied. Model tests use only offline mocks. Regressions
 in `tests/durable-review-group.test.ts` cover repeated identity, interruption,
 terminal preservation, concurrent callers and separate-process SQLite control.
+
+### Shared token budgets for durable reviews (Beta)
+
+Supply the existing host-owned shared budget option on the durable group input:
+
+```ts
+const sharedBudget = {
+  modelReservation: { inputTokens: 10_000, outputTokens: 1_000, totalTokens: 11_000 }
+};
+const result = await runHarnessDurableReviewGroup(harness, {
+  groupId: "parser-review-v2", prompt: "Inspect the parser and review its risks.",
+  sharedBudget
+});
+console.log(result.status, result.sharedBudget?.status);
+```
+
+All member model calls use one persisted SDK coordinator bound to the group and
+Harness scope. Auxiliary compaction already configured on a member uses that same
+coordinator through SDK reservation hooks. The group has no primary model call;
+`childModelReservation`, when provided, overrides the member bound. Individual
+member limits remain active; input is narrowed when necessary so input plus
+output fits the existing child total ceiling. No child lifetime reservation or
+second token ledger is created for this engine-owned group. Members still execute
+serially. Existing primary-agent delegation uses its SDK child allocations.
+
+The caller supplies conservative per-call bounds. Harness estimates input before
+transport and caps output; input estimation is not a tokenizer or billing guarantee.
+SDK records confirmed usage that exceeds a reservation before rejecting it. Qwen
+member routes and unlimited token policies are excluded from this option.
+
+The original reservation policy, child allocation and pool limits are part of the
+durable identity. Repeat the same option on recovery; adding it to an existing
+unbudgeted group, removing it, or changing its bounds is refused. Existing
+unbudgeted groups retain their original schema and behavior. Shared groups require
+the complete SDK budget ledger backup; restoring only a group snapshot cannot
+reset the pool. Initialization persists a zero-use SDK receipt before root creation.
+
+Inspection includes `sharedBudget.coordinatorId` and a status of `ready`, `reserved`,
+`unknown` or `missing`. An active call can report `reserved`; after interruption,
+unresolved reservations and unknown usage block additional execution even when
+capacity remains. No automatic consumption reconciliation is supplied. Cancellation
+continues to work with unresolved consumption and never releases its reservation:
+`cancelled` confirms execution status, while `sharedBudget.status` reports accounting
+uncertainty separately. Missing admitted child checkpoints also retain the existing
+uncertain cancellation behavior. These are separate persisted records, not an atomic
+cross-run transaction or an exactly-once external-effects guarantee.
+
+Offline regression coverage in `tests/durable-review-budget.test.ts` and the separate
+process fixture verifies shared admission, exhaustion, repeat/recovery, unknown
+consumption, missing ledger refusal and cancellation across SQLite connections.

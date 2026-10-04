@@ -23,5 +23,5 @@ const models = Object.fromEntries((["explorer", "reviewer"] as const).map(role =
 }));
 const harness = await createHarness({ provider: "openai", workspace, modelInstance: createMockLanguageModel(), subagentModels: models });
 try {
-  console.log(JSON.stringify(await runHarnessDurableReviewGroup(harness, { groupId: "worker-group", prompt: "inspect" })));
+  console.log(JSON.stringify(await runHarnessDurableReviewGroup(harness, { groupId: "worker-group", prompt: "inspect", ...(process.argv[3] === "shared" ? { sharedBudget: { modelReservation: { inputTokens: 10_000, outputTokens: 1000, totalTokens: 11_000 } } } : {}) })));
 } finally { await harness.close(); }

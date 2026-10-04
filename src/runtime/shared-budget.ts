@@ -10,14 +10,14 @@ export interface HarnessSharedBudgetOptions {
   /** Defaults to modelReservation. Must fit the child's narrowed allocation. */
   childModelReservation?: AgentTokenReservation;
 }
-const validate = (reservation: AgentTokenReservation, limits: AgentTokenReservation) => {
+export const validateSharedReservation = (reservation: AgentTokenReservation, limits: AgentTokenReservation) => {
   if (![reservation.inputTokens, reservation.outputTokens, reservation.totalTokens].every(n => Number.isSafeInteger(n) && n > 0) ||
       reservation.totalTokens < reservation.inputTokens + reservation.outputTokens ||
       (["inputTokens", "outputTokens", "totalTokens"] as const).some(k => reservation[k] > limits[k])) {
     throw new HarnessConfigError("Shared budget model reservations must be positive conservative bounds within the authorized token ceilings; total must cover input plus output.");
   }
 };
-const boundedModel = (model: LanguageModel, reservation: AgentTokenReservation): LanguageModel => wrapLanguageModel(model, [{
+export const boundedSharedModel = (model: LanguageModel, reservation: AgentTokenReservation): LanguageModel => wrapLanguageModel(model, [{
   name: "harness-shared-reservation-preflight-v1",
   async wrapGenerate(context, next) {
     if (estimateRequestTokens(context.input) > reservation.inputTokens) throw new HarnessConfigError("Shared model input reservation is insufficient for the estimated request.");
@@ -43,13 +43,13 @@ export async function withSharedBudget(harness: ZhivexHarness, runId: string, in
     totalTokens: harness.config.budget.maxTotalTokens };
   const reservation = { ...options.modelReservation };
   const childReservation = { ...(options.childModelReservation ?? reservation) };
-  validate(reservation, limits);
+  validateSharedReservation(reservation, limits);
   const child = harness.config.orchestration.childBudget;
   // SDK child allocations require total >= input + output. Preserve the total
   // authorization and output ceiling by narrowing the input allocation.
   const childLimits = { inputTokens: Math.min(child.maxInputTokens, child.maxTotalTokens - child.maxOutputTokens),
     outputTokens: child.maxOutputTokens, totalTokens: child.maxTotalTokens };
-  if (harness.agent.subagents?.length) validate(childReservation, childLimits);
+  if (harness.agent.subagents?.length) validateSharedReservation(childReservation, childLimits);
   const models = [harness.agent.model, ...(harness.agent.subagents ?? []).map(s => s.agent.model)];
   if (models.some(model => model.provider === "qwen")) throw new HarnessConfigError("Shared token reservations require a certified output-cap route; Qwen routes are not enabled by this option.");
   const budgetId = `harness:${runId}`;
@@ -65,7 +65,7 @@ export async function withSharedBudget(harness: ZhivexHarness, runId: string, in
     if (!ledger || ledger.metadata?.budgetIdentity !== coordinator.id) throw new HarnessConfigError("Shared budget ledger is missing or incompatible; restore the complete state backup before resuming.");
   }
   const subagents = harness.agent.subagents?.map(definition => ({ ...definition, agent: {
-    ...definition.agent, model: boundedModel(definition.agent.model, childReservation),
+    ...definition.agent, model: boundedSharedModel(definition.agent.model, childReservation),
     policy: { ...definition.agent.policy, modelReservation: childReservation,
       budget: { ...definition.agent.policy?.budget, maxInputTokens: childLimits.inputTokens,
         maxOutputTokens: childLimits.outputTokens, maxTotalTokens: childLimits.totalTokens } },
@@ -75,7 +75,7 @@ export async function withSharedBudget(harness: ZhivexHarness, runId: string, in
       sharedBudgetV1: serializeJsonValue({ modelReservation: childReservation, allocation: childLimits }) }
   } as AgentDefinition<LanguageModel> }));
   const agent = new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
-    model: boundedModel(harness.agent.model, reservation), ...(subagents ? { subagents } : {})
+    model: boundedSharedModel(harness.agent.model, reservation), ...(subagents ? { subagents } : {})
   } as ConstructorParameters<typeof Agent<LanguageModel>>[0]);
   return { harness: { ...harness, agent }, input: { ...input, scope: harness.config.scope,
     policy: { ...input.policy, budgetCoordinator: coordinator, modelReservation: reservation },

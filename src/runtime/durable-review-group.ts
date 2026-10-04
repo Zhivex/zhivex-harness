@@ -6,6 +6,8 @@ import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 import type { UsageLedger } from "./usage-ledger.js";
 import type { HarnessConfig, HarnessSubagentProfile } from "./config.js";
 import { HarnessConfigError, HarnessStateConflictError } from "./errors.js";
+import type { HarnessSharedBudgetOptions } from "./shared-budget.js";
+import { sharedReviewBudget, reviewBudgetStatus, type ReviewBudgetStatus } from "./durable-review-budget.js";
 
 const KEY = "harnessReviewGroupV1";
 const recordSchema = z.strictObject({
@@ -66,6 +68,7 @@ export interface HarnessDurableReviewGroupResult {
   groupId: string;
   cancellationRequested: boolean;
   status: "queued" | "running" | "blocked" | "waiting_approval" | "suspended" | "completed" | "partial" | "failed" | "timed_out" | "cancel_requested" | "cancelled";
+  sharedBudget?: { coordinatorId: string; status: ReviewBudgetStatus };
   members: { profile: "explorer" | "reviewer"; runId: string; output?: AgentRunOutput }[];
 }
 
@@ -94,11 +97,12 @@ export async function inspectHarnessReviewGroup(runtime: Runtime, groupId: strin
     : states.some(s => s.status === "suspended") ? "suspended"
     : states.every(terminal) && record.members.some((m, i) => m.blocked && !members[i]?.output) ? "blocked"
     : states.length ? "running" : "queued";
-  return { schemaVersion: 1, kind: "durable-review-group", groupId, cancellationRequested: record.cancellationRequested, status, members };
+  return { schemaVersion: 1, kind: "durable-review-group", groupId, cancellationRequested: record.cancellationRequested, status, members,
+    ...(root.budgetCoordinatorId ? { sharedBudget: { coordinatorId: root.budgetCoordinatorId, status: await reviewBudgetStatus(runtime, groupId, root.budgetCoordinatorId) } } : {}) };
 }
 
 /** Opt-in durable counterpart to the legacy, ephemeral runHarnessReviewGroup. */
-export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { groupId: string; prompt: string; abortSignal?: AbortSignal },
+export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { groupId: string; prompt: string; abortSignal?: AbortSignal; sharedBudget?: HarnessSharedBudgetOptions },
   profiles: readonly HarnessSubagentProfile[] = ["explorer", "reviewer"]): Promise<HarnessDurableReviewGroupResult> {
   requireStore(runtime.store);
   if (!input.groupId || input.groupId.length > 200 || !input.prompt) throw new HarnessConfigError("A durable group requires a bounded groupId and a prompt.");
@@ -106,19 +110,31 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
   if (!unique.length || unique.length > runtime.config.orchestration.maxParallelReviews || unique.some(p => p !== "explorer" && p !== "reviewer")) {
     throw new HarnessConfigError("Durable review groups require enabled read-only explorer/reviewer profiles within maxParallelReviews.");
   }
-  const agents = unique.map(profile => {
+  const definitions = unique.map(profile => {
     const agent = runtime.subagents.get(profile);
     if (!agent) throw new HarnessConfigError(`Subagent profile ${profile} is not enabled.`);
     if (agent.store !== runtime.store) throw new HarnessConfigError("Durable review members must share the Harness run store.");
     return agent;
   });
+  const budget = input.sharedBudget ? sharedReviewBudget(runtime, input.groupId, definitions, input.sharedBudget) : undefined;
+  const agents = budget?.agents ?? definitions;
   const record: Record = { schemaVersion: 1, cancellationRequested: false,
     fingerprint: `sha256:${digest({ prompt: input.prompt, scope: runtime.config.scope, profiles: unique,
-      bindings: agents.map(a => ({ id: a.id, harness: a.harness, provider: a.model.provider, model: a.model.modelId })) })}`,
+      bindings: agents.map(a => ({ id: a.id, harness: a.harness, provider: a.model.provider, model: a.model.modelId })),
+      ...(budget ? { sharedBudget: budget.identity } : {}) })}`,
     members: unique.map(profile => ({ profile: profile as "explorer" | "reviewer",
       runId: `review_child_${digest([input.groupId, profile])}`,
       idempotencyKey: `harness-review-member:${digest([input.groupId, profile])}`, admitted: false, blocked: false })) };
   const candidate = rootState(runtime, input.groupId, record);
+  const previous = await runtime.store.load(input.groupId, runtime.config.scope);
+  if (previous && readRecord(previous).fingerprint !== record.fingerprint) {
+    throw new HarnessStateConflictError("Review group identity is already bound to a different request or runtime.");
+  }
+  if (budget) {
+    await budget.initialize(previous);
+    candidate.budgetCoordinatorId = budget.identity.coordinatorId;
+    candidate.metadata = { ...candidate.metadata, sharedBudgetV1: serializeJsonValue(budget.identity) };
+  }
   const claim = await runtime.store.claimIdempotencyKey!({ ...candidate, idempotencyKey: candidate.idempotencyKey! });
   if (claim.state.runId !== input.groupId || readRecord(claim.state).fingerprint !== record.fingerprint) {
     throw new HarnessStateConflictError("Review group identity is already bound to a different request or runtime.");
@@ -132,6 +148,7 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
       if (key === "claimIdempotencyKey") return async (state: AgentRunState & { idempotencyKey: string }) => locked(runtime, input.groupId, async (root, owner) => {
         const live = readRecord(root);
         if (live.cancellationRequested) throw new HarnessStateConflictError("Review group admission is closed by cancellation.");
+        await budget?.requireReady();
         const entry = live.members.find(m => m.runId === state.runId && m.idempotencyKey === state.idempotencyKey);
         if (!entry || state.parentRunId !== input.groupId) throw new HarnessStateConflictError("Unexpected review member admission.");
         entry.admitted = true;
@@ -176,6 +193,7 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
   input.abortSignal?.addEventListener("abort", cancel, { once: true });
   try {
     if (input.abortSignal?.aborted) cancel();
+    else await budget?.requireReady();
     let memberResults: Awaited<ReturnType<typeof runAgentGroup>> | undefined;
     if (cancellation) await cancellation;
     else {
