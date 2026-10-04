@@ -220,3 +220,142 @@ approvals, and provider per-request limits remain enforced. Stored numeric token
 ceilings are inactive until `unlimitedTokens` is set back to `false`.
 
 Next-version [project memory](PROJECT_MEMORY.md) reuses the existing SDK memory table and state export records. Historical state is not harvested into curated memory. Forget/clear remove current memory content, while backups, run histories and SQLite WAL retention remain separate. Older importers reject the new reserved memory key safely.
+
+## Durable review groups (Beta)
+
+`runHarnessReviewGroup` retains its ephemeral v1 contract. Applications can opt in
+through `runHarnessDurableReviewGroup(harness, { groupId, prompt })`. The new API
+uses the Harness scope, an application-owned root and a fixed roster of at most
+two read-only explorer/reviewer members. This first implementation schedules
+members serially. It requires a store with atomic idempotency claims, CAS saves
+and fenced acquire/renew/release leases; the default SQLite backend supports them.
+Custom stores must honor these contracts. No database schema migration is needed.
+
+```ts
+import {
+  runHarnessDurableReviewGroup,
+  inspectHarnessReviewGroup,
+  cancelHarnessReviewGroup
+} from "@zhivex-ai/harness";
+
+const result = await runHarnessDurableReviewGroup(harness, {
+  groupId: "review-request-42",
+  prompt: "Inspect the public API boundary."
+});
+const snapshot = await inspectHarnessReviewGroup(harness, result.groupId);
+// Cancellation can be requested from another worker using the same scope/store.
+const cancellation = await cancelHarnessReviewGroup(harness, result.groupId);
+```
+
+A repeated ID must have the same prompt, ordered profiles, scope and member
+runtime bindings. A mismatch fails before a model request. Completed members
+replay their durable receipts; an interrupted group resumes the original member
+IDs. A concurrent caller receives a retryable state conflict while the group
+worker lease is held. After a worker dies, wait for lease expiry before retrying.
+Inspection reconstructs results without executing a member. Keep the complete
+state store when backing up or restoring; deleting a root or member is not a
+supported way to reset a request.
+
+Execution statuses include `blocked`, `partial`, `waiting_approval`, `suspended`,
+`timed_out`, `cancel_requested` and `cancelled`. `partial` means all members are
+terminal and some completed while others did not. Completion describes execution;
+existing evidence and acceptance contracts still determine acceptance. The root
+is visible to ordinary run inspection; its SDK status maps `partial` to `failed`,
+and `blocked` maps to `suspended`, with the richer value in `harnessReviewGroupStatusV1`. Use group inspection for
+the full result. Approvals are not automatically resumed by this API.
+
+Cancellation records intention under the same fenced root lease used for fresh
+member admission. Each admission is recorded before claiming a child checkpoint.
+Subsequent model requests also check the root before dispatch. Already admitted
+requests can finish late; cancellation does not roll back an external effect.
+Terminal children are preserved, and active children receive durable cancellation
+requests. Inactive queued, approval or suspended checkpoints become cancelled.
+Confirmation requires every admitted child to have a terminal checkpoint. A cut
+between recorded admission and child persistence remains `cancel_requested`
+because the claim is uncertain; this tranche does not provide an automatic
+reconciliation API for that cut. Repeated cancellation rechecks the fixed roster.
+
+Generic cancellation of the root also closes group admission, but callers should
+use the group cancellation API to preserve terminal member receipts; the SDK
+'s generic tree-cancellation semantics are unchanged.
+
+This fence applies to the opt-in application-owned review group. It does not fix
+the SDK's general parent/subagent admission and cancellation primitives. No
+exactly-once guarantee for external effects, distributed scheduling or research
+workflow acceptance is implied. Model tests use only offline mocks. Regressions
+in `tests/durable-review-group.test.ts` cover repeated identity, interruption,
+terminal preservation, concurrent callers and separate-process SQLite control.
+
+Terminal replay reconciles the root's persisted status, member summaries and richer
+group status before returning, including recovery after a cut following child
+completion. Cancellation also reconciles its reconstructed projection. Internal
+worker checkpoints are children of the group: they become `running` while leased,
+`suspended` after an interrupted or blocked attempt, and terminal only after the
+root's terminal projection is persisted. Recovery repairs an idle legacy worker
+without taking ownership from a live worker. Default terminal cleanup can collect
+finished groups and their workers; suspended coordination remains resumable.
+
+New member records include an optional `checkpointed` marker, saved after the SDK
+child claim and before request dispatch. If a previously persisted child disappears,
+recovery blocks before transport and requires the complete backup. Existing records
+without that marker remain readable; admitted members with missing receipts are
+conservatively blocked. Admission and model dispatch also recheck receipt presence
+under the root lock, so a stale caller snapshot cannot bypass the guard. Cleanup
+while a group is active can remove an older terminal child's receipt and leave the
+group blocked; it must not be used to reset or restart that child. Cancellation may
+remain uncertain in this case. Retention deleting the entire group expires its
+stored identity; no permanent deduplication beyond retained state is promised.
+
+Groups modified by the checkpoint-marker fix require a current artifact. Older
+artifacts with strict pre-marker schemas cannot read the additional marker;
+downgrades require restoring a complete pre-upgrade backup.
+
+### Shared token budgets for durable reviews (Beta)
+
+Supply the existing host-owned shared budget option on the durable group input:
+
+```ts
+const sharedBudget = {
+  modelReservation: { inputTokens: 10_000, outputTokens: 1_000, totalTokens: 11_000 }
+};
+const result = await runHarnessDurableReviewGroup(harness, {
+  groupId: "parser-review-v2", prompt: "Inspect the parser and review its risks.",
+  sharedBudget
+});
+console.log(result.status, result.sharedBudget?.status);
+```
+
+All member model calls use one persisted SDK coordinator bound to the group and
+Harness scope. Auxiliary compaction already configured on a member uses that same
+coordinator through SDK reservation hooks. The group has no primary model call;
+`childModelReservation`, when provided, overrides the member bound. Individual
+member limits remain active; input is narrowed when necessary so input plus
+output fits the existing child total ceiling. No child lifetime reservation or
+second token ledger is created for this engine-owned group. Members still execute
+serially. Existing primary-agent delegation uses its SDK child allocations.
+
+The caller supplies conservative per-call bounds. Harness estimates input before
+transport and caps output; input estimation is not a tokenizer or billing guarantee.
+SDK records confirmed usage that exceeds a reservation before rejecting it. Qwen
+member routes and unlimited token policies are excluded from this option.
+
+The original reservation policy, child allocation and pool limits are part of the
+durable identity. Repeat the same option on recovery; adding it to an existing
+unbudgeted group, removing it, or changing its bounds is refused. Unbudgeted groups retain their identity and limits; the checkpoint-marker recovery
+rules above apply to both modes. Shared groups require
+the complete SDK budget ledger backup; restoring only a group snapshot cannot
+reset the pool. Initialization persists a zero-use SDK receipt before root creation.
+
+Inspection includes `sharedBudget.coordinatorId` and a status of `ready`, `reserved`,
+`unknown` or `missing`. An active call can report `reserved`; after interruption,
+unresolved reservations and unknown usage block additional execution even when
+capacity remains. No automatic consumption reconciliation is supplied. Cancellation
+continues to work with unresolved consumption and never releases its reservation:
+`cancelled` confirms execution status, while `sharedBudget.status` reports accounting
+uncertainty separately. Missing admitted child checkpoints also retain the existing
+uncertain cancellation behavior. These are separate persisted records, not an atomic
+cross-run transaction or an exactly-once external-effects guarantee.
+
+Offline regression coverage in `tests/durable-review-budget.test.ts` and the separate
+process fixture verifies shared admission, exhaustion, repeat/recovery, unknown
+consumption, missing ledger refusal and cancellation across SQLite connections.

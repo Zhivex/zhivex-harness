@@ -500,3 +500,7 @@ export { serveAcpStdio } from "./client/acp-stdio.js";
 export { openWorkspaceCheckpointStore } from "./persistence/workspace-checkpoints.js";
 export type { WorkspaceCheckpoint, WorkspaceRestoreOperation } from "./persistence/workspace-checkpoints.js";
 export type { HarnessMcpResourceClient } from "./integrations/mcp.js";
+
+export { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "./runtime/durable-review-group.js";
+export type { HarnessDurableReviewGroupResult } from "./runtime/durable-review-group.js";
+export type { HarnessSharedBudgetOptions } from "./runtime/shared-budget.js";
