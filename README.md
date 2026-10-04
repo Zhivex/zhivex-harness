@@ -12,24 +12,21 @@ diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
 Version `1.3.0` is the current public npm release on `latest`, with terminal-independent engine
-entrypoints and the separately published Code CLI `0.1.0` on `latest`. Both protected
-workflows passed registry integrity and provenance verification. Harness RC7 and
+entrypoints and the separately published Code CLI `0.2.0` on `latest`. Harness publication passed registry integrity and provenance verification. Harness RC7 and
 Code RC2 remain published on `next`. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
-Code `0.2.0` is being prepared with the same exact Harness `1.3.0` dependency.
-Its guided console workflows and offline tutorial are described in the
-[Code candidate guide](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md); publication is pending.
+This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). The candidates are not yet published.
 
 ## Quick start
 
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
-Install the published stable release:
+After RC publication, install the candidate below. Until then, use npm `latest` for stable Harness 1.3.0:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.3.0
+npm install -g @zhivex-ai/harness@1.4.0-rc.1
 cd /path/to/your/project
 zhx
 ```

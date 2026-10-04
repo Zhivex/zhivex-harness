@@ -1,19 +1,17 @@
 # Zhivex Code
 
-The terminal product for the Zhivex Harness engine. This checkout prepares
-`0.2.0`, pinned to `@zhivex-ai/harness@1.3.0`; publication is pending. Version `0.1.0` is
-published and verified on npm `latest` and pins `@zhivex-ai/harness@1.3.0`.
-The protected workflow verified registry bytes, source-bound provenance and
-actual engine dependency resolution.
+The terminal and local browser product for the Zhivex Harness engine. This checkout prepares
+`0.3.0-rc.1`, pinned exactly to `@zhivex-ai/harness@1.4.0-rc.1`, for npm `next`.
+Publication is pending. npm `latest` remains `0.2.0`, pinned to Harness `1.3.0`.
 
-Install with `npm install -g @zhivex-ai/code@0.1.0`.
+Install stable with `npm install -g @zhivex-ai/code@0.2.0`.
 Node >=22.13.0 is required; consumers do not need Bun.
 
-The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.1.0`,
-`yarn global add @zhivex-ai/code@0.1.0` (Yarn Classic), and
-`bun add -g @zhivex-ai/code@0.1.0`. Choose the project's existing manager for local
+The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.2.0`,
+`yarn global add @zhivex-ai/code@0.2.0` (Yarn Classic), and
+`bun add -g @zhivex-ai/code@0.2.0`. Choose the project's existing manager for local
 installation: `npm install`, `pnpm add`, `yarn add`, or `bun add`, followed by
-`@zhivex-ai/code@0.1.0`. Harness keeps `zhx` and `zhivex-harness`; Code owns
+`@zhivex-ai/code@0.2.0`. Harness keeps `zhx` and `zhivex-harness`; Code owns
 `zhivex-code`, so installing both does not replace those aliases.
 
 The local candidate matrix covers npm, pnpm 11, Yarn Classic 1 and Bun 1.4 on
@@ -31,12 +29,12 @@ Install the immutable frontend build dependencies first with
 the local browser host and compiled UI, including the reused Desktop presentation
 modules. It leaves Harness and server package dependencies external and never
 reads or bundles engine source. See [browser contributor verification](../web/README.md#contributor-verification).
-For this stable monorepo checkout, run `bun run build` at the repository root,
+For this candidate checkout, install the root frozen lockfile with `bun install --frozen-lockfile --ignore-scripts`, then run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest is now `1.3.0`; this link is local API development
+The root manifest is now `1.4.0-rc.1`; this link is local API development
 evidence only. Installed acceptance must test the exact Harness version pinned by
 Code, without rewriting its version.
 
@@ -79,23 +77,22 @@ host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
 ## Release status
 
 Packing and local tests are not a registry release. The independent Code workflow
-validates an annotated `code-v0.2.0` tag on reviewed main, its exact CI/CodeQL
-and installed-journey results, and the published engine dependency. It tests one immutable Code tarball
+validates an annotated `code-v0.3.0-rc.1` tag on reviewed main, its exact CI/CodeQL
+and installed-journey/web results, and the published engine dependency. It tests one immutable Code tarball
 both without dependency overrides and with the four package managers.
 
-The prepared stable 0.2.0 uses the existing npm Trusted Publishing configuration and protected
+The prepared RC 0.3.0-rc.1 uses the existing npm Trusted Publishing configuration and protected
 `npm` environment. Historical first-publication bootstrap is documented separately. See
 [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
-Code 0.1.0 is published and verified on latest; RC2 remains on next and RC1 is
+Code 0.2.0 is published on latest; RC2 remains on next and RC1 is
 historical. Stable acceptance used the published Harness 1.3.0 dependency. The local
 four-manager matrix covers both install orders; it does not certify other engine
 versions, upstream provider parity or registry provenance. Beta/experimental
 engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.
 
-## Guided runs in the 0.2.0 candidate
+## Guided runs (since 0.2.0)
 
-The 0.2.0 candidate adds console workflows on published Harness 1.3.0 APIs.
-Use the candidate tarball to try these features before publication. See the
+Code 0.2.0 introduced these console workflows on Harness 1.3.0 APIs. See the
 [Code changelog](CHANGELOG.md) for migration notes.
 
 Approvals for local reviewed edits, patches and replacements show a per-file
@@ -146,7 +143,7 @@ and time limits continue to apply.
 
 ## First use with Node and an offline fixture
 
-The 0.2.0 candidate tarball includes a tutorial that needs Node >=22.13.0 and npm.
+The Code tarball includes a tutorial that needs Node >=22.13.0 and npm.
 It does not need Bun, Python, Git, credentials or a paid provider. In an empty
 directory, install the candidate tarball from this PR (or pack a contributor build):
 
@@ -167,7 +164,7 @@ the user's explicit cleanup step.
 
 Contributors run `bun run build`, `bun run typecheck`, `bun run test`, then
 `bun run smoke:installed` in this package. The installed acceptance driver packs
-Code, installs it with npm and the exact published Harness 1.3.0 dependency (no
+Code, installs it with npm and the exact pinned published Harness dependency (no
 override or source link), then exercises the tutorial in a Linux/macOS PTY. Python
 3 is test tooling only. Set `CODE_JOURNEY_OUTPUT` to retain its report and transcript.
 
@@ -176,7 +173,7 @@ To test an already retained artifact without repacking, run
 the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
 Release validation uses this mode on the same bytes that will be published.
 
-Experimental next-version project memory uses `zhivex-code memory --help` and the matched next Harness engine. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This development source does not change published package versions.
+Experimental project memory in this RC uses `zhivex-code memory --help` and Harness 1.4.0-rc.1. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This candidate is not yet published.
 
 ## Local browser workspace (experimental)
 
@@ -187,3 +184,12 @@ Harness service. Use `zhivex-code web --help` for host/profile and recovery flag
 Configure credentials through the existing CLI or launching environment first;
 credentials remain on the server. macOS/Linux only. See the
 [local web client](../web/README.md) for the security boundary and contributor checks.
+
+Contributor dependencies are locked by the root and web lockfiles. The former Code
+registry lock pinned stable Harness 1.3.0 and has been removed: an unpublished RC
+has no registry integrity to record. Do not fabricate a lock entry or change the
+published package dependency to a local path. Before publication, installed PTY
+acceptance uses `--candidate-engine /absolute/path/harness.tgz`; installed web
+acceptance uses `CODE_CANDIDATE_ENGINE`. Both check the exact manifest pin and
+label the explicit consumer override. Release Code PTY and registry resolution
+still use the real published dependency without overrides after Harness publishes.

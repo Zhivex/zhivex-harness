@@ -1,10 +1,16 @@
 # Code changelog
 
-## Unreleased
+## 0.3.0-rc.1 - 2026-10-04
 
-- Add experimental local project-memory commands and per-invocation `--no-memory`. The memory feature requires the matched next Harness engine; release preparation must update the exact engine pin. Existing terminal layout is unchanged.
+- Add experimental local project-memory commands and per-invocation `--no-memory`. The feature uses the exact matched Harness candidate.
 
-## 0.2.0 - pending publication
+- Introduce compact terminal conversation flow and pageable, exact approval review.
+- Ship `zhivex-code web` with prebuilt browser assets, loopback pairing, durable sessions and the governed Harness service. No frontend build is required after installation.
+- Pin exactly Harness 1.4.0-rc.1 and target npm `next`; publish only after the matched engine is verified. Stable `latest` stays at 0.2.0.
+
+Migration: Node >=22.13.0 remains required. Existing state and approvals remain supported. Project memory and the macOS/Linux local browser remain experimental; the browser has no project-memory management panel. No provider support tier is promoted.
+
+## 0.2.0 - 2026-10-03
 
 - Show per-file changed-region diffs for reviewed local edits using Harness
   precondition-validated previews; approvals and apply-time checks remain required.
