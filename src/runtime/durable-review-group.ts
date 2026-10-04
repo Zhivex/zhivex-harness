@@ -13,7 +13,7 @@ const KEY = "harnessReviewGroupV1";
 const recordSchema = z.strictObject({
   schemaVersion: z.literal(1), fingerprint: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   cancellationRequested: z.boolean(),
-  members: z.array(z.strictObject({ profile: z.enum(["explorer", "reviewer"]), runId: z.string(), idempotencyKey: z.string(), admitted: z.boolean(), blocked: z.boolean() })).min(1).max(2)
+  members: z.array(z.strictObject({ profile: z.enum(["explorer", "reviewer"]), runId: z.string(), idempotencyKey: z.string(), admitted: z.boolean(), blocked: z.boolean(), checkpointed: z.boolean().optional() })).min(1).max(2)
 });
 type Record = z.infer<typeof recordSchema>;
 type Runtime = { usageLedger?: UsageLedger; config: HarnessConfig; store: AgentRunStore; subagents: ReadonlyMap<HarnessSubagentProfile, AgentDefinition<LanguageModel>> };
@@ -53,6 +53,55 @@ async function locked<T>(runtime: Runtime, groupId: string, operation: (root: Ag
   } finally { await runtime.store.releaseLease!(groupId, owner, runtime.config.scope); }
 }
 
+async function assertCheckpointsPresent(runtime: Runtime, record: Record) {
+  for (const member of record.members) {
+    if ((member.checkpointed === true || (member.admitted && member.checkpointed === undefined)) && !await runtime.store.load(member.runId, runtime.config.scope)) {
+      throw new HarnessStateConflictError("Durable review child checkpoint is missing; restore the complete backup before retrying.");
+    }
+  }
+}
+
+/** Persist the same reconstructed projection on normal completion and replay. */
+async function persistSnapshot(runtime: Runtime, root: AgentRunState, owner: string): Promise<HarnessDurableReviewGroupResult> {
+  const result = await inspectHarnessReviewGroup(runtime, root.runId);
+  const revision = root.revision ?? 0;
+  await runtime.store.save({ ...root, revision: revision + 1, updatedAt: Date.now(),
+    status: result.status === "partial" ? "failed" : result.status === "blocked" ? "suspended" : result.status,
+    childRuns: result.members.flatMap(member => member.output ? [{
+      runId: member.runId, parentRunId: root.runId, ...(member.output.state.agentId ? { agentId: member.output.state.agentId } : {}),
+      status: member.output.status, outputText: member.output.outputText,
+      steps: member.output.steps.length, toolCalls: member.output.toolResults.length,
+      toolErrors: member.output.toolResults.filter(t => t.isError).length,
+      ...(member.output.usage ? { usage: member.output.usage } : {})
+    }] : []),
+    metadata: { ...root.metadata, [KEY]: serializeJsonValue(readRecord(root)), harnessReviewGroupStatusV1: result.status } },
+    { expectedRevision: revision, leaseOwnerId: owner });
+  return result;
+}
+
+async function updateWorker(runtime: Runtime, workerId: string, ownerId: string, status: AgentRunState["status"], groupId: string) {
+  // Renew before a short CAS write; a worker that lost ownership cannot finalize
+  // the replacement worker's checkpoint. Do not manufacture a terminal receipt.
+  if (!await runtime.store.renewLease!(workerId, { ownerId, ttlMs: 30_000 }, runtime.config.scope)) return false;
+  const worker = await runtime.store.load(workerId, runtime.config.scope);
+  if (!worker || worker.agentId !== "zhivex-harness-review-worker") throw new HarnessStateConflictError("Review worker checkpoint is missing or incompatible.");
+  await runtime.store.save({ ...worker, parentRunId: groupId, status, revision: (worker.revision ?? 0) + 1, updatedAt: Date.now() },
+    { expectedRevision: worker.revision ?? 0, leaseOwnerId: ownerId });
+  return true;
+}
+
+async function finalizeIdleWorker(runtime: Runtime, groupId: string) {
+  const workerId = `review_worker_${digest(groupId)}`;
+  const worker = await runtime.store.load(workerId, runtime.config.scope);
+  if (!worker) return;
+  const ownerId = `review-worker-recovery:${randomUUID()}`;
+  if (!await runtime.store.acquireLease!(workerId, { ownerId, ttlMs: 30_000 }, runtime.config.scope)) return;
+  try {
+    const root = await runtime.store.load(groupId, runtime.config.scope);
+    await updateWorker(runtime, workerId, ownerId, root && terminal(root) ? root.status : "suspended", groupId);
+  } finally { await runtime.store.releaseLease!(workerId, ownerId, runtime.config.scope); }
+}
+
 function output(state: AgentRunState): AgentRunOutput {
   return { status: state.status, outputText: state.outputText,
     ...(state.finalOutput !== undefined ? { finalOutput: state.finalOutput } : {}),
@@ -85,10 +134,12 @@ export async function inspectHarnessReviewGroup(runtime: Runtime, groupId: strin
     return { profile: member.profile, runId: member.runId, ...(state ? { output: output(state) } : {}) };
   }));
   const states = members.flatMap(m => m.output ? [m.output.state] : []);
+  const missingReceipt = record.members.some((m, i) => !members[i]?.output && (m.checkpointed === true || (m.admitted && m.checkpointed === undefined)));
   const allDone = states.length === members.length && states.every(terminal);
   const confirmedCancellation = record.cancellationRequested && states.every(terminal) && record.members.every((m, i) => !m.admitted || members[i]?.output !== undefined);
   const status: HarnessDurableReviewGroupResult["status"] = confirmedCancellation ? "cancelled"
     : record.cancellationRequested ? "cancel_requested"
+    : missingReceipt ? "blocked"
     : allDone ? states.every(s => s.status === "completed") ? "completed"
       : states.some(s => s.status === "completed") ? "partial"
       : states.some(s => s.status === "failed") ? "failed"
@@ -124,7 +175,7 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
       ...(budget ? { sharedBudget: budget.identity } : {}) })}`,
     members: unique.map(profile => ({ profile: profile as "explorer" | "reviewer",
       runId: `review_child_${digest([input.groupId, profile])}`,
-      idempotencyKey: `harness-review-member:${digest([input.groupId, profile])}`, admitted: false, blocked: false })) };
+      idempotencyKey: `harness-review-member:${digest([input.groupId, profile])}`, admitted: false, blocked: false, checkpointed: false })) };
   const candidate = rootState(runtime, input.groupId, record);
   const previous = await runtime.store.load(input.groupId, runtime.config.scope);
   if (previous && readRecord(previous).fingerprint !== record.fingerprint) {
@@ -140,7 +191,15 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
     throw new HarnessStateConflictError("Review group identity is already bound to a different request or runtime.");
   }
   const before = await inspectHarnessReviewGroup(runtime, input.groupId);
-  if (before.cancellationRequested || ["completed", "partial", "failed", "timed_out", "cancelled"].includes(before.status)) return before;
+  const liveRecord = readRecord((await runtime.store.load(input.groupId, runtime.config.scope)) ?? claim.state);
+  if (!before.cancellationRequested && liveRecord.members.some((m, i) => !before.members[i]?.output && (m.checkpointed === true || (m.admitted && m.checkpointed === undefined)))) {
+    throw new HarnessStateConflictError("Durable review child checkpoint is missing; restore the complete backup before retrying.");
+  }
+  if (before.cancellationRequested || ["completed", "partial", "failed", "timed_out", "cancelled"].includes(before.status)) {
+    const result = await locked(runtime, input.groupId, (root, owner) => persistSnapshot(runtime, root, owner));
+    await finalizeIdleWorker(runtime, input.groupId);
+    return result;
+  }
   // The SDK fences each running child. Concurrent group callers may receive a
   // busy admission error; retrying preserves member IDs and terminal receipts.
   const members = record.members.map((member, index) => {
@@ -151,19 +210,31 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
         await budget?.requireReady();
         const entry = live.members.find(m => m.runId === state.runId && m.idempotencyKey === state.idempotencyKey);
         if (!entry || state.parentRunId !== input.groupId) throw new HarnessStateConflictError("Unexpected review member admission.");
+        await assertCheckpointsPresent(runtime, live);
         entry.admitted = true;
         entry.blocked = false;
         const revision = root.revision ?? 0;
         await target.save({ ...root, revision: revision + 1, updatedAt: Date.now(),
           metadata: { ...root.metadata, [KEY]: serializeJsonValue(live) } }, { expectedRevision: revision, leaseOwnerId: owner });
-        return target.claimIdempotencyKey!(state);
+        const claimed = await target.claimIdempotencyKey!(state);
+        // Record that a durable child existed before returning admission to the
+        // SDK. If retention later removes it, never dispatch a replacement.
+        entry.checkpointed = true;
+        const persisted = await target.load(root.runId, runtime.config.scope);
+        if (!persisted) throw new HarnessStateConflictError("Review group disappeared during admission.");
+        await target.save({ ...persisted, revision: (persisted.revision ?? 0) + 1, updatedAt: Date.now(),
+          metadata: { ...persisted.metadata, [KEY]: serializeJsonValue(live) } },
+          { expectedRevision: persisted.revision ?? 0, leaseOwnerId: owner });
+        return claimed;
       });
       const value: unknown = Reflect.get(target, key, target);
       return typeof value === "function" ? value.bind(target) : value;
     } });
     const admit = () => locked(runtime, input.groupId, async root => {
       if (leaseLost) throw new HarnessStateConflictError("Review group worker lease was lost.");
-      if (readRecord(root).cancellationRequested) throw new DOMException("Review group cancelled before request admission.", "AbortError");
+      const live = readRecord(root);
+      if (live.cancellationRequested) throw new DOMException("Review group cancelled before request admission.", "AbortError");
+      await assertCheckpointsPresent(runtime, live);
     });
     const model = wrapLanguageModel(agents[index]!.model, [{ name: "durable-review-admission-v1",
       async wrapGenerate(_context, next) { await admit(); return next(); },
@@ -190,8 +261,13 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
   heartbeat.unref();
   const cancel = () => { cancellation = cancelHarnessReviewGroup(runtime, input.groupId); void cancellation.catch(() => undefined); };
   let cancellation: Promise<HarnessDurableReviewGroupResult> | undefined;
+  let projectedStatus: AgentRunState["status"] | undefined;
   input.abortSignal?.addEventListener("abort", cancel, { once: true });
   try {
+    if (!await updateWorker(runtime, workerId, ownerId, "running", input.groupId)) {
+      leaseLost = true;
+      throw new HarnessStateConflictError("Review group worker lease was lost before execution.");
+    }
     if (input.abortSignal?.aborted) cancel();
     else await budget?.requireReady();
     let memberResults: Awaited<ReturnType<typeof runAgentGroup>> | undefined;
@@ -210,24 +286,20 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
       let revision = root.revision ?? 0;
       await runtime.store.save({ ...root, revision: revision + 1, updatedAt: Date.now() }, { expectedRevision: revision, leaseOwnerId: owner });
       root.revision = ++revision;
-      const result = await inspectHarnessReviewGroup(runtime, input.groupId);
-      await runtime.store.save({ ...root, revision: revision + 1, updatedAt: Date.now(),
-        status: result.status === "partial" ? "failed" : result.status === "blocked" ? "suspended" : result.status,
-        childRuns: result.members.flatMap(member => member.output ? [{
-          runId: member.runId, parentRunId: input.groupId, ...(member.output.state.agentId ? { agentId: member.output.state.agentId } : {}),
-          status: member.output.status, outputText: member.output.outputText,
-          steps: member.output.steps.length, toolCalls: member.output.toolResults.length,
-          toolErrors: member.output.toolResults.filter(t => t.isError).length,
-          ...(member.output.usage ? { usage: member.output.usage } : {})
-        }] : []),
-        metadata: { ...root.metadata, harnessReviewGroupStatusV1: result.status } },
-        { expectedRevision: revision, leaseOwnerId: owner });
+      const result = await persistSnapshot(runtime, root, owner);
+      projectedStatus = result.status === "partial" ? "failed" : result.status === "blocked" ? "suspended" : result.status;
       return result;
     });
   } finally {
     input.abortSignal?.removeEventListener("abort", cancel);
     clearInterval(heartbeat);
-    await runtime.store.releaseLease!(workerId, ownerId, runtime.config.scope);
+    try {
+      if (!leaseLost) {
+        const root = await runtime.store.load(input.groupId, runtime.config.scope);
+        await updateWorker(runtime, workerId, ownerId, projectedStatus && ["completed", "failed", "cancelled", "timed_out"].includes(projectedStatus)
+          ? projectedStatus : root && terminal(root) ? root.status : "suspended", input.groupId);
+      }
+    } finally { await runtime.store.releaseLease!(workerId, ownerId, runtime.config.scope); }
   }
 }
 
@@ -261,5 +333,7 @@ export async function cancelHarnessReviewGroup(runtime: Runtime, groupId: string
       }
     }
   }
-  return inspectHarnessReviewGroup(runtime, groupId);
+  const result = await locked(runtime, groupId, (root, owner) => persistSnapshot(runtime, root, owner));
+  await finalizeIdleWorker(runtime, groupId);
+  return result;
 }
