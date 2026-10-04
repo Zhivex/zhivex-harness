@@ -2250,6 +2250,11 @@
           "name": "GovernanceSessionSource",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "HarnessSharedBudgetOptions",
+          "kind": "type",
+          "tier": "beta"
         }
       ]
     },

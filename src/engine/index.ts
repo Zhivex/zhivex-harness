@@ -505,3 +505,5 @@ export type { TaskAcceptanceLedger } from '../runtime/task-acceptance-record.js'
 export { exportHarnessGovernanceReport, harnessGovernanceReportSchema, renderHarnessGovernanceMarkdown } from '../persistence/governance-report.js';
 export type { HarnessGovernanceReport, HarnessGovernanceOptions } from '../persistence/governance-report.js';
 export type { GovernanceSessionSource } from '../persistence/governance-context.js';
+
+export type { HarnessSharedBudgetOptions } from "../runtime/shared-budget.js";
