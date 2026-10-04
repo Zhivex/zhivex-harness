@@ -10,15 +10,19 @@ import { terminalContinuationMessages } from "./terminal/terminal-continuation.j
 import { consoleProgressGuard } from "./console/console-progress.js";
 import { consoleBudgetOptions, restoreConsoleOptions, formatConsoleBudget } from "./console/console-budget.js";
 import { CliCredentials, credentialModel } from "./cli-credentials.js";
-import { USAGE_LEDGER_KEY, formatUsageLedger, inspectUsageLedger } from "@zhivex-ai/harness/code-support";
+import { USAGE_LEDGER_KEY, formatUsageLedger, inspectUsageLedger, estimateMessages } from "@zhivex-ai/harness/code-support";
 import { TASK_SOURCE_KEY, taskSources } from "@zhivex-ai/harness/code-support";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import { navigateConsole } from "./console/console-navigation.js";
 import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { ConsoleInput } from "./console/console-input.js";
+import { ConsoleRunView } from "./console/console-run-view.js";
+import { formatConsoleOutcome } from "./console/console-outcome.js";
+import { checkpointRecovery } from "./console/console-recovery.js";
+import type { ConsoleComposerInput } from "./console/console-presentation.js";
 import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console/console-context.js";
-import { sanitizeTerminalText, formatVerificationSummary, terminalRunFailure } from "./terminal/terminal-ui.js";
+import { sanitizeTerminalText, terminalRunFailure } from "./terminal/terminal-ui.js";
 import { randomUUID } from "node:crypto";
 import { type AgentRunOutput } from "@zhivex-ai/agents";
 import { DEFAULT_PROVIDER_REGISTRY, HARNESS_SUBAGENT_PROFILES, PROVIDERS, parseProvider, providerAvailability, providerDescriptor, resolveHarnessConfig, type HarnessSubagentProfile } from "@zhivex-ai/harness/engine";
@@ -62,6 +66,7 @@ export const chat = async (options: CliOptions) => {
   const credentials = { store: new CliCredentials(), input: readline };
   let credentialsRevision = credentials.store.revision;
   let activeController: AbortController | undefined;
+  let runView: ConsoleRunView | undefined;
   const interrupt = () => {
     if (activeController && !activeController.signal.aborted) {
       activeController.abort();
@@ -70,12 +75,13 @@ export const chat = async (options: CliOptions) => {
   };
   readline.onInterrupt = interrupt;
   process.on("SIGINT", interrupt);
-  const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+  const abortable = async <T>(operation: (signal: AbortSignal) => Promise<T>, phase?: string): Promise<T> => {
     const controller = new AbortController();
     activeController = controller;
     readline.startBackground();
+    runView?.begin(phase);
     try { return await operation(controller.signal); }
-    finally { readline.stopBackground(); activeController = undefined; }
+    finally { runView?.end(); readline.stopBackground(); activeController = undefined; requestInFlight = false; }
   };
   let verbose = false;
   const sessionGrants = new Set<string>();
@@ -141,29 +147,59 @@ export const chat = async (options: CliOptions) => {
     throw error;
   }
 
+  let displayLedger = inspectUsageLedger((await latestState(session))?.metadata?.[USAGE_LEDGER_KEY]);
+  let requestInFlight = false;
+  let contextTokens = estimateMessages(messages);
+  let rejectedDecisions = 0;
+  let consoleIssue: string | undefined;
+  const composerState = (): ConsoleComposerInput => ({
+    model: `${harness.config.provider}/${harness.config.model}`,
+    reasoning: harness.config.reasoningEffort ?? "default",
+    ...(session.title ? {title: session.title} : {}),
+    status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : consoleIssue ?? "ready",
+    attachments: attachments.list().length,
+    automaticApprovals: options.yes === true,
+    ...(options.approvalMode ? {approvalMode: options.approvalMode} : {}),
+    ...(displayLedger ? {runUsage: requestInFlight ? {...displayLedger, estimatedUsd: null, usageComplete: false} : displayLedger} : {}),
+    nextLimitUsd: runtimeOptions.usageLimitUsd ?? null,
+    contextTokens,
+  });
+  runView = new ConsoleRunView(process.stdout, composerState, () => readline.backgroundStatus);
+
   const consoleApprovals: ReturnType<typeof terminalApprovalResolver> = async (approvals, context) => {
+    runView.end();
     readline.stopBackground();
     try {
-      return await terminalApprovalResolver(options.approvalMode ?? options.yes,
-        question => readline.question(question), {select: (title, items) => readline.select(title, items), workspace: harness.config.workspace, sessionGrants, fileDiff: approval => approvalFileDiff(harness.workspace, approval)})(approvals, context);
-    } finally { if (activeController && !activeController.signal.aborted) readline.startBackground(); }
+      const decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
+        question => readline.question(question), {
+          select: (title, items) => readline.select(title, items),
+          review: (review, items) => readline.review({...review, state: composerState()}, items),
+          workspace: harness.config.workspace, sessionGrants,
+          fileDiff: approval => approvalFileDiff(harness.workspace, approval),
+        })(approvals, context);
+      rejectedDecisions += decisions?.filter(item => !item.approve).length ?? 0;
+      if (decisions) process.stderr.write(`Approval decisions: ${decisions.filter(item => item.approve).length} allowed · ${decisions.filter(item => !item.approve).length} rejected\n`);
+      else process.stderr.write("Approval pending · no decisions submitted · /pending to inspect\n");
+      return decisions;
+    } finally { if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); } }
   };
 
   const createTracker = (runId: string) => {
-    let reportedCalls = -1;
     let offset = harness.workspace.mutationAudit().length;
+    const initialOffset = offset;
+    rejectedDecisions = 0;
+    displayLedger = inspectUsageLedger(harness.usageLedger?.summary(runId));
     const tracker: Parameters<typeof streamSink>[1] = {streamedText: false,
-      activityHistory, inputStatus: () => readline.backgroundStatus};
-    return {tracker, onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
+      activityHistory, inputStatus: () => readline.backgroundStatus, consoleView: true};
+    return {tracker, outcome: (result: AgentRunOutput) => formatConsoleOutcome(result,
+      harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions),
+      onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
+      if (event.type === "agent-step-start") requestInFlight = true;
+      if (event.type === "agent-step-finish" || event.type === "agent-run-finish") requestInFlight = false;
+      if (event.type === "agent-step-finish" || event.type === "agent-run-finish") displayLedger = inspectUsageLedger(harness.usageLedger?.summary(runId));
+      if (event.type === "agent-run-finish") contextTokens = estimateMessages(event.state.messages);
+      runView.observe(event);
       await streamSink({json: false, jsonl: false}, tracker, !verbose)(event);
-      if (event.type === "agent-step-finish" || event.type === "agent-run-finish") {
-        const ledger = harness.usageLedger?.summary(runId);
-        if (ledger && ledger.calls !== reportedCalls) {
-          flushToolActivity(tracker); tracker.markdown?.flush();
-          process.stderr.write("\n" + formatUsageLedger(ledger) + "\n");
-          reportedCalls = ledger.calls;
-        }
-      }
       if (event.type === "tool-result") {
         const audit = harness.workspace.mutationAudit();
         const receipt = formatAppliedFiles(audit.slice(offset));
@@ -244,6 +280,8 @@ export const chat = async (options: CliOptions) => {
     activityHistory.clear();
     messages = state?.messages ?? [];
     retainedTasks = taskSources(state?.metadata);
+    displayLedger = inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]);
+    contextTokens = estimateMessages(messages);
   };
 
   const continuePendingApproval = async (approve: boolean) => {
@@ -253,7 +291,8 @@ export const chat = async (options: CliOptions) => {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
-    const { tracker, onEvent } = createTracker(state.runId);
+    const { tracker, onEvent, outcome } = createTracker(state.runId);
+    if (!approve) rejectedDecisions += state.pendingApprovals.length;
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
     let result: AgentRunOutput;
     try {
@@ -278,12 +317,14 @@ export const chat = async (options: CliOptions) => {
       flushToolActivity(tracker);
       tracker.markdown?.flush();
       const durable = await latestState(await refreshSession());
+      displayLedger = inspectUsageLedger(durable?.metadata?.[USAGE_LEDGER_KEY]);
+      if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
       session = await sessionStore.updateRun(session.sessionId, state.runId, {
         status: durable ? sessionStatus(durable.status) : "failed"
       });
       process.stderr.write(
         approve
-          ? `Run ${state.runId} failed while applying the approval; inspect it with runs inspect.\n`
+          ? `Run ${state.runId} failed while applying the approval; inspect /status and /activity before /pending.\n`
           : `Run ${state.runId} ended after the denial.\n`
       );
       return;
@@ -293,6 +334,10 @@ export const chat = async (options: CliOptions) => {
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
+    displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
+    contextTokens = estimateMessages(messages);
+    process.stderr.write(outcome(result) + "\n");
+    process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
         retainedTasks = taskSources(result.state.metadata);
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
       status: sessionStatus(result.status)
@@ -323,9 +368,10 @@ export const chat = async (options: CliOptions) => {
     model: harness.config.model,
     sessionId: session.sessionId,
     ...(session.title ? { sessionTitle: session.title } : {}),
-  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80 }) + "\n");
+  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80, compact: true }) + "\n");
 
   process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
+  process.stderr.write("* Context estimates retained messages only; excludes request instructions/tools. Costs are estimates, not invoices.\n");
   process.stderr.write("While working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.\n");
   process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled within workspace and execution policies.\n" : "Changes require your approval.\n");
 
@@ -343,24 +389,20 @@ export const chat = async (options: CliOptions) => {
 
   try {
     await showSessionState();
+    let commandInProgress = "";
     for (;;) {
+      commandInProgress = "";
       try {
         const pendingTurn = await hasActiveTurn();
         readline.setQueueEnabled(!pendingTurn);
-        const submitted = await readline.compose({
-          model: `${harness.config.provider}/${harness.config.model}`,
-          reasoning: harness.config.reasoningEffort ?? "default",
-          ...(session.title ? { title: session.title } : {}),
-          status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : "ready",
-          attachments: attachments.list().length,
-          automaticApprovals: options.yes === true,
-          ...(options.approvalMode ? { approvalMode: options.approvalMode } : {}),
-        });
+        contextTokens = estimateMessages(messages);
+        const submitted = await readline.compose(composerState());
         const literalInput = readline.lastSubmissionWasPaste || submitted.includes("\n");
         let prompt = literalInput ? submitted : submitted.trim();
         if (!prompt.trim()) {
           continue;
         }
+        consoleIssue = undefined;
         let command = literalInput ? "" : prompt;
         if (["/menu", "/provider", "/providers", "/model", "/models"].includes(command)) {
           const selection = await navigateConsole(readline, {
@@ -381,6 +423,7 @@ export const chat = async (options: CliOptions) => {
             continue;
           }
         }
+        commandInProgress = command;
         if (await handleConsoleCheckpoint(command, { workspace: harness.workspace, sessions: sessionStore,
           session: await refreshSession(), input: readline, hasActiveTurn, restoreSession })) continue;
         if (await handleConsoleBudget(command, { options: runtimeOptions, provider: harness.config.provider,
@@ -437,7 +480,7 @@ export const chat = async (options: CliOptions) => {
             await abortable(async signal => {
               await model.generate({ messages: [{ role: "user", parts: [{ type: "text", text: "Reply OK." }] }], maxTokens: 16,
                 maxRetries: 0, timeoutMs: 15_000, abortSignal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]) });
-            });
+            }, "Testing connection");
             process.stderr.write("Connection verified: the selected model accepted a request. Tool support and other models were not tested.\n");
           }
           continue;
@@ -688,7 +731,7 @@ export const chat = async (options: CliOptions) => {
               harness,
               { prompt: reviewPrompt, scope: harness.config.scope, abortSignal },
               ["explorer", "reviewer"]
-            ))
+            ), "Running review")
           );
           for (const output of review.outputs) {
             process.stdout.write(`\n[${output.name ?? output.agentId ?? "reviewer"}] ${output.status}\n`);
@@ -735,7 +778,7 @@ export const chat = async (options: CliOptions) => {
         });
         const turn = session.runs.at(-1)!;
 
-        const { tracker, onEvent } = createTracker(runId);
+        const { tracker, onEvent, outcome } = createTracker(runId);
         const progress = consoleProgressGuard();
         let markedRunning = false;
         let result: AgentRunOutput;
@@ -816,7 +859,8 @@ export const chat = async (options: CliOptions) => {
         retainedTasks = taskSources(result.state.metadata);
         attachments.clear();
         process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
-        process.stderr.write(formatVerificationSummary(result.toolResults) + "\n");
+        displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
+        process.stderr.write(outcome(result) + "\n");
         session = await sessionStore.updateRun(session.sessionId, runId, {
           status: sessionStatus(result.status)
         });
@@ -829,12 +873,16 @@ export const chat = async (options: CliOptions) => {
       } catch (error) {
         if (readline.isClosed) break;
         const aborted = error instanceof Error && error.name === "AbortError";
+        const recovery = commandInProgress.startsWith("/checkpoint") ? checkpointRecovery(terminalErrorMessage(error)) : undefined;
+        consoleIssue = recovery ? "restore blocked · /checkpoint list" : aborted ? "interrupted · session retained" : "error · inspect message above";
         process.stderr.write(aborted
           ? "\nInput interrupted. Session retained; use /pending to inspect approvals.\n"
-          : `\n${sanitizeTerminalText(terminalErrorMessage(error))}\nSession retained; use /status, /pending, or /continue.\n`);
+          : recovery ? `\n${sanitizeTerminalText(recovery)}`
+          : `\n${sanitizeTerminalText(terminalErrorMessage(error))}\nSession retained; use /status and /activity. Inspect /pending before /continue.\n`);
       }
     }
   } finally {
+    runView.end();
     process.off("SIGINT", interrupt);
     readline.close();
     await harness.close();

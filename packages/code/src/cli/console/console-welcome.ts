@@ -25,12 +25,12 @@ export const formatConsoleWelcome = (input: {
   provider?: string;
   model?: string;
   service?: boolean;
-}, options: { color?: boolean; columns?: number } = {}) => {
+}, options: { color?: boolean; columns?: number; compact?: boolean } = {}) => {
   const safe = sanitizeTerminalText;
   const color = options.color ?? terminalSupportsColor(Boolean(process.stdout.isTTY));
   const columns = options.columns ?? 80;
   const title = `Zhivex Code ${safe(input.version)}`;
-  const logo = columns < 48 ? "( Z )" : ZHIVEX_TERMINAL_LOGO;
+  const logo = columns < 48 || options.compact ? "( Z )" : ZHIVEX_TERMINAL_LOGO;
   const logoLines = logo.split("\n");
   const logoWidth = Math.max(...logoLines.map(line => line.length));
   const titleBesideLogo = columns >= logoWidth + 3 + title.length;
