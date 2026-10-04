@@ -14,6 +14,7 @@ import { HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/err
 import { HARNESS_OPERATIONS_SCHEMA_VERSION, HARNESS_SQLITE_FILE, openHarnessPersistence, sqliteAdapter } from "./operations.js";
 import { HARNESS_SESSION_SCHEMA_VERSION, openCliSessionStore } from "./sessions.js";
 import { SqliteDatabase } from "./sqlite-database.js";
+import { decodeProjectMemory, projectMemoryRecordKey } from "./project-memory.js";
 import type { SqliteAccessLease } from "./sqlite-access.js";
 import { validateStateDirectory } from "./state-directory.js";
 import { validateRecordedWorkspace } from "./recorded-workspace.js";
@@ -412,6 +413,7 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
       runKey: row.run_id, parentRunKey: row.parent_run_id, updatedAt: row.updated_at_ms
     }));
     const memoryKeys = new Set(runs.map((run) => `${binding.scopePrefix}${String(run.state.runId)}`));
+    memoryKeys.add(projectMemoryRecordKey(binding));
     const memory = database.query<MemoryRow, []>(
       "SELECT memory_key, messages_json, updated_at_ms FROM zhivex_agent_memory ORDER BY memory_key"
     ).all().filter((row) => memoryKeys.has(row.memory_key)).map((row) => ({
@@ -653,7 +655,9 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
     const memoryRunId = entry.key.startsWith(expected.scopePrefix)
       ? entry.key.slice(expected.scopePrefix.length)
       : "";
-    if (memoryKeys.has(entry.key) || !runIds.has(memoryRunId)) {
+    const projectRecord = entry.key === projectMemoryRecordKey(expected);
+    if (projectRecord) decodeProjectMemory(entry.messages, expected);
+    if (memoryKeys.has(entry.key) || (!projectRecord && !runIds.has(memoryRunId))) {
       throw new HarnessStateConflictError(`Memory record ${entry.key} is not bound to an imported run.`);
     }
     memoryKeys.add(entry.key);
@@ -843,7 +847,7 @@ export const importHarnessStateBackup = async (
       memory: new Set(availableTables.has("zhivex_agent_memory")
         ? database.query<MemoryRow, []>(
             "SELECT memory_key, messages_json, updated_at_ms FROM zhivex_agent_memory"
-          ).all().filter((row) => destinationRunRows.some((run) => {
+          ).all().filter((row) => row.memory_key === projectMemoryRecordKey(bundle.binding) || destinationRunRows.some((run) => {
             const state = JSON.parse(run.state_json) as { runId?: unknown };
             return row.memory_key === `${bundle.binding.scopePrefix}${String(state.runId)}`;
           })).map((row) => row.memory_key)

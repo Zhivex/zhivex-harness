@@ -51,6 +51,7 @@ export const createConfiguredHarness = async (
     : undefined;
   const harness = await createHarness({
     ...options,
+    ...{ projectMemory: options.projectMemory ?? true },
     usageAccounting: {
       ...(options.pricingFile ? { pricing: usagePricingSchema.parse(JSON.parse((await readRegularFileNoFollow(path.resolve(options.pricingFile), { maxBytes: 128 * 1024, label: "Usage pricing" })).contents.toString("utf8"))) } : {}),
       ...(options.usageLimitUsd !== undefined ? { limitUsd: options.usageLimitUsd } : {})

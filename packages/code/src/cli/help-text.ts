@@ -48,6 +48,8 @@ Options (automation and advanced configuration):
   --state-dir <path>             Durable run-state directory
   --mcp-config <path>            Declarative governed MCP JSON configuration
   --context-config <path>        Project context/rules/skills manifest (default: .zhivex/harness.json)
+  --no-memory                   Disable project-memory retrieval for this invocation
+  --source <text>               Provenance label for explicit memory input
   --no-project-context           Disable AGENTS.md and the project context manifest
   --patch <path>                 Exact patch/artifact bytes bound to a change envelope
   --preconditions <path>         Verification preconditions JSON for changes verify

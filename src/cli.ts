@@ -16,6 +16,7 @@ import { resumeRun, reviewOnce, runOnce } from "./cli/run-commands.js";
 import { manageRuns } from "./cli/run-management.js";
 import { manageSessions } from "./cli/session-management.js";
 import { manageChanges } from "./cli/changes.js";
+import { manageMemory } from "./cli/memory.js";
 import { manageState } from "./cli/state.js";
 import { manageCheckpoints } from "./cli/checkpoints.js";
 import { cliExitCodeForError, cliRecoveryHint } from "./cli/errors.js";
@@ -92,6 +93,9 @@ export const main = async (argv = process.argv.slice(2)) => {
     }
     case "changes":
       await manageChanges(options);
+      return;
+    case "memory":
+      await manageMemory(options);
       return;
     case "state":
       await manageState(options);

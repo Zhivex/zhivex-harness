@@ -1,6 +1,17 @@
 import { CLI_COMMAND_OPTION_CONTRACTS, type CliCommandOptionContractKey } from "./cli-options.js";
 
 const usage: Record<string, string> = {
+  "memory:remember": 'zhivex-code memory remember "content" [--source "provenance"]',
+  "memory:suggest": 'zhivex-code memory suggest "content" [--source "provenance"]',
+  "memory:list": 'zhivex-code memory list',
+  "memory:read": 'zhivex-code memory read <id>',
+  "memory:update": 'zhivex-code memory update <id> <revision> "content" [--source "provenance"]',
+  "memory:forget": 'zhivex-code memory forget <id> <revision>',
+  "memory:accept": 'zhivex-code memory accept <id> <reviewedRevision>',
+  "memory:clear": 'zhivex-code memory clear',
+  "memory:enable": 'zhivex-code memory enable',
+  "memory:disable": 'zhivex-code memory disable',
+  "memory:context": 'zhivex-code memory context "query"',
   init: "zhivex-code init [--provider <id>] [--model <id>] [--profile <name>] [--update]",
   run: 'zhivex-code run [options] "task" | zhivex-code run [options] -', review: 'zhivex-code review [options] "review task" | zhivex-code review [options] -',
   chat: "zhivex-code [--continue | --session <id>]", providers: "zhivex-code providers [--json]",

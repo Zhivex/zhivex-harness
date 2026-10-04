@@ -135,7 +135,8 @@
     "docs/adr/0002-isolated-mcp-stdio.md",
     "docs/VERTEX.md",
     "docs/TOOL_POLICY.md",
-    "docs/fixtures/mcp-stdio-contract-v1.json"
+    "docs/fixtures/mcp-stdio-contract-v1.json",
+    "docs/PROJECT_MEMORY.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",

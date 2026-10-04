@@ -199,7 +199,7 @@ export const resumeRun = async (options: CliOptions) => {
       ])],
       subagentModels: createHarnessRouteModels(persistedRoutes),
       store: persistence.store,
-      memory: persistence.memory,
+      projectMemory: options.projectMemory ?? true,
       onTelemetryEvent: orchestrationObserver(options.json || options.jsonl)
     });
     const approve = options.approve;

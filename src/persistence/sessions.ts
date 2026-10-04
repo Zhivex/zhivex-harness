@@ -281,7 +281,7 @@ const stableKey = (kind: string, value: string) =>
 const sessionId = () => `ses_${randomUUID()}`;
 const turnId = () => `turn_${randomUUID()}`;
 
-const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) => {
+export const ensurePrivateDatabase = async (workspace: string, stateDirectory: string) => {
   const requestedStateDirectory = path.resolve(stateDirectory);
   await validateStateDirectory(workspace, requestedStateDirectory);
   await mkdir(requestedStateDirectory, { recursive: true, mode: 0o700 });

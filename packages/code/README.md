@@ -176,6 +176,8 @@ To test an already retained artifact without repacking, run
 the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
 Release validation uses this mode on the same bytes that will be published.
 
+Experimental next-version project memory uses `zhivex-code memory --help` and the matched next Harness engine. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This development source does not change published package versions.
+
 ## Local browser workspace (experimental)
 
 `zhivex-code web` opens a local React workspace with prebuilt assets. Select

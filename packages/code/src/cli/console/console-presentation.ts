@@ -1,11 +1,34 @@
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
+import { terminalCellWidth } from "../terminal/terminal-table.js";
+
+const segments = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Hard-wrap without dropping spaces or code characters. Only trusted styles follow. */
+export const consoleLines = (text: string, width: number): string[] => {
+  const result: string[] = [];
+  for (const source of sanitizeTerminalText(text).replace(/\t/g, "    ").split("\n")) {
+    let line = "", cells = 0;
+    for (const { segment } of segments.segment(source)) {
+      const size = terminalCellWidth(segment);
+      if (line && cells + size > Math.max(1, width)) { result.push(line); line = ""; cells = 0; }
+      line += segment; cells += size;
+    }
+    result.push(line);
+  }
+  return result;
+};
 
 /** Bound presentation metadata without allowing paths/titles to control the terminal. */
 export const consoleLabel = (text: string, width: number) => {
   if (width <= 0) return "";
   const safe = sanitizeTerminalText(text).replace(/[\r\n\t]/g, " ");
-  const characters = Array.from(safe);
-  return characters.length <= width ? safe : characters.slice(0, Math.max(0, width - 1)).join("") + "…";
+  if (terminalCellWidth(safe) <= width) return safe;
+  let value = "";
+  for (const { segment } of segments.segment(safe)) {
+    if (terminalCellWidth(value + segment) > width - 1) break;
+    value += segment;
+  }
+  return value + "…";
 };
 
 export interface ConsoleComposerInput {
@@ -16,21 +39,35 @@ export interface ConsoleComposerInput {
   attachments?: number;
   automaticApprovals?: boolean;
   approvalMode?: "ask" | "auto" | "restricted";
+  runUsage?: { estimatedUsd: number | null; limitUsd: number | null; usageComplete: boolean };
+  nextLimitUsd?: number | null;
+  contextTokens?: number;
 }
 
 export const consoleWidth = (columns = 80) => Math.max(1, Math.min((columns || 80) - 1, 100));
-const muted = (text: string, color: boolean) => color ? `\u001b[90m${text}\u001b[0m` : text;
+const muted = (text: string, color: boolean) => color ? `\u001b[38;5;250m${text}\u001b[0m` : text;
+const usd = (value: number | null | undefined) => typeof value === "number" ? `$${value.toFixed(6)}` : "unknown";
+const cap = (value: number | null | undefined) => typeof value === "number" ? `$${value.toFixed(6)}` : "none";
+
+export const consoleStateLines = (input: ConsoleComposerInput, columns = 80) => {
+  const width = consoleWidth(columns);
+  const policy = input.approvalMode === "restricted" ? "restricted approvals"
+    : input.approvalMode === "auto" || input.automaticApprovals ? "auto approvals" : "review approvals";
+  return [
+    ...consoleLines(consoleLabel(`Model ${input.model}${input.reasoning ? ` · ${input.reasoning}` : ""}`, width * 2), width),
+    ...(input.runUsage ? consoleLines(`Run est. ${usd(input.runUsage.estimatedUsd)}${input.runUsage.usageComplete ? "" : " INCOMPLETE"} / ${cap(input.runUsage.limitUsd)} cap`, width) : ["Run: no usage recorded"]),
+    ...consoleLines(`Next run cap ${cap(input.nextLimitUsd)} · ${policy}`, width),
+    ...consoleLines(`Context ~${input.contextTokens ?? 0} retained tokens* · ${input.attachments ?? 0} attached`, width),
+  ];
+};
 
 /** Focus keeps policy and pending decisions ahead of optional presentation metadata. */
 export const formatComposer = (input: ConsoleComposerInput, columns = 80,
   color = terminalSupportsColor(Boolean(process.stdout.isTTY))) => {
   const width = consoleWidth(columns);
-  const model = consoleLabel([input.model, input.reasoning ? `reasoning ${input.reasoning}` : undefined].filter(Boolean).join(" · "), width);
-  const policy = input.approvalMode === "restricted" ? "restricted approvals"
-    : input.approvalMode === "auto" || input.automaticApprovals ? "auto approvals" : "review approvals";
-  const status = consoleLabel([input.status, policy, input.attachments ? `${input.attachments} attached` : undefined].filter(Boolean).join(" · "), width);
+  const status = consoleLabel(input.status, width);
   const title = input.title ? muted(consoleLabel(input.title, width), color) + "\n" : "";
-  return `\n${title}${muted(model, color)}\n${color && input.status.startsWith("approval pending") ? `\u001b[33m${status}\u001b[0m` : muted(status, color)}\n${muted("─".repeat(width), color)}\n`;
+  return `\n${title}${consoleStateLines(input, columns).map(line => muted(line, color)).join("\n")}\n${color && input.status.startsWith("approval pending") ? `\u001b[33m${status}\u001b[0m` : status}\n${muted("─".repeat(width), color)}\n`;
 };
 
 export const formatComposerFooter = (columns = 80, color = false) => {

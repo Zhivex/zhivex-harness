@@ -65,10 +65,10 @@ not runtime dependencies. The host uses only declared Harness `/engine`,
 `/protocol` and `/service` exports, plus Code's existing read-only credential
 and profile helpers.
 
-Memory PR 160 was inspected read-only. It adds an experimental host API but no
-service/protocol operation, and is not in this branch's base. A memory panel is
-therefore pending a verified service integration and intentionally omitted.
-No TUI or memory changes were imported.
+The merged main includes project memory (PR 160) and the compact terminal flow
+(PR 161). Memory adds an experimental host API but no service/protocol operation.
+A browser memory panel remains pending a verified service integration. The web
+client continues to use the existing Harness contracts and its own presentation.
 
 ## Security boundary and limits
 

@@ -795,3 +795,7 @@ An envelope link matches the recorded patch identifier; envelope integrity and
 expiry are checked separately. Patch bytes and producer authenticity remain
 unverified. No envelope v1 fields are added. Concurrent source changes and hard
 capacity limits reject export; bounded tree/history truncation is reported.
+
+## Experimental project memory (unreleased)
+
+`zhx memory` supports `remember`, `list`, `read`, `update`, `forget`, `suggest`, `accept`, `context`, `clear`, `enable` and `disable`. Content is one quoted argument. Updates, acceptance and forgetting require the current revision. `--source` supplies a provenance label; `--no-memory` disables curated retrieval and SDK memory loading/capture for a local run/chat/resume invocation. Existing workspace/tenant/user/namespace flags select scope. See [Project memory](PROJECT_MEMORY.md) for bounds, review, deletion semantics and next-release pairing.
