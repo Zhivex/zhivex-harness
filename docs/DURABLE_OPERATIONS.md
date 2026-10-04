@@ -285,3 +285,27 @@ exactly-once guarantee for external effects, distributed scheduling or research
 workflow acceptance is implied. Model tests use only offline mocks. Regressions
 in `tests/durable-review-group.test.ts` cover repeated identity, interruption,
 terminal preservation, concurrent callers and separate-process SQLite control.
+
+Terminal replay reconciles the root's persisted status, member summaries and richer
+group status before returning, including recovery after a cut following child
+completion. Cancellation also reconciles its reconstructed projection. Internal
+worker checkpoints are children of the group: they become `running` while leased,
+`suspended` after an interrupted or blocked attempt, and terminal only after the
+root's terminal projection is persisted. Recovery repairs an idle legacy worker
+without taking ownership from a live worker. Default terminal cleanup can collect
+finished groups and their workers; suspended coordination remains resumable.
+
+New member records include an optional `checkpointed` marker, saved after the SDK
+child claim and before request dispatch. If a previously persisted child disappears,
+recovery blocks before transport and requires the complete backup. Existing records
+without that marker remain readable; admitted members with missing receipts are
+conservatively blocked. Admission and model dispatch also recheck receipt presence
+under the root lock, so a stale caller snapshot cannot bypass the guard. Cleanup
+while a group is active can remove an older terminal child's receipt and leave the
+group blocked; it must not be used to reset or restart that child. Cancellation may
+remain uncertain in this case. Retention deleting the entire group expires its
+stored identity; no permanent deduplication beyond retained state is promised.
+
+Groups modified by the checkpoint-marker fix require a current artifact. Older
+artifacts with strict pre-marker schemas cannot read the additional marker;
+downgrades require restoring a complete pre-upgrade backup.

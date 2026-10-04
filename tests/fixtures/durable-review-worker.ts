@@ -22,6 +22,17 @@ const models = Object.fromEntries((["explorer", "reviewer"] as const).map(role =
   return [role, model];
 }));
 const harness = await createHarness({ provider: "openai", workspace, modelInstance: createMockLanguageModel(), subagentModels: models });
+if (process.argv[3] === "crash-after-children") {
+  const save = harness.store.save.bind(harness.store);
+  harness.store.save = async (state, options) => {
+    if (state.runId === "worker-group") {
+      const record = state.metadata?.harnessReviewGroupV1 as { members: { runId: string }[] };
+      const members = await Promise.all(record.members.map(m => harness.store.load(m.runId, harness.config.scope)));
+      if (members.every(m => m?.status === "completed")) process.exit(77);
+    }
+    return save(state, options);
+  };
+}
 try {
   console.log(JSON.stringify(await runHarnessDurableReviewGroup(harness, { groupId: "worker-group", prompt: "inspect" })));
 } finally { await harness.close(); }
