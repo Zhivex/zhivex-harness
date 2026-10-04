@@ -505,3 +505,6 @@ export type { TaskAcceptanceLedger } from '../runtime/task-acceptance-record.js'
 export { exportHarnessGovernanceReport, harnessGovernanceReportSchema, renderHarnessGovernanceMarkdown } from '../persistence/governance-report.js';
 export type { HarnessGovernanceReport, HarnessGovernanceOptions } from '../persistence/governance-report.js';
 export type { GovernanceSessionSource } from '../persistence/governance-context.js';
+
+export { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../runtime/durable-review-group.js";
+export type { HarnessDurableReviewGroupResult } from "../runtime/durable-review-group.js";

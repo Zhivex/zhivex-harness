@@ -2250,6 +2250,26 @@
           "name": "GovernanceSessionSource",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "runHarnessDurableReviewGroup",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "inspectHarnessReviewGroup",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "cancelHarnessReviewGroup",
+          "kind": "runtime",
+          "tier": "beta"
+        },
+        {
+          "name": "HarnessDurableReviewGroupResult",
+          "kind": "type",
+          "tier": "beta"
         }
       ]
     },
