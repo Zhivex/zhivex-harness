@@ -89,6 +89,21 @@ Public workflow errors are projected onto stable code, category, retryability, o
 
 A missing credential, unavailable container runtime, upstream failure, incomplete tool sequence, routing mismatch, stale artifact, or redaction failure leaves the affected path uncertified. Deterministic tests, successful package installation, or credential presence are never substitutes for live evidence.
 
+Mixed-routing failures also retain an optional strict `routing` projection with
+finite stage, assertion, parent/reviewer provider identities and at most two
+typed cleanup failures. The driver retains the first recognized typed operational
+error from runtime events or the terminal returned/rejected failure, using the
+first generic error only as a fallback. This includes artifact errors with a
+different class identity. Model output and serialized human-readable error
+messages never become assertion evidence. Cleanup still runs after a failure and cannot replace
+the primary failure; success is emitted only after cleanup succeeds. The summary
+includes the stage/assertion, route and available numeric HTTP status. These
+fields do not change routing acceptance, model pins, budgets or retry policy.
+Older documents without this optional projection remain valid and cannot be
+used to reconstruct a missing failure stage or attribute a historical failure
+to a provider. Offline fault injection validates diagnostic behavior only; it
+does not certify a live route or authorize another campaign.
+
 ## Current public status
 
 Harness `1.3.0` and Code `0.1.0` are verified on npm `latest` as of 2026-10-02,

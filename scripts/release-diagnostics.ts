@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { z } from "zod";
 import { errorDetailsSchema, sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { attachRoutingDiagnostic, routingDiagnosticFor, routingDiagnosticSchema, type RoutingDiagnostic } from "./live-routing-diagnostics.js";
 
 import {
   HARNESS_ERROR_CODES,
@@ -108,6 +109,7 @@ const sanitizedOperationalErrorSchema = z.strictObject({
   details: errorDetailsSchema.optional(),
   status: z.number().int().min(100).max(599).optional(),
   diagnosticCode: z.enum(TIME_TO_SAFE_FIX_DIAGNOSTIC_CODES).optional(),
+  routing: routingDiagnosticSchema.optional(),
   fingerprint: z.string().regex(SHA_256_PATTERN)
 });
 
@@ -306,12 +308,14 @@ export const sanitizeOperationalError = (error: unknown): z.infer<typeof sanitiz
   const normalized = normalizedOperationalError(error);
   const status = numericStatus(error);
   const diagnosticCode = safeDiagnosticCode(error);
+  const routing = routingDiagnosticFor(error);
   const projection = {
     code: normalized.code,
     category: normalized.category,
     retryable: normalized.retryable,
     ...(status === undefined ? {} : { status }),
     ...(diagnosticCode === undefined ? {} : { diagnosticCode }),
+    ...(routing === undefined ? {} : { routing }),
     details: (error && typeof error === "object" ? restoredDetails.get(error) : undefined) ?? sanitizedErrorDetails(error)
   };
   return {
@@ -348,6 +352,7 @@ export const restoreSanitizedOperationalError = (value: unknown) => {
   if (projection.details) restoredDetails.set(error, projection.details);
   if (projection.status !== undefined) error.status = projection.status;
   if (projection.diagnosticCode !== undefined) error.diagnosticCode = projection.diagnosticCode;
+  if (projection.routing) attachRoutingDiagnostic(error, projection.routing);
   return error;
 };
 
@@ -495,9 +500,18 @@ const failureDetail = (input: {
   retryable: boolean;
   fingerprint: string;
   category?: string;
+  routing?: RoutingDiagnostic | undefined;
+  status?: number | undefined;
 }) => `${input.code} [` + [
   ...(input.category ? [`category=${input.category}`] : []),
-  `retryable=${String(input.retryable)}`
+  `retryable=${String(input.retryable)}`,
+  ...(input.routing && input.status !== undefined ? [`httpStatus=${input.status}`] : []),
+  ...(input.routing ? [`stage=${input.routing.stage}`] : []),
+  ...(input.routing?.assertion ? [`assertion=${input.routing.assertion}`] : []),
+  ...(input.routing?.parentProvider && input.routing.reviewerProvider
+    ? [`route=${input.routing.parentProvider}->${input.routing.reviewerProvider}`] : []),
+  ...(input.routing?.cleanupFailures?.length
+    ? [`cleanup=${input.routing.cleanupFailures.map(failure => `${failure.stage}:${failure.code}`).join("/")}`] : [])
 ].join(", ") + "]";
 
 const boundedFailureSummary = (failures: readonly {
