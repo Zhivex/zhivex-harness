@@ -1,6 +1,5 @@
 import { spawn } from "node:child_process";
 import { realpath, lstat } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import type {
   HarnessConfigInput,
@@ -8,6 +7,7 @@ import type {
 } from "@zhivex-ai/harness/engine";
 import { attachRuntime, type WebRuntime } from "./runtime.js";
 import { startWebServer } from "./server.js";
+import { selectWebServiceDirectory, webStartupDiagnostic } from "./service-directory.js";
 
 export const WEB_HELP = `Usage: zhivex-code web [options]
 
@@ -109,10 +109,7 @@ export async function runWebCli(
     }
     if (!["darwin", "linux"].includes(process.platform))
       throw new Error("WEB_PLATFORM_UNSUPPORTED");
-    const serviceDirectory = path.join(
-      os.tmpdir(),
-      `zhivex-code-web-${process.getuid?.() ?? "user"}`,
-    );
+    const serviceDirectory = await selectWebServiceDirectory();
     const seen = new Set<string>();
     for (const input of parsed.workspaces) {
       const workspace = await realpath(path.resolve(input));
@@ -177,10 +174,7 @@ export async function runWebCli(
       }
   } catch (e) {
     await Promise.allSettled(runtimes.map((r) => r.close()));
-    const code =
-      e instanceof Error && /^WEB_[A-Z_]+$/.test(e.message)
-        ? e.message
-        : "WEB_START_FAILED";
+    const code = webStartupDiagnostic(e);
     process.stderr.write(`${code}. Use zhivex-code web --help.\n`);
     process.exitCode = 1;
   }
