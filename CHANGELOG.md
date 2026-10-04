@@ -4,9 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.4.0-rc.3 - 2026-10-04
 
 - Retain finite stage, assertion and provider-route identities in mixed-routing release diagnostics, preserve typed operational causes across artifact class boundaries, and keep cleanup failures from masking the original gate failure. Add offline fault coverage; historical release evidence remains unchanged.
+
+- Prepare matched Harness 1.4.0-rc.3 and Code 0.3.0-rc.3 for npm `next`, preserving the complete certification workflow, model pins and provider support tiers. Keep RC.2 tags, retained artifacts and failed evidence immutable; RC.3 requires fresh source-bound artifact, OCI, live and representative gates.
 
 ## 1.4.0-rc.2 - 2026-10-04
 

@@ -1,5 +1,12 @@
 # Code changelog
 
+## 0.3.0-rc.3 - 2026-10-04
+
+- Pin exactly Harness 1.4.0-rc.3 and prepare npm `next` after the matched engine passes its complete protected campaign and registry/provenance verification. Retain the existing RC.2 terminal and local web behavior; the matched engine carries improved routing failure diagnostics.
+- Preserve published RC.1 artifacts, immutable RC.2 history and stable `latest` channels.
+
+Migration: Node >=22.13.0, existing sessions, exact approvals and provider support tiers remain unchanged. Project memory and the local browser remain experimental.
+
 ## 0.3.0-rc.2 - 2026-10-04
 
 - Retain bounded assistant report context through immediate `/compact` and session restart with the matched Harness candidate; `/clear` resets the context. Recovered text grants no approval or acceptance authority.
