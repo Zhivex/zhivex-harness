@@ -508,8 +508,8 @@ try {
   // The real host rejects the switch before replacing its owner.
   const background = await context.newPage();
   await background.addInitScript(csrf => {
-    if (csrf) sessionStorage.setItem("zhivex-web-csrf", csrf);
-  }, await page.evaluate(() => sessionStorage.getItem("zhivex-web-csrf")));
+    if (csrf) globalThis.sessionStorage.setItem("zhivex-web-csrf", csrf);
+  }, await page.evaluate(() => globalThis.sessionStorage.getItem("zhivex-web-csrf")));
   await background.goto(ready.origin);
   await background.locator('.session-row').filter({hasText:"wait-for-cancel: preserve this draft"}).click();
   await background.waitForFunction(() => document.querySelector(".pill")?.textContent === "cancelled");
