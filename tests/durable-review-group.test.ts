@@ -192,3 +192,24 @@ test("durable groups share the logical monetary ledger across member calls", asy
     expect(harness.usageLedger?.summary("ledger").calls).toBe(2);
   } finally { await harness.close(); await rm(workspace, { recursive: true, force: true }); }
 });
+
+
+test("generic root cancellation also closes the durable group's admission", async () => {
+  const { cancelHarnessRun } = await import("../src/persistence/operations.js");
+  const f = await fixture();
+  try {
+    let started!: () => void, release!: () => void;
+    const entered = new Promise<void>(r => { started = r; });
+    const blocked = new Promise<void>(r => { release = r; });
+    const model = f.harness.subagents.get("explorer")!.model;
+    const generate = model.generate;
+    model.generate = async input => { started(); await blocked; return generate(input); };
+    const active = runHarnessDurableReviewGroup(f.harness, { groupId: "generic-cancel", prompt: "inspect" });
+    await entered;
+    await cancelHarnessRun(f.harness.store, f.harness.config, "generic-cancel");
+    expect((await inspectHarnessReviewGroup(f.harness, "generic-cancel")).cancellationRequested).toBe(true);
+    release();
+    expect((await active).status).toBe("cancelled");
+    expect(f.calls).toEqual({ explorer: 1, reviewer: 0 });
+  } finally { await f.cleanup(); }
+});
