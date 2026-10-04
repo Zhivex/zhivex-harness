@@ -32,8 +32,9 @@ export const captureAssistantResponses = (metadata: unknown, messages: readonly 
     if (!text.trim() || /^\[Compacted (?:conversation context|prior conversation)\]/.test(text)) continue;
     const bounded = text.slice(0, MAX_ASSISTANT_RESPONSE_CHARACTERS);
     const id = sourceId(bounded);
+    const truncated = sources.get(id)?.truncated === true || text.length > bounded.length;
     sources.delete(id);
-    sources.set(id, { id, text: bounded, truncated: text.length > bounded.length });
+    sources.set(id, { id, text: bounded, truncated });
     while (sources.size > MAX_ASSISTANT_RESPONSES) sources.delete(sources.keys().next().value!);
   }
   return [...sources.values()];

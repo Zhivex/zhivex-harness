@@ -226,11 +226,17 @@ operator sources separately. The CLI persists them in session/run metadata.
 Library callers using `compactHarnessMessages` should pass its returned array
 directly into `runHarness`; if serializing it separately, also retain the original
 `zhivexTaskSources` metadata. A summary alone cannot reconstruct full requests.
-Local client session continuations also retain the three most recent redacted
-assistant text responses in `zhivexAssistantResponses`, separately from operator
+The first terminal checkpoint retains generated assistant text before a client
+can manually compact the displayed report. Local client session continuations
+also retain the three most recent redacted assistant text responses in `zhivexAssistantResponses`, separately from operator
 requests and acceptance records. Each response is limited to 64000 characters;
 truncation is explicit. This lets a user refer to a late heading in a long report
-without enlarging every provider prompt. `read_task` with
+without enlarging every provider prompt. Harness and Code consoles carry only
+this bounded context within the selected session, including after `/compact`
+and restart; `/clear` resets it. Manual in-process compaction preserves the
+association through copied message arrays. If serializing compacted messages,
+also retain `zhivexAssistantResponses` from the saved checkpoint.
+`read_task` with
 `source: "assistant_response"` and an optional case-sensitive literal `query`
 reads the newest matching retained response in pages of at most 4000 characters.
 An explicit `id` selects a retained response and `offset` selects a page. Missing,

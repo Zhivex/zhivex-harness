@@ -14,14 +14,14 @@ import { assembleHarnessTools } from "../tools/tool-registry.js";
 import { UsageLedger, USAGE_LEDGER_KEY, type UsageAccountingOptions } from "./usage-ledger.js";
 import { createCheckpointTokenCap, createRuntimeBudget, effectiveRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
 import { createRepairController } from "./repair-controller.js";
-import { runtimeCheckpointStore, tokenUsageCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
+import { runtimeCheckpointStore, tokenUsageCheckpointStore, assistantResponseCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
 import { MODEL_BUDGET_KEY, createModelBudget, workBudgetReached } from "./model-budget.js";
 import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY, ASSISTANT_RESPONSE_KEY, assistantResponses, captureAssistantResponses } from "../context/task-memory.js";
 import { bindTaskAcceptanceHost, withTaskAcceptanceRun } from './task-acceptance-host.js';
 import { taskAcceptanceCheckpointStore, type TaskAcceptanceLedger } from './task-acceptance-record.js';
 import type { TaskAcceptanceContract } from './task-acceptance.js';
-import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources } from "../context/compaction.js";
+import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources, compactedAssistantResponses } from "../context/compaction.js";
 import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
 import { createContextRuntime } from "./context-runtime.js";
@@ -1175,7 +1175,8 @@ const runHarnessInternal = async (
     const messages: ModelMessage[] = input.messages ?? (input.prompt ? [{ role: "user", parts: [{ type: "text", text: input.prompt }] }] : []);
     const sources = captureTaskSources({ ...input.metadata, [TASK_SOURCE_KEY]: taskSources(input.metadata).length ? taskSources(input.metadata) : compactedTaskSources(messages) ?? [] }, messages);
     input = { ...input, metadata: { ...input.metadata, [TASK_SOURCE_KEY]: sources,
-      [ASSISTANT_RESPONSE_KEY]: captureAssistantResponses(input.metadata, messages) } };
+      [ASSISTANT_RESPONSE_KEY]: captureAssistantResponses({ ...input.metadata,
+        [ASSISTANT_RESPONSE_KEY]: assistantResponses(input.metadata).length ? assistantResponses(input.metadata) : compactedAssistantResponses(messages) ?? [] }, messages) } };
   }
   // Normalize copies, including saved histories, before the SDK estimates or compacts.
   input = "state" in input
@@ -1200,9 +1201,10 @@ const runHarnessInternal = async (
   }
   const runId = "state" in input ? input.state.runId : input.runId ?? `run_${randomUUID()}`;
   const requestMeasurements = createRequestMeasurements();
-  harness = { ...harness, agent: new Agent({
+  const assistantStore = assistantResponseCheckpointStore(harness.store, runId);
+  harness = { ...harness, store: assistantStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
-    model: wrapLanguageModel(harness.agent.model, [requestMeasurements.middleware])
+    store: assistantStore, model: wrapLanguageModel(harness.agent.model, [requestMeasurements.middleware])
   }) };
   let tokenCap: ReturnType<typeof createCheckpointTokenCap> | undefined;
   if (harness.config.orchestration.profiles.length === 0 || harness.compactionModel) {

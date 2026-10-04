@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
-import { ASSISTANT_RESPONSE_KEY, assistantResponses } from "../src/context/task-memory.js";
+import { assistantResponses } from "../src/context/task-memory.js";
 import { createTextMessage } from "@zhivex-ai/core";
 import { createHarness } from "../src/runtime/harness.js";
 import { createHarnessToolPolicy, type HarnessToolPolicy } from "../src/runtime/tool-policy.js";
@@ -280,7 +280,7 @@ test("continued assistant recovery survives compacted checkpoints and stays boun
     const isolated = data(await f.call({ method: "run.start", sessionId: other.sessionId, expectedRevision: other.revision,
       idempotencyKey: "isolated", prompt: "Independent task" }), "run");
     const isolatedState = (await f.harness.store.load(isolated.run.runId, f.harness.config.scope))!;
-    expect(isolatedState.metadata?.[ASSISTANT_RESPONSE_KEY]).toEqual([]);
+    expect(assistantResponses(isolatedState.metadata).map(item => item.text)).toEqual(["done"]);
   } finally { await f.close(); }
 });
 

@@ -92,6 +92,7 @@ test("assistant recovery has bounded retention and explicit truncation, rejects 
   let sources = captureAssistantResponses({}, [createTextMessage("assistant", "x".repeat(100_000))]);
   expect(sources[0]).toMatchObject({ truncated: true });
   expect(sources[0]!.text).toHaveLength(MAX_ASSISTANT_RESPONSE_CHARACTERS);
+  expect(captureAssistantResponses({ [ASSISTANT_RESPONSE_KEY]: sources }, [createTextMessage("assistant", sources[0]!.text)])[0]?.truncated).toBe(true);
   const task = createTaskTools().read_task;
   const context: ToolExecutionContext = { metadata: { [ASSISTANT_RESPONSE_KEY]: sources },
     toolCall: { id: "recall", name: "read_task", input: {} }, step: 0, model: createMockLanguageModel() };

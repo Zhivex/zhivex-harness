@@ -2,8 +2,25 @@ import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 import { MODEL_BUDGET_KEY, type createModelBudget } from "./model-budget.js";
 import { REPAIR_PROGRESS_KEY, type createRepairProgress } from "./repair-progress.js";
 import { REPAIR_CONTROLLER_KEY, type createRepairController } from "./repair-controller.js";
+import { ASSISTANT_RESPONSE_KEY, captureAssistantResponses } from "../context/task-memory.js";
 
 export const RUNTIME_DIAGNOSTICS_KEY = "zhivexRuntimeDiagnostics";
+/** Capture generated text on the SDK's terminal write, before clients compact it.
+ * Only context changes: revision ownership and all authorization metadata stay intact. */
+export const assistantResponseCheckpointStore = (store: AgentRunStore, runId: string) => new Proxy(store, {
+  get(target, key) {
+    if (key === "save") return async (...args: Parameters<AgentRunStore["save"]>) => {
+      const [state] = args;
+      if (state.runId === runId && ["completed", "failed", "cancelled", "timed_out"].includes(state.status)) {
+        state.metadata = { ...state.metadata,
+          [ASSISTANT_RESPONSE_KEY]: captureAssistantResponses(state.metadata, state.messages) };
+      }
+      return target.save(...args);
+    };
+    const value: unknown = Reflect.get(target, key, target);
+    return typeof value === "function" ? value.bind(target) : value;
+  }
+});
 /** Decorate the SDK's own writes, never race it with independent revision updates. */
 export const runtimeCheckpointStore = (store: AgentRunStore, runId: string,
   budget: ReturnType<typeof createModelBudget>, progress: ReturnType<typeof createRepairProgress>,

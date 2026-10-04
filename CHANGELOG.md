@@ -6,7 +6,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-- Recover bounded prior assistant reports and plans through `read_task` after local session compaction, including continued sessions after reconnect or host restart. Keep recovered text untrusted and separate from operator requests, approvals and acceptance evidence.
+- Recover bounded prior assistant reports and plans through `read_task` after local session compaction, including immediate manual compaction of the first report and continued sessions after reconnect or host restart. Keep recovered text untrusted and separate from operator requests, approvals and acceptance evidence.
 
 ## 1.4.0-rc.1 - 2026-10-04
 
