@@ -42,7 +42,7 @@ them. Ctrl+C stops active work; it does not undo completed changes.
 
 ## Release candidates
 
-This checkout prepares Harness `1.4.0-rc.2` and Code `0.3.0-rc.2` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). RC.2 publication is pending; npm `next` currently points to Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`. These prerelease candidates are separate from the stable `latest` channel.
+This checkout prepares Harness `1.4.0-rc.3` and Code `0.3.0-rc.3` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). RC.3 publication is pending; npm `next` currently points to Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`. These prerelease candidates are separate from the stable `latest` channel.
 
 Use candidates only for prerelease validation. Check [npm versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions)
 and the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
@@ -51,7 +51,7 @@ before installing a candidate; `next` can still point to an earlier RC.
 After publication of this exact candidate:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.4.0-rc.2
+npm install -g @zhivex-ai/harness@1.4.0-rc.3
 ```
 
 ## A few commands are enough
