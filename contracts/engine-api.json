@@ -2270,6 +2270,11 @@
           "name": "HarnessDurableReviewGroupResult",
           "kind": "type",
           "tier": "beta"
+        },
+        {
+          "name": "HarnessSharedBudgetOptions",
+          "kind": "type",
+          "tier": "beta"
         }
       ]
     },

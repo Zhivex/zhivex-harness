@@ -508,3 +508,4 @@ export type { GovernanceSessionSource } from '../persistence/governance-context.
 
 export { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "../runtime/durable-review-group.js";
 export type { HarnessDurableReviewGroupResult } from "../runtime/durable-review-group.js";
+export type { HarnessSharedBudgetOptions } from "../runtime/shared-budget.js";
