@@ -109,6 +109,8 @@ export const chat = async (options: CliOptions) => {
   let session: CliSession = selectedSession ?? await sessionStore.create();
   let messages: AgentRunOutput["messages"] = [];
   let retainedTasks: ReturnType<typeof taskSources> = [];
+  // Carry only opaque engine-owned assistant context from this validated session.
+  let retainedResponses: NonNullable<AgentRunOutput["state"]["metadata"]>[string] = [];
 
   let persistenceHarness: ZhivexHarness | undefined;
   const latestState = async (selected: CliSession) => {
@@ -143,6 +145,7 @@ export const chat = async (options: CliOptions) => {
       routes = readHarnessResumeRoutes(restored);
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
+      retainedResponses = restored.metadata?.zhivexAssistantResponses ?? [];
     }
     harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
     persistenceHarness = harness;
@@ -248,6 +251,7 @@ export const chat = async (options: CliOptions) => {
     activityHistory.clear();
     messages = state?.messages ?? [];
     retainedTasks = taskSources(state?.metadata);
+    retainedResponses = state?.metadata?.zhivexAssistantResponses ?? [];
   };
 
   const continuePendingApproval = async (approve: boolean) => {
@@ -312,7 +316,8 @@ export const chat = async (options: CliOptions) => {
     if (!tracker.streamedText && result.outputText) process.stdout.write(sanitizeTerminalText(result.outputText));
     if (result.outputText || tracker.streamedText) process.stdout.write("\n");
     messages = result.messages;
-        retainedTasks = taskSources(result.state.metadata);
+    retainedTasks = taskSources(result.state.metadata);
+    retainedResponses = result.state.metadata?.zhivexAssistantResponses ?? [];
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
       status: sessionStatus(result.status)
     });
@@ -517,6 +522,7 @@ export const chat = async (options: CliOptions) => {
         if (command === "/clear") {
           messages = [];
           retainedTasks = [];
+          retainedResponses = [];
           attachments.clear();
           readline.clearHistory();
           activityHistory.clear();
@@ -762,6 +768,7 @@ export const chat = async (options: CliOptions) => {
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
                     [TASK_SOURCE_KEY]: retainedTasks,
+                    zhivexAssistantResponses: retainedResponses,
                     zhivexCliSession: {
                       schemaVersion: 1,
                       sessionId: session.sessionId,
@@ -781,6 +788,7 @@ export const chat = async (options: CliOptions) => {
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
                     [TASK_SOURCE_KEY]: retainedTasks,
+                    zhivexAssistantResponses: retainedResponses,
                     zhivexCliSession: {
                       schemaVersion: 1,
                       sessionId: session.sessionId,
@@ -808,7 +816,7 @@ export const chat = async (options: CliOptions) => {
           session = await sessionStore.updateRun(session.sessionId, runId, {
             status: durable ? sessionStatus(durable.status) : "failed"
           });
-          if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); }
+          if (durable) { messages = durable.messages; retainedTasks = taskSources(durable.metadata); retainedResponses = durable.metadata?.zhivexAssistantResponses ?? []; }
           throw error;
         }
         if (progress.signal.aborted) process.stderr.write("Repeated identical tool failures; stopped to avoid a loop. Correct the cause before /continue.\n");
@@ -820,6 +828,7 @@ export const chat = async (options: CliOptions) => {
         process.stdout.write("\n");
         messages = result.messages;
         retainedTasks = taskSources(result.state.metadata);
+        retainedResponses = result.state.metadata?.zhivexAssistantResponses ?? [];
         attachments.clear();
         process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
         process.stderr.write(formatVerificationSummary(result.toolResults) + "\n");
