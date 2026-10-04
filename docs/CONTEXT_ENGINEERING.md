@@ -226,6 +226,23 @@ operator sources separately. The CLI persists them in session/run metadata.
 Library callers using `compactHarnessMessages` should pass its returned array
 directly into `runHarness`; if serializing it separately, also retain the original
 `zhivexTaskSources` metadata. A summary alone cannot reconstruct full requests.
+Local client session continuations also retain the three most recent redacted
+assistant text responses in `zhivexAssistantResponses`, separately from operator
+requests and acceptance records. Each response is limited to 64000 characters;
+truncation is explicit. This lets a user refer to a late heading in a long report
+without enlarging every provider prompt. `read_task` with
+`source: "assistant_response"` and an optional case-sensitive literal `query`
+reads the newest matching retained response in pages of at most 4000 characters.
+An explicit `id` selects a retained response and `offset` selects a page. Missing,
+evicted or corrupt sources fail explicitly. Retrieval uses current run metadata
+only; it cannot query another session or project. Continuations inherit only this
+bounded context from a previous run already validated against the same session
+and scope. Callers creating runs directly must retain that metadata if passing
+only compacted messages. Recovered assistant text is always marked untrusted and
+unverified. It cannot authorize tools, change operator requirements, supply
+acceptance evidence or replace exact-diff approval. Actual tool policy, approvals,
+budgets and current source verification still apply.
+
 `repair_plan` records the hypothesis, expected behavior, up to eight known paths,
 and the next check in the durable tool journal. Its optional `verifier` records
 exact `command`, `args` and a bounded `purpose`. Neither tool creates approval
