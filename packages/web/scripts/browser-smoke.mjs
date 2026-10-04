@@ -151,6 +151,9 @@ try {
     .getByRole("button", { name: "Create a session", exact: true })
     .click();
   await page.getByLabel("Task prompt").waitFor({ state: "visible" });
+  await page.waitForFunction(
+    () => document.querySelector(".pill")?.textContent === "Ready",
+  );
   await page.screenshot({
     path: path.join(output, "web-workspace-desktop.png"),
     fullPage: true,
