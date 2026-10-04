@@ -7,6 +7,56 @@
       "environment": "node",
       "exports": [
         {
+          "name": "HARNESS_PROJECT_MEMORY_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HARNESS_PROJECT_MEMORY_LIMITS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "openHarnessProjectMemory",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessProjectMemory",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessProjectMemoryEntry",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessProjectMemoryInput",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessProjectMemoryOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessProjectMemoryView",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HARNESS_MEMORY_COMMANDS",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "executeHarnessMemoryCommand",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
           "name": "DEFAULT_ALLOWED_CHECKS",
           "kind": "runtime",
           "tier": "stable"

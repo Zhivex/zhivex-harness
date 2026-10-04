@@ -1,5 +1,9 @@
 # Code changelog
 
+## Unreleased
+
+- Add experimental local project-memory commands and per-invocation `--no-memory`. The memory feature requires the matched next Harness engine; release preparation must update the exact engine pin. Existing terminal layout is unchanged.
+
 ## 0.2.0 - pending publication
 
 - Show per-file changed-region diffs for reviewed local edits using Harness

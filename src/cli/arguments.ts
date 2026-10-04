@@ -13,7 +13,7 @@ import { HarnessError } from "../runtime/errors.js";
 import { CLI_OPTION_DEFINITIONS, validateCliCommandOptions, type CliCommandOptionContractKey } from "./cli-options.js";
 import { validateCliProfileName } from "./cli-profiles.js";
 
-export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "policy", "resume", "runs", "sessions", "checkpoints", "changes", "state", "help", "version"] as const;
+export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "policy", "resume", "runs", "sessions", "checkpoints", "changes", "state", "memory", "help", "version"] as const;
 
 export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export", "report"] as const;
 
@@ -101,6 +101,10 @@ export interface CliOptions {
   checkpointsCommand?: "list" | "capture" | "inspect" | "prepare" | "review" | "apply" | "recover" | "storage" | "prune-review" | "prune-apply";
   checkpointArguments?: string[];
   changesCommand?: ChangesCommand;
+  memoryCommand?: string;
+  memoryArguments?: string[];
+  memorySource?: string;
+  projectMemory?: boolean;
   stateCommand?: StateCommand;
   artifactPath?: string;
   patchPath?: string;
@@ -170,7 +174,7 @@ const optionValue = (argv: string[], index: number, name: string) => {
 };
 
 export const parseCliArgs = (argv: string[]): CliOptions => {
-  const booleanOptions = new Set(["--token-budget", "--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--update"]);
+  const booleanOptions = new Set(["--token-budget", "--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--no-memory", "--update"]);
   // Support shell-style --name=value without interpreting text after --.
   const separator = argv.indexOf("--");
   argv = argv.flatMap((arg, index) => {
@@ -212,7 +216,7 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     const first = words[0];
     const parts = first === "help" ? words.slice(1) :
       first && COMMANDS.has(first as Command)
-        ? words.slice(0, ["runs", "sessions", "checkpoints", "changes", "state"].includes(first) ? 2 : 1) : [];
+        ? words.slice(0, ["runs", "sessions", "checkpoints", "changes", "state", "memory"].includes(first) ? 2 : 1) : [];
     try {
       const topic = resolveHelpTopic(parts, parts.length > 0);
       return { ...options, command: "help", ...(topic ? { helpTopic: topic } : {}) };
@@ -250,6 +254,13 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     }
 
     switch (argument) {
+      case "--no-memory":
+        options.projectMemory = false;
+        break;
+      case "--source":
+        options.memorySource = optionValue(argv, index, argument);
+        index += 1;
+        break;
       case "--update":
         options.updateProfile = true;
         break;
@@ -747,6 +758,12 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`changes ${changesCommand} received unexpected positional arguments.`);
     }
+  } else if (options.command === "memory") {
+    const subcommand = positional.shift();
+    const counts: Record<string, number> = { remember: 1, list: 0, read: 1, update: 3, forget: 2, suggest: 1, accept: 2, clear: 0, enable: 0, disable: 0, context: 1 };
+    if (!subcommand || !Object.hasOwn(counts, subcommand) || positional.length !== counts[subcommand]) throw new CliUsageError("Invalid memory arguments. Use memory --help; quote content as one argument.");
+    options.memoryCommand = subcommand;
+    options.memoryArguments = positional.splice(0);
   } else if (options.command === "state") {
     const stateCommand = positional.shift() as StateCommand | undefined;
     if (!stateCommand || !STATE_COMMANDS.has(stateCommand)) {
@@ -789,6 +806,8 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       ? `sessions:${options.sessionsCommand}`
       : options.command === "changes"
         ? `changes:${options.changesCommand}`
+        : options.command === "memory"
+          ? `memory:${options.memoryCommand}`
         : options.command === "state"
           ? `state:${options.stateCommand}`
         : options.command;

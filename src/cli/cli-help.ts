@@ -1,6 +1,17 @@
 import { CLI_COMMAND_OPTION_CONTRACTS, type CliCommandOptionContractKey } from "./cli-options.js";
 
 const usage: Record<string, string> = {
+  "memory:remember": 'zhx memory remember "content" [--source "provenance"]',
+  "memory:suggest": 'zhx memory suggest "content" [--source "provenance"]',
+  "memory:list": 'zhx memory list',
+  "memory:read": 'zhx memory read <id>',
+  "memory:update": 'zhx memory update <id> <revision> "content" [--source "provenance"]',
+  "memory:forget": 'zhx memory forget <id> <revision>',
+  "memory:accept": 'zhx memory accept <id> <reviewedRevision>',
+  "memory:clear": 'zhx memory clear',
+  "memory:enable": 'zhx memory enable',
+  "memory:disable": 'zhx memory disable',
+  "memory:context": 'zhx memory context "query"',
   "checkpoints:storage": "zhx checkpoints storage",
   "checkpoints:prune-review": "zhx checkpoints prune-review <checkpoint:id|restore:id> [...]",
   "checkpoints:prune-apply": "zhx checkpoints prune-apply <reviewedPlanId> <checkpoint:id|restore:id> [...]",

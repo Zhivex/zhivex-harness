@@ -218,3 +218,5 @@ To disable cumulative token ceilings explicitly, use `--no-token-budget` (librar
 through resume. Token accounting and compaction continue; cost, time, steps, tools,
 approvals, and provider per-request limits remain enforced. Stored numeric token
 ceilings are inactive until `unlimitedTokens` is set back to `false`.
+
+Next-version [project memory](PROJECT_MEMORY.md) reuses the existing SDK memory table and state export records. Historical state is not harvested into curated memory. Forget/clear remove current memory content, while backups, run histories and SQLite WAL retention remain separate. Older importers reject the new reserved memory key safely.
