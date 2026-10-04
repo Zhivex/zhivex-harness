@@ -2,7 +2,7 @@
 
 The terminal and local browser product for the Zhivex Harness engine. This checkout prepares
 `0.3.0-rc.3`, pinned exactly to `@zhivex-ai/harness@1.4.0-rc.3`, for npm `next`.
-RC.2 publication is pending; npm `next` currently points to Code `0.3.0-rc.1` with Harness `1.4.0-rc.1`. npm `latest` remains `0.2.0`, pinned to Harness `1.3.0`.
+RC.3 publication is pending; npm `next` currently points to Code `0.3.0-rc.1` with Harness `1.4.0-rc.1`. npm `latest` remains `0.2.0`, pinned to Harness `1.3.0`.
 
 Install stable with `npm install -g @zhivex-ai/code@0.2.0`.
 Node >=22.13.0 is required; consumers do not need Bun.
