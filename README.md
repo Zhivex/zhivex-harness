@@ -17,16 +17,14 @@ Code RC2 remain published on `next`. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 
-This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). The candidates are not yet published.
-
 ## Quick start
 
 Requires Node.js 22.13.0 or newer, Git and a provider API key.
 
-After RC publication, install the candidate below. Until then, use npm `latest` for stable Harness 1.3.0:
+Install the stable npm release (`latest`, currently `1.3.0`):
 
 ```sh
-npm install -g @zhivex-ai/harness@1.4.0-rc.1
+npm install -g @zhivex-ai/harness@latest
 cd /path/to/your/project
 zhx
 ```
@@ -41,6 +39,20 @@ Try: “Explain this repository and suggest a small improvement.”
 Type `/` for common actions. `/model` changes the model, `/sessions` finds previous
 conversations, and `/diff` shows changes. Review requested actions before approving
 them. Ctrl+C stops active work; it does not undo completed changes.
+
+## Release candidates
+
+This checkout prepares Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). These prerelease candidates are separate from the stable `latest` channel.
+
+Use candidates only for prerelease validation. Check [npm versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions)
+and the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
+before installing a candidate; `next` can still point to an earlier RC.
+
+After publication of this exact candidate:
+
+```sh
+npm install -g @zhivex-ai/harness@1.4.0-rc.1
+```
 
 ## A few commands are enough
 
