@@ -20,6 +20,35 @@ export interface HarnessActivityStore {
   close(): void;
 }
 export interface HarnessActivityOptions { maxEvents?: number; retentionMs?: number; sensitiveValues?: readonly string[]; now?: () => number }
+
+const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024;
+// Even JSON's worst-case escaping (six bytes per code unit) fits the 64 KiB event cap.
+const TEXT_CHUNK_CHARACTERS = 8192;
+
+/** The snapshot is a bounded UI projection, not the durable policy/event journal. */
+const serializeBoundedSnapshot = (snapshot: HarnessActivitySnapshot, currentRun: string): string => {
+  let encoded = JSON.stringify(snapshot);
+  if (Buffer.byteLength(encoded) <= MAX_SNAPSHOT_BYTES) return encoded;
+  const historical = Object.keys(snapshot.runs).filter(id => id !== currentRun);
+  const compact = (ids: readonly string[]) => {
+    // Keep statuses and run identities, and prefer check receipts over old prose.
+    for (const field of ["text", "prompt", "tools"] as const) for (const id of ids) {
+      const run = snapshot.runs[id]!;
+      if (field === "text") { if (!run.text) continue; run.text = ""; }
+      else { if (run[field] === undefined) continue; delete run[field]; }
+      run.truncated = true;
+      encoded = JSON.stringify(snapshot);
+      if (Buffer.byteLength(encoded) <= MAX_SNAPSHOT_BYTES) return true;
+    }
+    return false;
+  };
+  // A resumed older run is still the current run; preserve its payload until last.
+  if (compact(historical) || compact([currentRun])) return encoded;
+  // Valid bounded run IDs and SDK statuses fit as skeletons. Corrupt/unbounded
+  // metadata remains an error; do not hide database or mandatory evidence failures.
+  throw new Error("ACTIVITY_SNAPSHOT_LIMIT");
+};
+
 export const openHarnessActivityStore = async (config: HarnessConfig, options: HarnessActivityOptions = {}): Promise<HarnessActivityStore> => {
   const index = await openCliSessionStore({workspace:config.workspace,stateDirectory:config.stateDirectory,scope:config.scope});
   const scope = `${index.workspaceKey}:${index.scopeKey}`;
@@ -82,12 +111,24 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       if(activity.type==="agent-run-start")state.status="running";
       if(activity.type==="tool-approval-request"||activity.type==="agent-approval-request")state.status="waiting_approval";
       current.runs[runId]=state;
-      if(Buffer.byteLength(JSON.stringify(current))>2*1024*1024)throw new Error("ACTIVITY_SNAPSHOT_LIMIT");
       db.query("INSERT INTO client_activity_events(scope,session,run,at,activity) VALUES(?,?,?,?,?)").run(scope,sessionId,runId,at,encoded);
       current.sequence=db.query<{seq:number}>("SELECT last_insert_rowid() AS seq").get()!.seq;
-      db.query("INSERT INTO client_activity_snapshots(scope,session,sequence,snapshot) VALUES(?,?,?,?) ON CONFLICT(scope,session) DO UPDATE SET sequence=excluded.sequence,snapshot=excluded.snapshot").run(scope,sessionId,current.sequence,JSON.stringify(current));
+      // Include the final sequence in the byte bound. Compaction never deletes
+      // journal events or claims that a retained cursor lost policy evidence.
+      const bounded = serializeBoundedSnapshot(current, runId);
+      db.query("INSERT INTO client_activity_snapshots(scope,session,sequence,snapshot) VALUES(?,?,?,?) ON CONFLICT(scope,session) DO UPDATE SET sequence=excluded.sequence,snapshot=excluded.snapshot").run(scope,sessionId,current.sequence,bounded);
       prune();db.exec("COMMIT");
     }catch(e){db.exec("ROLLBACK");throw e;}
+  };
+  const writeText = (sessionId: string, runId: string, text: string) => {
+    // Only already-redacted text reaches this splitter. In particular, never
+    // split the unfinished word or a known credential before flush/redaction.
+    for (let start = 0; start < text.length;) {
+      let end = Math.min(text.length, start + TEXT_CHUNK_CHARACTERS);
+      if (end < text.length && /[\uD800-\uDBFF]/.test(text[end - 1]!) && /[\uDC00-\uDFFF]/.test(text[end]!)) end--;
+      write(sessionId, runId, { type: "text-delta", textDelta: text.slice(start, end) });
+      start = end;
+    }
   };
   return {
     policyDecision(sessionId,runId,event){write(sessionId,runId,redactValue(harnessPolicyDecisionEventSchema.parse(event)) as Record<string,unknown>);},
@@ -112,10 +153,10 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     append(sessionId,runId,event){
       const key=`${sessionId}:${runId}`;
       if(event.type==="text-delta"){
-        const textDelta=flush(key,event.textDelta);if(textDelta)write(sessionId,runId,{type:"text-delta",textDelta});return;
+        const textDelta=flush(key,event.textDelta);writeText(sessionId,runId,textDelta);return;
       }
       if(event.type==="agent-run-finish"||event.type==="error"){
-        const textDelta=flush(key,"",true);if(textDelta)write(sessionId,runId,{type:"text-delta",textDelta});tails.delete(key);
+        const textDelta=flush(key,"",true);writeText(sessionId,runId,textDelta);tails.delete(key);
       }
       const projected=streamEventDocument(event);
       if(projected){
@@ -127,7 +168,7 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
         write(sessionId,runId,redactValue({...projected,...receipt}) as Record<string,unknown>);
       }
     },
-    checkpoint(sessionId,runId,status){const key=`${sessionId}:${runId}`;const textDelta=flush(key,"",true);if(textDelta)write(sessionId,runId,{type:"text-delta",textDelta});tails.delete(key);write(sessionId,runId,{type:"checkpoint",status});},
+    checkpoint(sessionId,runId,status){const key=`${sessionId}:${runId}`;const textDelta=flush(key,"",true);writeText(sessionId,runId,textDelta);tails.delete(key);write(sessionId,runId,{type:"checkpoint",status});},
     replay(sessionId,after=0){
       if(!Number.isSafeInteger(after)||after<0)throw new Error("ACTIVITY_CURSOR_INVALID");
       db.exec("BEGIN IMMEDIATE");try{prune();db.exec("COMMIT");}catch(e){db.exec("ROLLBACK");throw e;}
