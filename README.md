@@ -13,7 +13,7 @@ own permission checks; a conversational summary never grants approval.
 
 For the developer-facing terminal product, install
 `npm install -g @zhivex-ai/code@0.2.0` and run `zhivex-code` in your project.
-See [Code installation and first use](packages/code/README.md). Harness remains
+See [Code installation and first use](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md). Harness remains
 the reusable engine and its compatibility CLI. The `/task` delivery workflow in
 this checkout is an unreleased experimental Code addition, not a published feature.
 
