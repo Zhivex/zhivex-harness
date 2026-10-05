@@ -64,7 +64,8 @@ try {
       integrity: `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}` },
     installation: candidateEngine ? "npm tarball with explicit exact candidate engine override, no install scripts" : "npm tarball with published dependency, no overrides or install scripts", offline: true,
     scenarios: ["task/check approvals and denial", "pending approval exit and resume", "per-file diff and check receipt",
-      "per-run estimated budget and unknown cost", "checkpoint capture/review/restore and stale retry rejection", "Ctrl+C, restart, /continue"] };
+      "per-run estimated budget and unknown cost", "checkpoint capture/review/restore and stale retry rejection", "Ctrl+C, restart, /continue",
+      "guided task goal/scope/checks, human keep, reopen, drift rejection and failed-check revision"] };
   await writeFile(path.join(evidence, "installed-journey-report.json"), JSON.stringify(report, null, 2) + "\n");
   process.stdout.write(JSON.stringify(report, null, 2) + "\n");
 } finally { await rm(scratch, { recursive: true, force: true }); }

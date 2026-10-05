@@ -95,11 +95,12 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
   };
   let closed = false, busy = false;
   let active: { sessionId: string; runId: string; controller: AbortController; runtime?: ZhivexHarness } | undefined;
-  const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1]) => {
+  const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1], prompt?: string) => {
     const runId = "state" in input ? input.state.runId : input.runId!;
     const controller = new AbortController(); active = { sessionId, runId, controller };
     let prepared: Awaited<ReturnType<NonNullable<HarnessClientRunRuntimeOptions['prepareRun']>>> | undefined;
     try {
+      if (prompt !== undefined) await options.onPrompt?.(sessionId, runId, prompt);
       prepared = await options.prepareRun?.({ sessionId, runId, resuming: 'state' in input, signal: controller.signal });
       const runtime = prepared?.harness ?? harness;
       if (runtime.store !== harness.store || runtime.workspace.root !== harness.workspace.root || canonical(runtime.config) !== canonical(harness.config)) {
@@ -123,8 +124,8 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       let persisted: AgentRunState | undefined;
       try {
         persisted = await harness.store.load(runId, harness.config.scope);
-        if (!persisted && options.prepareRun && !('state' in input)) {
-          // Keep a denied/cancelled preparation from stranding the session's
+        if (!persisted && !('state' in input)) {
+          // Keep failed prompt recording or preparation from stranding the session's
           // already-reserved run reference. No model or tool ran in this state.
           const now = Date.now();
           await harness.store.save({ schemaVersion: 1, revision: 0, runId, scope: harness.config.scope,
@@ -210,12 +211,11 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       if (previous && !["completed", "failed", "cancelled", "timed_out"].includes(previous.status)) return fail("INVALID_STATE");
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
-      await options.onPrompt?.(s.sessionId, runId, c.prompt);
       const result = await invoke(s.sessionId, { runId, scope: harness.config.scope,
         // getRun above binds the previous run to this exact session and scope.
         // Carry only bounded assistant context, never approval/acceptance metadata.
         metadata: { [ASSISTANT_RESPONSE_KEY]: assistantResponses(previous?.metadata) },
-        messages: appendUserMessage(terminalContinuationMessages(previous?.messages ?? []), c.prompt) });
+        messages: appendUserMessage(terminalContinuationMessages(previous?.messages ?? []), c.prompt) }, c.prompt);
       s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
       return { kind: "run", session: sessionDocument(s), run: await documentRun(result.state) };
     }

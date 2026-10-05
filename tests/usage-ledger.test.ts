@@ -3,11 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+import { openHarnessPersistence, type HarnessPersistence } from "../src/persistence/operations.js";
 import { resolveHarnessConfig } from "../src/runtime/config.js";
 import { UsageLedger, usagePricingSchema, type UsageAccountingOptions } from "../src/runtime/usage-ledger.js";
 
-const roots: string[] = [], ledgers: UsageLedger[] = [];
-afterEach(async () => { for (const ledger of ledgers.splice(0)) ledger.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
+const roots: string[] = [], ledgers: UsageLedger[] = [], persistence: HarnessPersistence[] = [];
+afterEach(async () => { for (const ledger of ledgers.splice(0)) ledger.close(); for (const store of persistence.splice(0)) store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
 const now = Date.parse("2026-09-20T12:00:00Z");
 const pricing = { schemaVersion: 1 as const, prices: ["a", "b"].map(provider => ({ provider, model: "model", inputUsdPerMillion: 1, outputUsdPerMillion: 2, source: "operator test fixture", asOf: "2026-09-20T00:00:00Z", expiresAt: "2026-09-21T00:00:00Z" })) };
 const input = { messages: [{ role: "user" as const, parts: [{ type: "text" as const, text: "hello" }] }] };
@@ -99,7 +100,12 @@ test("a process loss with an in-flight request cannot restore a fresh monetary b
   expect(ledger.summary("crashed")).toMatchObject({ calls: 1, usageComplete: false });
   ledger.close(); ledgers.splice(ledgers.indexOf(ledger), 1);
   const restored = await UsageLedger.open(config, {}, () => now); ledgers.push(restored);
-  await expect(restored.run("crashed", () => restored.model(model()).generate(input))).rejects.toThrow("USAGE_UNCERTAIN");
+  const durable = await openHarnessPersistence(config); persistence.push(durable);
+  const recoveredStore = restored.store(durable.store);
+  await expect(restored.run("crashed", async () => {
+    expect(await recoveredStore.acquireLease!("crashed", { ownerId: "recovery", ttlMs: 30_000 }, config.scope)).toBeDefined();
+    return restored.model(model()).generate(input);
+  })).rejects.toThrow("USAGE_UNCERTAIN");
   expect(restored.summary("crashed").limitUsd).toBe(1);
 });
 
@@ -112,4 +118,59 @@ test("duplicate streaming finish events and stream cleanup settle exactly one ca
   ]] });
   await ledger.run("stream", async () => { for await (const _event of await ledger.model(streamModel).stream!(input)) { /* drain */ } });
   expect(ledger.summary("stream")).toMatchObject({ calls: 1, inputTokens: 10, outputTokens: 5, usageComplete: true });
+});
+
+
+test("rejected concurrent SQLite lease acquisition preserves the active worker's usage receipt", async () => {
+  const { ledger, config } = await fixture({ pricing, limitUsd: 1, requireCompleteUsage: true });
+  const other = await UsageLedger.open(config, {}, () => now); ledgers.push(other);
+  const firstPersistence = await openHarnessPersistence(config); persistence.push(firstPersistence);
+  const secondPersistence = await openHarnessPersistence(config); persistence.push(secondPersistence);
+  const firstStore = ledger.store(firstPersistence.store), secondStore = other.store(secondPersistence.store);
+  let release!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let ready!: () => void;
+  const ownershipReady = new Promise<void>(resolve => { ready = resolve; });
+  const slow = model(), generate = slow.generate.bind(slow);
+  slow.generate = async request => { entered(); await gate; return generate(request); };
+  const active = ledger.run("contended", async () => {
+    expect(await firstStore.acquireLease!("contended", { ownerId: "first", ttlMs: 30_000 }, config.scope)).toBeDefined();
+    const response = ledger.model(slow).generate(input);
+    await started;
+    // Child leases and reacquisition for approval/terminal continuations must
+    // never invalidate transports owned by the current logical invocation.
+    expect(await firstStore.acquireLease!("child", { ownerId: "first", ttlMs: 30_000 }, config.scope)).toBeDefined();
+    await firstStore.releaseLease!("contended", "first", config.scope);
+    expect(await firstStore.acquireLease!("contended", { ownerId: "first", ttlMs: 30_000 }, config.scope)).toBeDefined();
+    ready();
+    return response;
+  });
+  await ownershipReady;
+  try {
+    await other.run("contended", async () => {
+      expect(await secondStore.acquireLease!("contended", { ownerId: "second", ttlMs: 30_000 }, config.scope)).toBeUndefined();
+    });
+  } finally { release(); }
+  await active;
+  expect(other.summary("contended")).toMatchObject({ calls: 1, inputTokens: 10, outputTokens: 5, usageComplete: true });
+  await firstStore.releaseLease!("contended", "first", config.scope);
+  await other.run("contended", async () => {
+    expect(await secondStore.acquireLease!("contended", { ownerId: "second", ttlMs: 30_000 }, config.scope)).toBeDefined();
+    await other.model(model()).generate(input);
+  });
+  expect(ledger.summary("contended")).toMatchObject({ calls: 2, inputTokens: 20, outputTokens: 10, usageComplete: true });
+});
+
+
+test("failed usage recovery releases the acquired durable lease", async () => {
+  const { ledger, config } = await fixture();
+  const durable = await openHarnessPersistence(config); persistence.push(durable);
+  const store = ledger.store(durable.store);
+  await expect(ledger.run("recovery-failure", async () => {
+    ledger.close(); ledgers.splice(ledgers.indexOf(ledger), 1);
+    await store.acquireLease!("recovery-failure", { ownerId: "failing", ttlMs: 30_000 }, config.scope);
+  })).rejects.toThrow();
+  expect(await durable.store.acquireLease!("recovery-failure", { ownerId: "replacement", ttlMs: 30_000 }, config.scope)).toBeDefined();
 });

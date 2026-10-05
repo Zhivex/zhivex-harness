@@ -7,6 +7,16 @@ RC.3 publication is pending; npm `next` currently points to Code `0.3.0-rc.1` wi
 Install stable with `npm install -g @zhivex-ai/code@0.2.0`.
 Node >=22.13.0 is required; consumers do not need Bun.
 
+Run `zhivex-code` inside your repository, select a provider/model, and use the
+hidden credential prompt or your existing provider environment key. Review gated
+edits and checks before approving them. Provider calls may cost money; `/usage`
+and `/budget` report estimates for each run, not invoices or a task-wide cap.
+For a disposable offline first run, use the packaged `examples/first-use.mjs`;
+it makes no provider calls. The candidate's experimental
+[task delivery workflow](docs/TASK_DELIVERY.md) connects a goal, file scope,
+check receipts, fresh review and a human keep/revise decision. It is not present
+in the published stable or next versions listed above.
+
 The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.2.0`,
 `yarn global add @zhivex-ai/code@0.2.0` (Yarn Classic), and
 `bun add -g @zhivex-ai/code@0.2.0`. Choose the project's existing manager for local
@@ -28,7 +38,7 @@ Install the immutable frontend build dependencies first with
 `bun install --cwd ../web --frozen-lockfile --ignore-scripts`. The build bundles
 the local browser host and compiled UI, including the reused Desktop presentation
 modules. It leaves Harness and server package dependencies external and never
-reads or bundles engine source. See [browser contributor verification](../web/README.md#contributor-verification).
+reads or bundles engine source. See [browser contributor verification](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md#contributor-verification).
 For this candidate checkout, install the root frozen lockfile with `bun install --frozen-lockfile --ignore-scripts`, then run `bun run build` at the repository root,
 then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
 command links the built root package into Code's ignored `node_modules`, validates

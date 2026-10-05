@@ -1,5 +1,7 @@
 import { approvalFileDiff } from "./terminal/file-diff.js";
 import { handleConsoleCheckpoint } from "./console/console-checkpoints.js";
+import { CODE_TASK_KEY, codeTaskPrompt, codeTaskRecap, freshCodeTaskRecap, keepCodeTask, prepareCodeTask, restoredCodeTask, type CodeTask } from "./console/console-task.js";
+import { consoleWorkspaceDiff } from "./console/console-diff.js";
 import { handleConsoleBudget } from "./console/console-pricing.js";
 import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "./console/console-run-policy.js";
 import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
@@ -21,7 +23,7 @@ import { ConsoleRunView } from "./console/console-run-view.js";
 import { formatConsoleOutcome } from "./console/console-outcome.js";
 import { checkpointRecovery } from "./console/console-recovery.js";
 import type { ConsoleComposerInput } from "./console/console-presentation.js";
-import { ConsoleAttachments, formatConsoleContext, formatConsoleDiff } from "./console/console-context.js";
+import { ConsoleAttachments, formatConsoleContext } from "./console/console-context.js";
 import { sanitizeTerminalText, terminalRunFailure } from "./terminal/terminal-ui.js";
 import { randomUUID } from "node:crypto";
 import { type AgentRunOutput } from "@zhivex-ai/agents";
@@ -101,6 +103,7 @@ export const chat = async (options: CliOptions) => {
   let session: CliSession = selectedSession ?? await sessionStore.create();
   let messages: AgentRunOutput["messages"] = [];
   let retainedTasks: ReturnType<typeof taskSources> = [];
+  let codeTask: CodeTask | undefined;
   // Carry only opaque engine-owned assistant context from this validated session.
   let retainedResponses: NonNullable<AgentRunOutput["state"]["metadata"]>[string] = [];
 
@@ -119,6 +122,10 @@ export const chat = async (options: CliOptions) => {
     const persistence = reusable ? undefined : await openHarnessPersistence(baseConfig);
     try {
       const state = await (reusable?.store ?? persistence!.store).load(latest.runId, baseConfig.scope);
+      if (!state && latest.status === 'failed') {
+        process.stderr.write(`Run ${sanitizeTerminalText(latest.runId)} has no durable checkpoint. Inspect the admission error; no effects are retried automatically. Use /new for a fresh conversation.\n`);
+        return undefined;
+      }
       if (!state) throw new HarnessStateConflictError(`Run ${latest.runId} referenced by session ${selected.sessionId} was not found.`);
       return state;
     } finally {
@@ -139,6 +146,7 @@ export const chat = async (options: CliOptions) => {
       messages = restored.messages;
       retainedTasks = taskSources(restored.metadata);
       retainedResponses = restored.metadata?.zhivexAssistantResponses ?? [];
+      codeTask = restoredCodeTask(restored);
     }
     harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
     persistenceHarness = harness;
@@ -284,6 +292,7 @@ export const chat = async (options: CliOptions) => {
     messages = state?.messages ?? [];
     retainedTasks = taskSources(state?.metadata);
     retainedResponses = state?.metadata?.zhivexAssistantResponses ?? [];
+    codeTask = restoredCodeTask(state);
     displayLedger = inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]);
     contextTokens = estimateMessages(messages);
   };
@@ -341,6 +350,8 @@ export const chat = async (options: CliOptions) => {
     displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
     contextTokens = estimateMessages(messages);
     process.stderr.write(outcome(result) + "\n");
+    process.stderr.write(codeTaskRecap(result.state));
+    codeTask = restoredCodeTask(result.state);
     process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
     retainedTasks = taskSources(result.state.metadata);
     retainedResponses = result.state.metadata?.zhivexAssistantResponses ?? [];
@@ -385,6 +396,7 @@ export const chat = async (options: CliOptions) => {
     const state = await latestState(await refreshSession());
     if (!state) return;
     process.stderr.write(`Run ${sanitizeTerminalText(state.runId)} · durable status: ${state.status}\n`);
+    process.stderr.write(await freshCodeTaskRecap(harness,state));
     for (const approval of state.pendingApprovals) {
       process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
       const diff = await approvalFileDiff(harness.workspace, approval);
@@ -429,6 +441,42 @@ export const chat = async (options: CliOptions) => {
           }
         }
         commandInProgress = command;
+        if (command === "/task" || command.startsWith("/task ")) {
+          if (await hasActiveTurn()) { process.stderr.write("Finish or deny pending work before reviewing or changing task requirements.\n"); continue; }
+          const argument = command.slice(5).trim();
+          const state = await latestState(await refreshSession());
+          if (argument.startsWith("start ")) {
+            if (codeTask) throw new Error("Use /task revise to correct this task, or /new for a separate task.");
+            codeTask = await prepareCodeTask(harness, JSON.parse(argument.slice(6)));
+            process.stderr.write(`Task draft: ${sanitizeTerminalText(codeTask.goal)}\nBaseline inspected. Submit the task request to save it with its first run.\nNative checks execute approved code on this host; there is no task sandbox or automatic rollback.\n`);
+            continue;
+          }
+          if (argument === "keep") {
+            if (!state) throw new Error("Submit a task before keeping its result.");
+            await keepCodeTask(harness, state, async review => {
+              process.stdout.write(review);
+              return (await readline.question("Type keep to record your decision for this exact snapshot: ")).trim() === "keep";
+            });
+            codeTask = restoredCodeTask(await latestState(await refreshSession()));
+            process.stderr.write("Task decision inspected; /task review shows whether keep was recorded. Commit or export with your usual Git workflow.\n");
+            continue;
+          }
+          if (argument.startsWith("revise ")) {
+            if (!codeTask) throw new Error("Start or reopen a guided task first.");
+            const correction = argument.slice(7).trim();
+            if (!correction || correction.length > 500 || codeTask.constraints.length >= 8) throw new Error("A correction must be 1–500 characters; at most 8 constraints are supported.");
+            codeTask = { ...codeTask, constraints: [...codeTask.constraints, correction], keep: undefined,
+              contract: { ...codeTask.contract, humanReview: [{ id: "operator", requirement: codeTask.goal, status: "pending" },
+                ...[...codeTask.constraints,correction].map((requirement,index)=>({id:`constraint-${index+1}`,requirement,status:"pending" as const}))] } };
+            prompt = correction;
+            command = "";
+          } else {
+            if (argument && argument !== "review") { process.stderr.write('Use /task start {"goal":"...","paths":["..."],"checks":["test"],"constraints":[]} | review | keep | revise <correction>.\n'); continue; }
+            process.stdout.write(await freshCodeTaskRecap(harness,state) || (codeTask ? "Task draft is not saved yet; submit the task request.\n" : "No guided task in this conversation. Use /task start with a goal, exact paths and package checks.\n"));
+            process.stdout.write(await consoleWorkspaceDiff(harness.workspace));
+            continue;
+          }
+        }
         if (await handleConsoleCheckpoint(command, { workspace: harness.workspace, sessions: sessionStore,
           session: await refreshSession(), input: readline, hasActiveTurn, restoreSession })) continue;
         if (await handleConsoleBudget(command, { options: runtimeOptions, provider: harness.config.provider,
@@ -574,9 +622,7 @@ export const chat = async (options: CliOptions) => {
         if (command === "/queue clear") { readline.clearQueue(); process.stdout.write("Queued tasks and draft cleared.\n"); continue; }
         if (command === "/queue") { process.stdout.write(readline.queueSummary() + "Use /queue clear to discard queued tasks.\n"); continue; }
         if (command === "/diff") {
-          const diff = await harness.workspace.gitDiff();
-          const output = `${diff.status.stdout}${diff.diff.stdout}${diff.staged.stdout}`;
-          process.stdout.write(formatConsoleDiff(output, terminalSupportsColor(Boolean(process.stdout.isTTY))) || "No workspace changes.\n");
+          process.stdout.write(await consoleWorkspaceDiff(harness.workspace, terminalSupportsColor(Boolean(process.stdout.isTTY))));
           continue;
         }
         if (command === "/compact") {
@@ -775,6 +821,7 @@ export const chat = async (options: CliOptions) => {
         }
         readline.rememberPrompt(prompt, literalInput || command === "/paste");
         prompt = await attachments.prompt(harness.workspace, prompt);
+        if (codeTask) { codeTask = { ...codeTask, keep: undefined }; prompt = codeTaskPrompt(codeTask, prompt); }
         const runId = `run_${randomUUID()}`;
         session = await sessionStore.appendRun(session.sessionId, {
           runId,
@@ -803,6 +850,7 @@ export const chat = async (options: CliOptions) => {
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
                     ...consoleRunPolicyMetadata(runtimeOptions),
+                    ...(codeTask ? { [CODE_TASK_KEY]: JSON.parse(JSON.stringify(codeTask)) } : {}),
                     [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexAssistantResponses: retainedResponses,
                     zhivexCliSession: {
@@ -824,6 +872,7 @@ export const chat = async (options: CliOptions) => {
                   metadata: {
                     ...createHarnessResumeMetadata(harness.config, routes),
                     ...consoleRunPolicyMetadata(runtimeOptions),
+                    ...(codeTask ? { [CODE_TASK_KEY]: JSON.parse(JSON.stringify(codeTask)) } : {}),
                     [TASK_SOURCE_KEY]: retainedTasks,
                     zhivexAssistantResponses: retainedResponses,
                     zhivexCliSession: {
@@ -835,6 +884,7 @@ export const chat = async (options: CliOptions) => {
                   }
                 },
             {
+              ...(codeTask ? { taskAcceptance: codeTask.contract } : {}),
               onEvent: async (event) => {
                 progress.observe(event);
                 if (!markedRunning && event.type === "agent-run-start") {
@@ -849,7 +899,7 @@ export const chat = async (options: CliOptions) => {
         } catch (error) {
           flushToolActivity(tracker);
           tracker.markdown?.flush();
-          const durable = await latestState(await refreshSession());
+          const durable = await harness.store.load(runId,harness.config.scope);
           session = await sessionStore.updateRun(session.sessionId, runId, {
             status: durable ? sessionStatus(durable.status) : "failed"
           });
@@ -870,6 +920,8 @@ export const chat = async (options: CliOptions) => {
         process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
         displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
         process.stderr.write(outcome(result) + "\n");
+        process.stderr.write(codeTaskRecap(result.state));
+        codeTask = restoredCodeTask(result.state);
         session = await sessionStore.updateRun(session.sessionId, runId, {
           status: sessionStatus(result.status)
         });

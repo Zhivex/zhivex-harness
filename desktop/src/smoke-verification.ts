@@ -160,7 +160,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await new Promise(resolve => setTimeout(resolve, 31000));
     await checkpoint("orphan-cancellation");
     await click('[data-action="retry"]'); await wait('document.querySelector("[data-action=cancel]")?.disabled === false'); await click('[data-action="cancel"]');
-    await wait(`document.querySelector('[data-run="${interruptedId}"]').innerText.includes("cancelled") && document.querySelector("[data-action=wait]").disabled === false`);
+    await wait(`document.querySelector('[data-run="${interruptedId}"]')?.innerText.includes("cancelled") === true && document.querySelector("[data-action=wait]")?.disabled === false`);
     const cancelledOrphan = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(cancelledOrphan.ok && cancelledOrphan.data.kind === "run"); assert.equal(cancelledOrphan.data.run.status, "cancelled");
     const recoveredSession = await first.command({ method: "session.get", sessionId }); assert(recoveredSession.ok && recoveredSession.data.kind === "session"); assert.equal(recoveredSession.data.session.runs.length, activeSession.data.session.runs.length);
     await checkpoint("file-review-decisions");

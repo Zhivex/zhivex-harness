@@ -1,5 +1,13 @@
 # Code changelog
 
+## Unreleased
+
+- Add experimental direct-chat `/task start`, `review`, `keep` and `revise`: retain a goal, constraints, clean Git baseline and declared native package checks using existing engine run metadata. Reopen with a task recap; require fresh file/diff inspection and a revision check before recording a human keep decision. Keep does not commit or restore files.
+- Preserve check evidence separately from agent completion. Emit redacted verification receipts in run JSON and Code run inspection/export; never infer task success from generic receipts.
+- Report unavailable or failed Git review truthfully in `/diff`, including repositories without Git. Package task workflow instructions and correct consumer/contributor links.
+
+Migration: existing sessions and run statuses/exit codes are unchanged. Tasks without a brief retain their behavior. Guided tasks initially require a clean Git-visible native workspace, selected existing bounded text files and no subagents; approved checks run on the host. Drafts are saved with the first turn. Web/service guided-task UI, task-wide budgets and automatic worktrees are deferred. No version or release identity changes.
+
 ## 0.3.0-rc.3 - 2026-10-04
 
 - Pin exactly Harness 1.4.0-rc.3 and prepare npm `next` after the matched engine passes its complete protected campaign and registry/provenance verification. Retain the existing RC.2 terminal and local web behavior; the matched engine carries improved routing failure diagnostics.

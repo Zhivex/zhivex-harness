@@ -6,6 +6,7 @@ import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { assistantResponses } from "../src/context/task-memory.js";
 import { createTextMessage } from "@zhivex-ai/core";
 import { createHarness } from "../src/runtime/harness.js";
+import { openHarnessActivityStore } from "../src/client/service-events.js";
 import { createHarnessToolPolicy, type HarnessToolPolicy } from "../src/runtime/tool-policy.js";
 import { createHarnessClientAdapter, type HarnessClientCommand, type HarnessClientResponse, type HarnessClientData, type HarnessClientAdapterOptions } from "../src/client/index.js";
 
@@ -35,6 +36,41 @@ const start = async(f:Awaited<ReturnType<typeof fixture>>) => {
   const s=data(await f.call({method:"session.create",idempotencyKey:"create",title:"Test"}),"session").session;
   return data(await f.call({method:"run.start",idempotencyKey:"start",sessionId:s.sessionId,expectedRevision:s.revision,prompt:"Edit a.txt"}),"run");
 };
+
+test("failed prompt recording leaves a terminal run and permits retry and session listing", async () => {
+  let rejectPrompt = true;
+  const f = await fixture({ onPrompt() { if (rejectPrompt) throw new Error("ACTIVITY_SNAPSHOT_LIMIT"); } });
+  try {
+    const session = data(await f.call({ method: "session.create", idempotencyKey: "create" }), "session").session;
+    expect(await f.call({ method: "run.start", sessionId: session.sessionId, expectedRevision: session.revision,
+      prompt: "hello", idempotencyKey: "failed-start" })).toMatchObject({ ok: false, error: { code: "EXECUTION_FAILED" } });
+    const refreshed = data(await f.call({ method: "session.get", sessionId: session.sessionId }), "session").session;
+    expect(refreshed.runs[0]?.status).toBe("failed");
+    expect(data(await f.call({ method: "session.list" }), "sessions").sessions).toHaveLength(1);
+    const row = await f.harness.store.load(refreshed.runs[0]!.runId, f.harness.config.scope);
+    expect(row?.steps).toEqual([]);
+    expect(JSON.stringify(row)).not.toContain("ACTIVITY_SNAPSHOT_LIMIT");
+    rejectPrompt = false;
+    expect((await f.call({ method: "run.start", sessionId: session.sessionId, expectedRevision: refreshed.revision,
+      prompt: "retry", idempotencyKey: "retry" })).ok).toBe(true);
+  } finally { await f.close(); }
+});
+
+test("JSON-heavy valid prompts survive real activity recording without orphaning the session", async () => {
+  let activity: Awaited<ReturnType<typeof openHarnessActivityStore>>;
+  const f = await fixture({ onPrompt: (sessionId, runId, prompt) => activity.prompt(sessionId, runId, prompt) });
+  activity = await openHarnessActivityStore(f.harness.config);
+  try {
+    const session = data(await f.call({ method: "session.create", idempotencyKey: "create" }), "session").session;
+    const run = data(await f.call({ method: "run.start", sessionId: session.sessionId, expectedRevision: session.revision,
+      prompt: "hello" + "\n".repeat(40000), idempotencyKey: "start" }), "run");
+    expect(run.run.status).toBe("waiting_approval");
+    const event = activity.replay(session.sessionId).events[0]!.activity;
+    expect(event.prompt).toEndWith("[TRUNCATED]");
+    expect(Buffer.byteLength(JSON.stringify(event))).toBeLessThanOrEqual(60 * 1024);
+    expect(data(await f.call({ method: "session.list" }), "sessions").sessions).toHaveLength(1);
+  } finally { activity.close(); await f.close(); }
+});
 
 test("idle cancellation preserves live leases and finalizes an orphan without replaying tools",async()=>{
  const checkpoints:string[]=[];const f=await fixture({onCheckpoint:(_s,_r,status)=>{checkpoints.push(status);}});

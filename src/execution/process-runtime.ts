@@ -116,6 +116,7 @@ export const runPortableProcess = async (
   let timedOut = false;
   let aborted = false;
   let terminationTimer: ReturnType<typeof setTimeout> | undefined;
+  let terminationComplete: Promise<void> | undefined;
 
   child.stdout.on("data", (chunk: Buffer) => stdout.write(chunk));
   child.stderr?.on("data", (chunk: Buffer) => stderr.write(chunk));
@@ -138,10 +139,12 @@ export const runPortableProcess = async (
   const terminate = () => {
     if (terminationTimer) return;
     signalProcessTree("SIGTERM");
-    terminationTimer = setTimeout(() => {
-      signalProcessTree("SIGKILL");
-    }, DEFAULT_TERMINATION_GRACE_MS);
-    terminationTimer.unref?.();
+    terminationComplete = new Promise(resolve => {
+      terminationTimer = setTimeout(() => {
+        signalProcessTree("SIGKILL");
+        resolve();
+      }, DEFAULT_TERMINATION_GRACE_MS);
+    });
   };
   const handleAbort = () => {
     aborted = true;
@@ -182,7 +185,18 @@ export const runPortableProcess = async (
     });
   } finally {
     if (timeout) clearTimeout(timeout);
-    if (terminationTimer) clearTimeout(terminationTimer);
     options.signal?.removeEventListener("abort", handleAbort);
+    if (terminationTimer) {
+      // Closing the leader's pipes does not prove that its process group exited.
+      // Preserve the grace period for descendants still cleaning up, and keep the
+      // timer referenced until escalation finishes even if the leader is gone.
+      let groupAlive = false;
+      if (useProcessGroup && child.pid !== undefined) {
+        try { process.kill(-child.pid, 0); groupAlive = true; }
+        catch (error) { groupAlive = (error as NodeJS.ErrnoException).code !== "ESRCH"; }
+      }
+      if (groupAlive) await terminationComplete;
+      clearTimeout(terminationTimer);
+    }
   }
 };

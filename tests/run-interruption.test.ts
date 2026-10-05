@@ -52,3 +52,70 @@ test("genuine provider failures remain failures without an external interruption
     expect((await store.load("failure"))?.status).toBe("failed");
   } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
 });
+
+test("observer failure aborts and drains the SDK before rejecting", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "harness-observer-"));
+  const store = createInMemoryAgentRunStore();
+  const model = createMockLanguageModel();
+  let cleanupStarted!: () => void, finishCleanup!: () => void;
+  const started = new Promise<void>(resolve => { cleanupStarted = resolve; });
+  const cleanup = new Promise<void>(resolve => { finishCleanup = resolve; });
+  let stopped = false, rejected = false;
+  model.stream = async input => (async function* () {
+    const signal = input.abortSignal!;
+    try {
+      yield { type: "text-delta" as const, textDelta: "first" };
+      await new Promise<void>((_resolve, reject) => {
+        if (signal.aborted) reject(signal.reason);
+        else signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+      yield { type: "finish" as const, finishReason: "stop" as const };
+    } finally { cleanupStarted(); await cleanup; stopped = true; }
+  })();
+  const harness = await createHarness({ workspace: root, store, modelInstance: model });
+  try {
+    const running = runHarness(harness, { runId: "observer", prompt: "test" }, {
+      onEvent: event => { if (event.type === "text-delta") throw new Error("observer fixture failure"); }
+    }).catch(error => { rejected = true; return error; });
+    await started;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(rejected).toBe(false);
+    finishCleanup();
+    expect(String(await running)).toContain("observer fixture failure");
+    expect(stopped).toBe(true);
+    expect((await store.load("observer"))?.status).toBe("failed");
+    expect(await store.acquireLease!("observer", { ownerId: "after-observer", ttlMs: 1000 })).toBeTruthy();
+    await store.releaseLease!("observer", "after-observer");
+  } finally { finishCleanup(); await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+for (const externalAfterTimeout of [false, true]) test(`internal timeout retains timed_out and its cause (late caller=${externalAfterTimeout})`, async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "harness-timeout-"));
+  const store = createInMemoryAgentRunStore(), caller = new AbortController();
+  const model = createMockLanguageModel();
+  model.stream = async input => (async function* () {
+    const signal = input.abortSignal!;
+    await new Promise<void>((_resolve, reject) => {
+      const stop = () => { if (externalAfterTimeout) caller.abort(); reject(signal.reason); };
+      if (signal.aborted) stop(); else signal.addEventListener("abort", stop, { once: true });
+    });
+    yield { type: "finish" as const, finishReason: "stop" as const };
+  })();
+  const finishes: string[] = [], events: string[] = [];
+  const harness = await createHarness({ workspace: root, store, modelInstance: model,
+    lifecycleHooks: [{ id: "timeout-test", version: "1", events: ["run-finished"], handle: event => {
+      if (event.type === "run-finished") finishes.push(event.status);
+    } }] });
+  try {
+    const result = await runHarness(harness, { runId: "timeout", prompt: "test", timeoutMs: 20, abortSignal: caller.signal }, {
+      onEvent: event => { if (event.type === "agent-run-finish") events.push(event.status); }
+    });
+    expect(result.status).toBe("timed_out");
+    expect(result.state.cancellationReason).toBeUndefined();
+    expect(result.state.cancelledAt).toBeUndefined();
+    expect(result.error?.message).toBe("Run exceeded its time limit.");
+    expect((await store.load("timeout"))?.status).toBe("timed_out");
+    expect(finishes).toEqual(["timed_out"]);
+    expect(events).toEqual(["timed_out"]);
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});

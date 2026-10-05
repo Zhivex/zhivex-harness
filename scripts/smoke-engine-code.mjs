@@ -124,6 +124,11 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
       for (const phase of ['create', 'resume', 'cancel']) await run(process.execPath, [fixture, phase], consumer, nodeEnv);
       const providerFixture = path.join(consumer, 'provider.mjs');
       await copyFile(fileURLToPath(new URL('./installed-provider-fixture.mjs', import.meta.url)), providerFixture);
+      const metaFixture = path.join(consumer, 'meta-usage.mjs');
+      await copyFile(fileURLToPath(new URL('./installed-meta-usage-fixture.mjs', import.meta.url)), metaFixture);
+      await copyFile(fileURLToPath(new URL('../tests/fixtures/meta-responses-usage.json', import.meta.url)), path.join(consumer, 'meta-responses-usage.json'));
+      row.metaUsage = JSON.parse((await run(process.execPath, [metaFixture], consumer, nodeEnv)).stdout);
+      const metaCases = JSON.parse(await readFile(path.join(consumer, 'meta-responses-usage.json'), 'utf8'));
       for (const binary of ['zhivex-harness', 'zhx', 'zhivex-code']) {
         const packageName = binary === 'zhivex-code' ? 'code' : 'harness';
         const packageManifest = packageName === 'code' ? code : harness;
@@ -133,6 +138,14 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
         const result = await run(process.execPath, ['--import', providerFixture, entry, 'run', 'Reply with installed-cli-ok', '--provider', 'openai', '--model', 'gpt-5.6', '--json'], consumer, providerEnv);
         assert.equal(JSON.parse(result.stdout).status, 'completed', `${binary} execution failed`);
         assert.equal(JSON.parse(result.stdout).output, 'installed-cli-ok', `${binary} lost provider output`);
+        if (binary !== 'zhx') for (const receipt of metaCases) {
+          const metaResult = await run(process.execPath, ['--import', metaFixture, entry, 'run', 'Reply with installed-meta-ok', '--provider', 'meta', '--model', 'muse-spark-1.3', '--json'], consumer,
+            { ...nodeEnv, MODEL_API_KEY: 'installed-fixture-only', META_BASE_URL: 'https://meta-fixture.invalid/v1', META_USAGE_CASE: receipt.name });
+          const document = JSON.parse(metaResult.stdout);
+          assert.equal(document.status, 'completed', `${binary}/${receipt.name} failed`);
+          assert.equal(document.output, 'installed-meta-ok');
+          assert.deepEqual(document.usage ?? {}, receipt.expected, `${binary}/${receipt.name} changed reported usage`);
+        }
         const cancelDirectory = path.join(consumer, `cancel-${binary}`); await mkdir(cancelDirectory);
         await run(process.execPath, [fixture, 'create'], cancelDirectory, nodeEnv);
         const runId = JSON.parse(await readFile(path.join(cancelDirectory, 'run-id.json'), 'utf8'));
@@ -146,7 +159,7 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
       await copyFile(fileURLToPath(new URL('./installed-memory-consumer.mjs', import.meta.url)), memoryFixture);
       await run(process.execPath, [memoryFixture], consumer, nodeEnv);
       console.error(`${manager} installed consumer passed`);
-      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation', 'offline-project-memory-journeys'];
+      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation', 'offline-project-memory-journeys', 'meta-0.2.9-raw-and-cli-usage'];
     } catch (error) { row.error = String(error); console.error(`${manager} failed: ${row.error}`); }
   }
 console.log(JSON.stringify(report, null, 2));

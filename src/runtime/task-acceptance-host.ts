@@ -6,6 +6,7 @@ import type { HarnessToolPolicy } from './tool-policy.js';
 import type { TaskAcceptanceContract } from './task-acceptance.js';
 import { validateTaskAcceptanceWorkspace } from './task-acceptance-validation.js';
 import { withTaskAcceptanceDelivery } from './task-acceptance-delivery.js';
+import { withNativeTaskAcceptance } from './task-acceptance-native.js';
 import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY, readTaskAcceptanceLedger, nextTaskAcceptanceLedger, persistTaskAcceptanceRevision, type TaskAcceptanceLedger } from './task-acceptance-record.js';
 
 const hosts=new WeakMap<object,{config:HarnessConfig;tools:ToolSet;policy?:HarnessToolPolicy}>();
@@ -73,6 +74,11 @@ export async function withTaskAcceptanceRun<T>(host:ZhivexHarness,input:AgentRun
     return await (context.config.execution.backend==='oci'
       ? withTaskAcceptanceDelivery(host.workspace.root,ledger,()=>work(input,ledger),'state'in input?input.state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]:undefined,
         'state'in input?await host.store.listToolCalls?.(runId,context.config.scope)??[]:[])
-      : work(input,ledger));
+      : (async () => {
+        if (context.config.orchestration.profiles.length || host.agent.subagents?.length) throw new Error('TASK_ACCEPTANCE_NATIVE_DELEGATION_UNSUPPORTED');
+        return withNativeTaskAcceptance(host.workspace,ledger,runId,()=>work(input,ledger),
+          'state'in input?input.state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]:undefined,
+          'state'in input?await host.store.listToolCalls?.(runId,context.config.scope)??[]:[]);
+      })());
   } finally {active.delete(key);}
 }

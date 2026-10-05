@@ -2,6 +2,23 @@ import { test, expect } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { runInNewContext } from "node:vm";
+
+test("orphan cancellation wait tolerates missing DOM and requires cancelled, usable UI", async () => {
+    const source = await readFile(path.resolve(import.meta.dir, "../src/smoke-verification.ts"), "utf8");
+    const line = source.split("\n").find(value => value.includes("await wait(`") && value.includes("${interruptedId}") && value.includes('"cancelled"'))!;
+    const expression = line.slice(line.indexOf("`") + 1, line.lastIndexOf("`")).replaceAll("${interruptedId}", "fixture-run");
+    for (const [run, button, expected] of [
+        [null, null, false],
+        [{ innerText: "running" }, { disabled: false }, false],
+        [{ innerText: "cancelled" }, null, false],
+        [{ innerText: "cancelled" }, { disabled: true }, false],
+        [{ innerText: "cancelled" }, { disabled: false }, true],
+    ] as const) {
+        const document = { querySelector: (selector: string) => selector.includes("data-run=") ? run : button };
+        expect(runInNewContext(expression, { document })).toBe(expected);
+    }
+});
 
 test("smoke bounds an unresponsive renderer and its failure snapshot, then exits naturally", async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "desktop-smoke-timeout-"));

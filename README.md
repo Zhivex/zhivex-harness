@@ -11,9 +11,16 @@ implement a change. Conversation context retains decisions, hypotheses and bound
 diagnostic excerpts across compaction. Edits and command execution keep their
 own permission checks; a conversational summary never grants approval.
 
+For the developer-facing terminal product, install
+`npm install -g @zhivex-ai/code@0.2.0` and run `zhivex-code` in your project.
+See [Code installation and first use](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md). Harness remains
+the reusable engine and its compatibility CLI. The `/task` delivery workflow in
+this checkout is an unreleased experimental Code addition, not a published feature.
+
 Version `1.3.0` is the current public npm release on `latest`, with terminal-independent engine
-entrypoints and the separately published Code CLI `0.2.0` on `latest`. Harness publication passed registry integrity and provenance verification. Harness RC7 and
-Code RC2 remain published on `next`. Stable package numbering does
+entrypoints and the separately published Code CLI `0.2.0` on `latest`. Harness publication passed registry integrity and provenance verification. Harness `1.4.0-rc.1` and
+Code `0.3.0-rc.1` are published on `next`. The RC.3 versions prepared in this
+checkout remain unpublished. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
 

@@ -10,6 +10,7 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/route", "Configure specialist model routes", false],
   ["/status", "Inspect the current session and run", true],
   ["/diff", "Review workspace changes", false],
+  ["/task", "Define, review, keep or revise a bounded task", false],
   ["/checkpoint", "Capture, review and restore selected text files", false],
   ["/budget", "Set estimated USD policy for each next run", false],
   ["/pricing", "Inspect advisory model prices and their source", false],
@@ -44,7 +45,7 @@ export type ConsoleMode = "direct" | "service";
 export const consoleCommands = (mode: ConsoleMode = "direct") =>
   CONSOLE_COMMAND_CATALOG.filter(([name, , service]) => mode === "service" ? service : name !== "/cancel");
 
-const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/diff", "/exit"]);
+const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/task", "/diff", "/exit"]);
 const approvals = new Set(["/approvals", "/pending", "/approve", "/deny"]);
 
 export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct") => {
@@ -55,6 +56,7 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 };
 
 const argumentsFor: Readonly<Record<string, string>> = {
+  "/task": "[start JSON|review|keep|revise text]",
   "/limits": "[positive integer]",
   "/budget": "[USD|off]",
   "/checkpoint": "[capture|list|review|restore|retry]",

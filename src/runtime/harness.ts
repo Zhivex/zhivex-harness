@@ -21,6 +21,7 @@ import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY, ASSI
 import { bindTaskAcceptanceHost, withTaskAcceptanceRun } from './task-acceptance-host.js';
 import { taskAcceptanceCheckpointStore, type TaskAcceptanceLedger } from './task-acceptance-record.js';
 import type { TaskAcceptanceContract } from './task-acceptance.js';
+import { nativeTaskTools } from './task-acceptance-native.js';
 import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources, compactedAssistantResponses } from "../context/compaction.js";
 import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
@@ -1167,10 +1168,21 @@ const runHarnessInternal = async (
       ...(typeof harness.agent.instructions==='string'?{instructions:harness.agent.instructions+'\nThis run has application-owned acceptance requirements. Consult read_task for the exact acceptance contract before planning and after compaction. Agent proposals cannot change it. Subjective review remains pending; run completion alone is not acceptance evidence.'}:{})
     } as ConstructorParameters<typeof Agent>[0])};
   }
+  const callerSignal = input.abortSignal;
   const invocationSignal = AbortSignal.timeout(input.timeoutMs ?? harness.config.timeoutMs);
+  const executionFailure = new AbortController();
+  const combinedSignal = AbortSignal.any([
+    ...(callerSignal ? [callerSignal] : []), invocationSignal, executionFailure.signal
+  ]);
+  const interruptionKind = (): 'cancelled' | 'timed_out' | undefined => {
+    if (!combinedSignal.aborted) return undefined;
+    if (invocationSignal.aborted && combinedSignal.reason === invocationSignal.reason) return 'timed_out';
+    if (callerSignal?.aborted && combinedSignal.reason === callerSignal.reason) return 'cancelled';
+    return undefined;
+  };
   input = { ...input,
     toolExecution: { ...harnessToolExecution, ...harness.agent.toolExecution, ...input.toolExecution },
-    abortSignal: input.abortSignal ? AbortSignal.any([input.abortSignal, invocationSignal]) : invocationSignal };
+    abortSignal: combinedSignal };
   if (!("state" in input)) {
     const messages: ModelMessage[] = input.messages ?? (input.prompt ? [{ role: "user", parts: [{ type: "text", text: input.prompt }] }] : []);
     const sources = captureTaskSources({ ...input.metadata, [TASK_SOURCE_KEY]: taskSources(input.metadata).length ? taskSources(input.metadata) : compactedTaskSources(messages) ?? [] }, messages);
@@ -1289,7 +1301,7 @@ const runHarnessInternal = async (
     return (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part =>
       part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
   });
-  const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
+  const runtimeTools = nativeTaskTools(contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {}));
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
     tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware,
@@ -1433,7 +1445,10 @@ const runHarnessInternal = async (
           } else await options.onEvent?.(event);
         }
       } catch (error) {
-        if (input.abortSignal?.aborted) await collected.catch(() => undefined);
+        // Event consumers share the lifetime of the execution. Do not return a
+        // failure while the SDK can still issue requests or execute tools.
+        executionFailure.abort(new Error('Run event delivery failed.'));
+        await collected.catch(() => undefined);
         throw error;
       }
       let result = await collected;
@@ -1446,11 +1461,12 @@ const runHarnessInternal = async (
         ...(checkpoint.error ? { error: checkpoint.error } : {}),
         ...(checkpoint.usage ? { usage: checkpoint.usage } : {})
       };
-      if (input.abortSignal?.aborted && result.status === "failed") {
-        const cancelled = await settleInterruptedRun(harness.store, runId, result.state.scope);
-        if (cancelled) {
-          result = cancelled;
-          await options.onEvent?.({ type: "agent-run-finish", status: "cancelled", state: cancelled.state });
+      const interruption = interruptionKind();
+      if (interruption && result.status === "failed") {
+        const interrupted = await settleInterruptedRun(harness.store, runId, result.state.scope, interruption);
+        if (interrupted) {
+          result = interrupted;
+          await options.onEvent?.({ type: "agent-run-finish", status: interrupted.status, state: interrupted.state });
         }
       }
 
@@ -1534,13 +1550,14 @@ const runHarnessInternal = async (
 
     throw new HarnessExecutionError("The run exceeded the limit of 50 approval rounds.");
   } catch (error) {
-    if (input.abortSignal?.aborted && !lifecycleFinished) {
-      const cancelled = await settleInterruptedRun(harness.store, runId,
-        "state" in input ? input.state.scope : input.scope);
-      if (cancelled) {
-        await options.onEvent?.({ type: "agent-run-finish", status: "cancelled", state: cancelled.state });
-        await dispatchFinished("cancelled");
-        return cancelled;
+    const interruption = interruptionKind();
+    if (interruption && !lifecycleFinished) {
+      const interrupted = await settleInterruptedRun(harness.store, runId,
+        "state" in input ? input.state.scope : input.scope, interruption);
+      if (interrupted) {
+        await options.onEvent?.({ type: "agent-run-finish", status: interrupted.status, state: interrupted.state });
+        await dispatchFinished(interrupted.status);
+        return interrupted;
       }
     }
     if (!lifecycleFinished) {

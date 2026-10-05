@@ -1,0 +1,7 @@
+[
+  {"name":"reasoning-790","usage":{"input_tokens":123,"output_tokens":1000,"total_tokens":1123,"output_tokens_details":{"reasoning_tokens":790}},"expected":{"inputTokens":123,"outputTokens":1000,"reasoningTokens":790,"totalTokens":1123}},
+  {"name":"reasoning-zero","usage":{"input_tokens":123,"output_tokens":1000,"total_tokens":1123,"output_tokens_details":{"reasoning_tokens":0}},"expected":{"inputTokens":123,"outputTokens":1000,"reasoningTokens":0,"totalTokens":1123}},
+  {"name":"reasoning-absent","usage":{"input_tokens":123,"output_tokens":1000,"total_tokens":1123},"expected":{"inputTokens":123,"outputTokens":1000,"totalTokens":1123}},
+  {"name":"total-absent","usage":{"input_tokens":123,"output_tokens":1000,"output_tokens_details":{"reasoning_tokens":790}},"expected":{"inputTokens":123,"outputTokens":1000,"reasoningTokens":790}},
+  {"name":"usage-absent","expected":{}}
+]

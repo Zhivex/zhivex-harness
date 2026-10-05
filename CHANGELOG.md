@@ -4,6 +4,14 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Extend experimental task acceptance to bounded native reviewed edits and declared package-script checks, tying receipts to selected/protected file digests and the manifest. Block other effect tools and delegation for native task runs. Preserve the separate SDK run status and pending human review.
+- Add a redacted recorded-check projection to beta run-result JSON and experimental Code host helpers. No stable declaration snapshot, state schema or release identity changes.
+- Pin Meta SDK 0.2.9 to retain reported Responses reasoning usage as a subset of output tokens, without changing Core or other provider pins.
+
+Migration: runs without a task contract are unchanged. Native task contracts now enforce their edit/check tool scope and may report `pending_review`/`verified` when their watched-file requirements pass; they do not receive OCI sandbox, whole-snapshot or import guarantees. Check evidence remains invalid after watched-file drift or uncertain journal recovery.
+
 ## 1.4.0-rc.3 - 2026-10-04
 
 - Retain finite stage, assertion and provider-route identities in mixed-routing release diagnostics, preserve typed operational causes across artifact class boundaries, and keep cleanup failures from masking the original gate failure. Add offline fault coverage; historical release evidence remains unchanged.

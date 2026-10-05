@@ -255,3 +255,13 @@ a tool. Rule paths and host filesystem locations are omitted.
 While a host-prepared runtime is active, the query reflects that runtime. Before
 preparation and after release it reflects the base host; decision events retain
 the digest and backend of the runtime that evaluated them.
+
+## Recorded check evidence
+
+Beta run-result JSON adds `verification`: numeric exit codes, timeout and pass
+flags for known check tools, with counts and `coverage: "recorded-checks-only"`.
+It omits command argv, repository output and arbitrary tool payloads.
+`taskVerified: false` distinguishes this observation from contractual task success
+or human acceptance. Existing status/exit-code and schema-version contracts remain
+unchanged. Code inspection/export derives the same safe projection from completed
+tool-journal entries; the engine inspection API signature is unchanged.
