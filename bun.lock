@@ -12,7 +12,7 @@
         "@zhivex-ai/meta": "0.2.9",
         "@zhivex-ai/openai": "0.13.7",
         "@zhivex-ai/qwen": "0.16.3",
-        "@zhivex-ai/vertex": "1.2.2",
+        "@zhivex-ai/vertex": "1.2.3",
         "google-auth-library": "11.1.0",
         "zod": "4.6.5",
       },
@@ -157,7 +157,7 @@
 
     "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.16.3", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0", "zod": "^4.6.3" } }, "sha512-XCMDpJ6L3cBeAlSfYxSQb1d+t2dwHU7BFKVp6WYtHRP6QWQJzsp9DThEV3ji8H6SUt30X399Wxvur8Cx67+apg=="],
 
-    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.2", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.0", "@zhivex-ai/anthropic": "^0.13.0", "@zhivex-ai/core": "^1.27.0", "@zhivex-ai/openai": "^0.13.7", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-xUVSObLwaEoqJtWJgxZV6YQWAHnwxEV/dkF8nTrKdtrYFXyC5ihUahGIgR3eOitP44WQb2nsBSBI6HKkiKdNTg=="],
+    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.3", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.0", "@zhivex-ai/anthropic": "^0.13.0", "@zhivex-ai/core": "^1.27.0", "@zhivex-ai/openai": "^0.14.0", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-Y/2EwoxuWC/H9r79dXVQJccbmFQMZCdJk44RCxj82U0Ppuju/1IOWo6L49q968OK6xI0bmvAhrk9RRmyW1S93A=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 
@@ -296,6 +296,8 @@
     "yargs-parser": ["yargs-parser@21.1.1", "", {}, "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw=="],
 
     "zod": ["zod@4.6.5", "", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
+
+    "@zhivex-ai/vertex/@zhivex-ai/openai": ["@zhivex-ai/openai@0.14.1", "", { "dependencies": { "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-J8G9UUrhlYg/xHXkEGTpeGcgLOEK8J3/hJIDPqTSPG4XAOvLctidr9fkprQResWQJ4SbVF0qiYmylmV93h6oZg=="],
 
     "bun-types/@types/node": ["@types/node@26.6.3", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-dsqMQQoeTLqu9wynDD00q573mNzso3IdQOAfHRJqLCcmCFPoGo9A1bDpUcv/9tnKpErQWv9uKeGfl37EIS02Yg=="],
 
