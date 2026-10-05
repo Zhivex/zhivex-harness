@@ -20,7 +20,7 @@ test("Code artifact accepts the two shipped offline examples and binds exact byt
       "package/package.json": JSON.stringify(manifest), "package/README.md": "Code\n", "package/LICENSE": "MIT\n",
       "package/CHANGELOG.md": "Code changes\n",
       "package/dist/cli.js": "#!/usr/bin/env node\n", "package/dist/chunk-abc123.js": "export {};\n",
-      "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n",
+      "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n", "package/docs/TASK_DELIVERY.md": "Task delivery\n",
       ...webPayload,
     };
     for (const [name, content] of Object.entries(files)) {
@@ -47,10 +47,10 @@ test("Code artifact accepts the two shipped offline examples and binds exact byt
 
 test("Code payload rejects arbitrary examples, source, secrets, traversal, nested output and duplicates", () => {
   const required = ["package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
-    "package/examples/first-use.mjs", "package/examples/offline-provider.mjs", ...Object.keys(webPayload)];
+    "package/examples/first-use.mjs", "package/examples/offline-provider.mjs", "package/docs/TASK_DELIVERY.md", ...Object.keys(webPayload)];
   assertCodePayload([...required, "package/", "package/dist/", "package/examples/", "package/dist/chunk-abc123.js"]);
   for (const unexpected of ["package/examples/other.mjs", "package/examples/.env", "package/examples/nested/first-use.mjs",
-    "package/src/cli.ts", "package/dist/cli.js.map", "package/dist/.hidden.js", "package/dist/nested/cli.js",
+    "package/docs/other.md", "package/docs/.env", "package/src/cli.ts", "package/dist/cli.js.map", "package/dist/.hidden.js", "package/dist/nested/cli.js",
     "package/dist/../secret.js", "package/../secret", "/package/dist/cli.js", "package/dist/cliXjs", "package/README.md.bak", "package/dist/web-assets/other.png", "package/dist/web-assets/zhivex-icon.png.js"]) {
     expect(() => assertCodePayload([...required, unexpected])).toThrow("Unexpected Code payload");
   }
@@ -64,7 +64,7 @@ test("Code artifact requires the browser payload and valid nonempty index depend
     const files = {
       "package/package.json": JSON.stringify(manifest), "package/README.md": "Code\n", "package/LICENSE": "MIT\n",
       "package/CHANGELOG.md": "Code changes\n", "package/dist/cli.js": "#!/usr/bin/env node\n",
-      "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n", ...webPayload,
+      "package/examples/first-use.mjs": "export {};\n", "package/examples/offline-provider.mjs": "export {};\n", "package/docs/TASK_DELIVERY.md": "Task delivery\n", ...webPayload,
     };
     for (const [name, content] of Object.entries(files)) {
       await mkdir(path.dirname(path.join(directory, name)), { recursive: true });

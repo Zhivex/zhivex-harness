@@ -118,14 +118,14 @@ function npmUrl(url: string): string {
 }
 const codePayloadFiles = [
   "package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
-  "package/examples/first-use.mjs", "package/examples/offline-provider.mjs",
+  "package/examples/first-use.mjs", "package/examples/offline-provider.mjs", "package/docs/TASK_DELIVERY.md",
   "package/dist/web-assets/index.html",
   "package/dist/web-assets/zhivex-icon.png",
 ];
 export function assertCodePayload(names: string[]): void {
   assert.equal(new Set(names).size, names.length, "Duplicate Code payload entries");
   for (const name of names) {
-    assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/"].includes(name) ||
+    assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/", "package/docs/"].includes(name) ||
       /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name) ||
       ["package/dist/web-assets/", "package/dist/web-assets/assets/", "package/dist/web-assets/index.html"].includes(name) ||
       /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css)$/.test(name), `Unexpected Code payload: ${name}`);
