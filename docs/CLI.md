@@ -54,6 +54,9 @@ limit across parent and child routes. The file is a schemaVersion 1 object with 
 Prices are operator-supplied estimates, never confirmed invoices. Missing/expired
 prices or unresolved usage block new budgeted calls. The next request reserves
 estimated input and capped output before transport; parallel calls share the cap.
+Explicit positive integer output caps are preserved, including caps above 2,048;
+the ledger uses 2,048 only when a request omits its cap. If the full reservation
+does not fit, admission fails before transport instead of silently shrinking it.
 Input prediction is heuristic; it is not a provider tokenizer or billing guarantee.
 Actual usage above the estimate is retained and blocks further calls if exhausted.
 Cache discounts and special billing tiers are not modeled; configure conservative
