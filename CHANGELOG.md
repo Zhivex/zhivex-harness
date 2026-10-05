@@ -4,6 +4,15 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.4.0-rc.5 - 2026-10-05
+
+- Prepare matched Harness 1.4.0-rc.5 and Code 0.3.0-rc.5 for npm `next`, with the exact engine pin, Desktop binding and a new representative mapping using unchanged models and SDK pins.
+- Include the reviewed inherited-pipe termination regression correction: account for the existing cleanup grace and verify that the descendant heartbeat stops. Production termination protections are unchanged.
+- Carry the reviewed Desktop lucide-react 1.50.0 update from main. Keep Desktop private alpha and retain all provider and API tiers.
+- Preserve the immutable RC.4 tag and its failed offline campaign. Require a new exact artifact, unchanged protected gates and separate approval for any new paid campaign or publication.
+
+The RC.4 SDK store migration requirements below still apply.
+
 ## 1.4.0-rc.4 - 2026-10-05
 
 - Integrate published Core 1.30.1, Agents 1.10.3, Anthropic 0.13.2, OpenAI 0.14.1, Qwen 0.16.4 and Vertex 1.2.4. Keep Meta 0.2.9 and Gemini 0.13.0; align Code and browser contributor pins and retain a single Core runtime in Harness.

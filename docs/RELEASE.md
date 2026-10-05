@@ -2,6 +2,50 @@
 
 ## Current RC preparation: 2026-10-05
 
+The source version is `1.4.0-rc.5`, pending publication to `next`. This checkout
+prepares matched Harness `1.4.0-rc.5` and Code `0.3.0-rc.5`, with Code pinned
+exactly to the engine candidate and Desktop bound to the same Harness version.
+Keep Harness `1.3.0` and Code `0.2.0` on stable `latest`; npm `next` remains
+Harness `1.4.0-rc.1` and Code `0.3.0-rc.1` until a verified publication.
+
+RC.5 carries the reviewed process-termination test correction from
+[PR183](https://github.com/Zhivex/zhivex-harness/pull/183) and the reviewed Desktop
+dependency update already on main. The test covers the existing cleanup grace and
+checks that the descendant stops executing; production termination is unchanged.
+Retain the published RC.4 SDK batch, model pins, ceilings, acceptance checks and
+protected certification gates. The new representative mapping uses the same
+Meta/Qwen/OpenAI models and preserves every historical row. Existing RC.4 SDK
+store migration requirements remain applicable.
+
+[RC.4 attempt 1](https://github.com/Zhivex/zhivex-harness/actions/runs/37360365544)
+failed its offline source-validation gate before retaining a release tarball.
+Live certification, representative evaluation and publication were skipped;
+no paid provider calls occurred. Preserve annotated `v1.4.0-rc.4`, tag object
+`fc8e69a0628ca7ed1e9a0e5b2ff01473aeb0b27e`, at its original source
+`f1ac8ee632d6000ec0b18d94ac2cd9a8402345e5`. That source does not contain the
+reviewed test correction. Do not move the tag or treat the consumed one-campaign
+approval as permission to retry it. Preserve all earlier tags, artifacts and
+failed evidence; the RC.4 preparation snapshot below is historical.
+
+This is release preparation only: no release tags, paid campaign or publication
+are included. After review and integration, require the latest
+successful `ci.yml`, `codeql.yml`, `code-journey.yml` and `web.yml` main-push runs
+for the exact new RC.5 SHA, plus its direct-main CodeQL security result. Then use
+read-only `bun run release:prepare --sha <full-main-sha>` against that clean,
+frozen source; do not use `--publish` under preparation approval.
+
+A new explicit campaign/publication approval is required before creating new
+annotated tags or dispatching protected release workflows. Under that separate
+approval, Harness uses `v1.4.0-rc.5` with `channel=next`; its one exact artifact,
+OCI, live and representative gates remain mandatory. Verify the actual Harness
+registry bytes and source-bound provenance before the independent Code release.
+Code uses `code-v0.3.0-rc.5` on the same reviewed SHA, `channel=next`, `mode=oidc`
+and explicit publication confirmation. It must resolve the published engine
+without overrides and pass retained-artifact terminal/web acceptance,
+four-manager checks and provenance verification. Preserve stable `latest`.
+
+## Historical RC.4 preparation: 2026-10-05
+
 The source version is `1.4.0-rc.4`, pending publication to `next`.
 
 This checkout prepares Harness `1.4.0-rc.4` and Code `0.3.0-rc.4`, both on
