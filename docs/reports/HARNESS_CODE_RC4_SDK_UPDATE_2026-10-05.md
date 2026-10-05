@@ -5,6 +5,8 @@ Prepared on 2026-10-05 from remote main
 dependency updates had merged. No user changes were present. Open groups #165,
 #166, #168 and #169 were excluded. Existing tags and npm versions were checked:
 the matched RC.4 versions were unused, and RC.2/RC.3 remain unpublished.
+The later Dependabot PRs #178/#179 propose older intermediate SDK versions;
+this preparation supersedes those versions without incorporating their branches.
 
 | Published dependency | Before | Candidate |
 | --- | --- | --- |
@@ -61,6 +63,15 @@ was not retained. Meta 0.2.9's usage fix does not establish that cause.
 - Desktop types and bundles passed. Native macOS packaging/credentials were
   unavailable locally; OCI was unavailable because its image was not installed.
   Normal Linux/macOS PR CI remains necessary, including those platform gates.
+
+The four-manager checks used Harness tarball SHA-256
+`abee7c1be3ddf99df75f18f718ba702e05797e59c8e89667d79656e50ce9e935`
+and Code tarball SHA-256
+`e8390e2257ebafd1ff99eccc2fe07ddb19c51336b4e7175a70999ccd54e03044`.
+The initial combined consumer report retained six successful npm/pnpm/Yarn cases
+and two Bun installation failures caused by the read-only cache. A separate Bun
+report records both successful cases with explicitly writable cache directories
+and the identical artifacts. No provider transport was used in these checks.
 
 These local artifacts came from the preparation checkout before its commit, and
 do not constitute exact-head release admission. PR CI must bind its head and the
