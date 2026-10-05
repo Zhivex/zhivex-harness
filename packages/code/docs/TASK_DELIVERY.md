@@ -4,7 +4,9 @@ This workflow is an unreleased experimental CLI addition. Published Code 0.2.0
 and 0.3.0-rc.1 do not have `/task`. Use the candidate artifact prepared by your
 operator; this document does not authorize publishing RC.3 or changing npm tags.
 
-Start in a clean Git repository with a working package check. Prepare a separate
+Start in a clean Git repository with a working package check. Selected files must
+remain visible to Git diff: ignored untracked files and files marked
+`skip-worktree` or `assume-unchanged` are rejected at start and keep. Prepare a separate
 Git worktree yourself if your checkout contains changes you want to preserve.
 Code never stashes, resets, commits or pushes your files automatically.
 
@@ -19,7 +21,7 @@ Fix greeting punctuation and run the declared check.
 saves the goal, constraints, baseline digests and exact check contract with its
 run in the existing engine store. Exiting before that request discards the draft.
 The first slice supports the native backend, without subagents, 1–20 selected
-existing text files (complete bounded reads, at most 64 KiB each), and 1–8
+existing Git-tracked text files (at most 64 KiB of source bytes each), and 1–8
 allowlisted package scripts. `package.json` is protected from reviewed edits.
 Checks still require the selected approval policy; the default asks before effect.
 

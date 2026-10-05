@@ -42,6 +42,44 @@ test('guided task rejects dirty and missing Git baselines without changing them'
   } finally {await harness.close();}
 }));
 
+test('guided task rejects an ignored selected file even when Git reports a clean baseline', async () => fixture(async root => {
+  await writeFile(root+'/.git/info/exclude','ignored.txt\n');
+  await writeFile(root+'/ignored.txt','invisible baseline\n');
+  const harness=await createHarness({workspace:root,subagentProfiles:[],modelInstance:createMockLanguageModel()});
+  try {
+    expect((await harness.workspace.gitDiff()).status.stdout).toBe('');
+    await expect(prepareCodeTask(harness,{...goal,paths:['ignored.txt']})).rejects.toThrow('Git-tracked');
+  } finally {await harness.close();}
+}));
+
+for (const flag of ['--skip-worktree', '--assume-unchanged']) test(`guided task rejects selected files hidden by ${flag}`, async () => fixture(async root => {
+  expect(spawnSync('git',['update-index',flag,'greeting.mjs'],{cwd:root}).status).toBe(0);
+  const harness=await createHarness({workspace:root,subagentProfiles:[],modelInstance:createMockLanguageModel()});
+  try {
+    await expect(prepareCodeTask(harness,goal)).rejects.toThrow('Git-tracked');
+  } finally {await harness.close();}
+}));
+
+for (const [label, content, eligible] of [
+  ['121 short lines', 'x\n'.repeat(121), true],
+  ['one long line', 'x'.repeat(20000), true],
+  ['64 KiB including CRLF', 'x\r\n'.repeat(21845)+'x', true],
+  ['64 KiB multibyte', 'é'.repeat(32768), true],
+  ['one byte over 64 KiB', 'x'.repeat(65537), false],
+  ['multibyte over 64 KiB', 'é'.repeat(32769), false],
+] as const) test(`guided task measures raw bytes: ${label}`, async () => fixture(async root => {
+  await writeFile(root+'/greeting.mjs',content);
+  const committed=spawnSync('git',['-c','user.name=Fixture','-c','user.email=fixture@example.test','commit','-am','size fixture'],{cwd:root,encoding:'utf8'});
+  expect(committed.status).toBe(0);
+  const harness=await createHarness({workspace:root,subagentProfiles:[],modelInstance:createMockLanguageModel()});
+  try {
+    if (eligible) {
+      const task=await prepareCodeTask(harness,goal);
+      expect(task.baseline['greeting.mjs']).toBe((await harness.workspace.inspectFile('greeting.mjs')).digest);
+    } else await expect(prepareCodeTask(harness,goal)).rejects.toThrow('64 KiB');
+  } finally {await harness.close();}
+}));
+
 test('goal, constraints and check receipts survive reopening; keep requires fresh review and rejects drift', async () => fixture(async root => {
   const probe=await createHarness({workspace:root,subagentProfiles:[],modelInstance:createMockLanguageModel()});
   const task=await prepareCodeTask(probe,goal);
@@ -69,6 +107,15 @@ test('goal, constraints and check receipts survive reopening; keep requires fres
     await expect(keepCodeTask(reopened,conflicting,async()=>true)).rejects.toThrow('requirements changed');
     await keepCodeTask(reopened,state,async review=>{expect(review).toContain('after');return false;});
     expect(restoredCodeTask((await reopened.store.load(runId,reopened.config.scope))!)?.keep).toBeUndefined();
+    expect(spawnSync('git',['update-index','--assume-unchanged','greeting.mjs'],{cwd:root}).status).toBe(0);
+    await expect(keepCodeTask(reopened,state,async()=>{throw new Error('Must not reach confirmation');})).rejects.toThrow('Git-tracked');
+    expect(spawnSync('git',['update-index','--no-assume-unchanged','greeting.mjs'],{cwd:root}).status).toBe(0);
+    await expect(keepCodeTask(reopened,state,async()=>{
+      expect(spawnSync('git',['update-index','--assume-unchanged','greeting.mjs'],{cwd:root}).status).toBe(0);
+      return true;
+    })).rejects.toThrow();
+    expect(restoredCodeTask((await reopened.store.load(runId,reopened.config.scope))!)?.keep).toBeUndefined();
+    expect(spawnSync('git',['update-index','--no-assume-unchanged','greeting.mjs'],{cwd:root}).status).toBe(0);
     await keepCodeTask(reopened,state,async()=>true);
     const kept=(await reopened.store.load(runId,reopened.config.scope))!;
     expect(restoredCodeTask(kept)?.keep?.runId).toBe(runId);

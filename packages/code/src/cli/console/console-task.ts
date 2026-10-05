@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { compileTaskAcceptanceContract, type TaskAcceptanceContract, type ZhivexHarness } from '@zhivex-ai/harness/engine';
@@ -22,6 +24,21 @@ export function restoredCodeTask(state?: Pick<AgentRunState, 'metadata'>): CodeT
   return { ...parsed, contract: compileTaskAcceptanceContract(parsed.contract).contract };
 }
 
+const execFileAsync = promisify(execFile);
+
+async function requireGitVisibleTaskFiles(harness: ZhivexHarness, paths: readonly string[]): Promise<void> {
+  for (const path of paths) {
+    try {
+      const { stdout } = await execFileAsync('git', ['--literal-pathspecs', 'ls-files', '--error-unmatch', '-v', '-z', '--', path],
+        { cwd: harness.workspace.root, encoding: 'utf8', timeout: 10_000, maxBuffer: 64 * 1024 });
+      // H is a normal cached file; skip-worktree and assume-unchanged hide edits.
+      if (stdout !== `H ${path}\0`) throw new Error('Selected file is hidden from Git review.');
+    } catch {
+      throw new Error(`Guided tasks require Git-tracked selected files visible to diff (no skip-worktree or assume-unchanged): ${path}`);
+    }
+  }
+}
+
 export async function prepareCodeTask(harness: ZhivexHarness, input: unknown): Promise<CodeTask> {
   if (harness.config.execution.backend !== 'none' || harness.config.orchestration.profiles.length) throw new Error('Guided /task currently supports the native backend without subagents.');
   const brief = briefSchema.parse(input);
@@ -42,10 +59,14 @@ export async function prepareCodeTask(harness: ZhivexHarness, input: unknown): P
   const contract = compileTaskAcceptanceContract({ schemaVersion: 1, taskId: randomUUID(), allowedWritePaths: brief.paths,
     protectedFiles: ['package.json'], requiredChecks: checks,
     humanReview: [{ id: 'operator', requirement: brief.goal, status: 'pending' }, ...brief.constraints.map((requirement,index)=>({id:`constraint-${index+1}`,requirement,status:'pending'}))] }).contract;
+  await requireGitVisibleTaskFiles(harness, contract.allowedWritePaths);
   const baseline: Record<string, string> = {};
   for (const path of contract.allowedWritePaths) {
-    const file = await harness.workspace.readFile(path);
-    if (file.truncated || Buffer.byteLength(file.content) > 64 * 1024) throw new Error('Guided tasks require selected existing text files at most 64 KiB each.');
+    // inspectFile measures the full descriptor-bound source, without rendered line numbers.
+    const file = await harness.workspace.inspectFile(path);
+    if (file.bytes > 64 * 1024) throw new Error('Guided tasks require selected existing text files at most 64 KiB each.');
+    // readFile retains the workspace text/binary checks; its preview may be truncated.
+    if ((await harness.workspace.readFile(path)).digest !== file.digest) throw new Error('Task file changed during preparation. Retry with a stable baseline.');
     baseline[path] = file.digest;
   }
   const inspected = await harness.workspace.gitDiff();
@@ -100,11 +121,13 @@ export async function keepCodeTask(harness: ZhivexHarness, state: AgentRunState,
   const ledger = { schemaVersion: 1 as const, revisions: [{ revision: 1, previousDigest: null, ...compileTaskAcceptanceContract(task.contract) }] };
   const current = await nativeTaskSnapshot(harness.workspace, ledger, state.runId);
   if (current.snapshotDigest !== evidence.delivery.snapshotDigest) throw new Error('Task evidence is stale: selected files or package.json changed. Revise and rerun checks.');
+  await requireGitVisibleTaskFiles(harness, task.contract.allowedWritePaths);
   const diff = await consoleWorkspaceDiff(harness.workspace);
   if (diff.startsWith('Git review unavailable')) throw new Error('Cannot keep without a current Git review.');
   if (!await confirm(codeTaskRecap(state) + diff)) return;
   if ((await nativeTaskSnapshot(harness.workspace, ledger, state.runId)).snapshotDigest !== current.snapshotDigest ||
       await consoleWorkspaceDiff(harness.workspace) !== diff) throw new Error('Files or Git review changed during review; no keep decision was saved.');
+  await requireGitVisibleTaskFiles(harness, task.contract.allowedWritePaths);
   await harness.store.save({ ...state, metadata: { ...state.metadata, [CODE_TASK_KEY]:
     JSON.parse(JSON.stringify({ ...task, keep: { runId: state.runId, snapshotDigest: current.snapshotDigest, at: Date.now() } })) } }, { expectedRevision: state.revision! });
 }
