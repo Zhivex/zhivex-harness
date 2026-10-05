@@ -90,13 +90,13 @@ describe("portable host processes", () => {
     const schedulingAllowanceMs = 500;
     const childScript = [
       'const fs = require("node:fs"); let tick = 0;',
-      `const heartbeat = () => fs.writeFileSync(${JSON.stringify(heartbeat)}, JSON.stringify({ pid: process.pid, tick: ++tick }));`,
+      'const heartbeat = () => fs.writeFileSync(process.argv[1], JSON.stringify({ pid: process.pid, tick: ++tick }));',
       'heartbeat(); setInterval(heartbeat, 20);',
       'setTimeout(() => process.exit(0), 10_000);'
     ].join(" ");
     const parentScript = [
       'const { spawn } = require("node:child_process");',
-      `spawn(process.execPath, ["-e", ${JSON.stringify(childScript)}], { stdio: "inherit" });`
+      'spawn(process.execPath, ["-e", process.argv[1], process.argv[2]], { stdio: "inherit" });'
     ].join(" ");
     const controller = new AbortController();
     let childPid: number | undefined;
@@ -104,7 +104,9 @@ describe("portable host processes", () => {
     const pending = runPortableProcess([
       process.execPath,
       "-e",
-      parentScript
+      parentScript,
+      childScript,
+      heartbeat
     ], { timeoutMs, signal: controller.signal }).then(result => ({ result }), error => ({ error }));
 
     try {
