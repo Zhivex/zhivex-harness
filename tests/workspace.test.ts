@@ -80,19 +80,54 @@ describe("portable host processes", () => {
   });
 
   test("terminates descendants that keep inherited output pipes open", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "harness-inherited-pipes-"));
+    temporaryDirectories.push(root);
+    const heartbeat = path.join(root, "heartbeat");
+    // Give the descendant time to prove readiness before the timeout. Its natural
+    // lifetime is longer than the timeout, cleanup grace and test deadline.
+    const timeoutMs = 1_500;
+    const terminationGraceMs = 1_000;
+    const schedulingAllowanceMs = 500;
+    const childScript = [
+      'const fs = require("node:fs"); let tick = 0;',
+      `const heartbeat = () => fs.writeFileSync(${JSON.stringify(heartbeat)}, JSON.stringify({ pid: process.pid, tick: ++tick }));`,
+      'heartbeat(); setInterval(heartbeat, 20);',
+      'setTimeout(() => process.exit(0), 10_000);'
+    ].join(" ");
     const parentScript = [
       'const { spawn } = require("node:child_process");',
-      'spawn(process.execPath, ["-e", "setTimeout(() => {}, 2_000)"], { stdio: "inherit" });'
+      `spawn(process.execPath, ["-e", ${JSON.stringify(childScript)}], { stdio: "inherit" });`
     ].join(" ");
+    const controller = new AbortController();
+    let childPid: number | undefined;
     const startedAt = performance.now();
-    const result = await runPortableProcess([
+    const pending = runPortableProcess([
       process.execPath,
       "-e",
       parentScript
-    ], { timeoutMs: 50 });
+    ], { timeoutMs, signal: controller.signal }).then(result => ({ result }), error => ({ error }));
 
-    expect(result.timedOut).toBe(true);
-    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    try {
+      while (childPid === undefined && performance.now() - startedAt < timeoutMs) {
+        try { childPid = JSON.parse(await readFile(heartbeat, "utf8")).pid; } catch { /* Wait for descendant readiness. */ }
+        if (childPid === undefined) await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(childPid).toBeNumber();
+      const outcome = await pending;
+      if ("error" in outcome) throw outcome.error;
+      expect(outcome.result.timedOut).toBe(true);
+      expect(outcome.result.exitCode).not.toBe(0);
+      // A terminated orphan can still be present as a zombie, requiring the full
+      // production cleanup grace. Do not require the host to reap its PID early.
+      expect(performance.now() - startedAt).toBeLessThan(timeoutMs + terminationGraceMs + schedulingAllowanceMs);
+      const stopped = await readFile(heartbeat, "utf8");
+      await new Promise(resolve => setTimeout(resolve, 150));
+      expect(await readFile(heartbeat, "utf8")).toBe(stopped);
+    } finally {
+      controller.abort();
+      await pending;
+      if (childPid !== undefined) { try { process.kill(childPid, "SIGKILL"); } catch { /* Already terminated. */ } }
+    }
   });
 
   test("supports external cancellation", async () => {
