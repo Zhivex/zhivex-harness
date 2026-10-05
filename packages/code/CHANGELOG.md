@@ -1,5 +1,11 @@
 # Code changelog
 
+## 0.3.0-rc.5 - 2026-10-05
+
+- Pin exactly Harness 1.4.0-rc.5 for the matched npm `next` candidate, retaining the published SDK batch and existing terminal/local browser contracts.
+- Preserve the failed Harness RC.4 campaign and immutable source. Code publication requires a separately approved engine campaign, actual Harness registry integrity/provenance verification and the existing protected Code gates.
+- Retain the RC.4 migration requirements, all historical model mappings and stable `latest` channels.
+
 ## 0.3.0-rc.4 - 2026-10-05
 
 - Pin exactly Harness 1.4.0-rc.4 and align Agents 1.10.3/Core 1.30.1 with the matched engine. Publish to npm `next` only after the engine passes its complete protected campaign and registry/provenance verification.

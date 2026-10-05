@@ -2,6 +2,35 @@
 
 ## Current RC preparation: 2026-10-05
 
+This checkout prepares Code `0.3.0-rc.5`, pinned exactly to Harness
+`1.4.0-rc.5`, for npm `next`. Retain the published SDK pins, existing terminal
+and local browser contracts, API/provider tiers and the RC.4 migration
+requirements. Desktop remains private alpha with its matched engine binding.
+Stable Code `0.2.0`/Harness `1.3.0` on `latest` and published Code
+`0.3.0-rc.1`/Harness `1.4.0-rc.1` on `next` remain unchanged.
+
+Harness RC.4 [attempt 1](https://github.com/Zhivex/zhivex-harness/actions/runs/37360365544)
+failed offline before retaining a release tarball or running paid/provider gates.
+Its annotated tag, original source and failed evidence are immutable; the
+approved single campaign was consumed. RC.5 includes the reviewed test
+correction on new source. See the authoritative [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
+for that failure identity, exact-source gates and the new campaign approval.
+The RC.4 preparation snapshot below is historical.
+
+Preparation approval does not create tags, dispatch a campaign or publish either
+package. After review and integration, require all four exact-main workflows
+(`ci.yml`, `codeql.yml`, `code-journey.yml`, `web.yml`) and direct-main CodeQL.
+A separately approved Harness `v1.4.0-rc.5` campaign must pass unchanged protected
+gates and actual registry integrity/provenance verification first. Code then
+uses a new annotated `code-v0.3.0-rc.5` tag on the same SHA, `channel=next`,
+`mode=oidc` and explicit publication confirmation. Its protected workflow must
+resolve the real published Harness dependency without overrides, verify the
+retained artifact with terminal/web and four-manager acceptance, and confirm
+registry bytes and source-bound provenance. Preserve stable `latest` and all
+historical tags/artifacts; earlier approval does not authorize this publication.
+
+## Historical RC.4 preparation: 2026-10-05
+
 This checkout prepares Harness `1.4.0-rc.4` and Code `0.3.0-rc.4`, both on
 `next`, with Code pinned exactly to the Harness candidate. npm currently reports
 Harness `1.3.0` and Code `0.2.0` on `latest`; those stable tags must not move.
