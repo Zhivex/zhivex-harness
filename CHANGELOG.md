@@ -7,7 +7,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 ## Unreleased
 
 - Extend experimental task acceptance to bounded native reviewed edits and declared package-script checks, tying receipts to selected/protected file digests and the manifest. Block other effect tools and delegation for native task runs. Preserve the separate SDK run status and pending human review.
-- Add a redacted recorded-check projection to beta run-result JSON and experimental Code host helpers. No stable declaration snapshot, state schema, dependency pin or release identity changes.
+- Add a redacted recorded-check projection to beta run-result JSON and experimental Code host helpers. No stable declaration snapshot, state schema or release identity changes.
+- Pin Meta SDK 0.2.9 to retain reported Responses reasoning usage as a subset of output tokens, without changing Core or other provider pins.
 
 Migration: runs without a task contract are unchanged. Native task contracts now enforce their edit/check tool scope and may report `pending_review`/`verified` when their watched-file requirements pass; they do not receive OCI sandbox, whole-snapshot or import guarantees. Check evidence remains invalid after watched-file drift or uncertain journal recovery.
 

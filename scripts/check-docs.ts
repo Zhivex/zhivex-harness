@@ -152,7 +152,7 @@ const expectedCurrentSdkDependencies = {
   "@zhivex-ai/agents": "1.10.2",
   "@zhivex-ai/core": "1.28.0",
   "@zhivex-ai/gemini": "0.13.0",
-  "@zhivex-ai/meta": "0.2.8",
+  "@zhivex-ai/meta": "0.2.9",
   "@zhivex-ai/openai": "0.13.7",
   "@zhivex-ai/qwen": "0.16.3"
 } as const;

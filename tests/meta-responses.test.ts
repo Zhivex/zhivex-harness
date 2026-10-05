@@ -2,6 +2,28 @@ import { describe, expect, test } from "bun:test";
 import { createMeta } from "@zhivex-ai/meta";
 import { providerModelInternals } from "../src/providers/providers.js";
 import type { ModelGenerateInput } from "@zhivex-ai/core";
+import { readFileSync } from "node:fs";
+
+describe("Meta Responses usage receipts", () => {
+  // Raw Responses-shaped synthetic receipts; reasoning is included in output.
+  const cases = JSON.parse(readFileSync(new URL("./fixtures/meta-responses-usage.json", import.meta.url), "utf8"));
+  for (const receipt of cases) for (const mode of ["generate", "stream"] as const) {
+    test(`${mode} preserves ${receipt.name} without inventing or double-counting tokens`, async () => {
+      const transport = Object.assign(async () => {
+        const response = { id: "resp_usage", status: "completed", output: [], usage: receipt.usage };
+        return mode === "generate" ? Response.json(response) : new Response(
+          `data: ${JSON.stringify({ type: "response.completed", response })}\n\n`,
+          { headers: { "content-type": "text/event-stream" } });
+      }, { preconnect: fetch.preconnect });
+      const model = providerModelInternals.withMetaResponses(createMeta({ apiKey: "fixture", fetch: transport })("muse-spark-1.3"));
+      const input: ModelGenerateInput = { messages: [{ role: "user", parts: [{ type: "text", text: "fixture" }] }] };
+      let usage;
+      if (mode === "generate") usage = (await model.generate(input)).usage;
+      else for await (const event of await model.stream!(input)) if (event.type === "finish") usage = event.usage;
+      expect(JSON.parse(JSON.stringify(usage ?? {}))).toEqual(receipt.expected);
+    });
+  }
+});
 
 describe("Meta agent transport", () => {
   for (const mode of ["generate", "stream"] as const) {
