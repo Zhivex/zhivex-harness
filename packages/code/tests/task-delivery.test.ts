@@ -5,6 +5,7 @@ import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createHarness, runHarness, Workspace } from '@zhivex-ai/harness/engine';
 import { CODE_TASK_KEY, prepareCodeTask, keepCodeTask, restoredCodeTask, freshCodeTaskRecap } from '../src/cli/console/console-task.js';
 import { consoleWorkspaceDiff } from '../src/cli/console/console-diff.js';
+import { TASK_ACCEPTANCE_EVIDENCE_KEY } from '@zhivex-ai/harness/code-support';
 
 const goal = { goal:'Fix greeting', paths:['greeting.mjs'], checks:['test'], constraints:['Preserve named export'] };
 async function fixture(work: (root: string) => Promise<void>, git = true) {
@@ -62,6 +63,10 @@ test('goal, constraints and check receipts survive reopening; keep requires fres
     expect(restoredCodeTask(state)).toMatchObject({goal:goal.goal,constraints:goal.constraints});
     expect(await freshCodeTaskRecap(reopened,state)).toContain('task evidence: pending_review');
     expect(await freshCodeTaskRecap(reopened,state)).toContain('test: exit 0');
+    const conflicting = { ...state, metadata: { ...state.metadata, [TASK_ACCEPTANCE_EVIDENCE_KEY]: {
+      ...(state.metadata![TASK_ACCEPTANCE_EVIDENCE_KEY] as object), contractDigest: 'sha256:'+'a'.repeat(64) } } };
+    expect(await freshCodeTaskRecap(reopened,conflicting)).toContain('REQUIREMENTS CONFLICT');
+    await expect(keepCodeTask(reopened,conflicting,async()=>true)).rejects.toThrow('requirements changed');
     await keepCodeTask(reopened,state,async review=>{expect(review).toContain('after');return false;});
     expect(restoredCodeTask((await reopened.store.load(runId,reopened.config.scope))!)?.keep).toBeUndefined();
     await keepCodeTask(reopened,state,async()=>true);

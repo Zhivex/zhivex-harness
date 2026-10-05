@@ -78,6 +78,9 @@ export function codeTaskRecap(state?: AgentRunState): string {
 export async function freshCodeTaskRecap(harness: ZhivexHarness, state?: AgentRunState): Promise<string> {
   const recap = codeTaskRecap(state), task = restoredCodeTask(state);
   const evidence: any = state?.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY];
+  if (task && evidence?.contractDigest && evidence.contractDigest !== compileTaskAcceptanceContract(task.contract).digest) {
+    return recap + 'REQUIREMENTS CONFLICT: the engine contract differs from this Code brief. Keep is blocked; reconcile requirements before another task turn.\n';
+  }
   if (!task || !state || !evidence?.delivery) return recap;
   try {
     const ledger = { schemaVersion: 1 as const, revisions: [{ revision: 1, previousDigest: null, ...compileTaskAcceptanceContract(task.contract) }] };
@@ -93,6 +96,7 @@ export async function keepCodeTask(harness: ZhivexHarness, state: AgentRunState,
   const task = restoredCodeTask(state);
   const evidence: any = state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY];
   if (!task || state.status !== 'completed' || evidence?.status !== 'pending_review' || !evidence.delivery) throw new Error('Task is not ready: every declared check must pass after the final edit and the agent must finish.');
+  if (evidence.contractDigest !== compileTaskAcceptanceContract(task.contract).digest) throw new Error('Task requirements changed outside this Code brief. No keep decision was saved; reconcile the engine contract first.');
   const ledger = { schemaVersion: 1 as const, revisions: [{ revision: 1, previousDigest: null, ...compileTaskAcceptanceContract(task.contract) }] };
   const current = await nativeTaskSnapshot(harness.workspace, ledger, state.runId);
   if (current.snapshotDigest !== evidence.delivery.snapshotDigest) throw new Error('Task evidence is stale: selected files or package.json changed. Revise and rerun checks.');
