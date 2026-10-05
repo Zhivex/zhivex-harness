@@ -57,7 +57,7 @@ interface CallRow {
   reserved_usd: number; price_status: string;
 }
 interface PolicyRow { policy: string }
-const current = new AsyncLocalStorage<{ ledger: UsageLedger; runId: string }>();
+const current = new AsyncLocalStorage<{ ledger: UsageLedger; runId: string; recovered: boolean }>();
 
 /** A separate append-only transport ledger. SDK rollups are never added to these calls. */
 export class UsageLedger {
@@ -103,9 +103,8 @@ export class UsageLedger {
   async run<T>(runId: string, operation: () => Promise<T>, historicalUsageUnknown = false): Promise<T> {
     this.database.query("INSERT OR IGNORE INTO zhivex_usage_policies (scope_key, run_id, policy) VALUES (?1, ?2, ?3)")
       .run(this.key, runId, JSON.stringify({ ...this.options, ...(historicalUsageUnknown ? { historicalUsageUnknown: true } : {}) }));
-    this.database.query("UPDATE zhivex_usage_calls SET status = 'unknown' WHERE scope_key = ?1 AND run_id = ?2 AND status = 'pending'").run(this.key, runId);
     // Existing runs retain their original prices and cap even if the caller omits/changes flags.
-    return current.run({ ledger: this, runId }, operation);
+    return current.run({ ledger: this, runId, recovered: false }, operation);
   }
   summary(runId: string) {
     const rows = this.database.query<CallRow>("SELECT * FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2 ORDER BY rowid").all(this.key, runId);
@@ -206,6 +205,25 @@ export class UsageLedger {
   store(store: AgentRunStore): AgentRunStore {
     const ledger = this;
     return new Proxy(store, { get(target, key) {
+      if (key === "acquireLease" && target.acquireLease) return async (...args: Parameters<NonNullable<AgentRunStore["acquireLease"]>>) => {
+        const lease = await target.acquireLease!(...args);
+        const scope = current.getStore();
+        // Entering a run does not prove the prior worker has stopped. Recover
+        // abandoned transports only after the durable store grants ownership.
+        // Child leases and later approval continuations must not invalidate
+        // transports already started by this logical invocation.
+        if (lease && scope?.ledger === ledger && args[0] === scope.runId && !scope.recovered) {
+          try {
+            ledger.database.query("UPDATE zhivex_usage_calls SET status = 'unknown' WHERE scope_key = ?1 AND run_id = ?2 AND status = 'pending'")
+              .run(ledger.key, scope.runId);
+            scope.recovered = true;
+          } catch (error) {
+            await target.releaseLease?.(args[0], lease.ownerId, args[2]);
+            throw error;
+          }
+        }
+        return lease;
+      };
       if (key === "save") return async (...args: Parameters<AgentRunStore["save"]>) => {
         const scope = current.getStore();
         if (scope?.ledger === ledger && args[0].runId === scope.runId) {

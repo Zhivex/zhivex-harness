@@ -91,7 +91,24 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
   };
   return {
     policyDecision(sessionId,runId,event){write(sessionId,runId,redactValue(harnessPolicyDecisionEventSchema.parse(event)) as Record<string,unknown>);},
-    prompt(sessionId,runId,prompt){const safe=redact(prompt);const truncated=Buffer.byteLength(safe)>60*1024;write(sessionId,runId,{type:"user-message",prompt:truncated?Buffer.from(safe).subarray(0,60*1024).toString("utf8")+"[TRUNCATED]":safe});},
+    prompt(sessionId,runId,prompt){
+      const safe=redact(prompt);
+      const activity=(value:string)=>({type:"user-message",prompt:value});
+      let bounded=safe;
+      if(Buffer.byteLength(JSON.stringify(activity(safe)))>60*1024){
+        // Bound the serialized event, including JSON escapes, without splitting Unicode.
+        const characters=Array.from(safe);
+        let lower=0,upper=characters.length;
+        while(lower<upper){
+          const middle=Math.ceil((lower+upper)/2);
+          const candidate=characters.slice(0,middle).join("")+"[TRUNCATED]";
+          if(Buffer.byteLength(JSON.stringify(activity(candidate)))<=60*1024)lower=middle;
+          else upper=middle-1;
+        }
+        bounded=characters.slice(0,lower).join("")+"[TRUNCATED]";
+      }
+      write(sessionId,runId,activity(bounded));
+    },
     append(sessionId,runId,event){
       const key=`${sessionId}:${runId}`;
       if(event.type==="text-delta"){
