@@ -1,6 +1,6 @@
 // Synthetic raw Responses receipts: no socket, paid request or real credential.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -23,7 +23,7 @@ globalThis.fetch = async (input, options) => {
 
 // Resolve through the installed Harness, including pnpm's isolated dependency graph.
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const harnessManifestPath = path.resolve('node_modules/@zhivex-ai/harness/package.json');
+  const harnessManifestPath = realpathSync(path.resolve('node_modules/@zhivex-ai/harness/package.json'));
   const harness = JSON.parse(readFileSync(harnessManifestPath, 'utf8'));
   assert.equal(harness.dependencies['@zhivex-ai/meta'], '0.2.9');
   const resolve = createRequire(harnessManifestPath);
