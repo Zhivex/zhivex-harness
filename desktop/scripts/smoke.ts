@@ -29,7 +29,13 @@ try {
         const progress = await readFile(path.join(report, "progress.json"), "utf8").catch(() => "unavailable");
         throw new Error(`DESKTOP_SMOKE_TIMEOUT: elapsedMs=${Date.now() - startedAt}; evidenceDirectory=${report}; progress=${progress}\n${stderr}`);
     }
-    assert.equal(code, 0, `evidenceDirectory=${report}\n${stderr}`);
+    if (code !== 0) {
+        const diagnostics = await Promise.all(["progress.json", "failure-script.txt", "failure-view.txt"].map(async name => {
+            const contents = await readFile(path.join(report, name), "utf8").catch(() => "unavailable");
+            return `${name}: ${contents.slice(0, 8192)}`;
+        }));
+        assert.equal(code, 0, `evidenceDirectory=${report}\n${diagnostics.join("\n")}\n${stderr}`);
+    }
     const evidence = JSON.parse(await readFile(path.join(report, "report.json"), "utf8"));
     assert.equal(evidence.packaged, packaged); if (explicitReview) assert.equal(evidence.explicitReviewRequired, true); if(models){assert(evidence.providers.length===6 && evidence.approvalBlocksSwitch && evidence.customModel && evidence.rendererReload);} else if (oci) { assert(evidence.fixtureRuntime && !evidence.realDocker && evidence.completePreview && evidence.explicitApproval && evidence.hostBytesVerified && evidence.patchBoundEvidence); } else { assert(evidence.separateProcess && evidence.isolatedRenderer && evidence.rejectedOverrides && evidence.streaming && evidence.cancellation); assert(evidence.sqliteBytes > 0); assert(evidence.projectIsolation && evidence.selectionHasNoExecution && evidence.keyboardNavigation && evidence.rendererReload && evidence.recentProjects === 2 && evidence.invalidProjectRecovery && evidence.singleInstance); assert.equal(evidence.emptyStartup, empty); assert(evidence.serviceCrashRecovered && evidence.decisionHistoryReload && evidence.expiredApprovalRejected && evidence.staleApprovalRejected); assert(evidence.fileApprovalUI && evidence.fileRejectionUI && evidence.completePreimage); assert(evidence.duplicateSubmitPrevented && evidence.lostResponseReconciled && evidence.failedCheckVisible && evidence.redactedRenderer && evidence.literalRepositoryText && evidence.activeReconnect && evidence.expiredSnapshot); }
     console.log(JSON.stringify({ ...evidence, evidenceDirectory: report }));
