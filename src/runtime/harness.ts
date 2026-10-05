@@ -1462,7 +1462,7 @@ const runHarnessInternal = async (
         ...(checkpoint.usage ? { usage: checkpoint.usage } : {})
       };
       const interruption = interruptionKind();
-      if (interruption && result.status === "failed") {
+      if (interruption && ["failed", "cancelled", "cancel_requested"].includes(result.status)) {
         const interrupted = await settleInterruptedRun(harness.store, runId, result.state.scope, interruption);
         if (interrupted) {
           result = interrupted;

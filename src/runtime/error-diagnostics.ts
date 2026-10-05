@@ -112,7 +112,23 @@ export const errorDetailsSchema = z.strictObject({
     executionArguments: executionArgumentsSchema.optional(),
     continuity: z.strictObject({
       phase: z.number().int().min(0).max(5),
-      failedChecks: z.array(z.enum(["completed", "compacted", "codename", "compatibility", "rejectedApproach", "objective", "noTools"])).max(7)
+      failedChecks: z.array(z.enum(["completed", "compacted", "codename", "compatibility", "rejectedApproach", "objective", "noTools"])).max(7),
+      evidence: z.strictObject({
+        answerShape: z.enum(["invalid_json", "object", "array", "null", "primitive", "unavailable"]),
+        knownFields: z.array(z.enum(["codename", "compatibility", "rejectedApproach", "objective"])).max(4),
+        extraFieldCount: z.number().int().min(0).max(1_000_000),
+        responseBytes: z.number().int().min(0).max(1_000_000_000),
+        responseSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+        textEvents: z.number().int().min(0).max(1_000_000),
+        textBytes: z.number().int().min(0).max(1_000_000_000),
+        finishEvents: z.number().int().min(0).max(1_000_000),
+        errorEvents: z.number().int().min(0).max(1_000_000),
+        finishReason: z.enum(["stop", "length", "tool-calls", "content-filter", "other", "unavailable"]),
+        inputTokens: z.number().int().min(0).max(1_000_000_000).nullable(),
+        outputTokens: z.number().int().min(0).max(1_000_000_000).nullable(),
+        reasoningTokens: z.number().int().min(0).max(1_000_000_000).nullable(),
+        totalTokens: z.number().int().min(0).max(1_000_000_000).nullable()
+      }).optional()
     }).optional(),
     budget: budgetDiagnosticSchema.strict().optional()
   })).max(5),

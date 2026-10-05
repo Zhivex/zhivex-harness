@@ -5,14 +5,14 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.10.2",
-        "@zhivex-ai/anthropic": "0.13.1",
-        "@zhivex-ai/core": "1.28.0",
+        "@zhivex-ai/agents": "1.10.3",
+        "@zhivex-ai/anthropic": "0.13.2",
+        "@zhivex-ai/core": "1.30.1",
         "@zhivex-ai/gemini": "0.13.0",
         "@zhivex-ai/meta": "0.2.9",
-        "@zhivex-ai/openai": "0.13.7",
-        "@zhivex-ai/qwen": "0.16.3",
-        "@zhivex-ai/vertex": "1.2.2",
+        "@zhivex-ai/openai": "0.14.1",
+        "@zhivex-ai/qwen": "0.16.4",
+        "@zhivex-ai/vertex": "1.2.4",
         "google-auth-library": "11.1.0",
         "zod": "4.6.5",
       },
@@ -30,12 +30,12 @@
     },
   },
   "overrides": {
-    "@zhivex-ai/core": "1.28.0",
+    "@zhivex-ai/core": "1.30.1",
   },
   "packages": {
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.7.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-ZORuxsuEnLjRly7t6Ad7zAsWitjWsyprswyPUHz/yycPb+tTm3DGa8XheaHhRXqX8LS9snuxaYavXSRA50TlHw=="],
 
-    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.127.0", "", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-OKiVbG9LHCxjn4fBJZJFy/Bz3hqE1RYpwaeSEDNheQnvz0XNKmGT/Lhkz2Sf1a27Ldt3vVv+BkU81I0U/8EpoQ=="],
+    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.131.0", "", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-9+PepoU7qVMmM70jSahdnfcMHAvAnzhMOLv2W9WjRLO+OG/MAiBETkwKZqv7KIJ1Cj5h8eZ019bHzZaq+Mbepw=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
 
@@ -143,21 +143,21 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.10.2", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0" } }, "sha512-PlFoD9874BlqDz/kD4D1fbyLysP/8Nr3FUzQX3c3/jWCMjcNmZTBSWtUnpOqe9v/JEEOjWjPlG+2zOU7aIX27A=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.10.3", "", { "dependencies": { "@zhivex-ai/core": "^1.30.0" } }, "sha512-HYItNgmAR9q08Cc2YlCcZCOVsMmZogxKNBmX1gJnjAvZK20n/nznO22UwF0ATNbWch4ptA38W38TAqU8Wgbotg=="],
 
-    "@zhivex-ai/anthropic": ["@zhivex-ai/anthropic@0.13.1", "", { "dependencies": { "@anthropic-ai/sdk": "0.127.0", "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-o+yS+tLz+7q6WiCTPjs6IEhmZCKg7iwQ7CuUTAZtqjGhURJMJaCZCgiDbuSWcFi2kRkQvVj+LGTKIgYYf2EFJw=="],
+    "@zhivex-ai/anthropic": ["@zhivex-ai/anthropic@0.13.2", "", { "dependencies": { "@anthropic-ai/sdk": "0.131.0", "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-GrBBXY1+H9Vf5XKvWcwYn1kaSEBfYi4Tez7nw37LJo6kEdmk/6fL7u4EzpiR+KKUxz9C9qBkuuHO7ZtWNzxgyw=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.28.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-q+iKBXj2v618dZFL7UdK6zQ1lwQU5ZWvux+vg0AOE1p+F87c5g5qCdqnoP3A4TYPJpPMi/VRySri1WiskgQ9aQ=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.30.1", "", { "dependencies": { "ws": "^8.22.0", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-/wrczgppADP8/3Z0aW7XWWnQZYq6n69nYLSG4tSxJifd0+95w2549sYQCHHzv2NBK2/Ebwtrav0J8xKvCe5n5A=="],
 
     "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.13.0", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0", "zod": "^4.6.3" } }, "sha512-qmvO/vo2P+yxyMkwPSQ6vtIMz7AY8GRsgVTSm1Z87rsDosSa1TxZYNQDuqxZW8MvnmkJNp7DFmyuT29CbKvIRA=="],
 
     "@zhivex-ai/meta": ["@zhivex-ai/meta@0.2.9", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0", "zod": "^4.6.3" } }, "sha512-8zR9J8KV1TaO7I8WrQGgsjKpwOCjDGII60cXFrDN6HVes3iyTa6aMXq6AK8gk9+VQ99bfiPIrzpRilzINRCshw=="],
 
-    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.13.7", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0", "zod": "^4.6.3" } }, "sha512-CcV5q0ILwofzmOsBMGCSLmU44DYyBUxDkl1PSOjSuepKgMWohEdvm3ot/BKDHBQHylwyrnDb92p7Ew/8Hj5xbg=="],
+    "@zhivex-ai/openai": ["@zhivex-ai/openai@0.14.1", "", { "dependencies": { "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-J8G9UUrhlYg/xHXkEGTpeGcgLOEK8J3/hJIDPqTSPG4XAOvLctidr9fkprQResWQJ4SbVF0qiYmylmV93h6oZg=="],
 
-    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.16.3", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0", "zod": "^4.6.3" } }, "sha512-XCMDpJ6L3cBeAlSfYxSQb1d+t2dwHU7BFKVp6WYtHRP6QWQJzsp9DThEV3ji8H6SUt30X399Wxvur8Cx67+apg=="],
+    "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.16.4", "", { "dependencies": { "@zhivex-ai/core": "^1.29.0", "zod": "^4.6.3" } }, "sha512-JW+qtR8i/XVh1BE/2REgepTI/A/w81jSLBpNpvInm8mHub2iLSusN8lSmMXScuLsnkvXHzYd+w1uL/Dx/RkXDw=="],
 
-    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.2", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.0", "@zhivex-ai/anthropic": "^0.13.0", "@zhivex-ai/core": "^1.27.0", "@zhivex-ai/openai": "^0.13.7", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-xUVSObLwaEoqJtWJgxZV6YQWAHnwxEV/dkF8nTrKdtrYFXyC5ihUahGIgR3eOitP44WQb2nsBSBI6HKkiKdNTg=="],
+    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.4", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.1", "@zhivex-ai/anthropic": "^0.13.2", "@zhivex-ai/core": "^1.30.0", "@zhivex-ai/openai": "^0.14.1", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-/sA/CcEfEvZEFe2DSHPDWCi8JtDyhbKPvAdexbgP5z3r9d1Frd6tDy69g5JGHFveno+EypKhPb7yy7KJi2I1Aw=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 

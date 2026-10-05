@@ -70,7 +70,64 @@ Loading a run reconstructs its complete state for compatibility with approvals, 
 
 Logical backups contain hydrated history rather than database references, so restoration does not require the original artifact tables. Exports up to 64 MiB retain the legacy JSON format; larger exports use the versioned `ZHIVEX-STATE-SEGMENTS-1` transport with bounded frames, including split strings. RC13 reads both formats and verifies the same logical checksum before import. Older versions cannot read segmented exports. File I/O and checksum serialization are incremental; the public backup/import APIs still hydrate the complete logical bundle in memory. Segmented files have no aggregate 64 MiB ceiling. A state-limit failure records a bounded terminal diagnostic on the last durable checkpoint; the unsaved payload is not claimed as preserved. Use `/status` to inspect the failed run before `/continue`. Recovery retains tool journal receipts and never re-executes an operation itself.
 
-Incremental SQLite history uses the published Core 1.26.0 and Agents 1.10.1 packages. No local dependency patch is required. Install this checkout with `bun install --frozen-lockfile`.
+The current candidate pins Core 1.30.1 and Agents 1.10.3. New stores require no
+conversion. Before upgrading an existing shared SDK store, stop its workers and
+upgrade them together with a complete backup. Verified legacy runs retain their
+physical keys and remain readable; new runs use canonical keys that distinguish
+omitted user/namespace fields from literal `*`/`default` values. Older workers
+cannot resolve new keys. Conflicting run identities or journal entries without
+verifiable ownership require offline reconciliation before executing tools.
+
+Memory migration is conditional: it applies to legacy **SDK agent-memory arrays**
+without a canonical identity envelope in `zhivex_agent_memory` (or the file-store
+memory directory). It does not apply to CLI session-index rows, run history,
+curated project memory, empty stores or already canonical SDK memory. The CLI
+already enabled curated project memory by default in RC.1. Normal RC.1 CLI
+sessions therefore do not require SDK-memory conversion solely because they are
+older. Programmatic callers that omitted `projectMemory` used the historical SDK
+memory integration and may have affected records. Explicit custom memory keys
+retain their application-owned format. Harness ignores SDK memory-hook failures,
+so an affected record supplies no captured SDK context and cannot be updated
+until migrated; its bytes are not deleted. Session history remains separate.
+
+For the default SQLite store, use the original pre-upgrade binary to create a
+provider-free logical backup after runs are terminal and approvals resolved:
+
+```bash
+zhx state export /absolute/private/pre-upgrade.json --workspace /absolute/workspace
+# Only after every worker sharing this directory has stopped:
+cp -Rp /absolute/state-directory /absolute/private/pre-upgrade-state
+```
+
+Repeat the actual `--state-dir`, `--tenant`, `--user` and `--namespace` options when
+customized; do not invent a new scope. The default state directory is
+`<workspace>/.zhivex-harness`; use its real path in the copy command and a private
+destination outside it. Export rejects active runs, leases and pending approval
+authority. A scoped logical export does not replace the complete stopped store
+backup needed for migration. Retain the complete stopped state directory as well,
+including SQLite WAL/SHM files or all file-store journals/indices/history, and
+the original executable. `state export` supports SQLite; it is not a file-store
+backup command. Paused approval resume remains bound to its original artifact.
+
+There is **no Harness CLI command that converts legacy SDK memory**. State
+export/import preserves those rows and does not establish their owner. The
+[supported SDK procedure](https://github.com/Zhivex/zhivex-ai-sdk/blob/4a93004395a80c183b1257bb1d02fb3a3d4050e1/docs/maintainers/AGENT_STORE_MIGRATION.md)
+uses `createSqliteAgentMemoryStore` or `createFileAgentMemoryStore` from
+`@zhivex-ai/core/ops`: establish each owner from trusted application records,
+read the exact source key with `key: () => verifiedLegacyKey`, and save under the
+verified `runId`, `agentId` and `scope` into a new table/directory using the default
+key and `selectMessages: state => state.messages`. Reload and compare the full
+message array, verify other scopes cannot read it, then configure callers to use
+the new store. Keep ambiguous records quarantined; never infer ownership from a
+legacy key or edit run scope to bypass validation.
+
+Logical backups preserve canonical run, journal, idempotency and SDK memory
+identities alongside verified legacy rows. Canonical SDK memory keys bind
+restoration to the SDK identity envelope; import validates each key against the
+bound scope and retained run/agent identity.
+The backup schema version remains 1, and legacy bundles remain readable. Restore
+new candidate backups with this candidate or newer compatible readers; keep a
+complete pre-upgrade backup and the original artifact for downgrade.
 
 ## Provider handoff safety
 

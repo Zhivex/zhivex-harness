@@ -1,4 +1,4 @@
-import { continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
+import { createContinuityEvidence, continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -34,6 +34,8 @@ if (process.argv[2] === "--child") {
     createTextMessage("user", phase ? `Change the active objective to ${objectives[phase]}. ${phase === 1 ? "Correction: project codename is now ORCHID-913, replacing ORCHID-742." : "Keep the corrected project codename."} Preserve compatibility and the rejected approach; this replaces the previous objective.` : initial),
     ...noise(), createTextMessage("user", finalPrompt)];
   let harness: Awaited<ReturnType<typeof api.createHarness>> | undefined;
+  const evidence = createContinuityEvidence();
+  let resultEvidence: ReturnType<typeof evidence.snapshot> | undefined;
   try {
   harness = await api.createHarness({ provider, model, workspace: root, stateDirectory: path.join(root, "state"),
     subagentProfiles: [], toolNames: ["read_task"], requireVerifiedDelivery: false, projectContext: false,
@@ -44,10 +46,14 @@ if (process.argv[2] === "--child") {
     const result = await api.runHarness(harness, { messages: history, metadata: session.metadata ?? {},
       maxTokens: limits.maxTokens, abortSignal: AbortSignal.timeout(limits.timeoutMs),
       ...(provider === "openai" ? { providerOptions: { apiMode: "responses" } }
-        : provider === "qwen" ? { temperature: 0, providerOptions: { apiMode: "chat" } } : {}) });
+        : provider === "qwen" ? { temperature: 0, providerOptions: { apiMode: "chat" } } : {}) }, { onEvent: evidence.observe });
+    resultEvidence = evidence.snapshot(result);
     const text = result.outputText.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
     let answer: Record<string, unknown> = {};
-    try { answer = JSON.parse(text); } catch { /* The report records only the failed shape, never provider text. */ }
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) answer = parsed as Record<string, unknown>;
+    } catch { /* The report records only the failed shape, never provider text. */ }
     const checks = { completed: result.status === "completed", compacted: (result.state.compactions?.length ?? 0) > 0,
       codename: answer.codename === (phase ? "ORCHID-913" : "ORCHID-742"), compatibility: answer.compatibility === "keep-public-api",
       rejectedApproach: answer.rejectedApproach === "schema-rewrite", objective: answer.objective === objectives[phase],
@@ -67,7 +73,7 @@ if (process.argv[2] === "--child") {
       explicitContextPriority: typeof projected.contextPriority === "string"
     };
     await writeFile(sessionPath, JSON.stringify({ messages: saved.messages, ...(saved.metadata ? { metadata: saved.metadata } : {}), turns: phase + 1 } satisfies Session));
-    await writeFile(path.join(root, `phase-${phase}.json`), JSON.stringify({ phase, checks,
+    await writeFile(path.join(root, `phase-${phase}.json`), JSON.stringify({ phase, checks, evidence: resultEvidence,
       status: Object.values(checks).every(Boolean) ? "passed" : "failed", compactions: result.state.compactions?.length ?? 0,
       compactedMessages: result.state.compactions?.reduce((sum, item) => sum + item.compactedMessageCount, 0) ?? 0,
       inputTokens: result.usage?.inputTokens ?? null, outputTokens: result.usage?.outputTokens ?? null,
@@ -77,7 +83,7 @@ if (process.argv[2] === "--child") {
       retainedContext,
       checkpointRestored: phase > 0, sourceDigest: createHash("sha256").update(JSON.stringify(history)).digest("hex") }));
   } catch (error) {
-    await writeFile(path.join(root, `phase-${phase}.json`), JSON.stringify({ phase, status: "failed", diagnostic: sanitizeOperationalError(error) }));
+    await writeFile(path.join(root, `phase-${phase}.json`), JSON.stringify({ phase, status: "failed", evidence: resultEvidence ?? evidence.snapshot(), diagnostic: sanitizeOperationalError(error) }));
     process.exitCode = 1;
   } finally { await harness?.close(); }
 } else {
@@ -107,6 +113,7 @@ if (process.argv[2] === "--child") {
           break;
         }
         phases.push(JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8")));
+        if (phases.at(-1)?.status !== "passed") break;
       }
       rows.push({ provider, model, status: phases.length === objectives.length && phases.every(item => item.status === "passed") ? "passed" : "failed",
         processStarts: phases.length, elapsedMs: Date.now() - started, phases });

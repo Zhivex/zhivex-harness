@@ -18,6 +18,7 @@ import { decodeProjectMemory, projectMemoryRecordKey } from "./project-memory.js
 import type { SqliteAccessLease } from "./sqlite-access.js";
 import { validateStateDirectory } from "./state-directory.js";
 import { validateRecordedWorkspace } from "./recorded-workspace.js";
+import { sdkCanonicalKey, sdkLegacyKey, sdkRunKeyMatches } from "./sdk-store-identity.js";
 
 export const HARNESS_STATE_BACKUP_SCHEMA_VERSION = 1 as const;
 export const HARNESS_STATE_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
@@ -75,6 +76,13 @@ const memoryRecordSchema = z.object({
   messages: z.array(z.unknown()),
   updatedAt: z.number().int().nonnegative()
 }).strict();
+
+const serializedMemory = (entry: z.infer<typeof memoryRecordSchema>) => JSON.stringify(entry.key.startsWith("agent-memory:v2:")
+  ? { schemaVersion: 1, memoryKey: entry.key, messages: entry.messages } : entry.messages);
+
+const memoryKeysForRuns = (config: HarnessConfig, runs: readonly { state: { runId?: unknown; agentId?: unknown } }[]) =>
+  new Set(runs.flatMap(({ state }) => [...new Set([state.runId, state.agentId].filter((id): id is string => typeof id === "string"))]
+    .flatMap(id => [sdkLegacyKey(config.scope, id), sdkCanonicalKey("agent-memory", config.scope, id)])));
 const sessionRecordSchema = z.object({
   sessionId: z.string().min(1).max(260),
   workspaceKey: bindingKeySchema,
@@ -185,8 +193,6 @@ const stateMatchesScope = (config: HarnessConfig, state: unknown) => {
     (scope.namespace ?? undefined) === (config.scope.namespace ?? undefined);
 };
 
-const budgetScopePrefix = (config: HarnessConfig) =>
-  `__zhivex_budget__:${encodeURIComponent(config.scope.tenantId)}:${encodeURIComponent(config.scope.userId ?? "*")}:`;
 const coordinatorIds = (runs: readonly { state: unknown }[]) => new Set(runs.flatMap(({ state }) => {
   const id = (state as { budgetCoordinatorId?: unknown }).budgetCoordinatorId;
   return typeof id === "string" ? [id] : [];
@@ -197,7 +203,7 @@ const validateBudgetLedger = (config: HarnessConfig, run: z.infer<typeof runReco
   if (state.scope?.namespace !== "__zhivex_budget__" || state.scope?.tenantId !== config.scope.tenantId ||
     (state.scope?.userId ?? undefined) !== (config.scope.userId ?? undefined) || state.provider !== "zhivex" || state.modelId !== "budget-coordinator" ||
     state.metadata?.budgetCoordinator !== true || typeof identity !== "string" || !identities.has(identity) ||
-    !/^budget_[a-f0-9]{64}$/.test(state.runId) || run.key !== `${budgetScopePrefix(config)}${state.runId}`) {
+    !/^budget_[a-f0-9]{64}$/.test(state.runId) || !sdkRunKeyMatches(run.key, state.scope, state.runId)) {
     throw new HarnessStateConflictError("Budget ledger is not bound to an exported run and durable scope.");
   }
   assertTerminalState(state, `Budget ledger ${run.key}`);
@@ -412,15 +418,18 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
     ).all().filter((row) => runKeys.has(row.run_id) && runKeys.has(row.parent_run_id)).map((row) => ({
       runKey: row.run_id, parentRunKey: row.parent_run_id, updatedAt: row.updated_at_ms
     }));
-    const memoryKeys = new Set(runs.map((run) => `${binding.scopePrefix}${String(run.state.runId)}`));
+    const memoryKeys = memoryKeysForRuns(config, runs);
     memoryKeys.add(projectMemoryRecordKey(binding));
     const memory = database.query<MemoryRow, []>(
       "SELECT memory_key, messages_json, updated_at_ms FROM zhivex_agent_memory ORDER BY memory_key"
-    ).all().filter((row) => memoryKeys.has(row.memory_key)).map((row) => ({
-      key: row.memory_key,
-      messages: z.array(z.unknown()).parse(JSON.parse(row.messages_json)),
-      updatedAt: row.updated_at_ms
-    }));
+    ).all().filter((row) => memoryKeys.has(row.memory_key)).map((row) => {
+      const value: unknown = JSON.parse(row.messages_json);
+      if (row.memory_key.startsWith("agent-memory:v2:")) {
+        const envelope = z.strictObject({ schemaVersion: z.literal(1), memoryKey: z.literal(row.memory_key), messages: z.array(z.unknown()) }).parse(value);
+        return { key: row.memory_key, messages: envelope.messages, updatedAt: row.updated_at_ms };
+      }
+      return { key: row.memory_key, messages: z.array(z.unknown()).parse(value), updatedAt: row.updated_at_ms };
+    });
     const sessionRows = database.query<SessionRow, []>(
       "SELECT * FROM zhivex_cli_sessions ORDER BY session_id"
     ).all().filter((row) => row.workspace_key === binding.workspaceKey && row.scope_key === binding.scopeKey);
@@ -609,7 +618,7 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
       throw new HarnessStateConflictError(`Run ${run.key} is bound to another durable scope.`);
     }
     runIds.add(state.runId);
-    if (run.key !== `${expected.scopePrefix}${state.runId}`) {
+    if (!sdkRunKeyMatches(run.key, config.scope, state.runId)) {
       throw new HarnessStateConflictError(`Run ${run.key} does not match its bound scope and runId.`);
     }
   }
@@ -627,7 +636,7 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
     const journalKey = `${entry.runKey}\u0000${entry.toolCallId}`;
     if (journalKeys.has(journalKey) || !runKeys.has(entry.runKey) ||
       !stateMatchesScope(config, entry.entry) ||
-      entry.entry.runId !== entry.runKey.slice(expected.scopePrefix.length)) {
+      entry.entry.runId !== bundle.records.runs.find(run => run.key === entry.runKey)?.state.runId) {
       throw new HarnessStateConflictError(`Tool journal ${entry.toolCallId} is not bound to an imported run.`);
     }
     journalKeys.add(journalKey);
@@ -639,7 +648,7 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
     }
     idempotencyKeys.add(entry.key);
     const state = bundle.records.runs.find((run) => run.key === entry.runKey)!.state;
-    if (typeof state.idempotencyKey !== "string" || entry.key !== `${expected.scopePrefix}${state.idempotencyKey}`) {
+    if (typeof state.idempotencyKey !== "string" || !sdkRunKeyMatches(entry.key, config.scope, state.idempotencyKey)) {
       throw new HarnessStateConflictError("Idempotency record does not match its bound run state.");
     }
   }
@@ -651,13 +660,11 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
     parentKeys.add(entry.runKey);
   }
   const memoryKeys = new Set<string>();
+  const allowedMemoryKeys = memoryKeysForRuns(config, bundle.records.runs);
   for (const entry of bundle.records.memory) {
-    const memoryRunId = entry.key.startsWith(expected.scopePrefix)
-      ? entry.key.slice(expected.scopePrefix.length)
-      : "";
     const projectRecord = entry.key === projectMemoryRecordKey(expected);
     if (projectRecord) decodeProjectMemory(entry.messages, expected);
-    if (memoryKeys.has(entry.key) || (!projectRecord && !runIds.has(memoryRunId))) {
+    if (memoryKeys.has(entry.key) || (!projectRecord && !allowedMemoryKeys.has(entry.key))) {
       throw new HarnessStateConflictError(`Memory record ${entry.key} is not bound to an imported run.`);
     }
     memoryKeys.add(entry.key);
@@ -848,8 +855,8 @@ export const importHarnessStateBackup = async (
         ? database.query<MemoryRow, []>(
             "SELECT memory_key, messages_json, updated_at_ms FROM zhivex_agent_memory"
           ).all().filter((row) => row.memory_key === projectMemoryRecordKey(bundle.binding) || destinationRunRows.some((run) => {
-            const state = JSON.parse(run.state_json) as { runId?: unknown };
-            return row.memory_key === `${bundle.binding.scopePrefix}${String(state.runId)}`;
+            const state = JSON.parse(run.state_json) as Record<string, unknown>;
+            return memoryKeysForRuns(config, [{ state }]).has(row.memory_key);
           })).map((row) => row.memory_key)
         : []),
       sessions: destinationSessionIds,
@@ -907,9 +914,9 @@ export const importHarnessStateBackup = async (
     );
     for (const entry of bundle.records.memory) insertOrCompare(
       "zhivex_agent_memory", "memory_key = ?", [entry.key], "messages_json, updated_at_ms",
-      [JSON.stringify(entry.messages), entry.updatedAt],
+      [serializedMemory(entry), entry.updatedAt],
       "INSERT INTO zhivex_agent_memory (memory_key, messages_json, updated_at_ms) VALUES (?, ?, ?)",
-      [entry.key, JSON.stringify(entry.messages), entry.updatedAt]
+      [entry.key, serializedMemory(entry), entry.updatedAt]
     );
     for (const session of bundle.records.sessions) insertOrCompare(
       "zhivex_cli_sessions", "session_id = ?", [session.sessionId],

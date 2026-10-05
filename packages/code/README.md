@@ -1,7 +1,7 @@
 # Zhivex Code
 
 The terminal and local browser product for the Zhivex Harness engine. This checkout prepares
-`0.3.0-rc.3`, pinned exactly to `@zhivex-ai/harness@1.4.0-rc.3`, for npm `next`.
+`0.3.0-rc.4`, pinned exactly to `@zhivex-ai/harness@1.4.0-rc.4`, for npm `next`.
 RC.3 publication is pending; npm `next` currently points to Code `0.3.0-rc.1` with Harness `1.4.0-rc.1`. npm `latest` remains `0.2.0`, pinned to Harness `1.3.0`.
 
 Install stable with `npm install -g @zhivex-ai/code@0.2.0`.
@@ -44,7 +44,7 @@ then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contrib
 command links the built root package into Code's ignored `node_modules`, validates
 its public export artifacts and preserves any installed dependency. It does not run
 as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest is now `1.4.0-rc.3`; this link is local API development
+The root manifest is now `1.4.0-rc.4`; this link is local API development
 evidence only. Installed acceptance must test the exact Harness version pinned by
 Code, without rewriting its version.
 
@@ -87,15 +87,15 @@ host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
 ## Release status
 
 Packing and local tests are not a registry release. The independent Code workflow
-validates an annotated `code-v0.3.0-rc.3` tag on reviewed main, its exact CI/CodeQL
+validates an annotated `code-v0.3.0-rc.4` tag on reviewed main, its exact CI/CodeQL
 and installed-journey/web results, and the published engine dependency. It tests one immutable Code tarball
 both without dependency overrides and with the four package managers.
 
-The prepared RC 0.3.0-rc.3 uses the existing npm Trusted Publishing configuration and protected
+The prepared RC 0.3.0-rc.4 uses the existing npm Trusted Publishing configuration and protected
 `npm` environment. Historical first-publication bootstrap is documented separately. See
 [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
 Code `0.2.0` is published on `latest`; Code `0.3.0-rc.1` is published on `next`.
-The prepared `0.3.0-rc.3` remains unpublished. Stable acceptance used the published Harness `1.3.0` dependency. The local
+The prepared `0.3.0-rc.4` remains unpublished. Stable acceptance used the published Harness `1.3.0` dependency. The local
 four-manager matrix covers both install orders; it does not certify other engine
 versions, upstream provider parity or registry provenance. Beta/experimental
 engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.
@@ -183,7 +183,7 @@ To test an already retained artifact without repacking, run
 the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
 Release validation uses this mode on the same bytes that will be published.
 
-Experimental project memory in this RC uses `zhivex-code memory --help` and Harness 1.4.0-rc.3. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This candidate is not yet published.
+Experimental project memory in this RC uses `zhivex-code memory --help` and Harness 1.4.0-rc.4. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This candidate is not yet published.
 
 ## Local browser workspace (experimental)
 

@@ -2,16 +2,17 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { continuityGateOutcome } from '../scripts/live-continuity-contract.js';
+import { createContinuityEvidence, continuityGateOutcome } from '../scripts/live-continuity-contract.js';
 
 test('continuity JSON reaches the release wrapper with provider, phase and failed checks', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'harness-continuity-gate-'));
   try {
     const out = path.join(root, 'continuity.json');
+    const evidence = createContinuityEvidence().snapshot({outputText:'PRIVATE_MODEL_TEXT',usage:{inputTokens:1679,outputTokens:830,reasoningTokens:790}});
     const envelope = { ok: false, providers: [
       continuityGateOutcome({provider:'meta',status:'passed'}),
       continuityGateOutcome({provider:'qwen',status:'failed',phases:[
-        {phase:2,status:'failed',checks:{codename:false,objective:true},message:'PRIVATE_MODEL_TEXT'}
+        {phase:2,status:'failed',checks:{codename:false,objective:true},message:'PRIVATE_MODEL_TEXT',evidence}
       ]})
     ] };
     const child = Bun.spawn([process.execPath, 'run', 'scripts/run-release-gate.ts', '--gate', 'continuity', '--out', out,
@@ -28,7 +29,7 @@ test('continuity JSON reaches the release wrapper with provider, phase and faile
     expect(diagnostic.status).toBe('failed');
     expect(diagnostic.outcomes[0]).toEqual({provider:'meta',status:'passed'});
     expect(diagnostic.outcomes[1]).toMatchObject({provider:'qwen',status:'failed'});
-    expect(diagnostic.outcomes[1].error.details.chain[0]).toEqual({checkpoint:'continuity_phase',continuity:{phase:2,failedChecks:['codename']}});
+    expect(diagnostic.outcomes[1].error.details.chain[0]).toEqual({checkpoint:'continuity_phase',continuity:{phase:2,failedChecks:['codename'],evidence}});
     expect(`${stdout}${stderr}${persisted}`).not.toContain('PRIVATE_');
   } finally { await rm(root, {recursive:true,force:true}); }
 });
