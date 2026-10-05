@@ -210,7 +210,7 @@
     "@zhivex-ai/core": "1.28.0",
     "@zhivex-ai/gemini": "0.13.0",
     "@zhivex-ai/meta": "0.2.9",
-    "@zhivex-ai/openai": "0.13.7",
+    "@zhivex-ai/openai": "0.14.0",
     "@zhivex-ai/qwen": "0.16.3",
     "@zhivex-ai/vertex": "1.2.2",
     "google-auth-library": "11.1.0",
