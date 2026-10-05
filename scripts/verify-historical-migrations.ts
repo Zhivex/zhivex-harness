@@ -172,10 +172,16 @@ const verifyHistoricalDatabase = async (
     assert.equal(paused?.status, "waiting_approval");
     assert.equal(paused?.harness?.version, fixture.provenance.version);
     assert.equal((await persistence.store.listToolCalls?.("published-child", config.scope))?.length, 1);
-    assert.deepEqual(await persistence.memory.load?.({
+    await assert.rejects(async () => persistence.memory.load?.({
       runId: "published-parent",
       scope: config.scope
-    }), fixture.memory);
+    }), /Legacy agent memory has no verifiable identity/);
+    // Verify the trusted fixture's bytes remain intact; the runtime must not
+    // guess ownership or silently promote unverified legacy memory.
+    const memoryDatabase = new DatabaseSync(databasePath);
+    const legacyMemory = memoryDatabase.prepare("SELECT messages_json FROM zhivex_agent_memory").all();
+    assert(legacyMemory.some(row => JSON.stringify(JSON.parse(String(row.messages_json))) === JSON.stringify(fixture.memory)));
+    memoryDatabase.close();
     const inspection = await inspectHarnessRun(persistence.store, config, "published-child");
     assert(!JSON.stringify(inspection).includes("abcdefgh12345678"));
     persistence.close();

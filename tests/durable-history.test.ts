@@ -32,7 +32,7 @@ test("long harness run survives compaction, reopen and a portable backup", async
     expect(result.state.compactions!.length).toBeGreaterThan(30);
     expect(harness.store.checkpointBytes!(result.state)).toBeLessThan(250_000);
     const db = new SqliteDatabase(path.join(harness.config.stateDirectory, HARNESS_SQLITE_FILE));
-    const stored = db.query<{ state_json: string }>("SELECT state_json FROM zhivex_agent_runs WHERE run_id LIKE ?").get(`%${result.state.runId}`)!;
+    const stored = db.query<{ state_json: string }>("SELECT state_json FROM zhivex_agent_runs WHERE json_extract(state_json, '$.runId') = ?").get(result.state.runId)!;
     expect(Buffer.byteLength(stored.state_json)).toBeLessThan(250_000);
     console.info("Durable history regression:", { reads: count, compactions: result.state.compactions!.length,
       hydratedBytes: Buffer.byteLength(JSON.stringify(result.state)), checkpointBytes: Buffer.byteLength(stored.state_json) });

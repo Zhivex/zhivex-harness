@@ -8,7 +8,7 @@ export const settleInterruptedRun = async (
 ): Promise<AgentRunOutput | undefined> => {
   const previous = await store.load(runId, scope);
   // Never overwrite successful work, a real timeout, or an unresolved approval.
-  if (!previous || previous.status !== "failed") return undefined;
+  if (!previous || (previous.status !== "failed" && !(kind === "cancelled" && previous.status === "cancel_requested"))) return undefined;
   const { error: _error, cancelledAt: _cancelledAt, cancellationReason: _reason, ...rest } = previous;
   const now = Date.now();
   const revision = previous.revision ?? 0;

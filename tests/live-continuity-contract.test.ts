@@ -1,5 +1,5 @@
 import {expect,test} from 'bun:test';
-import {continuityGateOutcome, selectContinuityProviders} from '../scripts/live-continuity-contract.js';
+import {createContinuityEvidence, continuityGateOutcome, selectContinuityProviders} from '../scripts/live-continuity-contract.js';
 import { HarnessProviderError } from '../src/runtime/errors.js';
 import { diagnosticFingerprint, sanitizeOperationalError } from '../scripts/release-diagnostics.js';
 const providers=['openai','qwen','meta','gemini','anthropic','vertex'];
@@ -27,4 +27,28 @@ test('continuity projects failed checks and provider causes without retaining ra
 });
 test('continuity rejects empty or unavailable selection against artifact capabilities',()=>{
  for(const value of ['',',','unknown','vertex'])expect(()=>selectContinuityProviders({ZHIVEX_HARNESS_LIVE_PROVIDERS:value},['openai','qwen','meta'])).toThrow();
+});
+
+test('continuity evidence distinguishes response shapes and preserves usage without provider strings', () => {
+ const secret = 'PRIVATE_STREAM_OR_KEY';
+ const recorder = createContinuityEvidence();
+ recorder.observe({type:'text-delta',textDelta:secret});
+ recorder.observe({type:'provider-data',provider:'meta',data:{secret}});
+ recorder.observe({type:'finish',finishReason:'length',usage:{inputTokens:1679,outputTokens:830,reasoningTokens:790,totalTokens:2509}});
+ recorder.observe({type:'error',error:new Error(secret)});
+ const interrupted = recorder.snapshot();
+ expect(interrupted).toMatchObject({answerShape:'unavailable',textEvents:1,textBytes:Buffer.byteLength(secret),finishEvents:1,errorEvents:1,finishReason:'length',reasoningTokens:790,totalTokens:2509});
+ expect(interrupted.responseSha256).toBeUndefined();
+ const evidence = recorder.snapshot({outputText:JSON.stringify({codename:secret,[secret]:secret}),finishReason:secret});
+ expect(evidence).toMatchObject({answerShape:'object',knownFields:['codename'],extraFieldCount:1,finishReason:'other'});
+ expect(evidence.responseSha256).toMatch(/^[a-f0-9]{64}$/);
+ const projected = continuityGateOutcome({provider:'meta',status:'failed',phases:[{phase:2,status:'failed',checks:{codename:false},evidence}]});
+ expect(projected.error!.details!.chain[0]?.continuity?.evidence).toEqual(evidence);
+ expect(JSON.stringify({interrupted,evidence,projected})).not.toContain(secret);
+ for (const [outputText,answerShape] of [['{','invalid_json'],['null','null'],['[]','array'],['"text"','primitive'],['{}','object']] as const) {
+  expect(recorder.snapshot({outputText:outputText!}).answerShape).toBe(answerShape!);
+ }
+ expect(recorder.snapshot({outputText:'{}',usage:{inputTokens:-1,outputTokens:NaN}})).toMatchObject({inputTokens:null,outputTokens:null,reasoningTokens:null,totalTokens:null});
+ const malformed = {...evidence,responseSha256:secret};
+ expect(continuityGateOutcome({provider:'meta',status:'failed',phases:[{phase:2,status:'failed',evidence:malformed}]}).error!.details!.chain[0]?.continuity?.evidence).toBeUndefined();
 });

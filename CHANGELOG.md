@@ -4,13 +4,18 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.4.0-rc.4 - 2026-10-05
+
+- Integrate published Core 1.30.1, Agents 1.10.3, Anthropic 0.13.2, OpenAI 0.14.1, Qwen 0.16.4 and Vertex 1.2.4. Keep Meta 0.2.9 and Gemini 0.13.0; align Code and browser contributor pins and retain a single Core runtime in Harness.
+- Prepare matched Harness 1.4.0-rc.4 and Code 0.3.0-rc.4 for npm `next`, with an exact engine pin, Desktop binding and a new representative mapping using unchanged models. Retain immutable RC.2/RC.3 evidence and all protected gates.
+- Preserve Core 1.30.1 canonical identities and memory envelopes through backup/import, retaining verified legacy runs and rejecting mismatched identities. Finalize cooperative cancellation after the worker drains so session reads do not strand at `cancel_requested`.
+- Record bounded continuity response shape, streamed event counts and usage for the next failed phase without retaining provider text. This does not identify or resolve the historical RC.3 Meta cause.
 
 - Extend experimental task acceptance to bounded native reviewed edits and declared package-script checks, tying receipts to selected/protected file digests and the manifest. Block other effect tools and delegation for native task runs. Preserve the separate SDK run status and pending human review.
-- Add a redacted recorded-check projection to beta run-result JSON and experimental Code host helpers. No stable declaration snapshot, state schema or release identity changes.
-- Pin Meta SDK 0.2.9 to retain reported Responses reasoning usage as a subset of output tokens, without changing Core or other provider pins.
+- Add a redacted recorded-check projection to beta run-result JSON and experimental Code host helpers. Stable declaration snapshots and Harness run/session/backup schemas are unchanged.
+- Carry forward Meta SDK 0.2.9 reasoning usage as a subset of output tokens, without adding it again to totals.
 
-Migration: runs without a task contract are unchanged. Native task contracts now enforce their edit/check tool scope and may report `pending_review`/`verified` when their watched-file requirements pass; they do not receive OCI sandbox, whole-snapshot or import guarantees. Check evidence remains invalid after watched-file drift or uncertain journal recovery.
+Migration: stop all workers sharing an SDK store and upgrade them together, keeping a complete backup. Core 1.30.1 uses canonical identities for new runs; verified legacy runs retain their physical keys. Older workers cannot resolve new identities. Legacy default SDK memory without verified ownership requires explicit offline migration; do not rewrite IDs/scopes to bypass validation. See [SDK store migration](https://github.com/Zhivex/zhivex-ai-sdk/blob/4a93004395a80c183b1257bb1d02fb3a3d4050e1/docs/maintainers/AGENT_STORE_MIGRATION.md). Runs without a task contract retain their behavior. Native task contracts now enforce their edit/check tool scope and may report `pending_review`/`verified` when their watched-file requirements pass; they do not receive OCI sandbox, whole-snapshot or import guarantees. Check evidence remains invalid after watched-file drift or uncertain journal recovery.
 
 ## 1.4.0-rc.3 - 2026-10-04
 

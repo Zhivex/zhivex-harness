@@ -151,6 +151,8 @@ describe("WAL-safe logical state backup", () => {
     expect(bundle.records.parents).toHaveLength(1);
     expect(bundle.records.toolJournal).toHaveLength(1);
     expect(bundle.records.memory).toHaveLength(1);
+    expect(bundle.records.runs.every(run => run.key.startsWith("agent-run:v2:"))).toBe(true);
+    expect(bundle.records.memory[0]!.key).toMatch(/^agent-memory:v2:[a-f0-9]{64}$/);
     expect(bundle.records.sessionRuns).toHaveLength(2);
     expect(JSON.stringify(bundle)).not.toContain("leases");
 
@@ -166,7 +168,15 @@ describe("WAL-safe logical state backup", () => {
     expect(await restored.store.load(parent.runId, target.scope)).toMatchObject({ runId: parent.runId });
     expect(await restored.store.load(child.runId, target.scope)).toMatchObject({ parentRunId: parent.runId });
     expect(await restored.store.listToolCalls?.(child.runId, target.scope)).toHaveLength(1);
+    expect(JSON.stringify(await restored.memory.load({ runId: parent.runId, scope: target.scope }))).toBe(JSON.stringify(bundle.records.memory[0]!.messages));
     restored.close();
+
+    const mismatchedMemory = withChecksum({ ...bundle, records: { ...bundle.records,
+      memory: bundle.records.memory.map(entry => ({ ...entry, key: `agent-memory:v2:${"0".repeat(64)}` })) } });
+    await expect(importHarnessStateBackup(target, mismatchedMemory)).rejects.toThrow("not bound to an imported run");
+    const mismatchedRun = withChecksum({ ...bundle, records: { ...bundle.records,
+      runs: bundle.records.runs.map((run, index) => index === 0 ? { ...run, key: `agent-run:v2:${"0".repeat(64)}` } : run) } });
+    await expect(importHarnessStateBackup(target, mismatchedRun)).rejects.toThrow("does not match its bound scope and runId");
     const restoredSessions = await openCliSessionStore({
       workspace: target.workspace,
       stateDirectory: target.stateDirectory,

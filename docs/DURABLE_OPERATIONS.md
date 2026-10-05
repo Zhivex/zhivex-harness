@@ -70,7 +70,22 @@ Loading a run reconstructs its complete state for compatibility with approvals, 
 
 Logical backups contain hydrated history rather than database references, so restoration does not require the original artifact tables. Exports up to 64 MiB retain the legacy JSON format; larger exports use the versioned `ZHIVEX-STATE-SEGMENTS-1` transport with bounded frames, including split strings. RC13 reads both formats and verifies the same logical checksum before import. Older versions cannot read segmented exports. File I/O and checksum serialization are incremental; the public backup/import APIs still hydrate the complete logical bundle in memory. Segmented files have no aggregate 64 MiB ceiling. A state-limit failure records a bounded terminal diagnostic on the last durable checkpoint; the unsaved payload is not claimed as preserved. Use `/status` to inspect the failed run before `/continue`. Recovery retains tool journal receipts and never re-executes an operation itself.
 
-Incremental SQLite history uses the published Core 1.26.0 and Agents 1.10.1 packages. No local dependency patch is required. Install this checkout with `bun install --frozen-lockfile`.
+The current candidate pins Core 1.30.1 and Agents 1.10.3. Stop all workers sharing
+an SDK store and upgrade them together with a complete backup. Verified legacy
+run identities remain at their physical keys; new runs use canonical keys that
+distinguish omitted user/namespace fields from literal `*`/`default` values.
+Older workers cannot resolve new keys. Default legacy SDK memory arrays have no
+verified owner and require [explicit offline migration](https://github.com/Zhivex/zhivex-ai-sdk/blob/4a93004395a80c183b1257bb1d02fb3a3d4050e1/docs/maintainers/AGENT_STORE_MIGRATION.md)
+into a new store. Harness does not guess ownership or automatically promote them.
+Project memory remains separate.
+
+Logical backups preserve canonical run, journal, idempotency and SDK memory
+identities alongside verified legacy rows. Canonical SDK memory keys bind
+restoration to the SDK identity envelope; import validates each key against the
+bound scope and retained run/agent identity.
+The backup schema version remains 1, and legacy bundles remain readable. Restore
+new candidate backups with this candidate or newer compatible readers; keep a
+complete pre-upgrade backup and the original artifact for downgrade.
 
 ## Provider handoff safety
 
