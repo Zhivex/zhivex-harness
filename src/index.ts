@@ -500,3 +500,5 @@ export { serveAcpStdio } from "./client/acp-stdio.js";
 export { openWorkspaceCheckpointStore } from "./persistence/workspace-checkpoints.js";
 export type { WorkspaceCheckpoint, WorkspaceRestoreOperation } from "./persistence/workspace-checkpoints.js";
 export type { HarnessMcpResourceClient } from "./integrations/mcp.js";
+
+export type { HarnessSharedBudgetOptions } from "./runtime/shared-budget.js";

@@ -451,3 +451,62 @@ unchanged; the model must issue a corrected request, and edits still require
 current read evidence and approval.
 
 Project memory is a separate kind of explicit operator context in the existing durable memory table. It is projected per request as untrusted data, with revision-based review and hard byte/entry budgets. It does not become project instructions or skills. See [Project memory](PROJECT_MEMORY.md).
+
+### Semantic compaction with bounded subagents
+
+When semantic compaction and subagents are enabled without a shared budget
+coordinator, Harness uses serial tool execution. This follows the SDK's supported
+combination and retains its rejection of paid compaction with uncoordinated
+parallel children. Callers cannot enable that incompatible combination by setting
+`toolExecution.parallel` alone. Other runs retain their existing scheduling.
+
+Applications can opt in to a shared token pool through the Beta
+`HarnessRunOptions.sharedBudget` option:
+
+```ts
+const result = await runHarness(harness, {
+  runId: "bounded-inspection-42",
+  prompt: "Inspect and review the API boundary."
+}, {
+  sharedBudget: {
+    modelReservation: {
+      inputTokens: 20000, outputTokens: 1000, totalTokens: 21000
+    },
+    childModelReservation: {
+      inputTokens: 10000, outputTokens: 1000, totalTokens: 11000
+    }
+  }
+});
+```
+
+These example reservations are host-owned conservative bounds for each request,
+not recommended limits for every model or task. Choose them for the admitted
+route and context. The SDK coordinator reuses the configured parent input,
+output and total ceilings, atomically admitting primary calls, child lifetime
+allocations and auxiliary compaction. Each child has an SDK subpool inside its
+parent allocation. There is no second Harness token ledger. A child allocation
+that cannot fit fails before its model dispatch; unused or unknown consumption
+is not converted into a fresh allowance. An individual model request is capped
+at the reserved output, and an estimated input request above its reservation is
+rejected before transport. The estimator is not a provider tokenizer or a billing
+guarantee; actual over-reservation receipts are recorded and rejected by the SDK
+before tool execution. Unknown receipts keep their allocation held.
+
+Child allocations must satisfy the SDK's component-sum contract. Under the
+existing default child ceilings (30000 input, 8000 output, 36000 total), shared
+execution narrows the input allocation to 28000. It preserves the 36000 total
+and 8000 output authorization; it never increases the total to 38000. The narrowed
+budget is visible in the child runtime manifest. Legacy execution retains its
+configured child ceilings.
+
+The option requires finite token limits and uses the Harness scope. A resumed
+run must use its original reservation policy and complete SDK budget ledger;
+changing the policy, opting an existing legacy run into a fresh pool or restoring
+only a run snapshot fails closed. Supply the same option on approval resumes.
+The SDK also prevents resuming a bound run without its coordinator. Unknown
+compaction or reservation consumption still requires operational reconciliation;
+this tranche does not add a reconciliation API or clear reservations automatically.
+Qwen routes are excluded from this option until an output-cap route is certified.
+It does not add a service/wire-protocol field or enable this token pool for
+application-owned review groups. Monetary accounting and its existing output
+clamp remain separate. No provider calls are required by the regression suite.
