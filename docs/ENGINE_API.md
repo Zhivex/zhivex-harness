@@ -270,12 +270,22 @@ or changing the snapshot invalidates verification. Recovery reconciles check
 receipts against the durable tool journal; ambiguous or interrupted effects are
 not replayed automatically.
 
+For native execution, acceptance limits reviewed edit tools to the declared exact
+write paths and `run_check` to the declared package scripts. Other effect tools
+and delegation are unsupported for native task contracts. Host-observed receipts
+bind selected/protected file digests and `package.json` before/after each check;
+subsequent changes invalidate them. Native scripts run on the host: this is not
+an OCI sandbox, a complete repository snapshot, or an isolated import transaction.
+The experimental Code helpers `resolvePackageCheckCommand`, `nativeTaskSnapshot`,
+`TASK_ACCEPTANCE_EVIDENCE_KEY` and `checkEvidence` support this bounded host workflow.
+
 The host-owned `zhivexTaskAcceptanceEvidenceV1` metadata adds acceptance outcomes
 without changing SDK run statuses or `ChangeEnvelope` v1. Active work is `pending`;
 terminal work without sufficient delivery evidence is `incomplete`; failed runs
 or scope violations are `failed`. A completed run with a normal stop becomes
-`verified` only after a confirmed import and a final inspection of delivered host
-files and snapshot bytes. Required human review produces `pending_review` instead.
+`verified` only after required checks and a final inspection of delivered host
+files: a confirmed import/full snapshot for OCI, or the watched-file snapshot for
+native execution. Required human review produces `pending_review` instead.
 Model prose cannot supply this evidence. The `none` backend does not receive OCI
 acceptance guarantees. Recovered import metadata is diagnostic evidence only until
 its delivery can be confirmed; it cannot alone restore a verified outcome.

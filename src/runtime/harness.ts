@@ -21,6 +21,7 @@ import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY, ASSI
 import { bindTaskAcceptanceHost, withTaskAcceptanceRun } from './task-acceptance-host.js';
 import { taskAcceptanceCheckpointStore, type TaskAcceptanceLedger } from './task-acceptance-record.js';
 import type { TaskAcceptanceContract } from './task-acceptance.js';
+import { nativeTaskTools } from './task-acceptance-native.js';
 import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources, compactedAssistantResponses } from "../context/compaction.js";
 import { createAdaptiveCompaction, estimateMessages } from "../context/adaptive-compaction.js";
 import { createSemanticCompactor, createSemanticSourceProvenance, SEMANTIC_COMPACTION_VERSION, SEMANTIC_COMPACTION_INPUT_RESERVATION, SEMANTIC_COMPACTION_OUTPUT_RESERVATION } from "../context/semantic-compaction.js";
@@ -1289,7 +1290,7 @@ const runHarnessInternal = async (
     return (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part =>
       part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
   });
-  const runtimeTools = contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {});
+  const runtimeTools = nativeTaskTools(contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {}));
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
     tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware,

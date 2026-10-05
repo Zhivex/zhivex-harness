@@ -16,6 +16,7 @@
     "dist",
     "examples/first-use.mjs",
     "examples/offline-provider.mjs",
+    "docs",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

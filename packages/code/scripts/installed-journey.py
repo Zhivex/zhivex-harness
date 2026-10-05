@@ -218,6 +218,45 @@ try:
     console = None
     import shutil
     shutil.rmtree(other)
+
+    # Guided delivery: actual installed CLI, synthetic model, real Git/edit/check/state.
+    guided = pathlib.Path(tempfile.mkdtemp(prefix="code-guided-task-"))
+    console = Console(guided)
+    console.prompt()
+    (guided / ".gitignore").write_text(".zhivex-harness/\n.tutorial*\n")
+    for args in (["init"], ["add", "."], ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "-m", "baseline"]):
+        subprocess.run(["git", *args], cwd=guided, env=env, check=True, capture_output=True)
+    draft = console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"]}')
+    assert "Task draft" in draft and "Baseline inspected" in draft
+    console.send("Fix greeting\n")
+    console.read("Permission required")
+    console.permission("Allow once")
+    console.read("Run check: test")
+    console.read("Permission required")
+    console.permission("Allow once")
+    delivered = console.prompt()
+    assert "task evidence: pending_review" in delivered and "test: exit 0" in delivered
+    console.send("/task keep\n")
+    console.read("Type keep")
+    console.send("keep\n")
+    console.prompt()
+    console.close()
+    console = Console(guided)
+    reopened = console.prompt()
+    assert "Task: Fix greeting" in reopened and "Human decision: kept" in reopened
+    assert "Keep the named export" in reopened
+    (guided / "greeting.mjs").write_text('export const greeting = () => "external change";\n')
+    assert "STALE EVIDENCE" in console.command("/task review")
+    assert "stale" in console.command("/task keep")
+    console.send("/task revise Check greeting again; preserve the external change\n")
+    console.read("Run check: test")
+    console.read("Permission required")
+    console.permission("Allow once")
+    failed_task = console.prompt()
+    assert "task evidence: incomplete" in failed_task and "test: exit 1" in failed_task
+    console.close()
+    console = None
+    shutil.rmtree(guided)
     print("Installed Code PTY journeys passed (offline).")
 finally:
     if console:

@@ -1,5 +1,6 @@
 import { inspectRuntimeDiagnostics } from "@zhivex-ai/harness/code-support";
 import { formatUsageLedger } from "@zhivex-ai/harness/code-support";
+import { checkEvidence } from "@zhivex-ai/harness/code-support";
 import { resolveHarnessConfig } from "@zhivex-ai/harness/engine";
 import { cancelHarnessRun, cleanupHarnessRuns, inspectHarnessRun, listHarnessRuns, openHarnessPersistence } from "@zhivex-ai/harness/engine";
 import { validateStateDirectory } from "@zhivex-ai/harness/engine";
@@ -54,11 +55,13 @@ export const manageRuns = async (options: CliOptions) => {
         });
         break;
       case "inspect":
-        document = await inspectHarnessRun(persistence.store, config, options.runId!);
+        document = { ...await inspectHarnessRun(persistence.store, config, options.runId!),
+          verification: checkEvidence((await persistence.store.listToolCalls?.(options.runId!, config.scope) ?? []).filter(row => row.status === 'completed').map(row => ({toolName:row.toolName,output:row.output}))) };
         break;
       case "export": {
         const inspection = await inspectHarnessRun(persistence.store, config, options.runId!);
-        document = { ...inspection, kind: "run-export" as const };
+        document = { ...inspection, kind: "run-export" as const,
+          verification: checkEvidence((await persistence.store.listToolCalls?.(options.runId!, config.scope) ?? []).filter(row => row.status === 'completed').map(row => ({toolName:row.toolName,output:row.output}))) };
         break;
       }
       case "cancel":

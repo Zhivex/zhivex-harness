@@ -27,3 +27,7 @@ export { inspectRuntimeDiagnostics } from "../runtime/runtime-diagnostics.js";
 export { harnessToolExecution } from "../runtime/tool-execution.js";
 export { USAGE_LEDGER_KEY, formatUsageLedger, inspectUsageLedger, usagePricingSchema } from "../runtime/usage-ledger.js";
 export { FileChangedWhileReadingError, FileSizeLimitError, UnsafeFileTypeError, readRegularFileNoFollow } from "../workspace/file-security.js";
+export { resolvePackageCheckCommand } from "../execution/package-manager.js";
+export { nativeTaskSnapshot } from "../runtime/task-acceptance-native.js";
+export { TASK_ACCEPTANCE_EVIDENCE_KEY } from "../runtime/task-acceptance-record.js";
+export { checkEvidence } from "../client/check-evidence.js";

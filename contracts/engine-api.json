@@ -2715,6 +2715,26 @@
           "name": "readRegularFileNoFollow",
           "kind": "runtime",
           "tier": "experimental"
+        },
+        {
+          "name": "resolvePackageCheckCommand",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "nativeTaskSnapshot",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TASK_ACCEPTANCE_EVIDENCE_KEY",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "checkEvidence",
+          "kind": "runtime",
+          "tier": "experimental"
         }
       ]
     },

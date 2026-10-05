@@ -3,6 +3,7 @@ import { estimateAgentRunCost, type TokenPricing } from "@zhivex-ai/agents/ops";
 import { CLI_JSON_SCHEMA_VERSION } from "./stream.js";
 import { USAGE_LEDGER_KEY, inspectUsageLedger } from "../runtime/usage-ledger.js";
 import type { ZhivexHarness } from "../runtime/harness.js";
+import { checkEvidence } from './check-evidence.js';
 
 const costPricing = (harness: ZhivexHarness): TokenPricing | undefined => harness.config.costBudget
   ? {
@@ -22,6 +23,7 @@ export const runResultDocument = (result: AgentRunOutput, harness: ZhivexHarness
   output: result.outputText,
   steps: result.steps.length,
   toolCalls: result.toolResults.length,
+  verification: checkEvidence(result.toolResults),
   mutations: harness.workspace.mutationAudit(),
   pendingApprovals: result.state.pendingApprovals.map((approval) => ({
     id: approval.id,
