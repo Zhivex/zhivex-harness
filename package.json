@@ -220,7 +220,7 @@
     "@zhivex-ai/core": "1.28.0"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "1.5.1",
+    "@agentclientprotocol/sdk": "1.7.0",
     "@modelcontextprotocol/server": "2.2.0",
     "@types/bun": "1.4.2",
     "@types/node": "^26.6.3",
