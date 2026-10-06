@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
+import { mkdir } from "node:fs/promises";
 import type { ZhivexHarness } from "@zhivex-ai/harness/engine";
 import { harnessClientRequestSchema } from "@zhivex-ai/harness/protocol";
 import {
@@ -15,6 +16,12 @@ import {
 import { projectApprovalReview } from "../../../desktop/src/approval-review.js";
 import { ReviewTickets } from "../../../desktop/src/review-tickets.js";
 import type { WebModelChoice, WebModelSelection } from "./contracts.js";
+import { bundledModelCatalog, catalogModels } from "@zhivex-ai/harness/code-support";
+import { WebLimitStore } from "./limit-store.js";
+import { WebLimitMonitor } from "./limit-monitor.js";
+import type { LimitScope, LimitSettings } from "./limit-settings.js";
+import { validateStateDirectory } from "@zhivex-ai/harness/desktop/v1/state";
+import { hostConfigDigest } from "./host-config-digest.js";
 
 /** Server-owned workspace, identity, policy and provider. No browser configuration enters Harness. */
 export async function attachRuntime(
@@ -22,7 +29,23 @@ export async function attachRuntime(
   directory: string,
   recover: boolean,
   secrets: readonly string[] = [],
+  legacyPending = false,
 ) {
+  const limitDirectory = path.join(harness.config.stateDirectory, "web-limits");
+  await validateStateDirectory(harness.config.workspace, limitDirectory);
+  await mkdir(limitDirectory, { mode: 0o700 }).catch(error => { if (error.code !== "EEXIST") throw error; });
+  const limitStore = new WebLimitStore(limitDirectory, [harness.config.workspace, harness.config.scope]);
+  await limitStore.read();
+  const catalogPrice = catalogModels(bundledModelCatalog, harness.config.provider).find(model => model.id === harness.config.model)?.pricing;
+  const price = harness.config.costBudget ? {
+    inputPerMillion: harness.config.costBudget.inputCostPer1kTokens * 1000,
+    outputPerMillion: harness.config.costBudget.outputCostPer1kTokens * 1000,
+    source: "Host configuration",
+  } : catalogPrice ? { inputPerMillion: catalogPrice.inputPerMillionTokens, outputPerMillion: catalogPrice.outputPerMillionTokens,
+    ...(catalogPrice.maxInputTokens === undefined ? {} : { maxInputTokens: catalogPrice.maxInputTokens }),
+    source: `${catalogPrice.evidence.sourceUrl} (${catalogPrice.evidence.checkedAt})` } : null;
+  let cancelLimits: () => Promise<void> = async () => {};
+  const limitMonitor = new WebLimitMonitor(limitStore, () => cancelLimits(), price, Date.now, hostConfigDigest(harness.config));
   if (recover)
     try {
       await recoverHarnessLocalService(harness, directory);
@@ -32,7 +55,11 @@ export async function attachRuntime(
   const service = await startHarnessLocalService(harness, {
     directory,
     sensitiveValues: secrets,
+    onPrompt: (sessionId, runId) => limitMonitor.admitted(sessionId, runId),
+    onEvent: (sessionId, runId, event) => limitMonitor.event(sessionId, runId, event).catch(() => limitMonitor.failed(runId)),
+    onCheckpoint: (sessionId, runId, status) => limitMonitor.checkpoint(sessionId, runId, status).catch(() => limitMonitor.failed(runId)),
   });
+  cancelLimits = () => service.cancelActive();
   try {
     const credentials = await readHarnessLocalCredentials(
       service.credentialsPath,
@@ -67,6 +94,23 @@ export async function attachRuntime(
       },
       async command(value: Record<string, unknown>) {
         return redactor.response(await command(value));
+      },
+      async limits() {
+        return { workspaceKey: hello.projectId, legacyPending, preferences: await limitStore.read(), pricing: price,
+          host: { costUsd: harness.config.costBudget?.maxCostUsd ?? null, steps: harness.config.budget.unlimitedSteps ? null : harness.config.maxSteps, toolCalls: harness.config.budget.unlimitedToolCalls ? null : harness.config.budget.maxToolCalls,
+            tokens: harness.config.budget.unlimitedTokens ? null : harness.config.budget.maxTotalTokens,
+            durationMinutes: harness.config.unlimitedDuration ? null : harness.config.timeoutMs / 60_000 } };
+      },
+      async configureLimits(scope: LimitScope, settings: LimitSettings, expectedRevision: number) {
+        if (settings.costUsd.value !== null && !price) throw new Error("WEB_LIMIT_PRICING_UNAVAILABLE");
+        return limitStore.save(scope, settings, expectedRevision);
+      },
+      async runLimits(sessionId: string, runId: string) {
+        // The normal protocol read binds this run to the selected session/scope.
+        const receipt = await command({ method: "run.get", sessionId, runId });
+        if (!receipt.ok) throw new Error("WEB_LIMIT_RUN_INVALID");
+        const snapshot = limitMonitor.snapshot(runId) ?? await limitStore.readRun(runId);
+        return snapshot?.sessionId === sessionId ? snapshot : null;
       },
       async events(sessionId: string, after: number) {
         return redactor.redact(
@@ -109,11 +153,13 @@ export async function attachRuntime(
       },
       async close() {
         service.pauseAdmission();
+        await limitMonitor.close();
         await service.cancelActive();
         await service.close();
       },
     };
   } catch (e) {
+    await limitMonitor.close();
     await service.close();
     throw e;
   }

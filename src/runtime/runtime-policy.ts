@@ -7,16 +7,18 @@ import { harnessToolExecution } from "./tool-execution.js";
 
 /** Project stored settings into the active SDK policy without inactive ceilings. */
 export const effectiveRuntimeBudget = (budget: HarnessConfig["budget"]) => {
-  const { unlimitedTokens, maxInputTokens, maxOutputTokens, maxTotalTokens, ...nonTokenBudget } = budget;
-  return unlimitedTokens ? nonTokenBudget : { ...nonTokenBudget, maxInputTokens, maxOutputTokens, maxTotalTokens };
+  const { unlimitedTokens, unlimitedSteps, unlimitedToolCalls, maxSteps, maxToolCalls,
+    maxInputTokens, maxOutputTokens, maxTotalTokens, ...technicalBudget } = budget;
+  return { ...technicalBudget, ...(unlimitedSteps ? {} : { maxSteps }), ...(unlimitedToolCalls ? {} : { maxToolCalls }),
+    ...(unlimitedTokens ? {} : { maxInputTokens, maxOutputTokens, maxTotalTokens }) };
 };
 
 /** Main runs and children use identical durable guards. Token transport controls
  * remain separate for providers that cannot accept maxTokens. */
 export const createRuntimeBudget = (budget: HarnessConfig["budget"], transportTokens: boolean) => {
   const durable = createBudgetGuard(effectiveRuntimeBudget(budget));
-  const transport = transportTokens ? durable : createBudgetGuard({ maxSteps: budget.maxSteps,
-    maxToolCalls: budget.maxToolCalls, maxToolErrors: budget.maxToolErrors, includeChildRuns: budget.includeChildRuns });
+  const { maxInputTokens: _input, maxOutputTokens: _output, maxTotalTokens: _total, ...nonTokenBudget } = effectiveRuntimeBudget(budget);
+  const transport = transportTokens ? durable : createBudgetGuard(nonTokenBudget);
   return { ...transport, inputGuardrail: durable.inputGuardrail, outputGuardrail: durable.outputGuardrail };
 };
 export const runtimeManifest = (config: HarnessConfig, tools: readonly string[], role = "primary") => ({
@@ -26,6 +28,7 @@ export const runtimeManifest = (config: HarnessConfig, tools: readonly string[],
   backend: config.execution.backend, tools: [...tools].sort(),
   budget: { ...(role === "primary" ? config.budget : config.orchestration.childBudget) },
   timeoutMs: role === "primary" ? config.timeoutMs : config.orchestration.childTimeoutMs,
+  ...(role === "primary" && config.unlimitedDuration !== undefined ? { unlimitedDuration: config.unlimitedDuration } : {}),
   closureController: role === "primary" && config.requireVerifiedDelivery,
   contextEnabled: config.context.enabled
 });

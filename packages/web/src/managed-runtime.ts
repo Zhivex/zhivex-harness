@@ -69,6 +69,10 @@ export function manageWebRuntime(
       finally { if (mutation) mutations--; }
     },
     async events(...args) { ready(); return current.events(...args); },
+    async limits() { ready(); return current.limits(); },
+    async configureLimits(...args) { ready(); mutations++;
+      try { return await current.configureLimits(...args); } finally { mutations--; } },
+    async runLimits(...args) { ready(); return current.runLimits(...args); },
     async review(...args) { ready(); return current.review(...args); },
     async decide(...args) {
       ready(); mutations++;

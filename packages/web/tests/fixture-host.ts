@@ -1,5 +1,5 @@
 import { fixture } from "./fixture.js";
-const f = await fixture();
+const f = await fixture({ interactive: true });
 const host = await f.boot();
 if (!process.send) throw new Error("FIXTURE_IPC_REQUIRED");
 process.send({

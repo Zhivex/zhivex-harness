@@ -131,7 +131,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           await harness.store.save({ schemaVersion: 1, revision: 0, runId, scope: harness.config.scope,
             provider: harness.agent.model.provider, modelId: harness.agent.model.modelId,
             status: controller.signal.aborted ? 'cancelled' : 'failed', messages: input.messages ?? [], steps: [], toolResults: [],
-            currentStep: 0, maxSteps: harness.config.maxSteps, outputText: '', pendingApprovals: [], startedAt: now, updatedAt: now,
+            currentStep: 0, maxSteps: harness.config.budget.unlimitedSteps ? "unlimited" : harness.config.maxSteps, outputText: '', pendingApprovals: [], startedAt: now, updatedAt: now,
             error: { message: 'Run stopped before initialization.' } });
           persisted = await harness.store.load(runId, harness.config.scope);
         }

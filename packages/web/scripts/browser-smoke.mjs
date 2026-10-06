@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { limitsJourney } from "./limits-journey.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output =
   process.env.WEB_EVIDENCE_DIRECTORY ?? path.join(root, ".test-output");
@@ -59,7 +60,7 @@ const commands = [];
 let fault;
 await page.route("**/api/action", async (route) => {
   const body = route.request().postDataJSON();
-  if (["create", "rename", "start", "decide", "cancel", "selectModel"].includes(body.action))
+  if (["create", "rename", "start", "decide", "cancel", "selectModel", "configureLimits"].includes(body.action))
     commands.push(body.action);
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
@@ -93,8 +94,8 @@ await page.route("**/api/action", async (route) => {
   }
   return route.fulfill({ response });
 });
-async function capture(name) {
-  await page.screenshot({ path: path.join(output, name), fullPage: true });
+async function capture(name, fullPage = true) {
+  await page.screenshot({ path: path.join(output, name), fullPage });
   screenshots.push(name);
 }
 async function reconnectState() {
@@ -164,6 +165,8 @@ try {
     fullPage: true,
   });
   steps.push("start and workspace selection");
+  await limitsJourney(page, capture, commands);
+  steps.push("option 3: limits focus/Escape/cancel/no-change, keyboard invalid inputs, persisted project refresh, distinct steps/tools and mobile overflow");
   const beforeSlow = commands.filter(c => c === "start").length;
   await page.getByLabel("Task prompt").fill("wait-for-cancel: composer slow run");
   await page.getByLabel("Task prompt").press("Control+Enter");
@@ -253,6 +256,7 @@ try {
       document.querySelector(".pill")?.textContent,
     ),
   );
+  await page.locator(".operation-status").waitFor({ state: "hidden" });
   if (
     (await page.getByRole("button", { name: "Run task" }).isEnabled()) ===
       false &&
