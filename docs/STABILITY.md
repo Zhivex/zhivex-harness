@@ -12,7 +12,7 @@ for the published 1.3.0 release and were available in the published RC7; they ar
 
 Stable means removal, incompatible signature/type change, semantic change, or stricter accepted input requires the next major release, except for a documented urgent security correction. Additive observational JSON fields are compatible. Digest-bound and signed-style documents use strict parsers: adding a field requires a new schema because unknown bytes change canonical identity.
 
-The schema-1 observational parsers preserve unknown additive fields and distinguish rich `run-result` JSON from compact `run-stream-result` JSONL. Stable error documents intentionally exclude messages and causes; only `code`, `category`, and `retryable` are contractual. State-backup bundles are strict, checksummed, and workspace/scope-bound rather than observational.
+The schema-1 observational parsers preserve unknown additive fields and distinguish rich `run-result` JSON from compact `run-stream-result` JSONL. Stable error documents intentionally exclude messages and causes. `code`, `category`, and `retryable` are contractual; optional `providerDiagnostic` preserves the closed Qwen stream contract (`provider`, `transport`, `diagnosticCode`, `reason`, `retryable`) without provider payloads. State-backup bundles are strict, checksummed, and workspace/scope-bound rather than observational.
 
 Beta APIs may change in a minor with changelog and migration guidance. Experimental APIs may change without a deprecation window and must not be the sole supported route for a stable operation. Human-readable terminal text and error messages are not contracts; command identity, exit codes, structured document schemas, and `HarnessError.code/category/retryable` are.
 

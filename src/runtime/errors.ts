@@ -27,6 +27,31 @@ export interface HarnessErrorOptions {
 
 export const HARNESS_ERROR_SCHEMA_VERSION = 1 as const;
 
+/** Closed, payload-free projection of the known Qwen SSE error contract. */
+export interface ProviderStreamDiagnostic {
+  provider: "qwen";
+  transport: "chat" | "responses";
+  diagnosticCode: "QWEN_SSE_EVENT_INVALID";
+  reason: "invalid_json" | "invalid_event";
+  retryable: false;
+}
+
+export const providerStreamDiagnostic = (error: unknown): ProviderStreamDiagnostic | undefined => {
+  const seen = new Set<object>();
+  for (let depth = 0; depth < 5 && error && typeof error === "object" && !seen.has(error); depth++) {
+    seen.add(error);
+    const value = error as Record<string, unknown>;
+    if (value.provider === "qwen" && value.diagnosticCode === "QWEN_SSE_EVENT_INVALID" &&
+      (value.name === "QwenStreamEventError" || value.category === "provider-stream") &&
+      (value.transport === "chat" || value.transport === "responses") &&
+      (value.reason === "invalid_json" || value.reason === "invalid_event") && value.retryable === false) {
+      return { provider: "qwen", transport: value.transport, diagnosticCode: "QWEN_SSE_EVENT_INVALID", reason: value.reason, retryable: false };
+    }
+    error = value.cause;
+  }
+  return undefined;
+};
+
 export interface HarnessErrorDocument {
   schemaVersion: typeof HARNESS_ERROR_SCHEMA_VERSION;
   kind: "error";
@@ -34,6 +59,7 @@ export interface HarnessErrorDocument {
     code: HarnessErrorCode;
     category: HarnessErrorCategory;
     retryable: boolean;
+    providerDiagnostic?: ProviderStreamDiagnostic;
   };
 }
 
@@ -129,13 +155,15 @@ export class HarnessExecutionError extends HarnessError {
  */
 export const harnessErrorDocument = (error: unknown): HarnessErrorDocument => {
   const normalized = normalizeHarnessError(error);
+  const diagnostic = providerStreamDiagnostic(error);
   return {
     schemaVersion: HARNESS_ERROR_SCHEMA_VERSION,
     kind: "error",
     error: {
       code: normalized.code,
       category: normalized.category,
-      retryable: normalized.retryable
+      retryable: normalized.retryable,
+      ...(diagnostic ? { providerDiagnostic: diagnostic } : {})
     }
   };
 };
@@ -150,6 +178,8 @@ const numericStatuses = (error: unknown) => {
 
 /** Normalize dependency/runtime failures without making messages contractual. */
 export const normalizeHarnessError = (error: unknown): HarnessError => {
+  const diagnostic = providerStreamDiagnostic(error);
+  if (diagnostic) return new HarnessProviderError("Provider stream failed.", { cause: error, retryable: false });
   if (error instanceof HarnessError) return error;
   const message = error instanceof Error ? error.message : "Harness execution failed.";
   const statuses = numericStatuses(error) ?? [];

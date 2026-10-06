@@ -25,7 +25,7 @@ import {
   type SessionRunStatus
 } from "../persistence/sessions.js";
 import { runResultDocument } from "./run-document.js";
-import { HarnessStateConflictError } from "../runtime/errors.js";
+import { HarnessStateConflictError, harnessErrorDocument, providerStreamDiagnostic } from "../runtime/errors.js";
 import { openWorkspaceCheckpointStore, type WorkspaceRestoreOperation } from '../persistence/workspace-checkpoints.js';
 import {
   harnessClientRequestSchema,
@@ -59,7 +59,9 @@ const sessionStatus = (status: string): SessionRunStatus => {
 const sessionDocument = (value: CliSession): HarnessClientSession => structuredClone(value);
 
 const runDocument = (state: AgentRunState, approvalMaxAgeMs: number): HarnessClientRun => ({ runId: state.runId, revision: state.revision ?? 0,
-  status: state.status, output: state.outputText ?? "", ...(state.metadata?.clientCliResultV1 ? {cliResult:state.metadata.clientCliResultV1}:{}), approvals: state.pendingApprovals.map(a => ({
+  status: state.status, output: state.outputText ?? "",
+  ...(state.status === "failed" && state.error ? { error: harnessErrorDocument({ ...state.error,
+    ...(state.metadata?.clientProviderStreamDiagnostic ? { ...state.metadata.clientProviderStreamDiagnostic as object, category: "provider-stream" } : {}) }).error } : {}), ...(state.metadata?.clientCliResultV1 ? {cliResult:state.metadata.clientCliResultV1}:{}), approvals: state.pendingApprovals.map(a => ({
     approvalId: a.id, expiresAt: (state.updatedAt ?? state.startedAt ?? 0) + approvalMaxAgeMs, provider: a.provider, kind: a.kind ?? "provider", digest: digest(a), action: a
   })) });
 
@@ -136,6 +138,14 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           persisted = await harness.store.load(runId, harness.config.scope);
         }
       } catch { /* Preserve the original failure if the store itself is unavailable. */ }
+      const diagnostic = providerStreamDiagnostic(e);
+      // Preserve safe fields even with an installed SDK that only persisted message.
+      // The SDK owns parser behavior; this compatibility receipt only projects its error.
+      if (diagnostic && persisted?.status === "failed") {
+        try {
+          await harness.store.save({ ...persisted, metadata: { ...persisted.metadata, clientProviderStreamDiagnostic: { ...diagnostic } } }, { expectedRevision: persisted.revision ?? 0 });
+        } catch { /* Preserve the original provider failure if receipt persistence fails. */ }
+      }
       await options.onCheckpoint?.(sessionId, runId, persisted?.status ?? "interrupted");
       throw e;
     } finally { try { await prepared?.release(); } finally { active = undefined; } }
@@ -322,7 +332,10 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       const parsed = harnessClientRequestSchema.safeParse(value);
       if (!parsed.success) return { protocolVersion: 1, requestId: null, ok: false, error: { code: "INVALID_REQUEST" } };
       const request = parsed.data;
-      const error = (code: HarnessClientErrorCode): HarnessClientResponse => ({ protocolVersion: 1, requestId: request.requestId, ok: false, error: { code } });
+      const error = (code: HarnessClientErrorCode, cause?: unknown): HarnessClientResponse => {
+        const diagnostic = providerStreamDiagnostic(cause);
+        return { protocolVersion: 1, requestId: request.requestId, ok: false, error: { code, ...(diagnostic ? { providerDiagnostic: diagnostic } : {}) } };
+      };
       if (closed || request.connectionId !== connectionId) return error("CONNECTION_EXPIRED");
       const c = request.command;
       if (hostReviewed && c.method !== 'approval.resolve') return error('INVALID_REQUEST');
@@ -368,7 +381,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       busy = true;
       const response = (async (): Promise<HarnessClientResponse> => {
         try { return { protocolVersion: 1, requestId: request.requestId, ok: true, data: await execute(c, hostReviewed) }; }
-        catch (e) { return error(e instanceof ClientFault ? e.code : e instanceof HarnessStateConflictError ? "REVISION_CONFLICT" : "EXECUTION_FAILED"); }
+        catch (e) { return error(e instanceof ClientFault ? e.code : e instanceof HarnessStateConflictError ? "REVISION_CONFLICT" : "EXECUTION_FAILED", e); }
         finally { busy = false; }
       })();
       if (key) receipts.set(key, { fingerprint, response });

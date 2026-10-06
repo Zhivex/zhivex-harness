@@ -4,6 +4,10 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Preserve sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility. Provider payloads, parser causes and arbitrary exception text remain excluded.
+
 ## 1.4.0-rc.6 - 2026-10-05
 
 - Prepare matched Harness 1.4.0-rc.6 and Code 0.3.0-rc.6 for npm `next`, with the exact Code engine pin, private Desktop binding and an additive representative mapping using unchanged models and SDK pins.
