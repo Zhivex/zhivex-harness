@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.4.0-rc.6 - 2026-10-05
+
+- Prepare matched Harness 1.4.0-rc.6 and Code 0.3.0-rc.6 for npm `next`, with the exact Code engine pin, private Desktop binding and an additive representative mapping using unchanged models and SDK pins.
+- Include the reviewed activity projection fix from PR185: compact bounded UI snapshot previews without failing valid runs, preserve run identities/statuses and truncation markers, and split already-redacted streamed text into bounded Unicode-safe events. Durable policy/event journals, retention limits and approval authority are unchanged.
+- Preserve the held RC.5 campaign and immutable tag/source. Its passing offline, live and 42/42 representative evidence belongs to the older artifact and does not certify RC.6. Keep the RC.4 failure history and SDK store migration requirements.
+- Require fresh exact-source/artifact validation and separate explicit approval before any paid campaign, annotated tag or publication. Stable `latest` channels and provider/API tiers remain unchanged.
+
 ## 1.4.0-rc.5 - 2026-10-05
 
 - Prepare matched Harness 1.4.0-rc.5 and Code 0.3.0-rc.5 for npm `next`, with the exact engine pin, Desktop binding and a new representative mapping using unchanged models and SDK pins.

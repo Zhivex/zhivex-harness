@@ -19,7 +19,7 @@ this checkout is an unreleased experimental Code addition, not a published featu
 
 Version `1.3.0` is the current public npm release on `latest`, with terminal-independent engine
 entrypoints and the separately published Code CLI `0.2.0` on `latest`. Harness publication passed registry integrity and provenance verification. Harness `1.4.0-rc.1` and
-Code `0.3.0-rc.1` are published on `next`. The RC.3 versions prepared in this
+Code `0.3.0-rc.1` are published on `next`. The RC.6 versions prepared in this
 checkout remain unpublished. Stable package numbering does
 not change API stability tiers: beta and experimental APIs retain their policies,
 Gemini/Anthropic/Vertex remain provisional, and Desktop remains a private alpha.
@@ -49,7 +49,7 @@ them. Ctrl+C stops active work; it does not undo completed changes.
 
 ## Release candidates
 
-This checkout prepares Harness `1.4.0-rc.5` and Code `0.3.0-rc.5` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). RC.5 publication is pending; the failed RC.4 attempt and immutable source are preserved; npm `next` currently points to Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`. These prerelease candidates are separate from the stable `latest` channel.
+This checkout prepares Harness `1.4.0-rc.6` and Code `0.3.0-rc.6` for `next`, with an exact engine pin. Project memory, compact terminal review and the local browser workspace ship together after protected validation. See the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). RC.6 publication is pending. It includes the reviewed bounded activity snapshot fix; RC.5 remains held and its source/tag cannot be reused for this fix. The failed RC.4 attempt and immutable source are preserved; npm `next` currently points to Harness `1.4.0-rc.1` and Code `0.3.0-rc.1`. These prerelease candidates are separate from the stable `latest` channel.
 
 Use candidates only for prerelease validation. Check [npm versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions)
 and the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
@@ -58,7 +58,7 @@ before installing a candidate; `next` can still point to an earlier RC.
 After publication of this exact candidate:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.4.0-rc.5
+npm install -g @zhivex-ai/harness@1.4.0-rc.6
 ```
 
 ## A few commands are enough

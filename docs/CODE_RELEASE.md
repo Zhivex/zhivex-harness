@@ -2,6 +2,39 @@
 
 ## Current RC preparation: 2026-10-05
 
+This checkout prepares Code `0.3.0-rc.6`, pinned exactly to Harness
+`1.4.0-rc.6`, for npm `next`. The matched engine includes the reviewed bounded
+activity projection fix from [PR185](https://github.com/Zhivex/zhivex-harness/pull/185).
+Retain terminal/local browser contracts, existing SDK/model pins, approval and
+transport protections, provider/API tiers and RC.4 migration requirements.
+Desktop stays private alpha with the same engine binding. Stable Code `0.2.0`
+and Harness `1.3.0` on `latest`, and published Code `0.3.0-rc.1` and Harness
+`1.4.0-rc.1` on `next`, remain unchanged.
+
+Harness [RC.5 attempt 1](https://github.com/Zhivex/zhivex-harness/actions/runs/37384044231)
+passed offline/live and 42/42 representative gates but remains held at npm review.
+Its immutable tag/source does not contain PR185; neither RC.5 package was published
+and no Code RC.5 tag/release was started. Do not approve, cancel, alter or relaunch
+the held campaign as part of this preparation. See the authoritative
+[Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
+for exact immutable identities and preserved RC.4 failure history. The RC.5 and
+older preparation snapshots below remain historical; their passing evidence and
+approvals do not certify or authorize RC.6.
+
+This preparation creates no tags, paid calls, campaign dispatch or publication.
+After review and user integration, require all four successful exact-main workflows
+(`ci.yml`, `codeql.yml`, `code-journey.yml`, `web.yml`) and direct-main CodeQL.
+New explicit campaign/publication authority is required before any Harness
+`v1.4.0-rc.6` or Code `code-v0.3.0-rc.6` tag/dispatch. Harness must first pass its
+unchanged protected exact-artifact, OCI, live and representative gates and actual
+registry integrity/provenance verification. Code's protected OIDC workflow then
+uses the matching reviewed SHA with `channel=next`, `mode=oidc` and explicit
+confirmation, resolving the actual published Harness dependency without overrides.
+Retained-artifact terminal/web, four-manager acceptance and registry bytes with
+source-bound provenance remain mandatory. Preserve stable `latest` and all history.
+
+## Historical RC.5 preparation: 2026-10-05
+
 This checkout prepares Code `0.3.0-rc.5`, pinned exactly to Harness
 `1.4.0-rc.5`, for npm `next`. Retain the published SDK pins, existing terminal
 and local browser contracts, API/provider tiers and the RC.4 migration
