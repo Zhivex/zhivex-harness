@@ -46,7 +46,7 @@ the monetary authority or prove that an external effect finished.
 ## Transport capability matrix
 
 These contracts are verified against the installed pinned adapters using
-synthetic HTTP and credentials in [transport tests](../tests/task-transport.test.ts)
+synthetic HTTP and credentials in [transport tests](https://github.com/Zhivex/zhivex-harness/blob/11f4a038ca4f6d1d04985af135f792f712163930/tests/task-transport.test.ts)
 and host admission tests, without live provider calls. They establish local
 dispatch/cap behavior, not provider billing guarantees or model quality.
 
@@ -97,9 +97,9 @@ fencing supplied by Harness. The local triggers apply only to application task
 invocation transitions and task draft INSERT/UPDATE records; unrelated SDK
 checkpoints retain their published behavior.
 
-[Task authority regressions](../tests/task-budget.test.ts) pause a task-root
+[Task authority regressions](https://github.com/Zhivex/zhivex-harness/blob/11f4a038ca4f6d1d04985af135f792f712163930/tests/task-budget.test.ts) pause a task-root
 clear save, transfer the lease without a revision write, and verify atomic
-rejection. [Draft host regressions](../tests/task-budget-host.test.ts) cover both
+rejection. [Draft host regressions](https://github.com/Zhivex/zhivex-harness/blob/11f4a038ca4f6d1d04985af135f792f712163930/tests/task-budget-host.test.ts) cover both
 first INSERT and existing UPDATE after expiry or takeover, while an ordinary
 checkpoint with an unowned `leaseOwnerId` still writes. Draft logical import
 uses only a transient lease within its exclusive import transaction, retains

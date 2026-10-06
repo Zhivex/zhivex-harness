@@ -96,6 +96,8 @@
     "LICENSE",
     "docs/CHANGE_ENVELOPES.md",
     "docs/CLI.md",
+    "docs/MINIMUM_TASK_AUTHORITY.md",
+    "docs/MINIMUM_OFFLINE_EVALS.md",
     "docs/CODE_RELEASE.md",
     "docs/images/cli-conversation.png",
     "docs/CLIENT_PROTOCOL.md",
