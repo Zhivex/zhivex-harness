@@ -2735,6 +2735,51 @@
           "name": "checkEvidence",
           "kind": "runtime",
           "tier": "experimental"
+        },
+        {
+          "name": "initializeHarnessTaskBudget",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectHarnessTaskBudget",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "persistHarnessTaskDraft",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "readHarnessTaskDraft",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "TASK_BUDGET_KEY",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "inspectTaskBudgetSummary",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "createTaskTelemetry",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "runHarnessTask",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessTaskRunOptions",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },

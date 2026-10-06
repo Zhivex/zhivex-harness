@@ -19,6 +19,7 @@ import type { SqliteAccessLease } from "./sqlite-access.js";
 import { validateStateDirectory } from "./state-directory.js";
 import { validateRecordedWorkspace } from "./recorded-workspace.js";
 import { sdkCanonicalKey, sdkLegacyKey, sdkRunKeyMatches } from "./sdk-store-identity.js";
+import { assertTaskBudgetBackupLinks } from '../runtime/task-budget.js';
 
 export const HARNESS_STATE_BACKUP_SCHEMA_VERSION = 1 as const;
 export const HARNESS_STATE_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
@@ -360,6 +361,7 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
       assertTerminalState(state, `Run ${row.run_id}`);
       return { key: row.run_id, state, updatedAt: row.updated_at_ms };
     });
+    assertTaskBudgetBackupLinks(runs.map(run => run.state));
     const identities = coordinatorIds(runs);
     const budgetLedgers = allRunRows.flatMap((row) => {
       const state = parseJsonRecord(row.state_json, `Run ${row.run_id}`);
@@ -622,6 +624,7 @@ const validateBundleBinding = async (config: HarnessConfig, bundle: HarnessState
       throw new HarnessStateConflictError(`Run ${run.key} does not match its bound scope and runId.`);
     }
   }
+  assertTaskBudgetBackupLinks(bundle.records.runs.map(run => validatedRunState(run.state, `Run ${run.key}`)));
   const identities = coordinatorIds(bundle.records.runs);
   const ledgerIdentities = new Set<string>();
   const ledgerKeys = new Set<string>();
@@ -888,12 +891,30 @@ export const importHarnessStateBackup = async (
         "State import requires an empty destination or an exactly identical prior import."
       );
     }
-    for (const run of [...bundle.records.runs, ...(bundle.records.budgetLedgers ?? [])]) insertOrCompare(
-      "zhivex_agent_runs", "run_id = ?", [run.key], "state_json, updated_at_ms",
-      [JSON.stringify(run.state), run.updatedAt],
-      "INSERT INTO zhivex_agent_runs (run_id, state_json, updated_at_ms) VALUES (?, ?, ?)",
-      [run.key, JSON.stringify(run.state), run.updatedAt]
-    );
+    for (const run of [...bundle.records.runs, ...(bundle.records.budgetLedgers ?? [])]) {
+      const metadata = run.state.metadata as Record<string, unknown> | undefined;
+      const draftOwner = metadata?.zhivexTaskDraftV1 !== undefined ? metadata.taskDraftOwnerId : undefined;
+      if (metadata?.zhivexTaskDraftV1 !== undefined && (typeof draftOwner !== 'string' || !draftOwner))
+        throw new HarnessStateConflictError('TASK_DRAFT_IMPORT_OWNER_REQUIRED');
+      // The import owns this BEGIN IMMEDIATE transaction, has rejected active
+      // destination leases above, and restores immutable draft bytes. Its
+      // transient application lease satisfies the draft INSERT fence only;
+      // it grants no model invocation or monetary authority.
+      const importingDraft = !options.dryRun && typeof draftOwner === 'string' && !database.query<{ run_id: string }>(
+        'SELECT run_id FROM zhivex_agent_runs WHERE run_id = ?').get(run.key);
+      if (importingDraft) database.query(`INSERT INTO zhivex_agent_runs_leases (run_key, run_id, owner_id, expires_at_ms)
+        VALUES (?, ?, ?, ?) ON CONFLICT(run_key) DO UPDATE SET owner_id=excluded.owner_id, expires_at_ms=excluded.expires_at_ms`)
+        .run(run.key, run.state.runId, draftOwner, Date.now() + 30_000);
+      try {
+        insertOrCompare("zhivex_agent_runs", "run_id = ?", [run.key], "state_json, updated_at_ms",
+          [JSON.stringify(run.state), run.updatedAt],
+          "INSERT INTO zhivex_agent_runs (run_id, state_json, updated_at_ms) VALUES (?, ?, ?)",
+          [run.key, JSON.stringify(run.state), run.updatedAt]);
+      } finally {
+        if (importingDraft) database.query('DELETE FROM zhivex_agent_runs_leases WHERE run_key = ? AND owner_id = ?')
+          .run(run.key, draftOwner);
+      }
+    }
     for (const entry of bundle.records.idempotency) insertOrCompare(
       "zhivex_agent_runs_idempotency", "idempotency_key = ?", [entry.key], "run_id, updated_at_ms",
       [entry.runKey, entry.updatedAt],

@@ -23,3 +23,8 @@ desktop/.harness/
 
 # Local working notes and intermediate diagnostics
 /.local-docs/
+
+# Local private evaluation cohorts must never enter this public repository.
+/tests/private/minimum-evals/
+/.private-minimum-evals/
+/private-minimum-evals/

@@ -64,7 +64,7 @@ class Console:
                   "RESTORE BLOCKED" if text.startswith("/checkpoint retry") else {
                     "Inspect fixture": "Offline fixture ready.", "/pricing": "Catalog prices are advisory.",
                     "/pending": "Pending approval:", "/budget off": "Finish or deny",
-                    "/approve": "Offline edit task finished.", "/usage": "Next run estimated USD limit:",
+                    "/approve": "Offline edit task finished.", "/usage": "estimated USD limit:",
                     "/activity": "Activity history", "/continue": "Offline check task finished."
                   }.get(text))
         prefix = self.read(marker) if marker else ""
@@ -219,6 +219,47 @@ try:
     import shutil
     shutil.rmtree(other)
 
+    # An insufficient task policy refuses provider dispatch; later budget changes
+    # configure future tasks and cannot replenish this task's established account.
+    exhausted = pathlib.Path(tempfile.mkdtemp(prefix="code-exhausted-task-"))
+    console = Console(exhausted)
+    console.prompt()
+    (exhausted / ".gitignore").write_text(".zhivex-harness/\n.tutorial*\n")
+    for args in (["init"], ["add", "."], ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "-m", "baseline"]):
+        subprocess.run(["git", *args], cwd=exhausted, env=env, check=True, capture_output=True)
+    console.send("/budget 0.000001\n")
+    console.read("Pricing JSON file")
+    console.send("prices.json\n")
+    console.read("Type budget")
+    console.send("budget\n")
+    console.prompt()
+    console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"]}')
+    console.send("Fix greeting\n")
+    exhausted_result = console.prompt()
+    assert "BUDGET" in exhausted_result
+    assert not (exhausted / ".tutorial-requests.jsonl").exists()
+    policy = console.command("/usage")
+    assert "/ 0.000001 limit" in policy
+    exhausted_authority = re.search(r"Task budget authority: (\S+)", policy).group(1)
+    console.close()
+    console = Console(exhausted)
+    assert exhausted_authority in console.prompt()
+    assert exhausted_authority in console.command("/usage")
+    console.send("/budget 1\n")
+    console.read("Pricing JSON file")
+    console.send("prices.json\n")
+    console.read("Type budget")
+    console.send("budget\n")
+    assert "future tasks" in console.prompt()
+    retained_policy = console.command("/usage")
+    assert exhausted_authority in retained_policy and "/ 0.000001 limit" in retained_policy
+    console.send("/task revise Try again under the retained policy\n")
+    console.prompt()
+    assert not (exhausted / ".tutorial-requests.jsonl").exists()
+    console.close()
+    console = None
+    shutil.rmtree(exhausted)
+
     # Guided delivery: actual installed CLI, synthetic model, real Git/edit/check/state.
     guided = pathlib.Path(tempfile.mkdtemp(prefix="code-guided-task-"))
     console = Console(guided)
@@ -226,6 +267,12 @@ try:
     (guided / ".gitignore").write_text(".zhivex-harness/\n.tutorial*\n")
     for args in (["init"], ["add", "."], ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "commit", "-m", "baseline"]):
         subprocess.run(["git", *args], cwd=guided, env=env, check=True, capture_output=True)
+    console.send("/budget 1\n")
+    console.read("Pricing JSON file")
+    console.send("prices.json\n")
+    console.read("Type budget")
+    console.send("budget\n")
+    console.prompt()
     draft = console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"]}')
     assert "Task draft" in draft and "Baseline inspected" in draft
     console.send("Fix greeting\n")
@@ -236,6 +283,13 @@ try:
     console.permission("Allow once")
     delivered = console.prompt()
     assert "task evidence: pending_review" in delivered and "test: exit 0" in delivered
+    review_requests = (guided / ".tutorial-requests.jsonl").read_text()
+    reviewed = console.command("/review Inspect this guided task")
+    assert "Task: Fix greeting" in reviewed and "test: exit 0" in reviewed
+    assert "[explorer]" not in reviewed and "[reviewer]" not in reviewed
+    connection = console.command("/connection")
+    assert "Connection tests are unavailable during a guided task" in connection
+    assert (guided / ".tutorial-requests.jsonl").read_text() == review_requests
     console.send("/task keep\n")
     console.read("Type keep")
     console.send("keep\n")
@@ -254,6 +308,28 @@ try:
     console.permission("Allow once")
     failed_task = console.prompt()
     assert "task evidence: incomplete" in failed_task and "test: exit 1" in failed_task
+    assert "Task budget authority:" in console.command("/usage")
+    console.send("Interrupt fixture\n")
+    console.read("press Ctrl+C now")
+    console.send("\x03")
+    console.prompt()
+    before_restart = console.command("/usage")
+    assert "Unknown consumption held:" in before_restart and "blocked by incomplete consumption" in before_restart
+    authority = re.search(r"Task budget authority: (\S+)", before_restart).group(1)
+    requests = (guided / ".tutorial-requests.jsonl").read_text()
+    console.close()
+    console = Console(guided)
+    reopened = console.prompt()
+    assert authority in reopened and "blocked by incomplete consumption" in reopened
+    console.send("/continue\n")
+    blocked = console.prompt()
+    assert "TASK_BUDGET_UNCERTAIN" in blocked
+    assert (guided / ".tutorial-requests.jsonl").read_text() == requests
+    console.close()
+    console = Console(guided)
+    restored_block = console.prompt()
+    assert authority in restored_block and "blocked by incomplete consumption" in restored_block
+    assert authority in console.command("/usage")
     console.close()
     console = None
     shutil.rmtree(guided)

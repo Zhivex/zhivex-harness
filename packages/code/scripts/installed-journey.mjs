@@ -37,6 +37,7 @@ try {
   const bytes = await readFile(retained);
   const sha512Hex = createHash("sha512").update(bytes).digest("hex");
   const sourceSha = run("git", ["rev-parse", "HEAD"], root).trim();
+  const sourceDirty = Boolean(run("git", ["status", "--porcelain"], root).trim());
   const expected = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   const engineVersion = expected.dependencies["@zhivex-ai/harness"];
   let engineArtifact;
@@ -60,12 +61,16 @@ try {
   run("python3", [path.join(root, "scripts/installed-journey.py"), installed, evidence]);
   assert.equal(createHash("sha512").update(await readFile(retained)).digest("hex"), sha512Hex, "Tested artifact bytes changed");
   const report = { status: "passed", node: process.version, codeVersion: manifest.version, harnessVersion: engineVersion, engineArtifact,
-    sourceSha, artifact: { filename: "code.tgz", bytes: bytes.length, sha512Hex,
+    sourceSha, sourceDirty, artifact: { filename: "code.tgz", bytes: bytes.length, sha512Hex,
       integrity: `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}` },
     installation: candidateEngine ? "npm tarball with explicit exact candidate engine override, no install scripts" : "npm tarball with published dependency, no overrides or install scripts", offline: true,
     scenarios: ["task/check approvals and denial", "pending approval exit and resume", "per-file diff and check receipt",
       "per-run estimated budget and unknown cost", "checkpoint capture/review/restore and stale retry rejection", "Ctrl+C, restart, /continue",
-      "guided task goal/scope/checks, human keep, reopen, drift rejection and failed-check revision"] };
+      "guided task goal/scope/checks, human keep, reopen, drift rejection and failed-check revision",
+      "guided review and connection controls without additional model requests",
+      "insufficient task USD budget refuses dispatch; first-refusal restart preserves authority",
+      "future-task budget changes cannot replenish the current task",
+      "guided interruption and restart retain unknown consumption; continuation refuses additional dispatch"] };
   await writeFile(path.join(evidence, "installed-journey-report.json"), JSON.stringify(report, null, 2) + "\n");
   process.stdout.write(JSON.stringify(report, null, 2) + "\n");
 } finally { await rm(scratch, { recursive: true, force: true }); }

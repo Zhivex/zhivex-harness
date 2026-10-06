@@ -58,6 +58,13 @@ interface CallRow {
 }
 interface PolicyRow { policy: string }
 const current = new AsyncLocalStorage<{ ledger: UsageLedger; runId: string; recovered: boolean }>();
+const initialPolicies = new AsyncLocalStorage<{ ledger: UsageLedger; runId: string; policy: UsageAccountingOptions }>();
+
+/** Internal task admission supplies its frozen policy without widening UsageLedger's public API. */
+export const runUsageLedgerWithPolicy = <T>(ledger: UsageLedger, runId: string, operation: () => Promise<T>,
+  historicalUsageUnknown = false, initialPolicy?: UsageAccountingOptions): Promise<T> => initialPolicy === undefined
+  ? ledger.run(runId, operation, historicalUsageUnknown)
+  : initialPolicies.run({ ledger, runId, policy: initialPolicy }, () => ledger.run(runId, operation, historicalUsageUnknown));
 
 /** A separate append-only transport ledger. SDK rollups are never added to these calls. */
 export class UsageLedger {
@@ -87,26 +94,33 @@ export class UsageLedger {
       id TEXT PRIMARY KEY, scope_key TEXT NOT NULL, run_id TEXT NOT NULL,
       provider TEXT NOT NULL, model TEXT NOT NULL, status TEXT NOT NULL,
       input_tokens INTEGER, output_tokens INTEGER, estimate_usd REAL, reserved_usd REAL NOT NULL,
-      price_status TEXT NOT NULL);`);
+      price_status TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS zhivex_usage_calls_scope_run
+      ON zhivex_usage_calls(scope_key, run_id);`);
     return new UsageLedger(database, key, options, now);
   }
 
   close() { this.database.close(); }
   assertResume(runId: string) {
     const row = this.database.query<PolicyRow>("SELECT policy FROM zhivex_usage_policies WHERE scope_key = ?1 AND run_id = ?2").get(this.key, runId);
-    if (!row) throw new Error("USAGE_LEDGER_MISSING: restore the complete state backup; a run snapshot cannot reset its monetary policy.");
+    if (!row) throw new Error("USAGE_LEDGER_MISSING: retain or restore the complete operations SQLite database including transport usage tables; logical JSON exports cannot restore this monetary authority.");
   }
   private policy(runId: string): UsageAccountingOptions & { historicalUsageUnknown?: boolean } {
     const row = this.database.query<PolicyRow>("SELECT policy FROM zhivex_usage_policies WHERE scope_key = ?1 AND run_id = ?2").get(this.key, runId);
     return row ? JSON.parse(row.policy) as UsageAccountingOptions : this.options;
   }
   async run<T>(runId: string, operation: () => Promise<T>, historicalUsageUnknown = false): Promise<T> {
+    const admitted = initialPolicies.getStore();
+    const initialPolicy = admitted?.ledger === this && admitted.runId === runId ? admitted.policy : this.options;
+    if (initialPolicy.limitUsd !== undefined && (!Number.isFinite(initialPolicy.limitUsd) || initialPolicy.limitUsd <= 0)) throw new Error("Usage limit must be positive USD.");
+    if (initialPolicy.pricing) usagePricingSchema.parse(initialPolicy.pricing);
     this.database.query("INSERT OR IGNORE INTO zhivex_usage_policies (scope_key, run_id, policy) VALUES (?1, ?2, ?3)")
-      .run(this.key, runId, JSON.stringify({ ...this.options, ...(historicalUsageUnknown ? { historicalUsageUnknown: true } : {}) }));
+      .run(this.key, runId, JSON.stringify({ ...initialPolicy, ...(historicalUsageUnknown ? { historicalUsageUnknown: true } : {}) }));
     // Existing runs retain their original prices and cap even if the caller omits/changes flags.
     return current.run({ ledger: this, runId, recovered: false }, operation);
   }
   summary(runId: string) {
+    const policy = this.policy(runId);
     const rows = this.database.query<CallRow>("SELECT * FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2 ORDER BY rowid").all(this.key, runId);
     const routes = new Map<string, { provider: string; model: string; calls: number; inputTokens: number; outputTokens: number; unknownCalls: number; estimatedUsd: number | null; priceStatuses: string[] }>();
     for (const row of rows) {
@@ -123,10 +137,10 @@ export class UsageLedger {
     return { schemaVersion: 1, runId, calls: rows.length, routes: values,
       inputTokens: values.reduce((n, r) => n + r.inputTokens, 0),
       outputTokens: values.reduce((n, r) => n + r.outputTokens, 0),
-      historicalUsageUnknown: this.policy(runId).historicalUsageUnknown ?? false,
-      usageComplete: !this.policy(runId).historicalUsageUnknown && rows.every(row => row.status === "confirmed"),
-      estimatedUsd: this.policy(runId).historicalUsageUnknown || values.some(r => r.estimatedUsd === null) ? null : values.reduce((n, r) => n + (r.estimatedUsd ?? 0), 0),
-      limitUsd: this.policy(runId).limitUsd ?? null,
+      historicalUsageUnknown: policy.historicalUsageUnknown ?? false,
+      usageComplete: !policy.historicalUsageUnknown && rows.every(row => row.status === "confirmed"),
+      estimatedUsd: policy.historicalUsageUnknown || values.some(r => r.estimatedUsd === null) ? null : values.reduce((n, r) => n + (r.estimatedUsd ?? 0), 0),
+      limitUsd: policy.limitUsd ?? null,
       costKind: "estimate-not-invoice" as const };
   }
   private begin(runId: string, provider: string, model: string, input: Parameters<typeof estimateRequestTokens>[0]) {
@@ -142,7 +156,10 @@ export class UsageLedger {
       if (provider === "qwen" && input.providerOptions?.apiMode !== "chat" && input.maxTokens === undefined) {
         throw new Error("USAGE_OUTPUT_CAP_UNAVAILABLE: select a route with a supported output cap.");
       }
-      input.maxTokens = Math.min(input.maxTokens ?? 2048, 2048);
+      input.maxTokens ??= 2048;
+      if (!Number.isSafeInteger(input.maxTokens) || input.maxTokens <= 0) {
+        throw new Error("USAGE_OUTPUT_CAP_INVALID: monetary reservations require a positive finite integer output cap.");
+      }
       reserved = (estimateRequestTokens(input) * usable.inputUsdPerMillion + input.maxTokens * usable.outputUsdPerMillion) / 1e6;
     }
     const id = randomUUID();
