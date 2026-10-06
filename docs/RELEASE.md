@@ -2,6 +2,56 @@
 
 ## Current RC preparation: 2026-10-05
 
+The source version is `1.4.0-rc.6`, pending publication to `next`.
+This checkout prepares Harness `1.4.0-rc.6` and Code `0.3.0-rc.6` for npm
+`next`, with Code pinned exactly to the engine and private Desktop bound to the
+same Harness version. Both candidates are unpublished. Keep Harness `1.3.0`
+and Code `0.2.0` on stable `latest`; published npm `next` remains Harness
+`1.4.0-rc.1` and Code `0.3.0-rc.1` until a verified new publication.
+
+RC.6 includes the reviewed activity projection fix from
+[PR185](https://github.com/Zhivex/zhivex-harness/pull/185), integrated at
+`be928ccb4767e2aa0f43cb45fd35b0767d3fbc0d`. Valid activity now stays within
+the existing 2 MiB UI snapshot budget by compacting previews with truncation
+markers while preserving run identities/statuses. Already-redacted streamed text
+is split into bounded Unicode-safe events. Policy/event journals, retention,
+approval authority, pairing, Host/Origin/CSRF/session protections and provider/API
+tiers are unchanged; see [durable activity](LOCAL_SERVICE.md). Retain all SDK/model
+pins, budgets and protected gates. Deferred performance work remains separate.
+
+[RC.5 attempt 1](https://github.com/Zhivex/zhivex-harness/actions/runs/37384044231)
+passed offline artifact/installed acceptance, live certification and all 42
+representative executions, then was explicitly held before publication at the
+protected npm review. Do not approve, cancel, alter or relaunch that campaign as
+part of RC.6 preparation. Preserve annotated `v1.4.0-rc.5`, tag object
+`f603c5739da55da0f8d8b3fa16e8fb5f27ef6f74`, at original source
+`d943a2f96f11144aa0982c5db58f20d03cdc7270`; it excludes PR185. Neither RC.5
+package was published and no Code RC.5 tag/release was started. Passing RC.5 evidence
+is bound to that older artifact and cannot certify RC.6. Preserve the RC.4 failure,
+all earlier tags/artifacts, historical preparation snapshots below and the RC.4
+SDK store migration requirements.
+
+This is version/documentation preparation only. No paid calls, tag creation,
+release dispatch, publication, promotion or merge is authorized. After review and
+user integration, require the latest successful `ci.yml`, `codeql.yml`,
+`code-journey.yml` and `web.yml` main-push runs for the exact new RC.6 SHA plus
+its direct-main CodeQL security result. Use read-only
+`bun run release:prepare --sha <full-main-sha>` from that clean frozen main;
+do not use `--publish` under preparation approval.
+
+Only a new explicit campaign/publication approval can authorize annotated
+`v1.4.0-rc.6` and the unchanged protected Harness workflow with `channel=next`.
+Its one exact artifact, OCI, live and representative gates remain mandatory.
+Independently verify actual Harness registry bytes and source-bound provenance
+before the matching Code release. Under separate publication authority, Code uses
+annotated `code-v0.3.0-rc.6` on the same reviewed SHA, `channel=next`, `mode=oidc`
+and explicit confirmation. It must resolve the real published engine without
+overrides and pass retained-artifact terminal/web and four-manager acceptance plus
+registry/provenance verification. RC.5 campaign approval does not carry forward;
+stable `latest` must remain unchanged.
+
+## Historical RC.5 preparation: 2026-10-05
+
 The source version is `1.4.0-rc.5`, pending publication to `next`. This checkout
 prepares matched Harness `1.4.0-rc.5` and Code `0.3.0-rc.5`, with Code pinned
 exactly to the engine candidate and Desktop bound to the same Harness version.
