@@ -69,10 +69,16 @@ Sequences may have gaps because the database also contains other sessions/scopes
 
 The SQLite transaction saves event and materialized snapshot together. Defaults:
 10,000 retained events per project/scope, seven-day event retention, 64 KiB per event,
-256 KiB retained text per run, 1,000 runs and 2 MiB per session snapshot. Overflow
-fails explicitly; snapshots mark truncated text. The existing session store bounds
-session creation. Snapshot state is retained for reconstruction while old events are
-pruned. An expired cursor returns `cursorExpired: true`, the current snapshot and a
+256 KiB retained text per run, 1,000 runs and 2 MiB per session snapshot. The snapshot
+is a bounded UI projection. When valid activity exceeds its byte budget, older run
+previews are compacted in order: text, prompt, then tool summaries. Run identities
+and statuses remain present, affected runs set `truncated: true`, and the current
+run's preview is preserved until older previews have been compacted. This does not
+delete journal events or change policy-evidence retention. Corrupt or unbounded
+metadata, database failures and mandatory evidence failures still fail explicitly.
+Already-redacted text is split into Unicode-safe events within the 64 KiB event
+limit. The existing session store bounds session creation. Snapshot state is
+retained for reconstruction while old events are pruned. An expired cursor returns `cursorExpired: true`, the current snapshot and a
 new recovery cursor; replace the view from that snapshot and continue. A cursor ahead
 of the session's sequence is rejected.
 

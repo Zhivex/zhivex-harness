@@ -1,5 +1,11 @@
 # Code changelog
 
+## 0.3.0-rc.6 - 2026-10-05
+
+- Pin exactly Harness 1.4.0-rc.6 for the matched npm `next` candidate containing the reviewed activity projection fix. Retain existing terminal/local browser contracts, published SDK pins and provider/API tiers.
+- Preserve the held Harness RC.5 source, tag and campaign evidence; no Code RC.5 tag or publication was started. The new candidate requires a separately approved engine campaign and actual Harness registry integrity/provenance verification before the protected Code gates.
+- Retain RC.4 migration requirements, historical model mappings and stable `latest` channels. Candidate preparation does not authorize tags, paid calls or publication.
+
 ## 0.3.0-rc.5 - 2026-10-05
 
 - Pin exactly Harness 1.4.0-rc.5 for the matched npm `next` candidate, retaining the published SDK batch and existing terminal/local browser contracts.
