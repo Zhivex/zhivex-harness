@@ -64,6 +64,8 @@ await page.route("**/api/action", async (route) => {
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
   fault = undefined;
+  if (selectedFault.mode === "rejected" && selectedFault.delay)
+    await new Promise(resolve => setTimeout(resolve, selectedFault.delay));
   if (selectedFault.mode === "rejected") return route.fulfill({
     status: 400, json: { ok: false, error: { code: selectedFault.code } },
   });
@@ -162,9 +164,49 @@ try {
     fullPage: true,
   });
   steps.push("start and workspace selection");
+  const beforeSlow = commands.filter(c => c === "start").length;
+  await page.getByLabel("Task prompt").fill("wait-for-cancel: composer slow run");
+  await page.getByLabel("Task prompt").press("Control+Enter");
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "running");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
+  await page.getByLabel("Task prompt").fill("wait-for-cancel: composer slow run");
+  await page.getByLabel("Task prompt").press("Control+Enter");
+  assert.equal(commands.filter(c => c === "start").length, beforeSlow + 1);
+  await page.getByRole("button", { name: "Cancel run" }).click();
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "cancelled");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "wait-for-cancel: composer slow run");
+  await createSession();
+  await task("composer-success");
+  await page.getByLabel("Task prompt").fill("next task after success");
+  await complete();
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "next task after success");
+  await createSession();
+  steps.push("slow run clears composer immediately; identical edit survives completion; Ctrl+Enter cannot replay; success preserves newer draft");
+  for (const newer of ["a different draft", "composer rejected submission", ""]) {
+    fault = { action: "start", mode: "rejected", code: "INVALID_STATE", delay: 500 };
+    await page.getByLabel("Task prompt").fill("composer rejected submission");
+    await page.getByRole("button", { name: "Run task" }).click();
+    assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
+    if (!newer) await page.getByLabel("Task prompt").fill("temporary edit");
+    await page.getByLabel("Task prompt").fill(newer);
+    await page.getByRole("alert").waitFor();
+    assert.equal(await page.getByLabel("Task prompt").inputValue(), newer);
+    await page.getByText("Recover submitted text", { exact: true }).click();
+    assert.equal(await page.locator(".composer-recovery pre").textContent(), "composer rejected submission");
+    const restore = page.getByRole("button", { name: "Restore to empty composer" });
+    assert.equal(await restore.isEnabled(), newer === "");
+    if (!newer) {
+      await restore.click();
+      assert.equal(await page.getByLabel("Task prompt").inputValue(), "composer rejected submission");
+    }
+    await reconnectState();
+    await createSession();
+  }
+  steps.push("failure retains different/identical/cleared newer drafts; submitted text remains explicitly recoverable without overwrite or replay");
   assert.equal(await page.evaluate(() => location.hash), "");
   await task("edit-probe: replace before with after");
   await wait();
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
   await page.reload();
   await wait();
   steps.push("reload and durable resume");
@@ -345,6 +387,7 @@ try {
     repeatedStarts + 1,
   );
   steps.push("same-render repeated start dispatches once");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
 
   fault = { action: "review", mode: "stale" };
   await page

@@ -8,6 +8,8 @@ import {
 } from "../../../desktop/src/activity.js";
 import { action, context, reconnect } from "./api.js";
 import { ModelSelectionRejectedError } from "./request-failure.js";
+import { ComposerDrafts } from "./composer-drafts.js";
+import "./composer.css";
 import { MessageMarkdown } from "./MessageMarkdown.js";
 import type {
   WebContext,
@@ -87,10 +89,14 @@ export function App() {
   runRef.current = run;
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const promptInput = useRef<HTMLTextAreaElement>(null);
-  const drafts = useRef(new Map<string, string>());
+  const drafts = useRef(new ComposerDrafts());
   const [refresh, setRefresh] = useState(0);
   const selection = useRef({ workspaceKey: "", sessionId: "" });
   selection.current = { workspaceKey, sessionId: session?.sessionId ?? "" };
+  function editPrompt(text: string) {
+    drafts.current.edit(selection.current, text);
+    setPrompt(text);
+  }
   useEffect(() => {
     if (focusPrompt.current && session && !stateLoading && !pending) {
       focusPrompt.current = false;
@@ -134,7 +140,7 @@ export function App() {
         const saved = localStorage.getItem(`zhivex-session:${workspaceKey}`);
         const chosen = r.data.sessions.find((s) => s.sessionId === saved) ?? r.data.sessions[0];
         setSession(chosen);
-        setPrompt(drafts.current.get(`${workspaceKey}:${chosen?.sessionId ?? ""}`) ?? "");
+        setPrompt(drafts.current.read({ workspaceKey, sessionId: chosen?.sessionId ?? "" }).text);
       })
       .catch((e) => {
         if (!stopped) {
@@ -242,8 +248,7 @@ export function App() {
       !needsReconcile,
   );
   function chooseSession(next: HarnessClientSession) {
-    drafts.current.set(`${workspaceKey}:${session?.sessionId ?? ""}`, prompt);
-    setPrompt(drafts.current.get(`${workspaceKey}:${next.sessionId}`) ?? "");
+    setPrompt(drafts.current.read({ workspaceKey, sessionId: next.sessionId }).text);
     setSession(next);
   }
   async function perform(
@@ -345,31 +350,44 @@ export function App() {
   async function start() {
     if (!session || !prompt.trim() || !canMutate || busy) return;
     const input = prompt;
+    const selected = { workspaceKey, sessionId: session.sessionId };
     await perform(
       "Starting task…",
       async () => {
-        let current = session;
-        if (!current.runs.length && current.title === "New session") {
-          current = (
-            await action<Session>(workspaceKey, "rename", {
-              sessionId: current.sessionId,
-              expectedRevision: current.revision,
-              idempotencyKey: key(),
-              title: input.trim().slice(0, 96),
-            })
-          ).data.session;
+        // perform acquired its synchronous lock. Consume before any awaited
+        // rename/start; completion must never clear a newer draft.
+        const submitted = drafts.current.consume(selected);
+        setPrompt("");
+        try {
+          let current = session;
+          if (!current.runs.length && current.title === "New session") {
+            current = (
+              await action<Session>(workspaceKey, "rename", {
+                sessionId: current.sessionId,
+                expectedRevision: current.revision,
+                idempotencyKey: key(),
+                title: input.trim().slice(0, 96),
+              })
+            ).data.session;
+          }
+          const result = await action<Run>(workspaceKey, "start", {
+            sessionId: session.sessionId,
+            expectedRevision: current.revision,
+            idempotencyKey: key(),
+            prompt: input,
+          });
+          if (selection.current.workspaceKey === selected.workspaceKey &&
+              selection.current.sessionId === selected.sessionId) {
+            setSession(result.data.session);
+            setRun(result.data.run);
+          }
+        } catch (error) {
+          drafts.current.failed(submitted);
+          if (selection.current.workspaceKey === selected.workspaceKey &&
+              selection.current.sessionId === selected.sessionId)
+            setPrompt(drafts.current.read(selected).text);
+          throw error;
         }
-        const result = await action<Run>(workspaceKey, "start", {
-          sessionId: session.sessionId,
-          expectedRevision: current.revision,
-          idempotencyKey: key(),
-          prompt: input,
-        });
-        setSession(result.data.session);
-        setRun(result.data.run);
-        setPrompt((currentDraft) =>
-          currentDraft === input ? "" : currentDraft,
-        );
       },
       true,
     );
@@ -585,7 +603,6 @@ export function App() {
               Boolean(pending) || cancelling || reconnecting || needsReconcile
             }
             onChange={(e) => {
-              drafts.current.set(`${workspaceKey}:${sessionId ?? ""}`, prompt);
               setPrompt("");
               setSearch("");
               setWorkspaceKey(e.target.value);
@@ -771,7 +788,7 @@ export function App() {
                           key={text}
                           disabled={!session || Boolean(pending)}
                           onClick={() => {
-                            setPrompt(text);
+                            editPrompt(text);
                             promptInput.current?.focus();
                           }}
                         >
@@ -854,8 +871,8 @@ export function App() {
                 }
                 value={prompt}
                 maxLength={65536}
-                disabled={!session || cancelling || (Boolean(pending) && !busy)}
-                onChange={(e) => setPrompt(e.target.value)}
+                disabled={!session || cancelling || (Boolean(pending) && pending !== "Starting task…" && !busy)}
+                onChange={(e) => editPrompt(e.target.value)}
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     e.preventDefault();
@@ -898,6 +915,19 @@ export function App() {
               <span>⌘ / Ctrl + Enter to run</span>
               <span>Credentials stay on the host</span>
             </div>
+            {drafts.current.read(selection.current).recovery !== undefined && (
+              <details className="composer-recovery">
+                <summary>Recover submitted text</summary>
+                <p>The submission could not be confirmed. Reconnect to inspect the current run before sending another task.</p>
+                <pre>{drafts.current.read(selection.current).recovery}</pre>
+                <button type="button" disabled={Boolean(prompt)} onClick={() => {
+                  if (drafts.current.recover(selection.current)) {
+                    setPrompt(drafts.current.read(selection.current).text);
+                    promptInput.current?.focus();
+                  }
+                }}>Restore to empty composer</button>
+              </details>
+            )}
             <p id="model-help" className="model-help">
               {modelsLoading ? "Reading configured providers and model choices…" : modelError ? "Model choices unavailable. Reconnect to refresh." : !modelChoices.length
                 ? "Using the host model. No selectable catalog is available."
