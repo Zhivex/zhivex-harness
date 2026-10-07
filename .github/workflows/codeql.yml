@@ -9,6 +9,7 @@ on:
       - har-hu-72-task-continuity
       - har-hu-75-recovery-lab
       - har-hu-73-task-projection
+      - code-hu-05-task-view
   push:
     branches:
       - main
