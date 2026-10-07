@@ -183,3 +183,92 @@ published run accounting and its legacy receipt rows retain their existing API.
 After a process crash, transport rows may remain `pending` while the task is
 blocked with uncertain effects. Their full exposure remains held; this increment
 does not claim automatic conversion of every crashed row to `unknown`.
+
+## HAR-HU-71 cancellation contract
+
+Cancellation has three independent outcomes: a durable request closes task
+admission; native tool callbacks may subsequently drain; provider termination
+remains unconfirmed. Neither a local abort nor a timeout establishes remote
+termination. Completed work, terminal run states, tool effects and accounting
+receipts are retained. Cancellation never grants human acceptance or rolls back
+an already written file. Code's task recap displays the latest cancellation next
+to confirmed, reserved and unknown consumption; its Ctrl-C message describes a
+local request rather than a confirmed provider stop. Web task projection remains
+a separate increment.
+
+The Experimental `@zhivex-ai/harness/code-support` entrypoint exposes:
+
+```ts
+import {
+  requestHarnessTaskCancellation,
+  inspectHarnessTaskBudget
+} from '@zhivex-ai/harness/code-support';
+
+// Use the original SQLite writer host, task identity and run identity.
+const requested = await requestHarnessTaskCancellation(host, taskId, runId);
+// requestOutcome is requested (durable closure) or already_terminal (no-op).
+// Neither outcome confirms that a provider stopped.
+const evidence = await inspectHarnessTaskBudget(host, taskId);
+// evidence.cancellations: runId, origin, requestedAt,
+// optional localToolsDrainedAt, localExecution, remoteExecution.
+```
+
+The host control installs a synchronous local admission barrier, serializes the
+closure with the invocation claim/cleanup, persists it under the task lease and
+only then sends its cooperative abort and acknowledges the request. A final
+synchronous check at monetary admission repeats the local barrier after any
+await inside checkpoint-token middleware, before reserving money or handing
+off to the provider. A refusal there releases only proven undispatched tokens. An external
+AbortSignal cannot delay its own delivery: its listener queues durable closure
+and invocation cleanup waits for that write. A crash before the closure commits
+can therefore leave the already durable invocation marker without a cancellation
+record; it still blocks a new invocation. A failed write is not a successful
+durable acknowledgement. Concurrent closure/cleanup shares one promise. An old
+run's request cannot cancel a newer invocation of the same task.
+
+| Route | Demonstrated guarantee | Remaining limit |
+| --- | --- | --- |
+| Same-host TASK request | Durable closure before acknowledgement/abort; no further guarded model/tool admissions | An already admitted request or tool may still finish |
+| Ctrl-C / external abort / timeout | Closure after the queued invocation claim; cleanup awaits persistence | Local signal delivery is not a remote cancellation receipt |
+| Waiting approval | Task closes before run cancellation; stale and reloaded approvals cannot execute | Effects that occurred before the request remain |
+| Native tool/process | Invocation retained until tracked callbacks settle; `native_tools_drained` after that point | Detached descendants or remote effects are not proven stopped; an uncooperative callback can remain pending without a five-second promise |
+| Stream / semantic compaction | Late complete usage remains charged once; missing usage retains exposure | Provider completion and latency are unmeasured; `remoteExecution` stays `unconfirmed` |
+| Restart / SIGKILL | Durable intent, invocation and reserved exposure survive | No cross-host takeover or automatic reconciliation of unknown effects |
+| Run cancellation / cascade | Terminal states and receipts survive each CAS retry; returned summary reloads durable state | No atomic cross-run cancellation, spawn barrier or exactly-once claim |
+| Adapter preparation | If no run exists yet, wait for preparation outcome persistence before acknowledging | A preparation hook that ignores abort may keep the request pending |
+
+`localToolsDrainedAt` proves only that this invocation's tracked native tool
+callbacks drained. It does not assert that all provider callbacks or remote work
+stopped. A retained invocation produces `TASK_BUDGET_INVOCATION_UNCERTAIN`;
+a different active writer produces `TASK_BUDGET_ACTIVE`. Missing binding produces
+`TASK_BUDGET_RUN_BINDING_MISSING`; a request for an older inactive run produces
+`TASK_BUDGET_STALE_RUN`. Closed admission produces `TASK_BUDGET_CANCELLED`.
+Persistence failure during adapter preparation produces
+`CLIENT_CANCELLATION_NOT_PERSISTED`. None of these errors mints new credit.
+
+For unresolved work, preserve the database and inspect the prior run, native
+process/effect evidence and transport receipts. Complete authoritative receipts
+can settle consumption through the existing ledger path. Explicit continuation
+requires no pending invocation and complete consumption; it uses a new run ID
+and retains cancellation history. There is no operator API in this increment to
+clear an orphan invocation or guess missing usage. Stop and review unresolved
+effects; do not delete control fields, refund reservations or replay effects to
+get past a refusal. A full logical backup refuses pending invocations; preserve
+the stopped host's complete database when that gate applies.
+
+The new reader accepts existing HU70 accounts without cancellation history.
+The optional `cancellations` field is retained in complete logical backups.
+HU70's strict older account reader rejects accounts written with this field:
+downgrading a cancelled experimental task is blocked, not an automatic migration.
+Do not strip the field to force a downgrade. Ordinary run status and token-summary
+shapes remain unchanged. Child TASK execution remains refused by the existing
+single-native-writer gate, so optional child creation is outside this cut.
+
+`tests/task-cancellation.test.ts`, `tests/task-cancellation-host.test.ts`,
+`tests/task-cancellation-transport.test.ts` and
+`tests/client-run-runtime.test.ts` cover deterministic save barriers, independent
+SQLite workers, SIGKILL, a real native process, approval, stream, compaction,
+restart and import. `scripts/har-hu-71-installed-consumer.mjs` exercises the
+installed Experimental export on an exact candidate tarball. These are offline
+fixtures; there is no measured provider-stop SLA, paid campaign, external pilot,
+SDK fix, publication or release claim.

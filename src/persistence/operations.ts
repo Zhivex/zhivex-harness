@@ -36,6 +36,8 @@ import { SqliteDatabase } from "./sqlite-database.js";
 import { validateStateDirectory } from "./state-directory.js";
 import { HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/errors.js";
 
+import { TaskBudget, TASK_BUDGET_KEY, inspectTaskBudgetSummary } from '../runtime/task-budget.js';
+
 type SqliteDatabaseLike = SqliteAgentRunStoreOptions["db"];
 
 const budgetScopeFor = (config: HarnessConfig) => ({
@@ -107,14 +109,14 @@ const runSummary = (state: AgentRunState) => {
     agentId: state.agentId,
     parentRunId: state.parentRunId,
     idempotencyKey: state.idempotencyKey,
-    scope: state.scope,
+    scope: state.scope as import("@zhivex-ai/core").AgentStoreScope | undefined,
     steps: consumption.steps,
     toolCalls: consumption.toolCalls,
     toolErrors: consumption.toolErrors,
     pendingApprovals: state.pendingApprovals.length,
     compactions: state.compactions?.length ?? 0,
     childRuns: state.childRuns?.length ?? 0,
-    usage: state.usage,
+    usage: state.usage as import("@zhivex-ai/core").TokenUsage | undefined,
     startedAt: state.startedAt,
     updatedAt: state.updatedAt,
     cancelledAt: state.cancelledAt,
@@ -134,7 +136,7 @@ export const listHarnessRuns = async (
   return {
     schemaVersion: HARNESS_OPERATIONS_SCHEMA_VERSION,
     kind: "run-list" as const,
-    scope: config.scope,
+    scope: config.scope as import("@zhivex-ai/core").AgentStoreScope,
     backend: config.storeBackend,
     runs: page.items.map(runSummary),
     ...(page.nextCursor ? { nextCursor: page.nextCursor } : {})
@@ -397,27 +399,53 @@ export const cancelHarnessRun = async (
   runId: string,
   options: { reason?: string; cascade?: boolean; final?: boolean } = {}
 ) => {
+  const before = await store.load(runId, config.scope);
+  if (before && !TERMINAL_RUN_STATUSES.some(status => status === before.status)) {
+    const binding = inspectTaskBudgetSummary(before.metadata?.[TASK_BUDGET_KEY]);
+    if (binding) {
+      const account = await TaskBudget.open({ store, scope: config.scope, taskId: binding.taskId,
+        policy: { limits: binding.limits }, requireExisting: true });
+      await account.requestCancellation(runId);
+    }
+  }
+  // The SDK parent primitive can rewrite an already terminal state. Recheck at
+  // every attempted write, including retries after a completion wins the CAS.
+  // This guard preserves receipts; it does not confirm remote cancellation.
+  const cancellationStore = new Proxy(store, { get(target, key) {
+    if (key === 'save') return async (...args: Parameters<typeof target.save>) => {
+      const current = await target.load(args[0].runId, args[0].scope);
+      if (current && ['completed', 'failed', 'cancelled', 'timed_out'].includes(current.status)) return;
+      return target.save(...args);
+    };
+    const value = Reflect.get(target, key, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  } });
   const cancellationOptions = {
     scope: config.scope,
     mode: options.final ? "final" as const : "request" as const,
     ...(options.reason ? { reason: options.reason } : {})
   };
   const result = options.cascade
-    ? await cancelAgentRunTree(store, runId, cancellationOptions)
-    : await cancelAgentRun(store, runId, cancellationOptions);
+    ? await cancelAgentRunTree(cancellationStore, runId, cancellationOptions)
+    : await cancelAgentRun(cancellationStore, runId, cancellationOptions);
   if (!result || ("parent" in result && !result.parent)) {
     throw new HarnessStateConflictError(`Run ${runId} was not found in ${config.stateDirectory}.`);
   }
+  const durable = async (state: AgentRunState) => {
+    const current = await store.load(state.runId, state.scope);
+    if (!current) throw new HarnessStateConflictError(`Run ${state.runId} disappeared during cancellation.`);
+    return runSummary(current);
+  };
   return {
     schemaVersion: HARNESS_OPERATIONS_SCHEMA_VERSION,
     kind: "run-cancellation" as const,
     cascade: options.cascade ?? false,
     ...(options.cascade
       ? {
-          parent: runSummary((result as Awaited<ReturnType<typeof cancelAgentRunTree>>).parent!),
-          children: (result as Awaited<ReturnType<typeof cancelAgentRunTree>>).children.map(runSummary)
+          parent: await durable((result as Awaited<ReturnType<typeof cancelAgentRunTree>>).parent!),
+          children: await Promise.all((result as Awaited<ReturnType<typeof cancelAgentRunTree>>).children.map(durable))
         }
-      : { run: runSummary(result as AgentRunState) })
+      : { run: await durable(result as AgentRunState) })
   };
 };
 

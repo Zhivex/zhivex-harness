@@ -2747,6 +2747,11 @@
           "tier": "experimental"
         },
         {
+          "name": "requestHarnessTaskCancellation",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
           "name": "persistHarnessTaskDraft",
           "kind": "runtime",
           "tier": "experimental"

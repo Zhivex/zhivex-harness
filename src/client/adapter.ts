@@ -96,10 +96,12 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       ...(operation.forkSessionId ? { forkSessionId: operation.forkSessionId } : {}) }, preview };
   };
   let closed = false, busy = false;
-  let active: { sessionId: string; runId: string; controller: AbortController; runtime?: ZhivexHarness } | undefined;
+  let active: { sessionId: string; runId: string; controller: AbortController; settled: Promise<void>; runtime?: ZhivexHarness } | undefined;
   const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1], prompt?: string) => {
     const runId = "state" in input ? input.state.runId : input.runId!;
-    const controller = new AbortController(); active = { sessionId, runId, controller };
+    let settle!: () => void;
+    const settled = new Promise<void>(resolve => { settle = resolve; });
+    const controller = new AbortController(); active = { sessionId, runId, controller, settled };
     let prepared: Awaited<ReturnType<NonNullable<HarnessClientRunRuntimeOptions['prepareRun']>>> | undefined;
     try {
       if (prompt !== undefined) await options.onPrompt?.(sessionId, runId, prompt);
@@ -148,7 +150,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       }
       await options.onCheckpoint?.(sessionId, runId, persisted?.status ?? "interrupted");
       throw e;
-    } finally { try { await prepared?.release(); } finally { active = undefined; } }
+    } finally { try { await prepared?.release(); } finally { active = undefined; settle(); } }
   };
   const receipts = new Map<string, { fingerprint: string; response: Promise<HarnessClientResponse> }>();
   const getSession = async (sessionId: string) => {
@@ -316,11 +318,18 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     async cancelActive() {
       const current = active;
       if (!current) return;
-      current.controller.abort();
       // Preparation can be cancelled before the SDK has created a run row.
       if (await harness.store.load(current.runId, harness.config.scope)) {
         await cancelHarnessRun(harness.store, harness.config, current.runId, { cascade: true });
+      } else {
+        current.controller.abort();
+        // Preparation has no run row yet. Do not acknowledge durable cancel
+        // until invoke has persisted its outcome (or report persistence failure).
+        await current.settled;
+        if (!await harness.store.load(current.runId, harness.config.scope)) throw new Error('CLIENT_CANCELLATION_NOT_PERSISTED');
+        return;
       }
+      current.controller.abort();
     },
     negotiate(versions) {
       if (closed) return { ok: false, error: { code: "CONNECTION_EXPIRED" } };

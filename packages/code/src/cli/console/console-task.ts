@@ -83,9 +83,10 @@ export function codeTaskPrompt(task: CodeTask, prompt: string): string {
 }
 
 export function codeTaskBudgetRecap(value: unknown): string {
-  const { monetary, monetaryDetails, ...tokenSummary } = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const { monetary, monetaryDetails, cancellations, ...tokenSummary } = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const summary = inspectTaskBudgetSummary(tokenSummary);
   if (!summary) return 'Task budget: unavailable; further execution requires its established authority.\n';
+  const cancellation = Array.isArray(cancellations) ? cancellations.at(-1) as Record<string, unknown> | undefined : undefined;
   const money = monetaryDetails && typeof monetaryDetails === 'object' ? monetaryDetails as Record<string, unknown> : undefined;
   const amount = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value.toFixed(6) : 'unknown';
   const tokens = (value: typeof summary.confirmed) => `input ${value.inputTokens}; output ${value.outputTokens}; total ${value.totalTokens}`;
@@ -95,6 +96,7 @@ export function codeTaskBudgetRecap(value: unknown): string {
     `Task remaining: ${tokens(summary.remaining)}\n` +
     (summary.invocationPending ? `Retained invocation: ${summary.activeRunId ?? 'unresolved prior run'}; a new run cannot take over while its outcome remains pending.\n` : '') +
     `Task admission: ${summary.invocationPending ? 'blocked by a retained invocation; inspect the prior run' : !summary.usageComplete ? 'blocked by incomplete consumption; held reservations remain charged' : summary.admissionsClosed ? 'closed; explicit continuation required' : 'open subject to remaining budget'}\n` +
+    (cancellation ? `Cancellation requested for ${String(cancellation.runId)}; ${cancellation.localExecution === 'native_tools_drained' ? 'native tool callbacks drained' : 'local execution unconfirmed'}. Provider stop unconfirmed; prior work and receipts retained. Task acceptance remains separate.\n` : '') +
     (monetary !== undefined ? `Task monetary ${formatUsageLedger(monetary)}\n` : '') +
     (money ? `Estimated confirmed USD ${amount(money.estimatedConfirmedUsd)}; reserved ${amount(money.reservedUsd)}; unknown exposure held ${amount(money.unknownHeldUsd)}; remaining ${amount(money.remainingUsd)}. Late receipts: ${typeof money.lateCalls === 'number' ? money.lateCalls : 'unknown'}.\n` : ''));
 }

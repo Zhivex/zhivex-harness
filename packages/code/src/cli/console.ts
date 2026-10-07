@@ -73,7 +73,7 @@ export const chat = async (options: CliOptions) => {
   const interrupt = () => {
     if (activeController && !activeController.signal.aborted) {
       activeController.abort();
-      process.stderr.write("\nStopping the active operation; waiting for durable state and cleanup.\n");
+      process.stderr.write("\nCancellation requested locally; waiting for durable state and native cleanup. Provider stop is unconfirmed.\n");
     }
   };
   readline.onInterrupt = interrupt;
