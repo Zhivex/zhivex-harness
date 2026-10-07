@@ -393,6 +393,11 @@ try {
   steps.push("same-render repeated start dispatches once");
   assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
 
+  // Polling can reveal the approval while the deliberately delayed start
+  // response still owns the mutation lock. Keyboard press does not wait for
+  // disabled controls to become actionable as click does.
+  await page.getByRole("button", { name: "Review proposed operation" })
+    .and(page.locator(":enabled")).waitFor();
   fault = { action: "review", mode: "stale" };
   await page
     .getByRole("button", { name: "Review proposed operation" })
