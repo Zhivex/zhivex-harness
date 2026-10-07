@@ -1,10 +1,10 @@
 # Optional Web limits
 
 New interactive Web/terminal tasks have no accumulated spend, token, step,
-tool-call or duration cap unless configured. This change requires the unpublished
-SDK contract from Zhivex/zhivex-ai-sdk PR 142 (Core/SDK 1.31.0, Agents 1.11.0).
-This draft's offline fixture validation does not establish published dependency
-readiness. Published pins remain unchanged until those artifacts are available.
+tool-call or duration cap unless configured. This change uses the published SDK contract from
+Zhivex/zhivex-ai-sdk PR 142 (Core/SDK 1.31.0, Agents 1.11.0). Direct Harness, Code
+and Web Core/Agents pins and the root Core override use those verified releases.
+Provider package pins, headless policies and release gates remain unchanged.
 
 The Web header opens the approved gradual configuration modal. Next task settings
 override project settings once, including an empty override. Project settings
@@ -83,3 +83,23 @@ Its Core/Agents/SDK `dist` files were compared byte for byte against that bundle
 Installed consumer scripts accept `ZHIVEX_SDK_FIXTURE` only for explicit local
 fixtures, verify package SHA256/SHA512 and record provenance without changing
 repository pins or installing scripts. No provider requests are authorized by it.
+
+## Published dependency verification
+
+The actual npm Core 1.31.0, Agents 1.11.0 and SDK 1.31.0 tarballs were verified
+against registry SHA512 integrity and SHA1 shasums. Their attestation subjects
+match those bytes; all provenance points to release commit
+`a7905584074340a905e40b93ad79c19873cdeb27`, workflow 37547891151.
+Core/Agents/SDK dist trees (620/24/108 files) are byte-identical to the initial
+versioned fixture. SDK PR 143 (stream diagnostics) remains outside this release.
+SDK is not a direct Harness dependency, so no unnecessary SDK pin was added.
+
+Tarball SHA256: Core `0e01913a29b90a6c0e55fb4fb0e3c759a3f40de9dc1008b721444dbb325bcb89`;
+Agents `7afed703128d6281ea56b77c778658289066887ac1d824e220dae5c5542ca812`;
+SDK `b344e2b6b0990dc5358d773ec0c97dd89dd2b770ca15de4ed1ed5bd50afee84c`.
+Final validation uses npm publications without `ZHIVEX_SDK_FIXTURE`.
+The official `npm audit signatures` check succeeds (5 registry signatures and
+4 attestations across the isolated three-package installation and dependencies).
+Web offline test setup links only this checkout's built public engine exports,
+preserving a registry dependency as a local backup and refusing another checkout's
+link. Product installation/build never invokes that test setup.

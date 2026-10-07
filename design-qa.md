@@ -61,6 +61,7 @@ survive restart and approval resume with their original SDK fingerprints.
 
 Installed Web and CLI packages pass their offline consumer suites using the
 versioned, digest-verified SDK fixture described in `docs/WEB_LIMITS.md`. No paid
-provider calls or real session/database changes were used. This fixture is not
-published dependency readiness: the draft depends on SDK PR 142's unpublished
-Core/SDK 1.31.0 and Agents 1.11.0 contract. Published pins and CI gates remain intact.
+provider calls or real session/database changes were used. After publication, official npm Core/SDK 1.31.0 and Agents 1.11.0 were verified
+against registry digests and release provenance (`a7905584`). Their dist bytes match
+the fixture. Minimal Core/Agents consumer pins are updated; final checks use real
+publications without fixture overrides. Release policies and gate enforcement remain intact.
