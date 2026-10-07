@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - minimum-task-flow
   push:
     branches:
       - main
