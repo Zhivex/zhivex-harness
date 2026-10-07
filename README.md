@@ -148,7 +148,7 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 
 ## Documentation
 
-- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md), [first use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md).
+- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md), [first use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md), [Code web tasks](docs/CODE_WEB_TASKS.md).
 - **Integrating Harness:** [engine API](docs/ENGINE_API.md), [CLI contracts](docs/CLI.md), [experimental task projection](docs/CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73), [extensibility](docs/EXTENSIBILITY.md), [API stability](docs/STABILITY.md).
 - **Limits:** [support matrix](docs/SUPPORT_MATRIX.md), [security policy](SECURITY.md).
 - **Contributing:** [development](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) and [maintenance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md).

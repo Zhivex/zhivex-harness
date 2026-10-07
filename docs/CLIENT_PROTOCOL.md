@@ -406,3 +406,48 @@ It omits command argv, repository output and arbitrary tool payloads.
 or human acceptance. Existing status/exit-code and schema-version contracts remain
 unchanged. Code inspection/export derives the same safe projection from completed
 tool-journal entries; the engine inspection API signature is unchanged.
+
+
+## Task controls (CODE-HU-05, experimental)
+
+Negotiate `task.control.v1` and each command before showing mutation controls.
+The strict command schema remains protocol v1. The host creates the contract;
+clients cannot supply a contract, receipt, budget ledger or execution grant.
+
+| Method | Additional input | Result |
+| --- | --- | --- |
+| `task.start` | session, expectedRevision, idempotencyKey, bounded brief with goal/paths/checks/constraints and explicit input/output/total token limits | run |
+| `task.review` | session, run | taskReview |
+| `task.keep` | session, run, reviewId, idempotencyKey | task + humanDecision |
+| `task.revise` | same review binding + correction (1–500 characters) | task + humanDecision |
+| `task.continue` | same review binding + prompt (1–2000 characters) | run |
+
+A taskReview contains a redacted bounded Git diff, fresh projection, allowed
+actions, a `complete` flag, operator-decision status and a five-minute, one-use host token. Tokens
+bind connection, session, run revision, contract, current snapshot, task budget
+revision and Git status/diff identity. The web host additionally binds tokens
+to its authenticated browser identity and workspace. Missing, consumed, expired
+or changed reviews fail closed. Hidden/truncated review content cannot enable keep. A command retry with the same idempotency key
+returns its existing response; a renderer must read state after a lost response,
+never manufacture another mutation key automatically.
+
+Keep records `humanDecision` with `explicit_operator_review` provenance under
+task-account exclusion and run CAS. It does not change the projection's semantic
+pending/acceptance-not-recorded fields, commit files or imply independent human
+quality measurement. A changed contract or snapshot makes the record stale.
+Revise appends a bounded pending human requirement without executing work.
+Continue uses the original durable account and rechecks the reviewed admission
+tuple inside runtime continuity; it cannot replenish credit or replay uncertainty.
+Ordinary run.start is rejected in sessions retaining governed task authority.
+
+A continuation rejected before admission can have a failed session attempt with
+a host-owned reference to its prior admitted run. Reads resolve this reference
+only within the same session and only when the attempt is absent from the budget
+account. The projection preserves the requested runId, exposes observedRunId and
+historicalRequest, and retains stale/missing checks honestly. New review commands
+must target observedRunId. No budget admission or consumption is fabricated.
+
+Migration: fields and commands are additive and experimental. Existing projection
+version 1, legacy chat and exact tool approvals remain intact. Match host and Code
+builds; unsupported hosts display an unavailable task-control state. See
+[Code web tasks](CODE_WEB_TASKS.md) for native workspace limits and offline QA.

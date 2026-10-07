@@ -160,10 +160,10 @@ test('task reads remain available while an adapter mutation owns admission', () 
   const waiting = new Promise<void>(r => { entered = r; }), gate = new Promise<void>(r => { release = r; });
   const adapter = await createHarnessClientAdapter(c.host, { onPrompt: async () => { entered(); await gate; } });
   const hello = adapter.negotiate([1]); if (!hello.ok) throw new Error('hello');
-  const session = (await c.sessions.get(c.sessionId))!;
   const dispatch = (command: Record<string, unknown>) => adapter.dispatch({ protocolVersion: 1, requestId: 'busy-read', connectionId: hello.connectionId,
     command: { projectId: hello.projectId, sessionId: c.sessionId, ...command } });
-  const pending = dispatch({ method: 'run.start', prompt: 'ordinary next turn', expectedRevision: session.revision, idempotencyKey: 'start' });
+  const other = await c.sessions.create();
+  const pending = dispatch({ method: 'run.start', sessionId: other.sessionId, prompt: 'ordinary task in another session', expectedRevision: other.revision, idempotencyKey: 'start' });
   await waiting;
   try {
     const before = JSON.stringify(await c.sessions.get(c.sessionId));

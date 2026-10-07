@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "story": "CODE-HU-05",
+  "scope": "automated installed UI/service/engine plus retained HU75 recovery laboratory",
+  "fixtureSha256": "473a9e2144b0042b1b46ef54f915de693045df89d6175bde42a3393d2b083263",
+  "browserScenarios": [
+    "normal-task-review-accept",
+    "reload-without-replay",
+    "two-tabs-obsolete-review-and-edit-back",
+    "corrected-task-explicit-continuation-double-click",
+    "workspace-switch-without-stale-evidence-or-replay",
+    "slow-cancel-unknown-usage-blocks-continuation",
+    "process-restart-handoff-without-transcript-or-replay"
+  ],
+  "requiredEvidence": ["exact artifact binding before and after execution", "native check receipts", "desktop and mobile screenshots", "zero automatic effect replay", "retained unknown usage", "scripted operator acknowledgement separately labeled"],
+  "liveProvider": false,
+  "humanPilotPerformed": false,
+  "humanMinutes": null,
+  "realCostPerAcceptedTask": null
+}

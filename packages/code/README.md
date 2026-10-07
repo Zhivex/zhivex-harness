@@ -96,7 +96,7 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 - Gemini, Anthropic, and Vertex are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
 - Anthropic uses `ANTHROPIC_API_KEY` or `/credentials`. Vertex uses host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not store a Vertex API key.
 - MCP in the default CLI is bounded Streamable HTTP. stdio is not enabled from workspace JSON.
-- `zhivex-code web` opens an experimental local browser workspace on macOS or Linux. Configure credentials in the CLI first. See [local web client](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md) and `zhivex-code web --help`.
+- `zhivex-code web` opens an experimental local browser workspace on macOS or Linux. Configure credentials in the CLI first. The task and evidence panel lets an operator define a bounded task, review artifacts and checks, and explicitly accept a snapshot before continuation. See [Code web tasks](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_WEB_TASKS.md), [local web client](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md), and `zhivex-code web --help`.
 - The default runtime exposes no shell tools. Isolated commands need Docker or Podman, configured explicitly.
 
 ## Releases

@@ -15,14 +15,38 @@ const hash = (value: unknown) => 'sha256:' + createHash('sha256').update(JSON.st
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const sha = (value: unknown): string | null => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value) ? value : null;
 
+export function redactTaskDisplayText(host: ZhivexHarness, raw: string, sensitiveValues: readonly string[] = []): string {
+  const redaction = createRedactionPolicy({ includeEmails: true });
+      let safe = raw;
+      for (const secret of [host.workspace.root, ...sensitiveValues]) if (secret) safe = safe.split(secret).join('[REDACTED]');
+      safe = redaction.redactText(safe).replace(/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/gi, '[REDACTED]')
+        // Operator text can retain a noncanonical alias (for example /tmp on macOS).
+        // Display text never needs an actionable absolute host path.
+        .replace(/(^|[^A-Za-z0-9_./\\-])(?:\/(?!\/)|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>\[\](){}]*/g, '$1[REDACTED_PATH]')
+        .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
+  return safe;
+}
+
 /** Derivation only: no session refresh, ledger creation, state save, checks or model calls. */
 export async function projectHarnessTask(host: ZhivexHarness, request: HarnessTaskProjectionScope & { sequence: number },
   allowedRunIds: readonly string[], sensitiveValues: readonly string[] = []): Promise<HarnessTaskProjection> {
   try {
     if (host.config.execution.backend !== 'none' || host.config.orchestration.profiles.length || host.agent.subagents?.length) return fault('UNSUPPORTED_HOST');
     if (!allowedRunIds.includes(request.runId)) return fault('OUT_OF_SCOPE');
-    const state = await host.store.load(request.runId, host.config.scope);
+    let state = await host.store.load(request.runId, host.config.scope);
     if (!state) return fault('EVIDENCE_UNAVAILABLE');
+    const requestedState = state;
+    let sourceRunId = request.runId;
+    // A rejected continuation is a session attempt, never an invented budget admission.
+    // Resolve one host-owned reference within this session and validate account exclusion below.
+    const prior = state.metadata?.clientTaskPriorRunV1;
+    if (!readTaskAcceptanceLedger(state) && typeof prior === 'string' &&
+      ['failed', 'cancelled'].includes(state.status) && !state.steps.length && !state.toolResults.length && !state.pendingApprovals.length) {
+      if (prior === request.runId || !allowedRunIds.includes(prior)) return fault('OUT_OF_SCOPE');
+      const retained = await host.store.load(prior, host.config.scope);
+      if (!retained) return fault('EVIDENCE_UNAVAILABLE');
+      state = retained; sourceRunId = prior;
+    }
     const ledger = readTaskAcceptanceLedger(state);
     if (!ledger) return fault('CONTRACT_UNAVAILABLE');
     const taskId = ledger.revisions.at(-1)!.contract.taskId;
@@ -36,19 +60,13 @@ export async function projectHarnessTask(host: ZhivexHarness, request: HarnessTa
     });
     const report = evidence.report, latest = report.runs.at(-1), current = report.currentContract;
     if (report.reasons.some(reason => ['TASK_CONTINUITY_RUN_MISSING', 'TASK_CONTINUITY_SOURCE_INVALID'].includes(reason))) return fault('EVIDENCE_UNAVAILABLE');
-    if (!latest || !current || !report.runs.some(run => run.runId === request.runId)) return fault('EVIDENCE_UNAVAILABLE');
+    if (sourceRunId !== request.runId && (!report.budget || report.budget.runs.includes(request.runId))) return fault('EVIDENCE_UNAVAILABLE');
+    if (!latest || !current || !report.runs.some(run => run.runId === sourceRunId)) return fault('EVIDENCE_UNAVAILABLE');
     if (binding && (binding.accountRunId !== report.budget?.accountRunId || binding.coordinatorId !== report.budget?.coordinatorId)) return fault('EVIDENCE_UNAVAILABLE');
-    const redaction = createRedactionPolicy({ includeEmails: true });
     let textTruncated = false;
     const text = (raw: string): string => {
-      let safe = raw;
-      for (const secret of [host.workspace.root, ...sensitiveValues]) if (secret) safe = safe.split(secret).join('[REDACTED]');
-      safe = redaction.redactText(safe).replace(/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/gi, '[REDACTED]')
-        // Operator text can retain a noncanonical alias (for example /tmp on macOS).
-        // Display text never needs an actionable absolute host path.
-        .replace(/(^|[^A-Za-z0-9_./\\-])(?:\/(?!\/)|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>\[\](){}]*/g, '$1[REDACTED_PATH]')
-        .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
-      if (safe.length > 2048) { textTruncated = true; safe = safe.slice(0, 2047) + '…'; }
+      const safe = redactTaskDisplayText(host, raw, sensitiveValues);
+      if (safe.length > 2048) { textTruncated = true; return safe.slice(0, 2047) + '…'; }
       return safe;
     };
     const delivery = object(latest.delivery);
@@ -94,7 +112,7 @@ export async function projectHarnessTask(host: ZhivexHarness, request: HarnessTa
     // Revalidate all inputs after projection; a changing workspace is not a fresh authorization.
     await evidence.verifyAll();
     if (rawBudget === undefined && await host.store.load(accountId, host.config.scope)) return fault('SNAPSHOT_CHANGED');
-    if (JSON.stringify(await host.store.load(request.runId, host.config.scope)) !== JSON.stringify(state)) return fault('SNAPSHOT_CHANGED');
+    if (JSON.stringify(await host.store.load(request.runId, host.config.scope)) !== JSON.stringify(requestedState)) return fault('SNAPSHOT_CHANGED');
     const projection = { schemaVersion: 1 as const, ...request, task };
     if (Buffer.byteLength(JSON.stringify(projection)) > 64 * 1024) return fault('PAYLOAD_LIMIT');
     return harnessTaskProjectionSchema.parse(projection);

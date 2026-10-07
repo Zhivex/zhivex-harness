@@ -311,6 +311,8 @@ export interface HarnessRunOptions {
 export interface HarnessTaskRunOptions extends HarnessRunOptions {
   taskBudgetExisting?: boolean;
   taskBudgetContinue?: boolean;
+  /** Trusted host consent binding, rechecked during durable admission. Never metadata or model input. */
+  taskAdmissionReview?: { runId: string; runRevision: number; contractDigest: string; snapshotDigest: string | null; budgetRevision: number };
   telemetryTemperature?: 'cold' | 'warm' | 'unknown';
   onTaskTelemetry?: (telemetry: TaskTelemetrySnapshot) => void;
 }
@@ -1145,6 +1147,12 @@ export const runHarness = async (
     const continuityTaskId = durableBinding?.taskId ?? (taskOptions?.taskBudgetExisting ? options.taskAcceptance?.taskId : undefined);
     const continuity = continuityTaskId ? await readTaskContinuity(harness, continuityTaskId) : undefined;
     const priorLedger = continuity?.report.runs.at(-1)?.ledger;
+    if (taskOptions?.taskAdmissionReview) {
+      const expected = taskOptions.taskAdmissionReview, latest = continuity?.report.runs.at(-1);
+      if (!continuity || !latest || latest.runId !== expected.runId || latest.revision !== expected.runRevision ||
+        continuity.report.currentContract?.digest !== expected.contractDigest || latest.snapshot?.snapshotDigest !== expected.snapshotDigest ||
+        continuity.report.budget.revision !== expected.budgetRevision) throw new Error('TASK_CONTINUITY_CHANGED');
+    }
     if (continuity) {
       if ('state' in invocation && (continuity.report.runs.at(-1)?.runId !== invocation.state.runId ||
         readTaskAcceptanceLedger(invocation.state)?.revisions.at(-1)?.digest !== priorLedger?.revisions.at(-1)?.digest))
