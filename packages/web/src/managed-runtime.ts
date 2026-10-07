@@ -2,7 +2,7 @@ import type { WebModelChoice, WebModelSelection } from "./contracts.js";
 import type { WebRuntime } from "./runtime.js";
 
 const terminal = new Set(["completed", "failed", "cancelled", "timed_out"]);
-const reads = new Set(["project.get", "policy.get", "session.list", "session.get", "run.get"]);
+const reads = new Set(["task.get", "task.review", "project.get", "policy.get", "session.list", "session.get", "run.get"]);
 
 /** Host-only configuration change; one exclusive service owner per workspace. */
 export function manageWebRuntime(

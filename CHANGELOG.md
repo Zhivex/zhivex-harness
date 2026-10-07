@@ -6,7 +6,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
-- Add experimental versioned `task.get` snapshots over the existing client/service protocol. Project deterministic contract/byte/check evidence separately from semantic and human acceptance, retain authoritative budget uncertainty and prohibit automatic effect replay. Negotiate `task.projection.v1`; legacy commands and opt-in budget behavior remain compatible. No CODE-05 renderer or new store.
+- Add experimental Code web task definition, bounded exact delivery review, explicit human acceptance, requirement correction and budgeted continuation through additive host-owned client commands. Keep check verification, human decisions and provider usage uncertainty distinct. Failed pre-admission continuations retain scoped previous evidence without inventing budget admissions; ordinary chat cannot bypass a governed task's budget.
+- Migration: negotiate `task.control.v1`; existing chat and task projection v1 remain supported. Use matched Code/Harness builds. Native governed tasks require a clean Git baseline, existing bounded tracked files, declared package checks and explicit token limits. Human acceptance records operator acknowledgement, not measured semantic quality. No store migration, default cap, automatic retry or release is introduced. See [Code web tasks](docs/CODE_WEB_TASKS.md).
+
+- Add experimental versioned `task.get` snapshots over the existing client/service protocol. Project deterministic contract/byte/check evidence separately from semantic and human acceptance, retain authoritative budget uncertainty and prohibit automatic effect replay. Negotiate `task.projection.v1`; legacy commands and opt-in budget behavior remain compatible. No new store.
 
 - Add host-only task continuity inspection and admission checks over existing SQLite task, contract, journal and budget records. Preserve contract revisions across turns, refuse stale approvals and missing/uncertain effect evidence, and revalidate receipts before Code keep. No automatic effect replay or new public web projection.
 

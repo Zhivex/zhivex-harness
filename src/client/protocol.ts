@@ -45,6 +45,14 @@ export const harnessClientCommandSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("restore.apply"), ...restore, ...mutation, expectedRevision: revision, reviewedProposalId: fileDigest }).strict(),
   z.object({ method: z.literal("restore.recoverFork"), ...restore, ...mutation, expectedRevision: revision, forkSessionId: id }).strict(),
   z.object({ method: z.literal("run.start"), ...session, ...mutation, expectedRevision: revision, prompt: z.string().min(1).max(64 * 1024) }).strict(),
+  z.object({ method: z.literal("task.start"), ...session, ...mutation, expectedRevision: revision,
+    brief: z.strictObject({ goal: z.string().trim().min(1).max(2000), paths: z.array(z.string().min(1).max(1024)).min(1).max(20),
+      checks: z.array(id).min(1).max(8), constraints: z.array(z.string().trim().min(1).max(500)).max(8),
+      budget: z.strictObject({ inputTokens: z.number().int().positive().safe(), outputTokens: z.number().int().positive().safe(), totalTokens: z.number().int().positive().safe() }) }) }).strict(),
+  z.object({ method: z.literal("task.review"), ...run }).strict(),
+  z.object({ method: z.literal("task.keep"), ...run, ...mutation, reviewId: z.string().uuid() }).strict(),
+  z.object({ method: z.literal("task.revise"), ...run, ...mutation, reviewId: z.string().uuid(), correction: z.string().trim().min(1).max(500) }).strict(),
+  z.object({ method: z.literal("task.continue"), ...run, ...mutation, reviewId: z.string().uuid(), prompt: z.string().trim().min(1).max(2000) }).strict(),
   z.object({ method: z.literal("task.get"), ...run, projectionVersion: z.number().int().nonnegative().safe() }).strict(),
   z.object({ method: z.literal("run.get"), ...run, includeReview: z.boolean().optional(), includeDiff: z.boolean().optional(), decisionOffset: z.number().int().min(0).max(512).optional() }).strict(),
   z.object({ method: z.literal("approval.resolve"), ...run, ...mutation, expectedRevision: revision,
@@ -70,8 +78,12 @@ export interface HarnessClientRun {
   approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown; expiresAt: number; filePreview?: ApprovalFilePreview }[];
 }
 
+export interface HarnessTaskHumanDecision { status: 'not_recorded' | 'current' | 'stale'; at: number | null; provenance: 'explicit_operator_review' | null }
+export interface HarnessTaskReview { reviewId: string; expiresAt: number; projection: HarnessTaskProjection;
+  diff: string; complete: boolean; canKeep: boolean; canContinue: boolean; canRevise: boolean; humanDecision: HarnessTaskHumanDecision }
 export type HarnessClientData =
-  | { kind: "task"; projection: HarnessTaskProjection }
+  | { kind: "task"; projection: HarnessTaskProjection; humanDecision?: HarnessTaskHumanDecision }
+  | { kind: "taskReview"; review: HarnessTaskReview }
   | { kind: "project"; projectId: string }
   | { kind: "policy"; policy: HarnessPolicyInspection }
   | { kind: "session"; session: HarnessClientSession }

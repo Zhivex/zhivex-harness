@@ -60,6 +60,15 @@ restart guidance. The current custom host model remains visible when absent
 from the catalogue. An optional `--tool-policy` selects
 the existing Harness policy on the host. No new execution policy is introduced.
 
+## Governed task view (CODE-HU-05)
+
+The task/evidence panel sits beside the existing chat. It uses the public
+`task.projection.v1` reducer and additive `task.control.v1` host commands;
+it has no provider, filesystem, receipt or policy authority. Define a task in
+an empty session, inspect contract/check/budget evidence, and request a fresh
+host review before accepting, correcting or continuing. See the
+[flow, limits and migration guide](../../docs/CODE_WEB_TASKS.md).
+
 ## Reuse assessment
 
 The SDK was inspected through connected GitHub, without cloning or modifying it:

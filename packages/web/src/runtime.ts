@@ -87,6 +87,7 @@ export async function attachRuntime(
     return {
       workspace: {
         key: hello.projectId,
+        taskProtocol: { connectionId: hello.connectionId, projectId: hello.projectId, capabilities: hello.capabilities },
         name: redactor.text(path.basename(harness.config.workspace)),
         workspace: redactor.text(harness.config.workspace),
         provider: harness.config.provider,

@@ -190,7 +190,9 @@ Experimental project memory in this RC uses `zhivex-code memory --help` and Harn
 `zhivex-code web` opens a local React workspace with prebuilt assets. Select
 CLI-allowlisted workspaces and existing sessions, follow tasks, review exact
 operations/diffs, approve or deny, inspect checks and cancel runs using the same
-Harness service. Use `zhivex-code web --help` for host/profile and recovery flags.
+Harness service. The experimental task/evidence panel adds host-governed task definition,
+exact delivery review, explicit acceptance, correction and continuation; see the
+[task flow guide](../../docs/CODE_WEB_TASKS.md). Use `zhivex-code web --help` for host/profile and recovery flags.
 Configure credentials through the existing CLI or launching environment first;
 credentials remain on the server. macOS/Linux only. See the
 [local web client](../web/README.md) for the security boundary and contributor checks.
