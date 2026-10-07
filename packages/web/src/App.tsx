@@ -8,6 +8,13 @@ import {
 } from "../../../desktop/src/activity.js";
 import { action, context, reconnect } from "./api.js";
 import { ModelSelectionRejectedError } from "./request-failure.js";
+import { ComposerDrafts } from "./composer-drafts.js";
+import "./composer.css";
+import { LimitsDialog } from "./LimitsDialog.js";
+import type { LimitSettings, LimitScope } from "./limit-settings.js";
+import type { LimitPreferences } from "./limit-store.js";
+import type { RunLimits, LimitPricing } from "./limit-observer.js";
+import { SlidersHorizontalIcon } from "@phosphor-icons/react";
 import { MessageMarkdown } from "./MessageMarkdown.js";
 import type {
   WebContext,
@@ -26,6 +33,8 @@ type Run = {
   data: { kind: "run"; session: HarnessClientSession; run: HarnessClientRun };
 };
 const key = () => crypto.randomUUID();
+type LimitsInfo = { workspaceKey: string; legacyPending?: boolean; preferences: LimitPreferences; pricing: LimitPricing | null;
+  host: { costUsd: number | null; steps: number | null; toolCalls: number | null; tokens: number | null; durationMinutes: number | null } };
 const human = (text: string) => text.replaceAll("_", " ").replaceAll("-", " ");
 const active = (status: string) =>
   ["running", "created", "queued", "cancel_requested"].includes(status);
@@ -87,10 +96,41 @@ export function App() {
   runRef.current = run;
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const promptInput = useRef<HTMLTextAreaElement>(null);
-  const drafts = useRef(new Map<string, string>());
+  const drafts = useRef(new ComposerDrafts());
   const [refresh, setRefresh] = useState(0);
+  const [limitsInfo, setLimitsInfo] = useState<LimitsInfo>();
+  const [limitsOpen, setLimitsOpen] = useState(false);
+  const [limitsSaving, setLimitsSaving] = useState(false);
+  const limitsSavingRef = useRef(false);
+  const [limitsError, setLimitsError] = useState("");
+  const [runLimits, setRunLimits] = useState<RunLimits | null>(null);
   const selection = useRef({ workspaceKey: "", sessionId: "" });
   selection.current = { workspaceKey, sessionId: session?.sessionId ?? "" };
+  function editPrompt(text: string) {
+    drafts.current.edit(selection.current, text);
+    setPrompt(text);
+  }
+  useEffect(() => {
+    if (!workspaceKey) return;
+    let stopped = false;
+    void action<LimitsInfo>(workspaceKey, "limits").then(info => {
+      if (!stopped) setLimitsInfo(info);
+    }).catch(() => { if (!stopped) setLimitsError("No se pudieron leer los límites. Reconecta para volver a consultar."); });
+    return () => { stopped = true; };
+  }, [workspaceKey, refresh, run?.runId]);
+  async function saveLimits(scope: LimitScope, settings: LimitSettings) {
+    if (!limitsInfo || limitsSavingRef.current) return;
+    limitsSavingRef.current = true;
+    setLimitsSaving(true); setLimitsError("");
+    try {
+      await action(workspaceKey, "configureLimits", { scope, settings, expectedRevision: limitsInfo.preferences.revision });
+      setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits"));
+      setLimitsOpen(false);
+    } catch {
+      setLimitsError("No se confirmó el cambio. Cierra y vuelve a abrir para consultar los límites antes de guardar otra vez.");
+      setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits").catch(() => undefined));
+    } finally { limitsSavingRef.current = false; setLimitsSaving(false); }
+  }
   useEffect(() => {
     if (focusPrompt.current && session && !stateLoading && !pending) {
       focusPrompt.current = false;
@@ -134,7 +174,7 @@ export function App() {
         const saved = localStorage.getItem(`zhivex-session:${workspaceKey}`);
         const chosen = r.data.sessions.find((s) => s.sessionId === saved) ?? r.data.sessions[0];
         setSession(chosen);
-        setPrompt(drafts.current.get(`${workspaceKey}:${chosen?.sessionId ?? ""}`) ?? "");
+        setPrompt(drafts.current.read({ workspaceKey, sessionId: chosen?.sessionId ?? "" }).text);
       })
       .catch((e) => {
         if (!stopped) {
@@ -151,6 +191,7 @@ export function App() {
   useEffect(() => {
     setReview(undefined);
     setRun(undefined);
+    setRunLimits(null);
     setRunUnavailable(false);
     const empty = emptyActivity();
     activityRef.current = empty;
@@ -199,6 +240,9 @@ export function App() {
             });
             if (obsolete()) return;
             setRun(detail.data.run);
+            const thresholds = await action<RunLimits | null>(workspaceKey, "runLimits", { sessionId, runId: latest.runId });
+            if (obsolete()) return;
+            setRunLimits(thresholds);
             setRunUnavailable(false);
           } catch (e) {
             if (obsolete()) return;
@@ -242,8 +286,7 @@ export function App() {
       !needsReconcile,
   );
   function chooseSession(next: HarnessClientSession) {
-    drafts.current.set(`${workspaceKey}:${session?.sessionId ?? ""}`, prompt);
-    setPrompt(drafts.current.get(`${workspaceKey}:${next.sessionId}`) ?? "");
+    setPrompt(drafts.current.read({ workspaceKey, sessionId: next.sessionId }).text);
     setSession(next);
   }
   async function perform(
@@ -345,31 +388,49 @@ export function App() {
   async function start() {
     if (!session || !prompt.trim() || !canMutate || busy) return;
     const input = prompt;
+    const selected = { workspaceKey, sessionId: session.sessionId };
     await perform(
       "Starting task…",
       async () => {
-        let current = session;
-        if (!current.runs.length && current.title === "New session") {
-          current = (
-            await action<Session>(workspaceKey, "rename", {
-              sessionId: current.sessionId,
-              expectedRevision: current.revision,
-              idempotencyKey: key(),
-              title: input.trim().slice(0, 96),
-            })
-          ).data.session;
+        // perform acquired its synchronous lock. Consume before any awaited
+        // rename/start; completion must never clear a newer draft.
+        const submitted = drafts.current.consume(selected);
+        setPrompt("");
+        try {
+          // A cancellation receipt can precede the final session-index update.
+          // Read the selected session before its revision-bound dispatch. This
+          // is reconciliation only; a rejected start is never replayed.
+          let current = (await action<Session>(selected.workspaceKey, "session", {
+            sessionId: selected.sessionId,
+          })).data.session;
+          if (!current.runs.length && current.title === "New session") {
+            current = (
+              await action<Session>(workspaceKey, "rename", {
+                sessionId: current.sessionId,
+                expectedRevision: current.revision,
+                idempotencyKey: key(),
+                title: input.trim().slice(0, 96),
+              })
+            ).data.session;
+          }
+          const result = await action<Run>(workspaceKey, "start", {
+            sessionId: session.sessionId,
+            expectedRevision: current.revision,
+            idempotencyKey: key(),
+            prompt: input,
+          });
+          if (selection.current.workspaceKey === selected.workspaceKey &&
+              selection.current.sessionId === selected.sessionId) {
+            setSession(result.data.session);
+            setRun(result.data.run);
+          }
+        } catch (error) {
+          drafts.current.failed(submitted);
+          if (selection.current.workspaceKey === selected.workspaceKey &&
+              selection.current.sessionId === selected.sessionId)
+            setPrompt(drafts.current.read(selected).text);
+          throw error;
         }
-        const result = await action<Run>(workspaceKey, "start", {
-          sessionId: session.sessionId,
-          expectedRevision: current.revision,
-          idempotencyKey: key(),
-          prompt: input,
-        });
-        setSession(result.data.session);
-        setRun(result.data.run);
-        setPrompt((currentDraft) =>
-          currentDraft === input ? "" : currentDraft,
-        );
       },
       true,
     );
@@ -585,7 +646,6 @@ export function App() {
               Boolean(pending) || cancelling || reconnecting || needsReconcile
             }
             onChange={(e) => {
-              drafts.current.set(`${workspaceKey}:${sessionId ?? ""}`, prompt);
               setPrompt("");
               setSearch("");
               setWorkspaceKey(e.target.value);
@@ -684,6 +744,12 @@ export function App() {
             </span>
             <h1>{session?.title ?? "Developer workspace"}</h1>
           </div>
+          <div className="topbar-actions">
+          <button className="limits-launcher" disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
+            onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
+            <SlidersHorizontalIcon size={18} />{limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(t => t.value !== null)
+              ? `Límites de ${limitsInfo.preferences.task ? "próxima tarea" : "proyecto"}` : limitsInfo && Object.values(limitsInfo.host).some(v => v !== null) ? "Política del host activa" : "Sin límites configurados"}
+          </button>
           <button
             className="subtle"
             disabled={reconnecting || cancelling}
@@ -691,6 +757,7 @@ export function App() {
           >
             ↻ Reconnect
           </button>
+          </div>
         </header>
         {error && (
           <div role="alert" className="error-banner">
@@ -732,6 +799,21 @@ export function App() {
             <p className="state-guidance" id="composer-help">
               {composerHelp}
             </p>
+            {runLimits && <div className="run-limits-summary" aria-label="Límites de la tarea actual">
+              <span>Origen: {runLimits.origin === "task" ? "próxima tarea" : runLimits.origin === "project" ? "proyecto" : "sin umbrales de usuario"}. {runLimits.consumption.steps} pasos · {runLimits.consumption.toolCalls} herramientas · {runLimits.consumption.tokens} tokens reportados.</span>
+              <details><summary>Ver umbrales de esta tarea</summary>
+                <p>Gasto estimado: {runLimits.consumption.costUsd === null ? "no disponible" : `$${runLimits.consumption.costUsd.toFixed(6)}`} · Duración activa: {runLimits.consumption.durationMinutes.toFixed(2)} min.</p>
+                {Object.entries(runLimits.settings).filter(([, threshold]) => threshold.value !== null).map(([name, threshold]) => <p key={name}>
+                  {({ costUsd: "Gasto estimado (USD)", tokens: "Tokens", steps: "Pasos", toolCalls: "Herramientas", durationMinutes: "Duración (min)" } as Record<string, string>)[name]}: {threshold.value} · {threshold.action === "notify" ? "Avisar" : "Detener"}.
+                </p>)}
+                {runLimits.pricing && <p>Precio orientativo: {runLimits.pricing.source}. La estimación puede superar el umbral; no es un tope financiero garantizado.</p>}
+              </details>
+              {runLimits.observationError && <p role="alert">No se pudo observar el consumo de forma fiable. Reconecta para inspeccionar la tarea; los umbrales no están garantizados.</p>}
+              {runLimits.notices.map(notice => <p key={notice.name} role="status">
+                Umbral de {({ costUsd: "gasto estimado", tokens: "tokens", steps: "pasos", toolCalls: "herramientas", durationMinutes: "duración" })[notice.name]} alcanzado: {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} / {notice.threshold}.
+                {notice.action === "notify" ? " Aviso; la tarea puede continuar." : runLimits.cancellationRequested ? " Cancelación solicitada; se conserva el trabajo registrado. Para continuar, inicia otra tarea." : " La tarea ya había terminado al observar el umbral."}
+              </p>)}
+            </div>}
             {run?.status === "waiting_approval" && (
               <a className="review-jump subtle" href="#review-panel">
                 Go to pending review ↓
@@ -771,7 +853,7 @@ export function App() {
                           key={text}
                           disabled={!session || Boolean(pending)}
                           onClick={() => {
-                            setPrompt(text);
+                            editPrompt(text);
                             promptInput.current?.focus();
                           }}
                         >
@@ -854,8 +936,8 @@ export function App() {
                 }
                 value={prompt}
                 maxLength={65536}
-                disabled={!session || cancelling || (Boolean(pending) && !busy)}
-                onChange={(e) => setPrompt(e.target.value)}
+                disabled={!session || cancelling || (Boolean(pending) && pending !== "Starting task…" && !busy)}
+                onChange={(e) => editPrompt(e.target.value)}
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                     e.preventDefault();
@@ -898,6 +980,19 @@ export function App() {
               <span>⌘ / Ctrl + Enter to run</span>
               <span>Credentials stay on the host</span>
             </div>
+            {drafts.current.read(selection.current).recovery !== undefined && (
+              <details className="composer-recovery">
+                <summary>Recover submitted text</summary>
+                <p>The submission could not be confirmed. Reconnect to inspect the current run before sending another task.</p>
+                <pre>{drafts.current.read(selection.current).recovery}</pre>
+                <button type="button" disabled={Boolean(prompt)} onClick={() => {
+                  if (drafts.current.recover(selection.current)) {
+                    setPrompt(drafts.current.read(selection.current).text);
+                    promptInput.current?.focus();
+                  }
+                }}>Restore to empty composer</button>
+              </details>
+            )}
             <p id="model-help" className="model-help">
               {modelsLoading ? "Reading configured providers and model choices…" : modelError ? "Model choices unavailable. Reconnect to refresh." : !modelChoices.length
                 ? "Using the host model. No selectable catalog is available."
@@ -1129,6 +1224,12 @@ export function App() {
           </aside>
         </div>
       </main>
+      {limitsOpen && limitsInfo?.workspaceKey === workspaceKey && <LimitsDialog
+        initial={{ task: limitsInfo.preferences.task ?? limitsInfo.preferences.project, project: limitsInfo.preferences.project }}
+        onCancel={() => setLimitsOpen(false)} onSave={(scope, settings) => void saveLimits(scope, settings)}
+        saving={limitsSaving} saveBlocked={Boolean(limitsError)} pricingAvailable={limitsInfo.pricing !== null} error={limitsError}
+        unboundedDefault={Object.values(limitsInfo.host).every(v => v === null)}
+        technicalNotice={`${limitsInfo.legacyPending ? "Hay una tarea previa pendiente. Se conserva la política del host; reinicia Web al terminarla o cancelarla para activar los nuevos defaults. " : ""}Se mantienen los límites por operación, modelo, estado y protección contra bucles.${Object.entries(limitsInfo.host).filter(([, value]) => value !== null).map(([name, value]) => ` Host: ${value} ${name === "steps" ? "pasos" : name === "toolCalls" ? "herramientas" : name === "tokens" ? "tokens" : name === "costUsd" ? "USD estimados (no es un tope financiero garantizado)" : "minutos"}.`).join("")}`} />}
       <div className="sr-only" role="status" aria-live="polite">
         {stateLabel}
       </div>

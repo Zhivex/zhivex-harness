@@ -10,10 +10,15 @@ import { z } from "zod";
 import { readRegularFileNoFollow } from "@zhivex-ai/harness/desktop/v1/state";
 import type { WebRuntime } from "./runtime.js";
 import { createSessionCookieCipher } from "./session-cookie.js";
+import { validateLimitSettings } from "./limit-settings.js";
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const base = { workspaceKey: id };
 const actions = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("limits"), ...base }).strict(),
+  z.object({ action: z.literal("configureLimits"), ...base, scope: z.enum(["task", "project"]),
+    settings: z.custom<import("./limit-settings.js").LimitSettings>(validateLimitSettings), expectedRevision: z.number().int().nonnegative().safe() }).strict(),
+  z.object({ action: z.literal("runLimits"), ...base, sessionId: id, runId: id }).strict(),
   z.object({action: z.literal("models"), ...base}).strict(),
   z.object({action: z.literal("selectModel"), ...base,
     provider: z.string().min(1).max(80), model: z.string().min(1).max(160),
@@ -309,6 +314,15 @@ export async function startWebServer(options: {
         const runtime = runtimes.get(workspaceKey);
         if (!runtime) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
         switch (action) {
+          case "limits": return send(res, 200, await runtime.limits());
+          case "configureLimits": {
+            const value = args as { scope: "task" | "project"; settings: import("./limit-settings.js").LimitSettings; expectedRevision: number };
+            return send(res, 200, await runtime.configureLimits(value.scope, value.settings, value.expectedRevision));
+          }
+          case "runLimits": {
+            const value = args as { sessionId: string; runId: string };
+            return send(res, 200, await runtime.runLimits(value.sessionId, value.runId));
+          }
           case "models":
             return send(res, 200, {choices: await runtime.modelChoices?.() ?? [],
               current: {provider: runtime.workspace.provider, model: runtime.workspace.model}});
@@ -389,6 +403,7 @@ export async function startWebServer(options: {
           "WEB_REVIEW_UNAVAILABLE",
           "WEB_MODEL_CHANGE_IN_PROGRESS", "WEB_MODEL_UNAVAILABLE", "WEB_MODEL_CHANGE_BUSY",
           "WEB_MODEL_NOT_CONFIGURED", "WEB_MODEL_SWITCH_FAILED", "WEB_CREDENTIALS_REQUIRED",
+          "WEB_LIMIT_PRICING_UNAVAILABLE", "WEB_LIMIT_SETTINGS_INVALID", "WEB_LIMIT_REVISION_CONFLICT", "WEB_LIMIT_RUN_INVALID", "WEB_LIMIT_STORAGE_UNSAFE",
         ].includes(error.message)
           ? error.message
           : "WEB_REQUEST_FAILED";

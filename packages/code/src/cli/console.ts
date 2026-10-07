@@ -487,7 +487,7 @@ export const chat = async (options: CliOptions) => {
           inspectCredential: provider => credentials.store.inspect(provider) })) continue;
         if (command === "/limits" || command.startsWith("/limits ")) {
           const requested = command.slice("/limits".length).trim();
-          process.stderr.write(`Step limit: ${harness.config.maxSteps} model iterations per turn.\n`);
+          process.stderr.write(`Step limit: ${harness.config.budget.unlimitedSteps ? "none" : harness.config.maxSteps} model iterations per turn.\n`);
           if (await hasActiveTurn()) { process.stderr.write("Finish or deny pending work before changing limits.\n"); continue; }
           const next = requested || await readline.select("Step limit / Next turns", [
             { value: "", label: "Keep current limit" },
@@ -497,7 +497,7 @@ export const chat = async (options: CliOptions) => {
           ]);
           if (!next) continue;
           if (!/^\d+$/.test(next) || !Number.isSafeInteger(Number(next)) || Number(next) < 1) { process.stderr.write("Use /limits with a positive safe integer step count.\n"); continue; }
-          await replaceHarness({ ...runtimeOptions, maxSteps: Number(next) }, routes);
+          await replaceHarness({ ...runtimeOptions, maxSteps: Number(next), unlimitedSteps: false }, routes);
           process.stderr.write(`Step limit updated: ${harness.config.maxSteps} for next turns.\n`);
           continue;
         }

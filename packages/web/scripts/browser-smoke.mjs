@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { limitsJourney } from "./limits-journey.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output =
   process.env.WEB_EVIDENCE_DIRECTORY ?? path.join(root, ".test-output");
@@ -59,11 +60,16 @@ const commands = [];
 let fault;
 await page.route("**/api/action", async (route) => {
   const body = route.request().postDataJSON();
-  if (["create", "rename", "start", "decide", "cancel", "selectModel"].includes(body.action))
+  if (["create", "rename", "start", "decide", "cancel", "selectModel", "configureLimits"].includes(body.action))
     commands.push(body.action);
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
   fault = undefined;
+  if (selectedFault.mode === "absent") return route.fulfill({
+    status: 200, contentType: "application/json", body: "null",
+  });
+  if (selectedFault.mode === "rejected" && selectedFault.delay)
+    await new Promise(resolve => setTimeout(resolve, selectedFault.delay));
   if (selectedFault.mode === "rejected") return route.fulfill({
     status: 400, json: { ok: false, error: { code: selectedFault.code } },
   });
@@ -91,8 +97,8 @@ await page.route("**/api/action", async (route) => {
   }
   return route.fulfill({ response });
 });
-async function capture(name) {
-  await page.screenshot({ path: path.join(output, name), fullPage: true });
+async function capture(name, fullPage = true) {
+  await page.screenshot({ path: path.join(output, name), fullPage });
   screenshots.push(name);
 }
 async function reconnectState() {
@@ -162,9 +168,66 @@ try {
     fullPage: true,
   });
   steps.push("start and workspace selection");
+  await limitsJourney(page, capture, commands);
+  steps.push("option 3: limits focus/Escape/cancel/no-change, keyboard invalid inputs, persisted project refresh, distinct steps/tools and mobile overflow");
+  const beforeSlow = commands.filter(c => c === "start").length;
+  await page.getByLabel("Task prompt").fill("wait-for-cancel: composer slow run");
+  await page.getByLabel("Task prompt").press("Control+Enter");
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "running");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
+  await page.getByLabel("Task prompt").fill("wait-for-cancel: composer slow run");
+  await page.getByLabel("Task prompt").press("Control+Enter");
+  assert.equal(commands.filter(c => c === "start").length, beforeSlow + 1);
+  await page.getByRole("button", { name: "Cancel run" }).click();
+  await page.waitForFunction(() => document.querySelector(".pill")?.textContent === "cancelled");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "wait-for-cancel: composer slow run");
+  await createSession();
+  await task("composer-success");
+  await page.getByLabel("Task prompt").fill("next task after success");
+  await complete();
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "next task after success");
+  for (const code of ["WEB_LIMIT_SETTINGS_INVALID", "WEB_LIMIT_STORAGE_UNSAFE", "WEB_REQUEST_FAILED"]) {
+    fault = { action: "runLimits", mode: "rejected", code };
+    await page.reload();
+    await page.getByRole("alert").filter({ hasText: code.replaceAll("_", " ") }).waitFor({ timeout: 5000 });
+    await page.getByLabel("Task prompt").fill("snapshot read failure must block dispatch");
+    assert.equal(await page.getByRole("button", { name: "Run task" }).isDisabled(), true);
+    await reconnectState();
+    await page.getByRole("alert").waitFor({ state: "hidden" });
+  }
+  fault = { action: "runLimits", mode: "absent" };
+  await page.reload();
+  await page.getByLabel("Task prompt").fill("a legacy run without a snapshot stays healthy");
+  await page.getByRole("button", { name: "Run task" }).and(page.locator(":enabled")).waitFor();
+  assert.equal(await page.getByRole("alert").count(), 0);
+  steps.push("failed limit snapshot reads surface storage/network diagnostics and block dispatch; successful legacy null remains healthy");
+  await createSession();
+  steps.push("slow run clears composer immediately; identical edit survives completion; Ctrl+Enter cannot replay; success preserves newer draft");
+  for (const newer of ["a different draft", "composer rejected submission", ""]) {
+    fault = { action: "start", mode: "rejected", code: "INVALID_STATE", delay: 500 };
+    await page.getByLabel("Task prompt").fill("composer rejected submission");
+    await page.getByRole("button", { name: "Run task" }).click();
+    assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
+    if (!newer) await page.getByLabel("Task prompt").fill("temporary edit");
+    await page.getByLabel("Task prompt").fill(newer);
+    await page.getByRole("alert").waitFor();
+    assert.equal(await page.getByLabel("Task prompt").inputValue(), newer);
+    await page.getByText("Recover submitted text", { exact: true }).click();
+    assert.equal(await page.locator(".composer-recovery pre").textContent(), "composer rejected submission");
+    const restore = page.getByRole("button", { name: "Restore to empty composer" });
+    assert.equal(await restore.isEnabled(), newer === "");
+    if (!newer) {
+      await restore.click();
+      assert.equal(await page.getByLabel("Task prompt").inputValue(), "composer rejected submission");
+    }
+    await reconnectState();
+    await createSession();
+  }
+  steps.push("failure retains different/identical/cleared newer drafts; submitted text remains explicitly recoverable without overwrite or replay");
   assert.equal(await page.evaluate(() => location.hash), "");
   await task("edit-probe: replace before with after");
   await wait();
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
   await page.reload();
   await wait();
   steps.push("reload and durable resume");
@@ -211,6 +274,7 @@ try {
       document.querySelector(".pill")?.textContent,
     ),
   );
+  await page.locator(".operation-status").waitFor({ state: "hidden" });
   if (
     (await page.getByRole("button", { name: "Run task" }).isEnabled()) ===
       false &&
@@ -345,7 +409,13 @@ try {
     repeatedStarts + 1,
   );
   steps.push("same-render repeated start dispatches once");
+  assert.equal(await page.getByLabel("Task prompt").inputValue(), "");
 
+  // Polling can reveal the approval while the deliberately delayed start
+  // response still owns the mutation lock. Keyboard press does not wait for
+  // disabled controls to become actionable as click does.
+  await page.getByRole("button", { name: "Review proposed operation" })
+    .and(page.locator(":enabled")).waitFor();
   fault = { action: "review", mode: "stale" };
   await page
     .getByRole("button", { name: "Review proposed operation" })

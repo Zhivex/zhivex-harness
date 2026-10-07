@@ -15,7 +15,7 @@ import { attachRuntime } from "../src/runtime.js";
 import { manageWebRuntime } from "../src/managed-runtime.js";
 import { startWebServer } from "../src/server.js";
 
-export async function fixture() {
+export async function fixture({ interactive = false }: { interactive?: boolean } = {}) {
   const root = await mkdtemp("/tmp/zcw-");
   const workspace = root + "/atlas";
   await mkdir(workspace);
@@ -125,7 +125,8 @@ export async function fixture() {
           textDelta:
             "The operation is finished. Literal <img onerror=alert(1)> content. ",
         };
-        yield { type: "finish" as const, finishReason: "stop" as const };
+        yield { type: "finish" as const, finishReason: "stop" as const,
+          usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 } };
       })();
     },
   };
@@ -138,6 +139,7 @@ export async function fixture() {
       subagentProfiles: [],
       allowedChecks: ["test"],
       timeoutMs: 15_000,
+      ...(interactive ? { unlimitedTokens: true, unlimitedSteps: true, unlimitedToolCalls: true, unlimitedDuration: true } : {}),
     });
     const initial = await attachRuntime(harness, root + "/socket", false, [
       "sk-never-expose-fixturetoken",
@@ -149,7 +151,8 @@ export async function fixture() {
     ], async selection => {
       const next = await createHarness({workspace,modelInstance:model,
         provider: selection.provider as "openai" | "anthropic", model: selection.model,
-        subagentProfiles:[],allowedChecks:["test"],timeoutMs:15000});
+        subagentProfiles:[],allowedChecks:["test"],timeoutMs:15000,
+        ...(interactive ? { unlimitedTokens: true, unlimitedSteps: true, unlimitedToolCalls: true, unlimitedDuration: true } : {})});
       return {attach: () => attachRuntime(next,root + "/socket",false,["sk-never-expose-fixturetoken"]),
         dispose: () => next.close()};
     });
