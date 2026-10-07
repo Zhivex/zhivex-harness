@@ -3,7 +3,11 @@ import { build as buildWeb } from "../../web/node_modules/vite/dist/node/index.j
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 const root = fileURLToPath(new URL("../", import.meta.url));
-await buildWeb({ configFile: path.join(root, "../web/vite.config.ts") });
+// The embedded UI must use Code's engine protocol, even when the independently
+// installed Web development package still carries an older registry engine.
+await buildWeb({ configFile: path.join(root, "../web/vite.config.ts"), resolve: {
+  alias: { "@zhivex-ai/harness/protocol": fileURLToPath(import.meta.resolve("@zhivex-ai/harness/protocol")) }
+} });
 await rm(path.join(root, "dist"), { recursive: true, force: true });
 await mkdir(path.join(root, "dist"), { recursive: true });
 const result = await Bun.build({
