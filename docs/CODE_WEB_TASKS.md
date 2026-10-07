@@ -39,6 +39,13 @@ state through Reconnect; it is never automatically retried. Relaunch reopens the
 same durable task, contract, checks, budget and effects without depending on the
 chat transcript or claiming human minutes.
 
+The runtime records the first interruption source while relaying its signal;
+nested cancellation signals cannot change a caller cancellation into an
+unclassified failure. It settles local interruption only after the execution
+owner releases its lease. The session index can observe `cancel_requested`
+directly from `created` when busy reads have not yet observed `running`.
+Neither change confirms provider termination or releases unknown exposure.
+
 A continuation rejected before admission retains a failed session attempt linked
 to its previous admitted task. The panel explicitly identifies retained evidence;
 checks stale against changed bytes cannot authorize acceptance. The rejected
