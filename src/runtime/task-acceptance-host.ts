@@ -8,6 +8,9 @@ import { validateTaskAcceptanceWorkspace } from './task-acceptance-validation.js
 import { withTaskAcceptanceDelivery } from './task-acceptance-delivery.js';
 import { withNativeTaskAcceptance } from './task-acceptance-native.js';
 import { TASK_ACCEPTANCE_KEY, TASK_ACCEPTANCE_EVIDENCE_KEY, readTaskAcceptanceLedger, nextTaskAcceptanceLedger, persistTaskAcceptanceRevision, type TaskAcceptanceLedger } from './task-acceptance-record.js';
+import { inspectTaskBudgetSummary, TASK_BUDGET_KEY } from './task-budget.js';
+import { openHarnessTaskBudget } from './task-budget-host.js';
+import { randomUUID } from 'node:crypto';
 
 const hosts=new WeakMap<object,{config:HarnessConfig;tools:ToolSet;policy?:HarnessToolPolicy}>();
 const active=new Set<string>();
@@ -29,23 +32,39 @@ export async function reviseHarnessTaskAcceptance(host:ZhivexHarness,request:{ru
   const context=contextFor(host),key=keyFor(host,request.runId);
   if(active.has(key))throw new Error('TASK_ACCEPTANCE_RUN_ACTIVE');
   active.add(key);
+  let releaseTask: (() => Promise<void>) | undefined;
+  let verifyTaskLease: (() => Promise<void>) | undefined;
   try {
     const state=await host.store.load(request.runId,context.config.scope);
     if(!state || state.revision!==request.expectedRunRevision)throw new Error('TASK_ACCEPTANCE_REVISION_CONFLICT');
     if(!['waiting_approval','completed','failed','cancelled','timed_out'].includes(state.status))throw new Error('TASK_ACCEPTANCE_RUN_ACTIVE');
     if(!readTaskAcceptanceLedger(state))throw new Error('TASK_ACCEPTANCE_CONTRACT_MISSING');
+    const binding = inspectTaskBudgetSummary(state.metadata?.[TASK_BUDGET_KEY]);
+    if (binding) {
+      const account = await openHarnessTaskBudget(host, binding.taskId);
+      const ownerId = randomUUID();
+      if (!await host.store.acquireLease!(account.accountRunId, { ownerId, ttlMs: 30_000 }, context.config.scope)) throw new Error('TASK_BUDGET_ACTIVE');
+      releaseTask = async () => { await host.store.releaseLease!(account.accountRunId, ownerId, context.config.scope); };
+      verifyTaskLease = async () => {
+        if (!await host.store.renewLease!(account.accountRunId, { ownerId, ttlMs: 30_000 }, context.config.scope)) throw new Error('TASK_BUDGET_LEASE_LOST');
+      };
+      const summary = await account.summary();
+      if (summary.invocationPending) throw new Error('TASK_BUDGET_INVOCATION_UNCERTAIN');
+      if (summary.runs.at(-1) !== request.runId) throw new Error('TASK_CONTINUITY_STALE_RUN');
+    }
     const validated=await validateTaskAcceptanceWorkspace(request.contract,context);
-    return persistTaskAcceptanceRevision(host.store,{runId:request.runId,scope:context.config.scope,expectedRunRevision:request.expectedRunRevision,
+    await verifyTaskLease?.();
+    return await persistTaskAcceptanceRevision(host.store,{runId:request.runId,scope:context.config.scope,expectedRunRevision:request.expectedRunRevision,
       expectedContractRevision:request.expectedContractRevision,requirements:validated.contract});
-  } finally {active.delete(key);}
+  } finally { try { await releaseTask?.(); } finally { active.delete(key); } }
 }
 
 export async function withTaskAcceptanceRun<T>(host:ZhivexHarness,input:AgentRunInput<LanguageModel>,requirements:TaskAcceptanceContract|undefined,
-  work:(input:AgentRunInput<LanguageModel>,ledger?:TaskAcceptanceLedger)=>Promise<T>):Promise<T> {
+  work:(input:AgentRunInput<LanguageModel>,ledger?:TaskAcceptanceLedger)=>Promise<T>, retainedLedger?:TaskAcceptanceLedger):Promise<T> {
   const inputMetadata='metadata'in input ? input.metadata : undefined;
   if(inputMetadata?.[TASK_ACCEPTANCE_KEY]!==undefined || inputMetadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY]!==undefined)throw new Error('TASK_ACCEPTANCE_RESERVED_METADATA');
   if('state'in input && requirements!==undefined)throw new Error('TASK_ACCEPTANCE_USE_REVISION_API');
-  let ledger:TaskAcceptanceLedger|undefined;
+  let ledger:TaskAcceptanceLedger|undefined = 'state' in input ? undefined : retainedLedger;
   if('state'in input) {
     const durable=await host.store.load(input.state.runId,input.state.scope??host.config.scope);
     const stored=durable?readTaskAcceptanceLedger(durable):undefined;

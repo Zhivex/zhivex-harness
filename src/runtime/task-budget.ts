@@ -278,7 +278,7 @@ export class TaskBudget {
       await this.update(ownerId, account => { account.admissionsClosed = false; }, expectedRevision);
     } finally { await this.options.store.releaseLease!(this.accountRunId, ownerId, this.options.scope); }
   }
-  async run<T>(runId: string, operation: (signal: AbortSignal) => Promise<T>, options: { signal?: AbortSignal } = {}): Promise<T> {
+  async run<T>(runId: string, operation: (signal: AbortSignal) => Promise<T>, options: { signal?: AbortSignal; expectedAccountRevision?: number } = {}): Promise<T> {
     if (active.getStore()) throw new Error('TASK_BUDGET_NESTED_INVOCATION');
     const ownerId = randomUUID();
     const lease = await this.options.store.acquireLease!(this.accountRunId, { ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope);
@@ -310,6 +310,7 @@ export class TaskBudget {
     let timer: ReturnType<typeof setInterval> | undefined;
     try {
       const summary = await this.summary();
+      if (options.expectedAccountRevision !== undefined && summary.revision !== options.expectedAccountRevision) throw new Error('TASK_CONTINUITY_CHANGED');
       if (summary.invocationPending) throw new Error('TASK_BUDGET_INVOCATION_UNCERTAIN');
       if (summary.admissionsClosed) throw new Error('TASK_BUDGET_CANCELLED');
       if (!summary.usageComplete) throw new Error('TASK_BUDGET_UNCERTAIN');

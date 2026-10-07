@@ -91,5 +91,16 @@ export async function persistHarnessTaskDraft(host: ZhivexHarness, sessionId: st
 
 export async function readHarnessTaskDraft(store: AgentRunStore, scope: AgentStoreScope, sessionId: string): Promise<unknown | undefined> {
   const state = await store.load(draftId(scope, sessionId), scope);
-  return state?.metadata?.[TASK_DRAFT_KEY];
+  if (!state) return undefined;
+  const brief = state.metadata?.[TASK_DRAFT_KEY];
+  if (!brief || !state.scope || fingerprintAgentHarness(state.scope) !== fingerprintAgentHarness(scope)) throw new Error('TASK_DRAFT_INVALID');
+  const taskId = compileTaskAcceptanceContract((brief as { contract?: unknown }).contract).contract.taskId;
+  const accountId = TaskBudget.accountId(scope, taskId);
+  if (state.metadata?.taskBudgetAccountRunId !== accountId) throw new Error('TASK_DRAFT_IDENTITY_MISMATCH');
+  const account = await store.load(accountId, scope);
+  if (!account) throw new Error('TASK_BUDGET_MISSING');
+  const payload = account.metadata?.zhivexTaskBudgetAccountV1 as { schemaVersion?: number; taskId?: string } | undefined;
+  if (payload?.schemaVersion !== 1 && payload?.schemaVersion !== 2) throw new Error('TASK_BUDGET_ACCOUNT_VERSION_UNSUPPORTED');
+  if (payload.taskId !== taskId) throw new Error('TASK_DRAFT_IDENTITY_MISMATCH');
+  return structuredClone(brief);
 }

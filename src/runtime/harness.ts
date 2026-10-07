@@ -1,4 +1,6 @@
 import { TaskBudget, TASK_BUDGET_KEY, inspectTaskBudgetSummary } from './task-budget.js';
+import { readTaskContinuity } from './task-continuity.js';
+import { compileTaskAcceptanceContract } from './task-acceptance.js';
 import { bindHarnessTaskBudget, openHarnessTaskBudget } from './task-budget-host.js';
 import { createTaskTelemetry, type TaskTelemetrySnapshot } from './task-telemetry.js';
 import { createRequestMeasurements } from '../context/request-measurements.js';
@@ -22,7 +24,7 @@ import { MODEL_BUDGET_KEY, createModelBudget, workBudgetReached } from "./model-
 import { createRepairProgress } from "./repair-progress.js";
 import { captureTaskSources, createTaskTools, taskSources, TASK_SOURCE_KEY, ASSISTANT_RESPONSE_KEY, assistantResponses, captureAssistantResponses } from "../context/task-memory.js";
 import { bindTaskAcceptanceHost, withTaskAcceptanceRun } from './task-acceptance-host.js';
-import { taskAcceptanceCheckpointStore, type TaskAcceptanceLedger } from './task-acceptance-record.js';
+import { readTaskAcceptanceLedger, taskAcceptanceCheckpointStore, type TaskAcceptanceLedger } from './task-acceptance-record.js';
 import type { TaskAcceptanceContract } from './task-acceptance.js';
 import { nativeTaskTools } from './task-acceptance-native.js';
 import { COMPACTION_STRATEGY, compactMessages, compactedTaskSources, compactedAssistantResponses } from "../context/compaction.js";
@@ -1134,12 +1136,34 @@ export const runHarness = async (
     telemetry.observeEvent(event);
     await options.onEvent?.(event);
   } };
-  const invocation='state'in input?input:{...input,runId:input.runId??`run_${randomUUID()}`};
+  let invocation='state'in input?input:{...input,runId:input.runId??`run_${randomUUID()}`};
   try {
+    const durableState = 'state' in invocation ? await harness.store.load(invocation.state.runId, harness.config.scope) : undefined;
+    const durableBinding = inspectTaskBudgetSummary(durableState?.metadata?.[TASK_BUDGET_KEY]);
+    if ('state' in invocation && durableBinding && JSON.stringify(invocation.state.metadata?.[TASK_BUDGET_KEY]) !== JSON.stringify(durableState?.metadata?.[TASK_BUDGET_KEY]))
+      throw new Error('TASK_CONTINUITY_BINDING_CONFLICT');
+    const continuityTaskId = durableBinding?.taskId ?? (taskOptions?.taskBudgetExisting ? options.taskAcceptance?.taskId : undefined);
+    const continuity = continuityTaskId ? await readTaskContinuity(harness, continuityTaskId) : undefined;
+    const priorLedger = continuity?.report.runs.at(-1)?.ledger;
+    if (continuity) {
+      if ('state' in invocation && (continuity.report.runs.at(-1)?.runId !== invocation.state.runId ||
+        readTaskAcceptanceLedger(invocation.state)?.revisions.at(-1)?.digest !== priorLedger?.revisions.at(-1)?.digest))
+        throw new Error('TASK_CONTINUITY_STALE_RUN');
+      if (options.taskAcceptance && priorLedger && compileTaskAcceptanceContract(options.taskAcceptance).digest !== priorLedger.revisions.at(-1)!.digest)
+        throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+      const blocking = continuity.report.reasons.filter(reason => reason !== 'TASK_BUDGET_CANCELLED' || !taskOptions?.taskBudgetContinue || 'state' in invocation);
+      if (blocking.length) throw new Error(blocking[0]);
+      if (!('state' in invocation) && priorLedger) {
+        invocation = { ...invocation, metadata: { ...invocation.metadata,
+          [TASK_SOURCE_KEY]: serializeJsonValue(continuity.report.runs.flatMap(run => run.sources)),
+          [ASSISTANT_RESPONSE_KEY]: serializeJsonValue(continuity.report.runs.at(-1)?.assistantResponses.map(({ untrusted: _u, verified: _v, ...response }) => response) ?? []) } };
+      }
+    }
     return await withTaskAcceptanceRun(harness,invocation,options.taskAcceptance,async (prepared,ledger) => {
       const metadata = 'state' in prepared ? prepared.state.metadata : prepared.metadata;
       const binding = inspectTaskBudgetSummary(metadata?.[TASK_BUDGET_KEY]);
       let account: TaskBudget | undefined;
+      let expectedAccountRevision = continuity?.report.budget.revision;
       if (taskOptions?.taskBudgetExisting || binding) {
         if (prepared.tools || prepared.compaction || prepared.executionEnvironment || prepared.policy?.budgetCoordinator)
           throw new Error('TASK_BUDGET_DISPATCH_OVERRIDE_UNSUPPORTED');
@@ -1148,12 +1172,16 @@ export const runHarness = async (
         account = await openHarnessTaskBudget(harness, taskId);
         await account.assertMonetaryReceipts(harness.usageLedger!);
         const summary = await account.summary();
+        if (expectedAccountRevision !== undefined && summary.revision !== expectedAccountRevision) throw new Error('TASK_CONTINUITY_CHANGED');
         const runId = 'state' in prepared ? prepared.state.runId : prepared.runId!;
-        if (summary.admissionsClosed && taskOptions?.taskBudgetContinue && !('state' in prepared) && !summary.runs.includes(runId))
+        if (summary.admissionsClosed && taskOptions?.taskBudgetContinue && !('state' in prepared) && !summary.runs.includes(runId)) {
           await account.reopen(summary.revision);
+          expectedAccountRevision = summary.revision + 1;
+        }
       }
       telemetry.mark('prepare-end');
       const execute = async (signal?: AbortSignal) => {
+        await continuity?.verify();
         const request = signal ? { ...prepared, abortSignal: signal } : prepared;
         return runHarnessAuthorized(harness, request, eventOptions, ledger, account, telemetry);
       };
@@ -1163,9 +1191,9 @@ export const runHarness = async (
         AbortSignal.timeout(prepared.timeoutMs ?? harness.config.timeoutMs)]);
       const cancelled = () => telemetry.mark('cancel-requested');
       signal.addEventListener('abort', cancelled, { once: true });
-      try { return await account.run(runId, execute, { signal }); }
+      try { return await account.run(runId, execute, { signal, ...(expectedAccountRevision === undefined ? {} : { expectedAccountRevision }) }); }
       finally { signal.removeEventListener('abort', cancelled); if (signal.aborted) telemetry.mark('cancel-settled'); }
-    });
+    }, priorLedger);
   } finally {
     telemetry.finish();
     const snapshot = telemetry.snapshot();

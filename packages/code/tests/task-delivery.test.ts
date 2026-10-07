@@ -126,6 +126,16 @@ test('goal, constraints and check receipts survive reopening; keep requires fres
     expect(await freshCodeTaskRecap(reopened,conflicting)).toContain('REQUIREMENTS CONFLICT');
     await expect(keepCodeTask(reopened,conflicting,async()=>true)).rejects.toThrow('requirements changed');
     await keepCodeTask(reopened,state,async review=>{expect(review).toContain('after');return false;});
+    const originalStore = reopened.store;
+    reopened.store = new Proxy(originalStore, { get(target, key) {
+      if (key === 'listToolCalls') return async () => [];
+      const value = Reflect.get(target, key); return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    try {
+      await expect(keepCodeTask(reopened,state,async()=>{throw new Error('Missing journal must block before confirmation');})).rejects.toThrow('TASK_CONTINUITY_REVIEW_BLOCKED');
+      expect(await freshCodeTaskRecap(reopened,state)).toContain('CONTINUITY BLOCKED');
+      expect(await freshCodeTaskRecap(reopened,state)).not.toContain('Next: /task review');
+    } finally { reopened.store = originalStore; }
     expect(restoredCodeTask((await reopened.store.load(runId,reopened.config.scope))!)?.keep).toBeUndefined();
     expect(spawnSync('git',['update-index','--assume-unchanged','greeting.mjs'],{cwd:root}).status).toBe(0);
     await expect(keepCodeTask(reopened,state,async()=>{throw new Error('Must not reach confirmation');})).rejects.toThrow('Git-tracked');

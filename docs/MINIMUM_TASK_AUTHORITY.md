@@ -290,3 +290,98 @@ restart and import. `scripts/har-hu-71-installed-consumer.mjs` exercises the
 installed Experimental export on an exact candidate tarball. These are offline
 fixtures; there is no measured provider-stop SLA, paid campaign, external pilot,
 SDK fix, publication or release claim.
+
+## HAR-HU-72 continuity (Experimental, unreleased)
+
+`inspectHarnessTaskContinuity(host, taskId)` from `code-support` reads existing
+task membership, acceptance revision chains, operator-source digests, approval
+history, tool journals, native snapshots and the original token/monetary owner.
+It creates no second task record, ledger or store. Each run has its durable ID
+and revision; each journal effect has its journal ID/revision. The report retains
+the exact current contract, objective/constraints, artifact/check bindings,
+recorded decisions, missing evidence and unknown effects. Approval history may
+be unavailable: a recorded result does not fabricate approval provenance.
+Recovered assistant prose remains explicitly untrusted and unverified. This is
+an application-host API, not a public web protocol or the complete UI planned for
+HAR73/CODE-05. Do not expose its local task content to an unrelated client.
+
+```ts
+import { inspectHarnessTaskContinuity } from '@zhivex-ai/harness/code-support';
+
+const recovery = await inspectHarnessTaskContinuity(host, taskId);
+// Inspect recovery.currentContract, recovery.runs, recovery.budget and reasons.
+// nextAction is a diagnostic, not execution or approval authority.
+// automaticEffectReplay is always false; authorization is always 'none'.
+```
+
+Only the existing single native SQLite writer is supported. For sequential
+handoff, first prove termination of the previous host/process, preserve its
+complete database and then open the new host. A pending invocation remains
+blocked even when a lease has expired; this increment provides no takeover,
+orphan-marker clearing, provider-stop proof or uncertain-effect reconciliation
+API. Inspect external/native effects independently before deciding what work is
+safe; a diagnostic never establishes that such reconciliation occurred.
+
+New task turns retain the latest durable acceptance ledger and operator sources.
+A stale Code brief cannot replace an authorized contract revision. Resume must
+address the latest run and matching durable budget binding; old approval state
+cannot restore prior restrictions. The task account revision is checked under
+its invocation lease before claim. Immediately before execution, the observed
+run/journal read set and native snapshot digests are checked again. Operator
+revisions of a budgeted task acquire its existing account lease and cannot
+revise an older run. These are local admission checks, not cross-host fencing
+or a lock against subsequent filesystem edits; executable tools retain their
+existing digest, scope, approval and budget checks.
+
+| Evidence/state | Recovery interpretation | Next action |
+| --- | --- | --- |
+| Completed journal effect | Recorded outcome; never automatically replayed | Inspect current artifacts and independent obligations |
+| Interrupted idempotent read | No effect claim | An explicit fresh read within the same remaining budget |
+| Missing journal, unfinished/failed effect, or missing finalization | Missing or unknown, not zero/success | Block continuation and reconcile externally |
+| Matching check receipt, current snapshot and journal | Confirmed check at the inspected snapshot | Human review only after run completion |
+| Changed native snapshot | Earlier check is stale | Explicit scoped continuation; revalidate affected checks |
+| Cancelled or uncertain spending/invocation | Original HU70/71 closure and retained exposure | Inspect; no automatic reopening or refund |
+| Missing account, monetary authority, malformed version/digest/scope | Incomplete/unreadable authority | Restore valid complete evidence; never initialize replacement credit |
+
+Known-outcome cancellation still supports HU71's separate explicit continuation
+on a new run ID (`taskBudgetContinue`); mere inspection/reconnect/resume never
+reopens it. New-run continuation does not claim to reuse old check execution as
+new-run delivery evidence. It does not automatically run a check, edit or model.
+Repository checks can have effects and are never classified as idempotent reads.
+
+An authorized human-requirement change preserves independent check receipts.
+Changing a check invalidates that check. Changing the exact write/protected file
+set invalidates all checks that depended on its aggregate snapshot. Every reuse
+still verifies the original journal, exact argv, current contract binding and
+current native snapshot. New policy/host authority is evaluated through existing
+runtime fingerprint, approval and dispatch checks; recovered decisions grant no
+permissions. Code keep now revalidates current journal-backed evidence before
+and after human confirmation, in addition to its existing Git/snapshot checks.
+
+Static diagnostics include `TASK_CONTINUITY_CONTRACT_CONFLICT`,
+`TASK_CONTINUITY_STALE_RUN`, `TASK_CONTINUITY_BINDING_CONFLICT`,
+`TASK_CONTINUITY_CHANGED`, `TASK_CONTINUITY_SOURCE_INVALID`,
+`TASK_CONTINUITY_SOURCE_MISSING`, `TASK_CONTINUITY_RUN_MISSING`,
+`TASK_CONTINUITY_EFFECT_UNCERTAIN`, `TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING`,
+`TASK_CONTINUITY_CHECK_EVIDENCE_MISSING`, `TASK_CONTINUITY_ARTIFACT_UNAVAILABLE`,
+`TASK_CONTINUITY_FINALIZATION_UNCONFIRMED` and `TASK_CONTINUITY_CAPACITY`.
+The read projection is bounded to 256 runs, 2048 journal rows per run and 2 MiB;
+exceeding a bound refuses rather than presenting a complete-looking partial view.
+Missing required evidence blocks with its reason; no result is invented.
+
+No persisted format or Stable API changes. HU70 v1 and HU71 v1/v2 account rules,
+including explicit cancellation-version downgrade refusal, remain intact. Old
+readers can read unchanged continuity source formats but do not gain these new
+admission checks. Preserve a compatible host for continuation. Logical JSON
+backup still omits monetary tables and cannot establish resume authority. A
+complete database copy after host shutdown is tested; an arbitrary partial copy
+is not a complete backup. Existing linked-record retention protection is reused,
+not an eternal retention guarantee. Matching malicious deletion of every source
+is not detectable merely from hashes; this is local durable evidence, not signed
+external attestation or exactly-once execution.
+
+Offline continuity tests cover stale briefs/approvals, real compaction, restart,
+journal loss, before/after effect receipts, an injected `ENOSPC` at final save,
+full stopped-host copy and partial logical restore. Human handoff minutes and
+repeat-work measurements remain HAR74 work; no external pilot or paid campaign
+is implied.

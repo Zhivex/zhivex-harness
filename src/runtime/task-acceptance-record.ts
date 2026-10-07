@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { serializeJsonValue, type AgentRunState, type AgentRunStore, type AgentStoreScope } from '@zhivex-ai/core';
 import { compileTaskAcceptanceContract, taskAcceptanceContractSchema } from './task-acceptance.js';
 import { taskAcceptanceDeliveryDiagnostic, taskAcceptanceChecks, taskAcceptanceOutcome } from './task-acceptance-delivery.js';
+import { taskCheckReceiptSchema } from './task-acceptance-checks.js';
 
 export const TASK_ACCEPTANCE_KEY = 'zhivexTaskAcceptanceV1';
 export const TASK_ACCEPTANCE_EVIDENCE_KEY = 'zhivexTaskAcceptanceEvidenceV1';
@@ -49,9 +50,21 @@ export async function persistTaskAcceptanceRevision(store: AgentRunStore, option
   const current=readTaskAcceptanceLedger(state);
   if((current?.revisions.at(-1)?.revision??0)!==options.expectedContractRevision) throw new Error('TASK_ACCEPTANCE_REVISION_CONFLICT');
   const ledger=nextTaskAcceptanceLedger(current,options.requirements), latest=ledger.revisions.at(-1)!;
+  const prior = current?.revisions.at(-1);
+  const oldEvidence = state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY] as { checks?: unknown; delivery?: unknown } | undefined;
+  const sameFiles = prior && JSON.stringify([prior.contract.allowedWritePaths, prior.contract.protectedFiles]) === JSON.stringify([latest.contract.allowedWritePaths, latest.contract.protectedFiles]);
+  const previousChecks = z.array(taskCheckReceiptSchema).max(32).safeParse(oldEvidence?.checks);
+  // Requirement-only changes do not erase unrelated observed checks. Their
+  // original journal and current workspace must still validate during reuse.
+  const checks = sameFiles && previousChecks.success ? previousChecks.data.filter(receipt =>
+    receipt.contractDigest === prior.digest && receipt.contractRevision === prior.revision &&
+    JSON.stringify(prior.contract.requiredChecks.find(check => check.id === receipt.checkId)) ===
+    JSON.stringify(latest.contract.requiredChecks.find(check => check.id === receipt.checkId)))
+    .map(receipt => ({ ...receipt, contractDigest: latest.digest, contractRevision: latest.revision })) : [];
   await store.save({...state,metadata:{...state.metadata,
     [TASK_ACCEPTANCE_KEY]:serializeJsonValue(ledger),
-    [TASK_ACCEPTANCE_EVIDENCE_KEY]:{schemaVersion:1,contractRevision:latest.revision,contractDigest:latest.digest,status:'pending',checks:[],humanReview:serializeJsonValue(latest.contract.humanReview)}
+    [TASK_ACCEPTANCE_EVIDENCE_KEY]:serializeJsonValue({schemaVersion:1,contractRevision:latest.revision,contractDigest:latest.digest,status:'pending',checks,humanReview:latest.contract.humanReview,
+      ...(sameFiles && oldEvidence?.delivery ? { delivery: oldEvidence.delivery } : {})})
   }},{expectedRevision:options.expectedRunRevision});
   return structuredClone(ledger);
 }

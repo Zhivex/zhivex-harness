@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Add host-only task continuity inspection and admission checks over existing SQLite task, contract, journal and budget records. Preserve contract revisions across turns, refuse stale approvals and missing/uncertain effect evidence, and revalidate receipts before Code keep. No automatic effect replay or new public web projection.
+
 - Extend experimental task accounting with monetary closure reservations, retained unknown exposure and late-receipt inspection; keep ordinary no-cap chat unchanged and require explicit task token limits on unlimited hosts.
 
 - Preserve sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility. Provider payloads, parser causes and arbitrary exception text remain excluded.
