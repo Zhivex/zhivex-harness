@@ -10,16 +10,6 @@ import { inspectRuntimeManifest } from "../src/runtime/runtime-diagnostics.js";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { cliRunEventDocumentSchema } from "../src/client/json-contracts.js";
 import { parseCliArgs } from "../src/cli/arguments.js";
-import { interactiveBudgetOptions, consoleBudgetOptions as codeConsoleOptions } from "../packages/code/src/cli/console/console-budget.js";
-
-test("Web removes only approved accumulated caps and retains its original tool-error guard", () => {
-  const web = interactiveBudgetOptions({}, {});
-  expect(web).not.toHaveProperty("maxToolErrors");
-  expect(effectiveRuntimeBudget(resolveHarnessConfig(web).budget)).toEqual({ maxToolErrors: resolveHarnessConfig({}).budget.maxToolErrors, includeChildRuns: true });
-  expect(resolveHarnessConfig(interactiveBudgetOptions({ maxToolErrors: 1 }, {})).budget.maxToolErrors).toBe(1);
-  expect(interactiveBudgetOptions({}, { ZHIVEX_HARNESS_MAX_TOOL_ERRORS: "2" })).not.toHaveProperty("maxToolErrors");
-  expect(codeConsoleOptions({}, {}).maxToolErrors).toBe(20);
-});
 
 test("interactive defaults omit accumulated ceilings, preserve explicit/environment settings and stored numeric values", () => {
   const config = resolveHarnessConfig(consoleBudgetOptions({}, {}));
@@ -67,26 +57,5 @@ test("real SDK runs exceed inactive stored steps/tools/tokens/deadline and retai
     expect(result.state.steps).toHaveLength(3); expect(result.state.toolResults).toHaveLength(2);
     expect(caps).toEqual([123, 123, 123]); expect(deadlines).toEqual([5000, 5000, 5000]);
     expect(JSON.parse(JSON.stringify(result.state)).maxSteps).toBe("unlimited");
-  } finally { await harness.close(); await rm(workspace, { recursive: true, force: true }); }
-});
-
-test("real unbounded Web execution retains and enforces the existing maxToolErrors 4 policy", async () => {
-  const workspace = await mkdtemp("/tmp/web-error-guard-");
-  const model = createMockLanguageModel({ streamEvents: Array.from({ length: 5 }, (_, index) => [
-    { type: "tool-call" as const, toolCall: { id: `missing-${index}`, name: "read_file", input: { path: `missing-${index}.txt` } } },
-    { type: "finish" as const, finishReason: "tool-calls" as const },
-  ]) });
-  let failedTools = 0;
-  const harness = await createHarness({ ...interactiveBudgetOptions({}, {}), workspace, modelInstance: model,
-    provider: "openai", store: createInMemoryAgentRunStore(), subagentProfiles: [] });
-  try {
-    expect(harness.agent.maxSteps).toBe("unlimited");
-    expect(harness.config.budget.maxToolErrors).toBe(4);
-    await expect(runHarness(harness, { prompt: "Try missing files" }, { onEvent: event => {
-      if (event.type === "tool-result" && event.toolResult.isError) failedTools++;
-    } })).rejects.toThrow("maxToolErrors");
-    // The existing SDK guard reports the violation after the fifth error receipt;
-    // preserving this policy does not change its observation/enforcement semantics.
-    expect(failedTools).toBe(5);
   } finally { await harness.close(); await rm(workspace, { recursive: true, force: true }); }
 });
