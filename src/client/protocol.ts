@@ -1,3 +1,4 @@
+import type { HarnessTaskProjection } from './task-projection.js';
 import type { HarnessErrorDocument, ProviderStreamDiagnostic } from "../runtime/errors.js";
 import type { HarnessPolicyDecisionEvent } from "../runtime/policy-decisions.js";
 import type { HarnessPolicyInspection } from "../runtime/policy-inspection.js";
@@ -44,6 +45,7 @@ export const harnessClientCommandSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("restore.apply"), ...restore, ...mutation, expectedRevision: revision, reviewedProposalId: fileDigest }).strict(),
   z.object({ method: z.literal("restore.recoverFork"), ...restore, ...mutation, expectedRevision: revision, forkSessionId: id }).strict(),
   z.object({ method: z.literal("run.start"), ...session, ...mutation, expectedRevision: revision, prompt: z.string().min(1).max(64 * 1024) }).strict(),
+  z.object({ method: z.literal("task.get"), ...run, projectionVersion: z.number().int().nonnegative().safe() }).strict(),
   z.object({ method: z.literal("run.get"), ...run, includeReview: z.boolean().optional(), includeDiff: z.boolean().optional(), decisionOffset: z.number().int().min(0).max(512).optional() }).strict(),
   z.object({ method: z.literal("approval.resolve"), ...run, ...mutation, expectedRevision: revision,
     decisions: z.array(z.object({ approvalId: z.string().min(1).max(256), digest: z.string().regex(/^[a-f0-9]{64}$/), approve: z.boolean() }).strict()).min(1).max(64) }).strict(),
@@ -69,6 +71,7 @@ export interface HarnessClientRun {
 }
 
 export type HarnessClientData =
+  | { kind: "task"; projection: HarnessTaskProjection }
   | { kind: "project"; projectId: string }
   | { kind: "policy"; policy: HarnessPolicyInspection }
   | { kind: "session"; session: HarnessClientSession }
@@ -80,7 +83,7 @@ export type HarnessClientData =
 
 export type HarnessClientResponse = { protocolVersion: 1; requestId: string | null } & (
   | { ok: true; data: HarnessClientData }
-  | { ok: false; error: { code: HarnessClientErrorCode; providerDiagnostic?: ProviderStreamDiagnostic } }
+  | { ok: false; error: { code: HarnessClientErrorCode; providerDiagnostic?: ProviderStreamDiagnostic; taskDiagnostic?: { cause: "UNSUPPORTED_VERSION" | "UNSUPPORTED_HOST" | "OUT_OF_SCOPE" | "CONTRACT_UNAVAILABLE" | "EVIDENCE_UNAVAILABLE" | "SNAPSHOT_CHANGED" | "PAYLOAD_LIMIT"; impact: "projection_unavailable"; safeAction: "retry_read" | "review_configuration" | "reconcile" } } }
 );
 
 export type HarnessClientNegotiation =
@@ -88,6 +91,8 @@ export type HarnessClientNegotiation =
   | { ok: false; error: { code: "VERSION_UNSUPPORTED" | "CONNECTION_EXPIRED" } };
 
 export interface HarnessClientAdapterOptions {
+  /** Host-owned secrets for the bounded task projection. Never supplied by commands. */
+  taskProjectionSensitiveValues?: readonly string[];
   approvalMaxAgeMs?: number;
   now?: () => number;
   onPolicyDecision?: (sessionId: string, runId: string, event: HarnessPolicyDecisionEvent) => void | Promise<void>;
