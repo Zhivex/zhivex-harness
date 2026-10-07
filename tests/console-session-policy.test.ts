@@ -12,9 +12,10 @@ const check = (script = "bun test", overrides = {}): AgentApprovalRequest => ({
 
 test("interactive defaults align tools, errors and time without overriding explicit limits", () => {
   const defaults = consoleBudgetOptions(parseCliArgs(["chat"]), {});
-  expect([defaults.maxSteps, defaults.maxToolCalls, defaults.maxToolErrors, defaults.timeoutMs]).toEqual([50, 200, 20, 3600000]);
-  const explicit = consoleBudgetOptions({...defaults, maxToolCalls: 2, maxToolErrors: 0, timeoutMs: 1000}, {});
+  expect([defaults.unlimitedSteps, defaults.unlimitedToolCalls, defaults.maxToolErrors, defaults.unlimitedDuration]).toEqual([true, true, 20, true]);
+  const explicit = consoleBudgetOptions({command: "chat" as const, maxToolCalls: 2, maxToolErrors: 0, timeoutMs: 1000}, {});
   expect([explicit.maxToolCalls, explicit.maxToolErrors, explicit.timeoutMs]).toEqual([2, 0, 1000]);
+  expect(explicit.unlimitedToolCalls).toBe(false); expect(explicit.unlimitedDuration).toBe(false);
   const env = consoleBudgetOptions(parseCliArgs(["chat"]), {ZHIVEX_HARNESS_MAX_TOOL_CALLS:"10", ZHIVEX_HARNESS_MAX_TOOL_ERRORS:"1", ZHIVEX_HARNESS_TIMEOUT_MS:"1000"});
   expect(env.maxToolCalls).toBeUndefined(); expect(env.maxToolErrors).toBeUndefined(); expect(env.timeoutMs).toBeUndefined();
 });

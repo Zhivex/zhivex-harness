@@ -76,7 +76,9 @@ const evaluateState = (
   if (JSON.stringify(actualTools) !== JSON.stringify(expected.toolCalls)) {
     failures.push(`Expected tools ${expected.toolCalls.join(",")}, got ${actualTools.join(",")}.`);
   }
-  if (output.steps.length > output.state.maxSteps) {
+  if (typeof output.state.maxSteps !== "number") {
+    failures.push("Deterministic evaluation requires a finite maxSteps policy.");
+  } else if (output.steps.length > output.state.maxSteps) {
     failures.push(`Run exceeded maxSteps ${output.state.maxSteps}.`);
   }
   const durationMs = Date.now() - startedAt;

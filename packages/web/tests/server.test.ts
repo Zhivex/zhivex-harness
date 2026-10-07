@@ -12,6 +12,9 @@ import { randomUUID } from "node:crypto";
 import { fixture } from "./fixture.js";
 import { parseWebArgs } from "../src/cli.js";
 import { startWebServer, staticInventory } from "../src/server.js";
+import { emptyLimitSettings } from "../src/limit-settings.js";
+import type { LimitPreferences } from "../src/limit-store.js";
+import type { RunLimits } from "../src/limit-observer.js";
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const close of cleanups.splice(0).reverse()) await close();
@@ -465,4 +468,54 @@ test("deny, active cancel, failure and engine workspace boundary use existing po
     "outside-boundary-sentinel",
   );
   expect(await readFile(f.workspace + "/review.txt", "utf8")).toBe("before\n");
+});
+test("real dispatch snapshots task limits, warns without stopping and keeps project policy", async () => {
+  const f = await setup();
+  const prefs = await f.call("limits") as unknown as { preferences: LimitPreferences };
+  const settings = { ...emptyLimitSettings(), tokens: { value: 20, action: "notify" as const } };
+  await f.call("configureLimits", { scope: "project", settings, expectedRevision: prefs.preferences.revision });
+  await f.call("configureLimits", { scope: "task", settings: emptyLimitSettings(), expectedRevision: prefs.preferences.revision + 1 });
+  const first = await f.call("start", { sessionId: f.session.sessionId, expectedRevision: f.session.revision, idempotencyKey: "limit-first", prompt: "offline-limit-observe" });
+  expect(first.data.run.status).toBe("completed");
+  const snapshot = await f.call("runLimits", { sessionId: f.session.sessionId, runId: first.data.run.runId }) as unknown as RunLimits;
+  expect(snapshot.origin).toBe("task"); expect(snapshot.notices).toHaveLength(0);
+  expect(snapshot.consumption.steps).toBe(1);
+  const next = await f.call("start", { sessionId: f.session.sessionId, expectedRevision: first.data.session.revision, idempotencyKey: "limit-next", prompt: "offline-limit-observe" });
+  expect(next.data.run.status).toBe("completed");
+  const warned = await f.call("runLimits", { sessionId: f.session.sessionId, runId: next.data.run.runId }) as unknown as RunLimits;
+  expect(warned.origin).toBe("project");
+  expect(warned.notices).toMatchObject([{ name: "tokens", action: "notify", threshold: 20 }]);
+  expect(warned.cancellationRequested).toBe(false); expect(warned.consumption.tokens).toBe(30);
+  expect(warned.consumption.steps).toBe(1);
+  const foreign = await f.call("runLimits", { sessionId: "foreign", runId: next.data.run.runId }) as unknown as { error: { code: string } };
+  expect(foreign.error.code).toBe("WEB_LIMIT_RUN_INVALID");
+  // Reattach the same workspace with preferences/snapshots present; the file
+  // backend must only read its own run namespace.
+  await f.server.close();
+  const restarted = await f.boot();
+  cleanups.push(() => restarted.server.close());
+  expect((await restarted.runtime.limits()).preferences.project).toEqual(settings);
+});
+
+test("real duration threshold cancels through the existing owner and is not a paused run", async () => {
+  const f = await setup();
+  await f.call("configureLimits", { scope: "task", settings: { ...emptyLimitSettings(), durationMinutes: { value: .001, action: "stop" } }, expectedRevision: 0 });
+  const result = await f.call("start", { sessionId: f.session.sessionId, expectedRevision: f.session.revision, idempotencyKey: "limit-stop", prompt: "wait-for-cancel: configured duration" });
+  expect(result.data.run.status).toBe("cancelled");
+  const snapshot = await f.call("runLimits", { sessionId: f.session.sessionId, runId: result.data.run.runId }) as unknown as RunLimits;
+  expect(snapshot.status).toBe("cancelled"); expect(snapshot.cancellationRequested).toBe(true);
+  expect(snapshot.notices).toMatchObject([{ name: "durationMinutes", action: "stop" }]);
+  expect(snapshot.consumption.durationMinutes).toBeGreaterThan(.001);
+  const prefs = await f.call("limits") as unknown as { preferences: LimitPreferences };
+  expect(prefs.preferences.task).toBeNull();
+});
+
+test("limits writes retain existing pairing, strict schema and revision guards", async () => {
+  const f = await setup();
+  const response = await fetch(f.origin + "/api/action", { method: "POST", headers: f.headers, body: JSON.stringify({ action: "configureLimits", workspaceKey: f.workspaceKey, scope: "project", settings: emptyLimitSettings(), expectedRevision: 0 }) });
+  expect(response.status).toBe(401);
+  const invalid = await f.call("configureLimits", { scope: "project", settings: { ...emptyLimitSettings(), sandbox: false }, expectedRevision: 0 }) as unknown as { error: { code: string } };
+  expect(invalid.error.code).toBe("WEB_INVALID_REQUEST");
+  const stale = await f.call("configureLimits", { scope: "task", settings: emptyLimitSettings(), expectedRevision: 1 }) as unknown as { error: { code: string } };
+  expect(stale.error.code).toBe("WEB_LIMIT_REVISION_CONFLICT");
 });

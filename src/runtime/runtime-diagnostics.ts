@@ -20,8 +20,8 @@ const diagnosticsSchema = z.object({ schemaVersion: z.literal(2), requireVerifie
 const manifestSchema = z.object({ schemaVersion: z.literal(2), policyVersion: z.literal("assistant-v3-durable-closure"),
   role: z.string().max(128), requireVerifiedDelivery: z.boolean(), backend: z.enum(["none", "oci"]),
   tools: z.array(z.string().max(128)).max(1024),
-  budget: z.object({ unlimitedTokens: z.boolean().optional(), maxSteps: count, maxToolCalls: count, maxToolErrors: count, maxInputTokens: count, maxOutputTokens: count, includeChildRuns: z.boolean() }),
-  timeoutMs: count, closureController: z.boolean(), contextEnabled: z.boolean() });
+  budget: z.object({ unlimitedTokens: z.boolean().optional(), unlimitedSteps: z.boolean().optional(), unlimitedToolCalls: z.boolean().optional(), maxSteps: count, maxToolCalls: count, maxToolErrors: count, maxInputTokens: count, maxOutputTokens: count, includeChildRuns: z.boolean() }),
+  timeoutMs: count, unlimitedDuration: z.boolean().optional(), closureController: z.boolean(), contextEnabled: z.boolean() });
 const redact = createRedactionPolicy({ includeEmails: true });
 /** Parse and project an allowlist; persisted user metadata is not trusted output. */
 export const inspectRuntimeDiagnostics = (value: unknown) => {

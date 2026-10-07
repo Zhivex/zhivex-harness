@@ -50,6 +50,9 @@ export interface CliOptions {
   maxToolCalls?: number;
   maxToolErrors?: number;
   unlimitedTokens?: boolean;
+  unlimitedSteps?: boolean;
+  unlimitedToolCalls?: boolean;
+  unlimitedDuration?: boolean;
   compactionMaxEstimatedInputTokens?: number;
   maxInputTokens?: number;
   maxOutputTokens?: number;

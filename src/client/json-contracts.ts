@@ -72,6 +72,8 @@ const tokenUsageSchema = observationalDocument({
 });
 const budgetConfigSchema = observationalDocument({
   unlimitedTokens: z.boolean().optional(),
+  unlimitedSteps: z.boolean().optional(),
+  unlimitedToolCalls: z.boolean().optional(),
   maxSteps: nonnegativeInteger,
   maxToolCalls: nonnegativeInteger,
   maxToolErrors: nonnegativeInteger,
@@ -242,6 +244,7 @@ const doctorConfigurationSchema = observationalDocument({
   scope: scopeSchema,
   maxSteps: nonnegativeInteger,
   timeoutMs: nonnegativeInteger,
+  unlimitedDuration: z.boolean().optional(),
   budget: budgetConfigSchema,
   costBudget: observationalDocument({
     maxCostUsd: z.number().nonnegative(),
@@ -492,7 +495,7 @@ const cliPolicyInspectionSchema = observationalDocument({
   tools: z.array(observationalDocument({ name: z.string(), requiresApproval: z.boolean() })),
   restrictions: z.array(observationalDocument({ ruleId: z.string(), tools: z.array(z.string()), decision: z.enum(['allow', 'ask_user', 'deny']), reason: z.string(), pathCount: nonnegativeInteger })),
   execution: observationalDocument({ configuredBackend: z.enum(['none', 'oci']), activeBackend: z.enum(['none', 'oci']), evidence: z.literal('configuration-only') }),
-  limits: observationalDocument({ maxSteps: nonnegativeInteger, timeoutMs: nonnegativeInteger, budget: jsonObjectSchema })
+  limits: observationalDocument({ maxSteps: nonnegativeInteger, timeoutMs: nonnegativeInteger, unlimitedDuration: z.boolean().optional(), budget: jsonObjectSchema })
 });
 
 export const cliJsonDocumentSchema = z.union([
@@ -569,7 +572,7 @@ export const cliRunEventDocumentSchema = z.discriminatedUnion("type", [
   runEvent("error", { error: z.literal("Provider stream failed."), providerDiagnostic: providerStreamDiagnosticSchema.optional() }),
   runEvent("agent-run-start", {
     currentStep: nonnegativeInteger,
-    maxSteps: nonnegativeInteger
+    maxSteps: z.union([nonnegativeInteger, z.literal("unlimited")])
   }),
   runEvent("agent-step-start", { stepIndex: nonnegativeInteger }),
   runEvent("agent-step-finish", {

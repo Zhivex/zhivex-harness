@@ -8,6 +8,7 @@ import type {
 import { attachRuntime, type WebRuntime } from "./runtime.js";
 import { startWebServer } from "./server.js";
 import { selectWebServiceDirectory, webStartupDiagnostic } from "./service-directory.js";
+import { startInteractiveWebRuntime } from "./interactive-startup.js";
 import { manageWebRuntime } from "./managed-runtime.js";
 import type { WebModelChoice } from "./contracts.js";
 
@@ -100,6 +101,7 @@ export async function runWebCli(
   create: (
     input: HarnessConfigInput,
     profile?: string,
+    interactive?: boolean,
   ) => Promise<{ harness: ZhivexHarness; secrets: readonly string[] }>,
   modelChoices?: () => Promise<WebModelChoice[]>,
 ) {
@@ -131,25 +133,16 @@ export async function runWebCli(
             ? { toolPolicyFile: path.resolve(v["--tool-policy"]) }
             : {}),
         };
-      const configured = await create(configuration, v["--profile"]);
-      try {
-        const runtime = await attachRuntime(
-            configured.harness,
-            serviceDirectory,
-            parsed.recover,
-            configured.secrets,
-          );
-        runtimes.push(modelChoices ? manageWebRuntime(runtime, modelChoices, async selection => {
-          const next = await create({...configuration, ...selection}, v["--profile"]);
-          return {
-            attach: () => attachRuntime(next.harness, serviceDirectory, false, next.secrets),
-            dispose: () => next.harness.close(),
-          };
-        }) : runtime);
-      } catch (e) {
-        await configured.harness.close();
-        throw e;
-      }
+      const launch = (interactive: boolean) => create(configuration, v["--profile"], interactive);
+      const started = await startInteractiveWebRuntime(launch, configured => attachRuntime(
+        configured.harness, serviceDirectory, parsed.recover, configured.secrets));
+      runtimes.push(modelChoices ? manageWebRuntime(started.runtime, modelChoices, async selection => {
+        const next = await create({ ...configuration, ...selection }, v["--profile"], started.interactive);
+        return {
+          attach: () => attachRuntime(next.harness, serviceDirectory, false, next.secrets, started.legacyPending),
+          dispose: () => next.harness.close(),
+        };
+      }) : started.runtime);
     }
     const server = await startWebServer({
       runtimes,

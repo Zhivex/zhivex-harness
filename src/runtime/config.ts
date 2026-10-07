@@ -109,6 +109,9 @@ export type HarnessSubagentProfile = (typeof HARNESS_SUBAGENT_PROFILES)[number];
 export interface HarnessBudget {
   /** Disable cumulative token ceilings; numeric ceilings remain stored but inactive. */
   unlimitedTokens?: boolean;
+  /** Disable cumulative step/call ceilings; stored numbers are inactive. */
+  unlimitedSteps?: boolean;
+  unlimitedToolCalls?: boolean;
   maxSteps: number;
   maxToolCalls: number;
   maxToolErrors: number;
@@ -173,6 +176,8 @@ export interface HarnessConfig {
   scope: AgentStoreScope;
   maxSteps: number;
   timeoutMs: number;
+  /** Disable the cumulative run deadline; per-operation timeouts remain. */
+  unlimitedDuration?: boolean;
   requireVerifiedDelivery: boolean;
   budget: HarnessBudget;
   costBudget?: HarnessCostBudget;
@@ -204,6 +209,9 @@ export interface HarnessConfigInput {
   maxToolErrors?: number;
   /** Disable cumulative token budgets for the main run and all subagents. */
   unlimitedTokens?: boolean;
+  unlimitedSteps?: boolean;
+  unlimitedToolCalls?: boolean;
+  unlimitedDuration?: boolean;
   maxInputTokens?: number;
   maxOutputTokens?: number;
   maxTotalTokens?: number;
@@ -625,12 +633,14 @@ export const resolveHarnessConfig = (
     1_000,
     24 * 60 * 60_000
   );
-  if (input.unlimitedTokens !== undefined && typeof input.unlimitedTokens !== "boolean") {
-    throw new HarnessConfigError("unlimitedTokens must be a boolean.");
+  for (const key of ["unlimitedTokens", "unlimitedSteps", "unlimitedToolCalls", "unlimitedDuration"] as const) {
+    if (input[key] !== undefined && typeof input[key] !== "boolean") throw new HarnessConfigError(`${key} must be a boolean.`);
   }
   const tokenMode = input.unlimitedTokens === undefined ? {} : { unlimitedTokens: input.unlimitedTokens };
   const budget: HarnessBudget = {
     ...tokenMode,
+    ...(input.unlimitedSteps === undefined ? {} : { unlimitedSteps: input.unlimitedSteps }),
+    ...(input.unlimitedToolCalls === undefined ? {} : { unlimitedToolCalls: input.unlimitedToolCalls }),
     maxSteps,
     maxToolCalls: integerOption("maxToolCalls", input.maxToolCalls, process.env.ZHIVEX_HARNESS_MAX_TOOL_CALLS, DEFAULT_HARNESS_BUDGET.maxToolCalls, 0, Number.MAX_SAFE_INTEGER),
     maxToolErrors: integerOption("maxToolErrors", input.maxToolErrors, process.env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS, DEFAULT_HARNESS_BUDGET.maxToolErrors, 0, 100),
@@ -737,6 +747,7 @@ export const resolveHarnessConfig = (
     },
     maxSteps,
     timeoutMs,
+    ...(input.unlimitedDuration === undefined ? {} : { unlimitedDuration: input.unlimitedDuration }),
     requireVerifiedDelivery: input.requireVerifiedDelivery ?? false,
     budget,
     ...(maxCostUsd === undefined

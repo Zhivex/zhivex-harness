@@ -42,7 +42,10 @@ test("does not expose unknown or mismatched structured fields", () => {
 test("client failure and persisted run lookup retain safe diagnostics using installed Qwen", async () => {
   const workspace = await mkdtemp(`${tmpdir()}/qwen-stream-diagnostics-`);
   const model = createQwen({ apiKey: "offline-fixture", fetch: Object.assign(async () => new Response('data: {PRIVATE_PROVIDER_DETAIL\n\n'), { preconnect() {} }) as typeof fetch })("deepseek-v4.1-flash");
-  const harness = await createHarness({ workspace, provider: "qwen", model: "deepseek-v4.1-flash", modelInstance: model, subagentProfiles: [] });
+  const harness = await createHarness({ workspace, provider: "qwen", model: "deepseek-v4.1-flash", modelInstance: model, subagentProfiles: [], unlimitedTokens: true, unlimitedSteps: true, unlimitedToolCalls: true, unlimitedDuration: true });
+  expect(harness.agent.maxSteps).toBe("unlimited");
+  expect(harness.agent.policy).not.toHaveProperty("timeoutMs");
+  expect(harness.config.budget.maxToolErrors).toBe(4);
   const adapter = await createHarnessClientAdapter(harness);
   try {
     const hello = adapter.negotiate([1]); if (!hello.ok) throw new Error("fixture negotiation");

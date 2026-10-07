@@ -410,8 +410,8 @@ subsequent model calls, rather than guaranteeing a pre-request input-token ceili
 
 ### Runs without cumulative token budgets
 
-New local interactive sessions (`zhx` or `zhx chat`) have no cumulative token
-ceiling by default. Automatic compaction continues, and usage is measured and
+New local interactive sessions (`zhx` or `zhx chat`) and Harness Web have no
+cumulative token, step, tool-call or duration ceiling by default. Automatic compaction continues, and usage is measured and
 persisted. This avoids ending a repository analysis solely because repeated
 requests have consumed 100,000 input tokens.
 
@@ -424,8 +424,8 @@ start a new session to use the new default.
 
 `--no-token-budget` disables cumulative input, output and total token ceilings for
 the main run and children, including token closure reserves. Numeric settings remain
-stored but inactive. Step/tool limits, timeouts, monetary limits and approvals still
-apply. Library callers use `unlimitedTokens: true`; `false` restores token limits.
+stored but inactive. Explicit host ceilings, operation/model/state limits, anti-loop controls, monetary
+policies and approvals still apply. Library callers use `unlimitedTokens: true`; `false` restores token limits.
 
 `--context-tokens <n>` sets the estimated context compaction threshold independently
 of cumulative usage. The default is 40,000. It can be adjusted for the selected model;

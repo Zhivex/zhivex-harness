@@ -18,7 +18,7 @@ export interface HarnessPolicyInspection {
   tools: Array<{ name: string; requiresApproval: boolean }>;
   restrictions: Array<{ ruleId: string; tools: string[]; decision: 'allow' | 'ask_user' | 'deny'; reason: string; pathCount: number }>;
   execution: { configuredBackend: 'none' | 'oci'; activeBackend: 'none' | 'oci'; evidence: 'configuration-only' };
-  limits: { maxSteps: number; timeoutMs: number; budget: HarnessConfig['budget']; oci?: {
+  limits: { maxSteps: number; timeoutMs: number; unlimitedDuration?: boolean; budget: HarnessConfig['budget']; oci?: {
     maxProcessRuntimeMs: number; maxProcessOutputBytes: number; maxMemoryMb: number;
     maxPids: number; maxCpus: number; maxWorkspaceBytes: number; maxFileWriteBytes: number; tmpfsMb: number;
   } };
@@ -33,7 +33,8 @@ export function bindHarnessPolicyInspection(host: object, input: {
   const compiled = input.policy ? createHarnessToolPolicy(input.policy) : undefined;
   const execution = input.config.execution;
   const limits: HarnessPolicyInspection['limits'] = {
-    maxSteps: input.config.maxSteps, timeoutMs: input.config.timeoutMs, budget: structuredClone(input.config.budget),
+    maxSteps: input.config.maxSteps, timeoutMs: input.config.timeoutMs,
+    ...(input.config.unlimitedDuration === undefined ? {} : { unlimitedDuration: input.config.unlimitedDuration }), budget: structuredClone(input.config.budget),
     ...(execution.backend === 'oci' ? { oci: {
       maxProcessRuntimeMs: execution.maxProcessRuntimeMs, maxProcessOutputBytes: execution.maxProcessOutputBytes,
       maxMemoryMb: execution.maxMemoryMb, maxPids: execution.maxPids, maxCpus: execution.maxCpus,
