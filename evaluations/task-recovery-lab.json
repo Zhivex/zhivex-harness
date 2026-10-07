@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "HAR-HU-75-base-lab",
+  "scopeDecision": "HAR-HU-61",
+  "measurementConsumer": "HAR-HU-74 (not executed)",
+  "baseSha": "b64f7d15ed2d8e6fabd027cee51bafbf4a8c41b7",
+  "fixtureSha256": "473a9e2144b0042b1b46ef54f915de693045df89d6175bde42a3393d2b083263",
+  "installedScenarios": [
+    "failed-start",
+    "exhaustion-after-work",
+    "native-path-boundary",
+    "normal-control",
+    "contract-artifact-drift",
+    "obsolete-approval",
+    "concurrent-cancel-unknown-usage",
+    "concurrent-cancel-late-usage",
+    "disk-full-final-save",
+    "compaction-untrusted-evidence",
+    "crash-before-receipt",
+    "crash-after-receipt",
+    "service-disconnect"
+  ],
+  "limits": {
+    "singleWriter": true,
+    "backend": "native",
+    "store": "sqlite",
+    "maxSteps": 16,
+    "maxToolCalls": 40,
+    "timeoutMs": 150000,
+    "inputTokens": 60000,
+    "outputTokens": 8192,
+    "totalTokens": 68192,
+    "liveProvider": false,
+    "humanMeasurement": false
+  },
+  "sourceRegressions": [
+    "tests/task-continuity.test.ts",
+    "tests/task-cancellation-host.test.ts",
+    "tests/task-cancellation-transport.test.ts",
+    "tests/task-budget-accounting.test.ts",
+    "tests/task-budget-compatibility.test.ts",
+    "tests/local-service.test.ts",
+    "tests/local-service-recovery.test.ts",
+    "tests/governance-report.test.ts",
+    "tests/governance-context.test.ts",
+    "tests/tool-policy-paths.test.ts",
+    "tests/security.test.ts"
+  ],
+  "pending": [
+    "HAR73 versioned task service projection",
+    "CODE05 task review UI and rendering of active text/citations",
+    "HAR74 ratified human rubric, time, cost and pilot"
+  ],
+  "notSupported": [
+    "Concurrent writers or host takeover",
+    "Remote provider stop confirmation",
+    "Arbitrary disk hardware failure",
+    "New SSRF/document/web adapters"
+  ]
+}
