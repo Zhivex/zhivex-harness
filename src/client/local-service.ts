@@ -6,7 +6,7 @@ import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { mkdir, lstat, realpath, open, unlink, chmod } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { harnessClientRequestSchema, type HarnessClientAdapter, type HarnessClientResponse, type HarnessClientNegotiation } from "./protocol.js";
+import { harnessClientRequestSchema, type HarnessClientAdapter, type HarnessClientResponse, type HarnessClientNegotiation, type HarnessClientAdapterOptions } from "./protocol.js";
 import { createHarnessClientAdapter } from "./adapter.js";
 import { openHarnessActivityStore, type HarnessActivityStore, type HarnessActivityPage } from "./service-events.js";
 import type { ZhivexHarness } from "../runtime/harness.js";
@@ -24,7 +24,7 @@ export interface HarnessLocalService {
   /** Stops admission, drains accepted commands, closes adapter and host runtime. */
   close(): Promise<void>;
 }
-export interface HarnessLocalServiceOptions { directory: string; approvalNow?: () => number; sensitiveValues?: readonly string[]; maxEvents?: number; retentionMs?: number }
+export interface HarnessLocalServiceOptions extends Pick<HarnessClientAdapterOptions, "onPrompt" | "onEvent" | "onCheckpoint"> { directory: string; approvalNow?: () => number; sensitiveValues?: readonly string[]; maxEvents?: number; retentionMs?: number }
 export const harnessLocalCredentialsSchema = z.object({ schemaVersion: z.literal(1), socketPath: z.string().min(1), token: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 export type HarnessLocalCredentials = z.infer<typeof harnessLocalCredentialsSchema>;
 
@@ -124,9 +124,9 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
     adapter = await createHarnessClientAdapter(harness, {
       ...(options.approvalNow?{now:options.approvalNow}:{}),
       onPolicyDecision: (sessionId,runId,event) => activity!.policyDecision(sessionId,runId,event),
-      onPrompt: (sessionId,runId,prompt) => activity!.prompt(sessionId,runId,prompt),
-      onEvent: (sessionId,runId,event) => activity!.append(sessionId,runId,event),
-      onCheckpoint: (sessionId,runId,status) => activity!.checkpoint(sessionId,runId,status)
+      onPrompt: async (sessionId,runId,prompt) => { await activity!.prompt(sessionId,runId,prompt); await options.onPrompt?.(sessionId,runId,prompt); },
+      onEvent: async (sessionId,runId,event) => { await activity!.append(sessionId,runId,event); await options.onEvent?.(sessionId,runId,event); },
+      onCheckpoint: async (sessionId,runId,status) => { await activity!.checkpoint(sessionId,runId,status); await options.onCheckpoint?.(sessionId,runId,status); }
     });
     await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(socketPath, () => { server.off("error", reject); resolve(); }); });
     ownsSocket = true;

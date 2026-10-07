@@ -96,8 +96,7 @@
     "LICENSE",
     "docs/CHANGE_ENVELOPES.md",
     "docs/CLI.md",
-    "docs/MINIMUM_TASK_AUTHORITY.md",
-    "docs/MINIMUM_OFFLINE_EVALS.md",
+    "docs/WEB_LIMITS.md",
     "docs/CODE_RELEASE.md",
     "docs/images/cli-conversation.png",
     "docs/CLIENT_PROTOCOL.md",
@@ -138,7 +137,9 @@
     "docs/VERTEX.md",
     "docs/TOOL_POLICY.md",
     "docs/fixtures/mcp-stdio-contract-v1.json",
-    "docs/PROJECT_MEMORY.md"
+    "docs/PROJECT_MEMORY.md",
+    "docs/MINIMUM_TASK_AUTHORITY.md",
+    "docs/MINIMUM_OFFLINE_EVALS.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",
@@ -207,9 +208,9 @@
     "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.10.3",
+    "@zhivex-ai/agents": "1.11.0",
     "@zhivex-ai/anthropic": "0.13.2",
-    "@zhivex-ai/core": "1.30.1",
+    "@zhivex-ai/core": "1.31.0",
     "@zhivex-ai/gemini": "0.13.0",
     "@zhivex-ai/meta": "0.2.9",
     "@zhivex-ai/openai": "0.14.1",
@@ -219,7 +220,7 @@
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.30.1"
+    "@zhivex-ai/core": "1.31.0"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.7.0",

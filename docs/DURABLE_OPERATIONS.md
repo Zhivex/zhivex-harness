@@ -70,7 +70,7 @@ Loading a run reconstructs its complete state for compatibility with approvals, 
 
 Logical backups contain hydrated history rather than database references, so restoration does not require the original artifact tables. Exports up to 64 MiB retain the legacy JSON format; larger exports use the versioned `ZHIVEX-STATE-SEGMENTS-1` transport with bounded frames, including split strings. RC13 reads both formats and verifies the same logical checksum before import. Older versions cannot read segmented exports. File I/O and checksum serialization are incremental; the public backup/import APIs still hydrate the complete logical bundle in memory. Segmented files have no aggregate 64 MiB ceiling. A state-limit failure records a bounded terminal diagnostic on the last durable checkpoint; the unsaved payload is not claimed as preserved. Use `/status` to inspect the failed run before `/continue`. Recovery retains tool journal receipts and never re-executes an operation itself.
 
-The current candidate pins Core 1.30.1 and Agents 1.10.3. New stores require no
+The current candidate pins Core 1.31.0 and Agents 1.11.0. New stores require no
 conversion. Before upgrading an existing shared SDK store, stop its workers and
 upgrade them together with a complete backup. Verified legacy runs retain their
 physical keys and remain readable; new runs use canonical keys that distinguish

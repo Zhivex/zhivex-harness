@@ -470,6 +470,10 @@ void create;
     documents.push(harnessErrorDocument(new HarnessApprovalError("secret")));
     documents.push(harnessErrorDocument(Object.assign(new Error("secret"), { name: "ConflictError" })));
     documents.push(harnessErrorDocument(new Error("secret")));
+    documents.push(harnessErrorDocument(Object.assign(new Error("secret"), {
+      name: "QwenStreamEventError", provider: "qwen", transport: "responses",
+      diagnosticCode: "QWEN_SSE_EVENT_INVALID", reason: "invalid_json", retryable: false
+    })));
     console.log(JSON.stringify(documents));`
   ], { cwd: consumer });
   const installedErrorCodes = (JSON.parse(installedErrors.stdout) as Array<{ error: { code: string } }>)
@@ -483,8 +487,13 @@ void create;
     "PROVIDER_UNAVAILABLE",
     "APPROVAL_REQUIRED",
     "STATE_CONFLICT",
-    "EXECUTION_FAILED"
+    "EXECUTION_FAILED",
+    "PROVIDER_UNAVAILABLE"
   ]);
+  assert.deepEqual(JSON.parse(installedErrors.stdout).at(-1).error.providerDiagnostic, {
+    provider: "qwen", transport: "responses", diagnosticCode: "QWEN_SSE_EVENT_INVALID",
+    reason: "invalid_json", retryable: false
+  });
   assert(!installedErrors.stdout.includes("secret"));
 
   const historicalMigrations = await run([

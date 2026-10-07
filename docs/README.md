@@ -42,3 +42,5 @@ and are excluded from the npm package. Published validation applies to the exact
 release artifact, not automatically to later source changes.
 
 - [Project memory](PROJECT_MEMORY.md): experimental explicit notes, review, retrieval budgets and deletion semantics.
+
+- [Optional Web limits and interactive defaults](WEB_LIMITS.md)

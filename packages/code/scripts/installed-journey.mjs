@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { sdkFixture } from "../../web/scripts/sdk-fixture.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const scratch = await mkdtemp(path.join(os.tmpdir(), "code-installed-journey-"));
@@ -48,8 +49,9 @@ try {
     const engineBytes = await readFile(candidateEngine);
     engineArtifact = { version: engineVersion, sha512Hex: createHash("sha512").update(engineBytes).digest("hex") };
   }
+  const sdk = await sdkFixture();
   await writeFile(path.join(scratch, "package.json"), JSON.stringify({ private: true,
-    ...(candidateEngine ? { overrides: { "@zhivex-ai/harness": `file:${candidateEngine}` } } : {}) }) + "\n");
+    overrides: { ...sdk.overrides, ...(candidateEngine ? { "@zhivex-ai/harness": `file:${candidateEngine}` } : {}) } }) + "\n");
   run("npm", ["install", retained, "--ignore-scripts", "--no-audit", "--no-fund"]);
   const installed = path.join(scratch, "node_modules/@zhivex-ai/code");
   const manifest = JSON.parse(await readFile(path.join(installed, "package.json"), "utf8"));
@@ -61,7 +63,7 @@ try {
   run("python3", [path.join(root, "scripts/installed-journey.py"), installed, evidence]);
   assert.equal(createHash("sha512").update(await readFile(retained)).digest("hex"), sha512Hex, "Tested artifact bytes changed");
   const report = { status: "passed", node: process.version, codeVersion: manifest.version, harnessVersion: engineVersion, engineArtifact,
-    sourceSha, sourceDirty, artifact: { filename: "code.tgz", bytes: bytes.length, sha512Hex,
+    sourceSha, sourceDirty, sdkFixture: sdk.evidence, artifact: { filename: "code.tgz", bytes: bytes.length, sha512Hex,
       integrity: `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}` },
     installation: candidateEngine ? "npm tarball with explicit exact candidate engine override, no install scripts" : "npm tarball with published dependency, no overrides or install scripts", offline: true,
     scenarios: ["task/check approvals and denial", "pending approval exit and resume", "per-file diff and check receipt",

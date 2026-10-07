@@ -14,6 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { loopbackRequest, pairingToken } from "./local-smoke-http.mjs";
+import { sdkFixture } from "./sdk-fixture.mjs";
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const root = await mkdtemp("/tmp/zcw-installed-");
 const shortTemp = root + "/short-tmp";
@@ -143,8 +144,9 @@ try {
     assert.equal(engine.name, "@zhivex-ai/harness");
     assert.equal(engine.version, codeManifest.dependencies["@zhivex-ai/harness"]);
   }
+  const sdk = await sdkFixture();
   await writeFile(root + "/consumer/package.json", JSON.stringify({ private: true,
-    ...(candidateEngine ? { overrides: { "@zhivex-ai/harness": `file:${path.resolve(candidateEngine)}` } } : {}) }));
+    overrides: { ...sdk.overrides, ...(candidateEngine ? { "@zhivex-ai/harness": `file:${path.resolve(candidateEngine)}` } : {}) } }));
   run(
     "npm",
     ["install", "--ignore-scripts", "--no-audit", "--no-fund", tar],
@@ -198,6 +200,11 @@ try {
     const result = await response.json(); assert.equal(response.status, 200, JSON.stringify(result)); return result;
   }
   const catalog = await configuredAction("models");
+  if (sdk.evidence) {
+    const limits = await configuredAction("limits");
+    assert(Object.values(limits.host).every(value => value === null), "New interactive Web defaults must have no cumulative ceiling");
+    assert.equal(limits.preferences.task, null);
+  }
   assert(catalog.choices.length > 0);
   assert(catalog.choices.every(c => c.capabilities.includes("chat") && c.capabilities.includes("tools")));
   assert(!JSON.stringify(catalog).includes("sk-offline-fixture-never-sent"));
@@ -257,6 +264,7 @@ try {
     installation: candidateEngine ? "explicit exact candidate engine override" : "published registry engine",
     codeVersion: codeManifest.version,
     harnessVersion: codeManifest.dependencies["@zhivex-ai/harness"],
+    sdkFixture: sdk.evidence,
     sourceSha: run("git", ["rev-parse", "HEAD"], repo).trim(),
     packageSha512: testedDigest,
     packageSha256: createHash("sha256")

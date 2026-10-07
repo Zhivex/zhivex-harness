@@ -1,3 +1,4 @@
+import { providerStreamDiagnostic } from "../runtime/errors.js";
 import type { AgentStreamEvent } from "@zhivex-ai/agents";
 
 export const CLI_JSON_SCHEMA_VERSION = 1 as const;
@@ -85,8 +86,10 @@ export const streamEventDocument = (event: AgentStreamEvent, sequence = 0) => {
         ...(event.finishReason ? { finishReason: event.finishReason } : {}),
         ...(event.usage ? { usage: event.usage } : {})
       };
-    case "error":
-      return { ...base, error: "Provider stream failed." };
+    case "error": {
+      const diagnostic = providerStreamDiagnostic(event.error);
+      return { ...base, error: "Provider stream failed.", ...(diagnostic ? { providerDiagnostic: diagnostic } : {}) };
+    }
     case "agent-run-start":
       return { ...base, currentStep: event.currentStep, maxSteps: event.maxSteps };
     case "agent-step-start":

@@ -1,3 +1,4 @@
+import type { HarnessErrorDocument, ProviderStreamDiagnostic } from "../runtime/errors.js";
 import type { HarnessPolicyDecisionEvent } from "../runtime/policy-decisions.js";
 import type { HarnessPolicyInspection } from "../runtime/policy-inspection.js";
 import { type ApprovalDecisionView } from "../approvals/approval-history.js";
@@ -63,7 +64,7 @@ export type HarnessClientErrorCode = "INVALID_REQUEST" | "VERSION_UNSUPPORTED" |
 export interface HarnessClientSession extends CliSession {}
 
 export interface HarnessClientRun {
-  runId: string; revision: number; status: string; output: string; cliResult?: unknown; decisions?: ApprovalDecisionView[]; decisionTotal?: number; decisionNextOffset?: number;
+  runId: string; revision: number; status: string; output: string; error?: HarnessErrorDocument["error"]; cliResult?: unknown; decisions?: ApprovalDecisionView[]; decisionTotal?: number; decisionNextOffset?: number;
   approvals: { approvalId: string; digest: string; provider: string; kind: string; action: unknown; expiresAt: number; filePreview?: ApprovalFilePreview }[];
 }
 
@@ -79,7 +80,7 @@ export type HarnessClientData =
 
 export type HarnessClientResponse = { protocolVersion: 1; requestId: string | null } & (
   | { ok: true; data: HarnessClientData }
-  | { ok: false; error: { code: HarnessClientErrorCode } }
+  | { ok: false; error: { code: HarnessClientErrorCode; providerDiagnostic?: ProviderStreamDiagnostic } }
 );
 
 export type HarnessClientNegotiation =

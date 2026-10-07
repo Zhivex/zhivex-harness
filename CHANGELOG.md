@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Preserve sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility. Provider payloads, parser causes and arbitrary exception text remain excluded.
+
 - Add experimental guided Code task budget authority across turns, correction and restart, using one native SQLite writer and the SDK token coordinator. Reserve before primary and compaction dispatch, fence tools/checkpoints against the task lease, retain uncertain consumption, and require explicit known-outcome continuation after cancellation. Reject unsupported transports and historical tasks without an established account.
 - Show authoritative task limits, confirmed/reserved/unknown usage, fresh checks and human decisions in Code; retain drafts when admission fails before a run checkpoint. Ordinary non-task retry and budget semantics remain unchanged.
 - Index transport usage by scope/run and reuse activity statements without changing pruning, redaction or mandatory persistence errors. Preserve explicit monetary output caps above 2,048.

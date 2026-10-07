@@ -291,6 +291,8 @@ export const inspectHarnessRun = async (
         backend: "none" | "oci";
         budget: {
             unlimitedTokens?: boolean | undefined;
+            unlimitedSteps?: boolean | undefined;
+            unlimitedToolCalls?: boolean | undefined;
             maxSteps: number;
             maxToolCalls: number;
             maxToolErrors: number;
@@ -299,6 +301,7 @@ export const inspectHarnessRun = async (
             includeChildRuns: boolean;
         };
         timeoutMs: number;
+        unlimitedDuration?: boolean | undefined;
         closureController: boolean;
         contextEnabled: boolean;
         role: string;

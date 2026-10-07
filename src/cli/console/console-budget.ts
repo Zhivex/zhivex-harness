@@ -1,5 +1,5 @@
 import type { CliOptions } from "../arguments.js";
-import { DEFAULT_HARNESS_MAX_STEPS, type HarnessConfig } from "../../runtime/config.js";
+import { type HarnessConfig, type HarnessConfigInput } from "../../runtime/config.js";
 import type { TokenUsage } from "@zhivex-ai/core";
 
 const tokenOptions = ["maxInputTokens", "maxOutputTokens", "maxTotalTokens",
@@ -10,26 +10,27 @@ const tokenEnvironment = ["ZHIVEX_HARNESS_MAX_INPUT_TOKENS", "ZHIVEX_HARNESS_MAX
 
 /** Only new local console sessions change defaults. Explicit limits always opt
  * into bounded execution; SDK, service hosts and automation retain their policy. */
-export const consoleBudgetOptions = (options: CliOptions, env: NodeJS.ProcessEnv = process.env): CliOptions => ({
+export const consoleBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => ({
   ...options,
-  ...(options.maxSteps === undefined && env.ZHIVEX_HARNESS_MAX_STEPS === undefined ? { maxSteps: DEFAULT_HARNESS_MAX_STEPS } : {}),
-  ...(options.maxToolCalls === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_CALLS === undefined ? { maxToolCalls: 200 } : {}),
   ...(options.maxToolErrors === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS === undefined ? { maxToolErrors: 20 } : {}),
-  ...(options.timeoutMs === undefined && env.ZHIVEX_HARNESS_TIMEOUT_MS === undefined ? { timeoutMs: 60 * 60_000 } : {}),
+  unlimitedSteps: options.unlimitedSteps ?? (options.maxSteps === undefined && env.ZHIVEX_HARNESS_MAX_STEPS === undefined),
+  unlimitedToolCalls: options.unlimitedToolCalls ?? (options.maxToolCalls === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_CALLS === undefined),
+  unlimitedDuration: options.unlimitedDuration ?? (options.timeoutMs === undefined && env.ZHIVEX_HARNESS_TIMEOUT_MS === undefined),
   unlimitedTokens: options.unlimitedTokens ??
     !(tokenOptions.some(key => options[key] !== undefined) || tokenEnvironment.some(key => env[key] !== undefined))
 });
 
 /** A saved run owns its budget, including legacy runs without a mode flag. */
 export const restoreConsoleOptions = (current: CliOptions, saved: Partial<CliOptions>): CliOptions => ({
-  ...current, ...saved, reasoningEffort: saved.reasoningEffort ?? "default", unlimitedTokens: saved.unlimitedTokens ?? false
+  ...current, ...saved, reasoningEffort: saved.reasoningEffort ?? "default", unlimitedTokens: saved.unlimitedTokens ?? false,
+  unlimitedSteps: saved.unlimitedSteps ?? false, unlimitedToolCalls: saved.unlimitedToolCalls ?? false, unlimitedDuration: saved.unlimitedDuration ?? false
 });
 
 export const formatConsoleBudget = (config: HarnessConfig, usage?: TokenUsage) => {
-  const lines = [`Step limit: ${config.maxSteps} model iterations per turn.`, config.budget.unlimitedTokens
-    ? "Cumulative token budget: unlimited (step, tool, time and monetary limits still apply)."
+  const lines = [`Step limit: ${config.budget.unlimitedSteps ? "none" : config.maxSteps} model iterations per turn.`, config.budget.unlimitedTokens
+    ? "Cumulative token budget: unlimited; operation, model, state and safety controls still apply."
     : `Cumulative token limits per run: input ${config.budget.maxInputTokens}; output ${config.budget.maxOutputTokens}; total ${config.budget.maxTotalTokens}.`];
-  lines.push(`Tool limits: ${config.budget.maxToolCalls} calls / ${config.budget.maxToolErrors} errors; time: ${Math.round(config.timeoutMs / 60000)} minutes per run.`);
+  lines.push(`Tool limits: ${config.budget.unlimitedToolCalls ? "no cumulative cap on" : config.budget.maxToolCalls} calls / ${config.budget.maxToolErrors} errors; time: ${config.unlimitedDuration ? "no cumulative deadline" : `${Math.round(config.timeoutMs / 60000)} minutes per run`}.`);
   if (!usage) return [...lines, "Latest run usage: unavailable."].join("\n");
   const input = usage.inputTokens, output = usage.outputTokens;
   const total = usage.totalTokens ?? (input !== undefined && output !== undefined ? input + output : undefined);

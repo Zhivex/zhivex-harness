@@ -27,7 +27,7 @@ jobs:
       - run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
       - run: bun run --cwd packages/web typecheck && bun run --cwd packages/web lint
       - run: bun run --cwd packages/code typecheck && bun run --cwd packages/code test
-      - run: bun test packages/web/tests
+      - run: bun run --cwd packages/web test
       - run: packages/web/node_modules/.bin/playwright install --with-deps chromium
       - run: bun run --cwd packages/web test:browser
       - run: |
