@@ -31,6 +31,18 @@ bun pm untrusted
 bun run pack:inspect
 ```
 
+For a managed runner, use `CI=1` and the standard `umask 022` for validation,
+as in CI. npm's best-effort update notification can otherwise delay failing
+fixture scripts beyond their existing test deadlines. Do not extend deadlines
+or weaken assertions to accommodate that notification.
+
+If the runner marks the entire temporary directory as repository authority,
+set `ZHIVEX_HARNESS_TEST_POLICY_ROOT` to a separate writable host-fixture
+directory outside that authority (for example `/workspace` when fixtures use
+`/tmp`). This changes only where tool-policy tests create their private host
+files; all production path, ownership, mode and symlink checks still run.
+Never remove the runner's repository markers or disable those checks.
+
 Behavior changes should include focused success, failure-path, and security regression coverage. Update the README, relevant contract guide, changelog, and migration notes when a public CLI, configuration, persisted-state, JSON, or library contract changes.
 
 Live provider and MCP checks are opt-in and must be reported separately from deterministic and installed-artifact proof. Never commit credentials, `.env`, provider outputs containing secrets, or local `.zhivex-harness` state.
