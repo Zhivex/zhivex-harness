@@ -52,12 +52,16 @@ different or cleared text, double click/Ctrl+Enter, session/workspace changes,
 uncertain admitted requests and explicit recovery without overwrite or replay.
 The draft is consumed under the synchronous dispatch lock, before any await.
 
-Web unit/integration tests: 69 pass. Code tests: 129 pass. Aggregate offline tests:
+Web unit/integration tests: 69 pass. Code tests: 129 pass. Initial aggregate offline tests:
 2022 pass, 1 intentional unsupported-platform skip, 0 fail. Typecheck, lint,
 architecture, documentation and stable-contract checks pass with the candidate SDK.
 Real SDK execution exceeds the old numeric step/tool/token/time ceilings while
 preserving per-operation and state/security controls. Legacy and new pending runs
 survive restart and approval resume with their original SDK fingerprints.
+An additional real-SDK regression verifies that unbounded Web execution retains
+the `maxToolErrors: 4` guard and rejects when the existing SDK detects its
+violation. Its receipt-based observation semantics remain unchanged. Terminal's
+separate 20-error default remains unchanged.
 
 Installed Web and CLI packages pass their offline consumer suites using the
 versioned, digest-verified SDK fixture described in `docs/WEB_LIMITS.md`. No paid

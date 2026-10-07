@@ -8,16 +8,21 @@ const tokenEnvironment = ["ZHIVEX_HARNESS_MAX_INPUT_TOKENS", "ZHIVEX_HARNESS_MAX
   "ZHIVEX_HARNESS_MAX_TOTAL_TOKENS", "ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS",
   "ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS", "ZHIVEX_HARNESS_SUBAGENT_MAX_TOTAL_TOKENS"] as const;
 
-/** Only new local console sessions change defaults. Explicit limits always opt
+/** Only interactive entry points opt into these defaults. Explicit limits opt
  * into bounded execution; SDK, service hosts and automation retain their policy. */
-export const consoleBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => ({
+export const interactiveBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => ({
   ...options,
-  ...(options.maxToolErrors === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS === undefined ? { maxToolErrors: 20 } : {}),
   unlimitedSteps: options.unlimitedSteps ?? (options.maxSteps === undefined && env.ZHIVEX_HARNESS_MAX_STEPS === undefined),
   unlimitedToolCalls: options.unlimitedToolCalls ?? (options.maxToolCalls === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_CALLS === undefined),
   unlimitedDuration: options.unlimitedDuration ?? (options.timeoutMs === undefined && env.ZHIVEX_HARNESS_TIMEOUT_MS === undefined),
   unlimitedTokens: options.unlimitedTokens ??
     !(tokenOptions.some(key => options[key] !== undefined) || tokenEnvironment.some(key => env[key] !== undefined))
+});
+
+/** Terminal-specific error tolerance must not replace Web's existing guard. */
+export const consoleBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => ({
+  ...interactiveBudgetOptions(options, env),
+  ...(options.maxToolErrors === undefined && env.ZHIVEX_HARNESS_MAX_TOOL_ERRORS === undefined ? { maxToolErrors: 20 } : {}),
 });
 
 /** A saved run owns its budget, including legacy runs without a mode flag. */

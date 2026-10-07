@@ -43,6 +43,8 @@ owner-private and regular with no symlink/hardlink traversal. Browser actions us
 the same pairing, CSRF, Origin, loopback and workspace/session admission controls.
 Permission policy, sandbox, state-size/model/context limits, operation timeouts,
 tool-error/anti-loop controls and release gates remain independent.
+Web retains its existing four-tool-error guard; terminal retains its existing
+20-error policy. Explicit host/profile/environment settings remain authoritative.
 
 ## Host flags and legacy restart
 
