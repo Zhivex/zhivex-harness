@@ -6,6 +6,7 @@ on:
       - main
       - minimum-task-flow
       - har-hu-71-task-cancellation
+      - har-hu-72-task-continuity
   push:
     branches:
       - main
