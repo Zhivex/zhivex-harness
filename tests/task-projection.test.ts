@@ -31,7 +31,7 @@ async function fixture(work: (context: {
   const sessions = await openCliSessionStore({ workspace: root, stateDirectory: host.config.stateDirectory, scope: host.config.scope });
   const session = await sessions.create();
   if (!options.legacy) await initializeHarnessTaskBudget(host, contract.taskId);
-  await (options.legacy ? runHarness : runHarnessTask)(host, { runId: 'first', prompt: 'Operator objective SECRET_FIXTURE sk-privatefixture /tmp/retained-workspace-alias C:\\private\\workspace ' + root }, {
+  await (options.legacy ? runHarness : runHarnessTask)(host, { runId: 'first', prompt: 'Operator objective SECRET_FIXTURE sk-privatefixture path:/tmp/punctuated-alias [/tmp/bracket-alias] \\\\server\\share /tmp/retained-workspace-alias C:\\private\\workspace ' + root }, {
     taskAcceptance: contract, ...(!options.legacy ? { taskBudgetExisting: true } : {}),
     resolveApprovals: async approvals => approvals.map(item => ({ provider: item.provider, approvalRequestId: item.id, approve: true }))
   });
@@ -56,6 +56,7 @@ test('current deterministic receipt is separate from semantic and human acceptan
   expect(p.task.budget.confirmed?.totalTokens).toBe(30);
   expect(JSON.stringify(p)).not.toContain('SECRET_FIXTURE'); expect(JSON.stringify(p)).not.toContain('sk-privatefixture'); expect(JSON.stringify(p)).not.toContain(c.root);
   expect(JSON.stringify(p)).not.toContain('/tmp/retained-workspace-alias'); expect(JSON.stringify(p)).not.toContain('private\\\\workspace');
+  expect(JSON.stringify(p)).not.toContain('/tmp/punctuated-alias'); expect(JSON.stringify(p)).not.toContain('/tmp/bracket-alias'); expect(JSON.stringify(p)).not.toContain('server');
   expect(JSON.stringify(p)).not.toContain('untrusted claimed success');
   await c.snapshot();
   expect(JSON.stringify([await c.sessions.get(c.sessionId), await c.host.store.load('first', c.host.config.scope), await inspectHarnessTaskBudget(c.host, contract.taskId)])).toBe(before);

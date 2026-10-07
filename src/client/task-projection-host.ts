@@ -46,7 +46,7 @@ export async function projectHarnessTask(host: ZhivexHarness, request: HarnessTa
       safe = redaction.redactText(safe).replace(/\b(?:sk|ghp|github_pat|xox[baprs])[-_][A-Za-z0-9_-]+/gi, '[REDACTED]')
         // Operator text can retain a noncanonical alias (for example /tmp on macOS).
         // Display text never needs an actionable absolute host path.
-        .replace(/(^|[\s"'`(=])(?:\/(?!\/)|[A-Za-z]:[\\/])[^\s"'`<>)]*/g, '$1[REDACTED_PATH]')
+        .replace(/(^|[^A-Za-z0-9_./\\-])(?:\/(?!\/)|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>\[\](){}]*/g, '$1[REDACTED_PATH]')
         .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '');
       if (safe.length > 2048) { textTruncated = true; safe = safe.slice(0, 2047) + '…'; }
       return safe;
