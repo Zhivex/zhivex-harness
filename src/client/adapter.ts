@@ -1,3 +1,4 @@
+import { projectHarnessTask, TaskProjectionFault } from './task-projection-host.js';
 import { observeHarnessPolicyDecisions, createPolicyDecisionEvidence } from "../runtime/policy-decisions.js";
 import { inspectHarnessPolicy } from "../runtime/policy-inspection.js";
 import {
@@ -96,6 +97,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       ...(operation.forkSessionId ? { forkSessionId: operation.forkSessionId } : {}) }, preview };
   };
   let closed = false, busy = false;
+  let taskSequence = 0;
   let active: { sessionId: string; runId: string; controller: AbortController; settled: Promise<void>; runtime?: ZhivexHarness } | undefined;
   const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1], prompt?: string) => {
     const runId = "state" in input ? input.state.runId : input.runId!;
@@ -172,7 +174,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     return s;
   };
   const reviewedRequests = new WeakSet<object>();
-  const execute = async (c: HarnessClientCommand, hostReviewed = false): Promise<HarnessClientData> => {
+  const execute = async (c: Exclude<HarnessClientCommand, { method: "task.get" }>, hostReviewed = false): Promise<HarnessClientData> => {
     if (c.projectId !== projectId) return fail("NOT_FOUND");
     if (c.method === "project.get") return { kind: "project", projectId };
     if (c.method === "policy.get") return { kind: "policy", policy: inspectHarnessPolicy(active?.runtime ?? harness) };
@@ -334,7 +336,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     negotiate(versions) {
       if (closed) return { ok: false, error: { code: "CONNECTION_EXPIRED" } };
       if (!versions.includes(1)) return { ok: false, error: { code: "VERSION_UNSUPPORTED" } };
-      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["project.get", "policy.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "run.cancel.active", "idempotency.connection", "revision.precondition", "checkpoint.list", "checkpoint.inspect", "checkpoint.capture", "restore.prepare", "restore.get", "restore.apply", "restore.recoverFork"] };
+      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["task.get", "task.projection.v1", "project.get", "policy.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "run.cancel.active", "idempotency.connection", "revision.precondition", "checkpoint.list", "checkpoint.inspect", "checkpoint.capture", "restore.prepare", "restore.get", "restore.apply", "restore.recoverFork"] };
     },
     async dispatch(value) {
       const hostReviewed = Boolean(value && typeof value === 'object' && reviewedRequests.delete(value));
@@ -347,7 +349,29 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       };
       if (closed || request.connectionId !== connectionId) return error("CONNECTION_EXPIRED");
       const c = request.command;
+      if (c.method === 'task.get' && !hostReviewed) {
+        // Sequence belongs to read admission, so a slower old response cannot replace a newer view.
+        const sequence = ++taskSequence;
+        try {
+          if (c.projectId !== projectId) throw new TaskProjectionFault('OUT_OF_SCOPE');
+          if (c.projectionVersion !== 1) throw new TaskProjectionFault('UNSUPPORTED_VERSION');
+          if (!Number.isSafeInteger(sequence)) throw new TaskProjectionFault('PAYLOAD_LIMIT');
+          const session = await sessions.get(c.sessionId);
+          if (!session || session.archivedAt || session.deletedAt || !session.runs.some(run => run.runId === c.runId)) throw new TaskProjectionFault('OUT_OF_SCOPE');
+          const projection = await projectHarnessTask(harness, { connectionId, projectId, sessionId: c.sessionId, runId: c.runId, sequence },
+            session.runs.map(run => run.runId), options.taskProjectionSensitiveValues);
+          if (JSON.stringify(await sessions.get(c.sessionId)) !== JSON.stringify(session)) throw new TaskProjectionFault('SNAPSHOT_CHANGED');
+          return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: 'task', projection } };
+        } catch (cause) {
+          const finite = cause instanceof TaskProjectionFault ? cause.causeCode : 'EVIDENCE_UNAVAILABLE';
+          const code: HarnessClientErrorCode = finite === 'OUT_OF_SCOPE' ? 'NOT_FOUND' : finite === 'UNSUPPORTED_VERSION' ? 'VERSION_UNSUPPORTED'
+            : finite === 'SNAPSHOT_CHANGED' ? 'REVISION_CONFLICT' : finite === 'PAYLOAD_LIMIT' ? 'CAPACITY_EXCEEDED' : 'INVALID_STATE';
+          return { protocolVersion: 1, requestId: request.requestId, ok: false, error: { code, taskDiagnostic: { cause: finite, impact: 'projection_unavailable',
+            safeAction: finite === 'SNAPSHOT_CHANGED' ? 'retry_read' : ['UNSUPPORTED_VERSION', 'UNSUPPORTED_HOST', 'OUT_OF_SCOPE', 'CONTRACT_UNAVAILABLE', 'PAYLOAD_LIMIT'].includes(finite) ? 'review_configuration' : 'reconcile' } } };
+        }
+      }
       if (hostReviewed && c.method !== 'approval.resolve') return error('INVALID_REQUEST');
+      if (c.method === 'task.get') return error('INVALID_REQUEST');
       const key = "idempotencyKey" in c ? c.idempotencyKey : undefined;
       const fingerprint = digest({ command: c, hostReviewed });
       const existing = key ? receipts.get(key) : undefined;
