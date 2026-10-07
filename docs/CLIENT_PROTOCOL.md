@@ -68,7 +68,15 @@ Responses echo the request ID and use a discriminated result:
 ```
 
 Malformed envelopes return INVALID_REQUEST with `requestId: null`. Exception text,
-stack traces, credentials and provider errors are never copied into error envelopes.
+stack traces, credentials and provider payloads are never copied into error envelopes.
+Known Qwen stream failures may include optional `providerDiagnostic` with
+`provider: "qwen"`, `diagnosticCode: "QWEN_SSE_EVENT_INVALID"`, `transport`
+(`chat` or `responses`), `reason` (`invalid_json` or `invalid_event`) and
+`retryable: false`. Failed `run.get` results may include an `error` projection
+with that same diagnostic. The client error code remains `EXECUTION_FAILED`;
+the typed Harness error category is `provider`. Historical message-only errors
+cannot recover missing fields. Newly caught failures retain only these safe
+fields in run metadata when the installed SDK did not persist them itself.
 Successful answers and exact approval actions are **sensitive workspace content**:
 a future transport must authenticate access and must not log or render them as trusted
 HTML/shell instructions. Hashes identify the exact action; they are not signatures

@@ -45,6 +45,12 @@ export async function fixture({ interactive = false }: { interactive?: boolean }
           type: "tool-call" as const,
           toolCall: { id: `${name}-${user}`, name, input: args },
         });
+        if (prompt.includes("diagnostic-probe"))
+          throw Object.assign(new Error("PRIVATE_PROVIDER_DETAIL sk-never-expose-fixturetoken"), {
+            name: "QwenStreamEventError", provider: "qwen", transport: "responses",
+            diagnosticCode: "QWEN_SSE_EVENT_INVALID", reason: "invalid_json", retryable: false,
+            cause: new SyntaxError("PRIVATE_PARSER_CAUSE"),
+          });
         if (prompt.includes("error-probe"))
           throw new Error(
             "Fixture provider failure sk-never-expose-fixturetoken",

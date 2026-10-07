@@ -16,6 +16,7 @@ import type { LimitPreferences } from "./limit-store.js";
 import type { RunLimits, LimitPricing } from "./limit-observer.js";
 import { SlidersHorizontalIcon } from "@phosphor-icons/react";
 import { MessageMarkdown } from "./MessageMarkdown.js";
+import { providerStreamFailureText } from "./provider-stream-failure.js";
 import type {
   WebContext,
   HarnessClientRun,
@@ -897,7 +898,10 @@ export function App() {
                     <article className="assistant-response" aria-label="Assistant response" aria-busy={active(r.status)}>
                       <MessageMarkdown text={r.text || (r.status === "waiting_approval"
                         ? "The proposed operation is ready for your review."
-                        : active(r.status) ? "Working in your local workspace…" : "No text output recorded.")} />
+                        : active(r.status) ? "Working in your local workspace…"
+                        : (r.status === "failed" && run?.runId === id
+                          ? providerStreamFailureText(run.error?.providerDiagnostic)
+                          : undefined) ?? "No text output recorded.")} />
                     </article>
                     {r.truncated && (
                       <p className="muted">Retained output is truncated.</p>

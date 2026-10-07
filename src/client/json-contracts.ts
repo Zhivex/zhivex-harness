@@ -458,6 +458,14 @@ export const cliStateImportDocumentSchema = observationalDocument({
   identical: nonnegativeInteger
 });
 
+const providerStreamDiagnosticSchema = z.strictObject({
+  provider: z.literal("qwen"),
+  transport: z.enum(["chat", "responses"]),
+  diagnosticCode: z.literal("QWEN_SSE_EVENT_INVALID"),
+  reason: z.enum(["invalid_json", "invalid_event"]),
+  retryable: z.literal(false)
+});
+
 export const cliErrorDocumentSchema = observationalDocument({
   schemaVersion: z.literal(HARNESS_ERROR_SCHEMA_VERSION),
   kind: z.literal("error"),
@@ -472,7 +480,8 @@ export const cliErrorDocumentSchema = observationalDocument({
       "approval",
       "execution"
     ]),
-    retryable: z.boolean()
+    retryable: z.boolean(),
+    providerDiagnostic: providerStreamDiagnosticSchema.optional()
   })
 });
 
@@ -560,7 +569,7 @@ export const cliRunEventDocumentSchema = z.discriminatedUnion("type", [
     finishReason: z.string().min(1).optional(),
     usage: jsonObjectSchema.optional()
   }),
-  runEvent("error", { error: z.literal("Provider stream failed.") }),
+  runEvent("error", { error: z.literal("Provider stream failed."), providerDiagnostic: providerStreamDiagnosticSchema.optional() }),
   runEvent("agent-run-start", {
     currentStep: nonnegativeInteger,
     maxSteps: z.union([nonnegativeInteger, z.literal("unlimited")])
