@@ -64,7 +64,7 @@ await page.route("**/api/action", async (route) => {
     commands.push(body.action);
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
-  fault = undefined;
+  if (!selectedFault.persistent) fault = undefined;
   if (selectedFault.mode === "absent") return route.fulfill({
     status: 200, contentType: "application/json", body: "null",
   });
@@ -187,19 +187,23 @@ try {
   await complete();
   assert.equal(await page.getByLabel("Task prompt").inputValue(), "next task after success");
   for (const code of ["WEB_LIMIT_SETTINGS_INVALID", "WEB_LIMIT_STORAGE_UNSAFE", "WEB_REQUEST_FAILED"]) {
-    fault = { action: "runLimits", mode: "rejected", code };
+    // Reload can race the outgoing document polling; keep the read fault active
+    // until the reloaded document demonstrates the failure and blocks dispatch.
+    fault = { action: "runLimits", mode: "rejected", code, persistent: true };
     await page.reload();
     await page.getByRole("alert").filter({ hasText: code.replaceAll("_", " ") }).waitFor({ timeout: 5000 });
     await page.getByLabel("Task prompt").fill("snapshot read failure must block dispatch");
     assert.equal(await page.getByRole("button", { name: "Run task" }).isDisabled(), true);
+    fault = undefined;
     await reconnectState();
     await page.getByRole("alert").waitFor({ state: "hidden" });
   }
-  fault = { action: "runLimits", mode: "absent" };
+  fault = { action: "runLimits", mode: "absent", persistent: true };
   await page.reload();
   await page.getByLabel("Task prompt").fill("a legacy run without a snapshot stays healthy");
   await page.getByRole("button", { name: "Run task" }).and(page.locator(":enabled")).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0);
+  fault = undefined;
   steps.push("failed limit snapshot reads surface storage/network diagnostics and block dispatch; successful legacy null remains healthy");
   await createSession();
   steps.push("slow run clears composer immediately; identical edit survives completion; Ctrl+Enter cannot replay; success preserves newer draft");
