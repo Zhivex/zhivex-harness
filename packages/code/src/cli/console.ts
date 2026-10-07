@@ -320,7 +320,6 @@ export const chat = async (options: CliOptions) => {
     const nextRoutes = state ? readHarnessResumeRoutes(state) : resolveHarnessModelRoutes();
     const draft = await sessionTaskDraft(selected);
     const task = draft ?? restoredCodeTask(state);
-    if (task?.budgetVersion === 1) nextOptions = { ...nextOptions, unlimitedTokens: false };
     await replaceHarness(nextOptions, nextRoutes);
     session = selected;
     attachments.clear();
@@ -488,10 +487,6 @@ export const chat = async (options: CliOptions) => {
           const state = await latestState(await refreshSession());
           if (argument.startsWith("start ")) {
             if (codeTask) throw new Error("Use /task revise to correct this task, or /new for a separate task.");
-            if (harness.config.budget.unlimitedTokens) {
-              await replaceHarness({ ...runtimeOptions, unlimitedTokens: false }, routes);
-              process.stderr.write("Guided tasks use finite token limits. The task authority will retain these limits across all its turns.\n");
-            }
             codeTask = await prepareCodeTask(harness, JSON.parse(argument.slice(6)));
             await persistHarnessTaskDraft(harness, session.sessionId, JSON.parse(JSON.stringify(codeTask)));
             process.stderr.write(`Task draft: ${sanitizeTerminalText(codeTask.goal)}\nBaseline inspected. Draft and budget authority retained; submit the task request to begin execution.\nNative checks execute approved code on this host; there is no task sandbox or automatic rollback.\n`);

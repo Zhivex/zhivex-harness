@@ -233,7 +233,7 @@ try:
     console.read("Type budget")
     console.send("budget\n")
     console.prompt()
-    console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"]}')
+    console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}')
     console.send("Fix greeting\n")
     exhausted_result = console.prompt()
     assert "BUDGET" in exhausted_result
@@ -273,7 +273,7 @@ try:
     console.read("Type budget")
     console.send("budget\n")
     console.prompt()
-    draft = console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"]}')
+    draft = console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}')
     assert "Task draft" in draft and "Baseline inspected" in draft
     console.send("Fix greeting\n")
     console.read("Permission required")

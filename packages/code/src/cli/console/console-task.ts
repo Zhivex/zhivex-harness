@@ -10,7 +10,7 @@ import { consoleWorkspaceDiff } from './console-diff.js';
 
 export const CODE_TASK_KEY = 'zhivexCodeTaskV1';
 const briefSchema = z.strictObject({ goal: z.string().trim().min(1).max(2000), paths: z.array(z.string()).min(1).max(20),
-  checks: z.array(z.string()).min(1).max(8), constraints: z.array(z.string().trim().min(1).max(500)).max(8).default([]) });
+  checks: z.array(z.string()).min(1).max(8), budget: z.strictObject({ inputTokens: z.number().int().positive().safe(), outputTokens: z.number().int().positive().safe(), totalTokens: z.number().int().positive().safe() }).optional(), constraints: z.array(z.string().trim().min(1).max(500)).max(8).default([]) });
 const taskSchema = z.strictObject({ schemaVersion: z.literal(1), goal: briefSchema.shape.goal,
   constraints: briefSchema.shape.constraints, contract: z.unknown(), baseline: z.record(z.string(), z.string()),
   budgetVersion: z.literal(1).optional(),
@@ -72,7 +72,7 @@ export async function prepareCodeTask(harness: ZhivexHarness, input: unknown): P
   }
   const inspected = await harness.workspace.gitDiff();
   if ([inspected.status,inspected.diff,inspected.staged].some(result => result.exitCode !== 0 || result.timedOut || result.stdout.trim())) throw new Error('Git baseline changed during task preparation. Inspect your workspace before retrying.');
-  await initializeHarnessTaskBudget(harness, contract.taskId);
+  await initializeHarnessTaskBudget(harness, contract.taskId, brief.budget);
   return { schemaVersion: 1, budgetVersion: 1, goal: brief.goal, constraints: brief.constraints, contract, baseline };
 }
 
@@ -83,9 +83,11 @@ export function codeTaskPrompt(task: CodeTask, prompt: string): string {
 }
 
 export function codeTaskBudgetRecap(value: unknown): string {
-  const { monetary, ...tokenSummary } = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const { monetary, monetaryDetails, ...tokenSummary } = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const summary = inspectTaskBudgetSummary(tokenSummary);
   if (!summary) return 'Task budget: unavailable; further execution requires its established authority.\n';
+  const money = monetaryDetails && typeof monetaryDetails === 'object' ? monetaryDetails as Record<string, unknown> : undefined;
+  const amount = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value.toFixed(6) : 'unknown';
   const tokens = (value: typeof summary.confirmed) => `input ${value.inputTokens}; output ${value.outputTokens}; total ${value.totalTokens}`;
   return sanitizeTerminalText(`Task budget authority: ${summary.accountRunId} · revision ${summary.revision}\n` +
     `Task token limits: ${tokens(summary.limits)}\nConfirmed: ${tokens(summary.confirmed)}\n` +
@@ -93,7 +95,8 @@ export function codeTaskBudgetRecap(value: unknown): string {
     `Task remaining: ${tokens(summary.remaining)}\n` +
     (summary.invocationPending ? `Retained invocation: ${summary.activeRunId ?? 'unresolved prior run'}; a new run cannot take over while its outcome remains pending.\n` : '') +
     `Task admission: ${summary.invocationPending ? 'blocked by a retained invocation; inspect the prior run' : !summary.usageComplete ? 'blocked by incomplete consumption; held reservations remain charged' : summary.admissionsClosed ? 'closed; explicit continuation required' : 'open subject to remaining budget'}\n` +
-    (monetary !== undefined ? `Task monetary ${formatUsageLedger(monetary)}\n` : ''));
+    (monetary !== undefined ? `Task monetary ${formatUsageLedger(monetary)}\n` : '') +
+    (money ? `Estimated confirmed USD ${amount(money.estimatedConfirmedUsd)}; reserved ${amount(money.reservedUsd)}; unknown exposure held ${amount(money.unknownHeldUsd)}; remaining ${amount(money.remainingUsd)}. Late receipts: ${typeof money.lateCalls === 'number' ? money.lateCalls : 'unknown'}.\n` : ''));
 }
 
 export async function freshCodeTaskBudgetRecap(harness: ZhivexHarness, task: CodeTask): Promise<string> {

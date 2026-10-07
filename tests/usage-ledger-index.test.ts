@@ -20,6 +20,9 @@ test("reopening an RC6 ledger creates the scope/run index without changing recei
     database = new SqliteDatabase(databasePath);
     sessions.close();
     database.exec("DROP INDEX zhivex_usage_calls_scope_run");
+    // Reconstruct the actual pre-upgrade table rather than inserting old positional rows into the new schema.
+    database.exec("ALTER TABLE zhivex_usage_calls DROP COLUMN category");
+    database.exec("ALTER TABLE zhivex_usage_calls DROP COLUMN late_receipt");
     database.query(`INSERT INTO zhivex_usage_calls VALUES
       ('target-first', ?1, 'target', 'b', 'model', 'confirmed', 10, 5, 0.01, 0.02, 'estimate'),
       ('target-second', ?1, 'target', 'a', 'model', 'unknown', NULL, NULL, NULL, 0.03, 'missing'),

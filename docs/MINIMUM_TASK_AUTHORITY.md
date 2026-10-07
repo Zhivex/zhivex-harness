@@ -87,7 +87,7 @@ also needs explicit mode/output-cap capability admission on the Code host.
 SQLite SDK save should atomically enforce lease ownership. These are proposals,
 not guarantees implemented by this PR.
 
-The pinned store implementation is Core 1.30.1, exposed by Agents 1.10.3.
+The original PR187 assessment used Core 1.30.1/Agents 1.10.3. The HU70 integration uses main pins Core 1.31.0/Agents 1.11.0; the same store-boundary limitation remains. Cross-host takeover is outside the ratified topology; concurrent admissions within one writer host still require atomic reservations.
 In `node_modules/@zhivex-ai/core/dist/agent-store/sqlite.js`, the `save(state,
 saveOptions)` branch checks `expectedRevision` and calls `saveStatement.run`
 inside `BEGIN IMMEDIATE`, but never reads `saveOptions.leaseOwnerId`. Revision
@@ -145,3 +145,41 @@ and candidate runs pass the twelve oracle checks; empty patches pass none.
 This validates fixture/runtime behavior only. Real private task selection,
 independent human acceptance and an approved paid campaign remain necessary
 before any model-quality, cost-per-accepted-result or benchmark claim.
+
+## HAR-HU-70 integration delta
+
+One task owns one frozen token coordinator and one transport monetary owner. Task revisions, new runs, explicit retries and restarts retain both identities and original policies. This experimental cut supports one native SQLite writer host; children are refused before dispatch rather than charged to independent pools. Review-group helpers are not evidence of a budgeted parent. Existing unsupported provider routes remain unsupported.
+
+The task admission context reserves conservative input exposure, the output cap and the existing closure fraction before transport. The same frozen fraction protects the monetary work allowance when an explicit USD limit is configured. Closure can use the retained remainder; this is not a guarantee that any particular final answer fits it. A monetary refusal before dispatch settles only that proven undispatched token reservation to zero. Exceptions after dispatch retain unknown exposure. All requests, including auxiliary compaction, are classified in the same transport ledger; independent runs and cumulative SDK usage are never added again.
+
+Inspection separates confirmed-call estimated USD, pending reservations, retained unknown exposure and late receipt counts. A complete late receipt is counted once and cannot reopen task admission. Partial or absent usage stays unknown; unknown estimates do not become zero. A missing/stale rate refuses monetary-limited dispatch; an unpriced non-monetary task reports unknown cost. Rates remain operator estimates, not invoices; cached/reasoning-rate specialization and the inherited explicit-cap correction are not new claims of this increment. External tool/service fees are not covered by this model-transport ledger.
+
+The transport table gains additive category and late-receipt columns; existing rows read as legacy. Stable run statuses, signatures and the existing usage-summary JSON remain unchanged. The extended task inspection is Experimental and host-only; public web projection belongs to HAR73. No generic reconciliation UI is introduced: an unknown result remains held until an authoritative complete receipt is available, and a crashed invocation with unresolved effects remains blocked. A later authorized recovery design must not silently clear it.
+
+Interactive chat retains no accumulated cap by default. To opt into a TASK budget while chat remains unlimited, include exact limits in the task brief:
+
+```text
+/task start {"goal":"Fix greeting punctuation","paths":["greeting.mjs"],"checks":["test"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}
+```
+
+Without this explicit object on an unlimited host, creation fails with `TASK_BUDGET_FINITE_LIMITS_REQUIRED` before model dispatch. Existing explicitly bounded host configuration remains usable. Inspection/reopening reads the original task policy; changing host defaults does not mint credit. Monetary `/budget` configuration for future tasks remains separate. Ordinary chat, after leaving the task, does not inherit a hidden finite token override.
+
+Offline regressions in `tests/task-budget-accounting.test.ts` exercise three overlapping primary/compaction admissions against real SQLite, monetary closure exhaustion, pre-dispatch refusal, late abort receipts, partial usage and retained policy across reopen. Existing task host/crash/backup tests remain applicable. No paid calls, external pilot, cross-host takeover, SDK patch, merge or publication is authorized by these tests.
+
+Continuation also verifies the correspondence between task operation IDs in the
+SDK token allocations and transport receipts, in both directions. An existing
+initializer cannot recreate a missing monetary policy; retaining only the policy
+cannot hide deleted receipts, and retaining receipts cannot hide deleted token
+allocations. This detects missing records, not arbitrary tampering with matching
+records. An inspection during the token-reserve/transport-insert transition can
+report a transient missing receipt; retry after the invocation settles before
+diagnosing permanent loss. It never grants new credit.
+
+Consumed experimental PR187 accounts created before operation binding use random
+transport IDs and cannot be continued or inspected through the combined task API.
+Preserve their original database and inspect the separate historical ledgers;
+there is no automatic migration based on row order or approximate totals. Ordinary
+published run accounting and its legacy receipt rows retain their existing API.
+After a process crash, transport rows may remain `pending` while the task is
+blocked with uncertain effects. Their full exposure remains held; this increment
+does not claim automatic conversion of every crashed row to `unknown`.

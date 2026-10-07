@@ -44,6 +44,18 @@ test('guided task rejects dirty and missing Git baselines without changing them'
   } finally {await harness.close();}
 }));
 
+test('unlimited chat requires an explicit task budget and retains its defaults', async () => fixture(async root => {
+  const harness = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [],
+    unlimitedTokens: true, modelInstance: createMockLanguageModel() });
+  try {
+    await expect(prepareCodeTask(harness, goal)).rejects.toThrow('TASK_BUDGET_FINITE_LIMITS_REQUIRED');
+    const task = await prepareCodeTask(harness, { ...goal, budget: { inputTokens: 10000, outputTokens: 1000, totalTokens: 11000 } });
+    expect(task.budgetVersion).toBe(1);
+    expect(harness.config.budget.unlimitedTokens).toBe(true);
+    await expect(prepareCodeTask(harness, { ...goal, budget: { inputTokens: 0, outputTokens: 1, totalTokens: 1 } })).rejects.toThrow();
+  } finally { await harness.close(); }
+}));
+
 test('guided task rejects an ignored selected file even when Git reports a clean baseline', async () => fixture(async root => {
   await writeFile(root+'/.git/info/exclude','ignored.txt\n');
   await writeFile(root+'/ignored.txt','invisible baseline\n');

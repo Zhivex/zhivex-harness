@@ -1,8 +1,10 @@
+import { ProviderToolCallError } from "@zhivex-ai/core/provider";
+import { taskUsageAdmission } from "./task-usage-context.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { lstat } from "node:fs/promises";
 import { z } from "zod";
-import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware, type TokenUsage } from "@zhivex-ai/core";
+import { fingerprintAgentHarness, wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware, type TokenUsage } from "@zhivex-ai/core";
 import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 import { openCliSessionStore } from "../persistence/sessions.js";
 import { SqliteDatabase } from "../persistence/sqlite-database.js";
@@ -54,7 +56,7 @@ export const formatUsageLedger = (value: unknown) => {
 interface CallRow {
   id: string; provider: string; model: string; status: string;
   input_tokens: number | null; output_tokens: number | null; estimate_usd: number | null;
-  reserved_usd: number; price_status: string;
+  reserved_usd: number; price_status: string; category: string; late_receipt: number;
 }
 interface PolicyRow { policy: string }
 const current = new AsyncLocalStorage<{ ledger: UsageLedger; runId: string; recovered: boolean }>();
@@ -69,7 +71,27 @@ export const runUsageLedgerWithPolicy = <T>(ledger: UsageLedger, runId: string, 
 /** A separate append-only transport ledger. SDK rollups are never added to these calls. */
 export class UsageLedger {
   private constructor(private readonly database: SqliteDatabase, private readonly key: string,
-    private readonly options: UsageAccountingOptions, private readonly now: () => number) {}
+    private readonly options: UsageAccountingOptions, private readonly now: () => number) {
+      taskReceiptViews.set(this, runId => this.database.query<{ id: string }>("SELECT id FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2").all(this.key, runId).map(row => fingerprintAgentHarness(row.id)));
+      taskMonetaryViews.set(this, runId => {
+        this.assertResume(runId);
+        const policy = this.policy(runId);
+        const rows = this.database.query<CallRow>("SELECT * FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2").all(this.key, runId);
+        const confirmed = rows.filter(row => row.status === "confirmed");
+        const pending = rows.filter(row => row.status === "pending");
+        const unknown = rows.filter(row => row.status === "unknown");
+        const sum = (values: CallRow[], field: "reserved_usd" | "estimate_usd") => values.some(row => row.price_status !== "estimate" || row[field] === null)
+          ? null : values.reduce((total, row) => total + (row[field] ?? 0), 0);
+        const estimatedConfirmedUsd = policy.historicalUsageUnknown ? null : sum(confirmed, "estimate_usd");
+        const reservedUsd = sum(pending, "reserved_usd"), unknownHeldUsd = sum(unknown, "reserved_usd");
+        const exposureKnown = estimatedConfirmedUsd !== null && reservedUsd !== null && unknownHeldUsd !== null;
+        return { schemaVersion: 1 as const, confirmedCalls: confirmed.length, reservedCalls: pending.length, unknownCalls: unknown.length,
+          lateCalls: rows.filter(row => row.late_receipt === 1).length, estimatedConfirmedUsd, reservedUsd, unknownHeldUsd,
+          remainingUsd: policy.limitUsd === undefined || !exposureKnown ? null : Math.max(0, policy.limitUsd - estimatedConfirmedUsd! - reservedUsd! - unknownHeldUsd!),
+          costComplete: !policy.historicalUsageUnknown && pending.length === 0 && unknown.length === 0 && estimatedConfirmedUsd !== null,
+          categories: [...new Set(rows.map(row => row.category))], costKind: "estimate-not-invoice" as const };
+      });
+    }
 
   static async open(config: HarnessConfig, options: UsageAccountingOptions = {}, now = Date.now) {
     if (options.limitUsd !== undefined && (!Number.isFinite(options.limitUsd) || options.limitUsd <= 0)) throw new Error("Usage limit must be positive USD.");
@@ -97,10 +119,18 @@ export class UsageLedger {
       price_status TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS zhivex_usage_calls_scope_run
       ON zhivex_usage_calls(scope_key, run_id);`);
+    // Additive transport columns; retained legacy rows remain readable.
+    database.exec("BEGIN IMMEDIATE");
+    try {
+      const columns = new Set(database.query<{ name: string }>("PRAGMA table_info(zhivex_usage_calls)").all().map(row => row.name));
+      if (!columns.has("category")) database.exec("ALTER TABLE zhivex_usage_calls ADD COLUMN category TEXT NOT NULL DEFAULT 'legacy'");
+      if (!columns.has("late_receipt")) database.exec("ALTER TABLE zhivex_usage_calls ADD COLUMN late_receipt INTEGER NOT NULL DEFAULT 0");
+      database.exec("COMMIT");
+    } catch (error) { database.exec("ROLLBACK"); database.close(); throw error; }
     return new UsageLedger(database, key, options, now);
   }
 
-  close() { this.database.close(); }
+  close() { taskReceiptViews.delete(this); taskMonetaryViews.delete(this); this.database.close(); }
   assertResume(runId: string) {
     const row = this.database.query<PolicyRow>("SELECT policy FROM zhivex_usage_policies WHERE scope_key = ?1 AND run_id = ?2").get(this.key, runId);
     if (!row) throw new Error("USAGE_LEDGER_MISSING: retain or restore the complete operations SQLite database including transport usage tables; logical JSON exports cannot restore this monetary authority.");
@@ -145,6 +175,8 @@ export class UsageLedger {
   }
   private begin(runId: string, provider: string, model: string, input: Parameters<typeof estimateRequestTokens>[0]) {
     const policy = this.policy(runId);
+    const task = taskUsageAdmission.getStore();
+    if (task && task.accountRunId !== runId) throw new Error("TASK_BUDGET_MONETARY_OWNER_MISMATCH");
     const price = policy.pricing?.prices.find(p => p.provider === provider && p.model === model);
     const priceStatus = !price ? "missing" : Date.parse(price.asOf) > this.now() || Date.parse(price.expiresAt) <= this.now() ? "stale" : "estimate";
     const usable = priceStatus === "estimate" ? price : undefined;
@@ -160,12 +192,15 @@ export class UsageLedger {
       if (!Number.isSafeInteger(input.maxTokens) || input.maxTokens <= 0) {
         throw new Error("USAGE_OUTPUT_CAP_INVALID: monetary reservations require a positive finite integer output cap.");
       }
-      reserved = (estimateRequestTokens(input) * usable.inputUsdPerMillion + input.maxTokens * usable.outputUsdPerMillion) / 1e6;
+      reserved = ((task?.inputCeiling ?? estimateRequestTokens(input)) * usable.inputUsdPerMillion + input.maxTokens * usable.outputUsdPerMillion) / 1e6;
     }
-    const id = randomUUID();
+    if (task && policy.limitUsd === undefined && usable && input.maxTokens !== undefined) {
+      reserved = (task.inputCeiling * usable.inputUsdPerMillion + input.maxTokens * usable.outputUsdPerMillion) / 1e6;
+    }
+    const id = task?.operationId ?? randomUUID();
     this.database.exec("BEGIN IMMEDIATE");
     try {
-      if (policy.requireCompleteUsage) {
+      if (policy.requireCompleteUsage || task) {
         const unresolved = this.database.query<{ n: number }>("SELECT COUNT(*) AS n FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2 AND status = 'unknown'").get(this.key, runId);
         if (policy.historicalUsageUnknown || (unresolved?.n ?? 0) > 0) throw new Error("USAGE_UNCERTAIN: reconcile unknown utility usage before further execution.");
       }
@@ -173,23 +208,25 @@ export class UsageLedger {
         const rows = this.database.query<CallRow>("SELECT * FROM zhivex_usage_calls WHERE scope_key = ?1 AND run_id = ?2").all(this.key, runId);
         if (rows.some(r => r.status === "unknown" || (r.status === "confirmed" && r.estimate_usd === null))) throw new Error("USAGE_UNCERTAIN: inspect unresolved calls before further monetary-budget execution.");
         const spent = rows.reduce((n, r) => n + (r.status === "pending" ? r.reserved_usd : r.estimate_usd ?? 0), 0);
-        if (spent + reserved > policy.limitUsd) throw new Error("USAGE_COST_BUDGET: insufficient estimated budget for the next request.");
+        const available = policy.limitUsd * (task && task.category !== "closure" ? 1 - task.closureReserve : 1);
+        if (spent + reserved > available) throw new Error("USAGE_COST_BUDGET: insufficient estimated budget for the next request.");
       }
-      this.database.query(`INSERT INTO zhivex_usage_calls (id, scope_key, run_id, provider, model, status, reserved_usd, price_status)
-        VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6, ?7)`).run(id, this.key, runId, provider, model, reserved, priceStatus);
+      this.database.query(`INSERT INTO zhivex_usage_calls (id, scope_key, run_id, provider, model, status, reserved_usd, price_status, category)
+        VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6, ?7, ?8)`).run(id, this.key, runId, provider, model, reserved, priceStatus, task?.category ?? "legacy");
       this.database.exec("COMMIT");
     } catch (error) { this.database.exec("ROLLBACK"); throw error; }
-    return { id, price: usable };
+    return { id, price: usable, task: task !== undefined, signal: input.abortSignal };
   }
   private finish(call: ReturnType<UsageLedger["begin"]>, usage: TokenUsage | undefined) {
     const confirmed = usage && [usage.inputTokens, usage.outputTokens].every(v => Number.isSafeInteger(v) && v! >= 0);
     const estimate = confirmed && call.price
       ? (usage.inputTokens! * call.price.inputUsdPerMillion + usage.outputTokens! * call.price.outputUsdPerMillion) / 1e6 : null;
     // Compare-and-set prevents duplicate finish/error events from counting twice.
-    this.database.query(`UPDATE zhivex_usage_calls SET status = ?1, input_tokens = ?2, output_tokens = ?3, estimate_usd = ?4
-      WHERE id = ?5 AND status = 'pending'`).run(confirmed ? "confirmed" : "unknown",
+    this.database.query(`UPDATE zhivex_usage_calls SET status = ?1, input_tokens = ?2, output_tokens = ?3, estimate_usd = ?4,
+      late_receipt = CASE WHEN ?6 = 1 AND ?8 = 1 AND (status = 'unknown' OR ?7 = 1) THEN 1 ELSE late_receipt END
+      WHERE id = ?5 AND (status = 'pending' OR (?6 = 1 AND ?8 = 1 AND status = 'unknown'))`).run(confirmed ? "confirmed" : "unknown",
         Number.isSafeInteger(usage?.inputTokens) && usage!.inputTokens! >= 0 ? usage!.inputTokens : null,
-        Number.isSafeInteger(usage?.outputTokens) && usage!.outputTokens! >= 0 ? usage!.outputTokens : null, estimate, call.id);
+        Number.isSafeInteger(usage?.outputTokens) && usage!.outputTokens! >= 0 ? usage!.outputTokens : null, estimate, call.id, call.task ? 1 : 0, call.signal?.aborted ? 1 : 0, confirmed ? 1 : 0);
   }
   model(model: LanguageModel): LanguageModel {
     const ledger = this;
@@ -198,23 +235,30 @@ export class UsageLedger {
       async wrapGenerate(context, next) {
         const scope = current.getStore();
         if (!scope || scope.ledger !== ledger) throw new Error("Usage accounting requires a logical run scope.");
-        const call = ledger.begin(scope.runId, model.provider, model.modelId, context.input);
+        let call: ReturnType<UsageLedger["begin"]>;
+        try { call = ledger.begin(scope.runId, model.provider, model.modelId, context.input); }
+        catch (error) { const task = taskUsageAdmission.getStore(); if (task) task.monetaryRefused = true; throw error; }
         try { const result = await next(); ledger.finish(call, result.usage); return result; }
-        catch (error) { ledger.finish(call, undefined); throw error; }
+        catch (error) { ledger.finish(call, call.task && error instanceof ProviderToolCallError && error.provider === model.provider && error.usageComplete ? error.usage : undefined); throw error; }
       },
       async wrapStream(context, next) {
         const scope = current.getStore();
         if (!scope || scope.ledger !== ledger) throw new Error("Usage accounting requires a logical run scope.");
-        const call = ledger.begin(scope.runId, model.provider, model.modelId, context.input);
+        let call: ReturnType<UsageLedger["begin"]>;
+        try { call = ledger.begin(scope.runId, model.provider, model.modelId, context.input); }
+        catch (error) { const task = taskUsageAdmission.getStore(); if (task) task.monetaryRefused = true; throw error; }
         try {
           const stream = await next();
           return (async function* () {
             try { for await (const event of stream) {
               if (event.type === "finish") ledger.finish(call, event.usage);
               yield event;
-            } } finally { ledger.finish(call, undefined); }
+            } } catch (error) {
+              ledger.finish(call, call.task && error instanceof ProviderToolCallError && error.provider === model.provider && error.usageComplete ? error.usage : undefined);
+              throw error;
+            } finally { ledger.finish(call, undefined); }
           })();
-        } catch (error) { ledger.finish(call, undefined); throw error; }
+        } catch (error) { ledger.finish(call, call.task && error instanceof ProviderToolCallError && error.provider === model.provider && error.usageComplete ? error.usage : undefined); throw error; }
       }
     };
     return wrapLanguageModel(model, [middleware]);
@@ -253,3 +297,25 @@ export class UsageLedger {
     } });
   }
 }
+
+const taskMonetaryViews = new WeakMap<UsageLedger, (runId: string) => {
+  schemaVersion: 1; confirmedCalls: number; reservedCalls: number; unknownCalls: number; lateCalls: number;
+  estimatedConfirmedUsd: number | null; reservedUsd: number | null; unknownHeldUsd: number | null;
+  remainingUsd: number | null; costComplete: boolean; categories: string[]; costKind: "estimate-not-invoice";
+}>();
+export const inspectTaskMonetaryUsage = (ledger: UsageLedger, runId: string) => {
+  const inspect = taskMonetaryViews.get(ledger);
+  if (!inspect) throw new Error("USAGE_LEDGER_CLOSED");
+  return inspect(runId);
+};
+
+const taskReceiptViews = new WeakMap<UsageLedger, (runId: string) => string[]>();
+export const assertTaskMonetaryReceipts = (ledger: UsageLedger, runId: string, expected: readonly string[], allocations: readonly string[]) => {
+  ledger.assertResume(runId);
+  const view = taskReceiptViews.get(ledger);
+  if (!view) throw new Error("USAGE_LEDGER_CLOSED");
+  const actual = new Set(view(runId));
+  if (expected.some(id => !actual.has(id))) throw new Error("TASK_BUDGET_MONETARY_RECEIPTS_MISSING: restore complete task accounting; a retained policy cannot replace missing transport receipts.");
+  const retained = new Set(allocations);
+  if ([...actual].some(id => !retained.has(id))) throw new Error("TASK_BUDGET_TOKEN_ALLOCATIONS_MISSING: restore complete task accounting; retained monetary receipts cannot replace missing token allocations.");
+};

@@ -1,3 +1,4 @@
+import { taskUsageAdmission, type TaskUsageAdmission } from './task-usage-context.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -7,7 +8,7 @@ import type { AgentRunStore } from '@zhivex-ai/agents/ops';
 import { ProviderToolCallError } from '@zhivex-ai/core/provider';
 import { estimateRequestTokens } from './model-budget.js';
 import { withRuntimeInstruction } from './runtime-instructions.js';
-import { usagePricingSchema, type UsageAccountingOptions } from './usage-ledger.js';
+import { assertTaskMonetaryReceipts, usagePricingSchema, type UsageLedger, type UsageAccountingOptions } from './usage-ledger.js';
 
 export const TASK_BUDGET_KEY = 'zhivexTaskBudgetV1';
 export const TASK_BUDGET_ACCOUNT_KEY = 'zhivexTaskBudgetAccountV1';
@@ -156,6 +157,14 @@ export class TaskBudget {
       usageComplete: allocations.every(entry => entry.status === 'confirmed'), admissionsClosed: account.admissionsClosed,
       invocationPending: account.invocation !== undefined, activeRunId: account.invocation?.runId ?? null,
       runs: [...account.runs], coordinatorId: this.coordinatorId };
+  }
+  async assertMonetaryReceipts(ledger: UsageLedger) {
+    const stored = await this.options.store.load(this.budgetRunId, this.budgetScope);
+    if (!stored || stored.metadata?.budgetIdentity !== this.coordinatorId) throw new Error('TASK_BUDGET_LEDGER_MISSING');
+    const allocations = allocationSchema.parse(stored.metadata.allocations);
+    // Zero allocations include initialization and proven pre-dispatch refusals.
+    const expected = Object.entries(allocations).filter(([, entry]) => Object.values(entry.tokens).some(value => value > 0)).map(([id]) => id);
+    assertTaskMonetaryReceipts(ledger, this.accountRunId, expected, Object.keys(allocations));
   }
   private async update(ownerId: string, mutate: (account: Account) => void, expectedRevision?: number) {
     const { state, account } = await this.state();
@@ -307,7 +316,7 @@ export class TaskBudget {
       await account.coordinator.reserve(id, { inputTokens: ceiling.inputTokens, outputTokens: input.maxTokens, totalTokens: ceiling.totalTokens });
       try { input.abortSignal.throwIfAborted(); await account.assertOwnership(); }
       catch (error) { await account.coordinator.settle(id, zero); throw error; }
-      return { id, toolsDenied };
+      return { id, toolsDenied, admission: { accountRunId: account.accountRunId, operationId: id, category: closure ? 'closure' : options.auxiliary ? 'compaction' : 'execution', closureReserve: account.policy.closureReserve, inputCeiling: ceiling.inputTokens, monetaryRefused: false } satisfies TaskUsageAdmission };
     };
     const settle = async (id: string, usage?: TokenUsage) => {
       // Missing terminal receipts stay spent. No automatic reconciliation or release.
@@ -317,17 +326,17 @@ export class TaskBudget {
       error.provider === provider && error.usageComplete ? error.usage : undefined;
     return { name: 'harness-task-budget-v1',
       async wrapGenerate(context, next) {
-        const { id, toolsDenied } = await begin(context);
+        const { id, toolsDenied, admission } = await begin(context);
         let receipt = false;
-        try { const result = await next(); receipt = true; await settle(id, result.usage);
+        try { const result = await taskUsageAdmission.run(admission, next); receipt = true; await settle(id, result.usage);
           if (toolsDenied && (result.finishReason === 'tool-calls' || result.messages?.some(message => message.parts.some(part => part.type === 'tool-call')))) throw new Error('TASK_BUDGET_CLOSURE_TOOLS_DENIED');
           return result; }
-        catch (error) { if (!receipt) { try { await settle(id, failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } } throw error; }
+        catch (error) { if (!receipt) { try { await settle(id, admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } } throw error; }
       },
       async wrapStream(context, next) {
-        const { id, toolsDenied } = await begin(context);
+        const { id, toolsDenied, admission } = await begin(context);
         try {
-          const stream = await next();
+          const stream = await taskUsageAdmission.run(admission, next);
           return (async function* () {
             let receipt = false;
             try { for await (const event of stream) {
@@ -335,12 +344,12 @@ export class TaskBudget {
               if (event.type === 'finish' && !receipt) { receipt = true; await settle(id, event.usage); }
               yield event;
             } } catch (error) {
-              if (!receipt) { receipt = true; try { await settle(id, failedUsage(error, context.model.provider)); }
+              if (!receipt) { receipt = true; try { await settle(id, admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); }
                 catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } }
               throw error;
             } finally { if (!receipt) await settle(id); }
           })();
-        } catch (error) { try { await settle(id, failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } throw error; }
+        } catch (error) { try { await settle(id, admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } throw error; }
       }
     };
   }

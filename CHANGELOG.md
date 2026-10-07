@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Extend experimental task accounting with monetary closure reservations, retained unknown exposure and late-receipt inspection; keep ordinary no-cap chat unchanged and require explicit task token limits on unlimited hosts.
+
 - Preserve sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility. Provider payloads, parser causes and arbitrary exception text remain excluded.
 
 - Add experimental guided Code task budget authority across turns, correction and restart, using one native SQLite writer and the SDK token coordinator. Reserve before primary and compaction dispatch, fence tools/checkpoints against the task lease, retain uncertain consumption, and require explicit known-outcome continuation after cancellation. Reject unsupported transports and historical tasks without an established account.

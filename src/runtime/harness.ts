@@ -1146,7 +1146,7 @@ export const runHarness = async (
         const taskId = ledger?.revisions.at(-1)?.contract.taskId;
         if (!taskId || (binding && binding.taskId !== taskId)) throw new Error('TASK_BUDGET_ACCEPTANCE_BINDING_REQUIRED');
         account = await openHarnessTaskBudget(harness, taskId);
-        harness.usageLedger!.assertResume(account.accountRunId);
+        await account.assertMonetaryReceipts(harness.usageLedger!);
         const summary = await account.summary();
         const runId = 'state' in prepared ? prepared.state.runId : prepared.runId!;
         if (summary.admissionsClosed && taskOptions?.taskBudgetContinue && !('state' in prepared) && !summary.runs.includes(runId))
@@ -1361,7 +1361,7 @@ const runHarnessInternal = async (
     const store = runtimeCheckpointStore(harness.store, runId, policyBudget, policyProgress, policyController);
     harness = { ...harness, store, agent: new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), tools, store,
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
-      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
+      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens && !taskBudget ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
   }
   input = withFreshSystemInstructions(input, typeof harness.agent.instructions === "string" ? harness.agent.instructions : undefined);
   if (taskBudget) {

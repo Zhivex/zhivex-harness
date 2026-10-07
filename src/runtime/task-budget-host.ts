@@ -1,5 +1,5 @@
 import type { ZhivexHarness } from './harness.js';
-import { runUsageLedgerWithPolicy, type UsageAccountingOptions } from './usage-ledger.js';
+import { runUsageLedgerWithPolicy, inspectTaskMonetaryUsage, type UsageAccountingOptions } from './usage-ledger.js';
 import { TaskBudget, type TaskBudgetPolicy } from './task-budget.js';
 import { fingerprintAgentHarness, serializeJsonValue, type AgentRunState, type AgentStoreScope } from '@zhivex-ai/core';
 import type { AgentRunStore } from '@zhivex-ai/agents/ops';
@@ -16,7 +16,7 @@ export function bindHarnessTaskBudget(host: ZhivexHarness, usageAccounting?: Usa
     closureReserve: 0.3, usageAccounting: structuredClone(usageAccounting ?? {}) });
 }
 
-export async function openHarnessTaskBudget(host: ZhivexHarness, taskId: string, requireExisting = true) {
+export async function openHarnessTaskBudget(host: ZhivexHarness, taskId: string, requireExisting = true, tokenLimits?: TaskBudgetPolicy["limits"]) {
   const policy = policies.get(host);
   if (!policy) throw new Error('TASK_BUDGET_HOST_UNAVAILABLE');
   if (host.config.storeBackend !== 'sqlite' || !host.persistence?.databasePath)
@@ -29,14 +29,19 @@ export async function openHarnessTaskBudget(host: ZhivexHarness, taskId: string,
   }
   if (host.config.execution.backend !== 'none' || host.config.orchestration.profiles.length || host.agent.subagents?.length)
     throw new Error('TASK_BUDGET_SINGLE_NATIVE_WRITER_REQUIRED');
-  if (host.config.budget.unlimitedTokens) throw new Error('TASK_BUDGET_FINITE_LIMITS_REQUIRED: choose bounded tokens before creating a task.');
+  if (host.config.budget.unlimitedTokens && !requireExisting && !tokenLimits) throw new Error('TASK_BUDGET_FINITE_LIMITS_REQUIRED: supply an explicit task budget with inputTokens, outputTokens and totalTokens; ordinary interactive defaults stay unlimited.');
   if (!host.usageLedger) throw new Error('TASK_BUDGET_USAGE_ACCOUNTING_REQUIRED');
-  return TaskBudget.open({ store: host.store, scope: host.config.scope, taskId, policy, requireExisting });
+  return TaskBudget.open({ store: host.store, scope: host.config.scope, taskId, policy: tokenLimits ? { ...policy, limits: tokenLimits } : policy, requireExisting });
 }
 
 /** Explicit creation is separate from continuation. Reopening never recreates missing credit. */
-export async function initializeHarnessTaskBudget(host: ZhivexHarness, taskId: string) {
-  const account = await openHarnessTaskBudget(host, taskId, false);
+export async function initializeHarnessTaskBudget(host: ZhivexHarness, taskId: string, tokenLimits?: TaskBudgetPolicy["limits"]) {
+  const existing = await host.store.load(TaskBudget.accountId(host.config.scope, taskId), host.config.scope);
+  const account = await openHarnessTaskBudget(host, taskId, existing !== undefined, tokenLimits);
+  if (existing) {
+    await account.assertMonetaryReceipts(host.usageLedger!);
+    return account.summary();
+  }
   await runUsageLedgerWithPolicy(host.usageLedger!, account.accountRunId, async () => {}, false, account.policy.usageAccounting);
   return account.summary();
 }
@@ -44,8 +49,8 @@ export async function initializeHarnessTaskBudget(host: ZhivexHarness, taskId: s
 /** Read authoritative token and monetary evidence; projections in old checkpoints are only recaps. */
 export async function inspectHarnessTaskBudget(host: ZhivexHarness, taskId: string) {
   const account = await openHarnessTaskBudget(host, taskId);
-  host.usageLedger!.assertResume(account.accountRunId);
-  return { ...await account.summary(), monetary: host.usageLedger!.summary(account.accountRunId) };
+  await account.assertMonetaryReceipts(host.usageLedger!);
+  return { ...await account.summary(), monetary: host.usageLedger!.summary(account.accountRunId), monetaryDetails: inspectTaskMonetaryUsage(host.usageLedger!, account.accountRunId) };
 }
 
 const TASK_DRAFT_KEY = 'zhivexTaskDraftV1';

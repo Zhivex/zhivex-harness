@@ -8,12 +8,30 @@ import { TASK_BUDGET_KEY } from '../src/runtime/task-budget.js';
 import { USAGE_LEDGER_KEY } from '../src/runtime/usage-ledger.js';
 import type { TaskAcceptanceContract } from '../src/runtime/task-acceptance.js';
 import { SqliteDatabase } from '../src/persistence/sqlite-database.js';
+import { createTextMessage } from '@zhivex-ai/core';
 
 const requirements: TaskAcceptanceContract = { schemaVersion: 1, taskId: 'host-task', allowedWritePaths: ['result.mjs'], protectedFiles: ['package.json'],
   requiredChecks: [{ id: 'test', kind: 'package-script', script: 'test', expectedScript: 'node --version', command: 'npm', args: ['--ignore-scripts', 'run', 'test'], purpose: 'Fixture test', execution: { backend: 'none', approval: 'required' } }],
   humanReview: [{ id: 'review', requirement: 'Review result', status: 'pending' }] };
 const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
 const model = () => createMockLanguageModel({ streamEvents: [[{ type: 'text-delta', textDelta: 'done' }, { type: 'finish', finishReason: 'stop', usage }]] });
+test('explicit task token budget leaves interactive no-cap defaults unchanged', async () => fixture(async root => {
+  const host = await createHarness({ workspace: root, modelInstance: model(), subagentProfiles: [], usageAccounting: {},
+    unlimitedTokens: true, unlimitedSteps: true, unlimitedToolCalls: true, unlimitedDuration: true });
+  try {
+    await expect(initializeHarnessTaskBudget(host, 'no-explicit-total')).rejects.toThrow('TASK_BUDGET_FINITE_LIMITS_REQUIRED');
+    const limits = { inputTokens: 10000, outputTokens: 1000, totalTokens: 11000 };
+    await initializeHarnessTaskBudget(host, requirements.taskId, limits);
+    const result = await runHarness(host, { runId: 'explicit-budget', prompt: 'fixture' }, { taskAcceptance: requirements, taskBudgetExisting: true });
+    expect(result.status).toBe('completed');
+    expect(await inspectHarnessTaskBudget(host, requirements.taskId)).toMatchObject({ limits, confirmed: usage,
+      monetaryDetails: { confirmedCalls: 1, estimatedConfirmedUsd: null, costComplete: false } });
+    expect(host.config.budget.unlimitedTokens).toBe(true);
+    expect(host.config.budget.unlimitedSteps).toBe(true);
+    expect(host.config.budget.unlimitedToolCalls).toBe(true);
+    expect(host.config.unlimitedDuration).toBe(true);
+  } finally { await host.close(); }
+}));
 async function fixture(work: (root: string) => Promise<void>) {
   const root = await mkdtemp('/tmp/harness-task-owner-');
   try {
@@ -45,6 +63,7 @@ test('host task authority charges distinct runs, freezes policy across reopen an
     await importHarnessStateBackup(targetConfig, backup);
     const target = await createHarness({ workspace: root, stateDirectory: targetConfig.stateDirectory, usageAccounting: {}, subagentProfiles: [], modelInstance: model() });
     try {
+      await expect(initializeHarnessTaskBudget(target, requirements.taskId)).rejects.toThrow('USAGE_LEDGER_MISSING');
       await expect(inspectHarnessTaskBudget(target, requirements.taskId)).rejects.toThrow('USAGE_LEDGER_MISSING');
       await expect(runHarness(target, { runId: 'third', prompt: 'Continue' }, { taskAcceptance: requirements, taskBudgetExisting: true })).rejects.toThrow('USAGE_LEDGER_MISSING');
       expect(await target.store.load('third', target.config.scope)).toBeUndefined();
@@ -63,6 +82,43 @@ test('draft survives refusal before the first run without fabricating a model ch
     host = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [], modelInstance: model() });
     expect(await readHarnessTaskDraft(host.store, host.config.scope, 'session-fixture')).toEqual(brief);
     expect((await inspectHarnessTaskBudget(host, requirements.taskId)).confirmed.totalTokens).toBe(0);
+  } finally { await host.close(); }
+}));
+
+test('retaining a monetary policy cannot hide a missing transport receipt', async () => fixture(async root => {
+  const host = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [], modelInstance: model() });
+  try {
+    await initializeHarnessTaskBudget(host, requirements.taskId);
+    await runHarness(host, { runId: 'charged', prompt: 'Inspect' }, { taskAcceptance: requirements, taskBudgetExisting: true });
+    const summary = await inspectHarnessTaskBudget(host, requirements.taskId);
+    const database = new SqliteDatabase(host.persistence!.databasePath!);
+    try {
+      database.query('DELETE FROM zhivex_usage_calls WHERE run_id = ?').run(summary.accountRunId);
+    } finally { database.close(); }
+    await expect(initializeHarnessTaskBudget(host, requirements.taskId)).rejects.toThrow('TASK_BUDGET_MONETARY_RECEIPTS_MISSING');
+    await expect(inspectHarnessTaskBudget(host, requirements.taskId)).rejects.toThrow('TASK_BUDGET_MONETARY_RECEIPTS_MISSING');
+    await expect(runHarness(host, { runId: 'no-credit', prompt: 'Continue' }, { taskAcceptance: requirements, taskBudgetExisting: true })).rejects.toThrow('TASK_BUDGET_MONETARY_RECEIPTS_MISSING');
+    expect(await host.store.load('no-credit', host.config.scope)).toBeUndefined();
+  } finally { await host.close(); }
+}));
+
+test('real semantic compaction and primary execution charge the same task authority', async () => fixture(async root => {
+  const utility = createMockLanguageModel({ responses: [{ text: 'Preserve the public interface.',
+    usage: { inputTokens: 40, outputTokens: 5, totalTokens: 45 } }] });
+  const host = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [], modelInstance: model(),
+    compactionModel: 'mock-utility', compactionModelInstance: utility,
+    compactionMaxMessages: 4, compactionKeepRecentMessages: 2 });
+  try {
+    await initializeHarnessTaskBudget(host, requirements.taskId);
+    const messages = [createTextMessage('user', 'Preserve compatibility. '.repeat(1500)),
+      createTextMessage('assistant', 'Inspected the existing interface. '.repeat(200)),
+      createTextMessage('user', 'Proceed carefully.'), createTextMessage('assistant', 'Inspect first.'), createTextMessage('user', 'Continue.')];
+    const result = await runHarness(host, { runId: 'compacted-task', messages }, { taskAcceptance: requirements, taskBudgetExisting: true });
+    expect(result.status).toBe('completed');
+    expect(result.state.compactionAttempts?.[0]).toMatchObject({ status: 'confirmed', usage: { totalTokens: 45 } });
+    const summary = await inspectHarnessTaskBudget(host, requirements.taskId);
+    expect(summary).toMatchObject({ confirmed: { inputTokens: 50, outputTokens: 10, totalTokens: 60 }, monetary: { calls: 2 } });
+    expect(summary.monetaryDetails.categories.sort()).toEqual(['compaction', 'execution']);
   } finally { await host.close(); }
 }));
 

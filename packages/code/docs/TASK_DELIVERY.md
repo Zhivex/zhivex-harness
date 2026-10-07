@@ -11,7 +11,7 @@ Git worktree yourself if your checkout contains changes you want to preserve.
 Code never stashes, resets, commits or pushes your files automatically.
 
 ```text
-/task start {"goal":"Fix greeting punctuation","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"]}
+/task start {"goal":"Fix greeting punctuation","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}
 Fix greeting punctuation and run the declared check.
 /task review
 /task keep
@@ -110,3 +110,5 @@ show the retained goal, constraint, receipt and human decision. These operations
 form a prepared 60-second demonstration; exact elapsed time is not certified.
 The installed PTY journey also changes a file externally, proves keep is blocked,
 and revises the task to show an actual failed check leaving it incomplete.
+
+Interactive no-cap hosts require the explicit `budget` object shown above. It belongs only to this TASK; ordinary chat defaults remain unchanged. On reopen/revise the original frozen task limits and monetary owner remain authoritative. Task review distinguishes confirmed estimates, reservations, unknown exposure held and late receipt counts; none is an invoice.
