@@ -16,17 +16,15 @@ export class WebLimitMonitor {
     return next;
   }
   async admitted(sessionId: string, runId: string) {
-    const snapshot = await this.store.admit();
-    const run: RunLimits = { runId, sessionId, ...snapshot, startedAt: this.now(), status: "created",
+    const run = await this.store.admit(snapshot => ({ runId, sessionId, ...snapshot, startedAt: this.now(), status: "created",
       ...(this.hostDigest ? { hostConfigDigest: this.hostDigest } : {}),
       consumption: { costUsd: null, tokens: 0, steps: 0, toolCalls: 0, durationMinutes: 0 }, notices: [], cancellationRequested: false,
-      reportedUsage: { inputTokens: 0, outputTokens: 0, complete: true, lastStep: 0 }, toolReceipts: [], pricing: this.price };
+      reportedUsage: { inputTokens: 0, outputTokens: 0, complete: true, lastStep: 0 }, toolReceipts: [], pricing: this.price }));
     // Inactive snapshots remain durable; memory is bounded independently of usage.
     if (this.runs.size >= 64) for (const [id, previous] of this.runs) {
       if (previous !== this.active?.run && !previous.observationError) { this.runs.delete(id); break; }
     }
     this.runs.set(runId, run);
-    await this.store.saveRun(run);
   }
   private async evaluate(run: RunLimits) {
     if (this.active?.run === run) run.consumption.durationMinutes = this.active.previousMinutes + (this.now() - this.active.since) / 60_000;
@@ -47,7 +45,8 @@ export class WebLimitMonitor {
         run.status = "running";
         this.active = { run, since: this.now(), previousMinutes: run.consumption.durationMinutes };
         clearInterval(this.timer);
-        this.timer = setInterval(() => void this.enqueue(async () => {
+        this.timer = undefined;
+        if (run.settings.durationMinutes.value !== null) this.timer = setInterval(() => void this.enqueue(async () => {
           if (this.active?.run === run) await this.evaluate(run);
         }).catch(() => this.failed(run!.runId)), 250);
       } else if (event.type === "tool-result") {

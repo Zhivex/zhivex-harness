@@ -1,10 +1,14 @@
 import { expect, test } from "bun:test";
 import type { AgentStreamEvent } from "@zhivex-ai/agents";
 import type { TokenUsage } from "@zhivex-ai/core";
-import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { emptyLimitSettings } from "../src/limit-settings.js";
 import { WebLimitStore } from "../src/limit-store.js";
 import { WebLimitMonitor } from "../src/limit-monitor.js";
+import { createHarness, runHarness } from "@zhivex-ai/harness/engine";
+import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
+import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
+import { dirname } from "node:path";
 const runId = "run_test";
 const step = (index: number, usage: TokenUsage): AgentStreamEvent => ({ type: "agent-step-finish", step: {
   index, status: "completed", request: { messages: [] }, response: { messages: [], usage }, toolResults: [],
@@ -103,6 +107,68 @@ for (const action of ["notify", "stop"] as const) test(`observer storage failure
       await monitor.failed("run_foreign"); await monitor.failed(runId);
       expect(monitor.snapshot(runId)?.observationError).toBe(true);
       expect(cancelled).toBe(action === "stop" ? 1 : 0);
+    } finally { await monitor.close(); }
+  });
+});
+
+for (const name of ["steps", "tokens", "costUsd"] as const) test(`first real SDK step counts ${name} and duplicate events cannot recount it`, async () => {
+  await fixture(async store => {
+    await store.save("task", { ...emptyLimitSettings(), [name]: { value: name === "costUsd" ? .00001 : 1, action: "stop" } }, 0);
+    let cancelled = 0;
+    const monitor = new WebLimitMonitor(store, async () => { cancelled++; }, { inputPerMillion: 1, outputPerMillion: 2, source: "fixture" });
+    const harness = await createHarness({ workspace: dirname(store.filename), store: createInMemoryAgentRunStore(), subagentProfiles: [],
+      modelInstance: createMockLanguageModel({ streamEvents: [[{ type: "text-delta", textDelta: "done" },
+        { type: "finish", finishReason: "stop", usage: { inputTokens: 7, outputTokens: 4, totalTokens: 11 } }]] }) });
+    try {
+      await monitor.admitted("session", runId);
+      let first: AgentStreamEvent | undefined;
+      const result = await runHarness(harness, { runId, prompt: "offline first step accounting" }, { onEvent: async event => {
+        if (event.type === "agent-step-finish") first = event;
+        await monitor.event("session", runId, event);
+      } });
+      expect(result.state.steps.map(s => s.index)).toEqual([1]);
+      expect(cancelled).toBe(1);
+      expect(first).toBeDefined();
+      await monitor.event("session", runId, first!);
+      const record = await store.readRun(runId);
+      expect(record?.consumption).toMatchObject({ steps: 1, tokens: 11, costUsd: .000015 });
+      expect(record?.notices).toHaveLength(1);
+      expect(record?.notices[0]?.name).toBe(name);
+      expect(cancelled).toBe(1);
+    } finally { await monitor.close(); await harness.close(); }
+  });
+});
+
+test("failed run snapshot admission preserves the exact one-shot settings and revision", async () => {
+  await fixture(async store => {
+    const settings = { ...emptyLimitSettings(), tokens: { value: 10, action: "stop" as const } };
+    await store.save("task", settings, 0);
+    const previous = await store.read();
+    // An unsafe snapshot target reproduces a failure after the old preference write.
+    await mkdir(store.filename.replace(/\.json$/, `-${runId}.json`), { mode: 0o700 });
+    const monitor = new WebLimitMonitor(store, async () => {}, null);
+    try {
+      await expect(monitor.admitted("session", runId)).rejects.toThrow();
+      expect(await store.read()).toEqual(previous);
+      expect(monitor.snapshot(runId)).toBeUndefined();
+    } finally { await monitor.close(); }
+  });
+});
+
+test("runs without duration thresholds avoid idle durable writes and retain event/checkpoint accounting", async () => {
+  await fixture(async store => {
+    const saveRun = store.saveRun.bind(store);
+    let writes = 0;
+    store.saveRun = run => { writes++; return saveRun(run); };
+    const monitor = new WebLimitMonitor(store, async () => {}, null);
+    try {
+      await monitor.admitted("session", runId);
+      await monitor.event("session", runId, { type: "agent-run-start", currentStep: 0, maxSteps: "unlimited" });
+      const beforeIdle = writes;
+      await new Promise(resolve => setTimeout(resolve, 650));
+      await monitor.checkpoint("session", runId, "waiting_approval");
+      expect(writes).toBe(beforeIdle + 1);
+      expect((await store.readRun(runId))?.consumption.durationMinutes).toBeGreaterThan(.005);
     } finally { await monitor.close(); }
   });
 });

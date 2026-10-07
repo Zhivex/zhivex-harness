@@ -18,9 +18,9 @@ export async function request<T>(route: string, value: unknown): Promise<T> {
   const document = await response.json().catch(() => {
     throw new Error("WEB_REQUEST_FAILED");
   });
-  if (!response.ok || document.ok === false)
+  if (!response.ok || document?.ok === false)
     throw modelSelectionRejection(route, value, response.status, document) ??
-      new Error(document.error?.code ?? "WEB_REQUEST_FAILED");
+      new Error(document?.error?.code ?? "WEB_REQUEST_FAILED");
   return document as T;
 }
 // Remove capability before rendering or loading any optional resource; never persist it.

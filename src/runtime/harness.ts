@@ -1169,14 +1169,15 @@ const runHarnessInternal = async (
     } as ConstructorParameters<typeof Agent>[0])};
   }
   const callerSignal = input.abortSignal;
-  const invocationSignal = AbortSignal.timeout(input.timeoutMs ?? harness.config.timeoutMs);
+  const invocationTimeout = input.timeoutMs ?? (harness.config.unlimitedDuration ? undefined : harness.config.timeoutMs);
+  const invocationSignal = invocationTimeout === undefined ? undefined : AbortSignal.timeout(invocationTimeout);
   const executionFailure = new AbortController();
   const combinedSignal = AbortSignal.any([
-    ...(callerSignal ? [callerSignal] : []), invocationSignal, executionFailure.signal
+    ...(callerSignal ? [callerSignal] : []), ...(invocationSignal ? [invocationSignal] : []), executionFailure.signal
   ]);
   const interruptionKind = (): 'cancelled' | 'timed_out' | undefined => {
     if (!combinedSignal.aborted) return undefined;
-    if (invocationSignal.aborted && combinedSignal.reason === invocationSignal.reason) return 'timed_out';
+    if (invocationSignal?.aborted && combinedSignal.reason === invocationSignal.reason) return 'timed_out';
     if (callerSignal?.aborted && combinedSignal.reason === callerSignal.reason) return 'cancelled';
     return undefined;
   };

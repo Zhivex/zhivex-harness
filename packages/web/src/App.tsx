@@ -240,7 +240,7 @@ export function App() {
             });
             if (obsolete()) return;
             setRun(detail.data.run);
-            const thresholds = await action<RunLimits | null>(workspaceKey, "runLimits", { sessionId, runId: latest.runId }).catch(() => null);
+            const thresholds = await action<RunLimits | null>(workspaceKey, "runLimits", { sessionId, runId: latest.runId });
             if (obsolete()) return;
             setRunLimits(thresholds);
             setRunUnavailable(false);

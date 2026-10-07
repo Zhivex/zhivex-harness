@@ -479,12 +479,14 @@ test("real dispatch snapshots task limits, warns without stopping and keeps proj
   expect(first.data.run.status).toBe("completed");
   const snapshot = await f.call("runLimits", { sessionId: f.session.sessionId, runId: first.data.run.runId }) as unknown as RunLimits;
   expect(snapshot.origin).toBe("task"); expect(snapshot.notices).toHaveLength(0);
+  expect(snapshot.consumption.steps).toBe(1);
   const next = await f.call("start", { sessionId: f.session.sessionId, expectedRevision: first.data.session.revision, idempotencyKey: "limit-next", prompt: "offline-limit-observe" });
   expect(next.data.run.status).toBe("completed");
   const warned = await f.call("runLimits", { sessionId: f.session.sessionId, runId: next.data.run.runId }) as unknown as RunLimits;
   expect(warned.origin).toBe("project");
   expect(warned.notices).toMatchObject([{ name: "tokens", action: "notify", threshold: 20 }]);
   expect(warned.cancellationRequested).toBe(false); expect(warned.consumption.tokens).toBe(30);
+  expect(warned.consumption.steps).toBe(1);
   const foreign = await f.call("runLimits", { sessionId: "foreign", runId: next.data.run.runId }) as unknown as { error: { code: string } };
   expect(foreign.error.code).toBe("WEB_LIMIT_RUN_INVALID");
   // Reattach the same workspace with preferences/snapshots present; the file

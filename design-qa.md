@@ -41,7 +41,7 @@ No separate light theme was invented. Existing layout checks also cover widths
 
 ## Functional evidence
 
-The offline browser suite passes 28 journeys with zero browser errors. Coverage
+The offline browser suite passes 29 journeys with zero browser errors. Coverage
 includes open/close/Escape/cancel, no-change save without mutation, keyboard Space
 activation, rejected fractional token counts, aria-invalid feedback, project
 refresh persistence, distinct step/tool values, mobile scrolling and 24 Tab
@@ -51,9 +51,11 @@ Composer journeys cover slow success, approval pause, failure, edits with identi
 different or cleared text, double click/Ctrl+Enter, session/workspace changes,
 uncertain admitted requests and explicit recovery without overwrite or replay.
 The draft is consumed under the synchronous dispatch lock, before any await.
+Snapshot storage/network failures surface diagnostics and block dispatch; successful
+legacy null snapshots remain healthy.
 
-Web unit/integration tests: 69 pass. Code tests: 129 pass. Initial aggregate offline tests:
-2022 pass, 1 intentional unsupported-platform skip, 0 fail. Typecheck, lint,
+Web unit/integration tests: 76 pass. Code tests: 131 pass. Aggregate offline tests:
+2026 pass, 1 intentional unsupported-platform skip, 0 fail. Typecheck, lint,
 architecture, documentation and stable-contract checks pass with the candidate SDK.
 Real SDK execution exceeds the old numeric step/tool/token/time ceilings while
 preserving per-operation and state/security controls. Legacy and new pending runs

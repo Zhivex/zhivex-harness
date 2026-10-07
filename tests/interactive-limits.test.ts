@@ -10,6 +10,7 @@ import { inspectRuntimeManifest } from "../src/runtime/runtime-diagnostics.js";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
 import { cliRunEventDocumentSchema } from "../src/client/json-contracts.js";
 import { parseCliArgs } from "../src/cli/arguments.js";
+import { setTimeout as delay } from "node:timers/promises";
 
 test("interactive defaults omit accumulated ceilings, preserve explicit/environment settings and stored numeric values", () => {
   const config = resolveHarnessConfig(consoleBudgetOptions({}, {}));
@@ -31,6 +32,27 @@ test("interactive defaults omit accumulated ceilings, preserve explicit/environm
   for (const key of ["unlimitedSteps", "unlimitedToolCalls", "unlimitedDuration"] as const)
     expect(() => resolveHarnessConfig({ [key]: "yes" })).toThrow("boolean");
   expect(effectiveRuntimeBudget(resolveHarnessConfig({}).budget)).toHaveProperty("maxSteps", 50);
+});
+
+for (const scenario of ["unlimited", "finite", "explicit", "caller"] as const) test(`interactive invocation deadline: ${scenario}`, async () => {
+  const workspace = await mkdtemp("/tmp/interactive-deadline-");
+  const model = createMockLanguageModel();
+  const caller = new AbortController();
+  let cancelTimer: ReturnType<typeof setTimeout> | undefined;
+  model.stream = async input => (async function* () {
+    if (scenario === "caller") cancelTimer = setTimeout(() => caller.abort(), 20);
+    await delay(1100, undefined, { signal: input.abortSignal });
+    yield { type: "text-delta" as const, textDelta: "done" };
+    yield { type: "finish" as const, finishReason: "stop" as const };
+  })();
+  const harness = await createHarness({ workspace, modelInstance: model, store: createInMemoryAgentRunStore(),
+    subagentProfiles: [], timeoutMs: 1000, unlimitedDuration: scenario !== "finite" });
+  try {
+    const result = await runHarness(harness, { prompt: "offline delayed response",
+      ...(scenario === "explicit" ? { timeoutMs: 20 } : {}),
+      ...(scenario === "caller" ? { abortSignal: caller.signal } : {}) });
+    expect(result.status).toBe(scenario === "unlimited" ? "completed" : scenario === "caller" ? "cancelled" : "timed_out");
+  } finally { clearTimeout(cancelTimer); await harness.close(); await rm(workspace, { recursive: true, force: true }); }
 });
 
 test("real SDK runs exceed inactive stored steps/tools/tokens/deadline and retain per-request caps", async () => {
@@ -55,6 +77,7 @@ test("real SDK runs exceed inactive stored steps/tools/tokens/deadline and retai
     });
     expect(result.status).toBe("completed"); expect(result.state.maxSteps).toBe("unlimited");
     expect(result.state.steps).toHaveLength(3); expect(result.state.toolResults).toHaveLength(2);
+    expect(result.state.steps.map(step => step.index)).toEqual([1, 2, 3]);
     expect(caps).toEqual([123, 123, 123]); expect(deadlines).toEqual([5000, 5000, 5000]);
     expect(JSON.parse(JSON.stringify(result.state)).maxSteps).toBe("unlimited");
   } finally { await harness.close(); await rm(workspace, { recursive: true, force: true }); }

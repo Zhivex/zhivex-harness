@@ -65,6 +65,9 @@ await page.route("**/api/action", async (route) => {
   const selectedFault = fault?.action === body.action ? fault : undefined;
   if (!selectedFault) return route.continue();
   fault = undefined;
+  if (selectedFault.mode === "absent") return route.fulfill({
+    status: 200, contentType: "application/json", body: "null",
+  });
   if (selectedFault.mode === "rejected" && selectedFault.delay)
     await new Promise(resolve => setTimeout(resolve, selectedFault.delay));
   if (selectedFault.mode === "rejected") return route.fulfill({
@@ -183,6 +186,21 @@ try {
   await page.getByLabel("Task prompt").fill("next task after success");
   await complete();
   assert.equal(await page.getByLabel("Task prompt").inputValue(), "next task after success");
+  for (const code of ["WEB_LIMIT_SETTINGS_INVALID", "WEB_LIMIT_STORAGE_UNSAFE", "WEB_REQUEST_FAILED"]) {
+    fault = { action: "runLimits", mode: "rejected", code };
+    await page.reload();
+    await page.getByRole("alert").filter({ hasText: code.replaceAll("_", " ") }).waitFor({ timeout: 5000 });
+    await page.getByLabel("Task prompt").fill("snapshot read failure must block dispatch");
+    assert.equal(await page.getByRole("button", { name: "Run task" }).isDisabled(), true);
+    await reconnectState();
+    await page.getByRole("alert").waitFor({ state: "hidden" });
+  }
+  fault = { action: "runLimits", mode: "absent" };
+  await page.reload();
+  await page.getByLabel("Task prompt").fill("a legacy run without a snapshot stays healthy");
+  await page.getByRole("button", { name: "Run task" }).and(page.locator(":enabled")).waitFor();
+  assert.equal(await page.getByRole("alert").count(), 0);
+  steps.push("failed limit snapshot reads surface storage/network diagnostics and block dispatch; successful legacy null remains healthy");
   await createSession();
   steps.push("slow run clears composer immediately; identical edit survives completion; Ctrl+Enter cannot replay; success preserves newer draft");
   for (const newer of ["a different draft", "composer rejected submission", ""]) {

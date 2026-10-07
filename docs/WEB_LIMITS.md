@@ -41,6 +41,13 @@ Preferences and per-run snapshots live in a private `web-limits` child directory
 of the existing state directory, separate from SDK run JSON files. Files are
 owner-private and regular with no symlink/hardlink traversal. Browser actions use
 the same pairing, CSRF, Origin, loopback and workspace/session admission controls.
+Admission commits the initial run snapshot and one-shot consumption with one
+atomic preference-file rename. The private document reads legacy v1 and writes v2;
+the browser preference contract remains v1. That initial snapshot survives restart
+before the first event, and a later admission preserves the previous run record.
+Elapsed time is persisted on events/checkpoints; a periodic timer runs only for an
+enabled duration threshold. Snapshot read failures surface through the normal
+poll error path; a successful legacy `null` snapshot remains a healthy read.
 Permission policy, sandbox, state-size/model/context limits, operation timeouts,
 tool-error/anti-loop controls and release gates remain independent.
 Web retains its existing four-tool-error guard; terminal retains its existing
@@ -52,6 +59,9 @@ Web retains its existing four-tool-error guard; terminal retains its existing
 are explicit opt-in engine flags. Numeric values remain stored and are inactive
 only when their corresponding flag is true. Explicit numbers/environment values
 prevent interactive default activation; explicit programmatic flags take precedence.
+`unlimitedDuration` omits both the SDK policy timeout and the default invocation
+deadline. An explicit per-invocation `timeoutMs` and caller cancellation remain
+authoritative, alongside the existing per-operation timeouts.
 SDK/headless/certification defaults remain bounded. Child step/tool/deadline policy
 is unchanged. `/limits <steps>` explicitly enables the requested finite console ceiling.
 
