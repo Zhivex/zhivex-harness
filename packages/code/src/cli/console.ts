@@ -1,7 +1,7 @@
 import { runHarnessTask as runHarness } from '@zhivex-ai/harness/code-support';
 import { approvalFileDiff } from "./terminal/file-diff.js";
 import { handleConsoleCheckpoint } from "./console/console-checkpoints.js";
-import { CODE_TASK_KEY, codeTaskPrompt, freshCodeTaskBudgetRecap, freshCodeTaskRecap, keepCodeTask, prepareCodeTask, restoredCodeTask, type CodeTask } from "./console/console-task.js";
+import { CODE_TASK_KEY, codeTaskPrompt, freshCodeTaskBudgetRecap, freshCodeTaskRecap, keepCodeTask, prepareCodeTask, restoredCodeTask, recoverCodeTask, reviseCodeTask, type CodeTask } from "./console/console-task.js";
 import { consoleWorkspaceDiff } from "./console/console-diff.js";
 import { handleConsoleBudget } from "./console/console-pricing.js";
 import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "./console/console-run-policy.js";
@@ -176,6 +176,7 @@ export const chat = async (options: CliOptions) => {
     if (codeTask?.budgetVersion === 1) runtimeOptions = { ...runtimeOptions, unlimitedTokens: false };
     harness = (await createConfiguredHarness(runtimeOptions, [], routes, credentials)).harness;
     persistenceHarness = harness;
+    if (codeTask) codeTask = await recoverCodeTask(harness, codeTask);
     credentialsRevision = credentials.store.revision;
   } catch (error) {
     process.off("SIGINT", interrupt);
@@ -293,6 +294,7 @@ export const chat = async (options: CliOptions) => {
     await harness.close();
     harness = created.harness;
     persistenceHarness = harness;
+    if (codeTask) codeTask = await recoverCodeTask(harness, codeTask);
     credentialsRevision = credentials.store.revision;
     runtimeOptions = nextOptions;
     routes = new Map(nextRoutes);
@@ -328,7 +330,7 @@ export const chat = async (options: CliOptions) => {
     messages = state?.messages ?? [];
     retainedTasks = taskSources(state?.metadata);
     retainedResponses = state?.metadata?.zhivexAssistantResponses ?? [];
-    codeTask = task;
+    codeTask = task ? await recoverCodeTask(harness, task) : undefined;
     displayLedger = inspectUsageLedger(state?.metadata?.[USAGE_LEDGER_KEY]);
     contextTokens = estimateMessages(messages);
   };
@@ -507,9 +509,7 @@ export const chat = async (options: CliOptions) => {
             if (!codeTask) throw new Error("Start or reopen a guided task first.");
             const correction = argument.slice(7).trim();
             if (!correction || correction.length > 500 || codeTask.constraints.length >= 8) throw new Error("A correction must be 1–500 characters; at most 8 constraints are supported.");
-            codeTask = { ...codeTask, constraints: [...codeTask.constraints, correction], keep: undefined,
-              contract: { ...codeTask.contract, humanReview: [{ id: "operator", requirement: codeTask.goal, status: "pending" },
-                ...[...codeTask.constraints,correction].map((requirement,index)=>({id:`constraint-${index+1}`,requirement,status:"pending" as const}))] } };
+            codeTask = await reviseCodeTask(harness, codeTask, correction);
             prompt = correction;
             command = "";
           } else {

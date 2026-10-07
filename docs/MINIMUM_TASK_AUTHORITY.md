@@ -333,6 +333,14 @@ revise an older run. These are local admission checks, not cross-host fencing
 or a lock against subsequent filesystem edits; executable tools retain their
 existing digest, scope, approval and budget checks.
 
+Code `/task revise` persists the authorized contract revision before using its
+new brief. If the process stops before the draft is saved, restart reconstructs
+only an append-only Code human correction from that revision history; any
+scope/check change or incompatible brief still refuses. Baseline, budget owner
+and remaining credit are preserved; recovered keep decisions are cleared.
+Inherited transcript calls retain their original run's journal provenance. A
+call generated again in the current run still requires its own current receipt.
+
 | Evidence/state | Recovery interpretation | Next action |
 | --- | --- | --- |
 | Completed journal effect | Recorded outcome; never automatically replayed | Inspect current artifacts and independent obligations |

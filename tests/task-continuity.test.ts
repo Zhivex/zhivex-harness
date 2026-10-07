@@ -84,6 +84,18 @@ const checked: StreamEvent[][] = [[{ type: 'tool-call', toolCall: { id: 'check',
 const executeChecked = (host: Awaited<ReturnType<typeof createHarness>>) => runHarnessTask(host, { runId: 'checked', prompt: 'Check result' }, { taskAcceptance: contract, taskBudgetExisting: true,
   resolveApprovals: async approvals => approvals.map(item => ({ provider: item.provider, approvalRequestId: item.id, approve: true })) });
 
+test('inherited transcript uses original receipts without masking a missing receipt from a new execution', () => fixture(async host => {
+  await executeChecked(host);
+  const first = (await host.store.load('checked', host.config.scope))!;
+  await runHarnessTask(host, { runId: 'second', messages: [...first.messages, createTextMessage('user', 'Continue')] }, { taskAcceptance: contract, taskBudgetExisting: true });
+  expect((await inspectHarnessTaskContinuity(host, contract.taskId)).reasons).not.toContain('TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING');
+  // A same-ID call generated again belongs to this run, never to the inherited transcript.
+  const state = (await host.store.load('second', host.config.scope))!;
+  const next = { ...state, revision: state.revision! + 1, steps: [{ ...state.steps[0]!, response: first.steps[0]!.response! }] };
+  await host.store.save(next, { expectedRevision: state.revision! });
+  expect((await inspectHarnessTaskContinuity(host, contract.taskId)).reasons).toContain('TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING');
+}, [...checked, done]));
+
 test('missing journal receipt blocks recovery even when final checkpoint and artifact remain', () => fixture(async host => {
   await executeChecked(host);
   expect((await inspectHarnessTaskContinuity(host, contract.taskId)).runs[0]?.checks).toEqual([{ id: 'test', status: 'confirmed' }]);

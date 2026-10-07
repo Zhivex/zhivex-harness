@@ -45,10 +45,22 @@ export async function readTaskContinuity(host: ZhivexHarness, taskId: string) {
       retry: reads.has(row.toolName) ? 'fresh_read_within_budget' : 'never_automatic' }));
     if (effects.some(row => row.status === 'unknown')) reasons.add('TASK_CONTINUITY_EFFECT_UNCERTAIN');
     // A retained tool result or call is evidence of a missing journal, never proof that replay is safe.
-    const calls = state.messages.flatMap(message => message.parts.flatMap(part => part.type === 'tool-call' ? [part.toolCall] : []));
-    for (const call of calls) {
+    const currentCalls = state.steps.flatMap(step => (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part => part.type === 'tool-call' ? [part.toolCall] : [])));
+    const calls = state.messages.flatMap((message, index) => message.parts.flatMap(part => part.type === 'tool-call' ? [{ call: part.toolCall, index }] : []));
+    for (const { call, index } of calls) {
+      // Earlier turns retain their transcript, while receipts remain owned by the original run.
+      // Require an exact inherited prefix and never use history for this run's generated calls.
+      const inherited = !currentCalls.some(item => item.id === call.id) && observed.slice(0, -1).some(prior =>
+        prior.state.messages.some((message, priorIndex) => {
+          if (!message.parts.some(part => part.type === 'tool-call' && JSON.stringify(part.toolCall) === JSON.stringify(call))) return false;
+          // Runtime context injection can insert system/retained-assistant context before the conversation.
+          const start = prior.state.messages.findIndex(item => item.role !== 'system');
+          const prefix = prior.state.messages.slice(start, priorIndex + 1);
+          return start >= 0 && index + 1 >= prefix.length && prefix.every((item, offset) => JSON.stringify(item) === JSON.stringify(state.messages[index + 1 - prefix.length + offset]));
+        }) &&
+        prior.journal.some(row => row.providerToolCallId === call.id && row.toolName === call.name && JSON.stringify(row.input) === JSON.stringify(call.input)));
       const waiting = state.pendingApprovals.some(approval => approval.toolCallId === call.id);
-      if (!reads.has(call.name) && !waiting && !journal.some(row => row.providerToolCallId === call.id && row.toolName === call.name)) reasons.add('TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING');
+      if (!reads.has(call.name) && !waiting && !inherited && !journal.some(row => row.providerToolCallId === call.id && row.toolName === call.name)) reasons.add('TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING');
     }
     for (const result of state.toolResults) if (!reads.has(result.toolName) && !journal.some(row => row.providerToolCallId === result.toolCallId && row.toolName === result.toolName)) reasons.add('TASK_CONTINUITY_EFFECT_EVIDENCE_MISSING');
     const sources = taskSources(state.metadata);

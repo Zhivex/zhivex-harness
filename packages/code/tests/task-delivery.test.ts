@@ -4,11 +4,40 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { createHarness, Workspace } from '@zhivex-ai/harness/engine';
-import { CODE_TASK_KEY, prepareCodeTask, keepCodeTask, restoredCodeTask, freshCodeTaskRecap } from '../src/cli/console/console-task.js';
+import { CODE_TASK_KEY, prepareCodeTask, keepCodeTask, restoredCodeTask, freshCodeTaskRecap, recoverCodeTask, reviseCodeTask } from '../src/cli/console/console-task.js';
 import { consoleWorkspaceDiff } from '../src/cli/console/console-diff.js';
-import { persistHarnessTaskDraft, readHarnessTaskDraft, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '@zhivex-ai/harness/code-support';
+import { persistHarnessTaskDraft, readHarnessTaskDraft, inspectHarnessTaskContinuity, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '@zhivex-ai/harness/code-support';
 
 const goal = { goal:'Fix greeting', paths:['greeting.mjs'], checks:['test'], constraints:['Preserve named export'] };
+test('explicit Code correction persists a revision before a new turn and retains original credit', () => fixture(async root => {
+  const done = [{ type: 'text-delta' as const, textDelta: 'Observed' }, { type: 'finish' as const, finishReason: 'stop' as const, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }];
+  let host = await createHarness({ workspace: root, subagentProfiles: [], usageAccounting: {}, modelInstance: createMockLanguageModel({ streamEvents: [done, done] }) });
+  try {
+    const task = await prepareCodeTask(host, goal);
+    await runHarness(host, { runId: 'first', prompt: task.goal, metadata: { [CODE_TASK_KEY]: JSON.parse(JSON.stringify(task)) } }, { taskAcceptance: task.contract, taskBudgetExisting: true });
+    await persistHarnessTaskDraft(host, 'correction-crash', JSON.parse(JSON.stringify(task)));
+    const before = await inspectHarnessTaskContinuity(host, task.contract.taskId);
+    const revised = await reviseCodeTask(host, task, 'Preserve the external change');
+    const revision = await inspectHarnessTaskContinuity(host, task.contract.taskId);
+    expect(revision.currentContract?.revision).toBe(2);
+    expect(revision.budget).toEqual(before.budget);
+    await expect(reviseCodeTask(host, task, 'An obsolete brief cannot overwrite revision2')).rejects.toThrow('TASK_CONTINUITY_CONTRACT_CONFLICT');
+    // Simulate process loss after durable revision, before saving draft or starting the new run.
+    await host.close();
+    host = await createHarness({ workspace: root, subagentProfiles: [], usageAccounting: {}, modelInstance: createMockLanguageModel({ streamEvents: [done] }) });
+    const stale = restoredCodeTask({ metadata: { [CODE_TASK_KEY]: await readHarnessTaskDraft(host.store, host.config.scope, 'correction-crash') as any } })!;
+    expect(stale.constraints).toEqual(task.constraints);
+    const recovered = await recoverCodeTask(host, stale);
+    expect(recovered).toEqual(revised);
+    expect((await inspectHarnessTaskContinuity(host, task.contract.taskId)).budget).toEqual(before.budget);
+    await expect(recoverCodeTask(host, { ...stale, baseline: stale.baseline, contract: { ...stale.contract, protectedFiles: [] } })).rejects.toThrow('TASK_CONTINUITY_CONTRACT_CONFLICT');
+    await runHarness(host, { runId: 'second', prompt: 'Continue revised task', metadata: { [CODE_TASK_KEY]: JSON.parse(JSON.stringify(recovered)) } }, { taskAcceptance: recovered.contract, taskBudgetExisting: true });
+    const after = await inspectHarnessTaskContinuity(host, task.contract.taskId);
+    expect(after.currentContract?.revision).toBe(2);
+    expect(after.budget.confirmed.totalTokens).toBe(30);
+    expect(after.budget.accountRunId).toBe(before.budget.accountRunId);
+  } finally { await host.close(); }
+}));
 async function fixture(work: (root: string) => Promise<void>, git = true) {
   const root = await mkdtemp('/tmp/code-task-delivery-');
   try {

@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { compileTaskAcceptanceContract, type TaskAcceptanceContract, type ZhivexHarness } from '@zhivex-ai/harness/engine';
+import { compileTaskAcceptanceContract, reviseHarnessTaskAcceptance, type TaskAcceptanceContract, type ZhivexHarness } from '@zhivex-ai/harness/engine';
 import { formatUsageLedger, initializeHarnessTaskBudget, inspectHarnessTaskBudget, inspectHarnessTaskContinuity, inspectTaskBudgetSummary, nativeTaskSnapshot, resolvePackageCheckCommand, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '@zhivex-ai/harness/code-support';
 import type { AgentRunState } from '@zhivex-ai/core';
 import { sanitizeTerminalText } from '../terminal/terminal-ui.js';
@@ -80,6 +80,44 @@ export function codeTaskPrompt(task: CodeTask, prompt: string): string {
   return `Operator task goal: ${task.goal}\nConstraints: ${task.constraints.join('; ') || 'No additional constraints'}\n` +
     `Exact editable files: ${task.contract.allowedWritePaths.join(', ')}. Execute every declared check after the final edit. ` +
     `Passing checks leave human review pending; do not claim operator acceptance.\n\n${prompt}`;
+}
+
+/** Recover only Code's append-only human correction; never infer a new scope or baseline. */
+export async function recoverCodeTask(harness: ZhivexHarness, task: CodeTask): Promise<CodeTask> {
+  if (task.budgetVersion !== 1) return task;
+  const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+  const current = recovery.currentContract;
+  const digest = compileTaskAcceptanceContract(task.contract).digest;
+  if (!current || current.digest === digest) return task;
+  const history = recovery.runs.at(-1)!.ledger.revisions;
+  const prior = history.findIndex(revision => revision.digest === digest);
+  const requirements = current.contract.humanReview;
+  const constraints = requirements.filter(item => item.id !== 'operator').map(item => item.requirement);
+  if (prior < 0 || requirements.find(item => item.id === 'operator')?.requirement !== task.goal ||
+    constraints.length <= task.constraints.length || constraints.length > 8 ||
+    task.constraints.some((value, index) => constraints[index] !== value) ||
+    requirements.filter(item => item.id !== 'operator').some((item, index) => item.status !== 'pending' || item.id !== `constraint-${index + 1}`) ||
+    history.slice(prior + 1).some(revision => compileTaskAcceptanceContract({ ...revision.contract, humanReview: task.contract.humanReview }).digest !== digest)) {
+    throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+  }
+  return { ...task, constraints, contract: current.contract, keep: undefined };
+}
+
+/** An explicit operator correction revises existing durable authority before a new brief is used. */
+export async function reviseCodeTask(harness: ZhivexHarness, task: CodeTask, correction: string): Promise<CodeTask> {
+  if (!correction.trim() || correction.length > 500 || task.constraints.length >= 8) throw new Error('A correction must be 1–500 characters; at most 8 constraints are supported.');
+  const next: CodeTask = { ...task, constraints: [...task.constraints, correction], keep: undefined,
+    contract: { ...task.contract, humanReview: [{ id: 'operator', requirement: task.goal, status: 'pending' },
+      ...[...task.constraints, correction].map((requirement, index) => ({ id: `constraint-${index + 1}`, requirement, status: 'pending' as const }))] } };
+  const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+  const latest = recovery.runs.at(-1);
+  if (recovery.budget.runs.length && !latest) throw new Error('TASK_CONTINUITY_RUN_MISSING');
+  if (latest) {
+    if (recovery.currentContract?.digest !== compileTaskAcceptanceContract(task.contract).digest) throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+    await reviseHarnessTaskAcceptance(harness, { runId: latest.runId, expectedRunRevision: latest.revision!,
+      expectedContractRevision: recovery.currentContract!.revision, contract: next.contract });
+  }
+  return { ...next, contract: compileTaskAcceptanceContract(next.contract).contract };
 }
 
 export function codeTaskBudgetRecap(value: unknown): string {
