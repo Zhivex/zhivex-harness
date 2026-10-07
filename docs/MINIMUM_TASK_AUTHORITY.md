@@ -256,12 +256,30 @@ effects; do not delete control fields, refund reservations or replay effects to
 get past a refusal. A full logical backup refuses pending invocations; preserve
 the stopped host's complete database when that gate applies.
 
-The new reader accepts existing HU70 accounts without cancellation history.
-The optional `cancellations` field is retained in complete logical backups.
-HU70's strict older account reader rejects accounts written with this field:
-downgrading a cancelled experimental task is blocked, not an automatic migration.
-Do not strip the field to force a downgrade. Ordinary run status and token-summary
-shapes remain unchanged. Child TASK execution remains refused by the existing
+The new reader accepts existing HU70 account payload version 1 without rewriting
+it. An uncancelled account remains version 1 and remains readable by HU70. The
+first cancellation write explicitly upgrades only the Experimental account
+payload to `schemaVersion: 2`; run state and token-summary versions stay at 1.
+The discovery key `zhivexTaskBudgetAccountV1` stays fixed. Complete logical
+backups preserve the payload version and cancellation history.
+
+HU70's frozen strict decoder rejects version 2 with a schema-version diagnostic
+(`expected 1`) before it can run or rewrite the account. It also reports the
+unknown cancellation field; this is a safe low-level validation error, not a
+new friendly diagnostic retrofitted into the old binary. No task content is
+included in that error. HU71 rejects unsupported future versions with the static
+`TASK_BUDGET_ACCOUNT_VERSION_UNSUPPORTED` diagnostic; malformed known payloads
+use `TASK_BUDGET_ACCOUNT_INVALID`. Both refuse without writing control state.
+
+Downgrade after a cancellation is unsupported. Preserve the complete database
+and use the HU71 reader to inspect it. Restoring a pre-cancellation backup would
+also discard newer effects and consumption, so it is not a safe automatic
+rollback. Do not strip fields, relabel version 2 as 1, clear invocation, or refund
+credit to force opening. The unpublished HU71 Library-v0 candidate wrote history
+under version 1; the new reader accepts it read-only and upgrades it to version 2
+on the next owned write, retaining all history. HU70 already rejects that v0
+history field. Ordinary run status and token-summary shapes remain unchanged.
+Child TASK execution remains refused by the existing
 single-native-writer gate, so optional child creation is outside this cut.
 
 `tests/task-cancellation.test.ts`, `tests/task-cancellation-host.test.ts`,

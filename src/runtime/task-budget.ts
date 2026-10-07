@@ -19,10 +19,19 @@ const policySchema = z.strictObject({ limits: tokensSchema, closureReserve: z.nu
     requireCompleteUsage: z.boolean().optional() }).optional() });
 const cancellationSchema = z.strictObject({ runId: z.string().min(1).max(256), requestedAt: token,
   origin: z.enum(['operator', 'abort', 'timeout', 'lease_lost']), localToolsDrainedAt: token.optional() });
-const accountSchema = z.strictObject({ schemaVersion: z.literal(1), taskId: z.string().min(1).max(256),
+const accountSchema = z.strictObject({ schemaVersion: z.union([z.literal(1), z.literal(2)]), taskId: z.string().min(1).max(256),
   policy: policySchema, runs: z.array(z.string().min(1).max(256)).max(4096), admissionsClosed: z.boolean(),
   cancellations: z.array(cancellationSchema).max(4096).optional(),
   invocation: z.strictObject({ runId: z.string().min(1).max(256), ownerId: z.string().min(1).max(256) }).optional() });
+// The metadata key remains stable for discovery; its payload version owns the
+// Experimental format. Version 1 also reads the unpublished HU71 v0 snapshot.
+function parseAccount(value: unknown) {
+  const version = value && typeof value === 'object' ? Reflect.get(value, 'schemaVersion') : undefined;
+  if (version !== 1 && version !== 2) throw new Error('TASK_BUDGET_ACCOUNT_VERSION_UNSUPPORTED: preserve the complete database and use a compatible task-account reader; do not remove control fields.');
+  const parsed = accountSchema.safeParse(value);
+  if (!parsed.success) throw new Error('TASK_BUDGET_ACCOUNT_INVALID: preserve the complete database; task-account control is not readable.');
+  return parsed.data;
+}
 const allocationSchema = z.record(z.string(), z.strictObject({ status: z.enum(['reserved', 'confirmed', 'unknown']), tokens: tokensSchema }));
 const summarySchema = z.strictObject({ schemaVersion: z.literal(1), taskId: z.string().min(1).max(256),
   accountRunId: z.string().min(1).max(256), revision: token, limits: tokensSchema, confirmed: tokensSchema,
@@ -40,7 +49,7 @@ export function assertTaskBudgetBackupLinks(states: readonly AgentRunState[]) {
   for (const state of states) {
     const rawAccount = state.metadata?.[TASK_BUDGET_ACCOUNT_KEY];
     if (rawAccount !== undefined || state.runId.startsWith('task_budget_')) {
-      const account = accountSchema.parse(rawAccount);
+      const account = parseAccount(rawAccount);
       if (account.invocation) throw new Error('TASK_BUDGET_BACKUP_INVOCATION_PENDING');
       if (!state.scope || state.runId !== TaskBudget.accountId(state.scope, account.taskId) ||
         state.budgetCoordinatorId !== fingerprintAgentHarness({ budgetId: state.runId, scope: state.scope, limits: account.policy.limits }) ||
@@ -51,7 +60,7 @@ export function assertTaskBudgetBackupLinks(states: readonly AgentRunState[]) {
     const projection = summarySchema.parse(rawProjection);
     const root = byIdentity.get(fingerprintAgentHarness({ scope: state.scope, runId: projection.accountRunId }));
     if (!root) throw new Error('TASK_BUDGET_BACKUP_CONTROL_MISSING');
-    const account = accountSchema.parse(root.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(root.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== projection.taskId || root.budgetCoordinatorId !== projection.coordinatorId ||
         JSON.stringify(account.policy.limits) !== JSON.stringify(projection.limits) ||
         (!state.runId.startsWith('task_draft_') && !account.runs.includes(state.runId))) throw new Error('TASK_BUDGET_BACKUP_BINDING_MISMATCH');
@@ -105,7 +114,7 @@ export class TaskBudget {
     let state = await options.store.load(id, options.scope);
     if (!state) {
       if (options.requireExisting) throw new Error('TASK_BUDGET_MISSING: restore the full task account; historical consumption cannot be reset.');
-      const account = accountSchema.parse({ schemaVersion: 1, taskId: options.taskId, policy: { ...options.policy,
+      const account = parseAccount({ schemaVersion: 1, taskId: options.taskId, policy: { ...options.policy,
         closureReserve: options.policy.closureReserve ?? 0.3 }, runs: [], admissionsClosed: false });
       const candidate = new TaskBudget(options, account);
       const initial: AgentRunState = { schemaVersion: 1, runId: id, scope: options.scope, revision: 1,
@@ -116,7 +125,7 @@ export class TaskBudget {
       catch (error) { state = await options.store.load(id, options.scope); if (!state) throw error; }
       state ??= initial;
     }
-    const account = accountSchema.parse(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== options.taskId || state.runId !== id) throw new Error('TASK_BUDGET_IDENTITY_MISMATCH');
     const instance = new TaskBudget(options, account);
     if (state.budgetCoordinatorId !== instance.coordinatorId) throw new Error('TASK_BUDGET_POLICY_MISMATCH');
@@ -144,7 +153,7 @@ export class TaskBudget {
   private async state() {
     const state = await this.options.store.load(this.accountRunId, this.options.scope);
     if (!state || state.budgetCoordinatorId !== this.coordinatorId) throw new Error('TASK_BUDGET_MISSING');
-    const account = accountSchema.parse(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== this.options.taskId || JSON.stringify(account.policy) !== JSON.stringify(this.policy)) throw new Error('TASK_BUDGET_POLICY_MISMATCH');
     return { state, account };
   }
@@ -181,7 +190,8 @@ export class TaskBudget {
       const { state, account } = await this.state();
       if (expectedRevision !== undefined && state.revision !== expectedRevision) throw new Error('TASK_BUDGET_REVISION_CONFLICT');
       mutate(account);
-      accountSchema.parse(account);
+      if (account.cancellations?.length) account.schemaVersion = 2;
+      parseAccount(account);
       await this.options.store.save({ ...state, revision: (state.revision ?? 0) + 1, updatedAt: this.now(),
         metadata: { ...state.metadata, [TASK_BUDGET_ACCOUNT_KEY]: serializeJsonValue(account) } },
         { expectedRevision: state.revision ?? 0, leaseOwnerId: ownerId });
