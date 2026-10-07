@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const [engineArg, codeArg, runtimeArg, outputArg] = process.argv.slice(2);
 assert(engineArg && codeArg && runtimeArg && outputArg, 'Pass exact Harness tarball, Code tarball, Node executable and output directory');
@@ -12,6 +13,8 @@ const engine = path.resolve(engineArg), code = path.resolve(codeArg), output = p
 const root = await mkdtemp('/tmp/code05-installed-');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const env = Object.fromEntries(['LANG', 'HTTPS_PROXY', 'HTTP_PROXY', 'ALL_PROXY', 'NO_PROXY', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'WEB_BROWSER_PATH', 'PLAYWRIGHT_BROWSERS_PATH'].flatMap(key => process.env[key] === undefined ? [] : [[key, process.env[key]]]));
+// Resolve browser tooling before giving the isolated consumer its private HOME.
+if (!env.WEB_BROWSER_PATH) env.WEB_BROWSER_PATH = createRequire(repo + 'packages/web/package.json')('playwright').chromium.executablePath();
 let stage = 'source', cleanup = true, report, sequence = 0;
 await mkdir(output, { recursive: true });
 async function run(command, args, cwd = root, timeout = 180000) {
