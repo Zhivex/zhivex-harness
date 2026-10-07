@@ -5,7 +5,44 @@ import os from "node:os";
 import { createInMemoryAgentRunStore } from "@zhivex-ai/agents/ops";
 import { createMockLanguageModel } from "@zhivex-ai/agents/testing";
 import { createHarness, runHarness } from "../src/runtime/harness.js";
-import { settleInterruptedRun } from "../src/runtime/run-interruption.js";
+import { composeRunInterruption, settleInterruptedRun } from "../src/runtime/run-interruption.js";
+
+test("captures cancellation provenance through nested signals and a second ancestor abort", () => {
+  const outer = new AbortController(), requested = new AbortController(), failure = new AbortController();
+  const caller = AbortSignal.any([AbortSignal.any([outer.signal]), requested.signal]);
+  caller.addEventListener('abort', () => outer.abort(new Error('later ancestor')));
+  const interruption = composeRunInterruption(caller, undefined, failure.signal);
+  const reason = new Error('operator request');
+  requested.abort(reason);
+  expect(interruption.signal.reason).toBe(reason);
+  expect(interruption.kind()).toBe('cancelled');
+  interruption.dispose();
+});
+
+test("preserves the first deadline or delivery failure despite a later caller abort", () => {
+  for (const source of ['deadline', 'failure'] as const) {
+    const caller = new AbortController(), deadline = new AbortController(), failure = new AbortController();
+    const interruption = composeRunInterruption(caller.signal, deadline.signal, failure.signal);
+    const reason = new Error(source);
+    (source === 'deadline' ? deadline : failure).abort(reason);
+    caller.abort();
+    expect(interruption.signal.reason).toBe(reason);
+    expect(interruption.kind()).toBe(source === 'deadline' ? 'timed_out' : undefined);
+    interruption.dispose();
+  }
+});
+
+test("handles preaborted signals deterministically and disposes unused listeners", () => {
+  const caller = new AbortController(), deadline = new AbortController(), failure = new AbortController();
+  caller.abort(new Error('already cancelled')); deadline.abort();
+  const preaborted = composeRunInterruption(caller.signal, deadline.signal, failure.signal);
+  expect(preaborted.kind()).toBe('cancelled');
+  expect(preaborted.signal.reason).toBe(caller.signal.reason);
+  preaborted.dispose();
+  const unused = composeRunInterruption(undefined, undefined, failure.signal);
+  unused.dispose(); failure.abort();
+  expect(unused.signal.aborted).toBe(false);
+});
 
 test("external interruption persists cancelled and emits one cancelled lifecycle finish", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "harness-interrupt-"));

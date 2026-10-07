@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { appendFileSync } from 'node:fs';
 import { mkdtemp, mkdir, writeFile, readFile, rm, chmod } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -61,6 +62,24 @@ try {
   browser = await chromium.launch({ headless: true, ...(process.env.WEB_BROWSER_PATH ? { executablePath: process.env.WEB_BROWSER_PATH } : {}), args: ['--no-sandbox'] });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
+  const traced = new WeakMap(); let traceId = 0;
+  page.on('request', request => {
+    if (!request.url().endsWith('/api/action')) return;
+    const body = request.postDataJSON(), id = ++traceId; traced.set(request, id);
+    appendFileSync(output + '/command-trace.jsonl', JSON.stringify({ id, at: Date.now(), phase: 'request', action: body.action,
+      sessionId: body.sessionId, runId: body.runId, expectedRevision: body.expectedRevision }) + '\n');
+  });
+  page.on('response', async response => {
+    const id = traced.get(response.request()); if (!id) return;
+    try {
+      const value = await response.json(), data = value.data, task = data?.projection?.task;
+      appendFileSync(output + '/command-trace.jsonl', JSON.stringify({ id, at: Date.now(), phase: 'response', status: response.status(),
+        ok: value.ok, error: value.error?.code, kind: data?.kind,
+        run: data?.run && { id: data.run.runId, revision: data.run.revision, status: data.run.status },
+        session: data?.session && { id: data.session.sessionId, revision: data.session.revision, runs: data.session.runs?.map(r => ({ id: r.runId, status: r.status })) },
+        task: task && { reference: task.reference, revision: task.runRevision, execution: task.execution, reasons: task.reasons, budget: task.budget } }) + '\n');
+    } catch { /* A deliberately lost response has no authority; retain its request row. */ }
+  });
   const capture = async name => { await page.screenshot({ path: output + '/' + name + '.png', fullPage: true }); screenshots.push(name + '.png'); };
   await page.goto(url); await page.getByRole('button', { name: 'Create a session', exact: true }).click();
   await page.getByRole('button', { name: 'Define task', exact: true }).click();
@@ -201,6 +220,10 @@ try {
   throw error;
 } finally {
   await browser?.close(); await stop();
+  for (const name of ['requests.jsonl', 'transport-events.jsonl']) {
+    const content = await readFile(root + '/' + name).catch(() => undefined);
+    if (content) await writeFile(output + '/' + name, content);
+  }
   await writeFile(output + '/launcher.log', logs.replaceAll(root, '[FIXTURE_ROOT]').replaceAll('sk-offline-code05-never-sent', '[REDACTED]'));
   await rm(root, { recursive: true, force: true });
 }

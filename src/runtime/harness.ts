@@ -44,7 +44,7 @@ import { admitExplicitReviewResponses, hasHostApprovalReceipt, issueObservedAppr
 import { builtinToolPolicyPathResolver, BUILTIN_TOOL_POLICY_PATHS_VERSION, validateBuiltinToolPolicy } from "./tool-policy-paths.js";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { settleInterruptedRun } from "./run-interruption.js";
+import { composeRunInterruption, settleInterruptedRun } from "./run-interruption.js";
 import {
   Agent,
   applySafetyPolicyToAgent,
@@ -1298,15 +1298,9 @@ const runHarnessInternal = async (
   const invocationTimeout = input.timeoutMs ?? (harness.config.unlimitedDuration ? undefined : harness.config.timeoutMs);
   const invocationSignal = invocationTimeout === undefined ? undefined : AbortSignal.timeout(invocationTimeout);
   const executionFailure = new AbortController();
-  const combinedSignal = AbortSignal.any([
-    ...(callerSignal ? [callerSignal] : []), ...(invocationSignal ? [invocationSignal] : []), executionFailure.signal
-  ]);
-  const interruptionKind = (): 'cancelled' | 'timed_out' | undefined => {
-    if (!combinedSignal.aborted) return undefined;
-    if (invocationSignal?.aborted && combinedSignal.reason === invocationSignal.reason) return 'timed_out';
-    if (callerSignal?.aborted && combinedSignal.reason === callerSignal.reason) return 'cancelled';
-    return undefined;
-  };
+  const interruption = composeRunInterruption(callerSignal, invocationSignal, executionFailure.signal);
+  const combinedSignal = interruption.signal, interruptionKind = interruption.kind;
+  try {
   input = { ...input,
     toolExecution: { ...harnessToolExecution, ...harness.agent.toolExecution, ...input.toolExecution },
     abortSignal: combinedSignal };
@@ -1706,6 +1700,7 @@ const runHarnessInternal = async (
     }
     throw normalizeHarnessError(error);
   } finally { reportDiagnostics(); }
+  } finally { interruption.dispose(); }
 };
 
 export const appendUserMessage = (messages: readonly ModelMessage[], text: string): ModelMessage[] => [

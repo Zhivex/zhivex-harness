@@ -5,6 +5,7 @@ import path from 'node:path';
 const root = process.env.CODE_TASK_FIXTURE_ROOT;
 if (!root) throw Error('TASK_FIXTURE_ROOT_REQUIRED');
 const record = path.join(root, 'requests.jsonl');
+const trace = event => appendFileSync(path.join(root, 'transport-events.jsonl'), JSON.stringify({ at: Date.now(), ...event }) + '\n');
 const stateFile = path.join(root, 'provider-state.json');
 let state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')) : {};
 globalThis.fetch = async (url, options = {}) => {
@@ -25,11 +26,13 @@ globalThis.fetch = async (url, options = {}) => {
         send({ type: 'response.output_item.done', item: { type: 'function_call', status: 'completed', id: 'fc_' + id, call_id: 'call_' + id, name, arguments: JSON.stringify(input) } });
       };
       if (/slow-cancel/.test(goal) && !state.interrupted) {
+        trace({ event: 'slow_start', signalPresent: Boolean(options.signal), aborted: options.signal?.aborted });
         state.interrupted = true; writeFileSync(stateFile, JSON.stringify(state));
         send({ type: 'response.output_text.delta', delta: 'Synthetic provider is waiting. Cancellation cannot prove provider termination.' });
-        const stop = () => setTimeout(() => {
+        const stop = () => { trace({ event: 'abort_received' }); return setTimeout(() => {
+          trace({ event: 'stream_failed' });
           try { controller.error(new globalThis.DOMException('Synthetic interrupted response', 'AbortError')); } catch { /* Stream already closed. */ }
-        }, 1000);
+        }, 1000); };
         options.signal?.addEventListener('abort', stop, { once: true });
         if (options.signal?.aborted) stop();
         return;
