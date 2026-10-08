@@ -1,4 +1,5 @@
 import { reasoningEffortSchema, type HarnessReasoningEffort } from "../providers/reasoning.js";
+import { markTaskTransportModel } from './task-transport.js';
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import path from "node:path";
@@ -778,7 +779,11 @@ export const createProviderModel = (
   registry: HarnessProviderRegistry = DEFAULT_PROVIDER_REGISTRY
 ): LanguageModel => {
   try {
-    return registry.createModel(config, env);
+    const model = registry.createModel(config, env);
+    // Meta has continuation retries below the SDK's request ceiling. Custom
+    // registries and refreshable injected transports are outside guided tasks.
+    return registry === DEFAULT_PROVIDER_REGISTRY && ['anthropic', 'openai', 'gemini', 'vertex', 'qwen'].includes(config.provider)
+      ? markTaskTransportModel(model) : model;
   } catch (error) {
     throw new HarnessProviderError(`Provider ${config.provider} could not be initialized.`, {
       cause: error,

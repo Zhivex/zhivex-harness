@@ -58,6 +58,16 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
   db.exec(`CREATE TABLE IF NOT EXISTS client_activity_events(sequence INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session TEXT NOT NULL, run TEXT NOT NULL, at INTEGER NOT NULL, activity TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS client_activity_scope ON client_activity_events(scope, session, sequence);
     CREATE TABLE IF NOT EXISTS client_activity_snapshots(scope TEXT NOT NULL, session TEXT NOT NULL, sequence INTEGER NOT NULL, expired_through INTEGER NOT NULL DEFAULT 0, snapshot TEXT NOT NULL, PRIMARY KEY(scope,session));`);
+  // Reuse preparation; each invocation still validates private database access
+  // and persistence-secret rules in SqliteDatabase.
+  const readSnapshot = db.query<{snapshot:string;expired_through:number}>("SELECT snapshot,expired_through FROM client_activity_snapshots WHERE scope=? AND session=?");
+  const expiredEvents = db.query<{session:string;seq:number}>(`SELECT session,MAX(sequence) AS seq FROM client_activity_events WHERE scope=? AND (at < ? OR sequence NOT IN (SELECT sequence FROM client_activity_events WHERE scope=? ORDER BY sequence DESC LIMIT ?)) GROUP BY session`);
+  const markExpired = db.query("UPDATE client_activity_snapshots SET expired_through=MAX(expired_through,?) WHERE scope=? AND session=?");
+  const deleteExpired = db.query("DELETE FROM client_activity_events WHERE scope=? AND session=? AND sequence<=?");
+  const insertEvent = db.query("INSERT INTO client_activity_events(scope,session,run,at,activity) VALUES(?,?,?,?,?)");
+  const lastSequence = db.query<{seq:number}>("SELECT last_insert_rowid() AS seq");
+  const saveSnapshot = db.query("INSERT INTO client_activity_snapshots(scope,session,sequence,snapshot) VALUES(?,?,?,?) ON CONFLICT(scope,session) DO UPDATE SET sequence=excluded.sequence,snapshot=excluded.snapshot");
+  const readEvents = db.query<{sequence:number;session:string;run:string;at:number;activity:string}>("SELECT sequence,session,run,at,activity FROM client_activity_events WHERE scope=? AND session=? AND sequence>? ORDER BY sequence LIMIT 201");
   const redaction = createRedactionPolicy({includeEmails:true});
   const redact=(text:string)=>{
     let result=text;
@@ -84,12 +94,12 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     tails.set(key,text);return result;
   };
   const snapshot=(sessionId:string)=>{
-    const row=db.query<{snapshot:string;expired_through:number}>("SELECT snapshot,expired_through FROM client_activity_snapshots WHERE scope=? AND session=?").get(scope,sessionId);
+    const row=readSnapshot.get(scope,sessionId);
     return { state:row?JSON.parse(row.snapshot) as HarnessActivitySnapshot:{schemaVersion:1 as const,sessionId,sequence:0,runs:{}}, expiredThrough:row?.expired_through??0 };
   };
   const prune=()=>{
-    const expired=db.query<{session:string;seq:number}>(`SELECT session,MAX(sequence) AS seq FROM client_activity_events WHERE scope=? AND (at < ? OR sequence NOT IN (SELECT sequence FROM client_activity_events WHERE scope=? ORDER BY sequence DESC LIMIT ?)) GROUP BY session`).all(scope,now()-retentionMs,scope,maxEvents);
-    for(const row of expired){db.query("UPDATE client_activity_snapshots SET expired_through=MAX(expired_through,?) WHERE scope=? AND session=?").run(row.seq,scope,row.session);db.query("DELETE FROM client_activity_events WHERE scope=? AND session=? AND sequence<=?").run(scope,row.session,row.seq);}
+    const expired=expiredEvents.all(scope,now()-retentionMs,scope,maxEvents);
+    for(const row of expired){markExpired.run(row.seq,scope,row.session);deleteExpired.run(scope,row.session,row.seq);}
   };
   const write=(sessionId:string,runId:string,activity:Record<string,unknown>)=>{
     if(!/^[A-Za-z0-9._:-]{1,128}$/.test(sessionId)||!/^[A-Za-z0-9._:-]{1,128}$/.test(runId))throw new Error("ACTIVITY_ID_INVALID");
@@ -111,12 +121,12 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       if(activity.type==="agent-run-start")state.status="running";
       if(activity.type==="tool-approval-request"||activity.type==="agent-approval-request")state.status="waiting_approval";
       current.runs[runId]=state;
-      db.query("INSERT INTO client_activity_events(scope,session,run,at,activity) VALUES(?,?,?,?,?)").run(scope,sessionId,runId,at,encoded);
-      current.sequence=db.query<{seq:number}>("SELECT last_insert_rowid() AS seq").get()!.seq;
+      insertEvent.run(scope,sessionId,runId,at,encoded);
+      current.sequence=lastSequence.get()!.seq;
       // Include the final sequence in the byte bound. Compaction never deletes
       // journal events or claims that a retained cursor lost policy evidence.
       const bounded = serializeBoundedSnapshot(current, runId);
-      db.query("INSERT INTO client_activity_snapshots(scope,session,sequence,snapshot) VALUES(?,?,?,?) ON CONFLICT(scope,session) DO UPDATE SET sequence=excluded.sequence,snapshot=excluded.snapshot").run(scope,sessionId,current.sequence,bounded);
+      saveSnapshot.run(scope,sessionId,current.sequence,bounded);
       prune();db.exec("COMMIT");
     }catch(e){db.exec("ROLLBACK");throw e;}
   };
@@ -175,7 +185,7 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       const current=snapshot(sessionId);const expired=after<current.expiredThrough;
       if(after>current.state.sequence)throw new Error("ACTIVITY_CURSOR_AHEAD");
       if(expired)return {schemaVersion:1,cursorExpired:true,hasMore:false,policyEvidenceIncomplete:true,nextCursor:current.state.sequence,events:[],snapshot:current.state};
-      const rows=db.query<{sequence:number;session:string;run:string;at:number;activity:string}>("SELECT sequence,session,run,at,activity FROM client_activity_events WHERE scope=? AND session=? AND sequence>? ORDER BY sequence LIMIT 201").all(scope,sessionId,after);
+      const rows=readEvents.all(scope,sessionId,after);
       const events=rows.slice(0,200).map(row=>({schemaVersion:1 as const,eventId:createHash("sha256").update(`${scope}:${row.sequence}`).digest("hex"),sequence:row.sequence,sessionId:row.session,runId:row.run,at:row.at,activity:JSON.parse(row.activity)}));
       return {schemaVersion:1,cursorExpired:false,hasMore:rows.length>200,policyEvidenceIncomplete:current.expiredThrough>0,nextCursor:events.at(-1)?.sequence??after,events};
     },

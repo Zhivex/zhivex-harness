@@ -11,15 +11,17 @@ Git worktree yourself if your checkout contains changes you want to preserve.
 Code never stashes, resets, commits or pushes your files automatically.
 
 ```text
-/task start {"goal":"Fix greeting punctuation","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"]}
+/task start {"goal":"Fix greeting punctuation","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}
 Fix greeting punctuation and run the declared check.
 /task review
 /task keep
 ```
 
-`start` inspects the baseline and prepares a draft. The first submitted request
-saves the goal, constraints, baseline digests and exact check contract with its
-run in the existing engine store. Exiting before that request discards the draft.
+`start` inspects the baseline, establishes its persistent budget authority and
+saves a bounded task draft in the existing engine store. It survives exit even
+if the first request is refused before a run checkpoint exists. The first
+submitted request binds the goal, constraints, baseline digests and exact check
+contract to its execution run. A draft is a control record, not a model run.
 The first slice supports the native backend, without subagents, 1–20 selected
 existing Git-tracked text files (at most 64 KiB of source bytes each), and 1–8
 allowlisted package scripts. `package.json` is protected from reviewed edits.
@@ -38,7 +40,7 @@ before and after the command. A later edit invalidates earlier evidence. Missing
 failed, uncertain or stale receipts leave the task incomplete. Passing checks
 leave human review pending; they do not prove the goal or subjective constraints.
 
-`/task review` displays the retained goal, constraints, receipts, human decision,
+`/task review` displays the retained goal, constraints, task budget, receipts, human decision,
 fresh Git diff and any drift in watched files. Reopening the conversation displays
 the same recap. `/task keep` checks freshness, shows a fresh review and asks you to
 type `keep`. It records your decision for that run and snapshot with a revision
@@ -63,7 +65,34 @@ projection from completed journal entries. It omits argv and command output and
 always says `taskVerified: false`: generic check receipts are observations, not a
 task contract or human acceptance. Existing run status and exit codes are unchanged.
 `/task` is currently available in direct CLI chat; service chat and web do not yet
-offer this guided workflow. There is no cumulative task USD budget in this slice.
+offer this guided workflow.
+
+The task's budget authority spans new turns, `/task revise`, `/continue` and
+process restarts. Those operations do not replenish its budget. `/usage` reports
+the authoritative task account in addition to the latest run's receipts. Requests,
+retries and model compaction reserve and charge the same account; unknown usage
+remains held and blocks further admission instead of being counted as free.
+USD figures are operator estimates, not invoices or guaranteed provider charges.
+Changes to `/budget` apply to future tasks; the current task retains the policy
+established at start. Use `/new` and `/task start` to establish another task.
+Guided tasks enable finite configured token ceilings, including when ordinary
+chat uses unlimited tokens. The recap shows the ceilings established at start.
+Legacy saved tasks without an established authority remain available for review,
+but require an explicit new task before further model calls.
+
+During a guided task, `/review` displays the same local evidence and Git diff as
+`/task review`. It does not start reviewer agents. `/connection` tests require
+a separate conversation because every guided-task model call must use its task
+budget authority.
+
+Task authority currently requires the native single-writer SQLite host and a
+vetted built-in transport. Direct Code tasks support OpenAI, Anthropic, Gemini
+and Vertex. Direct Qwen tasks lack explicit Chat-mode admission and are blocked;
+Meta and arbitrary custom transports are also blocked in this opt-in flow.
+See the [Harness CLI guide](../../../docs/CLI.md) for the transport contract.
+Cancellation requests cooperative stopping and retains any unresolved prior
+invocation. A new run cannot take over while that invocation is pending, even
+when its token receipts are complete. Complete late usage remains charged.
 
 ## Reproducible offline demonstration
 
@@ -81,3 +110,5 @@ show the retained goal, constraint, receipt and human decision. These operations
 form a prepared 60-second demonstration; exact elapsed time is not certified.
 The installed PTY journey also changes a file externally, proves keep is blocked,
 and revises the task to show an actual failed check leaving it incomplete.
+
+Interactive no-cap hosts require the explicit `budget` object shown above. It belongs only to this TASK; ordinary chat defaults remain unchanged. On reopen/revise the original frozen task limits and monetary owner remain authoritative. Task review distinguishes confirmed estimates, reservations, unknown exposure held and late receipt counts; none is an invoice.

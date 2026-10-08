@@ -174,3 +174,59 @@ test("failed usage recovery releases the acquired durable lease", async () => {
   })).rejects.toThrow();
   expect(await durable.store.acquireLease!("recovery-failure", { ownerId: "replacement", ttlMs: 30_000 }, config.scope)).toBeDefined();
 });
+
+for (const transport of ["generate", "stream"] as const) test(`monetary admission preserves explicit large output caps (${transport})`, async () => {
+  const { ledger } = await fixture({ pricing, limitUsd: 1 });
+  const capped = model();
+  const seen: number[] = [];
+  capped.generate = async request => { seen.push(request.maxTokens!); return model().generate(request); };
+  capped.stream = async request => {
+    seen.push(request.maxTokens!);
+    return (async function* () { yield { type: "finish" as const, finishReason: "stop" as const, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }; })();
+  };
+  await ledger.run(transport, async () => {
+    for (const maxTokens of [8192, 128, undefined]) {
+      const request = { ...input, ...(maxTokens === undefined ? {} : { maxTokens }) };
+      if (transport === "generate") await ledger.model(capped).generate(request);
+      else for await (const _event of await ledger.model(capped).stream!(request)) { /* drain */ }
+    }
+  });
+  expect(seen).toEqual([8192, 128, 2048]);
+  expect(ledger.summary(transport)).toMatchObject({ calls: 3, usageComplete: true });
+});
+
+test("a large explicit cap reserves its full cost and rejects before transport", async () => {
+  const { ledger, config } = await fixture({ pricing, limitUsd: 0.005 });
+  let calls = 0;
+  const capped = model(); capped.generate = async () => { calls++; throw new Error("unexpected transport"); };
+  await expect(ledger.run("large", () => ledger.model(capped).generate({ ...input, maxTokens: 8192 }))).rejects.toThrow("USAGE_COST_BUDGET");
+  expect(calls).toBe(0);
+  expect(ledger.summary("large").calls).toBe(0);
+  ledger.close(); ledgers.splice(ledgers.indexOf(ledger), 1);
+  const reopened = await UsageLedger.open(config, { pricing, limitUsd: 100 }, () => now); ledgers.push(reopened);
+  await expect(reopened.run("large", () => reopened.model(capped).generate({ ...input, maxTokens: 8192 }))).rejects.toThrow("USAGE_COST_BUDGET");
+  expect(calls).toBe(0);
+});
+
+test("invalid monetary output caps cannot create negative or unbounded reservations", async () => {
+  const { ledger } = await fixture({ pricing, limitUsd: 1 });
+  for (const maxTokens of [0, -1, 1.5, NaN, Infinity]) {
+    await expect(ledger.run("invalid", () => ledger.model(model()).generate({ ...input, maxTokens }))).rejects.toThrow("USAGE_OUTPUT_CAP_INVALID");
+  }
+  expect(ledger.summary("invalid").calls).toBe(0);
+});
+
+test("parallel explicit large caps cannot oversubscribe the shared monetary reservation", async () => {
+  const { ledger } = await fixture({ pricing, limitUsd: 0.02 });
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(r => { entered = r; });
+  const hold = new Promise<void>(r => { release = r; });
+  const slow = model(); slow.generate = async request => { expect(request.maxTokens).toBe(8192); entered(); await hold; return model().generate(request); };
+  await ledger.run("explicit-parallel", async () => {
+    const active = ledger.model(slow).generate({ ...input, maxTokens: 8192 });
+    await started;
+    await expect(ledger.model(model("b")).generate({ ...input, maxTokens: 8192 })).rejects.toThrow("USAGE_COST_BUDGET");
+    release(); await active;
+  });
+  expect(ledger.summary("explicit-parallel")).toMatchObject({ calls: 1, usageComplete: true });
+});

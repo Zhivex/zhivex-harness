@@ -1,3 +1,6 @@
+import { TaskBudget, TASK_BUDGET_KEY, inspectTaskBudgetSummary } from './task-budget.js';
+import { bindHarnessTaskBudget, openHarnessTaskBudget } from './task-budget-host.js';
+import { createTaskTelemetry, type TaskTelemetrySnapshot } from './task-telemetry.js';
 import { createRequestMeasurements } from '../context/request-measurements.js';
 import { createRequestContextTools, createRequestProjection, selectRequestTools, REQUEST_PROJECTION_VERSION } from '../context/request-projection.js';
 import { withFreshSystemInstructions } from "./runtime-instructions.js";
@@ -11,7 +14,7 @@ import { EnvironmentPatchDriftError } from "../execution/patch-diagnostics.js";
 import { normalizeQwenReasoning, coalesceQwenReasoning } from "../context/qwen-reasoning.js";
 import { normalizeDelegationContracts, delegationFingerprint, withDelegationContracts, type HarnessDelegationContract } from "./delegation-contracts.js";
 import { assembleHarnessTools } from "../tools/tool-registry.js";
-import { UsageLedger, USAGE_LEDGER_KEY, type UsageAccountingOptions } from "./usage-ledger.js";
+import { UsageLedger, USAGE_LEDGER_KEY, runUsageLedgerWithPolicy, type UsageAccountingOptions } from "./usage-ledger.js";
 import { createCheckpointTokenCap, createRuntimeBudget, effectiveRuntimeBudget, runtimeManifest } from "./runtime-policy.js";
 import { createRepairController } from "./repair-controller.js";
 import { runtimeCheckpointStore, tokenUsageCheckpointStore, assistantResponseCheckpointStore, RUNTIME_DIAGNOSTICS_KEY } from "./runtime-checkpoints.js";
@@ -301,6 +304,20 @@ export interface HarnessRunOptions {
    * fresh approval. Timeouts, cancellation and indeterminate effects stay fatal. */
   maxTerminalVerificationRetries?: number;
 }
+
+/** Experimental Code host options; the Stable runHarness contract remains unchanged. */
+export interface HarnessTaskRunOptions extends HarnessRunOptions {
+  taskBudgetExisting?: boolean;
+  taskBudgetContinue?: boolean;
+  telemetryTemperature?: 'cold' | 'warm' | 'unknown';
+  onTaskTelemetry?: (telemetry: TaskTelemetrySnapshot) => void;
+}
+const taskInvocationOptions = new WeakMap<HarnessRunOptions, HarnessTaskRunOptions>();
+export const runHarnessTask = (harness: ZhivexHarness, input: AgentRunInput<LanguageModel>, options: HarnessTaskRunOptions = {}): Promise<AgentRunOutput> => {
+  const stableOptions: HarnessRunOptions = { ...options };
+  taskInvocationOptions.set(stableOptions, options);
+  return runHarness(harness, input, stableOptions);
+};
 
 export const estimateMessageTokens = (messages: readonly ModelMessage[]) => estimateMessages(messages);
 
@@ -697,6 +714,7 @@ const createHarnessOwned = async (options: CreateHarnessOptions): Promise<Zhivex
     }
   };
   policyRuntime = runtime;
+  bindHarnessTaskBudget(runtime, options.usageAccounting);
   bindTaskAcceptanceHost(runtime,{config,tools,...(options.toolPolicy?{policy:options.toolPolicy}:{})});
   bindHarnessPolicyInspection(runtime, { config, tools, ...(options.toolPolicy ? { policy: options.toolPolicy } : {}), operatorFile: options.toolPolicyFile !== undefined, hasOciEnvironment: executionEnvironment !== undefined });
   if (configuredPolicyDigest) bindHostPolicyIdentity(runtime, configuredPolicyDigest, options.toolPolicy?.explicitReview?.schemaVersion === 1);
@@ -1109,15 +1127,59 @@ export const runHarness = async (
   input: AgentRunInput<LanguageModel>,
   options: HarnessRunOptions = {}
 ): Promise<AgentRunOutput> => {
+  const taskOptions = taskInvocationOptions.get(options);
+  const telemetry = createTaskTelemetry({ temperature: taskOptions?.telemetryTemperature ?? 'unknown' });
+  telemetry.mark('prepare-start');
+  const eventOptions = { ...options, onEvent: async (event: AgentStreamEvent) => {
+    telemetry.observeEvent(event);
+    await options.onEvent?.(event);
+  } };
   const invocation='state'in input?input:{...input,runId:input.runId??`run_${randomUUID()}`};
-  return withTaskAcceptanceRun(harness,invocation,options.taskAcceptance,(prepared,ledger)=>runHarnessAuthorized(harness,prepared,options,ledger));
+  try {
+    return await withTaskAcceptanceRun(harness,invocation,options.taskAcceptance,async (prepared,ledger) => {
+      const metadata = 'state' in prepared ? prepared.state.metadata : prepared.metadata;
+      const binding = inspectTaskBudgetSummary(metadata?.[TASK_BUDGET_KEY]);
+      let account: TaskBudget | undefined;
+      if (taskOptions?.taskBudgetExisting || binding) {
+        if (prepared.tools || prepared.compaction || prepared.executionEnvironment || prepared.policy?.budgetCoordinator)
+          throw new Error('TASK_BUDGET_DISPATCH_OVERRIDE_UNSUPPORTED');
+        const taskId = ledger?.revisions.at(-1)?.contract.taskId;
+        if (!taskId || (binding && binding.taskId !== taskId)) throw new Error('TASK_BUDGET_ACCEPTANCE_BINDING_REQUIRED');
+        account = await openHarnessTaskBudget(harness, taskId);
+        await account.assertMonetaryReceipts(harness.usageLedger!);
+        const summary = await account.summary();
+        const runId = 'state' in prepared ? prepared.state.runId : prepared.runId!;
+        if (summary.admissionsClosed && taskOptions?.taskBudgetContinue && !('state' in prepared) && !summary.runs.includes(runId))
+          await account.reopen(summary.revision);
+      }
+      telemetry.mark('prepare-end');
+      const execute = async (signal?: AbortSignal) => {
+        const request = signal ? { ...prepared, abortSignal: signal } : prepared;
+        return runHarnessAuthorized(harness, request, eventOptions, ledger, account, telemetry);
+      };
+      if (!account) return execute();
+      const runId = 'state' in prepared ? prepared.state.runId : prepared.runId!;
+      const signal = AbortSignal.any([...(prepared.abortSignal ? [prepared.abortSignal] : []),
+        AbortSignal.timeout(prepared.timeoutMs ?? harness.config.timeoutMs)]);
+      const cancelled = () => telemetry.mark('cancel-requested');
+      signal.addEventListener('abort', cancelled, { once: true });
+      try { return await account.run(runId, execute, { signal }); }
+      finally { signal.removeEventListener('abort', cancelled); if (signal.aborted) telemetry.mark('cancel-settled'); }
+    });
+  } finally {
+    telemetry.finish();
+    const snapshot = telemetry.snapshot();
+    try { taskOptions?.onTaskTelemetry?.(snapshot); } catch { /* Supplemental diagnostics cannot change mandatory accounting. */ }
+  }
 };
 
 const runHarnessAuthorized = async (
   harness: ZhivexHarness,
   input: AgentRunInput<LanguageModel>,
   options: HarnessRunOptions,
-  acceptanceLedger?: TaskAcceptanceLedger
+  acceptanceLedger?: TaskAcceptanceLedger,
+  taskBudget?: TaskBudget,
+  telemetry?: ReturnType<typeof createTaskTelemetry>
 ): Promise<AgentRunOutput> => {
   if (requiresExplicitHostReview(harness)) {
     if (input.toolApprovalPolicy !== undefined) throw new HarnessConfigError('EXPLICIT_REVIEW_DISALLOWS_APPROVAL_OVERRIDE');
@@ -1146,12 +1208,14 @@ const runHarnessAuthorized = async (
     if (!('state' in input)) input = { ...input, scope };
   }
   const invocation = "state" in input ? input : { ...input, runId };
-  if (harness.usageLedger && "state" in input && input.state.metadata?.[USAGE_LEDGER_KEY]) harness.usageLedger.assertResume(runId);
+  if (harness.usageLedger && "state" in input && input.state.metadata?.[USAGE_LEDGER_KEY]) harness.usageLedger.assertResume(taskBudget?.accountRunId ?? runId);
+  const ownerId = taskBudget?.accountRunId ?? runId;
   const result = await (harness.usageLedger
-    ? harness.usageLedger.run(runId, () => runHarnessInternal(harness, invocation, options, acceptanceLedger), "state" in input && !input.state.metadata?.[USAGE_LEDGER_KEY])
-    : runHarnessInternal(harness, invocation, options, acceptanceLedger));
+    ? runUsageLedgerWithPolicy(harness.usageLedger, ownerId, () => runHarnessInternal(harness, invocation, options, acceptanceLedger, taskBudget, telemetry),
+      !taskBudget && "state" in input && !input.state.metadata?.[USAGE_LEDGER_KEY], taskBudget?.policy.usageAccounting)
+    : runHarnessInternal(harness, invocation, options, acceptanceLedger, taskBudget, telemetry));
   return harness.usageLedger ? { ...result, state: { ...result.state,
-    metadata: { ...result.state.metadata, [USAGE_LEDGER_KEY]: harness.usageLedger.summary(result.state.runId) }
+    metadata: { ...result.state.metadata, [USAGE_LEDGER_KEY]: harness.usageLedger.summary(ownerId) }
   } } : result;
 };
 
@@ -1159,14 +1223,40 @@ const runHarnessInternal = async (
   harness: ZhivexHarness,
   input: AgentRunInput<LanguageModel>,
   options: HarnessRunOptions,
-  acceptanceLedger?: TaskAcceptanceLedger
+  acceptanceLedger?: TaskAcceptanceLedger,
+  taskBudget?: TaskBudget,
+  telemetry?: ReturnType<typeof createTaskTelemetry>
 ): Promise<AgentRunOutput> => {
   const authorityHost = harness;
+  if (telemetry) {
+    const measuredStore = telemetry.store(harness.store);
+    harness = { ...harness, store: measuredStore, agent: new Agent({
+      ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
+      store: measuredStore, model: wrapLanguageModel(harness.agent.model, [telemetry.middleware])
+    }), ...(harness.compactionModel ? { compactionModel: wrapLanguageModel(harness.compactionModel,
+      [telemetry.modelMiddleware('compaction')]) } : {}) };
+  }
   if(acceptanceLedger) {
     const store=taskAcceptanceCheckpointStore(harness.store,'state'in input?input.state.runId:input.runId!,acceptanceLedger);
     harness={...harness,store,agent:new Agent({...Object.fromEntries(Object.entries(harness.agent).filter(([,value])=>value!==undefined)),store,
       ...(typeof harness.agent.instructions==='string'?{instructions:harness.agent.instructions+'\nThis run has application-owned acceptance requirements. Consult read_task for the exact acceptance contract before planning and after compaction. Agent proposals cannot change it. Subjective review remains pending; run completion alone is not acceptance evidence.'}:{})
     } as ConstructorParameters<typeof Agent>[0])};
+  }
+  if (taskBudget) {
+    const accountStore = taskBudget.checkpointStore(harness.store);
+    const store = new Proxy(accountStore, { get(target, key) {
+      if (key === 'save') return async (...args: Parameters<AgentRunStore['save']>) => {
+        const id = 'state' in input ? input.state.runId : input.runId;
+        if (args[0].runId === id && harness.usageLedger) args[0].metadata = { ...args[0].metadata,
+          [USAGE_LEDGER_KEY]: serializeJsonValue(harness.usageLedger.summary(taskBudget.accountRunId)) };
+        return target.save(...args);
+      };
+      const value: unknown = Reflect.get(target, key, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    } });
+    harness = { ...harness, store, agent: new Agent({
+      ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), store, model: harness.agent.model
+    }) };
   }
   const callerSignal = input.abortSignal;
   const invocationTimeout = input.timeoutMs ?? (harness.config.unlimitedDuration ? undefined : harness.config.timeoutMs);
@@ -1247,7 +1337,7 @@ const runHarnessInternal = async (
   let policyProgress: ReturnType<typeof createRepairProgress> | undefined;
   const approvalTimings: { durationMs: number; resolved: boolean }[] = [];
   if (harness.config.requireVerifiedDelivery) {
-    const limits = { inputTokens: harness.config.budget.unlimitedTokens ? Infinity : harness.config.budget.maxInputTokens,
+    const limits = taskBudget ? { inputTokens: taskBudget.policy.limits.inputTokens, outputTokens: taskBudget.policy.limits.outputTokens } : { inputTokens: harness.config.budget.unlimitedTokens ? Infinity : harness.config.budget.maxInputTokens,
       outputTokens: harness.config.budget.unlimitedTokens ? Infinity : harness.config.budget.maxOutputTokens };
     const metadata = ("state" in input ? input.state.metadata : input.metadata) ?? {};
     policyController = createRepairController(metadata, harness.config.execution.backend === "oci", {
@@ -1255,7 +1345,9 @@ const runHarnessInternal = async (
       workBudgetReached: request => workBudgetReached(request, policyBudget!.stats, limits),
       progressContext: () => policyProgress!.workingContext()
     });
-    const savedBudget = metadata[MODEL_BUDGET_KEY] ?? ("state" in input ? {
+    const priorTask = taskBudget ? await taskBudget.summary() : undefined;
+    const savedBudget = priorTask ? { inputTokens: priorTask.confirmed.inputTokens, outputTokens: priorTask.confirmed.outputTokens,
+      cachedInputTokens: 0, modelCalls: 0, usageComplete: priorTask.usageComplete, inFlight: false } : metadata[MODEL_BUDGET_KEY] ?? ("state" in input ? {
       inputTokens: input.state.usage?.inputTokens ?? 0, outputTokens: input.state.usage?.outputTokens ?? 0,
       cachedInputTokens: input.state.usage?.cachedInputTokens ?? 0, modelCalls: input.state.steps.length,
       usageComplete: false, inFlight: false
@@ -1269,9 +1361,18 @@ const runHarnessInternal = async (
     const store = runtimeCheckpointStore(harness.store, runId, policyBudget, policyProgress, policyController);
     harness = { ...harness, store, agent: new Agent({ ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)), tools, store,
       model: wrapLanguageModel(harness.agent.model, [policyController.middleware, policyBudget.middleware]),
-      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
+      instructions: harness.agent.instructions + "\nRepair controller: record exact verifier argv and purpose in repair_plan before editing. A concrete verifier commits the repair to producing and verifying a candidate before completion; a plan alone is not delivery. A candidate creates a mandatory verification obligation. " + (harness.config.budget.unlimitedTokens && !taskBudget ? "Cumulative token budgets are disabled." : "Thirty percent of tokens are reserved for closure; ordinary exploration cannot consume them.") }) };
   }
   input = withFreshSystemInstructions(input, typeof harness.agent.instructions === "string" ? harness.agent.instructions : undefined);
+  if (taskBudget) {
+    const middleware = taskBudget.middleware({ closure: () => policyController?.closure() ?? false, closeOnBudget: !harness.config.requireVerifiedDelivery });
+    const tools = telemetry ? telemetry.tools(toToolSet(harness.agent.tools) ?? {}) : toToolSet(harness.agent.tools) ?? {};
+    harness = { ...harness, agent: new Agent({
+      ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
+      tools, model: wrapLanguageModel(harness.agent.model, [middleware])
+    }), ...(harness.compactionModel ? { compactionModel: wrapLanguageModel(harness.compactionModel,
+      [taskBudget.middleware({ auxiliary: true, closure: () => policyController?.closure() ?? false })]) } : {}) };
+  }
   const latestInputMessage = !("state" in input) ? input.messages?.at(-1) : undefined;
   const isNewUserText = (text: string) => text.trim().length > 0 && !/^\[Compacted (?:conversation context|prior conversation)\]/.test(text.trimStart());
   const newUserRequest = !("state" in input) && (Boolean(input.prompt && isNewUserText(input.prompt)) ||
@@ -1291,8 +1392,10 @@ const runHarnessInternal = async (
       store, model: wrapLanguageModel(harness.agent.model, [delivery.middleware])
     }) };
   }
-  const contextRuntime = await createContextRuntime(harness.workspace,
-    structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled, { newUserRequest });
+  const initializeContext = () => createContextRuntime(harness.workspace,
+    structuredClone(("state" in input ? input.state.metadata : input.metadata) ?? {}), harness.config.context.enabled, {
+      newUserRequest, ...(telemetry ? { measurePreparation: (work: () => Promise<void>) => telemetry.measure('context', work) } : {}) });
+  const contextRuntime = await (telemetry ? telemetry.measure('context', initializeContext) : initializeContext());
   const contextStore = contextRuntime.store(harness.store, runId);
   const mutationNames = new Set(["apply_reviewed_edits", "apply_reviewed_replacement", "verify_and_apply_reviewed_edits", "apply_patch"]);
   const recoverySteps = "state" in input && !input.state.pendingApprovals.some(approval => mutationNames.has(approval.name))
@@ -1302,7 +1405,8 @@ const runHarnessInternal = async (
     return (step.response?.messages ?? []).flatMap(message => message.parts.flatMap(part =>
       part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
   });
-  const runtimeTools = nativeTaskTools(contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {}));
+  const nativeTools = nativeTaskTools(contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {}));
+  const runtimeTools = taskBudget ? taskBudget.wrapTools(nativeTools) : nativeTools;
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
     tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware,

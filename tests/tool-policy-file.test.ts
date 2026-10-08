@@ -13,10 +13,17 @@ const policy = { schemaVersion: 1, rules: [{ id: 'deny-shell', tools: ['run_comm
 const fixture = async (body: (root: string, filename: string) => Promise<void>) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'trusted-policy-'));
   const root = path.join(directory, 'workspace');
-  const filename = path.join(directory, 'policy.json');
+  // Some managed runners mark the entire temporary root as repository authority.
+  // An explicit host fixture root preserves the real outside-repository check.
+  const policyDirectory = process.env.ZHIVEX_HARNESS_TEST_POLICY_ROOT
+    ? await mkdtemp(path.join(process.env.ZHIVEX_HARNESS_TEST_POLICY_ROOT, 'host-policy-')) : directory;
+  const filename = path.join(policyDirectory, 'policy.json');
   await mkdir(root);
   await writeFile(filename, JSON.stringify(policy), { mode: 0o600 });
-  try { await body(root, filename); } finally { await rm(directory, { recursive: true, force: true }); }
+  try { await body(root, filename); } finally {
+    await rm(directory, { recursive: true, force: true });
+    if (policyDirectory !== directory) await rm(policyDirectory, { recursive: true, force: true });
+  }
 };
 
 test('explicit private policy loads a detached canonical policy and preserves restrictive decisions', () => fixture(async (root, filename) => {

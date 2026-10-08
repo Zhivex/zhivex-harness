@@ -617,6 +617,48 @@ export const openHarnessPersistence = async (
     const store = withBudgetLedgerStore(
       createSqliteAgentRunStore({ db: databaseLike, scope: config.scope, history: "incremental" }),
       createSqliteAgentRunStore({ db: databaseLike, scope: budgetScopeFor(config) }), config);
+    // The database enforces retention at the deletion itself, including raw SDK
+    // cleanup and another connection inserting task authority after a stale list.
+    // Ordinary runs retain their existing cleanup behavior.
+    database.exec(`CREATE TRIGGER IF NOT EXISTS zhivex_task_budget_retain_run
+      BEFORE DELETE ON zhivex_agent_runs
+      WHEN json_type(OLD.state_json, '$.metadata.zhivexTaskBudgetAccountV1') IS NOT NULL
+        OR json_type(OLD.state_json, '$.metadata.zhivexTaskBudgetV1') IS NOT NULL
+        OR json_extract(OLD.state_json, '$.runId') GLOB 'task_budget_*'
+        OR json_extract(OLD.state_json, '$.runId') GLOB 'task_draft_*'
+        OR (json_extract(OLD.state_json, '$.metadata.budgetCoordinator') = 1 AND EXISTS (
+          SELECT 1 FROM zhivex_agent_runs AS task_root
+          WHERE json_type(task_root.state_json, '$.metadata.zhivexTaskBudgetAccountV1') IS NOT NULL
+            AND json_extract(task_root.state_json, '$.budgetCoordinatorId') = json_extract(OLD.state_json, '$.metadata.budgetIdentity')))
+      BEGIN SELECT RAISE(ABORT, 'TASK_BUDGET_RETENTION_REQUIRED'); END;`);
+    // Core 1.30.1 save() offers CAS but does not fence leaseOwnerId. Guard
+    // invocation claim/clear at the SQLite write itself, so a paused expired
+    // worker cannot erase the marker after its earlier ownership check.
+    database.exec(`CREATE TRIGGER IF NOT EXISTS zhivex_task_budget_fence_invocation
+      BEFORE UPDATE OF state_json ON zhivex_agent_runs
+      WHEN json_type(OLD.state_json, '$.metadata.zhivexTaskBudgetAccountV1') IS NOT NULL
+        AND (json_type(OLD.state_json, '$.metadata.zhivexTaskBudgetAccountV1.invocation') IS NOT NULL
+          OR json_type(NEW.state_json, '$.metadata.zhivexTaskBudgetAccountV1.invocation') IS NOT NULL)
+        AND NOT EXISTS (SELECT 1 FROM zhivex_agent_runs_leases AS task_lease
+          WHERE task_lease.run_key = OLD.run_id
+            AND task_lease.owner_id = COALESCE(
+              json_extract(OLD.state_json, '$.metadata.zhivexTaskBudgetAccountV1.invocation.ownerId'),
+              json_extract(NEW.state_json, '$.metadata.zhivexTaskBudgetAccountV1.invocation.ownerId'))
+            AND task_lease.expires_at_ms > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      BEGIN SELECT RAISE(ABORT, 'TASK_BUDGET_LEASE_LOST'); END;`);
+    // Application-owned draft writes also require the live physical-key lease.
+    // This does not alter lease semantics for ordinary SDK run records.
+    for (const event of ['INSERT', 'UPDATE OF state_json']) database.exec(`
+      CREATE TRIGGER IF NOT EXISTS zhivex_task_draft_fence_${event.startsWith('INSERT') ? 'insert' : 'update'}
+      BEFORE ${event} ON zhivex_agent_runs
+      WHEN (json_type(NEW.state_json, '$.metadata.zhivexTaskDraftV1') IS NOT NULL
+        OR json_extract(NEW.state_json, '$.runId') GLOB 'task_draft_*'
+        ${event.startsWith('INSERT') ? '' : "OR json_type(OLD.state_json, '$.metadata.zhivexTaskDraftV1') IS NOT NULL OR json_extract(OLD.state_json, '$.runId') GLOB 'task_draft_*'"})
+        AND NOT EXISTS (SELECT 1 FROM zhivex_agent_runs_leases AS draft_lease
+          WHERE draft_lease.run_key = NEW.run_id
+            AND draft_lease.owner_id = json_extract(NEW.state_json, '$.metadata.taskDraftOwnerId')
+            AND draft_lease.expires_at_ms > CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))
+      BEGIN SELECT RAISE(ABORT, 'TASK_DRAFT_LEASE_LOST'); END;`);
     const memory = createSqliteAgentMemoryStore({ db: databaseLike, scope: config.scope });
     const migration = shouldMigrateLegacyRuns(config, options.migrateLegacyFileStore)
       ? await migrateLegacyFileRuns(config.stateDirectory, store, config)

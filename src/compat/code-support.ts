@@ -31,3 +31,10 @@ export { resolvePackageCheckCommand } from "../execution/package-manager.js";
 export { nativeTaskSnapshot } from "../runtime/task-acceptance-native.js";
 export { TASK_ACCEPTANCE_EVIDENCE_KEY } from "../runtime/task-acceptance-record.js";
 export { checkEvidence } from "../client/check-evidence.js";
+export { initializeHarnessTaskBudget, inspectHarnessTaskBudget, persistHarnessTaskDraft, readHarnessTaskDraft } from "../runtime/task-budget-host.js";
+export { TASK_BUDGET_KEY, inspectTaskBudgetSummary } from "../runtime/task-budget.js";
+
+export { createTaskTelemetry } from '../runtime/task-telemetry.js';
+
+export { runHarnessTask } from '../runtime/harness.js';
+export type { HarnessTaskRunOptions } from '../runtime/harness.js';

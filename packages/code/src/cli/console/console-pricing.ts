@@ -12,13 +12,16 @@ export const catalogPrice = (model: ModelCatalog["providers"][number]["models"][
 
 export const handleConsoleBudget = async (command: string, context: {
   options: CliOptions; provider: string; model: string;
+  guidedTask?: boolean;
   input: Pick<ConsoleInput, "select" | "question">;
   hasActiveTurn: () => Promise<unknown>; replaceOptions: (options: CliOptions) => Promise<void>;
   write?: (text: string) => void;
 }) => {
   if (command !== "/budget" && !command.startsWith("/budget ") && command !== "/pricing") return false;
   const write = context.write ?? (text => { process.stdout.write(text); });
-  write("Monetary policies are per RUN; every new turn, /continue and review group starts a new budget. Resuming a pending run retains its original policy. Estimates are not invoices or guaranteed financial caps.\n");
+  write(context.guidedTask
+    ? "The current guided task retains one monetary policy across new turns, corrections, /continue and restarts. Changes here apply to future tasks. Estimates are not invoices or guaranteed financial caps.\n"
+    : "Monetary policies are per RUN; every new turn, /continue and review group starts a new budget. Resuming a pending run retains its original policy. Estimates are not invoices or guaranteed financial caps.\n");
   if (command === "/pricing") {
     const snapshot = await loadModelCatalog();
     const model = snapshot.catalog.providers.find(item => item.id === context.provider)?.models.find(item => item.id === context.model);
@@ -27,13 +30,14 @@ export const handleConsoleBudget = async (command: string, context: {
     write("Catalog prices are advisory. Monetary execution limits use an explicit operator pricing file with validity dates for every active route.\n");
     return true;
   }
-  write(`Next run estimated USD limit: ${context.options.usageLimitUsd ?? "off"}; pricing file: ${sanitizeTerminalText(context.options.pricingFile ?? "none")}\n`);
+  const policyScope = context.guidedTask ? "future task" : "new run";
+  write(`${context.guidedTask ? "Future task" : "Next run"} estimated USD limit: ${context.options.usageLimitUsd ?? "off"}; pricing file: ${sanitizeTerminalText(context.options.pricingFile ?? "none")}\n`);
   if (await context.hasActiveTurn()) { write("Finish or deny pending work before changing the next-run policy.\n"); return true; }
   if (context.options.maxCostUsd !== undefined || process.env.ZHIVEX_HARNESS_MAX_COST_USD !== undefined) {
     write("A legacy measured-cost policy is configured. Start a console without it before selecting the transport-ledger policy.\n"); return true;
   }
   const argument = command.slice("/budget".length).trim();
-  const selected = argument || await context.input.select("Budget for each next run", [
+  const selected = argument || await context.input.select(context.guidedTask ? "Budget for future tasks" : "Budget for each next run", [
     { value: "", label: "Keep current policy" },
     { value: "set", label: "Set estimated USD limit and pricing file" },
     { value: "off", label: "Disable monetary limit", detail: "Other step, tool, time and token limits still apply" },
@@ -41,9 +45,9 @@ export const handleConsoleBudget = async (command: string, context: {
   if (!selected) return true;
   if (selected === "off") {
     const next = { ...context.options }; delete next.usageLimitUsd;
-    await context.replaceOptions(next); write("Monetary limit disabled for next runs.\n"); return true;
+    await context.replaceOptions(next); write(context.guidedTask ? "Monetary limit disabled for future tasks; current task policy retained.\n" : "Monetary limit disabled for next runs.\n"); return true;
   }
-  const amount = selected === "set" ? (await context.input.question("Estimated USD limit per new run: ")).trim() : selected;
+  const amount = selected === "set" ? (await context.input.question(`Estimated USD limit per ${policyScope}: `)).trim() : selected;
   if (!/^\d+(?:\.\d+)?$/.test(amount) || !Number.isFinite(Number(amount)) || Number(amount) <= 0) {
     write("Use a positive finite USD amount, or /budget off.\n"); return true;
   }
@@ -55,9 +59,9 @@ export const handleConsoleBudget = async (command: string, context: {
     write("Current model price is missing or stale; policy unchanged.\n"); return true;
   }
   write(sanitizeTerminalText(`Operator estimate: input $${price.inputUsdPerMillion}, output $${price.outputUsdPerMillion} / 1M tokens.\nSource: ${price.source}; valid ${price.asOf} through ${price.expiresAt}.\n`));
-  write("The engine reserves estimated requests with an output cap (up to 2048 tokens), and blocks missing/stale prices, uncertain usage or insufficient estimated budget. Other routes also require valid prices.\n");
-  if ((await context.input.question(`Type budget to apply $${amount} per new run: `)).trim() !== "budget") return true;
+  write("The engine reserves estimated requests using their explicit output cap, with a 2048-token fallback when none is supplied, and blocks missing/stale prices, uncertain usage or insufficient estimated budget. Other routes also require valid prices.\n");
+  if ((await context.input.question(`Type budget to apply $${amount} per ${policyScope}: `)).trim() !== "budget") return true;
   await context.replaceOptions({ ...context.options, pricingFile: path.resolve(file), usageLimitUsd: Number(amount) });
-  write(`Estimated USD limit set: $${amount} per new run.\n`);
+  write(`Estimated USD limit set: $${amount} per ${policyScope}.\n`);
   return true;
 };

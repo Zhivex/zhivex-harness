@@ -45,7 +45,8 @@ Console `/usage` and run JSON `usageLedger` expose usage by API provider/model.
 Calls are recorded before transport in the private operations SQLite database;
 SDK child rollups are not added a second time. Missing usage and interrupted calls
 remain incomplete across restarts. A run's original price snapshot and cap survive
-`resume`; a new chat turn starts a new run budget, not a cumulative session budget.
+`resume`; ordinary chat turns start new run budgets. Code's opt-in guided `/task`
+uses one established task owner across new turns, `/continue`, and revise.
 
 Use `--pricing-file <file.json> --usage-limit-usd <amount>` for a per-run monetary
 limit across parent and child routes. The file is a schemaVersion 1 object with a
@@ -54,6 +55,9 @@ limit across parent and child routes. The file is a schemaVersion 1 object with 
 Prices are operator-supplied estimates, never confirmed invoices. Missing/expired
 prices or unresolved usage block new budgeted calls. The next request reserves
 estimated input and capped output before transport; parallel calls share the cap.
+Explicit positive integer output caps are preserved, including caps above 2,048;
+the ledger uses 2,048 only when a request omits its cap. If the full reservation
+does not fit, admission fails before transport instead of silently shrinking it.
 Input prediction is heuristic; it is not a provider tokenizer or billing guarantee.
 Actual usage above the estimate is retained and blocks further calls if exhausted.
 Cache discounts and special billing tiers are not modeled; configure conservative
@@ -61,8 +65,34 @@ inclusive rates. Qwen routes without an explicit supported output cap are blocke
 under this monetary policy. Unpriced non-budgeted runs report unknown cost.
 Legacy `--max-cost-usd` pricing remains available with its existing homogeneous-route
 restriction; do not combine the two monetary policies.
-Resume of pre-ledger runs marks historical usage unknown. Importing only a run
-snapshot cannot reset an existing ledger budget: restore the complete state backup.
+Resume of pre-ledger runs marks historical usage unknown. Logical JSON state
+exports do not include the transport monetary policy/call tables. Importing such
+an export cannot restore a guided task's monetary authority and further execution
+fails closed with `USAGE_LEDGER_MISSING`. Retain the original complete operations
+SQLite database, or restore a consistent complete database copy including its
+transport tables. Copy a quiescent database with its required SQLite journal
+state; a run snapshot, logical export, or token-coordinator record cannot reset
+spending. Unknown consumption also keeps reservations held and blocks admission.
+
+Guided task authority currently requires the native single-writer SQLite host and
+vetted built-in transports. Meta's internal continuation retries and arbitrary
+injected/custom adapters are blocked for this path. Direct Code Qwen tasks are
+blocked because this CLI has no explicit Chat-mode admission; a supported
+explicit-Chat auxiliary adapter can be capped. Existing ordinary chat/provider retry behavior remains
+available. New task transports disable internal SDK retries and allow one provider
+request per reservation; retries or compaction must use the same owner. Thirty
+percent of the token ceiling remains available for bounded closure. A local abort
+closes new admission and requests cooperative stopping; it does not prove that a
+provider stopped billing. Complete late usage receipts remain charged.
+
+Older guided tasks without an established budget remain readable and reviewable.
+Continuing them is blocked because historical consumption cannot be reconstructed
+as zero. Create a separate new task explicitly when a new budget is intended.
+Task control records and linked token ledgers are retained; SQLite rejects their
+deletion through ordinary run cleanup. Downgrading to a version without this
+task contract cannot safely continue it; preserve the complete database first.
+See [minimum task authority](MINIMUM_TASK_AUTHORITY.md) for the transport matrix,
+recovery boundaries and measured local evidence.
 
 The Zhivex Harness `1.0` release is Node-first and exposes a durable agent console, explicit personal provider/model profiles, bounded project context, offline change-envelope operations, plus versioned JSON documents and JSON Lines events for automation. Bun remains a supported target-repository package manager and contributor tool.
 

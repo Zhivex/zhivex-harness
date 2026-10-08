@@ -9,7 +9,7 @@ import { harnessExecutionSession } from "../execution/execution-environment.js";
 export const SCOPED_CONTEXT_KEY = "zhivexScopedContext";
 /** Per invocation; only SDK-owned saves persist these observers. */
 export async function createContextRuntime(workspace: Workspace, metadata: Record<string, unknown>, enabled: boolean,
-  options: { newUserRequest?: boolean } = {}) {
+  options: { newUserRequest?: boolean; measurePreparation?: (work: () => Promise<void>) => Promise<void> } = {}) {
   const monitor = createProgressMonitor(metadata);
   // A user asking again starts a new reasoning turn. Approval resumes and
   // tool-only continuations keep their history, so retries cannot reset a loop.
@@ -59,10 +59,13 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
         : ""].filter(Boolean).join("\n\n");
     if (text) input.messages = [{ role: "system", parts: [{ type: "text", text }] }, ...input.messages];
   };
+  // Time only request preparation, never next() or consumption of model output.
+  const prepareRequest = (input: ModelGenerateInput) => options.measurePreparation
+    ? options.measurePreparation(() => prepare(input)) : prepare(input);
   const middleware: LanguageModelMiddleware = {
     name: "harness-context-progress-v2",
     async wrapGenerate(context, next) {
-      await prepare(context.input);
+      await prepareRequest(context.input);
       const result = await next();
       // Narrating an unchanged tool cycle is not new evidence. Observe prose
       // only on text-only turns; tool results drive progress for tool turns.
@@ -71,7 +74,7 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
       return result;
     },
     async wrapStream(context, next) {
-      await prepare(context.input);
+      await prepareRequest(context.input);
       const stream = await next();
       return (async function* () {
         let text = "";
