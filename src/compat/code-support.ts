@@ -33,6 +33,7 @@ export { TASK_ACCEPTANCE_EVIDENCE_KEY } from "../runtime/task-acceptance-record.
 export { checkEvidence } from "../client/check-evidence.js";
 export { initializeHarnessTaskBudget, inspectHarnessTaskBudget, requestHarnessTaskCancellation, persistHarnessTaskDraft, readHarnessTaskDraft } from "../runtime/task-budget-host.js";
 export { TASK_BUDGET_KEY, inspectTaskBudgetSummary } from "../runtime/task-budget.js";
+export { inspectHarnessTaskContinuity } from '../runtime/task-continuity.js';
 
 export { createTaskTelemetry } from '../runtime/task-telemetry.js';
 

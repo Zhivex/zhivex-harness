@@ -2772,6 +2772,11 @@
           "tier": "experimental"
         },
         {
+          "name": "inspectHarnessTaskContinuity",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
           "name": "createTaskTelemetry",
           "kind": "runtime",
           "tier": "experimental"

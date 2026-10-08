@@ -2,8 +2,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { compileTaskAcceptanceContract, type TaskAcceptanceContract, type ZhivexHarness } from '@zhivex-ai/harness/engine';
-import { formatUsageLedger, initializeHarnessTaskBudget, inspectHarnessTaskBudget, inspectTaskBudgetSummary, nativeTaskSnapshot, resolvePackageCheckCommand, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '@zhivex-ai/harness/code-support';
+import { compileTaskAcceptanceContract, reviseHarnessTaskAcceptance, type TaskAcceptanceContract, type ZhivexHarness } from '@zhivex-ai/harness/engine';
+import { formatUsageLedger, initializeHarnessTaskBudget, inspectHarnessTaskBudget, inspectHarnessTaskContinuity, inspectTaskBudgetSummary, nativeTaskSnapshot, resolvePackageCheckCommand, TASK_ACCEPTANCE_EVIDENCE_KEY, TASK_BUDGET_KEY } from '@zhivex-ai/harness/code-support';
 import type { AgentRunState } from '@zhivex-ai/core';
 import { sanitizeTerminalText } from '../terminal/terminal-ui.js';
 import { consoleWorkspaceDiff } from './console-diff.js';
@@ -82,6 +82,44 @@ export function codeTaskPrompt(task: CodeTask, prompt: string): string {
     `Passing checks leave human review pending; do not claim operator acceptance.\n\n${prompt}`;
 }
 
+/** Recover only Code's append-only human correction; never infer a new scope or baseline. */
+export async function recoverCodeTask(harness: ZhivexHarness, task: CodeTask): Promise<CodeTask> {
+  if (task.budgetVersion !== 1) return task;
+  const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+  const current = recovery.currentContract;
+  const digest = compileTaskAcceptanceContract(task.contract).digest;
+  if (!current || current.digest === digest) return task;
+  const history = recovery.runs.at(-1)!.ledger.revisions;
+  const prior = history.findIndex(revision => revision.digest === digest);
+  const requirements = current.contract.humanReview;
+  const constraints = requirements.filter(item => item.id !== 'operator').map(item => item.requirement);
+  if (prior < 0 || requirements.find(item => item.id === 'operator')?.requirement !== task.goal ||
+    constraints.length <= task.constraints.length || constraints.length > 8 ||
+    task.constraints.some((value, index) => constraints[index] !== value) ||
+    requirements.filter(item => item.id !== 'operator').some((item, index) => item.status !== 'pending' || item.id !== `constraint-${index + 1}`) ||
+    history.slice(prior + 1).some(revision => compileTaskAcceptanceContract({ ...revision.contract, humanReview: task.contract.humanReview }).digest !== digest)) {
+    throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+  }
+  return { ...task, constraints, contract: current.contract, keep: undefined };
+}
+
+/** An explicit operator correction revises existing durable authority before a new brief is used. */
+export async function reviseCodeTask(harness: ZhivexHarness, task: CodeTask, correction: string): Promise<CodeTask> {
+  if (!correction.trim() || correction.length > 500 || task.constraints.length >= 8) throw new Error('A correction must be 1–500 characters; at most 8 constraints are supported.');
+  const next: CodeTask = { ...task, constraints: [...task.constraints, correction], keep: undefined,
+    contract: { ...task.contract, humanReview: [{ id: 'operator', requirement: task.goal, status: 'pending' },
+      ...[...task.constraints, correction].map((requirement, index) => ({ id: `constraint-${index + 1}`, requirement, status: 'pending' as const }))] } };
+  const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+  const latest = recovery.runs.at(-1);
+  if (recovery.budget.runs.length && !latest) throw new Error('TASK_CONTINUITY_RUN_MISSING');
+  if (latest) {
+    if (recovery.currentContract?.digest !== compileTaskAcceptanceContract(task.contract).digest) throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+    await reviseHarnessTaskAcceptance(harness, { runId: latest.runId, expectedRunRevision: latest.revision!,
+      expectedContractRevision: recovery.currentContract!.revision, contract: next.contract });
+  }
+  return { ...next, contract: compileTaskAcceptanceContract(next.contract).contract };
+}
+
 export function codeTaskBudgetRecap(value: unknown): string {
   const { monetary, monetaryDetails, cancellations, ...tokenSummary } = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const summary = inspectTaskBudgetSummary(tokenSummary);
@@ -126,6 +164,11 @@ export async function freshCodeTaskRecap(harness: ZhivexHarness, state?: AgentRu
   const task = restoredCodeTask(state);
   const budget = task?.budgetVersion === 1 ? await inspectHarnessTaskBudget(harness, task.contract.taskId) : undefined;
   const recap = codeTaskRecap(state, budget);
+  if (task?.budgetVersion === 1) {
+    const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+    if (recovery.reasons.length) return recap.replace(/Next:[^\n]*\n/, 'Next: resolve continuity blockers using durable evidence; execution and keep remain blocked.\n') +
+      `CONTINUITY BLOCKED: ${recovery.reasons.join(', ')}. Review durable evidence before execution or keep.\n`;
+  }
   const evidence: any = state?.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY];
   if (task && evidence?.contractDigest && evidence.contractDigest !== compileTaskAcceptanceContract(task.contract).digest) {
     return recap + 'REQUIREMENTS CONFLICT: the engine contract differs from this Code brief. Keep is blocked; reconcile requirements before another task turn.\n';
@@ -145,6 +188,15 @@ export async function keepCodeTask(harness: ZhivexHarness, state: AgentRunState,
   const task = restoredCodeTask(state);
   const evidence: any = state.metadata?.[TASK_ACCEPTANCE_EVIDENCE_KEY];
   if (!task || state.status !== 'completed' || evidence?.status !== 'pending_review' || !evidence.delivery) throw new Error('Task is not ready: every declared check must pass after the final edit and the agent must finish.');
+  const validateContinuity = async () => {
+    if (task.budgetVersion !== 1) throw new Error('TASK_CONTINUITY_BUDGET_REQUIRED');
+    const recovery = await inspectHarnessTaskContinuity(harness, task.contract.taskId);
+    const current = recovery.runs.at(-1);
+    if (recovery.reasons.length || current?.runId !== state.runId || current.revision !== state.revision || current.checks.some(check => check.status !== 'confirmed'))
+      throw new Error('TASK_CONTINUITY_REVIEW_BLOCKED: reload the current task and reconcile missing or stale evidence.');
+    if (recovery.currentContract?.digest !== compileTaskAcceptanceContract(task.contract).digest) throw new Error('TASK_CONTINUITY_CONTRACT_CONFLICT');
+  };
+  await validateContinuity();
   if (evidence.contractDigest !== compileTaskAcceptanceContract(task.contract).digest) throw new Error('Task requirements changed outside this Code brief. No keep decision was saved; reconcile the engine contract first.');
   const ledger = { schemaVersion: 1 as const, revisions: [{ revision: 1, previousDigest: null, ...compileTaskAcceptanceContract(task.contract) }] };
   const current = await nativeTaskSnapshot(harness.workspace, ledger, state.runId);
@@ -154,6 +206,7 @@ export async function keepCodeTask(harness: ZhivexHarness, state: AgentRunState,
   if (diff.startsWith('Git review unavailable')) throw new Error('Cannot keep without a current Git review.');
   const budget = task.budgetVersion === 1 ? await inspectHarnessTaskBudget(harness, task.contract.taskId) : undefined;
   if (!await confirm(codeTaskRecap(state, budget) + diff)) return;
+  await validateContinuity();
   if ((await nativeTaskSnapshot(harness.workspace, ledger, state.runId)).snapshotDigest !== current.snapshotDigest ||
       await consoleWorkspaceDiff(harness.workspace) !== diff) throw new Error('Files or Git review changed during review; no keep decision was saved.');
   await requireGitVisibleTaskFiles(harness, task.contract.allowedWritePaths);
