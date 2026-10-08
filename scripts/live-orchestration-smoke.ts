@@ -121,8 +121,11 @@ const certifyProvider = async (
     assert.ok(result.outputText.includes(parentToken(provider)), result.outputText);
     checkpoint = "orchestration_delegation";
     const delegations = result.toolResults.filter((entry) => entry.toolName === "delegate_reviewer");
-    assert.equal(delegations.length, 1);
-    assert.equal(delegations[0]?.isError, false);
+    const executed = delegations.filter((entry) => !entry.isError);
+    // One response may repeat the task id. The runtime refuses the duplicate
+    // without starting a child; certification still requires one execution.
+    assert.equal(executed.length, 1, "Bounded orchestration must execute delegate_reviewer once.");
+    assert.ok(delegations.every((entry) => !entry.isError || entry.error?.code === "TOOL_INPUT_VALIDATION_ERROR"));
     checkpoint = "orchestration_child";
     assert.equal(result.state.childRuns?.length, 1);
     const child = result.state.childRuns?.[0];

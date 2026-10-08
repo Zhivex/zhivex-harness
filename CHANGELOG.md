@@ -4,6 +4,11 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Refuse a second `delegate_*` call for a task that was already accepted in the same model response. The duplicate stays non-executable and the next turn tells the coordinator to use the completed result instead of retrying. A later model step can still recover from an invalid call that did not execute. Paused runs bound to the previous delegation fingerprint must be completed with the artifact that created them.
+- Document that Qwen live certification accepts `DASHSCOPE_API_KEY` alone. `QWEN_API_KEY`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, and `QWEN_REGION` remain optional overrides.
+
 ## 1.4.0-rc.7 - 2026-10-08
 
 - Prepare matched Harness 1.4.0-rc.7 and Code 0.3.0-rc.7 for npm `next`, with the exact Code engine pin, private Desktop binding and an additive representative mapping using unchanged models. Retain the SDK pins already on main (Core 1.31.0, Agents 1.11.0 and the existing provider packages). Stable `latest` stays Harness 1.3.0 and Code 0.2.0.

@@ -45,7 +45,7 @@ export const delegationPrompt = (contract: HarnessDelegationContract) =>
     : `Application-owned task ${contract.taskId}:\n${contract.prompt}\nAllowed read paths: ${JSON.stringify(contract.allowedReadPaths)}.\nInclude this exact completion marker on its own line in the final response, without a label or prefix: ${contract.requiredOutput}`;
 
 export const delegationFingerprint = (contracts: readonly HarnessDelegationContract[]) =>
-  createHash("sha256").update(JSON.stringify({ policy: "completion-marker-v4-recoverable-input", contracts })).digest("hex");
+  createHash("sha256").update(JSON.stringify({ policy: "completion-marker-v5-single-response-delegate", contracts })).digest("hex");
 
 /** Adapt the public task-ID contract to the SDK's durable subagent protocol.
  * Only validated IDs resolve to trusted prompts. SDK still owns approvals,
@@ -70,27 +70,46 @@ export const withDelegationContracts = (model: LanguageModel, contracts: readonl
       }]] : [];
     }));
     const calls = new Map<string, string>();
+    const duplicateCallIds = new Set<string>();
+    const trusted = (name: string, input: unknown) => {
+      const contract = byTool.get(name);
+      return Boolean(contract && z.strictObject({ prompt: z.literal(delegationPrompt(contract)) }).safeParse(input).success);
+    };
     // Only exact trusted prompts have a public task-ID representation. Failed
     // calls must not appear in history as if the model selected a valid task.
-    input.messages = input.messages.map(message => ({ ...message, parts: message.parts.map(part => {
-      if (message.role === "assistant" && part.type === "tool-call") {
-        calls.set(part.toolCall.id, part.toolCall.name);
-        const contract = byTool.get(part.toolCall.name);
-        return contract && z.strictObject({ prompt: z.literal(delegationPrompt(contract)) }).safeParse(part.toolCall.input).success
-          ? { ...part, toolCall: { ...part.toolCall, input: { taskId: contract.taskId } } } : part;
+    input.messages = input.messages.map(message => {
+      if (message.role === "assistant") {
+        const executed = new Set(message.parts.flatMap(part =>
+          part.type === "tool-call" && trusted(part.toolCall.name, part.toolCall.input) ? [part.toolCall.name] : []));
+        return { ...message, parts: message.parts.map(part => {
+          if (part.type !== "tool-call") return part;
+          calls.set(part.toolCall.id, part.toolCall.name);
+          const contract = byTool.get(part.toolCall.name);
+          if (contract && trusted(part.toolCall.name, part.toolCall.input)) {
+            return { ...part, toolCall: { ...part.toolCall, input: { taskId: contract.taskId } } };
+          }
+          if (contract && executed.has(part.toolCall.name)) duplicateCallIds.add(part.toolCall.id);
+          return part;
+        }) };
       }
-      if (message.role !== "tool" || part.type !== "tool-result") return part;
-      const result = part.toolResult;
-      if (calls.get(result.toolCallId) !== result.toolName) return part;
-      calls.delete(result.toolCallId);
-      if (!result.isError || !result.error) return part;
-      const contract = byTool.get(result.toolName);
-      const guidance = result.error.code === "TOOL_INPUT_VALIDATION_ERROR" && contract
-        ? `Delegation was not executed. Retry ${result.toolName} with exactly ${JSON.stringify({ taskId: contract.taskId })}. Supply only taskId; do not send prompt, system, or other fields.`
-        : result.error.code === "TOOL_NOT_REGISTERED"
-          ? `Use only these application-owned delegations: ${[...byTool].map(([name, item]) => `${name} ${JSON.stringify({ taskId: item.taskId })}`).join("; ")}.` : undefined;
-      return guidance ? { ...part, toolResult: { ...result, error: { ...result.error, message: `${result.error.message} ${guidance}` } } } : part;
-    }) }));
+      if (message.role !== "tool") return message;
+      return { ...message, parts: message.parts.map(part => {
+        if (part.type !== "tool-result") return part;
+        const result = part.toolResult;
+        if (calls.get(result.toolCallId) !== result.toolName) return part;
+        calls.delete(result.toolCallId);
+        if (!result.isError || !result.error) return part;
+        const contract = byTool.get(result.toolName);
+        const guidance = result.error.code === "TOOL_INPUT_VALIDATION_ERROR" && contract
+          ? duplicateCallIds.has(result.toolCallId)
+            ? `Delegation was not executed again. Do not call ${result.toolName} again; use the completed result for task ${JSON.stringify(contract.taskId)}.`
+            : `Delegation was not executed. Retry ${result.toolName} with exactly ${JSON.stringify({ taskId: contract.taskId })}. Supply only taskId; do not send prompt, system, or other fields.`
+          : result.error.code === "TOOL_NOT_REGISTERED"
+            ? `Use only these application-owned delegations: ${[...byTool].map(([name, item]) => `${name} ${JSON.stringify({ taskId: item.taskId })}`).join("; ")}.` : undefined;
+        return guidance ? { ...part, toolResult: { ...result, error: { ...result.error, message: `${result.error.message} ${guidance}` } } } : part;
+      }) };
+    });
+    const accepted = new Set<string>();
     return (call: ToolCall): ToolCall => {
       const contract = byTool.get(call.name);
       if (!contract) {
@@ -99,12 +118,13 @@ export const withDelegationContracts = (model: LanguageModel, contracts: readonl
         if (registered.has(call.name)) throw Object.assign(new HarnessConfigError("DELEGATION_CONTRACT_VIOLATION"), { delegation: "contract" });
         return call;
       }
-      if (!z.strictObject({ taskId: z.literal(contract.taskId) }).safeParse(call.input).success) {
+      if (!z.strictObject({ taskId: z.literal(contract.taskId) }).safeParse(call.input).success || accepted.has(contract.taskId)) {
         // SDK delegate inputs are objects with a required prompt string. Null
-        // is deliberately non-executable, including when untrusted input had
-        // an otherwise valid prompt/system pair. SDK owns failure and budgets.
+        // is deliberately non-executable, including a later duplicate of a
+        // task already accepted in this response. SDK owns failure and budgets.
         return { ...call, input: null };
       }
+      accepted.add(contract.taskId);
       return { ...call, input: { prompt: delegationPrompt(contract) } };
     };
   };
