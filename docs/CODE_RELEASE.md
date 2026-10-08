@@ -2,6 +2,45 @@
 
 ## Current RC preparation: 2026-10-08
 
+This checkout prepares Code `0.3.0-rc.8`, pinned exactly to Harness
+`1.4.0-rc.8`, for npm `next`. The matched engine includes the reviewed
+duplicate-delegation fix on main after the RC.7 tag
+([PR198](https://github.com/Zhivex/zhivex-harness/pull/198)): a second
+`delegate_*` call for a task already accepted in the same model response stays
+non-executable. Qwen live certification accepts `DASHSCOPE_API_KEY` alone.
+Retain terminal/local browser contracts, the SDK pins already on main, approval
+and transport protections, provider/API tiers and RC.4 migration requirements.
+Desktop stays private alpha with the same engine binding. Stable Code `0.2.0`
+and Harness `1.3.0` on `latest` remain unchanged. Published npm `next` is Code
+`0.3.0-rc.6` and Harness `1.4.0-rc.6`.
+
+Annotated Harness `v1.4.0-rc.7` (tag object
+`fb08b8d37e7b95a134336d6c0cdc7efb922561ee` at
+`1f986a0b044fa2827166fc934c712684971127b5`) was not published.
+[Run 37819050020](https://github.com/Zhivex/zhivex-harness/actions/runs/37819050020)
+passed exact-artifact validation and failed live certification on Qwen in the
+bounded reviewer orchestration gate. Representative evaluation and publication
+were skipped. No Code `code-v0.3.0-rc.7` tag was created. Do not rerun, replace
+or retag that artifact as part of this preparation. See the authoritative
+[Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
+for exact immutable identities and preserved RC.6/RC.5/RC.4 history. The RC.7 and
+older preparation snapshots below remain historical; their evidence and approvals
+do not certify or authorize RC.8.
+
+This preparation creates no tags, paid calls, campaign dispatch or publication.
+After review and user integration, require all four successful exact-main workflows
+(`ci.yml`, `codeql.yml`, `code-journey.yml`, `web.yml`) and direct-main CodeQL.
+New explicit campaign/publication authority is required before any Harness
+`v1.4.0-rc.8` or Code `code-v0.3.0-rc.8` tag/dispatch. Harness must first pass its
+unchanged protected exact-artifact, OCI, live and representative gates and actual
+registry integrity/provenance verification. Code's protected OIDC workflow then
+uses the matching reviewed SHA with `channel=next`, `mode=oidc` and explicit
+confirmation, resolving the actual published Harness dependency without overrides.
+Retained-artifact terminal/web, four-manager acceptance and registry bytes with
+source-bound provenance remain mandatory. Preserve stable `latest` and all history.
+
+## Historical RC.7 preparation: 2026-10-08
+
 This checkout prepares Code `0.3.0-rc.7`, pinned exactly to Harness
 `1.4.0-rc.7`, for npm `next`. The matched engine includes the reviewed work on
 main after published RC.6: optional Web task/project limits

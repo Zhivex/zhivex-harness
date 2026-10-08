@@ -1,5 +1,10 @@
 # Code changelog
 
+## 0.3.0-rc.8 - 2026-10-08
+
+- Pin exactly Harness 1.4.0-rc.8 for the matched npm `next` candidate. Retain existing terminal/local browser contracts, the SDK pins already on main (Agents 1.11.0 and Core 1.31.0) and provider/API tiers.
+- Carry the engine refusal of a repeated `delegate_*` task in one model response. Published Code 0.3.0-rc.6 remains npm `next`. Annotated Harness `v1.4.0-rc.7` was tagged but not published after live certification failed on Qwen; no Code RC.7 tag was created. Candidate preparation does not authorize tags, paid calls or a new campaign.
+
 ## 0.3.0-rc.7 - 2026-10-08
 
 - Pin exactly Harness 1.4.0-rc.7 for the matched npm `next` candidate. Retain existing terminal/local browser contracts, the SDK pins already on main (Agents 1.11.0 and Core 1.31.0) and provider/API tiers.
