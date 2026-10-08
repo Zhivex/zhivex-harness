@@ -1,5 +1,11 @@
 # Code changelog
 
+## 0.3.0-rc.7 - 2026-10-08
+
+- Pin exactly Harness 1.4.0-rc.7 for the matched npm `next` candidate. Retain existing terminal/local browser contracts, the SDK pins already on main (Agents 1.11.0 and Core 1.31.0) and provider/API tiers.
+- Persist bounded guided task token and monetary authority across turns, correction and restart. Persist cancellation before acknowledgement, fence late admissions, and recover continuity from durable authority: keep contract revisions, refuse stale approvals and missing evidence, and revalidate receipts before keep. No automatic effect replay. Ordinary non-task retry stays unchanged.
+- Carry optional Web task/project limits, immediate composer consumption and sanitized Qwen stream diagnostics from the matched engine. Published Code 0.3.0-rc.6 remains npm `next` until a separately approved publication. Candidate preparation does not authorize tags, paid calls or a new campaign.
+
 ## 0.3.0-rc.6 - 2026-10-05
 
 - Pin exactly Harness 1.4.0-rc.6 for the matched npm `next` candidate containing the reviewed activity projection fix. Retain existing terminal/local browser contracts, published SDK pins and provider/API tiers.
