@@ -2,6 +2,63 @@
 
 ## Current RC preparation: 2026-10-08
 
+The source version is `1.4.0-rc.8`, pending publication to `next`.
+This checkout prepares Harness `1.4.0-rc.8` and Code `0.3.0-rc.8` for npm
+`next`, with Code pinned exactly to the engine and private Desktop bound to the
+same Harness version. Both candidates are unpublished. Keep Harness `1.3.0`
+and Code `0.2.0` on stable `latest`. Published npm `next` is Harness
+`1.4.0-rc.6` and Code `0.3.0-rc.6` from annotated tags at
+`0adf4e2e96380864ef4c697ea94df64ad7c18eec`.
+
+RC.8 includes the reviewed duplicate-delegation fix on main after the RC.7 tag,
+integrated at `5f43349e928167f4126045fc0f7e38215622fd0b`
+([PR198](https://github.com/Zhivex/zhivex-harness/pull/198)). A second
+`delegate_*` call for a task already accepted in the same model response stays
+non-executable; the next turn tells the coordinator to use the completed result.
+A later model step can still recover from an invalid call that did not execute.
+Paused runs bound to the previous delegation fingerprint must be completed with
+the artifact that created them. Qwen live certification accepts
+`DASHSCOPE_API_KEY` alone; `QWEN_API_KEY`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`
+and `QWEN_REGION` remain optional overrides. Ordinary no-cap chat, Stable API
+signatures, model pins and provider/API tiers stay unchanged. SDK pins remain
+the versions already on main: Core 1.31.0, Agents 1.11.0, Anthropic 0.13.2,
+OpenAI 0.14.1, Qwen 0.16.4, Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0. This
+preparation does not bump them. The additive representative mapping uses the
+same Meta, Qwen and OpenAI models and preserves every historical row.
+
+Annotated `v1.4.0-rc.7`, tag object
+`fb08b8d37e7b95a134336d6c0cdc7efb922561ee`, points at
+`1f986a0b044fa2827166fc934c712684971127b5`. Its protected workflow
+([run 37819050020](https://github.com/Zhivex/zhivex-harness/actions/runs/37819050020))
+passed exact-artifact validation and then failed live certification on Qwen in
+the bounded reviewer orchestration gate. Representative evaluation and npm
+publication were skipped. No Code `code-v0.3.0-rc.7` tag was created. Do not
+rerun, replace or retag that RC.7 artifact as part of this preparation. Its
+evidence cannot certify RC.8. Preserve published RC.6, the held RC.5 campaign,
+the RC.4 failure, all earlier tags and artifacts, the historical preparation
+snapshots below and the RC.4 SDK store migration requirements.
+
+This is version/documentation preparation only. No paid calls, tag creation,
+release dispatch, publication, promotion or merge is authorized. After review and
+user integration, require the latest successful `ci.yml`, `codeql.yml`,
+`code-journey.yml` and `web.yml` main-push runs for the exact new RC.8 SHA plus
+its direct-main CodeQL security result. Use read-only
+`bun run release:prepare --sha <full-main-sha>` from that clean frozen main;
+do not use `--publish` under preparation approval.
+
+Only a new explicit campaign/publication approval can authorize annotated
+`v1.4.0-rc.8` and the unchanged protected Harness workflow with `channel=next`.
+Its one exact artifact, OCI, live and representative gates remain mandatory.
+Independently verify actual Harness registry bytes and source-bound provenance
+before the matching Code release. Under separate publication authority, Code uses
+annotated `code-v0.3.0-rc.8` on the same reviewed SHA, `channel=next`, `mode=oidc`
+and explicit confirmation. It must resolve the real published engine without
+overrides and pass retained-artifact terminal/web and four-manager acceptance plus
+registry/provenance verification. RC.7's failed campaign does not carry forward;
+stable `latest` must remain unchanged.
+
+## Historical RC.7 preparation: 2026-10-08
+
 The source version is `1.4.0-rc.7`, pending publication to `next`.
 This checkout prepares Harness `1.4.0-rc.7` and Code `0.3.0-rc.7` for npm
 `next`, with Code pinned exactly to the engine and private Desktop bound to the
