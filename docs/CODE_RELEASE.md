@@ -1,6 +1,47 @@
 # Code release procedure
 
-## Current RC preparation: 2026-10-05
+## Current RC preparation: 2026-10-08
+
+This checkout prepares Code `0.3.0-rc.7`, pinned exactly to Harness
+`1.4.0-rc.7`, for npm `next`. The matched engine includes the reviewed work on
+main after published RC.6: optional Web task/project limits
+([PR189](https://github.com/Zhivex/zhivex-harness/pull/189)), sanitized Qwen
+stream diagnostics ([PR188](https://github.com/Zhivex/zhivex-harness/pull/188)),
+bounded guided task authority ([PR187](https://github.com/Zhivex/zhivex-harness/pull/187)),
+private Desktop Electron 44.5.1 ([PR180](https://github.com/Zhivex/zhivex-harness/pull/180)),
+task cancellation persistence ([PR190](https://github.com/Zhivex/zhivex-harness/pull/190))
+and task continuity from durable authority ([PR191](https://github.com/Zhivex/zhivex-harness/pull/191)).
+Retain terminal/local browser contracts, the SDK pins already on main, approval
+and transport protections, provider/API tiers and RC.4 migration requirements.
+Desktop stays private alpha with the same engine binding. Stable Code `0.2.0`
+and Harness `1.3.0` on `latest` remain unchanged. Published npm `next` is Code
+`0.3.0-rc.6` and Harness `1.4.0-rc.6`.
+
+Harness [RC.6](https://github.com/Zhivex/zhivex-harness/actions/runs/37395585612)
+completed at annotated `v1.4.0-rc.6` on `0adf4e2e96380864ef4c697ea94df64ad7c18eec`.
+Code [run 37399657231](https://github.com/Zhivex/zhivex-harness/actions/runs/37399657231)
+accepted `code-v0.3.0-rc.6` and then failed its immediate registry identity
+assertion while metadata still reported the version absent. The registry now
+serves that Code version on `next`. Do not rerun, replace or retag it as part of
+this preparation. See the authoritative
+[Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md)
+for exact immutable identities and preserved RC.5/RC.4 history. The RC.6 and
+older preparation snapshots below remain historical; their evidence and approvals
+do not certify or authorize RC.7.
+
+This preparation creates no tags, paid calls, campaign dispatch or publication.
+After review and user integration, require all four successful exact-main workflows
+(`ci.yml`, `codeql.yml`, `code-journey.yml`, `web.yml`) and direct-main CodeQL.
+New explicit campaign/publication authority is required before any Harness
+`v1.4.0-rc.7` or Code `code-v0.3.0-rc.7` tag/dispatch. Harness must first pass its
+unchanged protected exact-artifact, OCI, live and representative gates and actual
+registry integrity/provenance verification. Code's protected OIDC workflow then
+uses the matching reviewed SHA with `channel=next`, `mode=oidc` and explicit
+confirmation, resolving the actual published Harness dependency without overrides.
+Retained-artifact terminal/web, four-manager acceptance and registry bytes with
+source-bound provenance remain mandatory. Preserve stable `latest` and all history.
+
+## Historical RC.6 preparation: 2026-10-05
 
 This checkout prepares Code `0.3.0-rc.6`, pinned exactly to Harness
 `1.4.0-rc.6`, for npm `next`. The matched engine includes the reviewed bounded

@@ -4,19 +4,15 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
-## Unreleased
+## 1.4.0-rc.7 - 2026-10-08
 
-- Add host-only task continuity inspection and admission checks over existing SQLite task, contract, journal and budget records. Preserve contract revisions across turns, refuse stale approvals and missing/uncertain effect evidence, and revalidate receipts before Code keep. No automatic effect replay or new public web projection.
-
-- Extend experimental task accounting with monetary closure reservations, retained unknown exposure and late-receipt inspection; keep ordinary no-cap chat unchanged and require explicit task token limits on unlimited hosts.
-
-- Preserve sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility. Provider payloads, parser causes and arbitrary exception text remain excluded.
-
-- Add experimental guided Code task budget authority across turns, correction and restart, using one native SQLite writer and the SDK token coordinator. Reserve before primary and compaction dispatch, fence tools/checkpoints against the task lease, retain uncertain consumption, and require explicit known-outcome continuation after cancellation. Reject unsupported transports and historical tasks without an established account.
-- Show authoritative task limits, confirmed/reserved/unknown usage, fresh checks and human decisions in Code; retain drafts when admission fails before a run checkpoint. Ordinary non-task retry and budget semantics remain unchanged.
-- Index transport usage by scope/run and reuse activity statements without changing pruning, redaction or mandatory persistence errors. Preserve explicit monetary output caps above 2,048.
-- Add numeric monotonic phase telemetry and a frozen synthetic offline evaluation scaffold. These fixtures validate runtime behavior, not real-task or model quality; real holdout selection, human review and any paid campaign remain pending.
-- Document that logical JSON backups omit transport monetary tables and cannot restore task spending authority; incomplete restores fail closed. Retain a consistent complete operations database and its task/ledger records before downgrade.
+- Prepare matched Harness 1.4.0-rc.7 and Code 0.3.0-rc.7 for npm `next`, with the exact Code engine pin, private Desktop binding and an additive representative mapping using unchanged models. Retain the SDK pins already on main (Core 1.31.0, Agents 1.11.0 and the existing provider packages). Stable `latest` stays Harness 1.3.0 and Code 0.2.0.
+- Include reviewed main since published 1.4.0-rc.6: optional Web task/project limits and immediate composer consumption (PR189); sanitized Qwen SSE transport/parser diagnostics in CLI JSON/JSONL and failed client runs, including message-only installed SDK compatibility, while provider payloads, parser causes and arbitrary exception text stay excluded (PR188); experimental guided Code task budget authority across turns, correction and restart (PR187); private Desktop Electron 44.5.1 (PR180); persisted task cancellation that fences late admissions (PR190, HAR-HU-71); and host-only task continuity over existing SQLite task, contract, journal and budget records (PR191, HAR-HU-72).
+- Keep one native SQLite writer and the SDK token coordinator. Reserve before primary and compaction dispatch, fence tools and checkpoints against the task lease, retain uncertain consumption and unknown exposure, and require explicit known-outcome continuation after cancellation. Preserve contract revisions, refuse stale approvals and missing or uncertain effect evidence, and revalidate receipts before Code keep. No automatic effect replay or new public web task projection.
+- Show authoritative task limits, confirmed/reserved/unknown usage, fresh checks and human decisions in Code; retain drafts when admission fails before a run checkpoint. Ordinary non-task retry and no-cap chat stay unchanged, and unlimited hosts still require explicit task token limits. Index transport usage by scope/run without changing pruning, redaction or mandatory persistence errors. Preserve explicit monetary output caps above 2,048.
+- Add numeric monotonic phase telemetry and a frozen synthetic offline evaluation scaffold. These fixtures validate runtime behavior, not real-task or model quality; real holdout selection, human review and any paid campaign remain pending. Logical JSON backups omit transport monetary tables and cannot restore task spending authority; incomplete restores fail closed.
+- Preserve published Harness `v1.4.0-rc.6` and Code `code-v0.3.0-rc.6` at `0adf4e2e96380864ef4c697ea94df64ad7c18eec`, the held RC.5 campaign, and the RC.4 failure history and SDK store migration requirements. Their evidence does not certify RC.7.
+- Require fresh exact-source/artifact validation and separate explicit approval before any paid campaign, annotated tag or publication. Provider/API tiers remain unchanged.
 
 ## 1.4.0-rc.6 - 2026-10-05
 
