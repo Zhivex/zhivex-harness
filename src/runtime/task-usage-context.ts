@@ -8,5 +8,7 @@ export interface TaskUsageAdmission {
   closureReserve: number;
   inputCeiling: number;
   monetaryRefused: boolean;
+  /** Final synchronous gate after intervening asynchronous host middleware. */
+  assertActive(): void;
 }
 export const taskUsageAdmission = new AsyncLocalStorage<TaskUsageAdmission>();

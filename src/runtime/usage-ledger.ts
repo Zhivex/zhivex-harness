@@ -176,6 +176,9 @@ export class UsageLedger {
   private begin(runId: string, provider: string, model: string, input: Parameters<typeof estimateRequestTokens>[0]) {
     const policy = this.policy(runId);
     const task = taskUsageAdmission.getStore();
+    // Token-cap and other outer host middleware may await after task admission.
+    // This gate and the monetary reservation/provider handoff contain no await.
+    task?.assertActive();
     if (task && task.accountRunId !== runId) throw new Error("TASK_BUDGET_MONETARY_OWNER_MISMATCH");
     const price = policy.pricing?.prices.find(p => p.provider === provider && p.model === model);
     const priceStatus = !price ? "missing" : Date.parse(price.asOf) > this.now() || Date.parse(price.expiresAt) <= this.now() ? "stale" : "estimate";

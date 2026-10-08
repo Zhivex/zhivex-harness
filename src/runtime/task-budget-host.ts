@@ -50,7 +50,18 @@ export async function initializeHarnessTaskBudget(host: ZhivexHarness, taskId: s
 export async function inspectHarnessTaskBudget(host: ZhivexHarness, taskId: string) {
   const account = await openHarnessTaskBudget(host, taskId);
   await account.assertMonetaryReceipts(host.usageLedger!);
-  return { ...await account.summary(), monetary: host.usageLedger!.summary(account.accountRunId), monetaryDetails: inspectTaskMonetaryUsage(host.usageLedger!, account.accountRunId) };
+  return { ...await account.summary(), cancellations: await account.cancellations(), monetary: host.usageLedger!.summary(account.accountRunId), monetaryDetails: inspectTaskMonetaryUsage(host.usageLedger!, account.accountRunId) };
+}
+
+/** Same-host control: durable admission closure precedes cooperative abort.
+ * No acknowledgement of provider termination, rollback, or task acceptance. */
+export async function requestHarnessTaskCancellation(host: ZhivexHarness, taskId: string, runId: string) {
+  const account = await openHarnessTaskBudget(host, taskId);
+  await account.requestCancellation(runId);
+  const evidence = await inspectHarnessTaskBudget(host, taskId);
+  const run = await host.store.load(runId, host.config.scope);
+  return { ...evidence, requestOutcome: evidence.cancellations.some(entry => entry.runId === runId) ? 'requested' as const : 'already_terminal' as const,
+    requestedRunId: runId, executionStatus: run?.status ?? null };
 }
 
 const TASK_DRAFT_KEY = 'zhivexTaskDraftV1';

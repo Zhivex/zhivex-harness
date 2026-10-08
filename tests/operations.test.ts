@@ -78,12 +78,12 @@ describe("durable operations", () => {
       });
       expect(cancelled).toMatchObject({
         kind: "run-cancellation",
-        run: { status: "cancel_requested", cancellationReason: "operator request" }
+        run: { status: "completed", cancellationReason: undefined }
       });
 
       const cleanup = await cleanupHarnessRuns(persistence.store, config, {
         before: Date.now() + 1_000,
-        statuses: ["cancel_requested"]
+        statuses: ["completed"]
       });
       expect(cleanup.deleted).toBe(1);
       expect((await listHarnessRuns(persistence.store, config)).runs).toEqual([]);

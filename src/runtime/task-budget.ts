@@ -17,9 +17,21 @@ const tokensSchema = z.strictObject({ inputTokens: token, outputTokens: token, t
 const policySchema = z.strictObject({ limits: tokensSchema, closureReserve: z.number().min(0).max(0.9),
   usageAccounting: z.strictObject({ pricing: usagePricingSchema.optional(), limitUsd: z.number().finite().positive().optional(),
     requireCompleteUsage: z.boolean().optional() }).optional() });
-const accountSchema = z.strictObject({ schemaVersion: z.literal(1), taskId: z.string().min(1).max(256),
+const cancellationSchema = z.strictObject({ runId: z.string().min(1).max(256), requestedAt: token,
+  origin: z.enum(['operator', 'abort', 'timeout', 'lease_lost']), localToolsDrainedAt: token.optional() });
+const accountSchema = z.strictObject({ schemaVersion: z.union([z.literal(1), z.literal(2)]), taskId: z.string().min(1).max(256),
   policy: policySchema, runs: z.array(z.string().min(1).max(256)).max(4096), admissionsClosed: z.boolean(),
+  cancellations: z.array(cancellationSchema).max(4096).optional(),
   invocation: z.strictObject({ runId: z.string().min(1).max(256), ownerId: z.string().min(1).max(256) }).optional() });
+// The metadata key remains stable for discovery; its payload version owns the
+// Experimental format. Version 1 also reads the unpublished HU71 v0 snapshot.
+function parseAccount(value: unknown) {
+  const version = value && typeof value === 'object' ? Reflect.get(value, 'schemaVersion') : undefined;
+  if (version !== 1 && version !== 2) throw new Error('TASK_BUDGET_ACCOUNT_VERSION_UNSUPPORTED: preserve the complete database and use a compatible task-account reader; do not remove control fields.');
+  const parsed = accountSchema.safeParse(value);
+  if (!parsed.success) throw new Error('TASK_BUDGET_ACCOUNT_INVALID: preserve the complete database; task-account control is not readable.');
+  return parsed.data;
+}
 const allocationSchema = z.record(z.string(), z.strictObject({ status: z.enum(['reserved', 'confirmed', 'unknown']), tokens: tokensSchema }));
 const summarySchema = z.strictObject({ schemaVersion: z.literal(1), taskId: z.string().min(1).max(256),
   accountRunId: z.string().min(1).max(256), revision: token, limits: tokensSchema, confirmed: tokensSchema,
@@ -37,7 +49,7 @@ export function assertTaskBudgetBackupLinks(states: readonly AgentRunState[]) {
   for (const state of states) {
     const rawAccount = state.metadata?.[TASK_BUDGET_ACCOUNT_KEY];
     if (rawAccount !== undefined || state.runId.startsWith('task_budget_')) {
-      const account = accountSchema.parse(rawAccount);
+      const account = parseAccount(rawAccount);
       if (account.invocation) throw new Error('TASK_BUDGET_BACKUP_INVOCATION_PENDING');
       if (!state.scope || state.runId !== TaskBudget.accountId(state.scope, account.taskId) ||
         state.budgetCoordinatorId !== fingerprintAgentHarness({ budgetId: state.runId, scope: state.scope, limits: account.policy.limits }) ||
@@ -48,7 +60,7 @@ export function assertTaskBudgetBackupLinks(states: readonly AgentRunState[]) {
     const projection = summarySchema.parse(rawProjection);
     const root = byIdentity.get(fingerprintAgentHarness({ scope: state.scope, runId: projection.accountRunId }));
     if (!root) throw new Error('TASK_BUDGET_BACKUP_CONTROL_MISSING');
-    const account = accountSchema.parse(root.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(root.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== projection.taskId || root.budgetCoordinatorId !== projection.coordinatorId ||
         JSON.stringify(account.policy.limits) !== JSON.stringify(projection.limits) ||
         (!state.runId.startsWith('task_draft_') && !account.runs.includes(state.runId))) throw new Error('TASK_BUDGET_BACKUP_BINDING_MISMATCH');
@@ -58,7 +70,11 @@ export interface TaskBudgetPolicy { limits: { inputTokens: number; outputTokens:
   closureReserve?: number; usageAccounting?: UsageAccountingOptions }
 type Account = z.infer<typeof accountSchema>;
 const active = new AsyncLocalStorage<{ account: TaskBudget; runId: string; ownerId: string; signal: AbortSignal;
-  effects: Set<Promise<unknown>> }>();
+  effects: Set<Promise<unknown>>; admissionsClosed: () => boolean }>();
+// Store identity isolates independent SQLite authorities with equal scope/task IDs.
+// The inner key is durable identity, never a TaskBudget object. A restarted host
+// has no control handle and must retain an unresolved invocation.
+const controls = new WeakMap<AgentRunStore, Map<string, () => Promise<void>>>();
 const zero = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 const completeUsage = (usage?: TokenUsage): TokenUsage | undefined => {
   if (!usage || ![usage.inputTokens, usage.outputTokens].every(value => Number.isSafeInteger(value) && value! >= 0)) return undefined;
@@ -73,6 +89,8 @@ export class TaskBudget {
   readonly accountRunId: string;
   readonly coordinatorId: string;
   readonly policy: TaskBudgetPolicy & { closureReserve: number };
+  private writes: Promise<void> = Promise.resolve();
+  private controlKey(runId: string) { return fingerprintAgentHarness({ scope: this.options.scope, taskId: this.options.taskId, runId }); }
   private readonly budgetRunId: string;
   private readonly budgetScope: AgentStoreScope;
   private readonly coordinator: ReturnType<typeof createAgentBudgetCoordinator>;
@@ -96,7 +114,7 @@ export class TaskBudget {
     let state = await options.store.load(id, options.scope);
     if (!state) {
       if (options.requireExisting) throw new Error('TASK_BUDGET_MISSING: restore the full task account; historical consumption cannot be reset.');
-      const account = accountSchema.parse({ schemaVersion: 1, taskId: options.taskId, policy: { ...options.policy,
+      const account = parseAccount({ schemaVersion: 1, taskId: options.taskId, policy: { ...options.policy,
         closureReserve: options.policy.closureReserve ?? 0.3 }, runs: [], admissionsClosed: false });
       const candidate = new TaskBudget(options, account);
       const initial: AgentRunState = { schemaVersion: 1, runId: id, scope: options.scope, revision: 1,
@@ -107,7 +125,7 @@ export class TaskBudget {
       catch (error) { state = await options.store.load(id, options.scope); if (!state) throw error; }
       state ??= initial;
     }
-    const account = accountSchema.parse(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== options.taskId || state.runId !== id) throw new Error('TASK_BUDGET_IDENTITY_MISMATCH');
     const instance = new TaskBudget(options, account);
     if (state.budgetCoordinatorId !== instance.coordinatorId) throw new Error('TASK_BUDGET_POLICY_MISMATCH');
@@ -135,7 +153,7 @@ export class TaskBudget {
   private async state() {
     const state = await this.options.store.load(this.accountRunId, this.options.scope);
     if (!state || state.budgetCoordinatorId !== this.coordinatorId) throw new Error('TASK_BUDGET_MISSING');
-    const account = accountSchema.parse(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
+    const account = parseAccount(state.metadata?.[TASK_BUDGET_ACCOUNT_KEY]);
     if (account.taskId !== this.options.taskId || JSON.stringify(account.policy) !== JSON.stringify(this.policy)) throw new Error('TASK_BUDGET_POLICY_MISMATCH');
     return { state, account };
   }
@@ -166,27 +184,66 @@ export class TaskBudget {
     const expected = Object.entries(allocations).filter(([, entry]) => Object.values(entry.tokens).some(value => value > 0)).map(([id]) => id);
     assertTaskMonetaryReceipts(ledger, this.accountRunId, expected, Object.keys(allocations));
   }
-  private async update(ownerId: string, mutate: (account: Account) => void, expectedRevision?: number) {
-    const { state, account } = await this.state();
-    if (expectedRevision !== undefined && state.revision !== expectedRevision) throw new Error('TASK_BUDGET_REVISION_CONFLICT');
-    mutate(account);
-    accountSchema.parse(account);
-    await this.options.store.save({ ...state, revision: (state.revision ?? 0) + 1, updatedAt: this.now(),
-      metadata: { ...state.metadata, [TASK_BUDGET_ACCOUNT_KEY]: serializeJsonValue(account) } },
-      { expectedRevision: state.revision ?? 0, leaseOwnerId: ownerId });
+  private update(ownerId: string, mutate: (account: Account) => void, expectedRevision?: number): Promise<void> {
+    const write = this.writes.then(async () => {
+      if (!await this.options.store.renewLease!(this.accountRunId, { ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope)) throw new Error('TASK_BUDGET_LEASE_LOST');
+      const { state, account } = await this.state();
+      if (expectedRevision !== undefined && state.revision !== expectedRevision) throw new Error('TASK_BUDGET_REVISION_CONFLICT');
+      mutate(account);
+      if (account.cancellations?.length) account.schemaVersion = 2;
+      parseAccount(account);
+      await this.options.store.save({ ...state, revision: (state.revision ?? 0) + 1, updatedAt: this.now(),
+        metadata: { ...state.metadata, [TASK_BUDGET_ACCOUNT_KEY]: serializeJsonValue(account) } },
+        { expectedRevision: state.revision ?? 0, leaseOwnerId: ownerId });
+    });
+    this.writes = write.catch(() => {});
+    return write;
+  }
+  async cancellations() {
+    const { account } = await this.state();
+    return (account.cancellations ?? []).map(entry => ({ ...entry,
+      localExecution: entry.localToolsDrainedAt === undefined ? 'unconfirmed' as const : 'native_tools_drained' as const,
+      remoteExecution: 'unconfirmed' as const }));
+  }
+  /** Acknowledges durable intent, not provider termination or rollback. */
+  async requestCancellation(runId: string): Promise<void> {
+    const control = controls.get(this.options.store)?.get(this.controlKey(runId));
+    if (control) return control();
+    const ownerId = randomUUID();
+    if (!await this.options.store.acquireLease!(this.accountRunId, { ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope)) throw new Error('TASK_BUDGET_ACTIVE: cancellation requires the owning host');
+    try {
+      if (!(await this.state()).account.runs.includes(runId)) throw new Error('TASK_BUDGET_RUN_BINDING_MISSING');
+      const run = await this.options.store.load(runId, this.options.scope);
+      if (run && ['completed', 'failed', 'cancelled', 'timed_out'].includes(run.status)) return;
+      await this.update(ownerId, account => {
+        if (account.invocation) throw new Error('TASK_BUDGET_INVOCATION_UNCERTAIN');
+        if (!account.runs.includes(runId)) throw new Error('TASK_BUDGET_RUN_BINDING_MISSING');
+        if (account.runs.at(-1) !== runId) throw new Error('TASK_BUDGET_STALE_RUN');
+        // Repeating an old request cannot close a later explicit continuation.
+        if (account.cancellations?.some(entry => entry.runId === runId)) return;
+        account.admissionsClosed = true;
+        (account.cancellations ??= []).push({ runId, requestedAt: this.now(), origin: 'operator' });
+      });
+    } finally { await this.options.store.releaseLease!(this.accountRunId, ownerId, this.options.scope); }
+  }
+  private assertLocalAdmission() {
+    const invocation = active.getStore();
+    if (!invocation || invocation.account !== this) throw new Error('TASK_BUDGET_SCOPE_REQUIRED');
+    invocation.signal.throwIfAborted();
+    if (invocation.admissionsClosed()) throw new Error('TASK_BUDGET_CANCELLED');
   }
   /** Recheck the task lease immediately before each admitted local action/checkpoint. */
   async assertOwnership(options: { allowCancelled?: boolean } = {}) {
     const invocation = active.getStore();
     if (!invocation || invocation.account !== this) throw new Error('TASK_BUDGET_SCOPE_REQUIRED');
-    if (!options.allowCancelled) invocation.signal.throwIfAborted();
+    if (!options.allowCancelled) { invocation.signal.throwIfAborted(); if (invocation.admissionsClosed()) throw new Error('TASK_BUDGET_CANCELLED'); }
     if (!await this.options.store.renewLease!(this.accountRunId,
       { ownerId: invocation.ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope)) throw new Error('TASK_BUDGET_LEASE_LOST');
     const { account } = await this.state();
     if (account.invocation?.ownerId !== invocation.ownerId || account.invocation.runId !== invocation.runId) throw new Error('TASK_BUDGET_INVOCATION_OWNERSHIP_LOST');
     if (!options.allowCancelled) {
       invocation.signal.throwIfAborted();
-      if (account.admissionsClosed) throw new Error('TASK_BUDGET_CANCELLED');
+      if (account.admissionsClosed || invocation.admissionsClosed()) throw new Error('TASK_BUDGET_CANCELLED');
     }
   }
   wrapTools(tools: ToolSet): ToolSet {
@@ -200,6 +257,7 @@ export class TaskBudget {
         // callbacks the SDK may stop awaiting after cooperative cancellation.
         const effect = Promise.resolve().then(async () => {
           await this.assertOwnership();
+          this.assertLocalAdmission();
           return execute(...args);
         });
         invocation.effects.add(effect);
@@ -225,10 +283,27 @@ export class TaskBudget {
     const ownerId = randomUUID();
     const lease = await this.options.store.acquireLease!(this.accountRunId, { ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope);
     if (!lease) throw new Error('TASK_BUDGET_ACTIVE');
-    const lost = new AbortController();
-    const signal = options.signal ? AbortSignal.any([options.signal, lost.signal]) : lost.signal;
+    const lost = new AbortController(), requested = new AbortController();
+    const signal = AbortSignal.any([...(options.signal ? [options.signal] : []), lost.signal, requested.signal]);
     let renewal: Promise<void> | undefined, cancellation: Promise<void> | undefined;
-    const close = () => { cancellation ??= this.update(ownerId, account => { account.admissionsClosed = true; }); cancellation.catch(() => {}); };
+    let registered = false, closing = false, toolsDrained = false;
+    const close = (origin: z.infer<typeof cancellationSchema>['origin']) => {
+      closing = true;
+      cancellation ??= this.update(ownerId, account => {
+        if ((account.invocation && (account.invocation.ownerId !== ownerId || account.invocation.runId !== runId)) || account.runs.at(-1) !== runId) throw new Error('TASK_BUDGET_INVOCATION_OWNERSHIP_LOST');
+        account.admissionsClosed = true;
+        if (!account.cancellations?.some(entry => entry.runId === runId))
+          (account.cancellations ??= []).push({ runId, requestedAt: this.now(), origin, ...(toolsDrained ? { localToolsDrainedAt: this.now() } : {}) });
+      });
+      cancellation.catch(() => {});
+      return cancellation;
+    };
+    const onAbort = () => { void close(lost.signal.aborted ? 'lease_lost' : signal.reason?.name === 'TimeoutError' ? 'timeout' : 'abort'); };
+    const control = async () => {
+      // Synchronous local barrier precedes persistence. Abort/ack follows it.
+      await close('operator');
+      requested.abort();
+    };
     const renew = async () => {
       if (!await this.options.store.renewLease!(this.accountRunId, { ownerId, ttlMs: 30_000, now: this.now() }, this.options.scope)) throw new Error('TASK_BUDGET_LEASE_LOST');
     };
@@ -242,35 +317,52 @@ export class TaskBudget {
       const prior = await this.options.store.load(runId, this.options.scope);
       const priorBinding = prior?.metadata?.[TASK_BUDGET_KEY] as Record<string, unknown> | undefined;
       if (prior && (!priorBinding || priorBinding.accountRunId !== this.accountRunId || priorBinding.taskId !== this.options.taskId)) throw new Error('TASK_BUDGET_RUN_BINDING_MISSING');
-      await this.update(ownerId, account => {
+      const registry = controls.get(this.options.store) ?? new Map<string, () => Promise<void>>();
+      controls.set(this.options.store, registry);
+      registry.set(this.controlKey(runId), control);
+      registered = true;
+      // Queue the claim before registering the listener: close shares this write
+      // queue, so an abort during save cannot race or erase the invocation.
+      const claim = this.update(ownerId, account => {
         if (account.invocation) throw new Error('TASK_BUDGET_INVOCATION_UNCERTAIN');
         if (!account.runs.includes(runId)) account.runs.push(runId);
         account.invocation = { runId, ownerId };
       });
-      signal.addEventListener('abort', close, { once: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+      if (signal.aborted) onAbort();
+      await claim;
+      await cancellation;
       timer = setInterval(() => { if (!renewal) renewal = renew().catch(error => { lost.abort(error); }).finally(() => { renewal = undefined; }); }, 10_000);
       timer.unref?.();
       const effects = new Set<Promise<unknown>>();
       const drain = async () => { while (effects.size) await Promise.allSettled([...effects]); };
-      return await active.run({ account: this, runId, ownerId, signal, effects }, async () => {
+      return await active.run({ account: this, runId, ownerId, signal, effects, admissionsClosed: () => closing }, async () => {
         try {
+          signal.throwIfAborted();
+          if (closing) throw new Error('TASK_BUDGET_CANCELLED');
           const result = await operation(signal);
           await drain();
           await this.assertOwnership();
           return result;
         } finally {
           await drain();
+          toolsDrained = true;
           await renewal; await cancellation;
           // An expired worker cannot prove that every effect has ended for the
           // new owner. Keep the durable marker until explicit reconciliation.
           await this.assertOwnership({ allowCancelled: true });
-          await this.update(ownerId, account => { delete account.invocation; });
+          await this.update(ownerId, account => {
+            if (account.invocation?.ownerId !== ownerId) throw new Error('TASK_BUDGET_INVOCATION_OWNERSHIP_LOST');
+            const record = account.cancellations?.find(entry => entry.runId === runId);
+            if (record) record.localToolsDrainedAt = this.now();
+            delete account.invocation;
+          });
         }
       });
     } finally {
       if (timer) clearInterval(timer);
-      signal.removeEventListener('abort', close);
-      if (signal.aborted && !cancellation) close();
+      signal.removeEventListener('abort', onAbort);
+      if (registered) controls.get(this.options.store)?.delete(this.controlKey(runId));
       try { await renewal; await cancellation; }
       finally { await this.options.store.releaseLease!(this.accountRunId, ownerId, this.options.scope); }
     }
@@ -316,7 +408,7 @@ export class TaskBudget {
       await account.coordinator.reserve(id, { inputTokens: ceiling.inputTokens, outputTokens: input.maxTokens, totalTokens: ceiling.totalTokens });
       try { input.abortSignal.throwIfAborted(); await account.assertOwnership(); }
       catch (error) { await account.coordinator.settle(id, zero); throw error; }
-      return { id, toolsDenied, admission: { accountRunId: account.accountRunId, operationId: id, category: closure ? 'closure' : options.auxiliary ? 'compaction' : 'execution', closureReserve: account.policy.closureReserve, inputCeiling: ceiling.inputTokens, monetaryRefused: false } satisfies TaskUsageAdmission };
+      return { id, toolsDenied, admission: { accountRunId: account.accountRunId, operationId: id, category: closure ? 'closure' : options.auxiliary ? 'compaction' : 'execution', closureReserve: account.policy.closureReserve, inputCeiling: ceiling.inputTokens, monetaryRefused: false, assertActive: () => account.assertLocalAdmission() } satisfies TaskUsageAdmission };
     };
     const settle = async (id: string, usage?: TokenUsage) => {
       // Missing terminal receipts stay spent. No automatic reconciliation or release.
@@ -327,15 +419,18 @@ export class TaskBudget {
     return { name: 'harness-task-budget-v1',
       async wrapGenerate(context, next) {
         const { id, toolsDenied, admission } = await begin(context);
-        let receipt = false;
-        try { const result = await taskUsageAdmission.run(admission, next); receipt = true; await settle(id, result.usage);
+        let receipt = false, dispatched = false;
+        try { account.assertLocalAdmission(); dispatched = true;
+          const result = await taskUsageAdmission.run(admission, next); receipt = true; await settle(id, result.usage);
           if (toolsDenied && (result.finishReason === 'tool-calls' || result.messages?.some(message => message.parts.some(part => part.type === 'tool-call')))) throw new Error('TASK_BUDGET_CLOSURE_TOOLS_DENIED');
           return result; }
-        catch (error) { if (!receipt) { try { await settle(id, admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } } throw error; }
+        catch (error) { if (!receipt) { try { await settle(id, !dispatched || admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } } throw error; }
       },
       async wrapStream(context, next) {
         const { id, toolsDenied, admission } = await begin(context);
+        let dispatched = false;
         try {
+          account.assertLocalAdmission(); dispatched = true;
           const stream = await taskUsageAdmission.run(admission, next);
           return (async function* () {
             let receipt = false;
@@ -349,7 +444,7 @@ export class TaskBudget {
               throw error;
             } finally { if (!receipt) await settle(id); }
           })();
-        } catch (error) { try { await settle(id, admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } throw error; }
+        } catch (error) { try { await settle(id, !dispatched || admission.monetaryRefused ? zero : failedUsage(error, context.model.provider)); } catch (auditError) { throw new AggregateError([error, auditError], 'TASK_BUDGET_UNCERTAIN'); } throw error; }
       }
     };
   }

@@ -177,3 +177,22 @@ test('a refused first request preserves the established task draft and budget ac
     expect(await freshCodeTaskRecap(reopened,state)).toContain('Task token limits: input 1; output 1; total 2');
   } finally {await reopened.close();}
 }));
+
+test('task recap separates durable request, native drain, provider uncertainty and acceptance', async () => fixture(async root => {
+  const { codeTaskBudgetRecap } = await import('../src/cli/console/console-task.js');
+  const { initializeHarnessTaskBudget, inspectHarnessTaskBudget } = await import('@zhivex-ai/harness/code-support');
+  const host = await createHarness({ workspace: root, usageAccounting: {}, subagentProfiles: [], modelInstance: createMockLanguageModel() });
+  try {
+    await initializeHarnessTaskBudget(host, 'recap');
+    const budget = await inspectHarnessTaskBudget(host, 'recap');
+    for (const localExecution of ['unconfirmed', 'native_tools_drained']) {
+      const text = codeTaskBudgetRecap({ ...budget, admissionsClosed: true,
+        cancellations: [{ runId: 'cancelled-run', requestedAt: 1, origin: 'operator', localExecution, remoteExecution: 'unconfirmed' }] });
+      expect(text).toContain('Cancellation requested for cancelled-run');
+      expect(text).toContain(localExecution === 'unconfirmed' ? 'local execution unconfirmed' : 'native tool callbacks drained');
+      expect(text).toContain('Provider stop unconfirmed');
+      expect(text).toContain('Task acceptance remains separate');
+      expect(text).toContain('Confirmed: input 0; output 0; total 0');
+    }
+  } finally { await host.close(); }
+}));

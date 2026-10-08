@@ -102,3 +102,29 @@ test('policy query tracks the prepared runtime while active and decision evidenc
     expect((await f.call({ method: 'policy.get' })).data.policy).toEqual(inspectHarnessPolicy(harness));
   } finally { proceed(); await pending; await prepared.close(); }
 }));
+
+test('preparation cancellation does not acknowledge before its durable outcome save', async () => fixture(async ({ harness, connect }) => {
+  let ready!: () => void, paused!: () => void, release!: () => void, acknowledged = false;
+  const started = new Promise<void>(resolve => { ready = resolve; });
+  const saving = new Promise<void>(resolve => { paused = resolve; });
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const store = harness.store;
+  harness.store = new Proxy(store, { get(target, key) {
+    if (key === 'save') return async (...args: Parameters<typeof target.save>) => {
+      if (args[0].status === 'cancelled') { paused(); await gate; }
+      return target.save(...args);
+    };
+    const value = Reflect.get(target, key, target); return typeof value === 'function' ? value.bind(target) : value;
+  } });
+  const f = await connect(async ({ signal }) => {
+    ready(); await new Promise<void>(resolve => signal.addEventListener('abort', () => resolve(), { once: true }));
+    return { harness, release: async () => {} };
+  });
+  const pending = f.start(); await started;
+  const cancelled = f.adapter.cancelActive().then(() => { acknowledged = true; });
+  await saving; expect(acknowledged).toBe(false);
+  release(); await cancelled; await pending;
+  expect(acknowledged).toBe(true);
+  const session = await f.call({ method: 'session.get', sessionId: f.session.sessionId });
+  expect((await store.load(session.data.session.runs[0].runId, harness.config.scope))?.status).toBe('cancelled');
+}));
