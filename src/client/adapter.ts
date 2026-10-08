@@ -1,4 +1,8 @@
-import { projectHarnessTask, TaskProjectionFault } from './task-projection-host.js';
+import { persistClientTaskPreparationFailure, prepareClientTask, currentClientTask, keepClientTask, taskGitReview, taskReviewIdentity, taskHumanDecision } from './task-control-host.js';
+import { reviseHarnessTaskAcceptance } from '../runtime/task-acceptance-host.js';
+import { readTaskAcceptanceLedger } from '../runtime/task-acceptance-record.js';
+import { persistHarnessTaskDraft, readHarnessTaskDraft, openHarnessTaskBudget } from '../runtime/task-budget-host.js';
+import { projectHarnessTask, TaskProjectionFault, redactTaskDisplayText } from './task-projection-host.js';
 import { observeHarnessPolicyDecisions, createPolicyDecisionEvidence } from "../runtime/policy-decisions.js";
 import { inspectHarnessPolicy } from "../runtime/policy-inspection.js";
 import {
@@ -16,7 +20,7 @@ import { hostPolicyIdentity, requiresExplicitHostReview } from "../approvals/hos
 import { issueExplicitReviewResponses, issueRecordedApprovalResponses } from "../approvals/explicit-review.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { AgentRunState } from "@zhivex-ai/agents";
-import { appendUserMessage, runHarness, type ZhivexHarness } from "../runtime/harness.js";
+import { appendUserMessage, runHarness, runHarnessTask, type HarnessTaskRunOptions, type ZhivexHarness } from "../runtime/harness.js";
 import { cancelHarnessRun } from "../persistence/operations.js";
 import {
   openCliSessionStore,
@@ -98,13 +102,19 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
   };
   let closed = false, busy = false;
   let taskSequence = 0;
+  const taskReviews = new Map<string, { sessionId: string; runId: string; expiresAt: number; identity: string; gitIdentity: string;
+    projection: import('./task-projection.js').HarnessTaskProjection; canKeep: boolean; canContinue: boolean; canRevise: boolean }>();
+  const taskProjection = (s: CliSession, runId: string) => projectHarnessTask(harness,
+    { connectionId, projectId, sessionId: s.sessionId, runId, sequence: ++taskSequence }, s.runs.map(r => r.runId), options.taskProjectionSensitiveValues);
+  const safeTaskDiff = (raw: string) => redactTaskDisplayText(harness, raw, options.taskProjectionSensitiveValues);
   let active: { sessionId: string; runId: string; controller: AbortController; settled: Promise<void>; runtime?: ZhivexHarness } | undefined;
-  const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1], prompt?: string) => {
+  const invoke = async (sessionId: string, input: Parameters<typeof runHarness>[1], prompt?: string, taskOptions?: HarnessTaskRunOptions) => {
     const runId = "state" in input ? input.state.runId : input.runId!;
     let settle!: () => void;
     const settled = new Promise<void>(resolve => { settle = resolve; });
     const controller = new AbortController(); active = { sessionId, runId, controller, settled };
     let prepared: Awaited<ReturnType<NonNullable<HarnessClientRunRuntimeOptions['prepareRun']>>> | undefined;
+    let invocationStarted = false;
     try {
       if (prompt !== undefined) await options.onPrompt?.(sessionId, runId, prompt);
       prepared = await options.prepareRun?.({ sessionId, runId, resuming: 'state' in input, signal: controller.signal });
@@ -116,7 +126,9 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       active.runtime = runtime;
       const mutationOffset = runtime.workspace.mutationAudit().length;
       const policyEvidence = createPolicyDecisionEvidence();
-      const result = await observeHarnessPolicyDecisions(async event => { policyEvidence.append(event); await options.onPolicyDecision?.(sessionId, runId, event); }, () => runHarness(runtime, { ...input, abortSignal: controller.signal }, {
+      invocationStarted = true;
+      const result = await observeHarnessPolicyDecisions(async event => { policyEvidence.append(event); await options.onPolicyDecision?.(sessionId, runId, event); }, () => (taskOptions ? runHarnessTask : runHarness)(runtime, { ...input, abortSignal: controller.signal }, {
+        ...taskOptions,
         onEvent: event => options.onEvent?.(sessionId, runId, event)
       }));
       const document = { ...runResultDocument(result, runtime), policyEvidence: policyEvidence.snapshot(), mutations: runtime.workspace.mutationAudit().slice(mutationOffset) };
@@ -134,11 +146,18 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           // Keep failed prompt recording or preparation from stranding the session's
           // already-reserved run reference. No model or tool ran in this state.
           const now = Date.now();
-          await harness.store.save({ schemaVersion: 1, revision: 0, runId, scope: harness.config.scope,
+          const fallback: AgentRunState = { schemaVersion: 1, revision: 0, runId, scope: harness.config.scope,
             provider: harness.agent.model.provider, modelId: harness.agent.model.modelId,
             status: controller.signal.aborted ? 'cancelled' : 'failed', messages: input.messages ?? [], steps: [], toolResults: [],
             currentStep: 0, maxSteps: harness.config.budget.unlimitedSteps ? "unlimited" : harness.config.maxSteps, outputText: '', pendingApprovals: [], startedAt: now, updatedAt: now,
-            error: { message: 'Run stopped before initialization.' } });
+            error: { message: 'Run stopped before initialization.' }, metadata: input.metadata ?? {} };
+          if (taskOptions?.taskAdmissionReview && taskOptions.taskAcceptance) {
+            const budget = await (await openHarnessTaskBudget(harness, taskOptions.taskAcceptance.taskId)).summary();
+            if (budget.runs.includes(runId)) throw new Error('TASK_ADMISSION_STATE_UNAVAILABLE');
+            await harness.store.save({ ...fallback, metadata: { ...fallback.metadata,
+              clientTaskPriorRunV1: taskOptions.taskAdmissionReview.runId } }, { expectedRevision: 0 });
+          } else if (!invocationStarted && taskOptions?.taskAcceptance) await persistClientTaskPreparationFailure(harness, fallback, taskOptions.taskAcceptance);
+          else await harness.store.save(fallback);
           persisted = await harness.store.load(runId, harness.config.scope);
         }
       } catch { /* Preserve the original failure if the store itself is unavailable. */ }
@@ -187,6 +206,76 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     }
     let s = await refresh(await getSession(c.sessionId));
     if (c.method === "session.get") return { kind: "session", session: sessionDocument(s) };
+    if (c.method === 'task.review') {
+      const projection = await taskProjection(s, c.runId);
+      const detail = await currentClientTask(harness, c.runId, s.runs.map(r => r.runId));
+      const git = await taskGitReview(harness);
+      await detail.evidence.verifyAll();
+      const terminal = ['completed', 'failed', 'cancelled', 'timed_out'].includes(projection.task.execution);
+      const blockers = projection.task.reasons.filter(r => r !== 'TASK_BUDGET_CANCELLED');
+      const canContinue = terminal && !blockers.length && projection.task.budget.availability === 'authoritative' && projection.task.budget.usageComplete === true;
+      const diff = safeTaskDiff(git.text);
+      const complete = diff === git.text && !projection.task.textTruncated && detail.current.contract.humanReview.every(h => safeTaskDiff(h.requirement) === h.requirement);
+      const canKeep = canContinue && complete && projection.task.review.structure === 'verified';
+      const canRevise = terminal && !blockers.length && detail.current.contract.humanReview.length < 9;
+      const now = (options.now ?? Date.now)();
+      for (const [id, review] of taskReviews) if (review.expiresAt <= now) taskReviews.delete(id);
+      if (taskReviews.size >= 128) return fail('CAPACITY_EXCEEDED');
+      const reviewId = randomUUID(), expiresAt = now + 300000;
+      taskReviews.set(reviewId, { sessionId: s.sessionId, runId: c.runId, expiresAt, identity: taskReviewIdentity(projection),
+        gitIdentity: git.identity, projection, canKeep, canContinue, canRevise });
+      return { kind: 'taskReview', review: { reviewId, expiresAt, projection, diff, complete, canKeep, canContinue, canRevise,
+        humanDecision: await taskHumanDecision(harness, projection) } };
+    }
+    if (c.method === 'task.keep' || c.method === 'task.revise' || c.method === 'task.continue') {
+      const review = taskReviews.get(c.reviewId);
+      taskReviews.delete(c.reviewId); // Consume intent before all asynchronous checks; never replay a lost response.
+      if (!review || review.sessionId !== s.sessionId || review.runId !== c.runId || review.expiresAt <= (options.now ?? Date.now)()) return fail('REVISION_CONFLICT');
+      const projection = await taskProjection(s, c.runId);
+      if (taskReviewIdentity(projection) !== review.identity || (await taskGitReview(harness)).identity !== review.gitIdentity) return fail('REVISION_CONFLICT');
+      const detail = await currentClientTask(harness, c.runId, s.runs.map(r => r.runId));
+      if (c.method === 'task.keep') {
+        if (!review.canKeep || !projection.task.artifact.observedDigest || projection.task.budget.revision === null) return fail('INVALID_STATE');
+        await keepClientTask(harness, c.runId, s.runs.map(r => r.runId), { runRevision: projection.task.runRevision,
+          contractDigest: projection.task.contractDigest, snapshotDigest: projection.task.artifact.observedDigest,
+          budgetRevision: projection.task.budget.revision, gitIdentity: review.gitIdentity });
+      } else if (c.method === 'task.revise') {
+        if (!review.canRevise) return fail('INVALID_STATE');
+        await reviseHarnessTaskAcceptance(harness, { runId: c.runId, expectedRunRevision: projection.task.runRevision,
+          expectedContractRevision: projection.task.contractRevision, contract: { ...detail.current.contract,
+            humanReview: [...detail.current.contract.humanReview, { id: 'correction-' + randomUUID(), requirement: c.correction, status: 'pending' }] } });
+      } else {
+        if (!review.canContinue) return fail('INVALID_STATE');
+        const runId = 'run_' + randomUUID();
+        s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: 'created' }, { expectedRevision: s.revision });
+        const contract = detail.current.contract;
+        const brief = { schemaVersion: 1, budgetVersion: 1, goal: contract.humanReview.find(h => h.id === 'operator')?.requirement ?? projection.task.objective ?? 'Retained task',
+          constraints: contract.humanReview.filter(h => h.id !== 'operator').map(h => h.requirement), contract, baseline: {} };
+        const result = await invoke(s.sessionId, { runId, scope: harness.config.scope,
+          metadata: { zhivexCodeTaskV1: JSON.parse(JSON.stringify(brief)) },
+          messages: appendUserMessage(terminalContinuationMessages(detail.state.messages), c.prompt) }, c.prompt,
+          { taskAcceptance: contract, taskBudgetExisting: true, taskBudgetContinue: true,
+            taskAdmissionReview: { runId: c.runId, runRevision: projection.task.runRevision, contractDigest: projection.task.contractDigest,
+              snapshotDigest: projection.task.artifact.observedDigest, budgetRevision: projection.task.budget.revision! } });
+        s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
+        return { kind: 'run', session: sessionDocument(s), run: await documentRun(result.state) };
+      }
+      const updated = await taskProjection(s, c.runId);
+      return { kind: 'task', projection: updated, humanDecision: await taskHumanDecision(harness, updated) };
+    }
+    if (c.method === 'task.start') {
+      if (s.revision !== c.expectedRevision || s.runs.length) return fail('REVISION_CONFLICT');
+      const brief = await prepareClientTask(harness, c.brief);
+      await persistHarnessTaskDraft(harness, s.sessionId, brief);
+      const runId = 'run_' + randomUUID();
+      s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: 'created' }, { expectedRevision: s.revision });
+      const prompt = 'Operator goal: ' + brief.goal + '\nConstraints: ' + brief.constraints.join('; ') + '\nExact editable files: ' + brief.contract.allowedWritePaths.join(', ') + '. Execute every declared check after the final edit. Passing checks still require human acceptance.';
+      const result = await invoke(s.sessionId, { runId, scope: harness.config.scope, metadata: { zhivexCodeTaskV1: JSON.parse(JSON.stringify(brief)) },
+        messages: appendUserMessage([], prompt) }, brief.goal, { taskAcceptance: brief.contract, taskBudgetExisting: true });
+      s = await sessions.updateRun(s.sessionId, runId, { status: sessionStatus(result.state.status) });
+      return { kind: 'run', session: sessionDocument(s), run: await documentRun(result.state) };
+    }
+
     if (c.method === 'checkpoint.list') {
       const store = await checkpointStore();
       return { kind: 'checkpoints', checkpoints: store.listCheckpoints(s.sessionId), restores: store.listRestores(s.sessionId) };
@@ -222,6 +311,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       if (c.method === "session.rename") return { kind: "session", session: sessionDocument(await sessions.rename(s.sessionId, c.title, { expectedRevision: c.expectedRevision })) };
       const last = s.runs.at(-1);
       const previous = last ? await getRun(s, last.runId) : undefined;
+      if (previous && readTaskAcceptanceLedger(previous) || await readHarnessTaskDraft(harness.store, harness.config.scope, s.sessionId)) return fail("INVALID_STATE");
       if (previous && !["completed", "failed", "cancelled", "timed_out"].includes(previous.status)) return fail("INVALID_STATE");
       const runId = `run_${randomUUID()}`;
       s = await sessions.appendRun(s.sessionId, { runId, provider: harness.config.provider, model: harness.config.model, status: "created" }, { expectedRevision: c.expectedRevision });
@@ -336,7 +426,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
     negotiate(versions) {
       if (closed) return { ok: false, error: { code: "CONNECTION_EXPIRED" } };
       if (!versions.includes(1)) return { ok: false, error: { code: "VERSION_UNSUPPORTED" } };
-      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["task.get", "task.projection.v1", "project.get", "policy.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "run.cancel.active", "idempotency.connection", "revision.precondition", "checkpoint.list", "checkpoint.inspect", "checkpoint.capture", "restore.prepare", "restore.get", "restore.apply", "restore.recoverFork"] };
+      return { ok: true, protocolVersion: 1, connectionId, projectId, capabilities: ["task.control.v1", "task.start", "task.review", "task.keep", "task.revise", "task.continue", "task.get", "task.projection.v1", "project.get", "policy.get", "session.list", "session.create", "session.get", "session.rename", "run.start", "run.get", "approval.resolve", "run.cancel.checkpoint", "run.cancel.active", "idempotency.connection", "revision.precondition", "checkpoint.list", "checkpoint.inspect", "checkpoint.capture", "restore.prepare", "restore.get", "restore.apply", "restore.recoverFork"] };
     },
     async dispatch(value) {
       const hostReviewed = Boolean(value && typeof value === 'object' && reviewedRequests.delete(value));
@@ -361,7 +451,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
           const projection = await projectHarnessTask(harness, { connectionId, projectId, sessionId: c.sessionId, runId: c.runId, sequence },
             session.runs.map(run => run.runId), options.taskProjectionSensitiveValues);
           if (JSON.stringify(await sessions.get(c.sessionId)) !== JSON.stringify(session)) throw new TaskProjectionFault('SNAPSHOT_CHANGED');
-          return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: 'task', projection } };
+          return { protocolVersion: 1, requestId: request.requestId, ok: true, data: { kind: 'task', projection, humanDecision: await taskHumanDecision(harness, projection) } };
         } catch (cause) {
           const finite = cause instanceof TaskProjectionFault ? cause.causeCode : 'EVIDENCE_UNAVAILABLE';
           const code: HarnessClientErrorCode = finite === 'OUT_OF_SCOPE' ? 'NOT_FOUND' : finite === 'UNSUPPORTED_VERSION' ? 'VERSION_UNSUPPORTED'
@@ -420,7 +510,7 @@ export const createHarnessClientAdapter = async (harness: ZhivexHarness, options
       if (key) receipts.set(key, { fingerprint, response });
       return structuredClone(await response);
     },
-    close() { if (closed) return; if (busy) return fail("BUSY"); closed = true; checkpoints?.close(); sessions.close(); receipts.clear(); }
+    close() { if (closed) return; if (busy) return fail("BUSY"); closed = true; checkpoints?.close(); sessions.close(); receipts.clear(); taskReviews.clear(); }
   };
   return adapter;
 };

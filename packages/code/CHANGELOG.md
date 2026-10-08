@@ -1,5 +1,10 @@
 # Code changelog
 
+## Unreleased
+
+- Add a task/evidence panel to the existing local web client: goal, revision, artifact/check provenance, task-wide accounting and explicit accept/correct/continue actions. Keep exact tool approvals, cancellation and chat presentation in their existing surfaces.
+- Migration: use the matched experimental Harness `task.control.v1` host. Existing sessions remain readable; ordinary chat has no required task contract. New governed tasks initially require a clean native Git workspace, existing tracked text files, package checks and explicit token limits. Failed/uncertain effects are never replayed automatically; unknown consumption blocks continuation. No published version or SDK pin changes.
+
 ## 0.3.0-rc.6 - 2026-10-05
 
 - Pin exactly Harness 1.4.0-rc.6 for the matched npm `next` candidate containing the reviewed activity projection fix. Retain existing terminal/local browser contracts, published SDK pins and provider/API tiers.

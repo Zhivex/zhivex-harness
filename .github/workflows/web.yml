@@ -35,6 +35,11 @@ jobs:
           node packages/web/scripts/installed-smoke.mjs
         env:
           CODE_CANDIDATE_ENGINE: ${{ runner.temp }}/harness-candidate.tgz
+      - name: Installed task UI and recovery vertical
+        run: |
+          bun pm pack --ignore-scripts --filename "$RUNNER_TEMP/harness-task.tgz"
+          (cd packages/code && bun pm pack --ignore-scripts --filename "$RUNNER_TEMP/code-task.tgz")
+          node scripts/code-task-ui-installed.mjs "$RUNNER_TEMP/harness-task.tgz" "$RUNNER_TEMP/code-task.tgz" "$(command -v node)" "$RUNNER_TEMP/code-task-evidence"
       - run: git diff --exit-code
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
@@ -43,5 +48,6 @@ jobs:
           path: |
             packages/web/.test-output/*.png
             packages/web/.test-output/*-report.json
+            ${{ runner.temp }}/code-task-evidence/
           include-hidden-files: true
           if-no-files-found: error

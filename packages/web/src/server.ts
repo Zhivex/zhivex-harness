@@ -15,6 +15,14 @@ import { validateLimitSettings } from "./limit-settings.js";
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const base = { workspaceKey: id };
 const actions = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("task"), ...base, sessionId: id, runId: id }).strict(),
+  z.object({ action: z.literal("taskReview"), ...base, sessionId: id, runId: id }).strict(),
+  z.object({ action: z.literal("taskKeep"), ...base, sessionId: id, runId: id, reviewId: z.string().uuid(), idempotencyKey: id }).strict(),
+  z.object({ action: z.literal("taskRevise"), ...base, sessionId: id, runId: id, reviewId: z.string().uuid(), idempotencyKey: id, correction: z.string().trim().min(1).max(500) }).strict(),
+  z.object({ action: z.literal("taskContinue"), ...base, sessionId: id, runId: id, reviewId: z.string().uuid(), idempotencyKey: id, prompt: z.string().trim().min(1).max(2000) }).strict(),
+  z.object({ action: z.literal("taskStart"), ...base, sessionId: id, expectedRevision: z.number().int().nonnegative().safe(), idempotencyKey: id,
+    brief: z.strictObject({ goal: z.string().trim().min(1).max(2000), paths: z.array(z.string().min(1).max(1024)).min(1).max(20), checks: z.array(id).min(1).max(8),
+      constraints: z.array(z.string().trim().min(1).max(500)).max(8), budget: z.strictObject({ inputTokens: z.number().int().positive().safe(), outputTokens: z.number().int().positive().safe(), totalTokens: z.number().int().positive().safe() }) }) }).strict(),
   z.object({ action: z.literal("limits"), ...base }).strict(),
   z.object({ action: z.literal("configureLimits"), ...base, scope: z.enum(["task", "project"]),
     settings: z.custom<import("./limit-settings.js").LimitSettings>(validateLimitSettings), expectedRevision: z.number().int().nonnegative().safe() }).strict(),
@@ -215,6 +223,7 @@ export async function startWebServer(options: {
   const cookieCipher = createSessionCookieCipher();
   const clients = new Map<string, { csrf: string; expires: number }>();
   const now = options.now ?? Date.now;
+  const taskReviews = new Map<string, { identity: string; workspaceKey: string; expiresAt: number }>();
   const bootstrapExpiry = now() + 120_000;
   let bootstrapUsed = false,
     origin = "",
@@ -290,6 +299,7 @@ export async function startWebServer(options: {
         const client = clients.get(identity);
         if (!client || now() >= client.expires) {
           clients.delete(identity);
+          for (const [id, ticket] of taskReviews) if (ticket.identity === identity) taskReviews.delete(id);
           for (const r of runtimes.values()) r.forgetIdentity(identity);
           return fault(res, 401, "WEB_PAIRING_REQUIRED");
         }
@@ -314,6 +324,21 @@ export async function startWebServer(options: {
         const runtime = runtimes.get(workspaceKey);
         if (!runtime) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
         switch (action) {
+          case "taskReview": {
+            for (const [id, ticket] of taskReviews) if (ticket.expiresAt <= now()) taskReviews.delete(id);
+            if (taskReviews.size >= 256) return fault(res, 400, "REVIEW_REQUIRED");
+            const response = await runtime.command({ method: "task.review", ...args });
+            if (response.ok && response.data.kind === "taskReview") taskReviews.set(response.data.review.reviewId,
+              { identity, workspaceKey, expiresAt: response.data.review.expiresAt });
+            return send(res, 200, response);
+          }
+          case "taskKeep": case "taskRevise": case "taskContinue": {
+            const reviewId = (args as { reviewId: string }).reviewId;
+            const ticket = taskReviews.get(reviewId);
+            if (!ticket || ticket.identity !== identity || ticket.workspaceKey !== workspaceKey || ticket.expiresAt <= now()) return fault(res, 400, "REVIEW_REQUIRED");
+            taskReviews.delete(reviewId);
+            return send(res, 200, await runtime.command({ method: { taskKeep: "task.keep", taskRevise: "task.revise", taskContinue: "task.continue" }[action], ...args }));
+          }
           case "limits": return send(res, 200, await runtime.limits());
           case "configureLimits": {
             const value = args as { scope: "task" | "project"; settings: import("./limit-settings.js").LimitSettings; expectedRevision: number };
@@ -361,6 +386,8 @@ export async function startWebServer(options: {
             );
           default: {
             const methods = {
+              task: "task.get",
+              taskStart: "task.start",
               sessions: "session.list",
               create: "session.create",
               rename: "session.rename",
@@ -376,6 +403,7 @@ export async function startWebServer(options: {
                 method: methods[action],
                 ...args,
                 ...(action === "run" ? { includeDiff: true } : {}),
+                ...(action === "task" ? { projectionVersion: 1 } : {}),
               }),
             );
           }
@@ -440,6 +468,7 @@ export async function startWebServer(options: {
     close() {
       return (closePromise ??= (async () => {
         closing = true;
+        taskReviews.clear();
         const stopped = new Promise<void>((resolve, reject) =>
           server.close((e) => (e ? reject(e) : resolve())),
         );

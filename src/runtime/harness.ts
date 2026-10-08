@@ -44,7 +44,7 @@ import { admitExplicitReviewResponses, hasHostApprovalReceipt, issueObservedAppr
 import { builtinToolPolicyPathResolver, BUILTIN_TOOL_POLICY_PATHS_VERSION, validateBuiltinToolPolicy } from "./tool-policy-paths.js";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import { settleInterruptedRun } from "./run-interruption.js";
+import { composeRunInterruption, settleInterruptedRun } from "./run-interruption.js";
 import {
   Agent,
   applySafetyPolicyToAgent,
@@ -311,6 +311,8 @@ export interface HarnessRunOptions {
 export interface HarnessTaskRunOptions extends HarnessRunOptions {
   taskBudgetExisting?: boolean;
   taskBudgetContinue?: boolean;
+  /** Trusted host consent binding, rechecked during durable admission. Never metadata or model input. */
+  taskAdmissionReview?: { runId: string; runRevision: number; contractDigest: string; snapshotDigest: string | null; budgetRevision: number };
   telemetryTemperature?: 'cold' | 'warm' | 'unknown';
   onTaskTelemetry?: (telemetry: TaskTelemetrySnapshot) => void;
 }
@@ -1145,6 +1147,12 @@ export const runHarness = async (
     const continuityTaskId = durableBinding?.taskId ?? (taskOptions?.taskBudgetExisting ? options.taskAcceptance?.taskId : undefined);
     const continuity = continuityTaskId ? await readTaskContinuity(harness, continuityTaskId) : undefined;
     const priorLedger = continuity?.report.runs.at(-1)?.ledger;
+    if (taskOptions?.taskAdmissionReview) {
+      const expected = taskOptions.taskAdmissionReview, latest = continuity?.report.runs.at(-1);
+      if (!continuity || !latest || latest.runId !== expected.runId || latest.revision !== expected.runRevision ||
+        continuity.report.currentContract?.digest !== expected.contractDigest || latest.snapshot?.snapshotDigest !== expected.snapshotDigest ||
+        continuity.report.budget.revision !== expected.budgetRevision) throw new Error('TASK_CONTINUITY_CHANGED');
+    }
     if (continuity) {
       if ('state' in invocation && (continuity.report.runs.at(-1)?.runId !== invocation.state.runId ||
         readTaskAcceptanceLedger(invocation.state)?.revisions.at(-1)?.digest !== priorLedger?.revisions.at(-1)?.digest))
@@ -1290,15 +1298,9 @@ const runHarnessInternal = async (
   const invocationTimeout = input.timeoutMs ?? (harness.config.unlimitedDuration ? undefined : harness.config.timeoutMs);
   const invocationSignal = invocationTimeout === undefined ? undefined : AbortSignal.timeout(invocationTimeout);
   const executionFailure = new AbortController();
-  const combinedSignal = AbortSignal.any([
-    ...(callerSignal ? [callerSignal] : []), ...(invocationSignal ? [invocationSignal] : []), executionFailure.signal
-  ]);
-  const interruptionKind = (): 'cancelled' | 'timed_out' | undefined => {
-    if (!combinedSignal.aborted) return undefined;
-    if (invocationSignal?.aborted && combinedSignal.reason === invocationSignal.reason) return 'timed_out';
-    if (callerSignal?.aborted && combinedSignal.reason === callerSignal.reason) return 'cancelled';
-    return undefined;
-  };
+  const interruption = composeRunInterruption(callerSignal, invocationSignal, executionFailure.signal);
+  const combinedSignal = interruption.signal, interruptionKind = interruption.kind;
+  try {
   input = { ...input,
     toolExecution: { ...harnessToolExecution, ...harness.agent.toolExecution, ...input.toolExecution },
     abortSignal: combinedSignal };
@@ -1698,6 +1700,7 @@ const runHarnessInternal = async (
     }
     throw normalizeHarnessError(error);
   } finally { reportDiagnostics(); }
+  } finally { interruption.dispose(); }
 };
 
 export const appendUserMessage = (messages: readonly ModelMessage[], text: string): ModelMessage[] => [

@@ -99,7 +99,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       }
       const parsed=harnessClientRequestSchema.safeParse(value);
       const method=parsed.success?parsed.data.command.method:undefined;
-      const mutation=method!==undefined&&!["task.get","project.get","policy.get","session.list","session.get","run.get","checkpoint.list","checkpoint.inspect","restore.get"].includes(method);
+      const mutation=method!==undefined&&!["task.get","task.review","project.get","policy.get","session.list","session.get","run.get","checkpoint.list","checkpoint.inspect","restore.get"].includes(method);
       if(paused&&mutation&&method!=="run.cancel")return send(res,503,fault("SERVICE_PAUSED"));
       if(mutation)activeMutations++;
       try{return send(res, 200, await adapter!.dispatch(value));}
