@@ -430,6 +430,8 @@ ZHIVEX_HARNESS_LIVE=1 bun run smoke:live:execution
 ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run smoke:oci
 ```
 
+Qwen live gates accept either `DASHSCOPE_API_KEY` or `QWEN_API_KEY`. Empty `QWEN_API_KEY`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, and `QWEN_REGION` are valid with a DashScope key; those variables only override the default endpoint. The bounded reviewer gate still uses one successful `delegate_reviewer` and the structured aggregate limit of six steps. A repeated task id in the same model response is refused and does not start a second child.
+
 The base reviewed-edit gate and the separate delegation gate must pass for every provider in the supported release matrix. The release workflow additionally requires the mixed-provider route, model-directed execution, and representative repository gates against the exact annotated tag before the npm job can start; deterministic OCI enforcement remains a separate prerequisite. Gemini is explicitly provisional and excluded from the 1.0 cohort under [GEMINI_1_0_DECISION.md](./GEMINI_1_0_DECISION.md). Integrated provisional providers must not be described as certified. `bun run check` also runs controlled Streamable HTTP MCP interoperability gates; each external implementation claim remains bounded to the tested server/version. See [LIVE_CERTIFICATION.md](./LIVE_CERTIFICATION.md).
 
 ## Exact artifact gate

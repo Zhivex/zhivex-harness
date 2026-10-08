@@ -282,3 +282,42 @@ test('public delegation task schema uses Vertex-compatible singleton enum withou
   } } });
   expect(inspected).toBe(true);
 });
+
+test("a second valid delegate in the same response is not executable", async () => {
+  const calls = [
+    { id: "first", name: "delegate_reviewer", input: { taskId: "review" } },
+    { id: "second", name: "delegate_reviewer", input: { taskId: "review" } }
+  ];
+  const model = withDelegationContracts(createMockLanguageModel({
+    streamEvents: [[
+      { type: "tool-call", toolCall: calls[0]! },
+      { type: "tool-call", toolCall: calls[1]! },
+      { type: "finish", finishReason: "tool-calls", usage }
+    ]]
+  }), [contract]);
+  const events = [];
+  for await (const event of await model.stream!({ messages: [] })) events.push(event);
+  expect(events[0]).toEqual({ type: "tool-call", toolCall: { ...calls[0], input: { prompt: delegationPrompt(contract) } } });
+  expect(events[1]).toEqual({ type: "tool-call", toolCall: { ...calls[1], input: null } });
+});
+
+test("duplicate delegation history tells the coordinator not to retry", async () => {
+  let seen = "";
+  const model = withDelegationContracts({ ...createMockLanguageModel(), generate: async input => {
+    seen = JSON.stringify(input.messages);
+    return { text: "done", finishReason: "stop" as const, usage };
+  } }, [contract]);
+  await model.generate({ messages: [
+    { role: "assistant", parts: [
+      { type: "tool-call", toolCall: { id: "first", name: "delegate_reviewer", input: { prompt: delegationPrompt(contract) } } },
+      { type: "tool-call", toolCall: { id: "second", name: "delegate_reviewer", input: null } }
+    ] },
+    { role: "tool", parts: [
+      { type: "tool-result", toolResult: { toolCallId: "first", toolName: "delegate_reviewer", isError: false, output: "done" } },
+      { type: "tool-result", toolResult: { toolCallId: "second", toolName: "delegate_reviewer", isError: true, error: { code: "TOOL_INPUT_VALIDATION_ERROR", message: "Invalid" } } }
+    ] }
+  ] });
+  expect(seen).toContain("Do not call delegate_reviewer again");
+  expect(seen).toContain('"taskId":"review"');
+  expect(seen).not.toContain("Retry delegate_reviewer");
+});
