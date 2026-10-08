@@ -91,8 +91,141 @@ or a replacement for the engine's signed approval validation.
 | session.rename | projectId, sessionId, expectedRevision, idempotencyKey, title | session | REVISION_CONFLICT |
 | run.start | projectId, sessionId, expectedRevision, idempotencyKey, prompt | run | INVALID_STATE |
 | run.get | projectId, sessionId, runId | run | NOT_FOUND |
+| task.get | projectId, sessionId, runId, projectionVersion: 1 | task | VERSION_UNSUPPORTED / NOT_FOUND |
 | approval.resolve | projectId, sessionId, runId, expectedRevision, idempotencyKey, decisions | run | APPROVAL_MISMATCH |
 | run.cancel | projectId, sessionId, runId, expectedRevision, idempotencyKey | run | REVISION_CONFLICT |
+
+## Task projection v1 (HAR-HU-73)
+
+Negotiate `task.get` and `task.projection.v1` before using this additive read.
+Protocol major 1 and all legacy commands keep their meaning. Older hosts without
+the capability cannot provide this projection; clients must show it as unavailable.
+The host must already have a task contract and a session binding for its runs.
+This command creates neither a task nor a budget and does not provide a new execution
+or acceptance API. CODE-05 presentation remains separate.
+
+```ts
+import { reduceHarnessTaskProjection } from '@zhivex-ai/harness/protocol';
+
+const hello = adapter.negotiate([1]);
+if (!hello.ok || !hello.capabilities.includes('task.projection.v1')) {
+  throw new Error('Task projection unavailable');
+}
+const scope = { connectionId: hello.connectionId, projectId: hello.projectId,
+  sessionId, runId }; // IDs selected from this host's session index.
+const response = await adapter.dispatch({ protocolVersion: 1, requestId: 'task-read-1',
+  connectionId: scope.connectionId,
+  command: { method: 'task.get', projectId: scope.projectId, sessionId, runId,
+    projectionVersion: 1 } });
+if (response.ok && response.data.kind === 'task') {
+  const view = reduceHarnessTaskProjection(null, response.data.projection, scope);
+  // Display view.snapshot as untrusted text. This helper never executes anything.
+}
+```
+
+The same request uses `/command` on the existing authenticated local service.
+Reads remain available while admission is busy or paused. The host checks the full
+task-account run set against the selected session before reading run journals or
+artifacts; mixed-session accounts fail closed. An older requested run identifies
+the task, but `observedRunId` and `historicalRequest` explicitly identify its latest
+recorded run. Missing runs never turn an earlier delivery into the current result.
+
+The strict DTO carries:
+
+- Contract revision/digest, retained operator objective with provenance, run revision
+  and durable execution status. No provider response or hidden reasoning is included.
+- Observed and delivered snapshot digests, contract path labels, and current/stale/
+  missing correspondence. No arbitrary file path or artifact-content request exists.
+  Artifact references stay under the same project/session/run read boundary.
+- Checks reconciled against the current contract, exact native bytes and completed
+  tool journal. `structure: verified` is deterministic evidence only; semantic review
+  stays `pending` and final acceptance stays `not_recorded`. Human requirements retain
+  their canonical `pending` state. Execution completion is never human acceptance.
+- Authoritative confirmed/reserved/unknown token quantities, remaining allowance,
+  frozen limits and account revision. Reservations are admission estimates, not
+  confirmed consumption; a separate token estimate is not recorded. Monetary
+  confirmed-call estimates, reservations and unknown exposure remain estimates, not
+  invoices. Unknown quantities stay null/unknown, never invented zeros.
+- Read-only/recorded/unknown effect counts and missing-evidence flags. Provider stop
+  remains unconfirmed. Next action explains wait/reconciliation/review/explicit
+  continuation, preserves contract/receipts/budget/effects and never grants execution
+  authority or automatic replay. A persisted running status alone does not prove a
+  live worker; uncertain finalization requires reconciliation.
+
+Genuine legacy contracts without a task account show `legacy_not_enabled` and null
+budget values. An existing account with a missing binding, an unreadable bound
+account, incomplete backup, or conflicting identity is an error, not legacy mode.
+HAR55/56 acceptance, HAR58 evidence principles and HAR70/71/72 ledgers/receipts remain
+the authority; this DTO stores no alternate ledger or acceptance state.
+
+Snapshots are derived on demand and revalidated before publication. The host bounds
+the serialized DTO to 64 KiB, each display string to 2,048 UTF-16 code units (with an
+explicit truncation flag), check/review lists to 32 and contract path labels to 256.
+Oversized evidence fails closed. Only allowlisted fields leave the host; roots,
+known secrets and credential patterns are redacted before publication. In-process
+hosts supply `taskProjectionSensitiveValues`; the local service includes its token,
+configured sensitive values and relevant credential environment values. Redaction
+does not make arbitrary workspace text trusted or HTML-safe.
+
+### Replay and reconnection
+
+`sequence` is assigned at read admission within `connectionId`, not at completion.
+The pure browser-compatible reducer only replaces a snapshot in the caller's
+negotiated connection/project/session/run scope. Duplicate and older responses are
+ignored; conflicting duplicates, unsupported versions and wrong epochs request a
+fresh read. It never adopts a connection ID from an incoming response.
+
+Existing activity events are invalidations, not task snapshots or instructions to
+execute. After a relevant page, read `task.get` again. A repeated/out-of-order event
+may cause another harmless read; it cannot recreate effects. When `/events` reports
+`cursorExpired`, discard assumptions derived from missing history and obtain a new
+task snapshot. After service restart, negotiate again, set the expected epoch and
+read durable state; never replay mutations or accept old-epoch snapshots. This is
+snapshot convergence, not a new event store, streaming protocol or delivery guarantee.
+Callers should coalesce refreshes and retry a changing snapshot with a bounded policy.
+
+### Finite task errors
+
+Task-read errors add `taskDiagnostic` to the existing error envelope, with a finite
+cause, `impact: projection_unavailable`, and the action below. Raw exception text,
+paths, provider payloads and journals are excluded. Malformed command shapes retain
+the existing `INVALID_REQUEST` envelope. Unsupported versions never execute work.
+
+| Cause | Client code | Safe action |
+| --- | --- | --- |
+| UNSUPPORTED_VERSION | VERSION_UNSUPPORTED | review_configuration |
+| OUT_OF_SCOPE | NOT_FOUND | review_configuration |
+| UNSUPPORTED_HOST / CONTRACT_UNAVAILABLE | INVALID_STATE | review_configuration |
+| EVIDENCE_UNAVAILABLE | INVALID_STATE | reconcile |
+| SNAPSHOT_CHANGED | REVISION_CONFLICT | retry_read |
+| PAYLOAD_LIMIT | CAPACITY_EXCEEDED | review_configuration |
+
+Inside a successful projection, terminal failure/cancellation/timeout and incomplete
+evidence have separate finite diagnostics with `acceptance_not_established` impact.
+No diagnostic recommends replaying an uncertain operation. This cut supports one
+trusted native workspace/SQLite writer and sequential host handoff only. OCI task
+projections, multiagent scope, new document/web adapters and final semantic/human
+acceptance are unsupported; legacy execution APIs are unchanged.
+
+### Reproducible installed consumer
+
+Build and pack Harness and Code from the same clean candidate following their
+normal build instructions. The existing HAR75 installer accepts an optional sixth
+argument selecting the HAR73 profile; it freezes/rechecks consumer, manifest and
+tarball hashes and verifies Code/service share the installed engine:
+
+```sh
+node scripts/task-recovery-lab-installed.mjs /tmp/harness.tgz /tmp/code.tgz \
+  /absolute/path/to/node /tmp/projection-node 90000 projection
+```
+
+Repeat with supported Node 22/24 and Bun. `evaluations/task-projection.json` fixes
+the reused HAR75 fixture and ten consumer scenarios: version negotiation, readonly
+snapshot, redaction, duplicate/out-of-order responses, artifact scope, expired cursor,
+paused admission, fresh-epoch restart, artifact drift and legacy budget. Source
+regressions additionally exercise corrupted/missing bindings and runs, changing
+snapshots, read admission races, active mutations and payload limits. These are offline
+contract tests, not CODE-05 UI acceptance, live-model quality or an external pilot.
 | checkpoint.list | projectId, sessionId | checkpoints | NOT_FOUND |
 | checkpoint.inspect | projectId, sessionId, checkpointId | checkpoint | NOT_FOUND |
 | checkpoint.capture | projectId, sessionId, expectedRevision, idempotencyKey, turnId, paths | checkpoint | EXECUTION_FAILED |

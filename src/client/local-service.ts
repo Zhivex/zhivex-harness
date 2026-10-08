@@ -99,7 +99,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       }
       const parsed=harnessClientRequestSchema.safeParse(value);
       const method=parsed.success?parsed.data.command.method:undefined;
-      const mutation=method!==undefined&&!["project.get","policy.get","session.list","session.get","run.get","checkpoint.list","checkpoint.inspect","restore.get"].includes(method);
+      const mutation=method!==undefined&&!["task.get","project.get","policy.get","session.list","session.get","run.get","checkpoint.list","checkpoint.inspect","restore.get"].includes(method);
       if(paused&&mutation&&method!=="run.cancel")return send(res,503,fault("SERVICE_PAUSED"));
       if(mutation)activeMutations++;
       try{return send(res, 200, await adapter!.dispatch(value));}
@@ -122,6 +122,7 @@ export const startHarnessLocalService = async (harness: ZhivexHarness, options: 
       ...(options.maxEvents===undefined?{}:{maxEvents:options.maxEvents}), ...(options.retentionMs===undefined?{}:{retentionMs:options.retentionMs})
     });
     adapter = await createHarnessClientAdapter(harness, {
+      taskProjectionSensitiveValues: [token, ...(options.sensitiveValues ?? []), ...Object.entries(process.env).filter(([k,v])=>/(?:API_KEY|TOKEN|SECRET|PASSWORD)$/.test(k) && v && v.length>=8).map(([,v])=>v!)],
       ...(options.approvalNow?{now:options.approvalNow}:{}),
       onPolicyDecision: (sessionId,runId,event) => activity!.policyDecision(sessionId,runId,event),
       onPrompt: async (sessionId,runId,prompt) => { await activity!.prompt(sessionId,runId,prompt); await options.onPrompt?.(sessionId,runId,prompt); },

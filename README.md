@@ -95,7 +95,7 @@ Gemini, [Anthropic](docs/ANTHROPIC.md) and [Vertex](docs/VERTEX.md) remain provi
 ## Documentation
 
 - **Users:** [First use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md).
-- **Integrators:** [CLI contracts](docs/CLI.md), [extensibility](docs/EXTENSIBILITY.md), [API stability](docs/STABILITY.md).
+- **Integrators:** [CLI contracts](docs/CLI.md), [experimental task projection](docs/CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73), [extensibility](docs/EXTENSIBILITY.md), [API stability](docs/STABILITY.md).
 - **Contributors:** [Development](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) and [maintenance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md).
 
 [Browse documentation](docs/README.md).

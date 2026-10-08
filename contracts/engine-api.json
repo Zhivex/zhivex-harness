@@ -2381,6 +2381,31 @@
           "name": "ApprovalDecisionView",
           "kind": "type",
           "tier": "beta"
+        },
+        {
+          "name": "HARNESS_TASK_PROJECTION_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessTaskProjectionSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "reduceHarnessTaskProjection",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessTaskProjection",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessTaskProjectionScope",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },

@@ -5,3 +5,6 @@ export { CLI_JSON_SCHEMA_VERSION, CLI_EVENT_SCHEMA_VERSION, streamEventDocument,
 export type { StreamRunResultSource } from "../client/stream.js";
 export type { HarnessActivityEvent, HarnessActivityRun, HarnessActivitySnapshot, HarnessActivityPage } from "../client/service-events.js";
 export type { ApprovalDecisionView } from "../approvals/approval-history.js";
+
+export { HARNESS_TASK_PROJECTION_VERSION, harnessTaskProjectionSchema, reduceHarnessTaskProjection } from '../client/task-projection.js';
+export type { HarnessTaskProjection, HarnessTaskProjectionScope } from '../client/task-projection.js';

@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Add experimental versioned `task.get` snapshots over the existing client/service protocol. Project deterministic contract/byte/check evidence separately from semantic and human acceptance, retain authoritative budget uncertainty and prohibit automatic effect replay. Negotiate `task.projection.v1`; legacy commands and opt-in budget behavior remain compatible. No CODE-05 renderer or new store.
+
 - Add host-only task continuity inspection and admission checks over existing SQLite task, contract, journal and budget records. Preserve contract revisions across turns, refuse stale approvals and missing/uncertain effect evidence, and revalidate receipts before Code keep. No automatic effect replay or new public web projection.
 
 - Extend experimental task accounting with monetary closure reservations, retained unknown exposure and late-receipt inspection; keep ordinary no-cap chat unchanged and require explicit task token limits on unlimited hosts.
