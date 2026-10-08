@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "HAR-HU-74-offline-v1",
+  "productSourceSha": "f3f8cf00c6272717731e778af646f9eff9887f81",
+  "artifacts": {
+    "harness": "fe243daaec37464a2ced8454c724878248b14bbb39f333b082d52d9d86073670",
+    "code": "86dbcb85ff9dcbb619bee003adab1531148b762dede53bb6edc26603911b889d"
+  },
+  "holdoutSha256": "496019c5c3f389dbd6fa68bb4945dfde1951845b5d14ebc8149a50612849be27",
+  "fixtures": ["greeting", "totalActive"],
+  "journeys": ["normal", "handoff"],
+  "repetitions": 3,
+  "positiveAttempts": 12,
+  "negativeCases": 16,
+  "quantile": "nearest-rank",
+  "warmups": 0,
+  "automaticRetries": 0,
+  "singleAgent": true,
+  "liveProvider": false,
+  "humanMeasurement": false,
+  "limits": { "maxSteps": 16, "maxToolCalls": 40, "timeoutMs": 150000, "inputTokens": 60000, "outputTokens": 8192, "totalTokens": 68192 },
+  "provisionalHumanTargets": { "minimumQuality": 9, "reviewMinuteReduction": 0.2, "handoffWithoutTranscript": 0.9, "maximumCostIncrease": 0.1 }
+}

@@ -1,0 +1,1 @@
+experiment_id,task_id,attempt_id,team_id,reviewer_id,arm,arm_order,journey,artifact_sha256,setup_minutes,review_minutes,correction_minutes,reconstruction_minutes,reconciliation_minutes,functional_0_2,scope_0_2,evidence_0_2,uncertainty_0_2,continuity_0_2,human_accepted,transcript_reconstructed,repeated_work,known_spend,currency,unknown_cost_categories,discard_reason,adjudication

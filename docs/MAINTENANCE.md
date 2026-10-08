@@ -22,6 +22,7 @@ usage, start with [First use](FIRST_USE.md).
 - [Common task acceptance](TASK_ACCEPTANCE.md): exact tarball, fixed fixtures, attempts and independent verification.
 - [Hostile repository demo](HOSTILE_REPOSITORY_DEMO.md).
 - [Benchmark guide](../benchmarks/README.md) and [Time-to-Safe-Fix protocol](TIME_TO_SAFE_FIX.md).
+- [Offline task measurement protocol](reports/har-hu-74/PROTOCOL.md): fixed candidate, paired packets and unmeasured human criteria.
 - [Historical reports](reports/README.md) and [local results](../results/README.md).
 
 Failed attempts and historical findings remain available. They do not describe
