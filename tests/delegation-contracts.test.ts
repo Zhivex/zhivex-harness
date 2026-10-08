@@ -297,8 +297,8 @@ test("a second valid delegate in the same response is not executable", async () 
   }), [contract]);
   const events = [];
   for await (const event of await model.stream!({ messages: [] })) events.push(event);
-  expect(events[0]).toEqual({ type: "tool-call", toolCall: { ...calls[0], input: { prompt: delegationPrompt(contract) } } });
-  expect(events[1]).toEqual({ type: "tool-call", toolCall: { ...calls[1], input: null } });
+  expect(events[0]).toEqual({ type: "tool-call", toolCall: { id: "first", name: "delegate_reviewer", input: { prompt: delegationPrompt(contract) } } });
+  expect(events[1]).toEqual({ type: "tool-call", toolCall: { id: "second", name: "delegate_reviewer", input: null } });
 });
 
 test("duplicate delegation history tells the coordinator not to retry", async () => {
