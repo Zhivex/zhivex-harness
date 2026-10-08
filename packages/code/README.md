@@ -1,56 +1,40 @@
 # Zhivex Code
 
-The terminal and local browser product for the Zhivex Harness engine. This checkout prepares
-`0.3.0-rc.8`, pinned exactly to `@zhivex-ai/harness@1.4.0-rc.8`, for npm `next`.
-RC.8 publication is pending. The matched engine includes the reviewed duplicate-delegation fix on main after RC.7. Published npm `next` is Code `0.3.0-rc.6` with Harness `1.4.0-rc.6`. Annotated Harness `v1.4.0-rc.7` was tagged but not published after Qwen live certification failed; that source cannot certify RC.8. The held Harness RC.5 campaign and failed RC.4 attempt remain preserved. npm `latest` remains `0.2.0`, pinned to Harness `1.3.0`.
+The terminal product for [Zhivex Harness](https://github.com/Zhivex/zhivex-harness). Code is what you install and use. Harness is the governed, provider-portable runtime underneath: durable approvals and isolated execution.
 
-Install stable with `npm install -g @zhivex-ai/code@0.2.0`.
-Node >=22.13.0 is required; consumers do not need Bun.
+<!-- TODO(Miguel): same GIF as the repository README. Replace this placeholder URL
+     after you record it. Do not add the image file to this package or to `files`. -->
 
-Run `zhivex-code` inside your repository, select a provider/model, and use the
-hidden credential prompt or your existing provider environment key. Review gated
-edits and checks before approving them. Provider calls may cost money; `/usage`
-and `/budget` report estimates for each run, not invoices or a task-wide cap.
-For a disposable offline first run, use the packaged `examples/first-use.mjs`;
-it makes no provider calls. The candidate's experimental
-[task delivery workflow](docs/TASK_DELIVERY.md) connects a goal, file scope,
-check receipts, fresh review and a human keep/revise decision. It is not present
-in the published stable or next versions listed above.
+![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/TODO-approval-survives-restart.gif)
 
-The equivalent global installation commands are `pnpm add -g @zhivex-ai/code@0.2.0`,
-`yarn global add @zhivex-ai/code@0.2.0` (Yarn Classic), and
-`bun add -g @zhivex-ai/code@0.2.0`. Choose the project's existing manager for local
-installation: `npm install`, `pnpm add`, `yarn add`, or `bun add`, followed by
-`@zhivex-ai/code@0.2.0`. Harness keeps `zhx` and `zhivex-harness`; Code owns
-`zhivex-code`, so installing both does not replace those aliases.
+> **TODO(Miguel):** placeholder URL. Record the GIF and replace this link before launch. Keep the file out of the package `files` list.
 
-The local candidate matrix covers npm, pnpm 11, Yarn Classic 1 and Bun 1.4 on
-Node 22.13 and 24.11. It uses exact tarballs and a temporary registry where needed;
-these results do not establish that the stable versions are available from `latest`.
-See [engine acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ENGINE_API.md) for reproducible commands and
-the distinction between installed acceptance and publication/provenance.
+OpenAI, Qwen, and Meta are the release-gated providers. Gemini, Anthropic, and Vertex are provisional. Linux and macOS only. Node.js 22.13 or newer. You do not need Bun to run the published package.
 
-## Build and run
+The repository [README](https://github.com/Zhivex/zhivex-harness/blob/main/README.md) is the product overview. This page is the package guide.
 
-Install a compatible Harness package and the declared dependencies, then run
-`bun run build`, `bun run typecheck`, and `bun test tests` from this directory.
-Install the immutable frontend build dependencies first with
-`bun install --cwd ../web --frozen-lockfile --ignore-scripts`. The build bundles
-the local browser host and compiled UI, including the reused Desktop presentation
-modules. It leaves Harness and server package dependencies external and never
-reads or bundles engine source. See [browser contributor verification](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md#contributor-verification).
-For this candidate checkout, install the root frozen lockfile with `bun install --frozen-lockfile --ignore-scripts`, then run `bun run build` at the repository root,
-then `bun run packages/code/scripts/link-local-engine.ts`. This explicit contributor
-command links the built root package into Code's ignored `node_modules`, validates
-its public export artifacts and preserves any installed dependency. It does not run
-as an install/build lifecycle script and does not read or bundle engine source.
-The root manifest is now `1.4.0-rc.8`; this link is local API development
-evidence only. Installed acceptance must test the exact Harness version pinned by
-Code, without rewriting its version.
+## Install
 
-The resulting tarball runs on Node >=22.13.0 without Bun, TypeScript, or install
-scripts. Bun is contribution tooling only. The independent build deliberately
-does not reach into the monorepo's Harness source or bundle its engine.
+Stable installs follow npm `latest`:
+
+```sh
+npm install -g @zhivex-ai/code
+```
+
+Equivalent global installs: `pnpm add -g @zhivex-ai/code`, `yarn global add @zhivex-ai/code` (Yarn Classic), and `bun add -g @zhivex-ai/code`. For a project-local install, use that project's package manager with `@zhivex-ai/code`.
+
+Code owns `zhivex-code`. Harness keeps `zhx`, `zhivex-harness`, and `zhx-acp`. Installing both leaves each command in place. Code has no public library API.
+
+## First run
+
+```sh
+cd /path/to/your/project
+zhivex-code
+```
+
+Choose a provider and model. Enter an API key in the hidden prompt, or rely on an environment variable you already exported. Save the key in the system keychain or keep it for this session. Review each edit and check before you approve it. Provider calls can cost money. `/usage` and `/budget` report estimates for each run. They are not invoices, and they are not a cap across a whole session.
+
+Credential details, including Vertex Application Default Credentials, are in [Credentials](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CREDENTIALS.md). The [first-use guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/FIRST_USE.md) shows the same prompts with the engine command `zhx`.
 
 ```sh
 zhivex-code --help
@@ -59,60 +43,41 @@ zhivex-code run --json "Explain this repository"
 zhivex-code doctor
 ```
 
-Code owns only the `zhivex-code` executable. Harness 1.x retains `zhx`,
-`zhivex-harness`, and `zhx-acp`. Installing either product does not claim the
-other's binary names. Code has no public library API.
+## Continue
 
-## Compatibility
+Pending approvals are stored in SQLite and survive quitting the terminal.
 
-The terminal sources were extracted from the Harness 1.x CLI. Commands, flags,
-exit codes, approval behavior, JSON schemas, profiles, state directory defaults,
-and keychain identifiers remain compatible. Product help and the welcome screen
-identify Code; `--version` identifies Code's version. The doctor JSON field
-`harnessVersion` still identifies the actual engine dependency. Provider selection,
-interactive prompts, keychain access and terminal rendering live in Code.
+| Where | What you type | What happens |
+| --- | --- | --- |
+| Shell, after you quit | `zhivex-code --continue` | Reopens the latest conversation, including a pending approval. Inspect it with `/pending`, then `/approve` or `/deny`. |
+| Inside the session | `/continue` | Starts a new run from an interrupted task and keeps the earlier results. |
 
-The engine owns shared CLI option contracts, JSON/event serialization, run result
-projection and continuation reconstruction. Code consumes named Harness exports;
-experimental `/code-support` supplies bounded host helpers. The diagnostic SQLite
-helper returns a read-only projection, never a connection or arbitrary SQL API.
-The historical Harness CLI remains an independent compatibility snapshot.
+`/continue` is the in-session slash command. `--continue` is the shell flag that reopens the latest conversation. It exists on `zhivex-code` and on the engine CLI `zhx`. A run that is waiting for approval stays on `/pending` until you decide. A new turn, `/continue`, or review group gets a new per-run budget. Resuming a pending run keeps that run's original limit. There is no session-wide financial cap.
 
-Anthropic is available through the engine provider registry and shared model catalog.
-Configure `ANTHROPIC_API_KEY`, or use `/credentials` for a system keychain or
-temporary key. Managed keys require the default Anthropic endpoint. Vertex uses
-host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and
-`VERTEX_LOCATION`; Code does not ask for or store a Vertex API key.
+`zhivex-code --session <id>` reopens one selected conversation.
 
-## Release status
+## Offline tutorial
 
-Packing and local tests are not a registry release. The independent Code workflow
-validates an annotated `code-v0.3.0-rc.8` tag on reviewed main, its exact CI/CodeQL
-and installed-journey/web results, and the published engine dependency. It tests one immutable Code tarball
-both without dependency overrides and with the four package managers.
+The package includes a tutorial that needs Node.js 22.13 or newer and an interactive terminal. It does not need Bun, Git, credentials, or a paid provider. From a global install:
 
-The prepared RC 0.3.0-rc.8 uses the existing npm Trusted Publishing configuration and protected
-`npm` environment. Historical first-publication bootstrap is documented separately. See
-[Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md) in the source repository.
-Code `0.2.0` is published on `latest`; Code `0.3.0-rc.6` is published on `next`.
-The prepared `0.3.0-rc.8` remains unpublished. Stable acceptance used the published Harness `1.3.0` dependency. The local
-four-manager matrix covers both install orders; it does not certify other engine
-versions, upstream provider parity or registry provenance. Beta/experimental
-engine helpers and provisional Anthropic/Gemini/Vertex routes retain their tiers.
+```sh
+node "$(npm root -g)/@zhivex-ai/code/examples/first-use.mjs"
+```
 
-## Guided runs (since 0.2.0)
+From a local install of a packed tarball:
 
-Code 0.2.0 introduced these console workflows on Harness 1.3.0 APIs. See the
-[Code changelog](CHANGELOG.md) for migration notes.
+```sh
+npm install --ignore-scripts /absolute/path/to/zhivex-ai-code.tgz
+node node_modules/@zhivex-ai/code/examples/first-use.mjs
+```
 
-Approvals for local reviewed edits, patches and replacements show a per-file
-changed-region diff from the engine's digest-validated preview. The complete
-approval payload remains available. Unavailable or oversized previews are labeled
-explicitly; the engine still rechecks preconditions when applying changes.
+The launcher creates a temporary workspace and walks through inspect, checkpoint, a per-run budget, a reviewed diff, a reviewed Node test, `/usage`, Ctrl+C, exit, reopen, and `/continue`. Model responses are synthetic. The console, persistence, approvals, file edits, and the Node check still run. The script prints the command that reopens the same workspace.
 
-Use `/checkpoint` to capture, list, review or restore files. Capture requires a
-terminal conversation turn and explicitly selected existing UTF-8 text files:
-1–20 files, at most 64 KiB each. For example:
+## Commands worth knowing
+
+Approvals for reviewed edits show a per-file changed-region diff when the engine can preview it. The full approval payload stays available. Oversized or unavailable previews are labeled. The engine rechecks preconditions when it applies the change.
+
+`/checkpoint` captures, lists, reviews, or restores explicitly selected existing UTF-8 text files (1–20 files, at most 64 KiB each):
 
 ```text
 /checkpoint capture ["src/greeting.mjs", "src/greeting.test.mjs"]
@@ -121,85 +86,37 @@ terminal conversation turn and explicitly selected existing UTF-8 text files:
 /checkpoint restore
 ```
 
-Restore displays current contents, captured contents and current digests. Typing
-`prepare` explicitly adopts those displayed preconditions. A second review shows
-the exact prepared proposal; typing `restore` applies it and switches to a fork
-of the captured conversation. Original conversations remain intact. Leaving the
-second prompt empty retains the operation; `/checkpoint retry` reviews its original
-digests again. Conflicts, missing files and partial operations fail closed. The UI
-never silently refreshes digests, narrows the file set or rolls back files. Uncertain
-conversation forks require manual engine recovery. Creation, deletion, binary files
-and mode changes are outside checkpoint coverage. The engine bounds storage to 100
-records per scope, 2 MiB per record, without automatic eviction; reviewed retention
-remains an engine API operation.
+Restore shows current contents, captured contents, and current digests. Type `prepare` to adopt those preconditions, then `restore` on the second review to apply them. Conflicts and missing files fail closed.
 
-Model selection displays advisory USD prices where the shared catalog supplies
-them; `/pricing` shows their scope, checked date and source. Missing prices say
-`unknown`. These prices do not automatically configure a monetary policy.
-Use `/budget` or `/budget 1` to review an operator pricing JSON file and configure
-an estimated USD limit for each new run. `/budget off` disables that monetary
-limit. Existing `--pricing-file` and `--usage-limit-usd` flags work for automation.
-See the offline fixture's `prices.json` for the schema; its rates are synthetic
-and must not be used as real provider prices.
+`/pricing` shows advisory USD prices from the shared catalog, including scope and source. Missing prices say `unknown`. `/budget` or `/budget 1` sets an estimated USD limit for each new run. `/budget off` clears that limit. `--pricing-file` and `--usage-limit-usd` are the automation flags. Estimates can differ from provider bills.
 
-Usage appears after model steps and in `/usage`. A pending run retains its original
-ledger policy across approval resumption and restart. A new turn, `/continue`, or
-review group receives a new run budget; there is no session-wide financial cap.
-The engine reserves estimated requests with an output cap of up to 2048 tokens
-and blocks insufficient estimated budget, missing/stale prices and uncertain usage.
-Actual tokenization, provider billing, cached tokens and pricing tiers can differ.
-Estimates are not invoices or guaranteed financial caps. Other step, token, tool
-and time limits continue to apply.
+## Limits
 
-## First use with Node and an offline fixture
+- Gemini, Anthropic, and Vertex are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
+- Anthropic uses `ANTHROPIC_API_KEY` or `/credentials`. Vertex uses host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not store a Vertex API key.
+- MCP in the default CLI is bounded Streamable HTTP. stdio is not enabled from workspace JSON.
+- `zhivex-code web` opens an experimental local browser workspace on macOS or Linux. Configure credentials in the CLI first. See [local web client](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md) and `zhivex-code web --help`.
+- The default runtime exposes no shell tools. Isolated commands need Docker or Podman, configured explicitly.
 
-The Code tarball includes a tutorial that needs Node >=22.13.0 and npm.
-It does not need Bun, Python, Git, credentials or a paid provider. In an empty
-directory, install the candidate tarball from this PR (or pack a contributor build):
+## Releases
+
+npm `latest` is the stable channel (Code `0.2.0`, paired with Harness `1.3.0`). Prerelease publication moves independently. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a candidate.
+
+Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
+
+## Contributors
+
+Bun is contribution tooling. The published tarball runs on Node.js 22.13 or newer without Bun, TypeScript, or install scripts.
+
+From this directory, after a compatible Harness package and the declared dependencies are installed:
 
 ```sh
-npm install --ignore-scripts /absolute/path/to/zhivex-ai-code-0.2.0.tgz
-node node_modules/@zhivex-ai/code/examples/first-use.mjs
+bun install --cwd ../web --frozen-lockfile --ignore-scripts
+bun run build
+bun run typecheck
+bun test tests
 ```
 
-The launcher creates a temporary workspace and prints a guided sequence: inspect,
-capture a checkpoint, set a per-run budget, request a fix, review/approve its diff,
-review/approve a Node test, inspect usage, interrupt with Ctrl+C, exit/reopen and
-`/continue`. Finally, review and restore the checkpoint. It prints a command to
-reopen the same workspace and never overwrites existing fixture files. The preload
-replaces fetch entirely, rejecting unexpected endpoints; all responses, token counts
-and rates are synthetic. The actual Code console, engine persistence, approvals,
-file edits and Node check commands still run. Removing the temporary workspace is
-the user's explicit cleanup step.
+In a repository checkout, install the root lockfile with `bun install --frozen-lockfile --ignore-scripts`, build at the repository root, then run `bun run packages/code/scripts/link-local-engine.ts`. That links the built engine into Code's ignored `node_modules` for local API work. It does not run as an install script, and it does not bundle engine source. Installed acceptance must use the Harness version this package declares.
 
-Contributors run `bun run build`, `bun run typecheck`, `bun run test`, then
-`bun run smoke:installed` in this package. The installed acceptance driver packs
-Code, installs it with npm and the exact pinned published Harness dependency (no
-override or source link), then exercises the tutorial in a Linux/macOS PTY. Python
-3 is test tooling only. Set `CODE_JOURNEY_OUTPUT` to retain its report and transcript.
-
-To test an already retained artifact without repacking, run
-`node scripts/installed-journey.mjs /absolute/path/to/code.tgz`. The report binds
-the source SHA, Node version, tarball size and SHA-512 to the offline PTY result.
-Release validation uses this mode on the same bytes that will be published.
-
-Experimental project memory in this RC uses `zhivex-code memory --help` and Harness 1.4.0-rc.8. See the [project memory guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/PROJECT_MEMORY.md) for review, scope and deletion controls. This candidate is not yet published.
-
-## Local browser workspace (experimental)
-
-`zhivex-code web` opens a local React workspace with prebuilt assets. Select
-CLI-allowlisted workspaces and existing sessions, follow tasks, review exact
-operations/diffs, approve or deny, inspect checks and cancel runs using the same
-Harness service. Use `zhivex-code web --help` for host/profile and recovery flags.
-Configure credentials through the existing CLI or launching environment first;
-credentials remain on the server. macOS/Linux only. See the
-[local web client](../web/README.md) for the security boundary and contributor checks.
-
-Contributor dependencies are locked by the root and web lockfiles. The former Code
-registry lock pinned stable Harness 1.3.0 and has been removed: an unpublished RC
-has no registry integrity to record. Do not fabricate a lock entry or change the
-published package dependency to a local path. Before publication, installed PTY
-acceptance uses `--candidate-engine /absolute/path/harness.tgz`; installed web
-acceptance uses `CODE_CANDIDATE_ENGINE`. Both check the exact manifest pin and
-label the explicit consumer override. Release Code PTY and registry resolution
-still use the real published dependency without overrides after Harness publishes.
+`bun run smoke:installed` packs Code, installs it with npm and that pinned Harness dependency, and exercises the offline tutorial in a Linux or macOS terminal. To reuse an existing tarball: `node scripts/installed-journey.mjs /absolute/path/to/code.tgz`.
