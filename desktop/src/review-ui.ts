@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { reviewScope, type ReviewScope } from "./review-scope.js";
+import { filesViewedLabel, reviewScope, type ReviewScope } from "./review-scope.js";
 export { reviewConsequence, preventDecisionEnter } from "./review-scope.js";
 
 /** Local acknowledgement only; a new run, revision, or ticket always starts unviewed. */
@@ -14,6 +14,7 @@ export function useViewedFiles(review: ReviewScope | undefined, runId?: string, 
   return {
     ...scope,
     count,
+    viewedLabel: filesViewedLabel(count, scope.paths.length),
     allViewed: count === scope.paths.length,
     isViewed: (path: string) => viewed.includes(path),
     setViewed(path: string, checked: boolean) {

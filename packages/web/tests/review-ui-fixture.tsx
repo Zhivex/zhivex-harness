@@ -23,7 +23,7 @@ function Fixture() {
     {viewed.paths.map(path => <label key={path}>
       <input type="checkbox" checked={viewed.isViewed(path)} onChange={event => viewed.setViewed(path, event.target.checked)} />Viewed {path}
     </label>)}
-    <p role="status">{viewed.count} of {viewed.paths.length} files viewed</p>
+    <p role="status">{viewed.viewedLabel}</p>
     <button disabled={!viewed.allViewed} onKeyDown={preventDecisionEnter} onClick={() => { if (viewed.allViewed) setDecisions(value => value + 1); }}>{viewed.approveLabel}</button>
     <button onKeyDown={preventDecisionEnter} onClick={() => setDecisions(value => value + 1)}>Reject</button>
     <output aria-label="Decisions">{decisions}</output>

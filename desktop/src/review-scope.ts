@@ -18,6 +18,10 @@ function counted(count: number, singular: string) {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
 
+export function filesViewedLabel(count: number, total: number) {
+  return `${count} of ${counted(total, "file")} viewed`;
+}
+
 /** Items with neither a reviewed file nor a reviewed command still approve when the batch does. */
 function isOtherOperation(item: ReviewScope["items"][number]) {
   return item.files.length === 0 && item.commands.length === 0;

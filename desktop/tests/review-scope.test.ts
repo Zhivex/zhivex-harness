@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { reviewScope, preventDecisionEnter, type ReviewScope } from "../src/review-scope.js";
+import { filesViewedLabel, reviewScope, preventDecisionEnter, type ReviewScope } from "../src/review-scope.js";
 
 const review = (items: ReviewScope["items"]): ReviewScope => ({ runId: "run", revision: 1, ticketId: "ticket", items });
 
@@ -85,6 +85,13 @@ describe("review decision scope", () => {
       { name: "move_file", files: [], commands: [] },
       { name: "restore_file", files: [], commands: [], restriction: "INVALID_PAYLOAD" },
     ])).approveLabel).toBe("Approve 2 other operations");
+  });
+
+  test("uses the singular file noun when one file is in the viewed status", () => {
+    expect(filesViewedLabel(0, 1)).toBe("0 of 1 file viewed");
+    expect(filesViewedLabel(1, 1)).toBe("1 of 1 file viewed");
+    expect(filesViewedLabel(0, 2)).toBe("0 of 2 files viewed");
+    expect(filesViewedLabel(1, 2)).toBe("1 of 2 files viewed");
   });
 
   test("blocks Enter native activation; preserves Space and navigation", () => {

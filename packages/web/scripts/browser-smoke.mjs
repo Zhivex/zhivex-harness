@@ -276,7 +276,7 @@ try {
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), true);
   await reviewEnterDoesNotDecide();
   await page.getByRole("button", { name: "Refresh exact review" }).click();
-  await page.getByText("0 of 1 files viewed", { exact: true }).waitFor();
+  await page.getByText("0 of 1 file viewed", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
   steps.push("viewed gate blocks approval, leaves rejection available, resets on new ticket; Enter/Ctrl+Enter/Meta+Enter never decide");
   // Stress the rendered review with long unbroken text without changing its ticket or payload.

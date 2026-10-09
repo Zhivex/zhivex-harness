@@ -1109,7 +1109,7 @@ export function App() {
                     </article>
                   ))}
                   <p>{reviewConsequence}</p>
-                  {viewed.paths.length ? <p role="status">{viewed.count} of {viewed.paths.length} files viewed</p> : null}
+                  {viewed.paths.length ? <p role="status">{viewed.viewedLabel}</p> : null}
                   {!viewed.allViewed ? <p id="review-viewed-hint">View all files to approve</p> : null}
                   <div className="decision-actions">
                     <button
