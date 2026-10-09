@@ -125,7 +125,9 @@ try:
     assert "Waiting for your decision · /pending" in decided
     assert "is paused" not in decided
     console.send("/pending\n")
-    console.read("Waiting for your decision")
+    # The composer status already says "Waiting for your decision", and that
+    # footer is written after the prompt. Wait for the review frame itself.
+    console.read("( Z ) Review changes")
     console.send("\x1b")
     pending = console.prompt()
     assert "approval pending" in pending or "Waiting for your decision" in pending
