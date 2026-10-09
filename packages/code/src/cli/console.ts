@@ -194,7 +194,7 @@ export const chat = async (options: CliOptions) => {
     model: `${harness.config.provider}/${harness.config.model}`,
     reasoning: harness.config.reasoningEffort ?? "default",
     ...(session.title ? {title: session.title} : {}),
-    status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : consoleIssue ?? "ready",
+    status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending to review" : consoleIssue ?? "ready",
     attachments: attachments.list().length,
     automaticApprovals: options.yes === true,
     ...(options.approvalMode ? {approvalMode: options.approvalMode} : {}),
@@ -423,11 +423,15 @@ export const chat = async (options: CliOptions) => {
     model: harness.config.model,
     sessionId: session.sessionId,
     ...(session.title ? { sessionTitle: session.title } : {}),
-  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80, compact: true }) + "\n");
+  }, {
+    color: terminalSupportsColor(Boolean(process.stderr.isTTY)),
+    columns: process.stderr.columns ?? 80,
+    rows: process.stderr.rows ?? 0,
+    tty: Boolean(process.stderr.isTTY),
+    term: process.env.TERM,
+  }) + "\n");
 
   process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
-  process.stderr.write("* Context estimates retained messages only; excludes request instructions/tools. Costs are estimates, not invoices.\n");
-  process.stderr.write("While working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.\n");
   process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled within workspace and execution policies.\n" : "Changes require your approval.\n");
 
   const showSessionState = async () => {

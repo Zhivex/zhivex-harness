@@ -68,7 +68,10 @@ other's binary names. Code has no public library API.
 The terminal sources were extracted from the Harness 1.x CLI. Commands, flags,
 exit codes, approval behavior, JSON schemas, profiles, state directory defaults,
 and keychain identifiers remain compatible. Product help and the welcome screen
-identify Code; `--version` identifies Code's version. The doctor JSON field
+identify Code; `--version` identifies Code's version. The interactive console
+prints the full braille logo only when stderr is a terminal, `TERM` is not `dumb`,
+and the terminal is at least 48 columns by 24 rows. Any other case prints `( Z )`.
+`NO_COLOR` removes logo color and leaves the glyph. The doctor JSON field
 `harnessVersion` still identifies the actual engine dependency. Provider selection,
 interactive prompts, keychain access and terminal rendering live in Code.
 

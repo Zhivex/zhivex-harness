@@ -18,8 +18,11 @@ These references inform interaction patterns, not a claim of feature parity.
 
 ## Implemented behavior
 
-- Welcome: original Zhivex mark, title and bounded project/model context beside it;
-  narrow terminals stack the context beneath a compact mark.
+- Welcome (`zhivex-code`): the full braille mark appears only when stderr is a
+  terminal, `TERM` is not `dumb`, and the size is at least 48 columns by 24 rows;
+  otherwise the mark is `( Z )`. Title and bounded project/model context sit beside
+  the mark when the width allows, and stack beneath the compact mark otherwise.
+  `NO_COLOR` removes color and leaves the glyph.
 - Focus layout: one conversation column in normal terminal scrollback, with the
   original Zhivex mark. The welcome panel keeps project and model context; keyboard
   help lives beside the editor rather than repeating beneath the welcome panel.

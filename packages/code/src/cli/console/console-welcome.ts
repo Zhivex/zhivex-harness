@@ -2,8 +2,8 @@ import { consoleLabel } from "./console-presentation.js";
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
 
 // Sampled from desktop/assets/zhivex-logo.png: the original Zhivex Z and connected nodes.
+// The sampled grid is 12×24; the first and last rows are blank padding, so the mark is 10 rows.
 export const ZHIVEX_TERMINAL_LOGO = [
-  "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀",
   "⠀⠀⠀⠀⠀⠀⠀⣀⣤⣴⡶⠶⠶⠶⣦⣤⣀⠀⠀⠀⠀⠀⠀⠀",
   "⠀⠀⠀⠀⠀⣠⡾⠋⠉⠀⠀⠀⠀⠀⠀⠈⠙⢷⣄⠀⠀⠀⠀⠀",
   "⠀⠀⠀⢀⡾⠋⠀⠴⠿⠿⠿⠿⠿⠿⣿⣿⡿⠋⠙⣷⡀⠀⠀⠀",
@@ -14,7 +14,6 @@ export const ZHIVEX_TERMINAL_LOGO = [
   "⠀⠀⠀⠈⠻⣿⡟⠁⠀⠀⠀⠀⠀⠀⠈⣿⣿⢀⣴⠟⠀⠀⠀⠀",
   "⠀⠀⠀⠀⠀⠈⠻⢶⣤⣀⡀⠀⠀⢀⣀⣤⡶⠟⠁⠀⠀⠀⠀⠀",
   "⠀⠀⠀⠀⠀⠀⠀⠀⠉⠙⠛⠛⠛⠛⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀",
-  "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"
 ].join("\n");
 
 export const formatConsoleWelcome = (input: {
@@ -25,12 +24,17 @@ export const formatConsoleWelcome = (input: {
   provider?: string;
   model?: string;
   service?: boolean;
-}, options: { color?: boolean; columns?: number; compact?: boolean } = {}) => {
+}, options: { color?: boolean; columns?: number; rows?: number; compact?: boolean; tty?: boolean; term?: string } = {}) => {
   const safe = sanitizeTerminalText;
   const color = options.color ?? terminalSupportsColor(Boolean(process.stdout.isTTY));
   const columns = options.columns ?? 80;
+  const rows = options.rows ?? process.stderr.rows ?? 0;
+  const tty = options.tty ?? Boolean(process.stderr.isTTY);
+  const term = options.term ?? process.env.TERM;
   const title = `Zhivex Code ${safe(input.version)}`;
-  const logo = columns < 48 || options.compact ? "( Z )" : ZHIVEX_TERMINAL_LOGO;
+  // Full mark only on a real stderr terminal that can hold it. Color is a separate switch.
+  const logo = !options.compact && tty && term !== "dumb" && columns >= 48 && rows >= 24
+    ? ZHIVEX_TERMINAL_LOGO : "( Z )";
   const logoLines = logo.split("\n");
   const logoWidth = Math.max(...logoLines.map(line => line.length));
   const titleBesideLogo = columns >= logoWidth + 3 + title.length;
