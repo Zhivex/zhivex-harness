@@ -3,15 +3,29 @@
 - Status: published on npm as `latest`
 - Baseline date: 2026-09-20
 
-Version `1.3.0` and Code `0.1.0` are published and verified on npm `latest`;
-`release-status.json` records the Harness registry bytes, source and protected
-release evidence. Harness RC7 and Code RC2 remain published on `next`.
+Version `1.3.0` is published and verified on npm `latest`.
+`release-status.json` records that Harness registry bytes, source and protected
+release evidence. Code `0.2.0`, pinned to Harness `1.3.0`, is the published Code
+package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
+`0.3.0-rc.8`. This checkout prepares Harness `1.4.0` and Code `0.3.0` for
+`latest`. Publication is pending and is not claimed here.
 
-## Current release: 1.3.0
+## Prepared source: 1.4.0
 
-Source version: `1.3.0` (stable publication to `latest` verified), with independent
-Code CLI `0.1.0` pinned exactly to Harness `1.3.0`. This is release closure:
-engine boundaries and the existing terminal behavior retain their recorded
+Source version: `1.4.0` (stable publication to `latest` pending), with Code
+`0.3.0` pinned exactly to Harness `1.4.0`. Engine runtime source under `src/`
+matches annotated `v1.4.0-rc.8`
+(`5bba06c86fc82b34b67cec607053948f8e00d0d1`). `packages/code`, `packages/web`
+and `desktop` do not. Beta/experimental APIs and provisional provider routes do
+not become stable. Desktop keeps `0.1.0-alpha.1` and private distribution.
+This preparation does not create tags or publish.
+
+## Published release: 1.3.0
+
+Published version: `1.3.0` (stable publication to `latest` verified). The 1.3.0
+closure shipped independent Code CLI `0.1.0` pinned exactly to Harness `1.3.0`.
+Code `0.2.0` is the later published package on that same engine. Engine
+boundaries and the terminal behavior of that release retain their recorded
 contracts and stability tiers. Beta/experimental APIs and provisional provider
 routes do not become stable. Desktop keeps `0.1.0-alpha.1` and private distribution.
 
@@ -73,6 +87,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Published on npm; superseded on `latest` | L |
 | `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Published on npm; superseded on `latest` | L |
 | `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Published on npm as `latest` | M |
+| `1.4.0` | Stable Code product | Code 0.3.0 pinned to the 1.4.0 engine | Pending stable publication | L |
 
 Relative size is for sequencing only; dates require a capacity decision.
 
@@ -443,4 +458,4 @@ These were the release preparation actions before 1.0 publication. Current relea
 
 ## Post-1.0 consolidation
 
-Maintain the stable [installation path](README.md#installation), [examples](examples/README.md), and [support contract](SUPPORT.md). Run `bun run docs:check` to detect stale onboarding versions while preserving historical release evidence. New product increments require their own scope and verification; the published 1.0 contract remains the baseline.
+Maintain the stable [installation path](README.md#quick-start), [examples](examples/README.md), and [support contract](SUPPORT.md). Run `bun run docs:check` to detect stale onboarding versions while preserving historical release evidence. New product increments require their own scope and verification; the published 1.0 contract remains the baseline.

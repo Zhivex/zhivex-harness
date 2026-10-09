@@ -4,6 +4,13 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.4.0 - 2026-10-09
+
+- Prepare stable Harness 1.4.0 and Code 0.3.0 for npm `latest`, with the exact Code engine pin, private Desktop binding and an additive representative mapping for `v1.4.0` using the unchanged Meta, Qwen and OpenAI models. Retain the SDK pins already on main (Core 1.31.0, Agents 1.11.0 and the existing provider packages). Published `latest` stays Harness 1.3.0 and Code 0.2.0. Published `next` is Harness 1.4.0-rc.8 and Code 0.3.0-rc.8. `release-status.json` keeps the verified 1.3.0 record until this stable publication has its own registry evidence.
+- Engine runtime source under `src/` is identical to annotated `v1.4.0-rc.8` and `code-v0.3.0-rc.8` (`5bba06c86fc82b34b67cec607053948f8e00d0d1`). Root `scripts/`, root `tests/` and `evaluations/` were also unchanged before this preparation's representative-mapping row. Code (`packages/code`), web (`packages/web`) and desktop (`desktop`) are not identical to that tag.
+- Carry the reviewed product changes on main after that tag: the same Code review screen for shell `--continue` and `/pending` ([PR201](https://github.com/Zhivex/zhivex-harness/pull/201)); removal of the desktop fixture waiting button ([PR203](https://github.com/Zhivex/zhivex-harness/pull/203)); B-lite review scope on web and desktop ([PR211](https://github.com/Zhivex/zhivex-harness/pull/211)); the Code status line, one-line summary and 48×24 first-welcome logo ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)); and the public README ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)). Packaged Harness docs `README.md` and `docs/CLI.md` differ from the rc.8 tag. `docs/CLI_UX.md` and `docs/images/approval-survives-restart.gif` also differ and are outside the Harness `files` list.
+- Require fresh exact-source/artifact validation and separate explicit approval before any paid campaign, annotated tag or publication. Provider/API tiers remain unchanged. This preparation creates no tags and dispatches no release.
+
 ## 1.4.0-rc.8 - 2026-10-08
 
 - Prepare matched Harness 1.4.0-rc.8 and Code 0.3.0-rc.8 for npm `next`, with the exact Code engine pin, private Desktop binding and an additive representative mapping using unchanged models. Retain the SDK pins already on main (Core 1.31.0, Agents 1.11.0 and the existing provider packages). Stable `latest` stays Harness 1.3.0 and Code 0.2.0.
