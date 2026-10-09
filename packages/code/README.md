@@ -69,8 +69,9 @@ The terminal sources were extracted from the Harness 1.x CLI. Commands, flags,
 exit codes, approval behavior, JSON schemas, profiles, state directory defaults,
 and keychain identifiers remain compatible. Product help and the welcome screen
 identify Code; `--version` identifies Code's version. The interactive console
-prints the full braille logo only when stderr is a terminal, `TERM` is not `dumb`,
-and the terminal is at least 48 columns by 24 rows. Any other case prints `( Z )`.
+prints the full braille logo only on the first welcome of a new session, when stderr
+is a terminal, `TERM` is not `dumb`, and the terminal is at least 48 columns by 24
+rows. Any other case prints `( Z )`. A restored session prints no logo.
 `NO_COLOR` removes logo color and leaves the glyph. The doctor JSON field
 `harnessVersion` still identifies the actual engine dependency. Provider selection,
 interactive prompts, keychain access and terminal rendering live in Code.
@@ -110,7 +111,7 @@ Code 0.2.0 introduced these console workflows on Harness 1.3.0 APIs. See the
 
 Approvals for local reviewed edits, patches and replacements show a per-file
 changed-region diff from the engine's digest-validated preview. The complete
-approval payload remains available. Unavailable or oversized previews are labeled
+approval payload remains available via Details (`d`). Unavailable or oversized previews are labeled
 explicitly; the engine still rechecks preconditions when applying changes.
 
 Use `/checkpoint` to capture, list, review or restore files. Capture requires a

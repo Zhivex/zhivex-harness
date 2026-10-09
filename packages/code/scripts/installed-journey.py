@@ -118,7 +118,9 @@ try:
     assert "---" in diff and "+++" in diff and "-export const greeting" in diff and "+export const greeting" in diff
     assert "Hi, ${name}" in (workspace / "greeting.mjs").read_text()
     console.permission("\x1b")
-    assert "paused" in console.prompt()
+    decided = console.prompt()
+    assert "Waiting for your decision · /pending" in decided
+    assert "is paused" not in decided
     console.send("/pending\n")
     console.read("Waiting for your decision")
     console.send("\x1b")
@@ -220,7 +222,7 @@ try:
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
         console.send("r")
         rejected = console.prompt()
-        assert "1 rejected decisions" in rejected and "Conversation: completed" in rejected
+        assert "1 rejected" in rejected and "Conversation: completed" not in rejected
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
         console.close()
         import shutil

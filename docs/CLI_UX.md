@@ -18,20 +18,22 @@ These references inform interaction patterns, not a claim of feature parity.
 
 ## Implemented behavior
 
-- Welcome (`zhivex-code`): the full braille mark appears only when stderr is a
-  terminal, `TERM` is not `dumb`, and the size is at least 48 columns by 24 rows;
-  otherwise the mark is `( Z )`. Title and bounded project/model context sit beside
-  the mark when the width allows, and stack beneath the compact mark otherwise.
-  `NO_COLOR` removes color and leaves the glyph.
+- Welcome (`zhivex-code`): the full braille mark appears only on the first welcome
+  of a new session, and only when stderr is a terminal, `TERM` is not `dumb`, and
+  the size is at least 48 columns by 24 rows. Otherwise the mark is `( Z )`.
+  Restoring a session prints no logo. Title, `~/project · provider/model`, the
+  welcome question and one approval-policy sentence sit beside the mark when the
+  width allows. `NO_COLOR` removes color and leaves the glyph.
 - Focus layout: one conversation column in normal terminal scrollback, with the
   original Zhivex mark. The welcome panel keeps project and model context; keyboard
   help lives beside the editor rather than repeating beneath the welcome panel.
-- Composer: model and reasoning sit above the input, followed by state, approval
-  policy and attachment count. A muted placeholder disappears when typing. A lower
-  rule and width-aware keyboard hints follow the complete draft, including while
-  editing an earlier multiline row. Command and history searches temporarily replace
-  this footer. Submitting or cancelling removes the footer before streaming or
-  asking for approval. `/status` retains the full identifiers and configuration.
+- Composer: one status line sits under the input, `model · ask before changes · ready`,
+  with `/ commands · ? shortcuts` on the right when it fits. Cost is shown only when
+  a cap exists or a capped run is incomplete. A muted placeholder disappears when
+  typing. A lower rule follows the complete draft, including while editing an earlier
+  multiline row. Command and history searches temporarily replace this footer.
+  Submitting or cancelling removes the footer before streaming or asking for approval.
+  `/status` retains the session, credential source, context estimate and caps.
 - Commands: search descriptions as well as names; names matching the prefix rank
   first. Arrow selection and Tab or Enter on a partial command fill the draft.
   Executing a selected command requires a separate submission.
