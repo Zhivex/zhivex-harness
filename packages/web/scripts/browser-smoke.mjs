@@ -236,7 +236,7 @@ try {
   await wait();
   steps.push("reload and durable resume");
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Approve & continue" }).waitFor();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).waitFor();
   await page.screenshot({
     path: path.join(output, "web-review-desktop.png"),
     fullPage: true,
@@ -253,7 +253,7 @@ try {
     true,
   );
   steps.push("keyboard diff navigation and focused review heading");
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();
   assert.match(
     await readFile(ready.workspace + "/review.txt", "utf8"),
@@ -263,7 +263,7 @@ try {
   await task("check-probe: run existing checks");
   await wait();
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();
   await page.getByText("exit 7", { exact: true }).waitFor();
   steps.push("real offline failed check activity");
@@ -272,7 +272,7 @@ try {
   await task("edit-probe: review another edit");
   await wait();
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Deny operation" }).click();
+  await page.getByRole("button", { name: "Reject", exact: true }).click();
   await page.waitForFunction(() =>
     ["completed", "failed", "cancelled", "Reconciliation required"].includes(
       document.querySelector(".pill")?.textContent,
@@ -441,11 +441,11 @@ try {
     })
     .waitFor();
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   assert.equal(
-    await page.getByRole("button", { name: "Deny operation" }).isEnabled(),
+    await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(),
     false,
   );
   await capture("web-stale-review-desktop.png");
@@ -457,7 +457,7 @@ try {
     })
     .waitFor();
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   await page.getByRole("button", { name: "Refresh exact review" }).click();
@@ -491,11 +491,11 @@ try {
       document.querySelector(".pill")?.textContent === "Connection unavailable",
   );
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   assert.equal(
-    await page.getByRole("button", { name: "Deny operation" }).isEnabled(),
+    await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(),
     false,
   );
   await capture("web-disconnected-review-mobile.png");
@@ -504,7 +504,7 @@ try {
   await page.getByRole("button", { name: "Review proposed operation" }).click();
   const decisionsBefore = commands.filter((c) => c === "decide").length;
   fault = { action: "decide", mode: "lost" };
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await page.getByRole("alert").waitFor();
   await reconnectState();
   await complete();
@@ -581,7 +581,7 @@ try {
   assert.equal(await picker.isDisabled(), true);
   steps.push("provider/model selection stays disabled while exact approval is pending");
   await page.getByRole("button", {name:"Review proposed operation"}).click();
-  await page.getByRole("button", {name:"Deny operation"}).click();
+  await page.getByRole("button", {name:"Reject", exact:true}).click();
   await page.waitForFunction(() => ["completed", "failed", "cancelled", "Reconciliation required"].includes(document.querySelector(".pill")?.textContent));
   await page.getByRole("button", { name: "Reconnect" }).click();
   await page.waitForFunction(() => !document.querySelector("#model-choice")?.disabled);

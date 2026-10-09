@@ -1,3 +1,4 @@
+import { reviewScope, reviewConsequence } from "../../../desktop/src/review-scope.js";
 import { useEffect, useRef, useState } from "react";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
@@ -76,6 +77,7 @@ export function App() {
   const [run, setRun] = useState<HarnessClientRun>();
   const [runUnavailable, setRunUnavailable] = useState(false);
   const [review, setReview] = useState<TicketedApprovalReview>();
+  const scope = reviewScope(review);
   const [prompt, setPrompt] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -1060,14 +1062,7 @@ export function App() {
                   <p className="review-scope">
                     {review.items.length} operation
                     {review.items.length === 1 ? "" : "s"} ·{" "}
-                    {review.items.reduce((n, item) => n + item.files.length, 0)}{" "}
-                    file
-                    {review.items.reduce(
-                      (n, item) => n + item.files.length,
-                      0,
-                    ) === 1
-                      ? ""
-                      : "s"}
+                    {scope.paths.length} file{scope.paths.length === 1 ? "" : "s"}
                   </p>
                   {reviewInvalid && (
                     <p className="restriction" role="status">
@@ -1102,13 +1097,14 @@ export function App() {
                       )}
                     </article>
                   ))}
+                  <p>{reviewConsequence}</p>
                   <div className="decision-actions">
                     <button
                       className="subtle"
                       disabled={!canMutate || Boolean(reviewInvalid)}
                       onClick={() => void decide(false)}
                     >
-                      Deny operation
+                      Reject
                     </button>
                     <button
                       className="primary"
@@ -1119,7 +1115,7 @@ export function App() {
                       }
                       onClick={() => void decide(true)}
                     >
-                      Approve & continue
+                      {scope.approveLabel}
                     </button>
                   </div>
                 </div>
