@@ -99,7 +99,13 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false');
     await js('for(let i=0;i<2;i++)document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
-    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("#prompt").disabled === false');
+    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("[data-action=start]").disabled === true');
+    assert.equal(await js('document.querySelector("#prompt").disabled'), true);
+    assert.equal(await js('document.querySelector("#prompt").placeholder'), "Approve or reject the review to send another message");
+    await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"blocked while reviewing");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+    await js('document.querySelector("#prompt").dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));document.querySelector("[data-action=start]").click()');
+    assert.equal(await js('document.querySelector("[data-action=start]").disabled'), true);
+    assert(!(await js('document.body.innerText')).includes("INVALID_STATE"));
     const pendingSession = await first.command({ method: "session.get", sessionId }); assert(pendingSession.ok && pendingSession.data.kind === "session"); assert.equal(pendingSession.data.session.runs.length, runIds.length + 1);
     const probeId = pendingSession.data.session.runs.at(-1)!.runId;
     const pending = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(pending.ok && pending.data.kind === "run"); assert.equal(pending.data.run.status, "waiting_approval");

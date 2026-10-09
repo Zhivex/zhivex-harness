@@ -1127,3 +1127,7 @@ pre {
 .checkpoint-panel label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
 .checkpoint-panel [aria-label="Review checkpoint restoration"] { padding: 12px 0; scroll-margin-top: 16px; outline-offset: 4px; }
 .checkpoint-panel p { overflow-wrap: anywhere; }
+
+#prompt:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.composer-paused { color: var(--muted); font-size: 12px; margin: 8px 0; }
