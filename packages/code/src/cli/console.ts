@@ -214,8 +214,10 @@ export const chat = async (options: CliOptions) => {
   const consoleApprovals: ReturnType<typeof terminalApprovalResolver> = async (approvals, context) => {
     runView.end();
     readline.stopBackground();
+    let decisions: Awaited<ReturnType<ReturnType<typeof terminalApprovalResolver>>> | undefined;
+    let settled = false;
     try {
-      const decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
+      decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
         question => readline.question(question), {
           select: (title, items) => readline.select(title, items),
           review: (review, items) => readline.review({...review, headerRight: review.headerRight ?? reviewProjectLabel()}, items),
@@ -224,11 +226,14 @@ export const chat = async (options: CliOptions) => {
           restored: reviewRestored,
           projectLabel: reviewProjectLabel(),
         })(approvals, context);
+      settled = true;
       rejectedDecisions += decisions?.filter(item => !item.approve).length ?? 0;
       if (decisions) process.stderr.write(`Approval decisions: ${decisions.filter(item => item.approve).length} allowed · ${decisions.filter(item => !item.approve).length} rejected\n`);
-      else process.stderr.write("Decided later · nothing applied · /pending to review\n");
       return decisions;
-    } finally { if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); } }
+    } finally {
+      if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); }
+      if (settled && !decisions) process.stderr.write("Decided later · nothing applied · /pending to review\n");
+    }
   };
 
   const createTracker = (runId: string) => {
@@ -407,9 +412,6 @@ export const chat = async (options: CliOptions) => {
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
       status: sessionStatus(result.status)
     });
-    if (result.status === "waiting_approval") {
-      process.stderr.write("Waiting for your decision · /pending\n");
-    }
   };
 
   const statusLine = async () => {
@@ -1023,9 +1025,6 @@ export const chat = async (options: CliOptions) => {
           status: sessionStatus(result.status)
         });
         if (result.status === "failed" || result.status === "cancelled") process.stderr.write("Progress saved. Use /continue to start another run from these results, or /limits to adjust next turns.\n");
-        if (result.status === "waiting_approval") {
-          process.stderr.write("Waiting for your decision · /pending\n");
-        }
       } catch (error) {
         if (readline.isClosed) break;
         const aborted = error instanceof Error && error.name === "AbortError";
