@@ -575,9 +575,10 @@ h2 {
   background: #101319;
 }
 .diff-line {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.5em 2.5em 1em minmax(0, 1fr);
   gap: 6px;
-  min-width: max-content;
+  min-width: 0;
   font: 11px monospace;
   line-height: 1.8;
   padding: 0 6px;
@@ -1118,3 +1119,9 @@ h2 {
 .run-limits-summary { margin: 8px 0; font-size: 12px; color: #b8bdd4; }
 .run-limits-summary p { border-left: 2px solid #a06af7; padding-left: 10px; }
 @media (max-width: 600px) { .topbar-actions { flex-wrap: wrap; gap: 6px; justify-content: flex-end; } .limits-launcher { max-width: 165px; text-align: left; } }
+
+/* Exact review content and decision scope must remain readable at narrow widths. */
+.review-panel, .review-content, .review-file { min-width: 0; overflow-wrap: anywhere; }
+.review-panel pre, .review-content pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-panel button, .review-content button, .review-scope { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.diff-line code { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }

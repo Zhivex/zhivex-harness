@@ -253,6 +253,32 @@ try {
     true,
   );
   steps.push("keyboard diff navigation and focused review heading");
+  // Stress the rendered review with long unbroken text without changing its ticket or payload.
+  const originalText = await page.evaluate(() => {
+    const path = document.querySelector('.review-file h4');
+    const code = document.querySelector('.diff-line code');
+    const original = { path: path.textContent, code: code.textContent };
+    path.textContent = 'nested/'.repeat(30) + 'a'.repeat(160) + '.ts';
+    code.textContent = 'const veryLongValue = "' + 'x'.repeat(500) + '";';
+    return original;
+  });
+  for (const width of [390, 1120, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => {
+      const selectors = ['.review-file h4', '.diff-line code', '.diff-lines', '.review-scope', '.decision-actions button'];
+      return selectors.every(selector => [...document.querySelectorAll(selector)].every(element => {
+        const style = document.defaultView.getComputedStyle(element);
+        return element.scrollWidth <= element.clientWidth + 1 && style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap';
+      }));
+    }), true, `complete review wraps at ${width}px`);
+    await capture(`web-review-long-lines-${width}.png`);
+  }
+  await page.evaluate(original => {
+    document.querySelector('.review-file h4').textContent = original.path;
+    document.querySelector('.diff-line code').textContent = original.code;
+  }, originalText);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  steps.push("long paths, diff lines and approval scope wrap at 390, 1120 and 1280px");
   await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();
   assert.match(
