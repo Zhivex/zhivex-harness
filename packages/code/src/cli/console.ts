@@ -27,7 +27,7 @@ import type { ConsoleComposerInput } from "./console/console-presentation.js";
 import { ConsoleAttachments, formatConsoleContext } from "./console/console-context.js";
 import { sanitizeTerminalText, terminalRunFailure } from "./terminal/terminal-ui.js";
 import { randomUUID } from "node:crypto";
-import { type AgentRunOutput } from "@zhivex-ai/agents";
+import { type AgentApprovalResponse, type AgentRunOutput } from "@zhivex-ai/agents";
 import { DEFAULT_PROVIDER_REGISTRY, HARNESS_SUBAGENT_PROFILES, PROVIDERS, parseProvider, providerAvailability, providerDescriptor, resolveHarnessConfig, type HarnessSubagentProfile } from "@zhivex-ai/harness/engine";
 import { appendUserMessage, compactHarnessMessages, type ZhivexHarness } from "@zhivex-ai/harness/engine";
 import { openHarnessPersistence } from "@zhivex-ai/harness/engine";
@@ -51,7 +51,6 @@ import {
   flushToolActivity,
   approvalResponses,
   streamSink,
-  summarizeApproval,
   terminalApprovalResolver,
   terminalErrorMessage
 } from "./presentation.js";
@@ -204,6 +203,14 @@ export const chat = async (options: CliOptions) => {
   });
   runView = new ConsoleRunView(process.stdout, composerState, () => readline.backgroundStatus);
 
+  let reviewRestored = false;
+  const reviewProjectLabel = () => {
+    const home = process.env.HOME;
+    const workspace = harness.config.workspace;
+    const project = home && (workspace === home || workspace.startsWith(`${home}/`))
+      ? `~${workspace.slice(home.length)}` : workspace;
+    return `${project} · ${harness.config.provider}/${harness.config.model}`;
+  };
   const consoleApprovals: ReturnType<typeof terminalApprovalResolver> = async (approvals, context) => {
     runView.end();
     readline.stopBackground();
@@ -211,9 +218,11 @@ export const chat = async (options: CliOptions) => {
       const decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
         question => readline.question(question), {
           select: (title, items) => readline.select(title, items),
-          review: (review, items) => readline.review({...review, state: composerState()}, items),
+          review: (review, items) => readline.review({...review, headerRight: review.headerRight ?? reviewProjectLabel()}, items),
           workspace: harness.config.workspace, sessionGrants,
           fileDiff: approval => approvalFileDiff(harness.workspace, approval),
+          restored: reviewRestored,
+          projectLabel: reviewProjectLabel(),
         })(approvals, context);
       rejectedDecisions += decisions?.filter(item => !item.approve).length ?? 0;
       if (decisions) process.stderr.write(`Approval decisions: ${decisions.filter(item => item.approve).length} allowed · ${decisions.filter(item => !item.approve).length} rejected\n`);
@@ -335,13 +344,18 @@ export const chat = async (options: CliOptions) => {
     contextTokens = estimateMessages(messages);
   };
 
-  const continuePendingApproval = async (approve: boolean) => {
+  const continuePendingApproval = async (approve: boolean, supplied?: readonly AgentApprovalResponse[]) => {
     const current = await refreshSession();
     const state = await latestState(current);
     if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
       process.stderr.write("The current session has no pending approval.\n");
       return;
     }
+    const decisions = supplied ?? approvalResponses(
+      state.pendingApprovals,
+      approve,
+      approve ? "Approved inline in chat." : "Denied inline in chat."
+    );
     const { tracker, onEvent, onTaskTelemetry, outcome } = createTracker(state.runId);
     if (!approve) rejectedDecisions += state.pendingApprovals.length;
     session = await sessionStore.updateRun(session.sessionId, state.runId, { status: "running" });
@@ -353,11 +367,7 @@ export const chat = async (options: CliOptions) => {
           state,
           toolExecution: { ...cliToolExecution },
           abortSignal,
-          approvals: approvalResponses(
-            state.pendingApprovals,
-            approve,
-            approve ? "Approved inline in chat." : "Denied inline in chat."
-          )
+          approvals: [...decisions]
         },
         {
           onEvent,
@@ -430,24 +440,27 @@ export const chat = async (options: CliOptions) => {
   process.stderr.write("While working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.\n");
   process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled within workspace and execution policies.\n" : "Changes require your approval.\n");
 
-  const showSessionState = async () => {
+  const showSessionState = async (restored = false) => {
     await hasActiveTurn();
     const state = await latestState(await refreshSession());
     if (!state) {
       if (codeTask) process.stderr.write(`Task: ${sanitizeTerminalText(codeTask.goal)}\n` + await freshCodeTaskBudgetRecap(harness, codeTask));
       return;
     }
+    if (state.status === "waiting_approval" && state.pendingApprovals.length > 0) {
+      reviewRestored = restored;
+      try {
+        const decisions = await consoleApprovals(state.pendingApprovals, state);
+        if (decisions) await continuePendingApproval(true, decisions);
+      } finally { reviewRestored = false; }
+      return;
+    }
     process.stderr.write(`Run ${sanitizeTerminalText(state.runId)} · durable status: ${state.status}\n`);
     process.stderr.write(await freshCodeTaskRecap(harness,state));
-    for (const approval of state.pendingApprovals) {
-      process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
-      const diff = await approvalFileDiff(harness.workspace, approval);
-      if (diff) process.stderr.write(diff);
-    }
   };
 
   try {
-    await showSessionState();
+    await showSessionState(Boolean(selectedSession));
     let commandInProgress = "";
     for (;;) {
       commandInProgress = "";
@@ -690,13 +703,7 @@ export const chat = async (options: CliOptions) => {
           const state = await latestState(await refreshSession());
           if (!state || state.status !== "waiting_approval" || state.pendingApprovals.length === 0) {
             process.stderr.write("The current session has no pending approval.\n");
-          } else {
-            for (const approval of state.pendingApprovals) {
-              process.stderr.write(`\nPending approval:\n${summarizeApproval(approval)}\n`);
-              const diff = await approvalFileDiff(harness.workspace, approval);
-              if (diff) process.stderr.write(diff);
-            }
-          }
+          } else await showSessionState(false);
           continue;
         }
         if (command === "/approve" || command === "/deny") {
@@ -812,7 +819,7 @@ export const chat = async (options: CliOptions) => {
             continue;
           }
           await restoreSession(selected);
-          await showSessionState();
+          await showSessionState(true);
           const active = await hasActiveTurn();
           process.stderr.write(
             active

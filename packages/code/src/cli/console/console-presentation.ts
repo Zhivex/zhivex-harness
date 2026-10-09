@@ -96,7 +96,7 @@ export const CONSOLE_SHORTCUTS = [
 
 export const chooseConsoleItem = async <T>(
   title: string,
-  items: readonly { value: T; label: string; detail?: string }[],
+  items: readonly { value: T; label: string; detail?: string; key?: string }[],
   io: { write(text: string): void; ask(prompt: string): Promise<string> },
 ): Promise<T | undefined> => {
   if (!items.length) { io.write("No matches.\n"); return undefined; }
@@ -109,6 +109,10 @@ export const chooseConsoleItem = async <T>(
       `\n${matches.length > 12 ? `${matches.length} matches; type a filter to narrow the list.\n` : ""}`);
     const answer = (await io.ask("Choose number, type a filter, or Enter to cancel: ")).trim();
     if (!answer) return undefined;
+    if (/^[a-z]$/.test(answer)) {
+      const keyed = items.find(item => item.key === answer);
+      if (keyed) return keyed.value;
+    }
     if (/^\d+$/.test(answer)) {
       const selected = visible[Number(answer) - 1];
       if (selected) return selected.value;

@@ -123,8 +123,12 @@ export const formatApproval = (
 export interface TerminalApprovalResolverOptions {
   ask(question: string): Promise<string>;
   select?: import("../cli-credentials.js").CredentialInput["select"];
-  review?: (review: { title: string; body: string }, items: readonly {value: string; label: string; detail?: string}[]) => Promise<string | undefined>;
+  review?: (review: { title: string; body: string; headerRight?: string; files?: number }, items: readonly {value: string; label: string; detail?: string; key?: string}[]) => Promise<string | undefined>;
   workspace?: string;
+  /** Startup or /resume of a session that was actually restored. */
+  restored?: boolean;
+  /** `~/project · provider/model` for the review header. */
+  projectLabel?: string;
   fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>;
   sessionGrants?: Set<string>;
   write(text: string): void;
@@ -142,6 +146,40 @@ const promptEnded = (error: unknown) => {
 };
 
 const normalizedDecision = (answer: string) => answer.trim().toLowerCase();
+
+const STALE_DIFF = "File diff unavailable: preconditions";
+const OVERSIZED_DIFF = "File diff unavailable: exceeds terminal preview limit";
+
+const approvalFiles = (approval: AgentApprovalRequest) => {
+  try {
+    const args = JSON.parse(approval.arguments) as { changes?: unknown };
+    if (!Array.isArray(args.changes)) return [];
+    return args.changes.flatMap(change => {
+      if (!change || typeof change !== "object") return [];
+      const record = change as { path?: unknown; expectedDigest?: unknown; content?: unknown };
+      if (typeof record.path !== "string") return [];
+      const op = record.expectedDigest === null ? "add" : record.content === null ? "delete" : "modify";
+      return [{ path: record.path, op }];
+    });
+  } catch { return []; }
+};
+
+const diffStats = (diff: string) => ({
+  added: diff.split("\n").filter(line => line.startsWith("+") && !line.startsWith("+++")).length,
+  removed: diff.split("\n").filter(line => line.startsWith("-") && !line.startsWith("---")).length,
+});
+
+const fileSummary = (approval: AgentApprovalRequest, diffBody: string) => {
+  const files = approvalFiles(approval);
+  if (!files.length) return { files, text: "" };
+  const chunks = diffBody.split(/\n(?=--- )/);
+  const lines = files.map((file, index) => {
+    const stats = diffStats(chunks[index] ?? diffBody);
+    return `${sanitizeTerminalText(file.path)}  ${file.op}  +${stats.added} −${stats.removed}`;
+  });
+  const count = files.length === 1 ? "1 file" : `${files.length} files`;
+  return { files, text: `Zhivex wants to change ${count}. Nothing has been applied yet.\n${lines.join("\n")}\n` };
+};
 
 /**
  * Resolve approvals one at a time. Returning undefined deliberately leaves the
@@ -161,7 +199,7 @@ export const resolveTerminalApprovals = async (
       responses.push({ provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Exact check approved for this CLI session." });
       continue;
     }
-    const diff = await options.fileDiff?.(approval);
+    let diff = await options.fileDiff?.(approval);
     if (!options.review) options.write(
       `\nApproval required ${index + 1}/${approvals.length}:\n` +
       `${formatApproval(approval, {
@@ -179,29 +217,47 @@ export const resolveTerminalApprovals = async (
     for (;;) {
       let answer: string;
       try {
+        const stale = Boolean(diff?.startsWith(STALE_DIFF));
+        const files = approvalFiles(approval);
+        const approveLabel = approval.name === "run_check" ? "Approve 1 command"
+          : files.length > 1 ? `Approve ${files.length} files`
+          : files.length === 1 ? "Approve 1 file"
+          : "Approve";
         const items = [
-          { value: "n", label: "Reject" },
-          { value: "y", label: "Allow once", detail: "Only the action shown above" },
-          ...(grant ? [{ value: "s", label: options.review ? "Allow exact check this session" : "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
-          { value: "v", label: technical ? "Back to action review" : "View technical details" },
-          { value: "q", label: "Leave pending" },
+          { value: "n", key: "r", label: "Reject", detail: "Nothing is written." },
+          ...(!stale ? [{ value: "y", key: "a", label: approveLabel, detail: "Only the change shown above, once." }] : []),
+          ...(grant ? [{ value: "s", key: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
+          { value: "v", key: "d", label: technical ? "Back to review" : "Details" },
+          ...(stale ? [{ value: "l", key: "l", label: "Reload review" }] : []),
+          { value: "q", key: "Esc", label: "Decide later", detail: "Keep it pending. /pending brings you back here." },
         ];
         // Only a validated local preview can replace the exact payload in the
         // primary view. Unknown tools and failed previews keep it fully visible.
         const trustedDiff = approval.kind === "local-tool" && diff?.startsWith("Reviewed file diff · ");
+        const diffBody = diff?.replace(/^Reviewed file diff · [^\n]+\n/, "") ?? "";
+        const summary = fileSummary(approval, diffBody);
         const checkSummary = approval.kind === "local-tool" && approval.name === "run_check"
           ? formatApproval(approval, {detail: "summary"}) : undefined;
         const conditional = approval.name.startsWith("verify_and_apply_");
-        const body = technical ? `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}`
-          : trustedDiff && diff ? `${conditional ? "Checks pending · conditional apply" : "Not applied · reviewed changes"}\n${diff.replace(/^Reviewed file diff · [^\n]+\n/, "")}\n` +
-            (conditional ? formatApproval(approval, {detail: "full"})
-              : `Tool: ${sanitizeTerminalText(approval.name)} · exact action\nOriginal input and digests: technical details.`)
+        const restored = options.restored && !technical
+          ? "● Restored: this conversation was waiting for your decision.\n" : "";
+        const staleBody = "▲ This review is out of date\nA file may have been edited after the change was proposed.\nA file may have been moved, deleted, or can't be read.\nThe proposed change may not be valid for this workspace.\nNothing has been applied.\n";
+        const primary = stale ? staleBody
+          : diff?.startsWith(OVERSIZED_DIFF) ? `This change is too large to preview here.\n${formatApproval(approval, {detail: "full"})}\n`
+          : trustedDiff ? `${conditional ? "Checks pending · conditional apply\n" : ""}${summary.text}${diffBody}\n` +
+            (conditional ? formatApproval(approval, {detail: "full"}) : "")
           : checkSummary?.startsWith("Run check: ") ? checkSummary
           : `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}`;
+        const body = technical
+          ? `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}${options.workspace ? `\nWorkspace: ${sanitizeTerminalText(options.workspace)}` : ""}`
+          : `${restored}${primary}`;
+        const position = approvals.length > 1 ? ` · ${index + 1} of ${approvals.length}` : "";
         const received = options.review ? await options.review({
-          title: `Permission required ${index + 1}/${approvals.length}${technical ? " · details" : ""}`,
-          body: `${body}\n${options.workspace ? `Workspace: ${sanitizeTerminalText(options.workspace)}` : ""}`,
-        }, items) : options.select ? await options.select("Permission required", items)
+          title: `Waiting for your decision${position}${technical ? " · details" : ""}`,
+          body,
+          ...(options.projectLabel ? { headerRight: options.projectLabel } : {}),
+          files: files.length,
+        }, items) : options.select ? await options.select("Waiting for your decision", items)
           : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
         if (typeof received !== "string") return undefined;
         answer = normalizedDecision(received);
@@ -210,7 +266,11 @@ export const resolveTerminalApprovals = async (
         throw error;
       }
 
-      if (answer === "v" || answer === "view") {
+      if (answer === "l" || answer === "reload") {
+        diff = await options.fileDiff?.(approval);
+        continue;
+      }
+      if (answer === "v" || answer === "view" || answer === "d") {
         if (options.review) technical = !technical;
         else options.write(`\nComplete approval payload:\n${formatApproval(approval, { detail: "full" })}\n`);
         continue;
