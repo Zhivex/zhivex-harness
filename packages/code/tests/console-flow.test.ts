@@ -29,6 +29,22 @@ test("44x24 review preserves every code character, decisions and unknown/origina
   expect(last.lines).toContain("> Reject");
 });
 
+test("Enter names the highlighted decision and a fitting detail stays on that row", () => {
+  const narrow = reviewFrame({title: "Permission required 1/1", body: "diff", state}, items, 0, "", 0, 44, 24);
+  expect(narrow.lines).toContain("> Reject");
+  expect(narrow.lines.join("\n")).toContain("Enter confirms Reject");
+  expect(narrow.lines.length).toBe(24);
+  const detailed = items.map(item => item.label === "Allow once" ? {...item, detail: "Only the action shown above"} : item);
+  const wide = reviewFrame({title: "Permission required 1/1", body: "diff", state}, detailed, 1, "", 0, 80, 30);
+  expect(wide.lines.join("\n")).toContain("> Allow once · Only the action shown above");
+  expect(wide.lines.join("\n")).toContain("Enter confirms Allow once");
+  const session = items.map(item => item.label.startsWith("Allow exact")
+    ? {...item, detail: "Changing the script requires approval again"} : item);
+  const cramped = reviewFrame({title: "Permission required 1/1", body: "diff", state}, session, 2, "", 0, 44, 24);
+  expect(cramped.lines.join("\n")).toContain("> Allow exact check this session");
+  expect(cramped.lines.join("\n")).not.toContain("Changing the script");
+});
+
 test("terminal width uses graphemes; controls remain inert and context never invents a percentage", () => {
   expect(terminalCellWidth(consoleLabel("你好e\u0301 world", 6))).toBeLessThanOrEqual(6);
   expect(consoleLines("\x1b[2J payload", 20).join("")).toContain("\\u001b[2J");
