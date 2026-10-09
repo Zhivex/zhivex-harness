@@ -1,3 +1,4 @@
+import { viewReviewFiles } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -14,7 +15,8 @@ export async function verifyDesktopOciSmoke(window: BrowserWindow, runtimes: Map
     await js('{const input=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(input,"oci-review-probe");input.dispatchEvent(new Event("input",{bubbles:true}));}');
     await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]');
     await wait('document.querySelector("[data-action=review]") !== null'); await click('[data-action="review"]');
-    await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+    await viewReviewFiles(js, wait);
+        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
     assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "before\n");
     assert.equal(await js('document.querySelector(".review-file .added").textContent'), "verified after\n");
     assert((await js('document.querySelector("[aria-label=\\"Reviewed command\\"]").textContent')).includes("process.exit(0)"));

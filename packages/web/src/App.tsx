@@ -1,6 +1,6 @@
-import { reviewScope, reviewConsequence } from "../../../desktop/src/review-scope.js";
 import { useEffect, useRef, useState } from "react";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
+import { useViewedFiles, reviewConsequence } from "../../../desktop/src/review-ui.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
   applyActivityPage,
@@ -77,7 +77,7 @@ export function App() {
   const [run, setRun] = useState<HarnessClientRun>();
   const [runUnavailable, setRunUnavailable] = useState(false);
   const [review, setReview] = useState<TicketedApprovalReview>();
-  const scope = reviewScope(review);
+  const viewed = useViewedFiles(review, run?.runId, run?.revision);
   const [prompt, setPrompt] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -478,7 +478,7 @@ export function App() {
       reviewInvalid ||
       Date.now() >= reviewDeadline ||
       review.items.some((i) => i.expiresAt <= Date.now()) ||
-      (approve && !review.canApprove)
+      (approve && (!review.canApprove || !viewed.allViewed))
     )
       return;
     const ticket = review.ticketId;
@@ -1062,7 +1062,7 @@ export function App() {
                   <p className="review-scope">
                     {review.items.length} operation
                     {review.items.length === 1 ? "" : "s"} ·{" "}
-                    {scope.paths.length} file{scope.paths.length === 1 ? "" : "s"}
+                    {viewed.paths.length} file{viewed.paths.length === 1 ? "" : "s"}
                   </p>
                   {reviewInvalid && (
                     <p className="restriction" role="status">
@@ -1078,7 +1078,18 @@ export function App() {
                       <p>{item.consequence}</p>
                       {item.files.map((file, index) => (
                         <div className="review-file" key={index}>
-                          <h4>{file.path}</h4>
+                          <div className="review-file-header">
+                            <h4>{file.path}</h4>
+                            <label>
+                              <input
+                                type="checkbox"
+                                data-action="view-file"
+                                checked={viewed.isViewed(file.path)}
+                                onChange={event => viewed.setViewed(file.path, event.target.checked)}
+                              />
+                              Viewed<span className="sr-only"> {file.path}</span>
+                            </label>
+                          </div>
                           <FileDiff before={file.before} after={file.after} />
                         </div>
                       ))}
@@ -1098,8 +1109,11 @@ export function App() {
                     </article>
                   ))}
                   <p>{reviewConsequence}</p>
+                  {viewed.paths.length ? <p role="status">{viewed.count} of {viewed.paths.length} files viewed</p> : null}
+                  {!viewed.allViewed ? <p id="review-viewed-hint">View all files to approve</p> : null}
                   <div className="decision-actions">
                     <button
+                      type="button"
                       className="subtle"
                       disabled={!canMutate || Boolean(reviewInvalid)}
                       onClick={() => void decide(false)}
@@ -1107,15 +1121,18 @@ export function App() {
                       Reject
                     </button>
                     <button
+                      type="button"
                       className="primary"
+                      aria-describedby={!viewed.allViewed ? "review-viewed-hint" : undefined}
                       disabled={
                         !canMutate ||
                         !review.canApprove ||
+                        !viewed.allViewed ||
                         Boolean(reviewInvalid)
                       }
                       onClick={() => void decide(true)}
                     >
-                      {scope.approveLabel}
+                      {viewed.approveLabel}
                     </button>
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+import { viewReviewFiles } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -22,7 +23,8 @@ export async function verifyDesktopEffectCrashSmoke(window: BrowserWindow, runti
         await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]'); await wait('document.querySelector("[data-action=review]") !== null');
         const session = await runtime.command({ method: "session.get", sessionId }); assert(session.ok && session.data.kind === "session"); assert.equal(session.data.session.runs.length, 1); runId = session.data.session.runs[0]!.runId;
         const pending = await runtime.command({ method: "run.get", sessionId, runId }); assert(pending.ok && pending.data.kind === "run"); const decisions = pending.data.run.approvals.map(a => ({ approvalId: a.approvalId, digest: a.digest, approve: true })); assert.equal(decisions.length, 1);
-        await click('[data-action="review"]'); await wait('document.querySelector("[data-action=approve-review]")?.disabled === false'); await click('[data-action="approve-review"]');
+        await click('[data-action="review"]'); await viewReviewFiles(js, wait);
+        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false'); await click('[data-action="approve-review"]');
         await wait('document.body.innerText.includes("Connection interrupted")'); assert(!runtime.isAlive());
         const marker = JSON.parse(await readFile(path.join(directory, "socket/effect-crash.json"), "utf8")); assert.equal(marker.runId, runId); assert.equal(marker.pid, runtime.context.runtimePid); assert(marker.beforeJournalCommit);
         const effect = await readRegularFileNoFollow(file, {label: "crash fixture effect", maxBytes: 4096});
