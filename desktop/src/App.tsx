@@ -312,6 +312,7 @@ export function App() {
       !context ||
       !session ||
       !value.trim() ||
+      run?.status === "waiting_approval" ||
       context.credentialConfigured === false ||
       modelEditing ||
       busy ||
@@ -403,6 +404,7 @@ export function App() {
   }
   const canSend = Boolean(
     session &&
+    run?.status !== "waiting_approval" &&
     context?.credentialConfigured !== false &&
     !modelEditing &&
     !busy &&
@@ -743,14 +745,17 @@ export function App() {
                     if (canSend) void start(prompt);
                   }
                 }}
-                disabled={!session || loading}
+                disabled={!session || loading || run?.status === "waiting_approval"}
                 placeholder={
-                  !session
+                  run?.status === "waiting_approval"
+                    ? "Approve or reject the review to send another message"
+                    : !session
                     ? "Create a conversation to get started…"
                     : "What do you have in mind?"
                 }
                 maxLength={64000}
               />
+              {run?.status === "waiting_approval" ? <p className="composer-paused" role="status">Approve or reject the review to send another message</p> : null}
               <div className="composer-toolbar">
                 <ModelSelector
                   key={`${context?.project.key ?? "empty"}:${context?.modelSelection?.provider ?? "openai"}:${context?.modelSelection?.model ?? providers.find((p) => p.id === "openai")?.defaultModel ?? ""}`}
