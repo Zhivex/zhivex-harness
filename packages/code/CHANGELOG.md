@@ -1,5 +1,9 @@
 # Code changelog
 
+## Unreleased
+
+- The interactive console reviews pending approvals on one screen, keeps the idle status and the final summary to one line, and shows the logo on the first welcome of a new session at 48×24.
+
 ## 0.3.0-rc.8 - 2026-10-08
 
 - Pin exactly Harness 1.4.0-rc.8 for the matched npm `next` candidate. Retain existing terminal/local browser contracts, the SDK pins already on main (Agents 1.11.0 and Core 1.31.0) and provider/API tiers.

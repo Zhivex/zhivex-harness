@@ -63,7 +63,11 @@ test("terminal width uses graphemes; controls remain inert and context never inv
   expect(terminalCellWidth(consoleLabel("你好e\u0301 world", 6))).toBeLessThanOrEqual(6);
   expect(consoleLines("\x1b[2J payload", 20).join("")).toContain("\\u001b[2J");
   expect(consoleStateLines(state).join("\n")).not.toContain("%");
-  expect(consoleStateLines({...state, runUsage: {estimatedUsd: 0, limitUsd: null, usageComplete: true}}).join("\n")).toContain("$0.000000 / none cap");
+  const cappedZero = consoleStateLines({...state, runUsage: {estimatedUsd: 0, limitUsd: null, usageComplete: true}}).join("\n");
+  expect(cappedZero.replaceAll("\n", "")).toContain("$0.000000");
+  expect(cappedZero).not.toContain("none cap");
+  expect(consoleStateLines({model: "openai/gpt-5.6-luna", status: "ready"}).join("\n")).toBe("openai/gpt-5.6-luna · ask before changes · ready");
+  expect(consoleStateLines({model: "openai/gpt-5.6-luna", status: "ready", runUsage: {estimatedUsd: null, limitUsd: null, usageComplete: false}}).join("\n")).not.toContain("unknown");
 });
 
 test("approval pager keeps a fresh reject default after paste, resize and details; escape leaves pending", async () => {
@@ -200,16 +204,18 @@ test("a stale preview offers reload and details, and no Approve", async () => {
 
 test("conversation completion retains tool failure and verification distinctions; recovery never advises blind retry", () => {
   const outcome = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "read_file", toolCallId: "read-1", isError: true}]}, 0, 1);
-  expect(outcome).toContain("Finished with errors · 1 action(s) failed · /activity");
-  expect(outcome).not.toContain("completed"); expect(outcome).toContain("1 other tool errors");
-  expect(outcome).toContain("1 rejected decisions"); expect(outcome).toContain("no check receipts");
+  expect(outcome).toBe("Finished with errors · 1 action failed · /activity · 1 rejected");
+  expect(outcome).not.toContain("completed");
   const recovery = checkpointRecovery("Restore conflicts with subsequent edits or a partially applied filesystem operation; manual recovery required.");
   expect(recovery).toContain("RESTORE BLOCKED"); expect(recovery).toContain("original digests");
   expect(checkpointRecovery("arbitrary provider payload")).toBeUndefined();
   const rejected = formatConsoleOutcome({status: "completed", state: {approvalHistory: [
     {requestId: "request", provider: "openai", kind: "local-tool", approve: false, toolCallId: "read-1", resolvedAt: 1},
   ]}, toolResults: [{toolName: "read_file", toolCallId: "read-1", isError: true}]}, 0, 1);
-  expect(rejected).toContain("0 other tool errors"); expect(rejected).toContain("1 rejected decisions");
+  expect(rejected).toBe("Done · 0 files changed · no checks ran · 1 rejected");
+  expect(rejected).not.toContain("completed");
+  const checked = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "run_check", toolCallId: "check-1", isError: false, output: {exitCode: 0, command: ["bun", "--no-env-file", "run", "test"]}}]}, 1, 0);
+  expect(checked).toBe("Done · 1 file changed · checks: 1 passed, 0 failed");
 });
 
 test("review session grants commit only after the whole batch and remain exact to workspace/script", async () => {

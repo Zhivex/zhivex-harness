@@ -58,6 +58,7 @@ export class ConsoleInput {
   private historyDraft = "";
   private historyDraftWasPaste = false;
   private pending: { resolve(value: string): void; reject(error: Error): void } | undefined;
+  private focusState: ConsoleComposerInput | undefined;
   private paste: { lines: string[]; bytes: number; resolve(value: string): void; reject(error: Error): void } | undefined;
   onInterrupt: (() => void) | undefined;
 
@@ -267,7 +268,7 @@ export class ConsoleInput {
     if (rows < 6) return;
     const columns = (this.output as Writable & { columns?: number }).columns ?? 80;
     const color = terminalSupportsColor(this.terminal);
-    this.showOverlay(formatComposerFooter(columns, color),
+    this.showOverlay(formatComposerFooter(columns, color, this.mode === "direct" ? this.focusState : undefined),
       !this.reader.line && columns >= 40 ? formatComposerPlaceholder(columns, color) : undefined);
   }
 
@@ -678,11 +679,14 @@ export class ConsoleInput {
     if (this.pending || this.paste || this.hidden) return Promise.reject(new Error("A console question is already active."));
     const columns = (this.output as Writable & { columns?: number }).columns ?? 80;
     const color = terminalSupportsColor(this.terminal);
-    this.output.write(formatComposer(input, columns, color));
+    const focus = this.mode === "direct";
+    this.focusState = focus ? input : undefined;
+    this.output.write(formatComposer(input, columns, color, focus ? "focus" : "legacy"));
     if (!this.terminal || process.env.TERM === "dumb") {
-      this.output.write(formatComposerFooter(columns, color)[1] + "\n");
+      const footer = formatComposerFooter(columns, color, focus ? input : undefined);
+      this.output.write(footer.slice(1).join("\n") + "\n");
     }
-    const answer = this.question("\n> ", true, true);
+    const answer = this.question(focus ? "> " : "\n> ", true, true);
     if (this.backgroundDraft) {
       const draft = this.backgroundDraft;
       this.backgroundDraft = "";
