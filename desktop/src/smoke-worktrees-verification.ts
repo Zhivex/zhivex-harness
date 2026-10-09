@@ -13,6 +13,12 @@ export async function verifyDesktopWorktreesSmoke(window: BrowserWindow, runtime
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
  const openVerifiedPr=async()=>{const filename=path.join(directory,"opened-pr.json");await unlink(filename).catch(error=>{if(error.code!=="ENOENT")throw error;});await click('[data-action="open-pr"]');for(let attempt=0;attempt<100;attempt++){try{assert.equal(JSON.parse(await readFile(filename,"utf8")).url,"https://github.com/fixture/repository/pull/1");return;}catch(error){if((error as NodeJS.ErrnoException).code!=="ENOENT")throw error;}await new Promise(resolve=>setTimeout(resolve,50));}throw new Error("PR_OPEN_TIMEOUT");};
     const key = () => js('document.querySelector("main").dataset.projectKey') as Promise<string>;
+    const startWaitTask = async () => {
+        await wait('document.querySelector("#prompt")?.disabled === false');
+        await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"wait-for-cancel");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+        await wait('document.querySelector("[data-action=start]")?.disabled === false');
+        await click('[data-action="start"]');
+    };
     await wait('document.querySelector("[data-ready=true]") !== null');
     if (phase === "tasks-reopen") { await click('[data-project]'); }
     await wait('document.querySelector("[data-action=new-session]")?.disabled === false');
@@ -32,7 +38,7 @@ export async function verifyDesktopWorktreesSmoke(window: BrowserWindow, runtime
             assert.equal(await readFile(path.join(task.workspace, "review.txt"), "utf8"), "baseline\n"); assert.equal(await js('document.querySelectorAll(".task-panel img").length'), 0);
             await access(path.join(task.workspace, ".zhivex-harness")).then(() => assert.fail("State inside checkout"), () => { });
             await click('[data-action="new-session"]'); await wait('Boolean(document.querySelector("main").dataset.sessionId)'); const sessionId: string = await js('document.querySelector("main").dataset.sessionId');
-            await click('[data-action="wait"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false');
+            await startWaitTask(); await wait('document.querySelector("[data-action=cancel]").disabled === false');
             const result = await runtime.command({ method: "session.get", sessionId }); assert(result.ok && result.data.kind === "session"); const runId = result.data.session.runs[0]!.runId;
             saved.push({ task, projectKey, sessionId, runId });
         }

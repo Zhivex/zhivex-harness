@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { reviewUIJourney } from "./review-ui-journey.mjs";
 import { limitsJourney } from "./limits-journey.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output =
@@ -97,6 +98,18 @@ await page.route("**/api/action", async (route) => {
   }
   return route.fulfill({ response });
 });
+async function viewReviewFiles() {
+  await page.getByLabel("Approval review", { exact: true }).waitFor();
+  for (const checkbox of await page.locator('[data-action="view-file"]').all()) await checkbox.check();
+}
+async function reviewEnterDoesNotDecide() {
+  const before = commands.filter(command => command === "decide").length;
+  for (const target of await page.locator('.review-content h3, .review-content button:enabled, .review-content input, .review-content summary, .review-content [role="region"]').all()) {
+    for (const key of ["Enter", "Control+Enter", "Meta+Enter"]) await target.press(key);
+  }
+  assert.equal(commands.filter(command => command === "decide").length, before);
+  assert.equal(await page.getByLabel("Approval review").count(), 1);
+}
 async function capture(name, fullPage = true) {
   await page.screenshot({ path: path.join(output, name), fullPage });
   screenshots.push(name);
@@ -130,6 +143,8 @@ async function complete() {
     .waitFor({ state: "visible" });
 }
 try {
+  await reviewUIJourney(browser, root);
+  steps.push("shared viewed state resets on revision, run, and ticket changes; duplicate paths count once; commands-only reviews remain ungated");
   fault = { action: "sessions", mode: "delay" };
   await page.goto(ready.launchUrl);
   await page.getByText("Loading sessions…", { exact: true }).waitFor();
@@ -236,7 +251,7 @@ try {
   await wait();
   steps.push("reload and durable resume");
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Approve & continue" }).waitFor();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).waitFor();
   await page.screenshot({
     path: path.join(output, "web-review-desktop.png"),
     fullPage: true,
@@ -253,7 +268,45 @@ try {
     true,
   );
   steps.push("keyboard diff navigation and focused review heading");
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
+  assert.equal(await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(), true);
+  await page.getByText("View all files to approve", { exact: true }).waitFor();
+  await reviewEnterDoesNotDecide();
+  await viewReviewFiles();
+  assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), true);
+  await reviewEnterDoesNotDecide();
+  await page.getByRole("button", { name: "Refresh exact review" }).click();
+  await page.getByText("0 of 1 file viewed", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
+  steps.push("viewed gate blocks approval, leaves rejection available, resets on new ticket; Enter/Ctrl+Enter/Meta+Enter never decide");
+  // Stress the rendered review with long unbroken text without changing its ticket or payload.
+  const originalText = await page.evaluate(() => {
+    const path = document.querySelector('.review-file h4');
+    const code = document.querySelector('.diff-line code');
+    const original = { path: path.textContent, code: code.textContent };
+    path.textContent = 'nested/'.repeat(30) + 'a'.repeat(160) + '.ts';
+    code.textContent = 'const veryLongValue = "' + 'x'.repeat(500) + '";';
+    return original;
+  });
+  for (const width of [390, 1120, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => {
+      const selectors = ['.review-file h4', '.diff-line code', '.diff-lines', '.review-scope', '.decision-actions button'];
+      return selectors.every(selector => [...document.querySelectorAll(selector)].every(element => {
+        const style = document.defaultView.getComputedStyle(element);
+        return element.scrollWidth <= element.clientWidth + 1 && style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap';
+      }));
+    }), true, `complete review wraps at ${width}px`);
+    await capture(`web-review-long-lines-${width}.png`);
+  }
+  await page.evaluate(original => {
+    document.querySelector('.review-file h4').textContent = original.path;
+    document.querySelector('.diff-line code').textContent = original.code;
+  }, originalText);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  steps.push("long paths, diff lines and approval scope wrap at 390, 1120 and 1280px");
+  await viewReviewFiles();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();
   assert.match(
     await readFile(ready.workspace + "/review.txt", "utf8"),
@@ -263,7 +316,10 @@ try {
   await task("check-probe: run existing checks");
   await wait();
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  assert.equal(await page.getByRole("button", { name: "Approve 1 command", exact: true }).isEnabled(), true);
+  await reviewEnterDoesNotDecide();
+  await viewReviewFiles();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();
   await page.getByText("exit 7", { exact: true }).waitFor();
   steps.push("real offline failed check activity");
@@ -272,7 +328,7 @@ try {
   await task("edit-probe: review another edit");
   await wait();
   await page.getByRole("button", { name: "Review proposed operation" }).click();
-  await page.getByRole("button", { name: "Deny operation" }).click();
+  await page.getByRole("button", { name: "Reject", exact: true }).click();
   await page.waitForFunction(() =>
     ["completed", "failed", "cancelled", "Reconciliation required"].includes(
       document.querySelector(".pill")?.textContent,
@@ -441,11 +497,11 @@ try {
     })
     .waitFor();
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   assert.equal(
-    await page.getByRole("button", { name: "Deny operation" }).isEnabled(),
+    await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(),
     false,
   );
   await capture("web-stale-review-desktop.png");
@@ -457,7 +513,7 @@ try {
     })
     .waitFor();
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   await page.getByRole("button", { name: "Refresh exact review" }).click();
@@ -491,11 +547,11 @@ try {
       document.querySelector(".pill")?.textContent === "Connection unavailable",
   );
   assert.equal(
-    await page.getByRole("button", { name: "Approve & continue" }).isEnabled(),
+    await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
     false,
   );
   assert.equal(
-    await page.getByRole("button", { name: "Deny operation" }).isEnabled(),
+    await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(),
     false,
   );
   await capture("web-disconnected-review-mobile.png");
@@ -504,7 +560,8 @@ try {
   await page.getByRole("button", { name: "Review proposed operation" }).click();
   const decisionsBefore = commands.filter((c) => c === "decide").length;
   fault = { action: "decide", mode: "lost" };
-  await page.getByRole("button", { name: "Approve & continue" }).click();
+  await viewReviewFiles();
+  await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await page.getByRole("alert").waitFor();
   await reconnectState();
   await complete();
@@ -581,7 +638,7 @@ try {
   assert.equal(await picker.isDisabled(), true);
   steps.push("provider/model selection stays disabled while exact approval is pending");
   await page.getByRole("button", {name:"Review proposed operation"}).click();
-  await page.getByRole("button", {name:"Deny operation"}).click();
+  await page.getByRole("button", {name:"Reject", exact:true}).click();
   await page.waitForFunction(() => ["completed", "failed", "cancelled", "Reconciliation required"].includes(document.querySelector(".pill")?.textContent));
   await page.getByRole("button", { name: "Reconnect" }).click();
   await page.waitForFunction(() => !document.querySelector("#model-choice")?.disabled);

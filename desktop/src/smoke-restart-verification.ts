@@ -1,3 +1,4 @@
+import { viewReviewFiles } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -19,6 +20,12 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
     const js = (source: string) => window.webContents.executeJavaScript(source);
     const wait = async (source: string) => { for (let i = 0; i < 200; i++) { if (await js(source)) return; await new Promise(resolve => setTimeout(resolve, 50)); } await writeFile(path.join(directory, `${phase}-failure-view.txt`), await js("document.body.innerText")); throw new Error(`RESTART_SMOKE_TIMEOUT: ${source}`); };
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+    const startWaitTask = async () => {
+        await wait('document.querySelector("#prompt")?.disabled === false');
+        await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"wait-for-cancel");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+        await wait('document.querySelector("[data-action=start]")?.disabled === false');
+        await click('[data-action="start"]');
+    };
     await wait('document.querySelector("[data-ready=true]") !== null');
     if (!["prepare", "active-close"].includes(phase)) {
         assert.equal(await js('document.querySelectorAll("[data-project]").length'), 1);
@@ -36,7 +43,7 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
     if (phase === "active-close") {
         await click('[data-action="new-session"]'); await wait('Boolean(document.querySelector("main").dataset.sessionId)');
         const sessionId: string = await js('document.querySelector("main").dataset.sessionId');
-        await click('[data-action="wait"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false');
+        await startWaitTask(); await wait('document.querySelector("[data-action=cancel]").disabled === false');
         const session = await runtime.command({ method: "session.get", sessionId }); assert(session.ok && session.data.kind === "session"); assert.equal(session.data.session.runs.length, 1); const runId = session.data.session.runs[0]!.runId;
         const running = await runtime.command({ method: "run.get", sessionId, runId }); assert(running.ok && running.data.kind === "run"); assert.equal(running.data.run.status, "running");
         window.close(); // First fixture choice is stay; preserve the visible window/run.
@@ -76,7 +83,8 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
         await wait('document.querySelector("[data-ready=true]") && document.querySelector("[data-session]")?.disabled === false');
         await click(`[data-session="${sessionId}"]`); await wait('document.querySelector("[data-action=review]") !== null');
         const rendererRecovered = await runtime.command({ method: "run.get", sessionId, runId }); assert(rendererRecovered.ok && rendererRecovered.data.kind === "run"); assert.deepEqual(rendererRecovered.data.run, response.data.run);
-        await click('[data-action="review"]'); await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+        await click('[data-action="review"]'); await viewReviewFiles(js, wait);
+        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
         assert.equal(await readFile(file, "utf8"), before);
         const ticket = await runtime.review(sessionId, runId);
         checkpoint = { projectKey, sessionId, runId, revision: response.data.run.revision, approvals: response.data.run.approvals, ticketId: ticket.ticketId };
@@ -96,7 +104,8 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
             assert(await js(`window.harness.resolveReview(${JSON.stringify(projectKey)},${JSON.stringify(checkpoint.ticketId)},true).then(()=>false,error=>String(error).includes("REVIEW_REQUIRED"))`));
             assert.equal(await readFile(file, "utf8"), before);
             await wait('document.querySelector("[data-action=review]") !== null'); await click('[data-action="review"]');
-            await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+            await viewReviewFiles(js, wait);
+        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
             assert.equal(await js('document.querySelector(".review-file .removed").textContent'), before);
             assert.equal(await js('document.querySelector(".review-file .added").textContent'), after);
             await click('[data-action="approve-review"]'); await wait('document.querySelector("[data-action=review]") === null && document.body.innerText.includes("completed")');

@@ -27,8 +27,8 @@ All model responses and token counts are synthetic. No provider calls or payment
 1. Ask: Inspect fixture
 2. /checkpoint capture ["greeting.mjs"]
 3. /budget 1 → prices.json → type budget (USD estimate per new RUN)
-4. Ask: Fix greeting → review the file diff → choose Allow once
-5. Ask: Check greeting → review the command → choose Allow once
+4. Ask: Fix greeting → review the file diff → press a to approve
+5. Ask: Check greeting → review the command → press a to approve
 6. /usage → inspect the estimate and the check receipt in /activity
 7. Ask: Interrupt fixture → wait for the instruction → Ctrl+C
 8. /exit, then reopen with the command below; /continue retains the results in a NEW run

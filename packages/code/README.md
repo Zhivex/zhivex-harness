@@ -43,16 +43,18 @@ zhivex-code run --json "Explain this repository"
 zhivex-code doctor
 ```
 
+The interactive console prints the full braille logo only on the first welcome of a new session, when stderr is a terminal, `TERM` is not `dumb`, and the terminal is at least 48 columns by 24 rows. Any other case prints `( Z )`. A restored session prints no logo. `NO_COLOR` removes logo color and leaves the glyph.
+
 ## Continue
 
 Pending approvals are stored in SQLite and survive quitting the terminal.
 
 | Where | What you type | What happens |
 | --- | --- | --- |
-| Shell, after you quit | `zhivex-code --continue` | Reopens the latest conversation, including a pending approval. Inspect it with `/pending`, then `/approve` or `/deny`. |
+| Shell, after you quit | `zhivex-code --continue` | Reopens the latest conversation. A pending approval opens the review screen. |
 | Inside the session | `/continue` | Starts a new run from an interrupted task and keeps the earlier results. |
 
-`/continue` is the in-session slash command. `--continue` is the shell flag that reopens the latest conversation. It exists on `zhivex-code` and on the engine CLI `zhx`. A run that is waiting for approval stays on `/pending` until you decide. A new turn, `/continue`, or review group gets a new per-run budget. Resuming a pending run keeps that run's original limit. There is no session-wide financial cap.
+`/continue` is the in-session slash command. `--continue` is the shell flag that reopens the latest conversation. It exists on `zhivex-code` and on the engine CLI `zhx`. On `zhivex-code`, that reopen shows the review screen when an approval is waiting: `r` Reject, `a` Approve N file(s), `d` Details, and Esc to decide later. A check uses `Approve 1 command` instead of the file label. `/pending` opens that same screen. A new turn waits until you decide. A new turn, `/continue`, or review group gets a new per-run budget. Resuming a pending run keeps that run's original limit. There is no session-wide financial cap.
 
 `zhivex-code --session <id>` reopens one selected conversation.
 
@@ -75,7 +77,7 @@ The launcher creates a temporary workspace and walks through inspect, checkpoint
 
 ## Commands worth knowing
 
-Approvals for reviewed edits show a per-file changed-region diff when the engine can preview it. The full approval payload stays available. Oversized or unavailable previews are labeled. The engine rechecks preconditions when it applies the change.
+Approvals for reviewed edits show a per-file changed-region diff when the engine can preview it. The complete approval payload remains available via Details (`d`). Unavailable or oversized previews are labeled explicitly; the engine still rechecks preconditions when applying changes.
 
 `/checkpoint` captures, lists, reviews, or restores explicitly selected existing UTF-8 text files (1–20 files, at most 64 KiB each):
 

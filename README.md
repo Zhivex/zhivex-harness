@@ -47,7 +47,7 @@ Type `/` for common actions. `/model` changes the model, `/sessions` finds earli
 | Command | Purpose |
 | --- | --- |
 | `zhivex-code` | Open the conversation |
-| `zhivex-code --continue` | Reopen the latest conversation, including a pending approval |
+| `zhivex-code --continue` | Reopen the latest conversation. A pending approval opens the review screen |
 | `zhivex-code run "task"` | Run one task for a script |
 | `zhivex-code doctor` | Check local configuration |
 | `zhivex-code --help` | Short guide |
@@ -72,10 +72,10 @@ Two different actions share the word “continue”:
 
 | Where | What you type | What happens |
 | --- | --- | --- |
-| Shell, after you quit | `zhivex-code --continue` | Reopens the latest conversation. A pending approval is printed again. Use `/pending`, then `/approve` or `/deny`. |
+| Shell, after you quit | `zhivex-code --continue` | Reopens the latest conversation. A pending approval opens the review screen. |
 | Inside the session | `/continue` | Starts a new run from an interrupted task and keeps the earlier results. |
 
-`/continue` is the in-session command. The shell flag that reopens the latest conversation is `--continue`, on `zhivex-code` and on `zhx`. When a run is already waiting for approval, the console sends you to `/pending` before a new turn. The engine CLI uses the same split: `zhx --continue` reopens, and `/continue` inside that session starts a new run.
+`/continue` is the in-session command. The shell flag that reopens the latest conversation is `--continue`, on `zhivex-code` and on `zhx`. On `zhivex-code`, that screen is `r` Reject, `a` Approve N file(s), `d` Details, and Esc to decide later. A check uses `Approve 1 command` instead of the file label. `/pending` opens the same screen. A new turn waits until you decide. On `zhx`, `--continue` reopens and prints the pending approval; `/pending`, then `/approve` or `/deny`, decides it. `/continue` inside that session starts a new run.
 
 ### Try it with no API key
 

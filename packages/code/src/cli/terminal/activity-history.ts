@@ -45,8 +45,13 @@ export class ActivityHistory {
 }
 
 /** Only workspace-owned committed mutation receipts may supply file labels. */
-export const formatAppliedFiles = (entries: readonly Pick<MutationAuditEntry, "operation" | "path" | "destination">[], reviewHint = "/diff to review"): string => {
+export const formatAppliedFiles = (entries: readonly Pick<MutationAuditEntry, "operation" | "path" | "destination">[], reviewHint = "/diff to review", presentation: "block" | "line" = "block"): string => {
   if (!entries.length) return "";
+  if (presentation === "line") {
+    const shown = entries.slice(0, 3).map(entry => safePath(entry.path)).join(", ");
+    const more = entries.length > 3 ? `, +${entries.length - 3} more` : "";
+    return `✓ Applied ${entries.length} file change${entries.length === 1 ? "" : "s"} · ${shown}${more} · ${reviewHint}\n`;
+  }
   const lines = entries.slice(0, 20).map(entry => `  ${entry.operation} ${safePath(entry.path)}${entry.destination ? ` → ${safePath(entry.destination)}` : ""}`);
   if (entries.length > 20) lines.push(`  … ${entries.length - 20} more files`);
   return `✓ Applied ${entries.length} file change${entries.length === 1 ? "" : "s"}\n${lines.join("\n")}\n  ${reviewHint} · verification reported separately\n`;
