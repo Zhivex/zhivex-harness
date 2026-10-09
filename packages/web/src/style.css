@@ -1121,6 +1121,10 @@ h2 {
 @media (max-width: 600px) { .topbar-actions { flex-wrap: wrap; gap: 6px; justify-content: flex-end; } .limits-launcher { max-width: 165px; text-align: left; } }
 
 /* Exact review content and decision scope must remain readable at narrow widths. */
+.review-file-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; }
+.review-file-header h4 { min-width: 0; flex: 1 1 160px; margin: 0; overflow-wrap: anywhere; }
+.review-file-header label { display: flex; align-items: center; gap: 6px; }
+.review-file-header input { width: auto; }
 .review-panel, .review-content, .review-file { min-width: 0; overflow-wrap: anywhere; }
 .review-panel pre, .review-content pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .review-panel button, .review-content button, .review-scope { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }

@@ -1,3 +1,4 @@
+import { viewReviewFiles } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { stat, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -116,6 +117,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     }
     await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
+    assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 command");
     await first.setFixtureApprovalClock(3600000);
     await click('[data-action="approve-review"]'); await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("expired")');
     const expiredDecision = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(expiredDecision.ok && expiredDecision.data.kind === "run"); assert.equal(expiredDecision.data.run.status, "waiting_approval"); assert.equal(expiredDecision.data.run.decisions?.length, 0);
@@ -189,7 +191,20 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
             const recovered = await first.command({ method: "run.get", sessionId, runId: pendingId }); assert(recovered.ok && recovered.data.kind === "run"); assert.equal(recovered.data.run.status, "waiting_approval"); assert.equal(recovered.data.run.decisionTotal, 0);
         }
         await click('[data-action="review"]');
-        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+        await wait('document.querySelector("[data-action=view-file]") !== null');
+        assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
+        assert.equal(await js('document.querySelector("[data-action=deny-review]").disabled'), false);
+        assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 file");
+        if (approve) {
+            await viewReviewFiles(js, wait);
+            await wait('document.querySelector("[data-action=approve-review]").disabled === false');
+            // Refreshing the same revision issues a new ticket and clears acknowledgement.
+            await click('[data-action="review"]');
+            await wait('document.querySelector("[data-action=view-file]")?.checked === false && document.querySelector("[data-action=review]").disabled === false');
+            assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
+            await viewReviewFiles(js, wait);
+            await wait('document.querySelector("[data-action=approve-review]").disabled === false');
+        }
         assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "context\r\nbefore\r\nlast");
         assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));
         assert.equal(await readFile(path.join(first.context.project.workspace, "review.txt"), "utf8"), "context\r\nbefore\r\nlast");
