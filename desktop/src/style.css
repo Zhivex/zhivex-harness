@@ -625,10 +625,6 @@ pre {
   background: #27222e;
   color: #e3d7f8;
 }
-.fixture-action {
-  font-size: 10px;
-  padding: 8px;
-}
 .composer-caption {
   display: flex;
   justify-content: space-between;
@@ -1003,10 +999,6 @@ pre {
   .model-trigger {
     font-size: 10px;
     max-width: 210px;
-  }
-  .fixture-action {
-    padding: 6px;
-    font-size: 9px;
   }
   .workspace-tools {
     gap: 2px;
