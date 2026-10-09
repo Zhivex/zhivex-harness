@@ -43,6 +43,12 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     };
     const wait = async (expression: string) => { for (let i = 0; i < 200; i++) { if (await js(expression)) return; await new Promise(r => setTimeout(r, 50)); } await writeFile(path.join(reportDirectory, "failure-view.txt"), await js("document.body.innerText")); throw new Error(`RENDERER_TIMEOUT: ${expression}`); };
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+    const startWaitTask = async () => {
+        await wait('document.querySelector("#prompt")?.disabled === false');
+        await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"wait-for-cancel");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+        await wait('document.querySelector("[data-action=start]")?.disabled === false');
+        await click('[data-action="start"]');
+    };
     await wait('document.querySelector("[data-ready=true]") !== null');
     const isolated = await js('typeof require === "undefined" && typeof process === "undefined" && Object.keys(window.harness).sort().join(",") === "checkUpdates,chooseProject,command,configureCredential,copyText,createPr,createTask,credentialStatus,deleteCredential,downloadUpdate,events,gitChanges,gitCommit,gitReconcile,gitReviewCommit,gitStage,initialProject,installUpdate,openExternal,openPr,openProject,openTask,probeCredential,projects,providers,push,reconcilePr,reconcilePush,remoteTargets,removeTask,resolveCheckpointReview,resolveReview,review,reviewCheckpoint,reviewCheckpointRecovery,reviewPr,reviewPush,reviewTaskRemoval,selectModel,tasks,updateStatus"'); assert(isolated);
     const updateStatus = await js('window.harness.updateStatus()');
@@ -67,7 +73,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     const sessionId = await js('document.querySelector("main").dataset.sessionId');
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"Describe the local runtime connection.");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false'); await click('[data-action="start"]'); await wait('document.body.innerText.includes("completed")');
-    await wait('document.querySelector("[data-action=wait]").disabled === false'); await click('[data-action="wait"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("cancelled")');
+    await startWaitTask(); await wait('document.querySelector("[data-action=cancel]").disabled === false'); await click('[data-action="cancel"]'); await wait('document.body.innerText.includes("cancelled")');
     await checkpoint("project-isolation");
     const before = await first.command({ method: "session.get", sessionId }); assert(before.ok && before.data.kind === "session"); const runIds = before.data.session.runs.map(r => r.runId);
     await click('[data-action="open-project"]'); await wait('document.querySelector("[role=alert]") !== null && document.querySelector("[data-action=open-project]").disabled === false'); assert.equal(await js('document.querySelector("main").dataset.projectKey'), firstKey);
@@ -93,7 +99,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false');
     await js('for(let i=0;i<2;i++)document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
-    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("[data-action=wait]").disabled === false');
+    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("#prompt").disabled === false');
     const pendingSession = await first.command({ method: "session.get", sessionId }); assert(pendingSession.ok && pendingSession.data.kind === "session"); assert.equal(pendingSession.data.session.runs.length, runIds.length + 1);
     const probeId = pendingSession.data.session.runs.at(-1)!.runId;
     const pending = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(pending.ok && pending.data.kind === "run"); assert.equal(pending.data.run.status, "waiting_approval");
@@ -146,7 +152,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await checkpoint("active-crash-recovery");
     // HU30: kill a worker while it owns an active run. Reopening only reads it;
     // cancellation is explicit and must wait for the dead worker's lease to expire.
-    await wait('document.querySelector("[data-action=wait]").disabled === false'); await click('[data-action="wait"]');
+    await startWaitTask();
     await wait('document.querySelector("[data-action=cancel]").disabled === false');
     const activeSession = await first.command({ method: "session.get", sessionId }); assert(activeSession.ok && activeSession.data.kind === "session");
     const interruptedId = activeSession.data.session.runs.at(-1)!.runId;
@@ -160,7 +166,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await new Promise(resolve => setTimeout(resolve, 31000));
     await checkpoint("orphan-cancellation");
     await click('[data-action="retry"]'); await wait('document.querySelector("[data-action=cancel]")?.disabled === false'); await click('[data-action="cancel"]');
-    await wait(`document.querySelector('[data-run="${interruptedId}"]')?.innerText.includes("cancelled") === true && document.querySelector("[data-action=wait]")?.disabled === false`);
+    await wait(`document.querySelector('[data-run="${interruptedId}"]')?.innerText.includes("cancelled") === true && document.querySelector("#prompt")?.disabled === false`);
     const cancelledOrphan = await first.command({ method: "run.get", sessionId, runId: interruptedId }); assert(cancelledOrphan.ok && cancelledOrphan.data.kind === "run"); assert.equal(cancelledOrphan.data.run.status, "cancelled");
     const recoveredSession = await first.command({ method: "session.get", sessionId }); assert(recoveredSession.ok && recoveredSession.data.kind === "session"); assert.equal(recoveredSession.data.session.runs.length, activeSession.data.session.runs.length);
     await checkpoint("file-review-decisions");

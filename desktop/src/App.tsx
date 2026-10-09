@@ -771,19 +771,6 @@ export function App() {
                   }}
                 />
                 <div className="composer-actions">
-                  {context?.fixture ? (
-                    <button
-                      type="button"
-                      className="secondary fixture-action"
-                      data-action="wait"
-                      disabled={
-                        !session || busy || reconcileRequired || disconnected
-                      }
-                      onClick={() => void start("wait-for-cancel")}
-                    >
-                      Test waiting
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     className="icon-button cancel-run"

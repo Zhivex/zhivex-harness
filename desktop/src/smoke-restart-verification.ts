@@ -19,6 +19,12 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
     const js = (source: string) => window.webContents.executeJavaScript(source);
     const wait = async (source: string) => { for (let i = 0; i < 200; i++) { if (await js(source)) return; await new Promise(resolve => setTimeout(resolve, 50)); } await writeFile(path.join(directory, `${phase}-failure-view.txt`), await js("document.body.innerText")); throw new Error(`RESTART_SMOKE_TIMEOUT: ${source}`); };
     const click = (selector: string) => js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+    const startWaitTask = async () => {
+        await wait('document.querySelector("#prompt")?.disabled === false');
+        await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"wait-for-cancel");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+        await wait('document.querySelector("[data-action=start]")?.disabled === false');
+        await click('[data-action="start"]');
+    };
     await wait('document.querySelector("[data-ready=true]") !== null');
     if (!["prepare", "active-close"].includes(phase)) {
         assert.equal(await js('document.querySelectorAll("[data-project]").length'), 1);
@@ -36,7 +42,7 @@ export async function verifyDesktopRestartSmoke(window: BrowserWindow, runtimes:
     if (phase === "active-close") {
         await click('[data-action="new-session"]'); await wait('Boolean(document.querySelector("main").dataset.sessionId)');
         const sessionId: string = await js('document.querySelector("main").dataset.sessionId');
-        await click('[data-action="wait"]'); await wait('document.querySelector("[data-action=cancel]").disabled === false');
+        await startWaitTask(); await wait('document.querySelector("[data-action=cancel]").disabled === false');
         const session = await runtime.command({ method: "session.get", sessionId }); assert(session.ok && session.data.kind === "session"); assert.equal(session.data.session.runs.length, 1); const runId = session.data.session.runs[0]!.runId;
         const running = await runtime.command({ method: "run.get", sessionId, runId }); assert(running.ok && running.data.kind === "run"); assert.equal(running.data.run.status, "running");
         window.close(); // First fixture choice is stay; preserve the visible window/run.
