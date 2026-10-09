@@ -1,3 +1,4 @@
+import { viewReviewFiles, assertReviewEnterDoesNotDecide } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { stat, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -99,7 +100,16 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await js(`const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"activity-probe");field.dispatchEvent(new Event("input",{bubbles:true}));`);
     await wait('document.querySelector("[data-action=start]").disabled === false');
     await js('for(let i=0;i<2;i++)document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
-    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("#prompt").disabled === false');
+    await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("[data-action=start]").disabled === true');
+    assert.equal(await js('document.querySelector("#prompt").disabled'), true);
+    assert.equal(await js('document.querySelector("#prompt").placeholder'), "What do you have in mind?");
+    assert.equal(await js('document.querySelectorAll(".composer-paused").length'), 1);
+    assert.equal(await js('document.querySelector(".composer-paused").textContent'), "Approve or reject the review to send another message");
+    assert.equal(await js('(document.body.innerText.match(/Approve or reject the review to send another message/g) || []).length'), 1);
+    await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"blocked while reviewing");field.dispatchEvent(new Event("input",{bubbles:true}));}');
+    await js('document.querySelector("#prompt").dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));document.querySelector("[data-action=start]").click()');
+    assert.equal(await js('document.querySelector("[data-action=start]").disabled'), true);
+    assert(!(await js('document.body.innerText')).includes("INVALID_STATE"));
     const pendingSession = await first.command({ method: "session.get", sessionId }); assert(pendingSession.ok && pendingSession.data.kind === "session"); assert.equal(pendingSession.data.session.runs.length, runIds.length + 1);
     const probeId = pendingSession.data.session.runs.at(-1)!.runId;
     const pending = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(pending.ok && pending.data.kind === "run"); assert.equal(pending.data.run.status, "waiting_approval");
@@ -110,6 +120,8 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     }
     await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
+    assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 command");
+    await assertReviewEnterDoesNotDecide(window, js);
     await first.setFixtureApprovalClock(3600000);
     await click('[data-action="approve-review"]'); await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("expired")');
     const expiredDecision = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(expiredDecision.ok && expiredDecision.data.kind === "run"); assert.equal(expiredDecision.data.run.status, "waiting_approval"); assert.equal(expiredDecision.data.run.decisions?.length, 0);
@@ -183,7 +195,22 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
             const recovered = await first.command({ method: "run.get", sessionId, runId: pendingId }); assert(recovered.ok && recovered.data.kind === "run"); assert.equal(recovered.data.run.status, "waiting_approval"); assert.equal(recovered.data.run.decisionTotal, 0);
         }
         await click('[data-action="review"]');
-        await wait('document.querySelector("[data-action=approve-review]")?.disabled === false');
+        await wait('document.querySelector("[data-action=view-file]") !== null');
+        assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
+        assert.equal(await js('document.querySelector("[data-action=deny-review]").disabled'), false);
+        assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 file");
+        await assertReviewEnterDoesNotDecide(window, js);
+        if (approve) {
+            await viewReviewFiles(js, wait);
+            await wait('document.querySelector("[data-action=approve-review]").disabled === false');
+            // Refreshing the same revision issues a new ticket and clears acknowledgement.
+            await click('[data-action="review"]');
+            await wait('document.querySelector("[data-action=view-file]")?.checked === false && document.querySelector("[data-action=review]").disabled === false');
+            assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
+            await viewReviewFiles(js, wait);
+            await wait('document.querySelector("[data-action=approve-review]").disabled === false');
+            await assertReviewEnterDoesNotDecide(window, js);
+        }
         assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "context\r\nbefore\r\nlast");
         assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));
         assert.equal(await readFile(path.join(first.context.project.workspace, "review.txt"), "utf8"), "context\r\nbefore\r\nlast");
