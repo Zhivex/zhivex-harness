@@ -7,7 +7,10 @@ export const formatConsoleOutcome = (result: Pick<AgentRunOutput, "status" | "to
   const rejections = result.state?.approvalHistory?.filter(item => !item.approve) ?? [];
   const rejectedCalls = new Set(rejections.flatMap(item => item.toolCallId ? [item.toolCallId] : []));
   const failed = result.toolResults.filter(item => item.isError && !rejectedCalls.has(item.toolCallId)).length;
-  return [`Conversation: ${result.status === "completed" ? "completed" : result.status.replace(/_/g, " ")}`,
+  const statusLine = failed > 0
+    ? `Finished with errors · ${failed} action(s) failed · /activity`
+    : `Conversation: ${result.status === "completed" ? "completed" : result.status.replace(/_/g, " ")}`;
+  return [statusLine,
     `Actions: ${appliedFiles} file mutation receipts here · ${failed} other tool errors · ${Math.max(denied, rejections.length)} rejected decisions`,
     formatVerificationSummary(result.toolResults)].join("\n");
 };

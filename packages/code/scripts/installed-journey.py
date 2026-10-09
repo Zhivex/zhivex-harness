@@ -63,17 +63,17 @@ class Console:
                   "Current digest:" if text.startswith("/checkpoint review") else
                   "RESTORE BLOCKED" if text.startswith("/checkpoint retry") else {
                     "Inspect fixture": "Offline fixture ready.", "/pricing": "Catalog prices are advisory.",
-                    "/pending": "Pending approval:", "/budget off": "Finish or deny",
+                    "/budget off": "Finish or deny",
                     "/approve": "Offline edit task finished.", "/usage": "estimated USD limit:",
                     "/activity": "Activity history", "/continue": "Offline check task finished."
                   }.get(text))
         prefix = self.read(marker) if marker else ""
         return prefix + self.prompt()
 
-    def permission(self, decision):
-        frame = self.read("PgUp/PgDn review")
-        assert "Reject" in frame and "Allow once" in frame
-        self.send(decision + "\r")
+    def permission(self, key):
+        frame = self.read("PgUp/PgDn")
+        assert "Reject" in frame and "Approve" in frame
+        self.send(key)
 
     def close(self):
         if self.child.poll() is None:
@@ -113,26 +113,33 @@ try:
     assert "per new run" in console.prompt()
 
     console.send("Fix greeting\n")
-    diff = console.read("Permission required")
+    diff = console.read("Waiting for your decision")
     assert "Waiting for model response · 0s · step 0" in diff
     assert "---" in diff and "+++" in diff and "-export const greeting" in diff and "+export const greeting" in diff
     assert "Hi, ${name}" in (workspace / "greeting.mjs").read_text()
-    console.permission("Leave pending")
+    console.permission("\x1b")
     assert "paused" in console.prompt()
-    assert "waiting_approval" in console.command("/pending") or "Pending approval" in console.command("/pending")
+    console.send("/pending\n")
+    console.read("Waiting for your decision")
+    console.send("\x1b")
+    pending = console.prompt()
+    assert "approval pending" in pending or "Waiting for your decision" in pending
     assert "Finish or deny" in console.command("/budget off")
     console.close()
     console = Console()
-    assert "Pending approval" in console.prompt()
-    approved = console.command("/approve")
+    restored = console.read("Restored:")
+    menu = restored + console.read("Waiting for your decision")
+    assert "expectedDigest" not in menu.split("Waiting for your decision")[0]
+    console.send("a")
+    approved = console.read("Offline edit task finished.") + console.prompt()
     assert "Hello, ${name}!" in (workspace / "greeting.mjs").read_text()
     usage = console.command("/usage")
     assert "/ 1 limit" in usage and "not an invoice" in usage
 
     console.send("Check greeting\n")
     console.read("Run check: test")
-    console.read("Permission required")
-    console.permission("Allow once")
+    console.read("Waiting for your decision")
+    console.permission("a")
     checked = console.prompt()
     assert "exit 0" in checked and "1 passed, 0 failed" in checked
     checked_usage = console.command("/usage")
@@ -184,8 +191,8 @@ try:
     console = Console(other)
     console.prompt()
     console.send("Fix greeting\n")
-    console.read("Permission required")
-    console.permission("Reject")
+    console.read("Waiting for your decision")
+    console.permission("r")
     console.prompt()
     assert "Hi, ${name}" in (other / "greeting.mjs").read_text()
     assert "estimated USD unknown" in console.command("/usage")
@@ -197,18 +204,21 @@ try:
         console = Console(narrow, columns=columns, rows=24)
         console.prompt()
         console.send("Fix greeting\n")
-        frame = console.read("PgUp/PgDn review")
-        assert "Reject" in frame and "Allow once" in frame and "Leave pending" in frame
-        assert "Model openai/gpt-5.6-luna" in frame and "Context ~" in frame
+        frame = console.read("PgUp/PgDn")
+        assert "Reject" in frame and "Approve 1 file" in frame and "Decide later" in frame
+        assert "( Z ) Review changes" in frame
+        if columns >= 80: assert "openai/gpt-5.6-luna" in frame
         assert "estimatedUsd" not in frame  # Diff before technical JSON.
         console.send("\x1b[6~")
-        console.read("PgUp/PgDn review")
+        console.read("PgUp/PgDn")
         console.send("\x1b[200~Allow once\x1b[201~\r")
         # Wait for actual paste processing, not a buffered pager redraw: macOS
         # may otherwise coalesce the fresh answer into the discarded packet.
         console.read("Paste ignored · fresh keys required")
+        console.send("\x1b[200~a\x1b[201~")
+        console.read("Paste ignored · fresh keys required")
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
-        console.send("Reject\r")
+        console.send("r")
         rejected = console.prompt()
         assert "1 rejected decisions" in rejected and "Conversation: completed" in rejected
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
@@ -276,11 +286,11 @@ try:
     draft = console.command('/task start {"goal":"Fix greeting","paths":["greeting.mjs"],"checks":["test"],"constraints":["Keep the named export"],"budget":{"inputTokens":60000,"outputTokens":8192,"totalTokens":68192}}')
     assert "Task draft" in draft and "Baseline inspected" in draft
     console.send("Fix greeting\n")
-    console.read("Permission required")
-    console.permission("Allow once")
+    console.read("Waiting for your decision")
+    console.permission("a")
     console.read("Run check: test")
-    console.read("Permission required")
-    console.permission("Allow once")
+    console.read("Waiting for your decision")
+    console.permission("a")
     delivered = console.prompt()
     assert "task evidence: pending_review" in delivered and "test: exit 0" in delivered
     review_requests = (guided / ".tutorial-requests.jsonl").read_text()
@@ -304,8 +314,8 @@ try:
     assert "stale" in console.command("/task keep")
     console.send("/task revise Check greeting again; preserve the external change\n")
     console.read("Run check: test")
-    console.read("Permission required")
-    console.permission("Allow once")
+    console.read("Waiting for your decision")
+    console.permission("a")
     failed_task = console.prompt()
     assert "task evidence: incomplete" in failed_task and "test: exit 1" in failed_task
     assert "Task budget authority:" in console.command("/usage")

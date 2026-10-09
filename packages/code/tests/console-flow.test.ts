@@ -13,20 +13,50 @@ const state = {model: "openai/gpt-5.6-luna", status: "approval pending", context
   nextLimitUsd: 1, runUsage: {estimatedUsd: null, limitUsd: 0.25, usageComplete: false}};
 const items = ["Reject", "Allow once", "Allow exact check this session", "View technical details", "Leave pending"].map((label, index) => ({label, index, value: index}));
 
+const menu = [
+  { label: "Reject", key: "r", index: 0, value: 0 },
+  { label: "Approve 1 file", key: "a", index: 1, value: 1 },
+  { label: "Allow this exact check for this session", key: "s", index: 2, value: 2, detail: "Changing the script requires approval again" },
+  { label: "Details", key: "d", index: 3, value: 3 },
+  { label: "Decide later", key: "Esc", index: 4, value: 4, detail: "Keep it pending. /pending brings you back here." },
+];
+
 test("44x24 review preserves every code character, decisions and unknown/original versus next-run cost", () => {
   const source = "-export const greeting = (name) => `Hi, ${name}`;";
   expect(consoleLines(source, 43).join("")).toBe(source);
-  const frame = reviewFrame({title: "Permission required 1/1", body: source + "\n" + "+change\n".repeat(90), state}, items, 0, "", 0, 44, 24);
+  const frame = reviewFrame({title: "Waiting for your decision", body: source + "\n" + "+change\n".repeat(90), files: 1}, menu, 0, "", 0, 44, 24);
   expect(frame.lines.length).toBe(24);
   expect(frame.lines.every(line => terminalCellWidth(line) <= 43)).toBe(true);
-  expect(frame.lines).toContain("> Reject");
-  for (const item of items) expect(frame.lines.join("\n")).toContain(item.label);
-  expect(frame.lines.join("\n")).toContain("INCOMPLETE");
-  expect(frame.lines.join("\n")).toContain("$0.250000");
-  expect(frame.lines.join("\n")).toContain("$1.000000");
-  const last = reviewFrame({title: "Permission required", body: source + "\n" + "+change\n".repeat(90), state}, items, 0, "", 9999, 44, 24);
+  const flat = frame.lines.join(" ");
+  expect(flat).toContain("> r  Reject");
+  for (const item of menu) expect(flat).toContain(item.label);
+  expect(frame.lines.join("\n")).not.toContain("Filter >");
+  expect(frame.lines.join("\n")).toContain("PgUp/PgDn");
+  const costs = consoleStateLines(state).join("\n");
+  expect(costs).toContain("INCOMPLETE");
+  expect(costs).toContain("$0.250000");
+  expect(costs).toContain("$1.000000");
+  const last = reviewFrame({title: "Waiting for your decision", body: source + "\n" + "+change\n".repeat(90), files: 1}, menu, 0, "", 9999, 44, 24);
   expect(last.offset).toBeGreaterThan(0);
-  expect(last.lines).toContain("> Reject");
+  expect(last.lines.join("\n")).toContain("Reject");
+  expect(last.lines.join("\n")).toContain("End of changes");
+});
+
+test("decision labels stay whole at 44 and 80 columns and Enter only confirms the highlight", () => {
+  const narrow = reviewFrame({title: "Waiting for your decision", body: "diff", files: 1, headerRight: "~/demo · openai/gpt-5.6-luna"}, menu, 0, "", 0, 44, 24);
+  const narrowText = narrow.lines.join("\n");
+  expect(narrowText).toContain("> r  Reject");
+  expect(narrowText).toContain("Approve 1 file");
+  expect(narrowText).toContain("Decide later");
+  expect(narrow.lines.join(" ")).toContain("Allow this exact check for this session");
+  expect(narrowText).not.toContain("…");
+  expect(narrow.lines.length).toBe(24);
+  const wide = reviewFrame({title: "Waiting for your decision", body: "diff", files: 1, headerRight: "~/demo · openai/gpt-5.6-luna"}, menu, 1, "", 0, 80, 24);
+  const wideText = wide.lines.join("\n");
+  expect(wideText).toContain("> a  Approve 1 file");
+  expect(wideText).toContain("Enter choose the highlighted item");
+  expect(wideText).toContain("~/demo · openai/gpt-5.6-luna");
+  expect(wideText).toContain("End of changes · 1 file, shown in full");
 });
 
 test("terminal width uses graphemes; controls remain inert and context never invents a percentage", () => {
@@ -43,20 +73,64 @@ test("approval pager keeps a fresh reject default after paste, resize and detail
   let rendered = ""; output.on("data", chunk => { rendered += chunk.toString(); });
   const console = new ConsoleInput(input, output);
   try {
-    const answer = console.review({title: "Permission required", body: "diff\n".repeat(100), state}, items);
+    const answer = console.review({title: "Waiting for your decision", body: "diff\n".repeat(100)}, items);
     let answered = false; void answer.then(() => {answered = true;});
     input.write("\x1b[200~Allow once\x1b[201~\r");
     await new Promise(resolve => setImmediate(resolve));
     expect(answered).toBe(false);
     expect(rendered).toContain("Paste ignored · fresh keys required");
+    input.write("\x1b[200~a\x1b[201~");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(answered).toBe(false);
     input.write("\x1b[6~");
-    expect(rendered).toContain("Review lines");
+    expect(rendered).toContain("more lines");
+    expect(rendered).toContain("PgUp/PgDn");
     Object.assign(output, {columns: 80}); output.emit("resize");
     expect(rendered).toContain("> Reject");
     input.write("\r"); expect(await answer).toBe(0);
     expect(rendered).toContain("\x1b[?1049l");
-    const pending = console.review({title: "Permission required", body: "diff", state}, items);
+    const pending = console.review({title: "Waiting for your decision", body: "diff"}, items);
     input.write("\x03"); expect(await pending).toBeUndefined();
+  } finally { console.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
+});
+
+test("a page key during review stays one sequence so the next slash command is intact", async () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const input = new PassThrough(), output = new PassThrough();
+  Object.assign(output, {columns: 44, rows: 24});
+  output.resume();
+  const ui = new ConsoleInput(input, output);
+  try {
+    const answer = ui.review({title: "Waiting for your decision", body: "diff\n".repeat(40), files: 1}, [
+      {value: "n", label: "Reject", key: "r"}, {value: "y", label: "Approve 1 file", key: "a"},
+    ]);
+    for (const byte of Buffer.from("\x1b[6~")) input.write(Buffer.from([byte]));
+    input.write("\x1b[200~Allow once\x1b[201~\r");
+    await new Promise(resolve => setImmediate(resolve));
+    input.write("\x1b[200~a\x1b[201~");
+    await new Promise(resolve => setImmediate(resolve));
+    input.write("r");
+    expect(await answer).toBe("n");
+    const task = ui.compose({model: "openai/gpt-5.6-luna", reasoning: "medium", status: "ready"});
+    input.write("/exit\n");
+    expect(await task).toBe("/exit");
+  } finally { ui.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
+});
+
+test("a review letter chooses that item and any other letter does nothing", async () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const input = new PassThrough(), output = new PassThrough();
+  Object.assign(output, {columns: 80, rows: 30});
+  const console = new ConsoleInput(input, output);
+  const choices = [{value: "n", label: "Reject", key: "r"}, {value: "y", label: "Approve 1 file", key: "a"}];
+  try {
+    const answer = console.review({title: "Waiting for your decision", body: "diff"}, choices);
+    let answered = false; void answer.then(() => { answered = true; });
+    input.write("Az");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(answered).toBe(false);
+    input.write("a");
+    expect(await answer).toBe("y");
   } finally { console.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
 });
 
@@ -87,9 +161,47 @@ test("diff-first review retains full technical identity and whole-batch/exact gr
   expect(verifier).toContain("node --test exact.mjs");
 });
 
+test("a stale preview offers reload and details, and no Approve", async () => {
+  const approval = {id: "approval-1", provider: "openai" as const, kind: "local-tool" as const,
+    name: "apply_reviewed_edits", arguments: '{"changes":[{"path":"greeting.mjs","content":"new","expectedDigest":"sha256:old"}]}', inputDigest: "sha256:original", rawData: null};
+  const stale = "File diff unavailable: preconditions or text preview could not be validated. Review the complete payload below; engine checks still apply.\n";
+  const fresh = "Reviewed file diff · proposal\n--- greeting.mjs\n+++ greeting.mjs\n+new\n";
+  let calls = 0;
+  const seen: string[][] = [];
+  await resolveTerminalApprovals([approval], {
+    ask: async () => { throw new Error("Unexpected fallback"); }, write: () => {},
+    fileDiff: async () => { calls += 1; return calls === 1 ? stale : fresh; },
+    review: async (review, choices) => {
+      seen.push(choices.map(choice => choice.label));
+      if (calls === 1) {
+        expect(review.body).toContain("This review is out of date");
+        expect(review.body).not.toContain("expectedDigest");
+        return "l";
+      }
+      expect(review.body).toContain("+++ greeting.mjs");
+      return "n";
+    },
+  });
+  expect(seen[0]).toContain("Reject");
+  expect(seen[0]).toContain("Reload review");
+  expect(seen[0]?.some(label => label.startsWith("Approve"))).toBe(false);
+  expect(seen[1]?.some(label => label.startsWith("Approve"))).toBe(true);
+  const oversized = await resolveTerminalApprovals([approval], {
+    ask: async () => "n", write: () => {},
+    fileDiff: async () => "File diff unavailable: exceeds terminal preview limit. Review the complete payload below.\n",
+    review: async (_review, choices) => {
+      expect(choices.some(choice => choice.label.startsWith("Approve"))).toBe(true);
+      expect(choices.some(choice => choice.label === "Reload review")).toBe(false);
+      return "n";
+    },
+  });
+  expect(oversized?.[0]?.approve).toBe(false);
+});
+
 test("conversation completion retains tool failure and verification distinctions; recovery never advises blind retry", () => {
   const outcome = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "read_file", toolCallId: "read-1", isError: true}]}, 0, 1);
-  expect(outcome).toContain("Conversation: completed"); expect(outcome).toContain("1 other tool errors");
+  expect(outcome).toContain("Finished with errors · 1 action(s) failed · /activity");
+  expect(outcome).not.toContain("completed"); expect(outcome).toContain("1 other tool errors");
   expect(outcome).toContain("1 rejected decisions"); expect(outcome).toContain("no check receipts");
   const recovery = checkpointRecovery("Restore conflicts with subsequent edits or a partially applied filesystem operation; manual recovery required.");
   expect(recovery).toContain("RESTORE BLOCKED"); expect(recovery).toContain("original digests");

@@ -18,6 +18,21 @@ export const completeConsoleCommand = (line: string): [string[], string] => [
 
 const interrupted = () => Object.assign(new Error("Input interrupted."), { name: "AbortError" });
 
+/** A CSI or SS3 sequence that still needs its final byte. Flushing the prefix leaves readline inside the sequence, so the next real key is swallowed. */
+const incompleteTerminalSequence = (sequence: string) => {
+  if (sequence.length > 32) return false;
+  if (sequence === "\u001b" || sequence === "\u001bO") return true;
+  if (!sequence.startsWith("\u001b[")) return false;
+  const body = sequence.slice(2);
+  if (!body) return true;
+  for (let index = 0; index < body.length - 1; index += 1) {
+    const code = body.charCodeAt(index);
+    if (code < 0x20 || code > 0x3f) return false;
+  }
+  const last = body.charCodeAt(body.length - 1);
+  return last < 0x40 || last > 0x7e;
+};
+
 /** Background drafts and queued tasks are separate from fresh approval answers. */
 export class ConsoleInput {
   private background = false;
@@ -125,16 +140,17 @@ export class ConsoleInput {
     }
   }
 
-  private selection: { title: string; items: readonly {label: string; detail?: string}[] } | undefined;
+  private selection: { title: string; items: readonly {label: string; detail?: string; key?: string}[] } | undefined;
   private reviewing: ConsoleReview | undefined;
   private reviewOffset = 0;
   private reviewPage = 1;
   private reviewNotice: string | undefined;
   private reviewWrapped: {columns: number; lines: readonly string[]} | undefined;
   private selectionMatches() {
+    const indexed = this.selection?.items.map((item, index) => ({...item, index})) ?? [];
+    if (this.reviewing) return indexed;
     const query = this.reader.line.toLowerCase();
-    return this.selection?.items.map((item, index) => ({...item, index}))
-      .filter(item => `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(query)) ?? [];
+    return indexed.filter(item => `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(query));
   }
   private finishSelection(accept: boolean) {
     const selected = accept ? this.selectionMatches()[this.menuSelection] : undefined;
@@ -146,7 +162,7 @@ export class ConsoleInput {
     this.output.write("\n");
     pending?.resolve(selected ? String(selected.index) : "");
   }
-  async select<T>(title: string, items: readonly {value: T; label: string; detail?: string}[]): Promise<T | undefined> {
+  async select<T>(title: string, items: readonly {value: T; label: string; detail?: string; key?: string}[]): Promise<T | undefined> {
     if (!items.length) { this.output.write("No matches.\n"); return undefined; }
     if (!this.terminal || process.env.TERM === "dumb") return chooseConsoleItem(title, items, {
       write: text => { this.output.write(text); }, ask: prompt => this.question(prompt),
@@ -155,19 +171,21 @@ export class ConsoleInput {
     this.menuSelection = 0;
     try {
       if (!this.reviewing) this.output.write(`\n${sanitizeTerminalText(title)}\n`);
-      const answer = this.question("Filter > ", true);
+      const answer = this.question(this.reviewing ? "" : "Filter > ", true);
       this.renderMenu();
       const value = await answer;
       return value === "" ? undefined : items[Number(value)]?.value;
     } finally { this.hideMenu(); this.selection = undefined; }
   }
-  async review<T>(review: ConsoleReview, items: readonly {value: T; label: string; detail?: string}[]): Promise<T | undefined> {
+  async review<T>(review: ConsoleReview, items: readonly {value: T; label: string; detail?: string; key?: string}[]): Promise<T | undefined> {
     if (!this.terminal || process.env.TERM === "dumb" || ((this.output as Writable & {rows?: number}).rows ?? 24) < 24 ||
       ((this.output as Writable & {columns?: number}).columns ?? 80) < 32) {
       this.output.write(review.body + "\n");
       return this.select(review.title, items);
     }
     this.hideMenu();
+    this.clearQueue();
+    Object.assign(this.reader, { line: "", cursor: 0 });
     this.reviewing = review;
     this.reviewOffset = 0;
     this.reviewNotice = undefined;
@@ -270,7 +288,7 @@ export class ConsoleInput {
       const style = (line: string) => {
         const code = line.startsWith("( Z )") ? "1;38;5;210" : line.startsWith("+") ? "38;5;120"
           : line.startsWith("-") ? "38;5;210" : line.startsWith("@@") ? "38;5;117"
-          : line.startsWith("> ") || line.startsWith("Permission required") ? "1;38;5;222" : "";
+          : line.startsWith("> ") || line.startsWith("Waiting for your decision") ? "1;38;5;222" : "";
         return color && code ? `\x1b[${code}m${line}\x1b[0m` : line;
       };
       this.output.write("\x1b[H" + frame.lines.map(line => style(line) + "\x1b[K").join("\r\n") +
@@ -418,6 +436,9 @@ export class ConsoleInput {
         }
         continue;
       }
+      // Page Up/Down and other CSI keys end after the paste marker has already diverged.
+      // Hold the prefix until the final byte so readline receives one sequence.
+      if (incompleteTerminalSequence(this.escape)) continue;
       const plain = this.escape;
       this.escape = "";
       if (this.clipboard !== undefined) {
@@ -426,6 +447,17 @@ export class ConsoleInput {
       } else if (this.pending || this.paste || this.background) {
         this.reviewNotice = undefined;
         this.hideMenu();
+        if (this.reviewing && plain.length === 1 && plain !== "\n" && plain !== "\r") {
+          if (/^[a-z]$/.test(plain)) {
+            const index = this.selection?.items.findIndex(item => item.key === plain) ?? -1;
+            if (index >= 0) {
+              this.menuSelection = index;
+              this.finishSelection(true);
+            }
+          }
+          this.renderMenu();
+          continue;
+        }
         if (this.selection && !/[\u0000-\u001f\u007f]/.test(plain) &&
             Buffer.byteLength(this.reader.line) + Buffer.byteLength(plain) > MAX_CONSOLE_INPUT_BYTES) continue;
         if (this.selection && (plain === "\n" || plain === "\r")) {

@@ -68,7 +68,7 @@ export const approvalResponses = (
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; review?: NonNullable<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions["review"]>; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined> }
+  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; review?: NonNullable<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions["review"]>; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>; restored?: boolean; projectLabel?: string }
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
   return async (approvals) => {
     if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
