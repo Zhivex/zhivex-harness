@@ -102,7 +102,10 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await js('for(let i=0;i<2;i++)document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}))');
     await wait('document.body.innerText.includes("waiting_approval") && document.querySelector("[data-action=start]").disabled === true');
     assert.equal(await js('document.querySelector("#prompt").disabled'), true);
-    assert.equal(await js('document.querySelector("#prompt").placeholder'), "Approve or reject the review to send another message");
+    assert.equal(await js('document.querySelector("#prompt").placeholder'), "What do you have in mind?");
+    assert.equal(await js('document.querySelectorAll(".composer-paused").length'), 1);
+    assert.equal(await js('document.querySelector(".composer-paused").textContent'), "Approve or reject the review to send another message");
+    assert.equal(await js('(document.body.innerText.match(/Approve or reject the review to send another message/g) || []).length'), 1);
     await js('{const field=document.querySelector("#prompt");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"blocked while reviewing");field.dispatchEvent(new Event("input",{bubbles:true}));}');
     await js('document.querySelector("#prompt").dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",bubbles:true,cancelable:true}));document.querySelector("#prompt").closest("form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));document.querySelector("[data-action=start]").click()');
     assert.equal(await js('document.querySelector("[data-action=start]").disabled'), true);

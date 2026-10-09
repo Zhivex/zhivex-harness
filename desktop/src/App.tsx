@@ -747,9 +747,7 @@ export function App() {
                 }}
                 disabled={!session || loading || run?.status === "waiting_approval"}
                 placeholder={
-                  run?.status === "waiting_approval"
-                    ? "Approve or reject the review to send another message"
-                    : !session
+                  !session
                     ? "Create a conversation to get started…"
                     : "What do you have in mind?"
                 }
