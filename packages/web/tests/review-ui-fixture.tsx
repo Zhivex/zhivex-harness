@@ -10,10 +10,12 @@ function Fixture() {
   const [decisions, setDecisions] = useState(0);
   const viewed = useViewedFiles({
     runId, revision, ticketId: String(ticketId),
-    items: [
-      { files: commandsOnly ? [] : [{ path: "a.ts" }, { path: "b.ts" }], commands: ["bun test"] },
-      { files: commandsOnly ? [] : [{ path: "a.ts" }], commands: [] },
-    ],
+    items: commandsOnly
+      ? [{ files: [], commands: ["bun test"] }]
+      : [
+          { files: [{ path: "a.ts" }, { path: "b.ts" }], commands: ["bun test"] },
+          { files: [{ path: "a.ts" }], commands: [] },
+        ],
   }, runId, revision);
   return <>
     <button onClick={() => setRunId(value => value === "run-a" ? "run-b" : "run-a")}>Change run</button>
