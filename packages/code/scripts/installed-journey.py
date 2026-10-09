@@ -32,12 +32,15 @@ class Console:
 
     def read(self, marker, timeout=25):
         deadline = time.monotonic() + timeout
-        def position():
+        def locate():
+            # The focus composer draws "> " after a clear, without a blank line.
+            # The historical marker is still "\n> ".
             if marker == "\n> ":
-                match = re.search(rb"\n> (?=\r?\n|\x1b)", self.pending)
-                return match.start() if match else -1
-            return self.pending.find(marker.encode())
-        while position() < 0:
+                match = re.search(rb"(?:\n|\x1b\[0J)> (?=\r?\n|\x1b)", self.pending)
+                return match.end() if match else -1
+            found = self.pending.find(marker.encode())
+            return found + len(marker.encode()) if found >= 0 else -1
+        while locate() < 0:
             if time.monotonic() > deadline:
                 raise AssertionError((marker, self.pending[-6000:].decode(errors="replace")))
             if select.select([self.master], [], [], .1)[0]:
@@ -47,7 +50,7 @@ class Console:
                     raise AssertionError((marker, self.pending[-6000:].decode(errors="replace")))
                 self.pending += chunk
                 transcript.extend(chunk)
-        end = position() + len(marker.encode())
+        end = locate()
         result, self.pending = self.pending[:end], self.pending[end:]
         return result.decode(errors="replace")
 
