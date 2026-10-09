@@ -40,6 +40,9 @@ export async function reviewUIJourney(browser, root) {
       for (const checkbox of await page.getByRole("checkbox").all()) await checkbox.check();
       assert.equal(await approve.isEnabled(), true);
     }
+    for (const button of [approve, page.getByRole("button", { name: "Reject", exact: true })]) {
+      for (const key of ["Enter", "Control+Enter", "Meta+Enter"]) await button.press(key);
+    }
     assert.equal(await page.getByLabel("Decisions").textContent(), "0");
     await page.getByRole("button", { name: "Commands only", exact: true }).click();
     const commands = page.getByRole("button", { name: "Approve 1 command", exact: true });

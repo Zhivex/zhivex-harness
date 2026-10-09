@@ -102,6 +102,14 @@ async function viewReviewFiles() {
   await page.getByLabel("Approval review", { exact: true }).waitFor();
   for (const checkbox of await page.locator('[data-action="view-file"]').all()) await checkbox.check();
 }
+async function reviewEnterDoesNotDecide() {
+  const before = commands.filter(command => command === "decide").length;
+  for (const target of await page.locator('.review-content h3, .review-content button:enabled, .review-content input, .review-content summary, .review-content [role="region"]').all()) {
+    for (const key of ["Enter", "Control+Enter", "Meta+Enter"]) await target.press(key);
+  }
+  assert.equal(commands.filter(command => command === "decide").length, before);
+  assert.equal(await page.getByLabel("Approval review").count(), 1);
+}
 async function capture(name, fullPage = true) {
   await page.screenshot({ path: path.join(output, name), fullPage });
   screenshots.push(name);
@@ -263,12 +271,14 @@ try {
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
   assert.equal(await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(), true);
   await page.getByText("View all files to approve", { exact: true }).waitFor();
+  await reviewEnterDoesNotDecide();
   await viewReviewFiles();
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), true);
+  await reviewEnterDoesNotDecide();
   await page.getByRole("button", { name: "Refresh exact review" }).click();
   await page.getByText("0 of 1 files viewed", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
-  steps.push("viewed gate blocks approval, leaves rejection available, resets on new ticket");
+  steps.push("viewed gate blocks approval, leaves rejection available, resets on new ticket; Enter/Ctrl+Enter/Meta+Enter never decide");
   // Stress the rendered review with long unbroken text without changing its ticket or payload.
   const originalText = await page.evaluate(() => {
     const path = document.querySelector('.review-file h4');
@@ -307,6 +317,7 @@ try {
   await wait();
   await page.getByRole("button", { name: "Review proposed operation" }).click();
   assert.equal(await page.getByRole("button", { name: "Approve 1 command", exact: true }).isEnabled(), true);
+  await reviewEnterDoesNotDecide();
   await viewReviewFiles();
   await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).click();
   await complete();

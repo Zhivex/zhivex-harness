@@ -1,4 +1,4 @@
-import { viewReviewFiles } from "./smoke-review-helpers.js";
+import { viewReviewFiles, assertReviewEnterDoesNotDecide } from "./smoke-review-helpers.js";
 import { app, type BrowserWindow } from "electron";
 import { stat, writeFile, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -118,6 +118,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
     await click('[data-action="review"]'); await wait('document.querySelector("[data-review-item]") !== null');
     assert(await js('document.querySelector("[data-review-item]").innerText.includes("bun -e")'));
     assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 command");
+    await assertReviewEnterDoesNotDecide(window, js);
     await first.setFixtureApprovalClock(3600000);
     await click('[data-action="approve-review"]'); await wait('document.querySelector(".review-panel [role=alert]")?.textContent.includes("expired")');
     const expiredDecision = await first.command({ method: "run.get", sessionId, runId: probeId }); assert(expiredDecision.ok && expiredDecision.data.kind === "run"); assert.equal(expiredDecision.data.run.status, "waiting_approval"); assert.equal(expiredDecision.data.run.decisions?.length, 0);
@@ -195,6 +196,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
         assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
         assert.equal(await js('document.querySelector("[data-action=deny-review]").disabled'), false);
         assert.equal(await js('document.querySelector("[data-action=approve-review]").textContent'), "Approve 1 file");
+        await assertReviewEnterDoesNotDecide(window, js);
         if (approve) {
             await viewReviewFiles(js, wait);
             await wait('document.querySelector("[data-action=approve-review]").disabled === false');
@@ -204,6 +206,7 @@ export async function verifyDesktopSmoke(window: BrowserWindow, runtimes: Map<st
             assert.equal(await js('document.querySelector("[data-action=approve-review]").disabled'), true);
             await viewReviewFiles(js, wait);
             await wait('document.querySelector("[data-action=approve-review]").disabled === false');
+            await assertReviewEnterDoesNotDecide(window, js);
         }
         assert.equal(await js('document.querySelector(".review-file .removed").textContent'), "context\r\nbefore\r\nlast");
         assert(await js('document.querySelector(".review-file .added").textContent.includes("after <img onerror=alert(1)>") && !document.querySelector(".review-file img")'));

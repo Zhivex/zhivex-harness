@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { reviewScope, type ReviewScope } from "./review-scope.js";
-export { reviewConsequence } from "./review-scope.js";
+export { reviewConsequence, preventDecisionEnter } from "./review-scope.js";
 
 /** Local acknowledgement only; a new run, revision, or ticket always starts unviewed. */
 export function useViewedFiles(review: ReviewScope | undefined, runId?: string, revision?: number) {
