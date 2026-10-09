@@ -98,6 +98,29 @@ test("approval pager keeps a fresh reject default after paste, resize and detail
   } finally { console.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
 });
 
+test("a page key during review stays one sequence so the next slash command is intact", async () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const input = new PassThrough(), output = new PassThrough();
+  Object.assign(output, {columns: 44, rows: 24});
+  output.resume();
+  const ui = new ConsoleInput(input, output);
+  try {
+    const answer = ui.review({title: "Waiting for your decision", body: "diff\n".repeat(40), files: 1}, [
+      {value: "n", label: "Reject", key: "r"}, {value: "y", label: "Approve 1 file", key: "a"},
+    ]);
+    for (const byte of Buffer.from("\x1b[6~")) input.write(Buffer.from([byte]));
+    input.write("\x1b[200~Allow once\x1b[201~\r");
+    await new Promise(resolve => setImmediate(resolve));
+    input.write("\x1b[200~a\x1b[201~");
+    await new Promise(resolve => setImmediate(resolve));
+    input.write("r");
+    expect(await answer).toBe("n");
+    const task = ui.compose({model: "openai/gpt-5.6-luna", reasoning: "medium", status: "ready"});
+    input.write("/exit\n");
+    expect(await task).toBe("/exit");
+  } finally { ui.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
+});
+
 test("a review letter chooses that item and any other letter does nothing", async () => {
   const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
   const input = new PassThrough(), output = new PassThrough();
