@@ -18,6 +18,21 @@ export const completeConsoleCommand = (line: string): [string[], string] => [
 
 const interrupted = () => Object.assign(new Error("Input interrupted."), { name: "AbortError" });
 
+/** A CSI or SS3 sequence that still needs its final byte. Flushing the prefix leaves readline inside the sequence, so the next real key is swallowed. */
+const incompleteTerminalSequence = (sequence: string) => {
+  if (sequence.length > 32) return false;
+  if (sequence === "\u001b" || sequence === "\u001bO") return true;
+  if (!sequence.startsWith("\u001b[")) return false;
+  const body = sequence.slice(2);
+  if (!body) return true;
+  for (let index = 0; index < body.length - 1; index += 1) {
+    const code = body.charCodeAt(index);
+    if (code < 0x20 || code > 0x3f) return false;
+  }
+  const last = body.charCodeAt(body.length - 1);
+  return last < 0x40 || last > 0x7e;
+};
+
 /** Background drafts and queued tasks are separate from fresh approval answers. */
 export class ConsoleInput {
   private background = false;
@@ -421,6 +436,9 @@ export class ConsoleInput {
         }
         continue;
       }
+      // Page Up/Down and other CSI keys end after the paste marker has already diverged.
+      // Hold the prefix until the final byte so readline receives one sequence.
+      if (incompleteTerminalSequence(this.escape)) continue;
       const plain = this.escape;
       this.escape = "";
       if (this.clipboard !== undefined) {
