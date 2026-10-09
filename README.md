@@ -10,17 +10,14 @@ An open-source coding agent for your terminal. It asks before it edits or runs a
 
 ## Approval survives a restart
 
-<!-- TODO(Miguel): record a 20–30s GIF and replace the URL below.
-     Scene: ask for a change, review the diff, leave the approval pending, quit,
+<!-- Recorded with zhivex-code. Scene: ask for a change, review the diff, leave the approval pending, quit,
      then run `zhivex-code --continue` and show the same approval.
      Inside the session, `/continue` starts a new run from an interrupted task;
      the reopen step in this GIF is the `--continue` flag.
-     Do not commit the image file. Do not add it to either package `files` list.
-     A raw.githubusercontent.com URL or a GitHub user-attachments URL is fine. -->
+     The file is docs/images/approval-survives-restart.gif. Do not add it to either package `files` list.
+     npm shows the absolute raw URL below. That URL resolves from main. -->
 
-![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/TODO-approval-survives-restart.gif)
-
-> **TODO(Miguel):** the image URL above is a placeholder. Replace it with the GIF you record before the public launch. Keep the file out of the repository and out of the npm package `files` lists.
+![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/approval-survives-restart.gif)
 
 ## Why it works this way
 

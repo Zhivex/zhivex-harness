@@ -2,12 +2,11 @@
 
 The terminal product for [Zhivex Harness](https://github.com/Zhivex/zhivex-harness). Code is what you install and use. Harness is the governed, provider-portable runtime underneath: durable approvals and isolated execution.
 
-<!-- TODO(Miguel): same GIF as the repository README. Replace this placeholder URL
-     after you record it. Do not add the image file to this package or to `files`. -->
+<!-- Same GIF as the repository README: docs/images/approval-survives-restart.gif.
+     Do not add the image to this package or to `files`.
+     npm shows the absolute raw URL below. That URL resolves from main. -->
 
-![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/TODO-approval-survives-restart.gif)
-
-> **TODO(Miguel):** placeholder URL. Record the GIF and replace this link before launch. Keep the file out of the package `files` list.
+![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/approval-survives-restart.gif)
 
 OpenAI, Qwen, and Meta are the release-gated providers. Gemini, Anthropic, and Vertex are provisional. Linux and macOS only. Node.js 22.13 or newer. You do not need Bun to run the published package.
 
