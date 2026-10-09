@@ -333,14 +333,23 @@ const verificationReceipt = (name: string, output: unknown) => {
   return { exitCode: receipt.exitCode as number, timedOut: receipt.timedOut === true, check };
 };
 
-export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
-  const receipts = results.flatMap(result => {
+const verificationReceipts = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) =>
+  results.flatMap(result => {
     const receipt = verificationReceipt(result.toolName, result.output);
     return receipt ? [{ ...receipt, failed: Boolean(result.isError) || receipt.timedOut || receipt.exitCode !== 0 }] : [];
   });
-  if (!receipts.length) return "Verification: no check receipts recorded; completion does not certify checks.";
+
+/** Counts only recorded check receipts. Callers must not imply checks that did not run. */
+export const verificationCounts = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
+  const receipts = verificationReceipts(results);
   const failed = receipts.filter(receipt => receipt.failed).length;
-  return `Verification receipts: ${receipts.length - failed} passed, ${failed} failed/timed out. Only recorded commands are covered.`;
+  return { total: receipts.length, passed: receipts.length - failed, failed };
+};
+
+export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
+  const counts = verificationCounts(results);
+  if (!counts.total) return "Verification: no check receipts recorded; completion does not certify checks.";
+  return `Verification receipts: ${counts.passed} passed, ${counts.failed} failed/timed out. Only recorded commands are covered.`;
 };
 
 const paint = (text: string, code: number, color: boolean) =>

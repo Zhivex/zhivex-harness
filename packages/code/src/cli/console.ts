@@ -193,7 +193,7 @@ export const chat = async (options: CliOptions) => {
     model: `${harness.config.provider}/${harness.config.model}`,
     reasoning: harness.config.reasoningEffort ?? "default",
     ...(session.title ? {title: session.title} : {}),
-    status: session.runs.at(-1)?.status === "waiting_approval" ? "approval pending · /pending" : consoleIssue ?? "ready",
+    status: session.runs.at(-1)?.status === "waiting_approval" ? "Waiting for your decision · /pending" : consoleIssue ?? "ready",
     attachments: attachments.list().length,
     automaticApprovals: options.yes === true,
     ...(options.approvalMode ? {approvalMode: options.approvalMode} : {}),
@@ -214,8 +214,10 @@ export const chat = async (options: CliOptions) => {
   const consoleApprovals: ReturnType<typeof terminalApprovalResolver> = async (approvals, context) => {
     runView.end();
     readline.stopBackground();
+    let decisions: Awaited<ReturnType<ReturnType<typeof terminalApprovalResolver>>> | undefined;
+    let settled = false;
     try {
-      const decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
+      decisions = await terminalApprovalResolver(options.approvalMode ?? options.yes,
         question => readline.question(question), {
           select: (title, items) => readline.select(title, items),
           review: (review, items) => readline.review({...review, headerRight: review.headerRight ?? reviewProjectLabel()}, items),
@@ -224,11 +226,14 @@ export const chat = async (options: CliOptions) => {
           restored: reviewRestored,
           projectLabel: reviewProjectLabel(),
         })(approvals, context);
+      settled = true;
       rejectedDecisions += decisions?.filter(item => !item.approve).length ?? 0;
       if (decisions) process.stderr.write(`Approval decisions: ${decisions.filter(item => item.approve).length} allowed · ${decisions.filter(item => !item.approve).length} rejected\n`);
-      else process.stderr.write("Approval pending · no decisions submitted · /pending to inspect\n");
       return decisions;
-    } finally { if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); } }
+    } finally {
+      if (activeController && !activeController.signal.aborted) { readline.startBackground(); runView.resume(); }
+      if (settled && !decisions) process.stderr.write("Decided later · nothing applied · /pending to review\n");
+    }
   };
 
   const createTracker = (runId: string) => {
@@ -257,7 +262,7 @@ export const chat = async (options: CliOptions) => {
       await rendering.measure("render", () => streamSink({json: false, jsonl: false}, tracker, !verbose)(event));
       if (event.type === "tool-result") {
         const audit = harness.workspace.mutationAudit();
-        const receipt = formatAppliedFiles(audit.slice(offset));
+        const receipt = formatAppliedFiles(audit.slice(offset), "/diff to review", "line");
         offset = audit.length;
         if (receipt) {
           flushToolActivity(tracker);
@@ -401,15 +406,12 @@ export const chat = async (options: CliOptions) => {
     process.stderr.write(outcome(result) + "\n");
     process.stderr.write(await freshCodeTaskRecap(harness, result.state));
     codeTask = restoredCodeTask(result.state);
-    process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
+    writeUsageLedger(result.state.metadata);
     retainedTasks = taskSources(result.state.metadata);
     retainedResponses = result.state.metadata?.zhivexAssistantResponses ?? [];
     session = await sessionStore.updateRun(session.sessionId, state.runId, {
       status: sessionStatus(result.status)
     });
-    if (result.status === "waiting_approval") {
-      process.stderr.write(`Run ${state.runId} requires another decision; use /pending, /approve, or /deny.\n`);
-    }
   };
 
   const statusLine = async () => {
@@ -420,25 +422,48 @@ export const chat = async (options: CliOptions) => {
     const routeText = routes.size === 0
       ? "default"
       : [...routes.values()].map((route) => `${route.profile}=${route.provider}:${route.model}`).join(", ");
+    const cap = runtimeOptions.usageLimitUsd ?? "none";
     return `session ${current.sessionId} · ${harness.config.provider}/${harness.config.model}` +
       ` · steps ${harness.config.maxSteps} · approvals ${options.approvalMode ?? (options.yes ? "auto" : "ask")} · ${messages.length} messages · routes ${routeText}` +
       `${latest ? ` · last ${latest.runId} (${latest.status})` : ""}` +
-      (failedState ? `\nLast failure: ${terminalRunFailure(failedState.error)} (${failedState.currentStep}/${failedState.maxSteps} steps).` : "");
+      `\nCredential: ${credentials.store.source(harness.config.provider)}. Account access is not checked until your first task.` +
+      `\nContext ~${contextTokens} retained tokens. Estimates cover retained messages only; they exclude request instructions and tools. Costs are estimates, not invoices.` +
+      `\nNext run cap ${cap}.` +
+      (failedState ? `\nLast failure: ${terminalRunFailure(failedState.error)} (${failedState.currentStep}/${failedState.maxSteps} steps).` : "") +
+      "\nWhile working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.";
   };
 
-  process.stderr.write(formatConsoleWelcome({
-    version: CODE_VERSION,
-    workspace: harness.config.workspace,
-    provider: harness.config.provider,
-    model: harness.config.model,
-    sessionId: session.sessionId,
-    ...(session.title ? { sessionTitle: session.title } : {}),
-  }, { color: terminalSupportsColor(Boolean(process.stderr.isTTY)), columns: process.stdout.columns ?? 80, compact: true }) + "\n");
+  const writeUsageLedger = (metadata: AgentRunOutput["state"]["metadata"] | undefined) => {
+    const summary = inspectUsageLedger(metadata?.[USAGE_LEDGER_KEY]);
+    if (typeof summary?.limitUsd === "number" || typeof runtimeOptions.usageLimitUsd === "number") {
+      process.stderr.write(formatUsageLedger(metadata?.[USAGE_LEDGER_KEY]) + "\n");
+    }
+  };
 
-  process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
-  process.stderr.write("* Context estimates retained messages only; excludes request instructions/tools. Costs are estimates, not invoices.\n");
-  process.stderr.write("While working: type a draft, Enter queues the next task, Up recalls the last queued task. Ctrl+C stops and clears the queue.\n");
-  process.stderr.write(options.approvalMode === "restricted" ? "Restricted mode: additional approvals are denied.\n" : options.yes ? "Automatic approvals are enabled within workspace and execution policies.\n" : "Changes require your approval.\n");
+  const approvalPolicy = options.approvalMode === "restricted"
+    ? "Restricted mode: additional approvals are denied."
+    : options.yes
+      ? "Automatic approvals are on within workspace policy."
+      : "Zhivex asks before it changes files.";
+  const opening = selectedSession ? await latestState(session) : undefined;
+  const pendingOnRestore = Boolean(selectedSession) && opening?.status === "waiting_approval" && opening.pendingApprovals.length > 0;
+  if (!pendingOnRestore) {
+    process.stderr.write(formatConsoleWelcome({
+      version: CODE_VERSION,
+      workspace: harness.config.workspace,
+      provider: harness.config.provider,
+      model: harness.config.model,
+    }, {
+      layout: "code",
+      policy: approvalPolicy,
+      restored: Boolean(selectedSession),
+      color: terminalSupportsColor(Boolean(process.stderr.isTTY)),
+      columns: process.stderr.columns || process.stdout.columns || 80,
+      rows: process.stderr.rows || process.stdout.rows || 24,
+      tty: Boolean(process.stderr.isTTY),
+      ...(process.env.TERM !== undefined ? { term: process.env.TERM } : {}),
+    }) + "\n");
+  }
 
   const showSessionState = async (restored = false) => {
     await hasActiveTurn();
@@ -455,8 +480,7 @@ export const chat = async (options: CliOptions) => {
       } finally { reviewRestored = false; }
       return;
     }
-    process.stderr.write(`Run ${sanitizeTerminalText(state.runId)} · durable status: ${state.status}\n`);
-    process.stderr.write(await freshCodeTaskRecap(harness,state));
+    process.stderr.write(await freshCodeTaskRecap(harness, state));
   };
 
   try {
@@ -822,8 +846,8 @@ export const chat = async (options: CliOptions) => {
           await showSessionState(true);
           const active = await hasActiveTurn();
           process.stderr.write(
-            active
-              ? `Session ${session.sessionId} has run ${active.runId} in ${active.status}; use /pending, /approve, or /deny here.\n`
+            active?.status === "waiting_approval"
+              ? "Waiting for your decision · /pending\n"
               : `Resumed session ${session.sessionId}.\n`
           );
           continue;
@@ -862,7 +886,9 @@ export const chat = async (options: CliOptions) => {
         const active = await hasActiveTurn();
         if (active) {
           process.stderr.write(
-            `Run ${active.runId} is ${active.status}; use /pending, /approve, or /deny before a new turn.\n`
+            active.status === "waiting_approval"
+              ? "Waiting for your decision · /pending\n"
+              : `A run is ${active.status}. Wait before a new turn, or inspect /status.\n`
           );
           continue;
         }
@@ -990,7 +1016,7 @@ export const chat = async (options: CliOptions) => {
         retainedTasks = taskSources(result.state.metadata);
         retainedResponses = result.state.metadata?.zhivexAssistantResponses ?? [];
         attachments.clear();
-        process.stderr.write(formatUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]) + "\n");
+        writeUsageLedger(result.state.metadata);
         displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
         process.stderr.write(outcome(result) + "\n");
         process.stderr.write(await freshCodeTaskRecap(harness, result.state));
@@ -999,11 +1025,6 @@ export const chat = async (options: CliOptions) => {
           status: sessionStatus(result.status)
         });
         if (result.status === "failed" || result.status === "cancelled") process.stderr.write("Progress saved. Use /continue to start another run from these results, or /limits to adjust next turns.\n");
-        if (result.status === "waiting_approval") {
-          process.stderr.write(
-            `Run ${result.state.runId} is paused; use /pending, /approve, or /deny here.\n`
-          );
-        }
       } catch (error) {
         if (readline.isClosed) break;
         const aborted = error instanceof Error && error.name === "AbortError";

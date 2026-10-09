@@ -32,12 +32,15 @@ class Console:
 
     def read(self, marker, timeout=25):
         deadline = time.monotonic() + timeout
-        def position():
+        def locate():
+            # The focus composer draws "> " after a clear, without a blank line.
+            # The historical marker is still "\n> ".
             if marker == "\n> ":
-                match = re.search(rb"\n> (?=\r?\n|\x1b)", self.pending)
-                return match.start() if match else -1
-            return self.pending.find(marker.encode())
-        while position() < 0:
+                match = re.search(rb"(?:\n|\x1b\[0J)> (?=\r?\n|\x1b)", self.pending)
+                return match.end() if match else -1
+            found = self.pending.find(marker.encode())
+            return found + len(marker.encode()) if found >= 0 else -1
+        while locate() < 0:
             if time.monotonic() > deadline:
                 raise AssertionError((marker, self.pending[-6000:].decode(errors="replace")))
             if select.select([self.master], [], [], .1)[0]:
@@ -47,7 +50,7 @@ class Console:
                     raise AssertionError((marker, self.pending[-6000:].decode(errors="replace")))
                 self.pending += chunk
                 transcript.extend(chunk)
-        end = position() + len(marker.encode())
+        end = locate()
         result, self.pending = self.pending[:end], self.pending[end:]
         return result.decode(errors="replace")
 
@@ -118,9 +121,13 @@ try:
     assert "---" in diff and "+++" in diff and "-export const greeting" in diff and "+export const greeting" in diff
     assert "Hi, ${name}" in (workspace / "greeting.mjs").read_text()
     console.permission("\x1b")
-    assert "paused" in console.prompt()
+    decided = console.prompt()
+    assert "Waiting for your decision · /pending" in decided
+    assert "is paused" not in decided
     console.send("/pending\n")
-    console.read("Waiting for your decision")
+    # The composer status already says "Waiting for your decision", and that
+    # footer is written after the prompt. Wait for the review frame itself.
+    console.read("( Z ) Review changes")
     console.send("\x1b")
     pending = console.prompt()
     assert "approval pending" in pending or "Waiting for your decision" in pending
@@ -220,7 +227,7 @@ try:
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
         console.send("r")
         rejected = console.prompt()
-        assert "1 rejected decisions" in rejected and "Conversation: completed" in rejected
+        assert "1 rejected" in rejected and "Conversation: completed" not in rejected
         assert "Hi, ${name}" in (narrow / "greeting.mjs").read_text()
         console.close()
         import shutil

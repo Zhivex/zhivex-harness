@@ -26,7 +26,7 @@ test("Focus footer follows a literal multiline draft and never redraws during ap
   try {
     const task = f.console.compose({ model: "openai/model", reasoning: "high", status: "ready" });
     expect(f.rendered()).toContain("Ask a question or describe a task");
-    expect(f.rendered()).toContain("Ctrl+R history");
+    expect(f.rendered()).toContain("/ commands · ? shortcuts");
     f.input.write("\x1b[200~/approve\nsecond\x1b[201~");
     // Editing an earlier line must leave the lower draft rows above the footer.
     const beforeEdit = f.rendered().length;
