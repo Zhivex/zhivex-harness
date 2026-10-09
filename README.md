@@ -157,6 +157,6 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 
 ## Releases
 
-Version `1.3.0` is the current public npm release. The paired Code package on npm `latest` is `0.2.0`. Install the quick start above to follow `latest`. Prerelease tags move on their own; confirm them on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install one.
+Version `1.3.0` is the current public npm release. The paired Code package on npm `latest` is `0.2.0`. This checkout prepares Version `1.4.0` and Code `0.3.0` for `latest`. That publication is pending, so the quick start above follows the published `latest` tag. npm `next` is Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. Confirm dist-tags on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install a prerelease.
 
 Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). Releases are verified with npm provenance. Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).

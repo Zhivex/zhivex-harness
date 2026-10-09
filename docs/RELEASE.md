@@ -1,6 +1,66 @@
 # Release process
 
-## Current RC preparation: 2026-10-08
+## Current stable preparation: 2026-10-09
+
+The source version is `1.4.0`, pending publication to `latest`.
+This checkout prepares Harness `1.4.0` and Code `0.3.0` for npm `latest`, with
+Code pinned exactly to the engine and private Desktop bound to the same Harness
+version. Both stable versions are unpublished. Published `latest` stays Harness
+`1.3.0` and Code `0.2.0`. Published npm `next` is Harness `1.4.0-rc.8` and Code
+`0.3.0-rc.8`. The mutable `release-status.json` keeps the verified Harness 1.3.0
+`latest` record. Do not rewrite it to `1.4.0` until that publication has its own
+registry integrity, provenance and release-bound live evidence.
+
+Annotated tags `v1.4.0-rc.8` and `code-v0.3.0-rc.8` both resolve to
+`5bba06c86fc82b34b67cec607053948f8e00d0d1`. A diff of that commit against main
+`734e5b8b090562d5b00bb24ada5adef8068c74c9`, before this version bump, shows:
+
+- Engine runtime source under `src/` is identical. Root `scripts/`, root `tests/`
+  and `evaluations/` are also identical to that tag.
+- `packages/code` is not identical. It includes the shared review screen for
+  shell `--continue` and `/pending`
+  ([PR201](https://github.com/Zhivex/zhivex-harness/pull/201)), the status line,
+  one-line summary and 48×24 first-welcome logo
+  ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)), and the public
+  package README ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)).
+- `packages/web` is not identical. It includes the B-lite review scope
+  ([PR211](https://github.com/Zhivex/zhivex-harness/pull/211)).
+- `desktop` is not identical. It includes removal of the fixture waiting button
+  ([PR203](https://github.com/Zhivex/zhivex-harness/pull/203)) and the same
+  B-lite review scope ([PR211](https://github.com/Zhivex/zhivex-harness/pull/211)).
+- Packaged Harness docs also differ: `README.md`
+  ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)) and `docs/CLI.md`
+  ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)). `docs/CLI_UX.md`
+  and `docs/images/approval-survives-restart.gif` differ and are outside the
+  Harness `files` list.
+
+This preparation adds the `v1.4.0` representative mapping with the same Meta,
+Qwen and OpenAI models as `v1.4.0-rc.8` and does not change `src/`. SDK pins
+remain the versions already on main: Core 1.31.0, Agents 1.11.0, Anthropic
+0.13.2, OpenAI 0.14.1, Qwen 0.16.4, Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0.
+Provider/API tiers stay unchanged. Stable package numbering does not upgrade
+beta or experimental tiers. Desktop stays private alpha.
+
+This is version and documentation preparation only. No paid calls, tag creation,
+release dispatch, publication, promotion or merge is authorized. After review and
+user integration, require the latest successful `ci.yml`, `codeql.yml`,
+`code-journey.yml` and `web.yml` main-push runs for the exact new stable SHA plus
+its direct-main CodeQL security result. Use read-only
+`bun run release:prepare --sha <full-main-sha>` from that clean frozen main;
+do not use `--publish` under preparation approval.
+
+Only a new explicit campaign and publication approval can authorize annotated
+`v1.4.0` and the unchanged protected Harness workflow with `channel=latest`.
+Its one exact artifact, OCI, live and representative gates remain mandatory.
+Independently verify actual Harness registry bytes and source-bound provenance
+before the matching Code release. Under separate publication authority, Code uses
+annotated `code-v0.3.0` on the same reviewed SHA, `channel=latest`, `mode=oidc`
+and explicit confirmation. It must resolve the real published engine without
+overrides and pass retained-artifact terminal/web and four-manager acceptance plus
+registry/provenance verification. Published rc.8 evidence does not certify 1.4.0
+or 0.3.0. The RC.8 preparation snapshot below remains historical.
+
+## Historical RC.8 preparation: 2026-10-08
 
 The source version is `1.4.0-rc.8`, pending publication to `next`.
 This checkout prepares Harness `1.4.0-rc.8` and Code `0.3.0-rc.8` for npm
