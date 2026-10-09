@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { reviewScope, type ReviewScope } from "../src/review-scope.js";
+import { reviewScope, preventDecisionEnter, type ReviewScope } from "../src/review-scope.js";
 
 const review = (items: ReviewScope["items"]): ReviewScope => ({ runId: "run", revision: 1, ticketId: "ticket", items });
 
@@ -26,4 +26,11 @@ describe("review decision scope", () => {
     expect(reviewScope(review([])).approveLabel).toBe("Approve requests");
   });
 
+  test("blocks Enter native activation; preserves Space and navigation", () => {
+    for (const key of ["Enter", " ", "Tab", "ArrowDown"]) {
+      let prevented = false;
+      preventDecisionEnter({ key, preventDefault() { prevented = true; } });
+      expect(prevented).toBe(key === "Enter");
+    }
+  });
 });

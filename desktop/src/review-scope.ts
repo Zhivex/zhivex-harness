@@ -19,3 +19,8 @@ export function reviewScope(review: ReviewScope | undefined) {
   ].filter(Boolean);
   return { paths, commands, approveLabel: `Approve ${parts.join(" + ") || "requests"}` };
 }
+
+/** Enter must not trigger the native button click that would decide a review. */
+export function preventDecisionEnter(event: { key: string; preventDefault(): void }) {
+  if (event.key === "Enter") event.preventDefault();
+}

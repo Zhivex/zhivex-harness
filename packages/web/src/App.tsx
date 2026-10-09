@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
-import { useViewedFiles, reviewConsequence } from "../../../desktop/src/review-ui.js";
+import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
   applyActivityPage,
@@ -1116,6 +1116,7 @@ export function App() {
                       type="button"
                       className="subtle"
                       disabled={!canMutate || Boolean(reviewInvalid)}
+                      onKeyDown={preventDecisionEnter}
                       onClick={() => void decide(false)}
                     >
                       Reject
@@ -1130,6 +1131,7 @@ export function App() {
                         !viewed.allViewed ||
                         Boolean(reviewInvalid)
                       }
+                      onKeyDown={preventDecisionEnter}
                       onClick={() => void decide(true)}
                     >
                       {viewed.approveLabel}

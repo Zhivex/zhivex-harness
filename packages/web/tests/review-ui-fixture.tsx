@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { useViewedFiles } from "../../../desktop/src/review-ui.js";
+import { useViewedFiles, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
 
 function Fixture() {
   const [runId, setRunId] = useState("run-a");
@@ -24,8 +24,8 @@ function Fixture() {
       <input type="checkbox" checked={viewed.isViewed(path)} onChange={event => viewed.setViewed(path, event.target.checked)} />Viewed {path}
     </label>)}
     <p role="status">{viewed.count} of {viewed.paths.length} files viewed</p>
-    <button disabled={!viewed.allViewed} onClick={() => { if (viewed.allViewed) setDecisions(value => value + 1); }}>{viewed.approveLabel}</button>
-    <button onClick={() => setDecisions(value => value + 1)}>Reject</button>
+    <button disabled={!viewed.allViewed} onKeyDown={preventDecisionEnter} onClick={() => { if (viewed.allViewed) setDecisions(value => value + 1); }}>{viewed.approveLabel}</button>
+    <button onKeyDown={preventDecisionEnter} onClick={() => setDecisions(value => value + 1)}>Reject</button>
     <output aria-label="Decisions">{decisions}</output>
   </>;
 }
