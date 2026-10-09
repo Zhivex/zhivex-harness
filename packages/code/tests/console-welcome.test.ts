@@ -60,13 +60,17 @@ test("a dumb terminal, a non-TTY, or compact mode keeps the mark", () => {
 });
 
 test("NO_COLOR keeps the glyph and omits escapes", () => {
+  const first = mark[0] ?? "";
   const plain = render(80, 24);
   expect(plain.includes("\u001b")).toBe(false);
-  expect(plain).toContain(mark[0]);
+  expect(plain).toContain(first);
   const colored = render(80, 24, { color: true });
   expect(colored).toContain("\u001b[31m");
-  expect(colored).toContain(mark[0]);
+  expect(colored).toContain(first);
 });
+
+const visualRows = (text: string, columns: number) =>
+  text.split("\n").reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / columns)), 0);
 
 test("ten-row logo, composer, header and footer occupancy at 24 rows", () => {
   const composerFor = (columns: number) => formatComposer({
@@ -77,25 +81,28 @@ test("ten-row logo, composer, header and footer occupancy at 24 rows", () => {
     attachments: 0,
     nextLimitUsd: null,
   }, columns, false);
-  // Welcome, then the Ready line and the approval-mode line, then the composer.
-  const startupLines = 2;
+  const ready = "Ready · credential: environment · account access is not checked until your first task.";
+  const changes = "Changes require your approval.";
   const occupy = (columns: number) => {
     const welcome = render(columns, 24).split("\n").length;
+    const startup = visualRows(ready, columns) + visualRows(changes, columns);
     // Composer string: leading blank, state, status, rule, and a trailing newline.
     const composerCommitted = composerFor(columns).split("\n").length - 1;
-    // The prompt write adds one blank row and the "> " row.
-    const promptRow = welcome + startupLines + composerCommitted + 2;
+    // The prompt write adds one blank row and the "> " row. Footer is drawn under that prompt.
+    const promptRow = welcome + startup + composerCommitted + 2;
     const footerRows = formatComposerFooter(columns, false).length;
-    return { welcome, composerCommitted, promptRow, withFooter: promptRow + footerRows };
+    return { welcome, startup, composerCommitted, promptRow, withFooter: promptRow + footerRows };
   };
 
   const wide = occupy(80);
   expect(wide.welcome).toBe(10);
+  expect(wide.startup).toBe(3);
   expect(wide.composerCommitted).toBe(7);
-  expect(wide.withFooter).toBe(23);
+  expect(wide.withFooter).toBe(24);
 
   const stacked = occupy(48);
   expect(stacked.welcome).toBe(15);
+  expect(stacked.startup).toBe(3);
   expect(stacked.composerCommitted).toBe(7);
-  expect(stacked.withFooter).toBe(28);
+  expect(stacked.withFooter).toBe(29);
 });

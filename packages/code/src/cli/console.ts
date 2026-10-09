@@ -428,7 +428,7 @@ export const chat = async (options: CliOptions) => {
     columns: process.stderr.columns ?? 80,
     rows: process.stderr.rows ?? 0,
     tty: Boolean(process.stderr.isTTY),
-    term: process.env.TERM,
+    ...(process.env.TERM !== undefined ? { term: process.env.TERM } : {}),
   }) + "\n");
 
   process.stderr.write(`Ready · credential: ${credentials.store.source(harness.config.provider)} · account access is not checked until your first task.\n`);
