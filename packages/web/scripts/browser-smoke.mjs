@@ -346,6 +346,26 @@ try {
   await page.waitForFunction(
     () => document.querySelector(".pill")?.textContent === "running",
   );
+  // The start response stays open for the whole run. Reconnect must keep this
+  // snapshot; only a command that finishes during the read should force a retry.
+  await page.getByRole("button", { name: "Reconnect" }).click();
+  await page
+    .getByText("Reading durable state…", { exact: true })
+    .waitFor({ state: "hidden" });
+  await page.waitForFunction(
+    () => document.querySelector(".pill")?.textContent === "running",
+  );
+  assert.equal(
+    await page.getByRole("alert").filter({ hasText: "WEB REQUEST FAILED" }).count(),
+    0,
+  );
+  assert.equal(
+    await page.getByRole("button", { name: "Cancel run" }).isEnabled(),
+    true,
+  );
+  steps.push(
+    "reconnect while a start request stays active keeps the connection and cancellation",
+  );
   await context.setOffline(true);
   await page.getByRole("button", { name: "Reconnect" }).click();
   await page.getByRole("alert").waitFor();

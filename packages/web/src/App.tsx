@@ -354,10 +354,10 @@ export function App() {
             unavailable = true;
           }
         }
-        // A command may finish during the read. Keep its newer receipt and
-        // read once more instead of applying an older snapshot or leaving
-        // reconciliation stuck after the status line hides.
-        if (epoch !== mutationEpoch.current || inFlight.current) continue;
+        // A command that finishes during the read bumps the epoch. Keep that
+        // newer receipt and read once more. A command that is still active
+        // does not invalidate this snapshot, so cancellation stays available.
+        if (epoch !== mutationEpoch.current) continue;
         setContext(c);
         setWorkspaceKey(target);
         setSessions(list.data.sessions);
