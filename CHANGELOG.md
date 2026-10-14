@@ -8,7 +8,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 - Classify Vertex and Google transient failures as retryable `PROVIDER_UNAVAILABLE` instead of a generic `EXECUTION_FAILED`. The covered cases are HTTP 409 ABORTED, 429 RESOURCE_EXHAUSTED, 500/502/503/504, UNAVAILABLE, DEADLINE_EXCEEDED, and stream resets. Sanitized diagnostics keep the HTTP status and the closed provider status category, and still omit provider messages, resource names, and credentials.
 - Retry that class, and an empty model turn with no text and no tool call, up to three times with jittered backoff in the Vertex driver. The live continuity and approval-compaction gates use the same classification and do not accept a phase that fails its assertions.
-- Keep the package version at `1.4.0`. This note does not tag, publish, or dispatch a release.
+- Preserve explicit positive integer output caps under a monetary limit, including caps above 2,048. The ledger reserves 2,048 only when the request omits a cap. An insufficient reservation fails before transport.
+- Retry a local web reconnect when a command finishes during the durable read, so reconciliation can enable the next session.
+- Prepare Harness 1.4.1 and Code 0.3.1 for npm `latest`, with the exact Code engine pin, private Desktop binding and an additive representative mapping for `v1.4.1` using the unchanged Meta, Qwen and OpenAI models. Retain the SDK pins already on main, including Vertex 1.2.4. Update the ACP development SDK to 1.8.0 and `@types/node` to 26.6.5, and refresh the CodeQL, setup-node, upload-artifact and download-artifact workflow pins. Pause Dependabot updates for private Desktop. Published `latest` stays Harness 1.3.0 and Code 0.2.0. Published `next` is Harness 1.4.0-rc.8 and Code 0.3.0-rc.8. `release-status.json` keeps the verified 1.3.0 record.
+- This preparation creates no tags and dispatches no release.
 
 ## 1.4.0 - 2026-10-09
 

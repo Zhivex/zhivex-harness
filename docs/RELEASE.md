@@ -2,12 +2,53 @@
 
 ## Pending patch: 1.4.1
 
-The source version remains `1.4.0`. Harness `1.4.1` is not published. The changelog
-records the Vertex transient-failure classification, bounded jittered retry, and
-empty-model-turn retry intended for that patch. No tag, publication, promotion,
-or workflow dispatch is authorized by this note.
+The source version is `1.4.1`, pending publication to `latest`.
+This checkout prepares Harness `1.4.1` and Code `0.3.1` for npm `latest`, with
+Code pinned exactly to the engine and private Desktop bound to the same Harness
+version. Both patch versions are unpublished. Published `latest` stays Harness
+`1.3.0` and Code `0.2.0`. Published npm `next` is Harness `1.4.0-rc.8` and Code
+`0.3.0-rc.8`. The mutable `release-status.json` keeps the verified Harness 1.3.0
+`latest` record. Do not rewrite it to `1.4.1` until that publication has its own
+registry integrity, provenance and release-bound live evidence.
 
-## Current stable preparation: 2026-10-09
+The patch carries the Vertex transient-failure classification, bounded jittered
+retry, and empty-model-turn retry. It retains explicit monetary output caps
+above 2,048: the ledger uses 2,048 only when a request omits its cap, and an
+insufficient reservation fails before transport. A local web reconnect that
+overlaps a finishing command reads durable state again so reconciliation can
+enable the next session. SDK pins stay Core 1.31.0, Agents 1.11.0, Anthropic
+0.13.2, OpenAI 0.14.1, Qwen 0.16.4, Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0.
+Vertex 1.2.7 is not included: its changelog is dependency updates only, and the
+bump fails the coordinated Vertex 1.2.4 pin. Maintenance updates are ACP SDK
+1.8.0, `@types/node` 26.6.5, CodeQL Action 4.38.3, setup-node 7.1.0,
+upload-artifact 7.0.2 and download-artifact 8.0.2. Dependabot updates for
+private Desktop are paused.
+
+This preparation adds the `v1.4.1` representative mapping with the same Meta,
+Qwen and OpenAI models as `v1.4.0` and does not change provider/API tiers.
+Stable package numbering does not upgrade beta or experimental tiers. Desktop
+stays private alpha.
+
+This is version and documentation preparation only. No paid calls, tag creation,
+release dispatch, publication, promotion or merge is authorized. After review and
+user integration, require the latest successful `ci.yml`, `codeql.yml`,
+`code-journey.yml` and `web.yml` main-push runs for the exact new patch SHA plus
+its direct-main CodeQL security result. Use read-only
+`bun run release:prepare --sha <full-main-sha>` from that clean frozen main;
+do not use `--publish` under preparation approval.
+
+Only a new explicit campaign and publication approval can authorize annotated
+`v1.4.1` and the unchanged protected Harness workflow with `channel=latest`.
+Its one exact artifact, OCI, live and representative gates remain mandatory.
+Independently verify actual Harness registry bytes and source-bound provenance
+before the matching Code release. Under separate publication authority, Code uses
+annotated `code-v0.3.1` on the same reviewed SHA, `channel=latest`, `mode=oidc`
+and explicit confirmation. It must resolve the real published engine without
+overrides and pass retained-artifact terminal/web and four-manager acceptance plus
+registry/provenance verification. The unpublished 1.4.0 preparation does not
+certify 1.4.1 or 0.3.1.
+
+## Previous stable preparation: 2026-10-09
 
 The source version is `1.4.0`, pending publication to `latest`.
 This checkout prepares Harness `1.4.0` and Code `0.3.0` for npm `latest`, with
