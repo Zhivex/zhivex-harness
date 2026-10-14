@@ -1,4 +1,5 @@
 import type { HarnessProvider } from '../src/runtime/config.js';
+import { isRetryableProviderFailure } from '../src/runtime/provider-transient.js';
 import { HarnessConfigError, HarnessExecutionError } from '../src/runtime/errors.js';
 import { diagnosticFingerprint, parseSanitizedOperationalError, sanitizeOperationalError } from './release-diagnostics.js';
 import { createHash } from 'node:crypto';
@@ -79,6 +80,20 @@ export function continuityGateOutcome(row: Record<string, unknown>) {
   return { provider, ok: false as const, error: parseSanitizedOperationalError({
     ...projection, fingerprint: diagnosticFingerprint(projection)
   }) };
+}
+
+/**
+ * Retry a continuity phase only for a provider outage or a turn that produced
+ * no text and no finish. A completed answer that fails a fact check stays failed.
+ */
+export function continuityPhaseShouldRetry(phase: Record<string, unknown> | undefined): boolean {
+  if (!phase) return true;
+  if (phase.status === "passed") return false;
+  if (phase.diagnostic !== undefined && isRetryableProviderFailure(phase.diagnostic)) return true;
+  const evidence = phase.evidence;
+  if (!evidence || typeof evidence !== "object") return false;
+  const record = evidence as Record<string, unknown>;
+  return record.finishEvents === 0 && record.textEvents === 0 && record.textBytes === 0 && record.responseBytes === 0;
 }
 
 /** Keep the historical default cohort; new routes require explicit selection. */

@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## 1.4.1 - 2026-10-14
+
+- Classify Vertex and Google transient failures as retryable `PROVIDER_UNAVAILABLE` instead of a generic `EXECUTION_FAILED`. The covered cases are HTTP 409 ABORTED, 429 RESOURCE_EXHAUSTED, 500/502/503/504, UNAVAILABLE, DEADLINE_EXCEEDED, and stream resets. Sanitized diagnostics keep the HTTP status and the closed provider status category, and still omit provider messages, resource names, and credentials.
+- Retry that class, and an empty model turn with no text and no tool call, up to three times with jittered backoff in the Vertex driver. The live continuity and approval-compaction gates use the same classification and do not accept a phase that fails its assertions.
+- Keep the package version at `1.4.0`. This note does not tag, publish, or dispatch a release.
+
 ## 1.4.0 - 2026-10-09
 
 - Prepare stable Harness 1.4.0 and Code 0.3.0 for npm `latest`, with the exact Code engine pin, private Desktop binding and an additive representative mapping for `v1.4.0` using the unchanged Meta, Qwen and OpenAI models. Retain the SDK pins already on main (Core 1.31.0, Agents 1.11.0 and the existing provider packages). Published `latest` stays Harness 1.3.0 and Code 0.2.0. Published `next` is Harness 1.4.0-rc.8 and Code 0.3.0-rc.8. `release-status.json` keeps the verified 1.3.0 record until this stable publication has its own registry evidence.

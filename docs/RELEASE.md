@@ -1,5 +1,12 @@
 # Release process
 
+## Pending patch: 1.4.1
+
+The source version remains `1.4.0`. Harness `1.4.1` is not published. The changelog
+records the Vertex transient-failure classification, bounded jittered retry, and
+empty-model-turn retry intended for that patch. No tag, publication, promotion,
+or workflow dispatch is authorized by this note.
+
 ## Current stable preparation: 2026-10-09
 
 The source version is `1.4.0`, pending publication to `latest`.

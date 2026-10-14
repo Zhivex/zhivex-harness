@@ -1,4 +1,5 @@
-import { createContinuityEvidence, continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
+import { continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
+import { transientBackoffMs } from '../src/runtime/provider-transient.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -12,6 +13,7 @@ import { sanitizeOperationalError } from "./release-diagnostics.js";
 
 assert.equal(process.env.ZHIVEX_HARNESS_LIVE, "1", "Set ZHIVEX_HARNESS_LIVE=1 to authorize bounded provider requests.");
 const api = await loadLiveSmokeRuntime();
+const CONTINUITY_TRANSIENT_ATTEMPTS = 3;
 const objectives = ["diagnose-parser", "design-cache", "review-api", "profile-parser", "implement-cache", "audit-contract"];
 const limits = { maxInputTokens: 24_000, maxOutputTokens: 8192, maxTotalTokens: 32_192, maxTokens: 8192,
   maxSteps: 2, timeoutMs: 90_000, compactionMaxMessages: 5, compactionKeepRecentMessages: 2, compactionMaxEstimatedInputTokens: 12_000 };
@@ -98,25 +100,39 @@ if (process.argv[2] === "--child") {
     }
     const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-continuity-"));
     const phases: Record<string, unknown>[] = [];
+    let processStarts = 0;
     const started = Date.now();
     try {
       for (let phase = 0; phase < objectives.length; phase++) {
-        const child = Bun.spawn([process.execPath, path.resolve(import.meta.filename), "--child", provider, model, root, String(phase)],
-          { env: process.env, stdout: "pipe", stderr: "pipe" });
-        const timer = setTimeout(() => child.kill(), 100_000);
-        // Capture and discard raw provider failures; share only classification.
-        const [exitCode] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-        clearTimeout(timer);
-        if (exitCode !== 0) {
-          try { phases.push(JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8"))); }
-          catch { phases.push({ phase, status: "failed", reason: "child_request_or_runtime_failure", exitCode }); }
-          break;
+        const sessionPath = path.join(root, "session.json");
+        let sessionSnapshot: string | undefined;
+        try { sessionSnapshot = await readFile(sessionPath, "utf8"); } catch { sessionSnapshot = undefined; }
+        let report: Record<string, unknown> | undefined;
+        for (let attempt = 1; attempt <= CONTINUITY_TRANSIENT_ATTEMPTS; attempt++) {
+          if (attempt > 1) {
+            if (sessionSnapshot === undefined) await rm(sessionPath, { force: true });
+            else await writeFile(sessionPath, sessionSnapshot);
+          }
+          const child = Bun.spawn([process.execPath, path.resolve(import.meta.filename), "--child", provider, model, root, String(phase)],
+            { env: process.env, stdout: "pipe", stderr: "pipe" });
+          processStarts += 1;
+          const timer = setTimeout(() => child.kill(), 100_000);
+          // Capture and discard raw provider failures; share only classification.
+          const [exitCode] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+          clearTimeout(timer);
+          try { report = JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8")); }
+          catch { report = undefined; }
+          if (attempt === CONTINUITY_TRANSIENT_ATTEMPTS || !continuityPhaseShouldRetry(report)) {
+            report ??= { phase, status: "failed", reason: "child_request_or_runtime_failure", exitCode };
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, transientBackoffMs(attempt - 1, 5_000)));
         }
-        phases.push(JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8")));
+        phases.push(report ?? { phase, status: "failed", reason: "child_request_or_runtime_failure" });
         if (phases.at(-1)?.status !== "passed") break;
       }
       rows.push({ provider, model, status: phases.length === objectives.length && phases.every(item => item.status === "passed") ? "passed" : "failed",
-        processStarts: phases.length, elapsedMs: Date.now() - started, phases });
+        processStarts, elapsedMs: Date.now() - started, phases });
     } finally { await rm(root, { recursive: true, force: true }); }
   }
   const report = { schemaVersion: 1, kind: "live-conversation-continuity", runtime: process.env.ZHIVEX_HARNESS_LIVE_RUNTIME ? "selected-artifact" : "source",

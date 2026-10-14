@@ -13,6 +13,7 @@ import {
   restoreSanitizedOperationalError,
   sanitizeOperationalError
 } from "./release-diagnostics.js";
+import { classifyProviderFailure, isRetryableProviderFailure, transientBackoffMs } from "../src/runtime/provider-transient.js";
 
 const { PROVIDERS, PROVIDER_DESCRIPTORS, providerAvailability, providerDescriptor, createEditProposal, HarnessExecutionError, createHarness, runHarness } = await loadLiveSmokeRuntime();
 
@@ -95,31 +96,20 @@ const assertLiveOptIn = (env: NodeJS.ProcessEnv) => {
   }
 };
 
-const transientProviderStatus = (error: unknown) => {
-  const candidate = error && typeof error === "object"
-    ? error as { message?: unknown; status?: unknown; statusCode?: unknown }
-    : undefined;
-  const statusValue = candidate?.status ?? candidate?.statusCode;
-  const status = typeof statusValue === "number" ? statusValue : Number(statusValue);
-  if (status === 408 || status === 425 || status === 429 || status === 500 ||
-    status === 502 || status === 503 || status === 504) {
-    return status;
-  }
-  if (typeof candidate?.message !== "string") return undefined;
-  const match = candidate.message.match(/(?:^|[^\d])(408|425|429|500|502|503|504)(?=$|[^\d])/);
-  return match ? Number(match[1]) : undefined;
-};
-
-const isTransientProviderFailure = (error: unknown) => transientProviderStatus(error) !== undefined;
+const isTransientProviderFailure = (error: unknown) => isRetryableProviderFailure(error);
 
 const throwTransientRunFailure = (result: { status: string; error?: unknown }) => {
   if (result.status !== "failed" || !result.error) return;
-  const status = transientProviderStatus(result.error);
-  if (status === undefined) return;
+  const failure = classifyProviderFailure(result.error);
+  if (!failure.retryable) return;
   const message = (result.error as { message?: unknown }).message;
   throw Object.assign(
-    new Error(typeof message === "string" ? message : `Provider request failed with status ${status}.`),
-    { status }
+    new Error(typeof message === "string" ? message : "Provider request failed."),
+    {
+      ...(failure.httpStatus !== undefined ? { status: failure.httpStatus } : {}),
+      ...(failure.providerStatus ? { providerStatus: failure.providerStatus } : {}),
+      retryable: true
+    }
   );
 };
 
@@ -573,7 +563,7 @@ const orchestrate = async (env: NodeJS.ProcessEnv) => {
         break;
       } catch (error) {
         if (attempt < MAX_TRANSIENT_ATTEMPTS && isTransientProviderFailure(error)) {
-          await new Promise((resolve) => setTimeout(resolve, TRANSIENT_RETRY_DELAY_MS * attempt));
+          await new Promise((resolve) => setTimeout(resolve, transientBackoffMs(attempt - 1, TRANSIENT_RETRY_DELAY_MS)));
           continue;
         }
         const failure = JSON.parse(errorEvidence(error, env)) as {

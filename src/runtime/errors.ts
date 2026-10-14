@@ -1,3 +1,6 @@
+import { providerDiagnostic } from "./provider-diagnostics.js";
+import { classifyProviderFailure } from "./provider-transient.js";
+
 export const HARNESS_ERROR_CODES = [
   "CONFIG_INVALID",
   "CLI_USAGE_INVALID",
@@ -168,23 +171,26 @@ export const harnessErrorDocument = (error: unknown): HarnessErrorDocument => {
   };
 };
 
-const numericStatuses = (error: unknown) => {
-  if (!error || typeof error !== "object") return undefined;
-  const record = error as { status?: unknown; statusCode?: unknown };
-  const values = [record.status, record.statusCode]
-    .filter((value): value is number => typeof value === "number" && Number.isSafeInteger(value));
-  return values.length > 0 ? values : undefined;
-};
-
 /** Normalize dependency/runtime failures without making messages contractual. */
 export const normalizeHarnessError = (error: unknown): HarnessError => {
   const diagnostic = providerStreamDiagnostic(error);
   if (diagnostic) return new HarnessProviderError("Provider stream failed.", { cause: error, retryable: false });
   if (error instanceof HarnessError) return error;
   const message = error instanceof Error ? error.message : "Harness execution failed.";
-  const statuses = numericStatuses(error) ?? [];
-  if (statuses.some((status) => status === 429 || (status >= 500 && status <= 599))) {
-    return new HarnessProviderError(message, { cause: error, retryable: true });
+  // Generic Error becomes EXECUTION_FAILED below. Vertex/Google transient
+  // failures must be classified first, while their HTTP status and gRPC
+  // category are still attached to this object or its cause.
+  const failure = classifyProviderFailure(error);
+  if (failure.retryable) {
+    const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+    const body = typeof record.responseBody === "string" ? record.responseBody
+      : typeof record.body === "string" ? record.body : undefined;
+    const providerError = new HarnessProviderError("Provider request failed.", { cause: error, retryable: true });
+    return Object.assign(providerError, {
+      ...(failure.httpStatus !== undefined ? { status: failure.httpStatus } : {}),
+      ...(failure.providerStatus ? { providerStatus: failure.providerStatus } : {}),
+      provider: providerDiagnostic(body, failure.httpStatus)
+    });
   }
   const name = error && typeof error === "object" && typeof (error as { name?: unknown }).name === "string"
     ? (error as { name: string }).name

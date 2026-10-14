@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { z } from "zod";
 import { errorDetailsSchema, sanitizedErrorDetails } from "../src/runtime/error-diagnostics.js";
+import { classifyProviderFailure } from "../src/runtime/provider-transient.js";
 import { attachRoutingDiagnostic, routingDiagnosticFor, routingDiagnosticSchema, type RoutingDiagnostic } from "./live-routing-diagnostics.js";
 
 import {
@@ -262,6 +263,8 @@ export const diagnosticFingerprint = (value: unknown) =>
   `sha256:${createHash("sha256").update(JSON.stringify(canonicalValue(value))).digest("hex")}`;
 
 const numericStatus = (error: unknown) => {
+  const classified = classifyProviderFailure(error);
+  if (classified.httpStatus !== undefined) return classified.httpStatus;
   let current = error;
   for (let depth = 0; current && typeof current === "object" && depth <= 4; depth += 1) {
     const record = current as { status?: unknown; statusCode?: unknown; cause?: unknown };

@@ -106,7 +106,12 @@ describe("live provider smoke contract", () => {
   test("retries only bounded transient provider failures", () => {
     expect(isTransientProviderFailure(Object.assign(new Error("busy"), { status: 503 }))).toBe(true);
     expect(isTransientProviderFailure(Object.assign(new Error("limited"), { statusCode: 429 }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("aborted"), { status: 409, providerStatus: "ABORTED" }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("reset"), { code: "ECONNRESET" }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("grpc"), { code: 10, httpStatusCode: 409 }))).toBe(true);
+    expect(isTransientProviderFailure(Object.assign(new Error("unavailable"), { code: "PROVIDER_UNAVAILABLE", retryable: true }))).toBe(true);
     expect(isTransientProviderFailure(Object.assign(new Error("bad request"), { status: 400 }))).toBe(false);
+    expect(isTransientProviderFailure(Object.assign(new Error("denied"), { status: 403 }))).toBe(false);
     expect(isTransientProviderFailure(new Error("contract failure"))).toBe(false);
   });
 
