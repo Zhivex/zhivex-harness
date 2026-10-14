@@ -167,17 +167,17 @@ test("Vertex retries an empty model turn and returns it after the budget", async
 
 test("Vertex does not retry a permission failure, visible thought text, or a content filter", async () => {
   const original = globalThis.fetch;
-  const cases = [
-    Response.json({ error: { code: 403, status: "PERMISSION_DENIED", message: "private-account@example.com secret-token" } }, { status: 403 }),
-    Response.json(stopped([{ thought: true, text: "visible" }])),
-    Response.json({ candidates: [{ content: { role: "model", parts: [] }, finishReason: "SAFETY" }] })
-  ];
+  const variants = ["permission", "thought", "safety"] as const;
   try {
-    for (const response of cases) {
+    for (const variant of variants) {
       let calls = 0;
       globalThis.fetch = Object.assign(async () => {
         calls += 1;
-        return response.clone();
+        if (variant === "permission") {
+          return Response.json({ error: { code: 403, status: "PERMISSION_DENIED", message: "private-account@example.com secret-token" } }, { status: 403 });
+        }
+        if (variant === "thought") return Response.json(stopped([{ thought: true, text: "visible" }]));
+        return Response.json({ candidates: [{ content: { role: "model", parts: [] }, finishReason: "SAFETY" }] });
       }, { preconnect: original.preconnect });
       const model = createVertexModel(modelId, env, token, retryNow);
       try { await model.generate({ messages: [] }); } catch (error) {
