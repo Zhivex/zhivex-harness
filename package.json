@@ -215,7 +215,7 @@
     "@zhivex-ai/meta": "0.2.9",
     "@zhivex-ai/openai": "0.14.1",
     "@zhivex-ai/qwen": "0.16.4",
-    "@zhivex-ai/vertex": "1.2.4",
+    "@zhivex-ai/vertex": "1.2.7",
     "google-auth-library": "11.1.0",
     "zod": "4.6.5"
   },

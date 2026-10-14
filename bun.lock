@@ -12,7 +12,7 @@
         "@zhivex-ai/meta": "0.2.9",
         "@zhivex-ai/openai": "0.14.1",
         "@zhivex-ai/qwen": "0.16.4",
-        "@zhivex-ai/vertex": "1.2.4",
+        "@zhivex-ai/vertex": "1.2.7",
         "google-auth-library": "11.1.0",
         "zod": "4.6.5",
       },
@@ -157,7 +157,7 @@
 
     "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.16.4", "", { "dependencies": { "@zhivex-ai/core": "^1.29.0", "zod": "^4.6.3" } }, "sha512-JW+qtR8i/XVh1BE/2REgepTI/A/w81jSLBpNpvInm8mHub2iLSusN8lSmMXScuLsnkvXHzYd+w1uL/Dx/RkXDw=="],
 
-    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.4", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.1", "@zhivex-ai/anthropic": "^0.13.2", "@zhivex-ai/core": "^1.30.0", "@zhivex-ai/openai": "^0.14.1", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-/sA/CcEfEvZEFe2DSHPDWCi8JtDyhbKPvAdexbgP5z3r9d1Frd6tDy69g5JGHFveno+EypKhPb7yy7KJi2I1Aw=="],
+    "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.7", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.1", "@zhivex-ai/anthropic": "^0.14.0", "@zhivex-ai/core": "^1.31.0", "@zhivex-ai/openai": "^0.16.0", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-7y1F5WG6iSWVjVpkThK9foSIbgOJG3jjWIqBOisnwimB6ARccCJPwT6R6myzk/a1KVrEJCYFzFzZSV0TkxtD8Q=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 
@@ -296,5 +296,11 @@
     "yargs-parser": ["yargs-parser@21.1.1", "", {}, "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw=="],
 
     "zod": ["zod@4.6.5", "", {}, "sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q=="],
+
+    "@zhivex-ai/vertex/@zhivex-ai/anthropic": ["@zhivex-ai/anthropic@0.14.1", "", { "dependencies": { "@anthropic-ai/sdk": "0.133.0", "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-AffwnjsVT+P3jrE69ddBGxcgFeX4D7XQjoygOl5+bW1TjnnrcKK7g6xS23CWs+iQLMdmmQ4CHyeiM0PwOc3BKg=="],
+
+    "@zhivex-ai/vertex/@zhivex-ai/openai": ["@zhivex-ai/openai@0.16.1", "", { "dependencies": { "@zhivex-ai/core": "^1.31.0", "zod": "^4.6.3" } }, "sha512-tJw83qZ/btNtFbGNAoCcGIOpK27ZlXj3GUFzNMja2D6Gk2XhJIeSYo1G+Ow+hh3fXuHstyhtTxeb80ONd2/vWw=="],
+
+    "@zhivex-ai/vertex/@zhivex-ai/anthropic/@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.133.0", "", { "dependencies": { "json-schema-to-ts": "^3.1.1", "standardwebhooks": "^1.0.0" }, "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["zod"], "bin": { "anthropic-ai-sdk": "bin/cli" } }, "sha512-jlqUN8p8ESTJj+GJnA4KjzbEfF1waEoGzRT8jwytlYGFFgv+/DUQOxlYGvYw10UzhD1kwLqYzxvA3FrTB2YWuQ=="],
   }
 }
