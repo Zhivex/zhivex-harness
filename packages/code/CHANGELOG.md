@@ -1,5 +1,11 @@
 # Code changelog
 
+## 0.3.1 - 2026-10-14
+
+- Pin exactly Harness 1.4.1. Publish only after that engine is verified on `latest`. Published Code 0.2.0 remains `latest`. Published Code 0.3.0-rc.8 remains `next`.
+- Carry the matched engine's Vertex transient-failure retry and explicit monetary output caps. The local browser retries reconciliation when a command finishes during reconnect.
+- This preparation does not authorize tags, paid calls or a campaign.
+
 ## 0.3.0 - 2026-10-09
 
 - Pin exactly Harness 1.4.0 and set the npm dist-tag to `latest`. Publish only after that engine is verified on `latest`. Published Code 0.2.0 remains `latest`. Published Code 0.3.0-rc.8 remains `next`.

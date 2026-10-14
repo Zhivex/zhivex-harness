@@ -54,7 +54,7 @@ jobs:
           bun-version: 1.4.0
 
       - name: Setup Node runtime
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -118,7 +118,7 @@ jobs:
 
       - name: Retain exact-artifact engine and Code acceptance
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: engine-code-release-evidence
           path: |
@@ -127,7 +127,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload immutable validated artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: npm-release-${{ github.sha }}
           path: |
@@ -169,14 +169,14 @@ jobs:
           bun-version: 1.4.0
 
       - name: Setup Node for npm OIDC transport
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
       - name: Download immutable validated artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: npm-release-${{ github.sha }}
           path: release-artifacts
@@ -269,7 +269,7 @@ jobs:
           bun-version: 1.4.0
 
       - name: Setup Node runtime
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -281,7 +281,7 @@ jobs:
         run: bun run scripts/check-release-readiness.ts --tag "$RELEASE_TAG" --channel "${{ inputs.channel }}"
 
       - name: Download immutable validated artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: npm-release-${{ github.sha }}
           path: release-artifacts
@@ -573,7 +573,7 @@ jobs:
 
       - name: Upload sanitized live diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: live-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
           path: |
@@ -616,7 +616,7 @@ jobs:
           bun-version: 1.4.0
 
       - name: Setup Node runtime
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           package-manager-cache: false
@@ -625,7 +625,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Download immutable validated artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: npm-release-${{ github.sha }}
           path: release-artifacts
@@ -705,7 +705,7 @@ jobs:
 
       - name: Upload sanitized representative evidence
         if: ${{ steps.representative_assembly.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: representative-evidence-${{ github.sha }}
           path: release-artifacts/representative-evidence-*.json
@@ -725,7 +725,7 @@ jobs:
 
       - name: Upload sanitized representative diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: representative-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
           path: release-artifacts/representative-diagnostics/*.json

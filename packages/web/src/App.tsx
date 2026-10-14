@@ -322,46 +322,60 @@ export function App() {
     reconnectInFlight.current = true;
     setReconnecting(true);
     setError("");
-    const epoch = ++mutationEpoch.current;
-    setRefresh((n) => n + 1);
     try {
-      const c = await reconnect();
-      const target = workspaceKey || c.workspaces[0]?.key;
-      if (!target) throw new Error("WEB_WORKSPACE_REQUIRED");
-      const list = await action<Sessions>(target, "sessions");
-      const current =
-        list.data.sessions.find((s) => s.sessionId === sessionId) ??
-        list.data.sessions[0];
-      let detail: HarnessClientRun | undefined;
-      let unavailable = false;
-      if (current?.runs.length) {
-        try {
-          detail = (
-            await action<Run>(target, "run", {
-              sessionId: current.sessionId,
-              runId: current.runs.at(-1)!.runId,
-            })
-          ).data.run;
-        } catch (e) {
-          if (errorText(e) !== "NOT_FOUND") throw e;
-          unavailable = true;
+      let applied = false;
+      for (let attempt = 0; attempt < 4 && !applied; attempt++) {
+        // A failing command can still be settling. Wait for that receipt, then
+        // read again so this reconnect is not discarded by its epoch bump.
+        for (let wait = 0; inFlight.current && wait < 50; wait++) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
         }
+        const epoch = ++mutationEpoch.current;
+        setRefresh((n) => n + 1);
+        const c = await reconnect();
+        const target = workspaceKey || c.workspaces[0]?.key;
+        if (!target) throw new Error("WEB_WORKSPACE_REQUIRED");
+        const list = await action<Sessions>(target, "sessions");
+        const currentSession =
+          list.data.sessions.find((s) => s.sessionId === sessionId) ??
+          list.data.sessions[0];
+        let detail: HarnessClientRun | undefined;
+        let unavailable = false;
+        if (currentSession?.runs.length) {
+          try {
+            detail = (
+              await action<Run>(target, "run", {
+                sessionId: currentSession.sessionId,
+                runId: currentSession.runs.at(-1)!.runId,
+              })
+            ).data.run;
+          } catch (e) {
+            if (errorText(e) !== "NOT_FOUND") throw e;
+            unavailable = true;
+          }
+        }
+        // A command that finishes during the read bumps the epoch. Keep that
+        // newer receipt and read once more. A command that is still active
+        // does not invalidate this snapshot, so cancellation stays available.
+        if (epoch !== mutationEpoch.current) continue;
+        setContext(c);
+        setWorkspaceKey(target);
+        setSessions(list.data.sessions);
+        setSession(currentSession);
+        setRun(detail);
+        setRunUnavailable(unavailable);
+        setReview(undefined);
+        setSessionsLoading(false);
+        setStateLoading(false);
+        setConnected(true);
+        setNeedsReconcile(false);
+        setError(unavailable ? "RUN_STATE_UNAVAILABLE" : "");
+        applied = true;
       }
-      // A command may finish during the read. Keep its newer receipt and let
-      // polling reconcile instead of replacing it with an older snapshot.
-      if (epoch !== mutationEpoch.current) return;
-      setContext(c);
-      setWorkspaceKey(target);
-      setSessions(list.data.sessions);
-      setSession(current);
-      setRun(detail);
-      setRunUnavailable(unavailable);
-      setReview(undefined);
-      setSessionsLoading(false);
-      setStateLoading(false);
-      setConnected(true);
-      setNeedsReconcile(false);
-      setError(unavailable ? "RUN_STATE_UNAVAILABLE" : "");
+      if (!applied) {
+        setConnected(false);
+        setError("WEB_REQUEST_FAILED");
+      }
     } catch (e) {
       setConnected(false);
       setError(errorText(e));

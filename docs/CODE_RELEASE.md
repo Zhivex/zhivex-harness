@@ -1,6 +1,30 @@
 # Code release procedure
 
-## Current stable preparation: 2026-10-09
+## Pending patch: 2026-10-14
+
+This checkout prepares Code `0.3.1`, pinned exactly to Harness `1.4.1`, for npm
+`latest`. Published Code `0.2.0` and Harness `1.3.0` on `latest` remain
+unchanged. Published npm `next` is Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
+The matched engine carries the Vertex transient-failure retry and retains
+explicit monetary output caps. The local browser retries reconciliation when a
+command finishes during reconnect. SDK pins, approval and transport protections,
+and provider/API tiers stay as they are on main, including Vertex 1.2.4.
+Desktop stays private alpha with the same engine binding. The 1.4.0 preparation
+below remains historical; its evidence does not certify or authorize `0.3.1`.
+
+This preparation creates no tags, paid calls, campaign dispatch or publication.
+After review and user integration, require all four successful exact-main workflows
+(`ci.yml`, `codeql.yml`, `code-journey.yml`, `web.yml`) and direct-main CodeQL.
+New explicit campaign/publication authority is required before any Harness
+`v1.4.1` or Code `code-v0.3.1` tag/dispatch. Harness must first pass its
+unchanged protected exact-artifact, OCI, live and representative gates and actual
+registry integrity/provenance verification. Code's protected OIDC workflow then
+uses the matching reviewed SHA with `channel=latest`, `mode=oidc` and explicit
+confirmation, resolving the actual published Harness dependency without overrides.
+Retained-artifact terminal/web, four-manager acceptance and registry bytes with
+source-bound provenance remain mandatory. Preserve published `next` and all history.
+
+## Previous stable preparation: 2026-10-09
 
 This checkout prepares Code `0.3.0`, pinned exactly to Harness `1.4.0`, for npm
 `latest`. Published Code `0.2.0` and Harness `1.3.0` on `latest` remain

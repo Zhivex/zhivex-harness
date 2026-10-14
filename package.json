@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -223,10 +223,10 @@
     "@zhivex-ai/core": "1.31.0"
   },
   "devDependencies": {
-    "@agentclientprotocol/sdk": "1.7.0",
+    "@agentclientprotocol/sdk": "1.8.0",
     "@modelcontextprotocol/server": "2.2.0",
     "@types/bun": "1.4.2",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.5",
     "typescript": "7.0.2",
     "typescript-compiler-api": "npm:typescript@6.0.3"
   },
