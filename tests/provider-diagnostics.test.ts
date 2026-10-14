@@ -16,6 +16,7 @@ for (const [body, status, reason, parameter] of [
   [{error:{code:429,status:"RESOURCE_EXHAUSTED",message:"SECRET quota"}},429,"rate_limit","none"],
   [{error:{code:401,status:"UNAUTHENTICATED",message:"SECRET token"}},401,"authentication","none"],
   [{error:{code:503,status:"UNAVAILABLE",message:"SECRET endpoint"}},503,"server_error","none"],
+  [{error:{code:409,status:"ABORTED",message:"SECRET operation"}},409,"server_error","none"],
   [{error:{param:"SECRET",message:"SECRET"}},503,"server_error","other"]
 ] as const) test(`provider-independent diagnosis: ${reason}/${parameter}`, async () => {
   const response = new Response(JSON.stringify(body), {status});

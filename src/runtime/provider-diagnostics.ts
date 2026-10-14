@@ -26,6 +26,7 @@ export function providerDiagnostic(body: unknown, status?: number): z.infer<type
     else if (["invalid_api_key", "authentication_error", "UNAUTHENTICATED"].includes(code)) reason = "authentication";
     else if (["permission_denied", "permission_error", "PERMISSION_DENIED"].includes(code)) reason = "permission";
     else if (["rate_limit_exceeded", "rate_limit_error", "RESOURCE_EXHAUSTED"].includes(code)) reason = "rate_limit";
+    else if (["UNAVAILABLE", "DEADLINE_EXCEEDED", "ABORTED", "INTERNAL"].includes(code)) reason = "server_error";
     else if (["model_not_found", "model_not_available", "NOT_FOUND"].includes(code)) reason = "model_unavailable";
     else if (["invalid_request_error", "INVALID_ARGUMENT"].includes(code) || status === 400 || status === 422) reason = "invalid_request";
     return { reason, parameter, bodyState: "parsed" };

@@ -79,6 +79,133 @@ test("Vertex provider errors preserve diagnosis without response payloads or cus
   } finally { globalThis.fetch = original; }
 });
 
+const retryNow = { attempts: 3, delayMs: () => 0 };
+const token = () => ({ async getAccessToken() { return "fixture-token"; } });
+const stopped = (parts: unknown[]) => ({
+  candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }],
+  usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, totalTokenCount: 2 }
+});
+
+test("Vertex retries a transient 409 and preserves the ABORTED category without the payload", async () => {
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = Object.assign(async () => {
+    calls += 1;
+    if (calls < 2) return Response.json({ error: { code: 409, status: "ABORTED", message: "private-account@example.com secret-token" } }, { status: 409 });
+    return Response.json(stopped([{ text: "ok" }]));
+  }, { preconnect: original.preconnect });
+  try {
+    const model = createVertexModel(modelId, env, token, retryNow);
+    const result = await model.generate({ messages: [] });
+    expect(result.text).toBe("ok");
+    expect(calls).toBe(2);
+  } finally { globalThis.fetch = original; }
+});
+
+test("Vertex exhausts bounded retries for a persistent 409 and reports a retryable provider failure", async () => {
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = Object.assign(async () => {
+    calls += 1;
+    return Response.json({ error: { code: 409, status: "ABORTED", message: "private-account@example.com secret-token" } }, { status: 409 });
+  }, { preconnect: original.preconnect });
+  try {
+    const model = createVertexModel(modelId, env, token, retryNow);
+    try { await model.generate({ messages: [] }); throw new Error("Expected failure"); } catch (error) {
+      expect(error).toMatchObject({ status: 409, providerStatus: "ABORTED", retryable: true, provider: { reason: "server_error" } });
+      expect(JSON.stringify(error)).not.toMatch(/private-account|secret-token/);
+      expect((error as Error).cause).toBeUndefined();
+    }
+    expect(calls).toBe(3);
+  } finally { globalThis.fetch = original; }
+});
+
+test("Vertex retries a gRPC ABORTED Google error and a stream reset", async () => {
+  const original = globalThis.fetch;
+  for (const failure of [
+    Object.assign(new Error("projects/secret-project"), { code: 10, httpStatusCode: 409 }),
+    Object.assign(new Error("secret-token"), { code: "ECONNRESET" })
+  ]) {
+    let calls = 0;
+    globalThis.fetch = Object.assign(async () => {
+      calls += 1;
+      if (calls === 1) throw failure;
+      return Response.json(stopped([{ text: "ok" }]));
+    }, { preconnect: original.preconnect });
+    const model = createVertexModel(modelId, env, token, retryNow);
+    const result = await model.generate({ messages: [] });
+    expect(result.text).toBe("ok");
+    expect(calls).toBe(2);
+  }
+  globalThis.fetch = original;
+});
+
+test("Vertex retries an empty model turn and returns it after the budget", async () => {
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = Object.assign(async () => {
+    calls += 1;
+    if (calls === 1) return Response.json(stopped([]));
+    if (calls === 2) return Response.json(stopped([{ thought: true }]));
+    return Response.json(stopped([{ text: "ok" }]));
+  }, { preconnect: original.preconnect });
+  try {
+    const model = createVertexModel(modelId, env, token, retryNow);
+    expect((await model.generate({ messages: [] })).text).toBe("ok");
+    expect(calls).toBe(3);
+    calls = 0;
+    globalThis.fetch = Object.assign(async () => {
+      calls += 1;
+      return Response.json(stopped([]));
+    }, { preconnect: original.preconnect });
+    const emptyModel = createVertexModel(modelId, env, token, retryNow);
+    const empty = await emptyModel.generate({ messages: [] });
+    expect(empty.text ?? "").toBe("");
+    expect(calls).toBe(3);
+  } finally { globalThis.fetch = original; }
+});
+
+test("Vertex does not retry a permission failure, visible thought text, or a content filter", async () => {
+  const original = globalThis.fetch;
+  const cases = [
+    Response.json({ error: { code: 403, status: "PERMISSION_DENIED", message: "private-account@example.com secret-token" } }, { status: 403 }),
+    Response.json(stopped([{ thought: true, text: "visible" }])),
+    Response.json({ candidates: [{ content: { role: "model", parts: [] }, finishReason: "SAFETY" }] })
+  ];
+  try {
+    for (const response of cases) {
+      let calls = 0;
+      globalThis.fetch = Object.assign(async () => {
+        calls += 1;
+        return response.clone();
+      }, { preconnect: original.preconnect });
+      const model = createVertexModel(modelId, env, token, retryNow);
+      try { await model.generate({ messages: [] }); } catch (error) {
+        expect(JSON.stringify(error)).not.toMatch(/private-account|secret-token/);
+        expect((error as { status?: number }).status).not.toBe(409);
+      }
+      expect(calls).toBe(1);
+    }
+  } finally { globalThis.fetch = original; }
+});
+
+test("Vertex stream retries a truncated stream before the caller observes it", async () => {
+  const original = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = Object.assign(async () => {
+    calls += 1;
+    if (calls === 1) throw Object.assign(new Error("secret-token"), { code: "ECONNRESET" });
+    return new Response(`data: ${JSON.stringify(stopped([{ text: "streamed" }]))}\n\n`);
+  }, { preconnect: original.preconnect });
+  try {
+    const model = createVertexModel(modelId, env, token, retryNow);
+    const events = [];
+    for await (const event of await model.stream!({ messages: [] })) events.push(event);
+    expect(events.some(event => event.type === "text-delta" && event.textDelta.includes("streamed"))).toBe(true);
+    expect(calls).toBe(2);
+  } finally { globalThis.fetch = original; }
+});
+
 test("cancelling Vertex while ADC acquisition is pending does not wait for credentials", async () => {
   const model = createVertexModel(modelId, env, () => ({ getAccessToken: () => new Promise<string>(() => {}) }));
   const controller = new AbortController();

@@ -1,4 +1,5 @@
 import { providerDiagnostic, providerDiagnosticSchema } from "./provider-diagnostics.js";
+import { PROVIDER_STATUS_CATEGORIES, readProviderFailureRecord } from "./provider-transient.js";
 import { z } from "zod";
 import { HARNESS_ERROR_CODES } from "./errors.js";
 
@@ -102,6 +103,7 @@ export const errorDetailsSchema = z.strictObject({
     checkpoint: z.enum(checkpoints).optional(),
     code: z.enum([...HARNESS_ERROR_CODES, ...systemCodes]).optional(),
     provider: providerDiagnosticSchema.optional(),
+    providerStatus: z.enum(PROVIDER_STATUS_CATEGORIES).optional(),
     status: z.number().int().min(100).max(599).optional(),
     retryable: z.boolean().optional(),
     acceptanceReason: z.enum(acceptanceReasons).optional(),
@@ -183,11 +185,16 @@ export const sanitizedErrorDetails = (error: unknown): z.infer<typeof errorDetai
     if (kinds.includes(record.name as typeof kinds[number])) entry.kind = record.name as typeof kinds[number];
     const allowedCodes: readonly unknown[] = [...HARNESS_ERROR_CODES, ...systemCodes];
     if (allowedCodes.includes(record.code)) entry.code = record.code as NonNullable<typeof entry.code>;
-    const status = [record.status, record.statusCode].find((value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599);
+    const signals = readProviderFailureRecord(record);
+    const status = [record.status, record.statusCode, record.httpStatusCode, signals.httpStatus].find((value) => typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599);
     if (typeof status === "number") {
       entry.status = status;
-      entry.provider = providerDiagnostic(record.responseBody ?? record.body, status);
+      entry.provider = providerDiagnostic(
+        typeof record.responseBody === "string" || typeof record.body === "string" ? record.responseBody ?? record.body : undefined,
+        status
+      );
     }
+    if (signals.providerStatus) entry.providerStatus = signals.providerStatus;
     const provider = providerDiagnosticSchema.safeParse(record.provider);
     if (provider.success) entry.provider = provider.data;
     if (typeof record.retryable === "boolean") entry.retryable = record.retryable;

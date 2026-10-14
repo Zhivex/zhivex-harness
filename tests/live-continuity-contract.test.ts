@@ -1,5 +1,5 @@
 import {expect,test} from 'bun:test';
-import {createContinuityEvidence, continuityGateOutcome, selectContinuityProviders} from '../scripts/live-continuity-contract.js';
+import {continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, selectContinuityProviders} from '../scripts/live-continuity-contract.js';
 import { HarnessProviderError } from '../src/runtime/errors.js';
 import { diagnosticFingerprint, sanitizeOperationalError } from '../scripts/release-diagnostics.js';
 const providers=['openai','qwen','meta','gemini','anthropic','vertex'];
@@ -25,6 +25,28 @@ test('continuity projects failed checks and provider causes without retaining ra
  expect(continuityGateOutcome({provider:'qwen',status:'failed',phases:[{phase:99,status:'failed',diagnostic:{message:secret}}]}))
   .toMatchObject({ok:false,error:{code:'EXECUTION_FAILED'}});
 });
+test("continuity retries empty or retryable provider phases and keeps assertion failures", () => {
+  const empty = { finishEvents: 0, textEvents: 0, textBytes: 0, responseBytes: 0, finishReason: "unavailable" };
+  expect(continuityPhaseShouldRetry(undefined)).toBe(true);
+  expect(continuityPhaseShouldRetry({ status: "passed", evidence: { ...empty, responseBytes: 12 } })).toBe(false);
+  expect(continuityPhaseShouldRetry({ status: "failed", checks: { codename: false }, evidence: empty })).toBe(true);
+  expect(continuityPhaseShouldRetry({
+    status: "failed",
+    checks: { codename: false },
+    evidence: { ...empty, responseBytes: 40, textEvents: 1, textBytes: 40, finishEvents: 1, finishReason: "stop" }
+  })).toBe(false);
+  expect(continuityPhaseShouldRetry({
+    status: "failed",
+    diagnostic: { code: "PROVIDER_UNAVAILABLE", retryable: true, status: 409, providerStatus: "ABORTED" },
+    evidence: { ...empty, responseBytes: 20, textEvents: 1, textBytes: 20, finishEvents: 1 }
+  })).toBe(true);
+  expect(continuityPhaseShouldRetry({
+    status: "failed",
+    diagnostic: { code: "EXECUTION_FAILED", retryable: false },
+    evidence: { ...empty, responseBytes: 20, textEvents: 1, textBytes: 20, finishEvents: 1 }
+  })).toBe(false);
+});
+
 test('continuity rejects empty or unavailable selection against artifact capabilities',()=>{
  for(const value of ['',',','unknown','vertex'])expect(()=>selectContinuityProviders({ZHIVEX_HARNESS_LIVE_PROVIDERS:value},['openai','qwen','meta'])).toThrow();
 });
