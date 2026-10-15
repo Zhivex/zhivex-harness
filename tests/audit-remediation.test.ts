@@ -150,14 +150,19 @@ for (const scenario of ["before", "during", "lease-conflict", "lease-lost", "dur
         const original = h.workspace.applyPatchWithModes.bind(h.workspace);
         h.workspace.applyPatchWithModes = async (...args) => { abort.abort(new Error("cancelled after verifier before publication")); return original(...args); };
       }
-      await expect(runHarness(h, { runId: "fixture", prompt: "verify", abortSignal: abort.signal, ...(scenario === "timeout" ? { timeoutMs: 100 } : {}) }, {
+      const blocked = runHarness(h, { runId: "fixture", prompt: "verify", abortSignal: abort.signal, ...(scenario === "timeout" ? { timeoutMs: 100 } : {}) }, {
         terminalReceiptTools: ["verify_and_apply_environment_patch"], resolveApprovals: async pending => {
           if (scenario === "before") abort.abort(new Error("operator cancelled"));
           if (scenario === "timeout") return new Promise(() => {});
           if (scenario === "lease-conflict") expect(await store.acquireLease!("fixture", { ownerId: "other", ttlMs: 30_000 })).toBeTruthy();
           return pending.map(a => ({ provider: a.provider, approvalRequestId: a.id, approve: true }));
         }
-      })).rejects.toThrow();
+      });
+      // A deadline can reject, or settle the failed checkpoint as timed_out. Either blocks the import.
+      if (scenario === "timeout") {
+        const settled = await blocked.then(result => result, () => undefined);
+        if (settled) expect(settled.status).toBe("timed_out");
+      } else await expect(blocked).rejects.toThrow();
       expect(await readFile(path.join(root, "value.txt"), "utf8")).toBe("before");
       expect(executions).toBe(scenario === "during" || scenario === "lease-lost" || scenario === "during-import" ? 1 : 0);
       if (scenario !== "lease-conflict") expect(await store.acquireLease!("fixture", { ownerId: "after", ttlMs: 30_000 })).toBeTruthy();
