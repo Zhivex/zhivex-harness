@@ -8,7 +8,7 @@ The terminal product for [Zhivex Harness](https://github.com/Zhivex/zhivex-harne
 
 ![Approval survives a restart](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/docs/images/approval-survives-restart.gif)
 
-OpenAI, Qwen, and Meta are the release-gated providers. Gemini, Anthropic, and Vertex are provisional. Linux and macOS only. Node.js 22.13 or newer. You do not need Bun to run the published package.
+OpenAI, Qwen, and Meta are the release-gated providers. Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. Linux and macOS only. Node.js 22.13 or newer. You do not need Bun to run the published package.
 
 The repository [README](https://github.com/Zhivex/zhivex-harness/blob/main/README.md) is the product overview. This page is the package guide.
 
@@ -93,8 +93,9 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 
 ## Limits
 
-- Gemini, Anthropic, and Vertex are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
+- Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
 - Anthropic uses `ANTHROPIC_API_KEY` or `/credentials`. Vertex uses host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not store a Vertex API key.
+- Amazon Bedrock Converse uses the AWS credential chain with `AWS_REGION` or `AWS_DEFAULT_REGION`. `BEDROCK_RUNTIME=openai` uses `BEDROCK_OPENAI_BASE_URL` and `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`. Azure OpenAI uses `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`, with optional `AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS`.
 - MCP in the default CLI is bounded Streamable HTTP. stdio is not enabled from workspace JSON.
 - `zhivex-code web` opens an experimental local browser workspace on macOS or Linux. Configure credentials in the CLI first. The task and evidence panel lets an operator define a bounded task, review artifacts and checks, and explicitly accept a snapshot before continuation. See [Code web tasks](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_WEB_TASKS.md), [local web client](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md), and `zhivex-code web --help`.
 - The default runtime exposes no shell tools. Isolated commands need Docker or Podman, configured explicitly.

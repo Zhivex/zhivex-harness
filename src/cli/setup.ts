@@ -88,6 +88,10 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
     `Provider: ${created.profile.provider} · Model: ${created.profile.model} · Reasoning: ${created.profile.reasoningEffort ?? "default"}`,
     provider === "vertex"
       ? "Vertex uses host ADC. Set GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION; route presence does not verify credentials or model access."
+      : provider === "bedrock"
+      ? "Bedrock Converse uses the AWS credential chain and AWS_REGION or AWS_DEFAULT_REGION. BEDROCK_RUNTIME=openai also needs an https BEDROCK_OPENAI_BASE_URL and BEDROCK_API_KEY or AWS_BEARER_TOKEN_BEDROCK. Route presence does not verify credentials or model access."
+      : provider === "azure-openai"
+      ? "Azure OpenAI needs an https AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY. Optional AZURE_OPENAI_API_VERSION and AZURE_OPENAI_DEPLOYMENTS stay in the environment. Route presence does not verify account access."
       : availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
       : `Open zhx to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
@@ -99,6 +103,36 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
   return true;
 };
 
+const providerStatus = (provider: {
+  id: string;
+  configured: boolean;
+  credentialNames: readonly string[];
+  credentials: readonly { readonly present: boolean }[];
+  configuration: {
+    customEndpoint: boolean;
+    endpointValid: boolean;
+    endpointSecure: boolean;
+    runtimeValid?: boolean;
+    runtimeConfigured?: boolean;
+  };
+}, env: NodeJS.ProcessEnv = process.env) => {
+  if (provider.id === "vertex") return provider.configured ? "route configured; ADC not checked" : "missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION";
+  if (provider.id === "bedrock") {
+    if (provider.configuration.runtimeValid === false) return "invalid BEDROCK_RUNTIME";
+    if (provider.configured) return "route configured; AWS credentials not checked";
+    if (env.BEDROCK_RUNTIME?.trim() === "openai") return "missing BEDROCK_API_KEY/AWS_BEARER_TOKEN_BEDROCK or https BEDROCK_OPENAI_BASE_URL";
+    return "missing AWS_REGION/AWS_DEFAULT_REGION";
+  }
+  if (provider.id === "azure-openai") {
+    if (!provider.configuration.customEndpoint) return "missing AZURE_OPENAI_ENDPOINT";
+    if (!provider.configuration.endpointValid || !provider.configuration.endpointSecure) return "invalid AZURE_OPENAI_ENDPOINT";
+    if (!provider.credentials.some((credential) => credential.present)) return "missing AZURE_OPENAI_API_KEY";
+    if (!provider.configured) return "invalid AZURE_OPENAI_API_VERSION or AZURE_OPENAI_DEPLOYMENTS";
+    return "configured; account access not checked";
+  }
+  return provider.configured ? "configured" : `missing ${provider.credentialNames.join("/")}`;
+};
+
 export const listProviders = (json: boolean) => {
   const document = providersDocument();
   if (json) {
@@ -107,7 +141,7 @@ export const listProviders = (json: boolean) => {
   }
   for (const provider of document.providers) {
     process.stdout.write(
-      `${provider.id.padEnd(7)} ${provider.defaultModel.padEnd(22)} ${provider.support.padEnd(11)} ${provider.id === "vertex" ? provider.configured ? "route configured; ADC not checked" : "missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION" : provider.configured ? "configured" : `missing ${provider.credentialNames.join("/")}`}\n`
+      `${provider.id.padEnd(13)} ${provider.defaultModel.padEnd(28)} ${provider.support.padEnd(11)} ${providerStatus(provider)}\n`
     );
   }
 };

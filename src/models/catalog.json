@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-09-29-vertex",
+  "revision": "2026-10-15-bedrock-azure",
   "providers": [
     {
       "id": "openai",
@@ -763,6 +763,78 @@
             "tools"
           ],
           "reason": "Provisional Vertex route; availability depends on project, region and IAM. No live certification."
+        }
+      ]
+    },
+    {
+      "id": "bedrock",
+      "defaultModel": "anthropic.claude-haiku-5-5",
+      "models": [
+        {
+          "id": "anthropic.claude-haiku-5-5",
+          "name": "Claude Haiku 5.5 (Bedrock)",
+          "group": "primary",
+          "order": 0,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Bedrock Converse route. Account access, region, and live Harness certification are not verified. No prices or context limits are inferred."
+        },
+        {
+          "id": "anthropic.claude-sonnet-5-5",
+          "name": "Claude Sonnet 5.5 (Bedrock)",
+          "group": "other",
+          "order": 1,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Bedrock model id. Availability depends on the account and region. No live certification."
+        },
+        {
+          "id": "amazon.nova-2-lite-v1:0",
+          "name": "Amazon Nova 2 Lite (Bedrock)",
+          "group": "other",
+          "order": 2,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Bedrock model id. Availability depends on the account and region. No live certification."
+        }
+      ]
+    },
+    {
+      "id": "azure-openai",
+      "defaultModel": "gpt-5.4",
+      "models": [
+        {
+          "id": "gpt-5.4",
+          "name": "GPT-5.4 (Azure OpenAI)",
+          "group": "primary",
+          "order": 0,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Azure OpenAI route. Deployment name, API version, and live Harness certification are not verified. No prices are copied from the OpenAI API."
+        },
+        {
+          "id": "gpt-5",
+          "name": "GPT-5 (Azure OpenAI)",
+          "group": "other",
+          "order": 1,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Azure OpenAI model id. Use AZURE_OPENAI_DEPLOYMENTS when the deployment name differs. No live certification."
+        },
+        {
+          "id": "gpt-6-astra",
+          "name": "GPT-6 Astra (Azure OpenAI)",
+          "group": "other",
+          "order": 2,
+          "lifecycle": "unknown",
+          "validation": "unverified",
+          "capabilities": ["chat", "tools"],
+          "reason": "Provisional Azure OpenAI model id. Account rollout and deployment availability are not verified. No live certification."
         }
       ]
     }

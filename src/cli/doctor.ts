@@ -475,6 +475,41 @@ const inspectProjectContext = async (
   }
 };
 
+const bedrockDoctorMessage = (
+  provider: { configuration: { runtimeValid?: boolean; customEndpoint: boolean; endpointValid: boolean; endpointSecure: boolean } },
+  configured: boolean,
+  env: NodeJS.ProcessEnv
+) => {
+  if (provider.configuration.runtimeValid === false) return "BEDROCK_RUNTIME must be converse or openai.";
+  if (provider.configuration.customEndpoint && (!provider.configuration.endpointValid || !provider.configuration.endpointSecure)) {
+    return "BEDROCK_OPENAI_BASE_URL must be an https URL without credentials.";
+  }
+  if (configured) return "Amazon Bedrock route configured; AWS credentials and model access have not been checked. Live support is provisional.";
+  if (env.BEDROCK_RUNTIME?.trim() === "openai") {
+    return "Bedrock OpenAI-compatible runtime requires BEDROCK_API_KEY or AWS_BEARER_TOKEN_BEDROCK and an https BEDROCK_OPENAI_BASE_URL.";
+  }
+  return "Bedrock Converse requires a valid AWS_REGION or AWS_DEFAULT_REGION. No API key is stored for the AWS credential chain.";
+};
+
+const azureDoctorMessage = (
+  provider: {
+    credentials: readonly { readonly present: boolean }[];
+    configuration: { customEndpoint: boolean; endpointValid: boolean; endpointSecure: boolean };
+  },
+  configured: boolean,
+  credential: { configured: boolean } | undefined
+) => {
+  if (!provider.configuration.customEndpoint) return "Azure OpenAI requires AZURE_OPENAI_ENDPOINT.";
+  if (!provider.configuration.endpointValid || !provider.configuration.endpointSecure) {
+    return "AZURE_OPENAI_ENDPOINT must be an https URL without credentials or a query.";
+  }
+  if (!configured && (provider.credentials.some((item) => item.present) || credential?.configured)) {
+    return "AZURE_OPENAI_API_VERSION or AZURE_OPENAI_DEPLOYMENTS is invalid.";
+  }
+  if (!configured) return "Azure OpenAI credential is missing. Set AZURE_OPENAI_API_KEY. Account access is not checked.";
+  return "Azure OpenAI route configured; account access has not been checked. Live support is provisional.";
+};
+
 export const createDoctorReport = async (
   options: Pick<
     CliOptions,
@@ -668,11 +703,16 @@ export const createDoctorReport = async (
 
   for (const provider of providers) {
     const invalidRegion = provider.id === "qwen" && provider.configuration.regionValid === false;
-    const invalidEndpoint = !provider.configuration.endpointValid;
+    const invalidRuntime = provider.id === "bedrock" && provider.configuration.runtimeValid === false;
+    const invalidEndpoint = !provider.configuration.endpointValid || (
+      (provider.id === "bedrock" || provider.id === "azure-openai") &&
+      provider.configuration.customEndpoint &&
+      !provider.configuration.endpointSecure
+    );
     const selected = provider.id === selectedProvider?.id;
     const credential = selected ? context.credentialStatus : undefined;
     const configured = credential?.configured ?? provider.configured;
-    const status: DoctorCheckStatus = invalidRegion || invalidEndpoint || !configured
+    const status: DoctorCheckStatus = invalidRegion || invalidRuntime || invalidEndpoint || !configured
       ? selected
         ? "fail"
         : "warn"
@@ -683,6 +723,10 @@ export const createDoctorReport = async (
       ? configured
         ? "Vertex project/location configured; host ADC and model access have not been checked. Live support is provisional."
         : "Vertex requires GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION plus host Application Default Credentials. No API key is stored by zhx."
+      : provider.id === "bedrock"
+      ? bedrockDoctorMessage(provider, configured, env)
+      : provider.id === "azure-openai"
+      ? azureDoctorMessage(provider, configured, credential)
       : invalidEndpoint
       ? `${provider.name} custom endpoint configuration is invalid.`
       : invalidRegion
@@ -714,6 +758,21 @@ export const createDoctorReport = async (
             regionConfigured: provider.configuration.regionConfigured,
             regionValid: provider.configuration.regionValid,
             workspaceIdConfigured: provider.configuration.workspaceIdConfigured
+          }
+        : {}),
+      ...(provider.id === "bedrock"
+        ? {
+            runtimeConfigured: provider.configuration.runtimeConfigured === true,
+            runtimeValid: provider.configuration.runtimeValid !== false,
+            regionConfigured: provider.configuration.regionConfigured === true,
+            defaultRegionConfigured: provider.configuration.defaultRegionConfigured === true,
+            profileConfigured: provider.configuration.profileConfigured === true
+          }
+        : {}),
+      ...(provider.id === "azure-openai"
+        ? {
+            apiVersionConfigured: provider.configuration.apiVersionConfigured === true,
+            deploymentsConfigured: provider.configuration.deploymentsConfigured === true
           }
         : {})
     }));

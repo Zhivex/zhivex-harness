@@ -20,6 +20,40 @@ function fixture(environment: NodeJS.ProcessEnv = {}) {
   return { keys, store, ui, accesses: () => accesses, output: () => output };
 }
 
+test("Bedrock Converse does not store an API key and the OpenAI runtime can", async () => {
+  const converse = fixture({ AWS_REGION: "us-east-1", AWS_PROFILE: "fixture" });
+  expect(await converse.store.inspect("bedrock")).toEqual({ source: "environment", configured: true });
+  expect(await converse.store.providerEnvironment("bedrock", converse.ui([]))).toMatchObject({ AWS_REGION: "us-east-1" });
+  expect(await converse.store.configure("bedrock", converse.ui([]))).toBe(true);
+  expect(converse.accesses()).toBe(0);
+  expect(converse.keys.size).toBe(0);
+  const missing = fixture({});
+  expect((await missing.store.inspect("bedrock")).configured).toBe(false);
+  await expect(missing.store.providerEnvironment("bedrock", missing.ui([]))).rejects.toThrow("AWS_REGION");
+  const openai = fixture({ BEDROCK_RUNTIME: "openai", BEDROCK_OPENAI_BASE_URL: "https://bedrock-mantle.example/v1" });
+  expect((await openai.store.inspect("bedrock")).configured).toBe(false);
+  await openai.store.configure("bedrock", openai.ui(["temporary"], "fixture-bedrock-key"));
+  const resolved = await openai.store.providerEnvironment("bedrock", openai.ui([]));
+  expect(resolved.BEDROCK_API_KEY).toBe("fixture-bedrock-key");
+  expect(resolved.BEDROCK_OPENAI_BASE_URL).toBe("https://bedrock-mantle.example/v1");
+  expect(openai.output()).not.toContain("fixture-bedrock-key");
+  await expect(fixture({ BEDROCK_RUNTIME: "openai" }).store.providerEnvironment("bedrock", fixture().ui([]))).rejects.toThrow("BEDROCK_OPENAI_BASE_URL");
+});
+
+test("Azure OpenAI keeps the endpoint in the environment and the key in managed storage", async () => {
+  const ready = fixture({ AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com", AZURE_OPENAI_API_VERSION: "2024-10-21" });
+  expect((await ready.store.inspect("azure-openai")).configured).toBe(false);
+  await ready.store.configure("azure-openai", ready.ui(["temporary"], "fixture-azure-key"));
+  const resolved = await ready.store.providerEnvironment("azure-openai", ready.ui([]));
+  expect(resolved.AZURE_OPENAI_API_KEY).toBe("fixture-azure-key");
+  expect(resolved.AZURE_OPENAI_ENDPOINT).toBe("https://example.openai.azure.com");
+  expect(ready.output()).not.toContain("fixture-azure-key");
+  const blocked = fixture({ AZURE_OPENAI_ENDPOINT: "http://example.openai.azure.com" });
+  expect(await blocked.store.configure("azure-openai", blocked.ui(["temporary"]))).toBe(false);
+  expect(blocked.accesses()).toBe(0);
+  await expect(blocked.store.providerEnvironment("azure-openai", blocked.ui([]))).rejects.toThrow("https");
+});
+
 test("Vertex ADC configuration never reads or writes API-key storage", async () => {
   const environment = { GOOGLE_CLOUD_PROJECT: "fixture-project", VERTEX_LOCATION: "global" };
   const f = fixture(environment);

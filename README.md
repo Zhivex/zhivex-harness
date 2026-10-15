@@ -23,7 +23,7 @@ An open-source coding agent for your terminal. It asks before it edits or runs a
 
 - **You approve the exact change.** Edits and checks wait for an explicit decision bound to that diff. A conversational summary leaves the change unapproved. If the file changed on your side, import fails closed.
 - **The pending decision survives a restart.** Conversations and approvals are stored in SQLite. Quit the terminal, or reboot, and the same approval is waiting.
-- **Your keys, your provider.** OpenAI, Qwen, and Meta pass the release gate. Gemini, Anthropic, and Vertex are provisional. The same CLI talks to each of them.
+- **Your keys, your provider.** OpenAI, Qwen, and Meta pass the release gate. Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. The same CLI talks to each of them.
 
 ## Quick start
 
@@ -94,6 +94,8 @@ The script prints the guided sequence and a command to reopen the same temporary
 | Gemini (provisional) | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` |
 | Anthropic (provisional) | `ANTHROPIC_API_KEY` |
 | Vertex (provisional) | Application Default Credentials, plus `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not ask for a Vertex API key. |
+| Amazon Bedrock (provisional) | AWS credential chain plus `AWS_REGION` or `AWS_DEFAULT_REGION`. `BEDROCK_RUNTIME=openai` also needs `BEDROCK_OPENAI_BASE_URL` and `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`. |
+| Azure OpenAI (provisional) | `AZURE_OPENAI_API_KEY` and https `AZURE_OPENAI_ENDPOINT`. Optional `AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS`. |
 
 Use `/credentials` later to replace or remove a saved key. `zhivex-code doctor` reports whether a credential is present. It does not call the provider.
 
@@ -111,7 +113,7 @@ From a source checkout, `bun run demo:hostile` runs a reproducible hostile-repos
 
 ## Providers and platforms
 
-Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, and Vertex are provisional**: the integrations exist, and they do not yet have the same end-to-end release evidence. Details: [support matrix](docs/SUPPORT_MATRIX.md), [Anthropic](docs/ANTHROPIC.md), [Vertex](docs/VERTEX.md).
+Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional**: the integrations exist, and they do not yet have the same end-to-end release evidence. Details: [support matrix](docs/SUPPORT_MATRIX.md), [Anthropic](docs/ANTHROPIC.md), [Vertex](docs/VERTEX.md), [Bedrock](docs/BEDROCK.md), [Azure OpenAI](docs/AZURE_OPENAI.md).
 
 | Area | Status |
 | --- | --- |

@@ -7,12 +7,20 @@ import {prepareModelTransition} from "../src/model-transition.js";
 import type {HarnessClientResponse} from "../../src/client/index.js";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
- expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","gemini","meta","openai","qwen","vertex"]);
+ expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","azure-openai","bedrock","gemini","meta","openai","qwen","vertex"]);
  for(const [provider,key] of Object.entries({anthropic:"ANTHROPIC_API_KEY",openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
   expect(providerEnvironment({provider,model:"test-model"},"fixture-secret")).toEqual({[key]:"fixture-secret"});
   expect(providerEnvironment({provider,model:"test-model"})).toEqual({});
  }
  for(const bad of [{provider:"deepseek",model:"test"},{provider:"qwen",model:""},{provider:"qwen",model:"x\ny"},{provider:"qwen",model:"test",baseURL:"https://untrusted.test"}]) expect(modelSelectionSchema.safeParse(bad).success).toBe(false);
+});
+
+test("Bedrock and Azure OpenAI desktop environments copy only their own route settings", () => {
+ expect(providerEnvironment({provider:"bedrock",model:"anthropic.claude-haiku-5-5"}, "unused-key", { AWS_REGION: "us-east-1", OPENAI_API_KEY: "secret" })).toEqual({ AWS_REGION: "us-east-1" });
+ expect(providerEnvironment({provider:"azure-openai",model:"gpt-5.4"}, "azure-secret", { AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/", OPENAI_API_KEY: "secret" })).toEqual({
+  AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
+  AZURE_OPENAI_API_KEY: "azure-secret"
+ });
 });
 
 test("Vertex Desktop passes only explicit host ADC route settings, never API keys", () => {

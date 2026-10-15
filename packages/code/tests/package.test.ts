@@ -40,8 +40,13 @@ describe("standalone Node terminal product", () => {
     expect(document.providers).toEqual(expect.arrayContaining([
       expect.objectContaining({id: "anthropic", credentialNames: ["ANTHROPIC_API_KEY"]}),
       expect.objectContaining({id: "vertex", credentialNames: [], configured: false}),
+      expect.objectContaining({id: "bedrock", support: "provisional", configured: false}),
+      expect.objectContaining({id: "azure-openai", support: "provisional", credentialNames: ["AZURE_OPENAI_API_KEY"], configured: false}),
     ]));
-    expect(run(["providers"]).stdout).toContain("missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION");
+    const listed = run(["providers"]).stdout;
+    expect(listed).toContain("missing GOOGLE_CLOUD_PROJECT/VERTEX_LOCATION");
+    expect(listed).toContain("missing AWS_REGION/AWS_DEFAULT_REGION");
+    expect(listed).toContain("missing AZURE_OPENAI_ENDPOINT");
     for (const args of [["run", "--json", "--bogus"], ["run", "--json", "--jsonl", "task"]]) {
       const result = run(args);
       expect(result.status).toBe(2);

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { bundledModelCatalog, catalogModels, type ModelCatalog } from "@zhivex-ai/harness/models";
 import { PROVIDERS, DEFAULT_PROVIDER_REGISTRY } from "@zhivex-ai/harness/engine";
-import { vertexEnvironment } from "@zhivex-ai/harness/desktop/v1/providers";
+import { azureOpenAIEnvironment, bedrockEnvironment, vertexEnvironment } from "@zhivex-ai/harness/desktop/v1/providers";
 import type { DesktopModelSelection, DesktopProvider } from "./bridge.js";
 
 export const modelSelectionSchema = z.object({
@@ -16,6 +16,8 @@ export const desktopProviders = (catalog: ModelCatalog = bundledModelCatalog): D
 export function providerEnvironment(selection: DesktopModelSelection, secret?: string, host: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
     const parsed = modelSelectionSchema.parse(selection);
     if (parsed.provider === "vertex") return vertexEnvironment(host);
+    if (parsed.provider === "bedrock") return bedrockEnvironment(host, secret);
+    if (parsed.provider === "azure-openai") return azureOpenAIEnvironment(host, secret);
     const credential = DEFAULT_PROVIDER_REGISTRY.descriptor(parsed.provider).credentialNames[0]!;
     return secret ? {[credential]: secret} : {};
 }

@@ -33,6 +33,8 @@ export async function verifyDesktopModelsSmoke(
   const catalog = await js("window.harness.providers()");
   assert.deepEqual(catalog.map((p: { id: string }) => p.id).sort(), [
     "anthropic",
+    "azure-openai",
+    "bedrock",
     "gemini",
     "meta",
     "openai",

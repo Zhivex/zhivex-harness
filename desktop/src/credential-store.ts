@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
-import { vertexConfigured, vertexRoute, vertexTokenSource } from "@zhivex-ai/harness/desktop/v1/providers";
+import { bedrockConfigured, bedrockRuntime, vertexConfigured, vertexRoute, vertexTokenSource } from "@zhivex-ai/harness/desktop/v1/providers";
 const statusSchema = z.enum(["present", "missing", "saved", "deleted", "cancelled", "locked", "unavailable", "invalid", "unsupported"]);
 export type CredentialStatus = z.infer<typeof statusSchema>;
 export type CredentialProbe = CredentialStatus | "connected" | "invalid-credential" | "forbidden" | "rate-limited" | "network-error";
@@ -13,6 +13,30 @@ const responseSchema = z.object({ status: statusSchema, secret: z.string().min(1
 /** Host-only. Never expose read() or helper stdout through the renderer bridge. */
 export function openCredentialStore(helper: string, options: { provider?: string; platform?: string; request?: typeof fetch; timeoutMs?: number } = {}) {
     const provider = modelSelectionSchema.shape.provider.parse(options.provider ?? "openai");
+    if (provider === "bedrock") {
+        let openai = false;
+        try { openai = bedrockRuntime(process.env) === "openai"; } catch { openai = false; }
+        if (!openai) {
+            const status = (): CredentialStatus => bedrockConfigured(process.env) ? "present" : "missing";
+            return {
+                status: async () => status(),
+                configure: async (): Promise<CredentialStatus> => "unsupported",
+                delete: async (): Promise<CredentialStatus> => "unsupported",
+                read: async (): Promise<z.infer<typeof responseSchema>> => ({ status: status() }),
+                probe: async (): Promise<CredentialProbe> => status()
+            };
+        }
+    }
+    if (provider === "azure-openai" && !process.env.AZURE_OPENAI_ENDPOINT?.trim()) {
+        const status = (): CredentialStatus => "missing";
+        return {
+            status: async () => status(),
+            configure: async (): Promise<CredentialStatus> => "unsupported",
+            delete: async (): Promise<CredentialStatus> => "unsupported",
+            read: async (): Promise<z.infer<typeof responseSchema>> => ({ status: status() }),
+            probe: async (): Promise<CredentialProbe> => status()
+        };
+    }
     if (provider === "vertex") {
         const status = (): CredentialStatus => vertexConfigured(process.env) ? "present" : "missing";
         return {
@@ -63,7 +87,9 @@ export function openCredentialStore(helper: string, options: { provider?: string
         read: () => serial(() => invoke("read")),
         probe: (): Promise<CredentialProbe> => serial(async () => {
             const value = await invoke("read"); if (value.status !== "present" || !value.secret) return value.status;
-            try { const response = await (options.request ?? fetch)(endpoints[provider], { method: "GET", headers: provider === "anthropic" ? { "x-api-key": value.secret, "anthropic-version": "2023-06-01" } : provider === "gemini" ? { "x-goog-api-key": value.secret } : { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
+            const endpoint = endpoints[provider as keyof typeof endpoints];
+            if (!endpoint) return "present";
+            try { const response = await (options.request ?? fetch)(endpoint, { method: "GET", headers: provider === "anthropic" ? { "x-api-key": value.secret, "anthropic-version": "2023-06-01" } : provider === "gemini" ? { "x-goog-api-key": value.secret } : { Authorization: `Bearer ${value.secret}` }, redirect: "error", signal: AbortSignal.timeout(10000) }); void response.body?.cancel().catch(() => { }); return response.status === 200 ? "connected" : response.status === 401 ? "invalid-credential" : response.status === 403 ? "forbidden" : response.status === 429 ? "rate-limited" : "network-error"; } catch { return "network-error"; }
         })
     };
 }

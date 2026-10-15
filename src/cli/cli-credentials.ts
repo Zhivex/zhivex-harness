@@ -2,6 +2,8 @@ import { decodeQwenCredential, qwenEndpoint, selectQwenConnection } from "./qwen
 import { providerDescriptor, type HarnessProvider } from "../runtime/config.js";
 import { PROVIDERS } from "../providers/providers.js";
 import { vertexConfigured, vertexRoute } from "../providers/vertex-auth.js";
+import { bedrockConfigured, bedrockOpenAIBaseURL, bedrockRegion, bedrockRuntime, type BedrockRuntime } from "../providers/bedrock.js";
+import { azureOpenAIApiVersion, azureOpenAIDeployments, azureOpenAIEndpoint } from "../providers/azure-openai.js";
 
 export interface SecretEntry {
   getPassword(): Promise<string | null | undefined>;
@@ -73,8 +75,33 @@ export class CliCredentials {
   /** Presence only: never contacts a provider or returns a secret. */
   async inspect(provider: HarnessProvider): Promise<CredentialStatus> {
     if (provider === "vertex") return { source: "environment", configured: vertexConfigured(this.environment) };
+    if (provider === "bedrock") return this.inspectBedrock();
+    if (provider === "azure-openai") return this.inspectAzure();
     if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) return { source: "environment", configured: true };
     if (this.endpointOverride(provider) && !(provider === "qwen" && this.qwenOverrideAccepted)) return { source: "blocked", configured: false };
+    if (this.temporary.has(provider)) return { source: "temporary", configured: true };
+    try { return await this.saved(provider) ? { source: "keychain", configured: true } : { source: "missing", configured: false }; }
+    catch { return { source: "unavailable", configured: false }; }
+  }
+  private async inspectBedrock(): Promise<CredentialStatus> {
+    let runtime: BedrockRuntime;
+    try { runtime = bedrockRuntime(this.environment); }
+    catch { return { source: "environment", configured: false }; }
+    if (runtime !== "openai") return { source: "environment", configured: bedrockConfigured(this.environment) };
+    try { bedrockOpenAIBaseURL(this.environment); }
+    catch { return { source: "missing", configured: false }; }
+    return this.inspectSecret("bedrock");
+  }
+  private async inspectAzure(): Promise<CredentialStatus> {
+    try {
+      azureOpenAIEndpoint(this.environment);
+      azureOpenAIApiVersion(this.environment);
+      azureOpenAIDeployments(this.environment);
+    } catch { return { source: "environment", configured: false }; }
+    return this.inspectSecret("azure-openai");
+  }
+  private async inspectSecret(provider: HarnessProvider): Promise<CredentialStatus> {
+    if (this.environmentKey(provider)) return { source: "environment", configured: true };
     if (this.temporary.has(provider)) return { source: "temporary", configured: true };
     try { return await this.saved(provider) ? { source: "keychain", configured: true } : { source: "missing", configured: false }; }
     catch { return { source: "unavailable", configured: false }; }
@@ -83,6 +110,28 @@ export class CliCredentials {
     if (provider === "vertex") {
       this.write("Vertex uses Google Application Default Credentials. Configure ADC, GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION in the launching environment; no API key is stored here.\n");
       return vertexConfigured(this.environment);
+    }
+    if (provider === "bedrock") {
+      let runtime: BedrockRuntime;
+      try { runtime = bedrockRuntime(this.environment); }
+      catch {
+        this.write("BEDROCK_RUNTIME must be converse or openai.\n");
+        return false;
+      }
+      if (runtime !== "openai") {
+        this.write("Amazon Bedrock Converse uses the AWS credential chain. Set AWS_REGION or AWS_DEFAULT_REGION in the launching environment. Optional AWS_PROFILE selects a profile. No API key is stored here, and credentials are not checked.\n");
+        return bedrockConfigured(this.environment);
+      }
+    }
+    if (provider === "azure-openai") {
+      try {
+        azureOpenAIEndpoint(this.environment);
+        azureOpenAIApiVersion(this.environment);
+        azureOpenAIDeployments(this.environment);
+      } catch (error) {
+        this.write(`${error instanceof Error ? error.message : "Azure OpenAI route is not configured."}\n`);
+        return false;
+      }
     }
     for (;;) {
       try { return await this.configureOnce(provider, input); }
@@ -157,12 +206,64 @@ export class CliCredentials {
     this.revision++;
     return true;
   }
+  private async managedSecret(provider: HarnessProvider, input: CredentialInput): Promise<string> {
+    let key = this.temporary.get(provider);
+    if (!key) {
+      try { key = await this.saved(provider); }
+      catch { this.write("Secure storage is unavailable or locked; temporary use remains available.\n"); }
+    }
+    if (!key) {
+      this.write(`No API key available for ${provider}.\n`);
+      if (!await this.configure(provider, input)) throw new CredentialSetupError("Credential setup cancelled. No provider request was sent.");
+      key = this.temporary.get(provider) ?? await this.saved(provider);
+    }
+    if (!key) throw new CredentialSetupError("No API key available. No provider request was sent.");
+    return key;
+  }
+  private async bedrockProviderEnvironment(input: CredentialInput): Promise<NodeJS.ProcessEnv> {
+    let runtime: BedrockRuntime;
+    try { runtime = bedrockRuntime(this.environment); }
+    catch (error) { throw new CredentialSetupError(error instanceof Error ? error.message : "BEDROCK_RUNTIME must be converse or openai."); }
+    if (runtime !== "openai") {
+      try { bedrockRegion(this.environment); }
+      catch (error) { throw new CredentialSetupError(error instanceof Error ? error.message : "Bedrock requires a region."); }
+      this.sources.set("bedrock", "environment");
+      return { ...this.environment };
+    }
+    try { bedrockOpenAIBaseURL(this.environment); }
+    catch (error) { throw new CredentialSetupError(error instanceof Error ? error.message : "BEDROCK_OPENAI_BASE_URL is required."); }
+    if (this.environmentKey("bedrock")) {
+      this.sources.set("bedrock", "environment");
+      return { ...this.environment };
+    }
+    const key = await this.managedSecret("bedrock", input);
+    this.sources.set("bedrock", this.temporary.has("bedrock") ? "temporary" : "keychain");
+    return { ...this.environment, BEDROCK_API_KEY: key };
+  }
+  private async azureProviderEnvironment(input: CredentialInput): Promise<NodeJS.ProcessEnv> {
+    try {
+      azureOpenAIEndpoint(this.environment);
+      azureOpenAIApiVersion(this.environment);
+      azureOpenAIDeployments(this.environment);
+    } catch (error) {
+      throw new CredentialSetupError(error instanceof Error ? error.message : "Azure OpenAI route is not configured.");
+    }
+    if (this.environmentKey("azure-openai")) {
+      this.sources.set("azure-openai", "environment");
+      return { ...this.environment };
+    }
+    const key = await this.managedSecret("azure-openai", input);
+    this.sources.set("azure-openai", this.temporary.has("azure-openai") ? "temporary" : "keychain");
+    return { ...this.environment, AZURE_OPENAI_API_KEY: key };
+  }
   async providerEnvironment(provider: HarnessProvider, input: CredentialInput): Promise<NodeJS.ProcessEnv> {
     if (provider === "vertex") {
       vertexRoute(this.environment);
       this.sources.set(provider, "environment");
       return { ...this.environment };
     }
+    if (provider === "bedrock") return this.bedrockProviderEnvironment(input);
+    if (provider === "azure-openai") return this.azureProviderEnvironment(input);
     if (this.environmentKey(provider) && !(provider === "qwen" && this.qwenManaged)) { this.destinations.delete(provider); this.sources.set(provider, "environment"); return { ...this.environment }; }
     // Managed credentials must not be redirected by shell-defined endpoint overrides.
     if (provider !== "qwen" && this.endpointOverride(provider)) {

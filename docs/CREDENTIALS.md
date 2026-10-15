@@ -68,6 +68,27 @@ the console offers to use the saved destination for this session or cancel. It n
 sends a managed key to an arbitrary shell-defined endpoint. Custom endpoints still
 require explicit environment credentials.
 
+## Amazon Bedrock
+
+Converse does not store an API key. Set `AWS_REGION` or `AWS_DEFAULT_REGION` in
+the launching environment and leave credentials to the AWS SDK default chain.
+`AWS_PROFILE` selects a profile through that chain. The credentials screen
+explains this and does not write a key.
+
+`BEDROCK_RUNTIME=openai` requires an https `BEDROCK_OPENAI_BASE_URL`. The key
+may be `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK` in the environment, or a
+keychain/temporary `BEDROCK_API_KEY`. The base URL is not an override that
+blocks a managed key. See [Bedrock](BEDROCK.md).
+
+## Azure OpenAI
+
+Set an https `AZURE_OPENAI_ENDPOINT` before saving a key. Optional
+`AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS` stay in the
+environment and are not written to the keychain. A managed
+`AZURE_OPENAI_API_KEY` is allowed together with that endpoint. Microsoft Entra
+token auth is not available in the published `@zhivex-ai/azure-openai@0.7.7`
+adapter. See [Azure OpenAI](AZURE_OPENAI.md).
+
 ## Qwen interactive setup
 
 Open `/credentials` → Qwen → save or temporary → Standard API or QwenCloud Token
