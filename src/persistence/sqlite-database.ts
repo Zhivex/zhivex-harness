@@ -8,7 +8,27 @@ import type { DatabaseSync as NodeDatabaseSync } from "node:sqlite";
 const require = createRequire(process.execPath);
 let DatabaseSyncConstructor: typeof import("node:sqlite")["DatabaseSync"] | undefined;
 
+/** Node 22 prints this after `node:sqlite` loads. Later supported versions may not. */
+const SQLITE_EXPERIMENTAL = "SQLite is an experimental feature and might change at any time";
+
+export const installSqliteExperimentalWarningFilter = () => {
+  const current = process.emitWarning as typeof process.emitWarning & { zhivexSqliteFilter?: boolean };
+  if (current.zhivexSqliteFilter) return;
+  const emit = process.emitWarning.bind(process);
+  const filtered = ((warning: string | Error, type?: string | NodeJS.EmitWarningOptions, code?: string, ctor?: Function) => {
+    const message = typeof warning === "string" ? warning : warning.message;
+    const resolved = typeof type === "string" ? type : type?.type;
+    if ((resolved === "ExperimentalWarning" || (typeof warning !== "string" && warning.name === "ExperimentalWarning"))
+      && message.includes(SQLITE_EXPERIMENTAL)) return;
+    if (typeof type === "string") return emit(warning, type, code, ctor);
+    return emit(warning, type);
+  }) as typeof process.emitWarning & { zhivexSqliteFilter: boolean };
+  filtered.zhivexSqliteFilter = true;
+  process.emitWarning = filtered;
+};
+
 const loadDatabaseSync = () => {
+  installSqliteExperimentalWarningFilter();
   DatabaseSyncConstructor ??= (
     require("node:sqlite") as typeof import("node:sqlite")
   ).DatabaseSync;

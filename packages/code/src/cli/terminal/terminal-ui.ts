@@ -219,13 +219,18 @@ export const resolveTerminalApprovals = async (
       try {
         const stale = Boolean(diff?.startsWith(STALE_DIFF));
         const files = approvalFiles(approval);
-        const approveLabel = approval.name === "run_check" ? "Approve 1 command"
+        const commandReview = approval.name === "run_check"
+          || approval.name === "run_environment_command"
+          || approval.name === "run_environment_shell";
+        const approveLabel = commandReview ? "Approve 1 command"
           : files.length > 1 ? `Approve ${files.length} files`
           : files.length === 1 ? "Approve 1 file"
           : "Approve";
+        const rejectDetail = commandReview ? "The command does not run." : "Nothing is written.";
+        const approveDetail = commandReview ? "Only this command, once." : "Only the change shown above, once.";
         const items = [
-          { value: "n", key: "r", label: "Reject", detail: "Nothing is written." },
-          ...(!stale ? [{ value: "y", key: "a", label: approveLabel, detail: "Only the change shown above, once." }] : []),
+          { value: "n", key: "r", label: "Reject", detail: rejectDetail },
+          ...(!stale ? [{ value: "y", key: "a", label: approveLabel, detail: approveDetail }] : []),
           ...(grant ? [{ value: "s", key: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
           { value: "v", key: "d", label: technical ? "Back to review" : "Details" },
           ...(stale ? [{ value: "l", key: "l", label: "Reload review" }] : []),

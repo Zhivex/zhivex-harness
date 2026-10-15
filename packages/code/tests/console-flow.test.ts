@@ -218,6 +218,18 @@ test("conversation completion retains tool failure and verification distinctions
   expect(checked).toBe("Done · 1 file changed · checks: 1 passed, 0 failed");
 });
 
+test("command reviews describe the command instead of a file write", async () => {
+  for (const name of ["run_check", "run_environment_command", "run_environment_shell"]) {
+    const choices: { label: string; detail?: string }[][] = [];
+    await resolveTerminalApprovals([{ id: "command-1", provider: "openai", kind: "local-tool", name, arguments: "{}", rawData: null }], {
+      ask: async () => "n", write: () => {},
+      review: async (_view, items) => { choices.push([...items]); return "n"; },
+    });
+    expect(choices[0]?.[0]).toMatchObject({ label: "Reject", detail: "The command does not run." });
+    expect(choices[0]?.find(item => item.label === "Approve 1 command")?.detail).toBe("Only this command, once.");
+  }
+});
+
 test("review session grants commit only after the whole batch and remain exact to workspace/script", async () => {
   const check = {id: "check-1", provider: "openai" as const, kind: "local-tool" as const,
     name: "run_check", arguments: '{"check":"test","expectedScript":"node --test safe.mjs"}', rawData: null};

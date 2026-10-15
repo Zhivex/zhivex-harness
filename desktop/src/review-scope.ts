@@ -39,6 +39,14 @@ export function reviewScope(review: ReviewScope | undefined) {
   return { paths, commands, others, approveLabel: `Approve ${parts.join(" + ") || "requests"}` };
 }
 
+/** Command-only reviews name the commands and omit a zero file count. */
+export function reviewScopeSummary(operations: number, files: number, commands: number) {
+  const parts = [`${operations} operation${operations === 1 ? "" : "s"}`];
+  if (files > 0 || commands === 0) parts.push(`${files} file${files === 1 ? "" : "s"}`);
+  if (commands > 0) parts.push(`${commands} command${commands === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
+
 /** Enter must not trigger the native button click that would decide a review. */
 export function preventDecisionEnter(event: { key: string; preventDefault(): void }) {
   if (event.key === "Enter") event.preventDefault();

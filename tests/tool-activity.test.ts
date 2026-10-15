@@ -190,6 +190,19 @@ test("interleaved narration and tool results leave one summary and safe actionab
   } finally { stdout.mockRestore(); stderr.mockRestore(); }
 });
 
+test("a rejected operation says rejected by you and does not echo the tool", async () => {
+  const { compactToolResult } = await import("../src/cli/terminal/tool-activity.js");
+  const denied = compactToolResult({ toolName: "SECRET_TOOL", isError: true,
+    error: { message: "Tool \"SECRET_TOOL\" was denied by the approval policy." } });
+  const operator = compactToolResult({ toolName: "apply_patch", isError: true,
+    error: { message: "Denied by the operator." } });
+  expect(denied).toContain("rejected by you");
+  expect(denied).not.toContain("operation failed");
+  expect(denied).not.toContain("SECRET");
+  expect(operator).toContain("rejected by you");
+  expect(operator).not.toContain("Denied by the operator");
+});
+
 test("dependency discovery hints never copy names or raw paths into terminal output", async () => {
   const { compactToolResult } = await import("../src/cli/terminal/tool-activity.js");
   const line = compactToolResult({ toolName: "read_dependency", isError: true,
