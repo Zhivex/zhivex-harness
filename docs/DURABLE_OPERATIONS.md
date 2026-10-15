@@ -327,6 +327,9 @@ Subsequent model requests also check the root before dispatch. Already admitted
 requests can finish late; cancellation does not roll back an external effect.
 Terminal children are preserved, and active children receive durable cancellation
 requests. Inactive queued, approval or suspended checkpoints become cancelled.
+Once the group worker sees an in-flight member return, a child left at
+`cancel_requested` is settled to `cancelled` before the root snapshot is saved.
+Inspection while that request is still in flight stays `cancel_requested`.
 Confirmation requires every admitted child to have a terminal checkpoint. A cut
 between recorded admission and child persistence remains `cancel_requested`
 because the claim is uncertain; this tranche does not provide an automatic

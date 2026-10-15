@@ -180,9 +180,24 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
     throw new HarnessStateConflictError("Durable review child checkpoint is missing; restore the complete backup before retrying.");
   }
   if (before.cancellationRequested || ["completed", "partial", "failed", "timed_out", "cancelled"].includes(before.status)) {
-    const result = await locked(runtime, input.groupId, (root, owner) => persistSnapshot(runtime, root, owner));
-    await finalizeIdleWorker(runtime, input.groupId);
-    return result;
+    const workerId = `review_worker_${digest(input.groupId)}`;
+    const recoveryOwner = `review-worker-settle:${randomUUID()}`;
+    // A live worker still owns in-flight cancel_requested children. Settling
+    // them here would confirm cancellation before that model call returns.
+    const worker = before.cancellationRequested ? await runtime.store.load(workerId, runtime.config.scope) : undefined;
+    const ownedWorker = Boolean(worker && await runtime.store.acquireLease!(workerId, { ownerId: recoveryOwner, ttlMs: 30_000 }, runtime.config.scope));
+    const settle = before.cancellationRequested && (!worker || ownedWorker);
+    try {
+      const result = await locked(runtime, input.groupId, async (root, owner) => {
+        const live = readRecord(root);
+        if (settle && live.cancellationRequested) await settleRequestedCancellations(runtime, live);
+        return persistSnapshot(runtime, root, owner);
+      });
+      return result;
+    } finally {
+      if (ownedWorker) await runtime.store.releaseLease!(workerId, recoveryOwner, runtime.config.scope);
+      await finalizeIdleWorker(runtime, input.groupId);
+    }
   }
   // The SDK fences each running child. Concurrent group callers may receive a
   // busy admission error; retrying preserves member IDs and terminal receipts.
@@ -268,6 +283,7 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
       let revision = root.revision ?? 0;
       await runtime.store.save({ ...root, revision: revision + 1, updatedAt: Date.now() }, { expectedRevision: revision, leaseOwnerId: owner });
       root.revision = ++revision;
+      if (live.cancellationRequested) await settleRequestedCancellations(runtime, live);
       const result = await persistSnapshot(runtime, root, owner);
       projectedStatus = result.status === "partial" ? "failed" : result.status === "blocked" ? "suspended" : result.status;
       return result;
@@ -282,6 +298,24 @@ export async function runHarnessDurableReviewGroup(runtime: Runtime, input: { gr
           ? projectedStatus : root && terminal(root) ? root.status : "suspended", input.groupId);
       }
     } finally { await runtime.store.releaseLease!(workerId, ownerId, runtime.config.scope); }
+  }
+}
+
+/** Core 1.34 returns an in-flight child as cancel_requested after its model call.
+ * Once this worker has finished, that request is a settled cancellation. */
+async function settleRequestedCancellations(runtime: Runtime, record: Record) {
+  for (const member of record.members) {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const child = await runtime.store.load(member.runId, runtime.config.scope);
+      if (!child || child.status !== "cancel_requested") break;
+      try {
+        await runtime.store.save({ ...child, revision: (child.revision ?? 0) + 1, status: "cancelled",
+          cancelledAt: child.cancelledAt ?? Date.now(), updatedAt: Date.now() }, { expectedRevision: child.revision ?? 0 });
+        break;
+      } catch (error) {
+        if (!(error instanceof Error) || error.name !== "ConflictError" || attempt === 7) throw error;
+      }
+    }
   }
 }
 
