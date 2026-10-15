@@ -85,6 +85,10 @@
     "./mcp/stdio/v1": {
       "types": "./dist/engine/mcp-stdio-v1.d.ts",
       "import": "./dist/engine/mcp-stdio-v1.js"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "import": "./dist/audit/index.js"
     }
   },
   "files": [
@@ -140,14 +144,15 @@
     "docs/fixtures/mcp-stdio-contract-v1.json",
     "docs/PROJECT_MEMORY.md",
     "docs/MINIMUM_TASK_AUTHORITY.md",
-    "docs/MINIMUM_OFFLINE_EVALS.md"
+    "docs/MINIMUM_OFFLINE_EVALS.md",
+    "docs/AUDIT_PACK.md"
   ],
   "scripts": {
     "models:check": "bun run scripts/validate-model-catalog.ts",
     "models:import": "bun run scripts/generate-console-models.ts",
     "dev": "bun run build && node --env-file-if-exists=.env dist/cli.js",
     "start": "node dist/cli.js",
-    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/service-cli.ts ./src/acp-cli.ts ./src/engine/index.ts ./src/engine/protocol.ts ./src/engine/client.ts ./src/engine/service.ts ./src/engine/acp.ts ./src/engine/models.ts ./src/engine/desktop-state-v1.ts ./src/engine/desktop-providers-v1.ts ./src/compat/code-support.ts ./src/engine/mcp-stdio-v1.ts --root ./src --outdir ./dist --target node --packages external --splitting && bun build ./src/engine/protocol.ts ./src/engine/models.ts --outdir ./dist/engine --target browser --packages external && bun build ./src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
+    "build": "bun run scripts/clean-dist.ts && bun build ./src/index.ts ./src/service-cli.ts ./src/acp-cli.ts ./src/audit/index.ts ./src/engine/index.ts ./src/engine/protocol.ts ./src/engine/client.ts ./src/engine/service.ts ./src/engine/acp.ts ./src/engine/models.ts ./src/engine/desktop-state-v1.ts ./src/engine/desktop-providers-v1.ts ./src/compat/code-support.ts ./src/engine/mcp-stdio-v1.ts --root ./src --outdir ./dist --target node --packages external --splitting && bun build ./src/engine/protocol.ts ./src/engine/models.ts --outdir ./dist/engine --target browser --packages external && bun build ./src/cli-entry.ts --outdir ./dist --target node --packages external --splitting && mv ./dist/cli-entry.js ./dist/cli.js && cp ./dist/cli.js ./dist/zhx.js && bun build ./scripts/verify-historical-migrations.ts --outfile ./dist/verify-historical-migrations.js --target node --packages external && bun build ./scripts/hostile-repository-demo.ts --outfile ./dist/hostile-repository-demo.js --target node --packages external && tsc --emitDeclarationOnly",
     "prepack": "bun run build",
     "architecture:check": "bun run scripts/check-architecture.ts",
     "docs:check": "bun run scripts/check-docs.ts",

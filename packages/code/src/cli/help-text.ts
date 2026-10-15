@@ -29,6 +29,8 @@ Advanced operations and automation:
   zhivex-code state status
   zhivex-code state export <backup.json>
   zhivex-code state import <backup.json> [--apply]
+  zhivex-code export-audit <task-id> --out <directory>
+  zhivex-code verify-audit --out <directory>
 
 Legacy Harness installations retain their own zhx and zhivex-harness commands.
 
@@ -108,6 +110,8 @@ Options (automation and advanced configuration):
   --cascade                      Cancel a run and its known child runs
   --final                        Record terminal cancellation immediately
   --apply                        Apply a validated state import (default: dry-run)
+  --out <directory>              Audit pack directory (export-audit, verify-audit)
+  --signing-key-file <path>      HMAC key file for an audit pack
   -h, --help                     Show this help
   -v, --version                  Show the version
 

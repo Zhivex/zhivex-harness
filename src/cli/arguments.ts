@@ -13,7 +13,7 @@ import { HarnessError } from "../runtime/errors.js";
 import { CLI_OPTION_DEFINITIONS, validateCliCommandOptions, type CliCommandOptionContractKey } from "./cli-options.js";
 import { validateCliProfileName } from "./cli-profiles.js";
 
-export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "policy", "resume", "runs", "sessions", "checkpoints", "changes", "state", "memory", "help", "version"] as const;
+export const CLI_COMMANDS = ["init", "run", "review", "chat", "providers", "doctor", "policy", "resume", "runs", "sessions", "checkpoints", "changes", "state", "memory", "export-audit", "verify-audit", "help", "version"] as const;
 
 export const CLI_RUNS_COMMANDS = ["list", "inspect", "cancel", "cleanup", "export", "report"] as const;
 
@@ -135,6 +135,8 @@ export interface CliOptions {
   approve?: boolean;
   json: boolean;
   jsonl: boolean;
+  auditOut?: string;
+  signingKeyFile?: string;
 }
 
 const COMMANDS = new Set<Command>(CLI_COMMANDS);
@@ -659,6 +661,14 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
       case "-v":
         options.command = "version";
         break;
+      case "--out":
+        options.auditOut = optionValue(argv, index, argument);
+        index += 1;
+        break;
+      case "--signing-key-file":
+        options.signingKeyFile = optionValue(argv, index, argument);
+        index += 1;
+        break;
       default:
         if (argument.startsWith("-")) {
           throw new CliUsageError(`Unknown option: ${argument}`);
@@ -781,6 +791,19 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     if (positional.length > 0) {
       throw new CliUsageError(`state ${stateCommand} received unexpected positional arguments.`);
     }
+  } else if (options.command === "export-audit" || options.command === "verify-audit") {
+    const allowed = new Set(["--workspace", "--state-dir", "--store", "--tenant", "--user", "--namespace", "--json", ...(options.command === "export-audit" ? ["--session"] : [])]);
+    for (const name of optionCounts.keys()) {
+      if (!allowed.has(name)) throw new CliUsageError(`${name} is not supported by ${options.command}.`);
+    }
+    if (!options.auditOut) throw new CliUsageError(`${options.command} requires --out <path>.`);
+    if (options.command === "export-audit") {
+      const taskId = positional.shift();
+      if (!taskId) throw new CliUsageError("export-audit requires a task id.");
+      options.runId = taskId;
+    }
+    if (positional.length > 0) throw new CliUsageError(`${options.command} received unexpected positional arguments.`);
+    return options;
   } else if (options.command === "run" || options.command === "review") {
     if (positional.includes("-") && positional.length !== 1) {
       throw new CliUsageError("Use - alone to read the task from stdin, or provide a task argument.");
@@ -793,6 +816,9 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
     throw new CliUsageError(`${options.command} does not accept positional arguments.`);
   }
 
+  if (options.auditOut || options.signingKeyFile) {
+    throw new CliUsageError("--out and --signing-key-file are supported only by export-audit and verify-audit.");
+  }
   if (options.implicitCommand && options.command === "run" && !options.prompt &&
       (options.continueSession || options.sessionId) && !options.json && !options.jsonl) options.command = "chat";
 

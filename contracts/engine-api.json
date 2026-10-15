@@ -3066,6 +3066,62 @@
           "tier": "experimental"
         }
       ]
+    },
+    "./audit": {
+      "source": "src/audit/index.ts",
+      "environment": "node",
+      "exports": [
+        {
+          "name": "AUDIT_PACK_SCHEMA_VERSION",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "auditPackManifestSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "canonicalizeAuditPackManifest",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "exportHarnessAuditPack",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "loadAuditSigningKey",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "verifyHarnessAuditPack",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "AuditPackExportOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AuditPackManifest",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AuditPackVerification",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "AuditPackVerifyOptions",
+          "kind": "type",
+          "tier": "experimental"
+        }
+      ]
     }
   }
 }

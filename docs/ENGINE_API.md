@@ -18,6 +18,7 @@ expect the new entrypoints to exist.
 | `@zhivex-ai/harness/code-support` | Named host helpers used by Code, including a read-only SQLite diagnostic projection | Node |
 | `@zhivex-ai/harness/models` | Beta catalog schemas, bundled metadata, model selection and display helpers; no host loading | Browser or Node |
 | `@zhivex-ai/harness/mcp/stdio/v1` | Experimental host admission, isolated MCP sessions, recovery and reconciliation; see [host flow](MCP_STDIO.md) | Node or Bun |
+| `@zhivex-ai/harness/audit` | Experimental audit pack export and HMAC verification; see [audit pack](AUDIT_PACK.md) | Node |
 | `@zhivex-ai/harness/desktop/v1/state` | Versioned host-only snapshot, validation, safe-file-read and lease handoff operations for Desktop updates | Node |
 
 [`contracts/engine-api.json`](../contracts/engine-api.json) enumerates every named

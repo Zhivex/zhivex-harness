@@ -100,6 +100,12 @@ export const main = async (argv = process.argv.slice(2)) => {
     case "state":
       await manageState(options);
       return;
+    case "export-audit":
+    case "verify-audit": {
+      const { auditPackCli } = await import("./cli/audit-pack.js");
+      await auditPackCli(options);
+      return;
+    }
     case "run":
       await runOnce(options);
       return;
