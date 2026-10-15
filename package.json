@@ -209,13 +209,13 @@
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.11.0",
-    "@zhivex-ai/anthropic": "0.13.2",
+    "@zhivex-ai/anthropic": "0.14.0",
     "@zhivex-ai/core": "1.33.0",
     "@zhivex-ai/gemini": "0.13.0",
     "@zhivex-ai/meta": "0.2.9",
-    "@zhivex-ai/openai": "0.14.1",
+    "@zhivex-ai/openai": "0.16.0",
     "@zhivex-ai/qwen": "0.16.4",
-    "@zhivex-ai/vertex": "1.2.4",
+    "@zhivex-ai/vertex": "1.2.7",
     "google-auth-library": "11.1.0",
     "zod": "4.6.5"
   },
@@ -224,7 +224,7 @@
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.8.0",
-    "@modelcontextprotocol/server": "2.2.0",
+    "@modelcontextprotocol/server": "2.3.1",
     "@types/bun": "1.4.2",
     "@types/node": "^26.6.5",
     "typescript": "7.0.2",
@@ -236,6 +236,6 @@
   },
   "packageManager": "bun@1.4.0",
   "optionalDependencies": {
-    "@napi-rs/keyring": "2.1.0"
+    "@napi-rs/keyring": "2.1.1"
   }
 }

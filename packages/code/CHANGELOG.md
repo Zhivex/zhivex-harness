@@ -2,7 +2,7 @@
 
 ## 0.3.1 - 2026-10-15
 
-- Pin exactly Harness 1.4.1 and Core 1.33.0. Publish only after that engine is verified on `latest`. Published Code 0.3.0 is `latest`. Published Code 0.3.0-rc.8 remains `next`.
+- Pin exactly Harness 1.4.1 and Core 1.33.0. Optional `@napi-rs/keyring` moves from 2.1.0 to 2.1.1; a missing entry still reads as absent. Publish only after that engine is verified on `latest`. Published Code 0.3.0 is `latest`. Published Code 0.3.0-rc.8 remains `next`.
 - Keep the composer footer readable below 48 columns, say `rejected by you` when an operation is rejected, check the Node engine before startup, and describe command reviews as commands.
 - The local browser retries reconciliation when a command finishes during reconnect, and its limits copy is English.
 - The matched engine's Vertex transient-failure retry and explicit monetary output caps shipped in Harness 1.4.0 / Code 0.3.0. This patch does not add them.

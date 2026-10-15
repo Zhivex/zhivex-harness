@@ -17,10 +17,10 @@ operation was rejected, shows web limits in English, hides the Node 22 SQLite
 warning, checks the Node engine at startup, and describes command reviews as
 commands. A local web reconnect that overlaps a finishing command reads durable
 state again so reconciliation can enable the next session. Core is 1.33.0.
-Other SDK pins stay Agents 1.11.0, Anthropic 0.13.2, OpenAI 0.14.1, Qwen 0.16.4,
-Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0.
-Vertex 1.2.7 is not included: its changelog is dependency updates only, and the
-bump fails the coordinated Vertex 1.2.4 pin. Maintenance updates are ACP SDK
+Anthropic is 0.14.0, OpenAI is 0.16.0 and Vertex is 1.2.7, because Vertex 1.2.7
+requires those OpenAI and Anthropic ranges. Agents stays 1.11.0, Qwen 0.16.4,
+Meta 0.2.9 and Gemini 0.13.0. The development MCP server package is 2.3.1.
+Optional `@napi-rs/keyring` is 2.1.1 in Harness and Code. Maintenance updates are ACP SDK
 1.8.0, `@types/node` 26.6.5, CodeQL Action 4.38.3, setup-node 7.1.0,
 upload-artifact 7.0.2 and download-artifact 8.0.2. Dependabot updates for
 private Desktop are paused.

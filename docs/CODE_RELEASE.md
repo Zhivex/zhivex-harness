@@ -10,9 +10,10 @@ Code `0.3.0` / Harness `1.4.0`. This patch keeps the narrow composer readable,
 says when you rejected an operation, checks Node before startup, describes
 command reviews as commands, and shows web limits in English. The local browser
 retries reconciliation when a command finishes during reconnect. Core moves to
-1.33.0 for private-host checks. Other SDK pins, approval and transport
-protections, and provider/API tiers stay as they are on main, including Vertex
-1.2.4.
+1.33.0 for private-host checks. Anthropic 0.14.0, OpenAI 0.16.0 and Vertex 1.2.7
+replace the previous adapter pins; Agents, Qwen, Meta and Gemini stay as they
+are on main. Optional `@napi-rs/keyring` is 2.1.1. Approval and transport
+protections and provider/API tiers stay unchanged.
 Desktop stays private alpha with the same engine binding. The 1.4.0 preparation
 below remains historical; its evidence does not certify or authorize `0.3.1`.
 
