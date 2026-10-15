@@ -1,10 +1,13 @@
 # Code web tasks — CODE-HU-05
 
 Canonical story: https://app.notion.com/p/3ef777b104f681309854c8f1e73803f1.
-Stacked source base: HAR-HU-73 / PR194, commit
-`408e141796b5dd1aaa286af09e6851a517725608`. This work extends the existing
-PR167 browser in `packages/web`, packaged by `packages/code`; it does not create
-a second client, an IDE, a file tree, an SDK patch or a release.
+This screen sits on the experimental task evidence read (`task.get` /
+`task.projection.v1`) and the experimental task controls (`task.control.v1`).
+It extends the existing browser in `packages/web`, packaged by `packages/code`.
+It does not create a second client, an IDE, a file tree, an SDK patch, or a release.
+An operator reviews the host evidence and explicitly accepts that snapshot before
+treating the delivery as acknowledged. Continuation is a separate confirmed
+action on a fresh review ticket; model prose and a completed run are not acceptance.
 
 ## Operator flow
 

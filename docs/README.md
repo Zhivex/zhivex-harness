@@ -23,7 +23,9 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [CLI reference](CLI.md): command options, JSON/JSONL and exit codes.
 - [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
 - [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).
-- [Local service](LOCAL_SERVICE.md) and [client protocol](CLIENT_PROTOCOL.md).
+- [Local service](LOCAL_SERVICE.md) and [client protocol](CLIENT_PROTOCOL.md), including the experimental [task evidence read](CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73).
+- [Code web tasks](CODE_WEB_TASKS.md): operator review and explicit snapshot acceptance before continuation.
+- [Installed recovery laboratory](TASK_RECOVERY_LAB.md): deterministic failure and recovery fixtures used by the evidence read.
 - [Experimental ACP text sessions](ACP.md) and [workspace checkpoint restoration](WORKSPACE_CHECKPOINTS.md).
 - [Durable operations](DURABLE_OPERATIONS.md), [repository editing](REPOSITORY_EDITING.md) and [change envelopes](CHANGE_ENVELOPES.md).
 - [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).

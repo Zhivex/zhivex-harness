@@ -1,10 +1,11 @@
 # HAR-HU-75: installed failure laboratory, phase one
 
 This is a deterministic **service/engine/receipts laboratory**, not acceptance of
-HAR-HU-75 as a whole. HAR73's public task projection and CODE05's task review UI
-are explicitly pending. Existing Code CLI/web gates remain regression gates;
-they cannot certify a panel that does not exist yet. CODE-HU-03/RC1 evidence keeps
-its historical identity and is not reopened by this laboratory.
+HAR-HU-75 as a whole. The task evidence read and the Code web review screen have
+their own guides and tests. This laboratory does not certify that screen, a human
+pilot, or semantic quality. Existing Code CLI and web gates remain regression
+gates. CODE-HU-03/RC1 evidence keeps its historical identity and is not reopened
+by this laboratory.
 
 Scope comes from [HAR61](https://app.notion.com/p/3ef777b104f6814db523e89f5e1133b9)
 and [HAR75](https://app.notion.com/p/3ef777b104f681acb4a4ed3d812b248a). The laboratory
@@ -36,7 +37,10 @@ Timeout/output overflow kills the owned process group and reports cleanup as
 **unconfirmed**: native commands can create separate groups, so forced-stop
 cleanup is not certified. A failed report never passes the laboratory. The
 optional fifth argument can shorten the 90000 ms consumer timeout for a local
-negative control; it cannot extend that limit. It verifies that Code resolves the identical installed
+negative control; it cannot extend that limit. An optional sixth argument
+selects `recovery` (default) or `projection`. The projection profile runs
+`scripts/task-projection-consumer.mjs` against `evaluations/task-projection.json`
+on the same installed packages. It verifies that Code resolves the identical installed
 engine used by the service/receipt consumer. Source SHA, clean state, fixture and
 consumer digests, artifact hashes, dependency/runtime versions and cleanup are
 recorded. Source/pack binding requires the builds and packs above; hashes alone
