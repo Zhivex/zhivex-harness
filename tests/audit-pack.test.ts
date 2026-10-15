@@ -7,6 +7,7 @@ import type { AgentRunState, AgentRunStore } from "@zhivex-ai/core";
 import { APPROVAL_HISTORY_KEY } from "../src/approvals/approval-history.js";
 import { canonicalizeAuditPackManifest, exportHarnessAuditPack, loadAuditSigningKey, verifyHarnessAuditPack } from "../src/audit/index.js";
 import { parseCliArgs } from "../src/cli/arguments.js";
+import { auditPackCli } from "../src/cli/audit-pack.js";
 import { exportHarnessGovernanceReport } from "../src/persistence/governance-report.js";
 import { TASK_BUDGET_ACCOUNT_KEY, TaskBudget } from "../src/runtime/task-budget.js";
 import { USAGE_LEDGER_KEY } from "../src/runtime/usage-ledger.js";
@@ -99,6 +100,119 @@ test("a guided task id packs every recorded run and a signed escape path is stil
     await expect(verifyHarnessAuditPack({ directory, signingKey: key })).rejects.toThrow("AUDIT_PACK_MANIFEST_INVALID");
     expect(createHash("sha256").update(key).digest("hex").startsWith(manifest.signature.keyId)).toBe(true);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("approvals.json includes every page the governance report includes", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "audit-pack-"));
+  const decisions = Array.from({ length: 26 }, (_, index) => ({
+    approvalId: `approval-${index}`, digest: "b".repeat(64), name: "run_check", approved: false, decidedAt: index, reviewedRevision: 1
+  }));
+  const directory = path.join(root, "pack");
+  try {
+    await exportHarnessAuditPack({
+      store: memory([state({ metadata: { [APPROVAL_HISTORY_KEY]: decisions } })]),
+      subjectId: "run-1", directory, signingKey: key, now: 1_700_000_000_000
+    });
+    const approvals = JSON.parse(await readFile(path.join(directory, "approvals.json"), "utf8"));
+    const report = JSON.parse(await readFile(path.join(directory, "governance-report.json"), "utf8"));
+    expect(approvals.availability).toBe("recorded");
+    expect(approvals.decisions).toHaveLength(26);
+    expect(approvals.decisions[25].approvalId).toBe("approval-25");
+    expect(report.runs[0].approvals.items).toHaveLength(26);
+    expect(await verifyHarnessAuditPack({ directory, signingKey: key })).toMatchObject({ fileCount: 5 });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("export refuses to seal a run or journal that changes before signing", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "audit-pack-"));
+  const changedState = (): AgentRunStore => {
+    let loads = 0;
+    return {
+      load: async id => {
+        if (id !== "run-1") return undefined;
+        loads += 1;
+        return state({ revision: loads === 1 ? 1 : 2 });
+      },
+      save: async () => { throw new Error("EXPORT_MUST_NOT_WRITE"); }
+    };
+  };
+  const changedJournal = (): AgentRunStore => {
+    let lists = 0;
+    return {
+      load: async id => id === "run-1" ? state() : undefined,
+      listToolCalls: async () => {
+        lists += 1;
+        return lists === 1 ? [] : [{ runId: "run-1", revision: 9 } as never];
+      },
+      save: async () => { throw new Error("EXPORT_MUST_NOT_WRITE"); }
+    };
+  };
+  try {
+    await expect(exportHarnessAuditPack({ store: changedState(), subjectId: "run-1", directory: path.join(root, "state"), signingKey: key, now: 1_700_000_000_000 })).rejects.toThrow("AUDIT_PACK_STATE_CHANGED");
+    await expect(readFile(path.join(root, "state", "manifest.json"))).rejects.toThrow();
+    await expect(exportHarnessAuditPack({ store: changedJournal(), subjectId: "run-1", directory: path.join(root, "journal"), signingKey: key, now: 1_700_000_000_000 })).rejects.toThrow("AUDIT_PACK_STATE_CHANGED");
+    await expect(readFile(path.join(root, "journal", "manifest.json"))).rejects.toThrow();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("the 32 MiB limit includes the manifest, so an exported pack verifies", async () => {
+  const limit = 32 * 1024 * 1024;
+  const root = await mkdtemp(path.join(tmpdir(), "audit-pack-"));
+  const scope = { tenantId: "local", namespace: "audit-limit" };
+  const taskId = "limit-task";
+  const runIds = ["r1", "r2", "r3", "r4", "r5"];
+  const sessionFor = (pads: number[]) => ({
+    id: "ses",
+    index: { get: async () => ({ sessionId: "ses", revision: 1, runs: runIds.map(runId => ({ runId })) }) },
+    history: { replay: (_id: string, after = 0) => after > 0
+      ? { schemaVersion: 1 as const, cursorExpired: false, hasMore: false, nextCursor: runIds.length, events: [] }
+      : { schemaVersion: 1 as const, cursorExpired: false, hasMore: false, nextCursor: runIds.length, events: runIds.map((runId, index) => ({ sessionId: "ses", runId, sequence: index + 1, at: index, activity: { type: "note", text: "x".repeat(pads[index] ?? 0) } })) } }
+  });
+  const packStore = () => {
+    const accountId = TaskBudget.accountId(scope, taskId);
+    const account = state({ runId: accountId, scope, metadata: { [TASK_BUDGET_ACCOUNT_KEY]: { schemaVersion: 2, taskId, runs: runIds, policy: {}, admissionsClosed: false } } });
+    return memory([account, ...runIds.map(runId => state({ runId, scope }))]);
+  };
+  const exportPad = (pads: number[], directory: string) => exportHarnessAuditPack({
+    store: packStore(), scope, subjectId: taskId, directory, signingKey: key, now: 1_700_000_000_000, session: sessionFor(pads) as never
+  });
+  try {
+    const probe = path.join(root, "probe");
+    await exportPad(runIds.map(() => 1000), probe);
+    const manifest = JSON.parse(await readFile(path.join(probe, "manifest.json"), "utf8")) as { files: Array<{ bytes: number }> };
+    const payload = manifest.files.reduce((sum, file) => sum + file.bytes, 0);
+    const manifestBytes = (await readFile(path.join(probe, "manifest.json"))).byteLength;
+    const extra = limit + 1 - (payload + manifestBytes);
+    expect(extra).toBeGreaterThan(0);
+    expect(payload + extra).toBeLessThanOrEqual(limit);
+    const over = runIds.map((_, index) => 1000 + Math.floor(extra / runIds.length) + (index < extra % runIds.length ? 1 : 0));
+    await expect(exportPad(over, path.join(root, "over"))).rejects.toThrow("AUDIT_PACK_LIMIT");
+    const under = over.map((pad, index) => pad - (index === 0 ? 8192 : 0));
+    const underDir = path.join(root, "under");
+    await exportPad(under, underDir);
+    expect(await verifyHarnessAuditPack({ directory: underDir, signingKey: key })).toMatchObject({ subject: { kind: "task", id: taskId } });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("verify-audit does not resolve runtime configuration", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "audit-pack-"));
+  const directory = path.join(root, "pack");
+  const previousStore = process.env.ZHIVEX_HARNESS_STORE;
+  const previousKey = process.env.ZHIVEX_AUDIT_SIGNING_KEY;
+  const signing = "k".repeat(32);
+  process.env.ZHIVEX_AUDIT_SIGNING_KEY = signing;
+  try {
+    await exportHarnessAuditPack({ store: memory([state()]), subjectId: "run-1", directory, signingKey: Buffer.from(signing), now: 1_700_000_000_000 });
+    process.env.ZHIVEX_HARNESS_STORE = "not-a-store";
+    await expect(auditPackCli(parseCliArgs(["verify-audit", "--out", directory, "--json"]))).resolves.toMatchObject({ fileCount: 5 });
+    await expect(auditPackCli(parseCliArgs(["export-audit", "run-1", "--out", path.join(root, "next")]))).rejects.toThrow("storeBackend must be one of");
+  } finally {
+    if (previousStore === undefined) delete process.env.ZHIVEX_HARNESS_STORE;
+    else process.env.ZHIVEX_HARNESS_STORE = previousStore;
+    if (previousKey === undefined) delete process.env.ZHIVEX_AUDIT_SIGNING_KEY;
+    else process.env.ZHIVEX_AUDIT_SIGNING_KEY = previousKey;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("CLI accepts export-audit and verify-audit without widening stable option contracts", () => {

@@ -21,9 +21,8 @@ const signingKey = async (file: string | undefined) => {
   }
 };
 
-/** Same experimental pack as Harness, using the pinned engine's audit subpath. */
+/** Same experimental pack as Harness, using the pinned engine's audit subpath. Verification does not resolve runtime configuration. */
 export async function auditPackCli(options: CliOptions) {
-  const config = resolveHarnessConfig(options);
   const key = await signingKey(options.signingKeyFile);
   if (options.command === "verify-audit") {
     const result = await verifyHarnessAuditPack({ directory: path.resolve(options.auditOut!), signingKey: key });
@@ -32,6 +31,7 @@ export async function auditPackCli(options: CliOptions) {
       : `Audit pack verified: ${result.subject.kind} ${result.subject.id} (${result.fileCount} files, key ${result.keyId}).\n`);
     return result;
   }
+  const config = resolveHarnessConfig(options);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const persistence = await openHarnessPersistence(config);
   let index: Awaited<ReturnType<typeof openCliSessionStore>> | undefined;

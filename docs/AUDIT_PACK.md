@@ -25,16 +25,24 @@ directory. A guided task id produces one directory whose member runs live under
 | --- | --- |
 | `manifest.json` | Hashes and the HMAC. Not hashed inside itself. |
 | `governance-report.json` | `exportHarnessGovernanceReport`. Pseudonymous tree projection. |
-| `approvals.json` | `approvalDecisionViews`, then the same email and common-token redaction policy used by the activity journal. |
+| `approvals.json` | Every `approvalDecisionViews` page, up to the governance report's 512-record ceiling, then the same email and common-token redaction policy used by the activity journal. |
 | `policy-decisions.json` | Activity events parsed with `harnessPolicyDecisionEventSchema`. |
 | `redaction.jsonl` | The durable redacted activity journal for that run. This is not a second redactor and not a list of removed tokens. |
 | `usage-ledger.json` | `inspectUsageLedger` on the run metadata, plus `UsageLedger.summary` when the operations database can be opened. |
 
 The governance report already walks child runs. Approval, policy, redaction and
-usage files describe the selected run, or each run on the task account. Export
-does not call a model, execute a tool, or rewrite run state. Opening the usage
-ledger uses the existing `UsageLedger.open` path, which ensures its transport
-tables exist and does not append call rows. Estimates are not invoices.
+usage files describe the selected run, or each run on the task account. Those
+files and the governance report are taken from one captured snapshot of each
+selected run and its journal. If that snapshot, or the task account that named
+the runs, changes before the manifest is signed, export fails with
+`AUDIT_PACK_STATE_CHANGED` and writes nothing. Export does not call a model,
+execute a tool, or rewrite run state. Opening the usage ledger uses the existing
+`UsageLedger.open` path, which ensures its transport tables exist and does not
+append call rows. Estimates are not invoices.
+
+Each payload file is at most 8 MiB. The manifest plus every payload file is at
+most 32 MiB. Verification uses the same total, so a directory that exports can
+be verified. A larger directory fails with `AUDIT_PACK_LIMIT`.
 
 Pass `--session <sessionId>` to include the retained activity journal. Without
 it, the redaction log and policy file say `unavailable`. Retention and truncation
@@ -86,5 +94,6 @@ zhx verify-audit --out <directory> [--json]
 
 `zhivex-code` accepts the same two commands. Locator flags match other state
 commands. `--json` prints the manifest or the verification document. The
-directory must not already exist for export. Verification reads it and does not
-need the workspace.
+directory must not already exist for export. Verification reads the directory
+and the signing key only. It does not resolve provider, store, or budget
+configuration, and it does not open the workspace.

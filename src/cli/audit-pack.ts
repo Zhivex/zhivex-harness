@@ -22,8 +22,8 @@ const signingKey = async (file: string | undefined) => {
   }
 };
 
-/** Experimental operator command. It reads durable state and writes a new directory. */
-export async function auditPackCli(options: CliOptions, config: HarnessConfig = resolveHarnessConfig(options)) {
+/** Experimental operator command. Verification reads the pack and key only. Export reads durable state and writes a new directory. */
+export async function auditPackCli(options: CliOptions) {
   const key = await signingKey(options.signingKeyFile);
   if (options.command === "verify-audit") {
     const result = await verifyHarnessAuditPack({ directory: path.resolve(options.auditOut!), signingKey: key });
@@ -32,6 +32,7 @@ export async function auditPackCli(options: CliOptions, config: HarnessConfig = 
       : `Audit pack verified: ${result.subject.kind} ${result.subject.id} (${result.fileCount} files, key ${result.keyId}).\n`);
     return result;
   }
+  const config: HarnessConfig = resolveHarnessConfig(options);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const persistence = await openHarnessPersistence(config);
   let index: Awaited<ReturnType<typeof openCliSessionStore>> | undefined;

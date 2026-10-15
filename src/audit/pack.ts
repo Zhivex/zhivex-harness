@@ -100,10 +100,45 @@ const runSegment = (runId: string, used: Set<string>) => {
   return name;
 };
 
+type CapturedRun = { state: AgentRunState; journal: AgentToolCallJournalEntry[] | undefined };
+
 async function loadRun(store: AgentRunStore, scope: AgentStoreScope | undefined, runId: string) {
   const state = await store.load(runId, scope);
   if (!state || state.runId !== runId || !sameScope(state, scope)) fail("AUDIT_PACK_SUBJECT_UNAVAILABLE");
   return structuredClone(state);
+}
+
+async function readJournal(store: AgentRunStore, scope: AgentStoreScope | undefined, runId: string) {
+  if (!store.listToolCalls) return undefined;
+  const listed = await store.listToolCalls(runId, scope);
+  return listed ? structuredClone(listed) : undefined;
+}
+
+async function captureRun(store: AgentRunStore, scope: AgentStoreScope | undefined, runId: string): Promise<CapturedRun> {
+  return { state: await loadRun(store, scope, runId), journal: await readJournal(store, scope, runId) };
+}
+
+const sameJson = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
+
+async function assertCaptured(store: AgentRunStore, scope: AgentStoreScope | undefined, captured: CapturedRun) {
+  const current = await store.load(captured.state.runId, scope);
+  const currentJournal = store.listToolCalls ? await store.listToolCalls(captured.state.runId, scope) : undefined;
+  if (!current || !sameJson(current, captured.state) || !sameJson(currentJournal, captured.journal)) fail("AUDIT_PACK_STATE_CHANGED");
+}
+
+function snapshotStore(real: AgentRunStore, captured: ReadonlyMap<string, CapturedRun>): AgentRunStore {
+  return {
+    async load(id, scope) {
+      const snap = captured.get(id);
+      if (snap) return structuredClone(snap.state);
+      return real.load(id, scope);
+    },
+    ...(real.listToolCalls ? { async listToolCalls(id, scope) {
+      const snap = captured.get(id);
+      if (snap) return snap.journal ? structuredClone(snap.journal) : undefined;
+      return real.listToolCalls!(id, scope);
+    } } : {})
+  } as AgentRunStore;
 }
 
 async function resolveSubject(store: AgentRunStore, scope: AgentStoreScope | undefined, subjectId: string) {
@@ -114,20 +149,24 @@ async function resolveSubject(store: AgentRunStore, scope: AgentStoreScope | und
   };
   const directAccount = direct && direct.runId === subjectId && sameScope(direct, scope) ? accountOf(direct) : undefined;
   if (direct && direct.runId === subjectId && sameScope(direct, scope) && !directAccount) {
-    return { kind: "run" as const, id: subjectId, runs: [structuredClone(direct)] };
+    return { kind: "run" as const, id: subjectId, runs: [{ state: structuredClone(direct), journal: await readJournal(store, scope, subjectId) }], accountState: undefined as AgentRunState | undefined };
   }
   let account = directAccount;
   let taskId = account?.taskId;
+  let accountState = direct && directAccount ? structuredClone(direct) : undefined;
   if (!account && scope) {
-    const accountState = await store.load(TaskBudget.accountId(scope, subjectId), scope);
-    account = accountState && sameScope(accountState, scope) ? accountOf(accountState) : undefined;
-    if (account && account.taskId !== subjectId) account = undefined;
-    taskId = account?.taskId;
+    const loaded = await store.load(TaskBudget.accountId(scope, subjectId), scope);
+    const parsed = loaded && sameScope(loaded, scope) ? accountOf(loaded) : undefined;
+    if (parsed && parsed.taskId === subjectId) {
+      account = parsed;
+      taskId = parsed.taskId;
+      accountState = structuredClone(loaded!);
+    }
   }
-  if (!account || !taskId || account.runs.length === 0) fail("AUDIT_PACK_SUBJECT_UNAVAILABLE");
+  if (!account || !taskId || !accountState || account.runs.length === 0) fail("AUDIT_PACK_SUBJECT_UNAVAILABLE");
   const runs = [];
-  for (const runId of account.runs) runs.push(await loadRun(store, scope, runId));
-  return { kind: "task" as const, id: taskId, runs };
+  for (const runId of account.runs) runs.push(await captureRun(store, scope, runId));
+  return { kind: "task" as const, id: taskId, runs, accountState };
 }
 
 function collectActivity(session: GovernanceSessionSource | undefined, runIds: ReadonlySet<string>) {
@@ -156,12 +195,22 @@ function collectActivity(session: GovernanceSessionSource | undefined, runIds: R
   return { availability: truncated || retention === "expired" ? "incomplete" as const : "recorded" as const, truncated, retention, events };
 }
 
-async function componentFiles(state: AgentRunState, store: AgentRunStore, scope: AgentStoreScope | undefined, session: GovernanceSessionSource | undefined, activity: ReturnType<typeof collectActivity>, ledger: UsageLedger | undefined) {
-  const journal = await store.listToolCalls?.(state.runId, scope);
-  const rows = journal ? structuredClone(journal).filter((entry: AgentToolCallJournalEntry) => entry.runId === state.runId) : undefined;
+function approvalPages(state: AgentRunState, journal: readonly AgentToolCallJournalEntry[]) {
+  const decisions = [];
+  for (let offset = 0; offset < 512; offset += 25) {
+    const rows = approvalDecisionViews(state, journal, offset);
+    decisions.push(...rows);
+    if (rows.length < 25) break;
+  }
+  return decisions;
+}
+
+async function componentFiles(captured: CapturedRun, store: AgentRunStore, scope: AgentStoreScope | undefined, session: GovernanceSessionSource | undefined, activity: ReturnType<typeof collectActivity>, ledger: UsageLedger | undefined) {
+  const state = captured.state;
+  const rows = captured.journal ?? [];
   let approvals: { schemaVersion: 1; kind: "zhivex-audit-approvals"; runId: string; availability: "recorded" | "unavailable" | "invalid"; decisions: unknown[] };
   try {
-    const decisions = rows ? approvalDecisionViews(state, rows) : approvalDecisionViews(state, []);
+    const decisions = approvalPages(state, rows);
     approvals = { schemaVersion: 1, kind: "zhivex-audit-approvals", runId: state.runId, availability: state.metadata?.[APPROVAL_HISTORY_KEY] === undefined && decisions.length === 0 ? "unavailable" : "recorded", decisions: redactValue(decisions) as unknown[] };
   } catch {
     approvals = { schemaVersion: 1, kind: "zhivex-audit-approvals", runId: state.runId, availability: "invalid", decisions: [] };
@@ -247,7 +296,7 @@ export async function loadAuditSigningKey(input: { file?: string; value?: string
 export async function exportHarnessAuditPack(options: AuditPackExportOptions): Promise<AuditPackManifest> {
   assertKey(options.signingKey);
   const subject = await resolveSubject(options.store, options.scope, options.subjectId);
-  const runIds = new Set(subject.runs.map(run => run.runId));
+  const runIds = new Set(subject.runs.map(run => run.state.runId));
   const activity = collectActivity(options.session, runIds);
   let ledger: UsageLedger | undefined;
   if (options.config) {
@@ -257,10 +306,11 @@ export async function exportHarnessAuditPack(options: AuditPackExportOptions): P
   try {
     const files = new Map<string, Buffer>();
     const segments = new Set<string>();
+    const frozen = snapshotStore(options.store, new Map(subject.runs.map(run => [run.state.runId, run])));
     const prefixFor = subject.runs.length === 1 ? (_runId: string) => "" : (runId: string) => `runs/${runSegment(runId, segments)}/`;
-    for (const state of subject.runs) {
-      const prefix = prefixFor(state.runId);
-      const parts = await componentFiles(state, options.store, options.scope, options.session, activity, ledger);
+    for (const captured of subject.runs) {
+      const prefix = prefixFor(captured.state.runId);
+      const parts = await componentFiles(captured, frozen, options.scope, options.session, activity, ledger);
       for (const name of COMPONENT_NAMES) {
         const bytes = parts.get(name);
         if (!bytes) fail("AUDIT_PACK_CONTENT_INVALID");
@@ -275,20 +325,26 @@ export async function exportHarnessAuditPack(options: AuditPackExportOptions): P
       total += bytes.byteLength;
       return { path: file, sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength };
     });
-    if (total > MAX_PACK_BYTES) fail("AUDIT_PACK_LIMIT");
+    for (const captured of subject.runs) await assertCaptured(options.store, options.scope, captured);
+    if (subject.accountState) {
+      const currentAccount = await options.store.load(subject.accountState.runId, options.scope);
+      if (!currentAccount || !sameJson(currentAccount, subject.accountState)) fail("AUDIT_PACK_STATE_CHANGED");
+    }
     const unsigned = {
       schemaVersion: 1 as const,
       kind: "zhivex-harness-audit-pack" as const,
       integrity: "hmac-sha256" as const,
       exporterVersion: HARNESS_VERSION,
       createdAt: new Date(options.now ?? Date.now()).toISOString(),
-      subject: { kind: subject.kind, id: subject.id, runIds: subject.runs.map(run => run.runId) },
+      subject: { kind: subject.kind, id: subject.id, runIds: subject.runs.map(run => run.state.runId) },
       files: entries
     };
     const manifest = auditPackManifestSchema.parse({
       ...unsigned,
       signature: { algorithm: "hmac-sha256" as const, keyId: keyIdFor(options.signingKey), value: signManifest(unsigned, options.signingKey) }
     });
+    const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+    if (manifestBytes.byteLength > MAX_FILE_BYTES || total + manifestBytes.byteLength > MAX_PACK_BYTES) fail("AUDIT_PACK_LIMIT");
     const directory = path.resolve(options.directory);
     const parent = await lstat(path.dirname(directory)).catch(() => fail("AUDIT_PACK_OUTPUT_UNAVAILABLE"));
     if (!parent.isDirectory() || parent.isSymbolicLink()) fail("AUDIT_PACK_OUTPUT_UNAVAILABLE");

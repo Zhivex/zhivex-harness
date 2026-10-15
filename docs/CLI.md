@@ -830,9 +830,11 @@ capacity limits reject export; bounded tree/history truncation is reported.
 
 `zhx export-audit <task-id> --out <directory>` writes one signed directory for a
 run, or for every run recorded on a guided task account. `zhx verify-audit --out <directory>`
-recomputes the file hashes and the HMAC. Both commands also accept the workspace
-locator options (`--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`,
-`--namespace`) and `--json`. Export also accepts `--session <sessionId>`.
+recomputes the file hashes and the HMAC. It does not resolve provider, store, or
+budget configuration. Both commands also accept the workspace locator options
+(`--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`, `--namespace`)
+and `--json`. Export also accepts `--session <sessionId>` and is the command
+that resolves those options.
 
 `--out` and `--signing-key-file` are experimental flags for these commands. They
 are not part of the stable option list. The signing key comes from
