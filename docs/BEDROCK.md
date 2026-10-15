@@ -29,9 +29,13 @@ Converse uses the AWS SDK default credential chain: instance roles, SSO,
 shared config, and environment credentials. Set `AWS_REGION` or
 `AWS_DEFAULT_REGION` to a region such as `us-east-1`. `AWS_PROFILE` is part of
 the transport fingerprint. Published 2.0.7 accepts a profile and static
-credentials on the adapter. This route does not pass them, so the AWS SDK
-reads the profile from the host environment when a request is sent. Harness
-does not call AWS while checking that the route is configured.
+credentials on the adapter. This route does not pass `AWS_PROFILE`. When
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are both set, and no bearer
+token is set, Converse uses that static pair and an optional
+`AWS_SESSION_TOKEN`. Otherwise the AWS SDK default chain applies. Harness
+does not call AWS while checking that the route is configured. Incomplete
+settings, such as a profile or runtime with no region or OpenAI route, stay
+out of the durable transport fingerprint.
 
 An explicit `AWS_BEARER_TOKEN_BEDROCK` in the Harness environment selects bearer
 auth for Converse and skips the default chain. The CLI does not store a Converse

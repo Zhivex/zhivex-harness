@@ -1,7 +1,7 @@
 import {test, expect} from "bun:test";
 import {mkdtemp, mkdir, rm} from "node:fs/promises";
 import {execFileSync} from "node:child_process";
-import {desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
+import {desktopBootstrapCredentials, desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
 import {openProjectRegistry} from "../src/projects.js";
 import {prepareModelTransition} from "../src/model-transition.js";
 import type {HarnessClientResponse} from "../../src/client/index.js";
@@ -21,6 +21,20 @@ test("Bedrock and Azure OpenAI desktop environments copy only their own route se
   AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
   AZURE_OPENAI_API_KEY: "azure-secret"
  });
+ expect(providerEnvironment({provider:"bedrock",model:"amazon.nova-2-lite-v1:0"}, undefined, { AWS_REGION: "us-east-1", AWS_ACCESS_KEY_ID: "AKIAFIXTURE", AWS_SECRET_ACCESS_KEY: "secret-fixture", OPENAI_API_KEY: "secret" })).toEqual({
+  AWS_REGION: "us-east-1",
+  AWS_ACCESS_KEY_ID: "AKIAFIXTURE",
+  AWS_SECRET_ACCESS_KEY: "secret-fixture"
+ });
+ expect(desktopBootstrapCredentials({provider:"azure-openai",model:"gpt-5.4"}, undefined, { AZURE_OPENAI_API_KEY: "env-key", AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com" })).toEqual({ AZURE_OPENAI_API_KEY: "env-key" });
+ expect(desktopBootstrapCredentials({provider:"azure-openai",model:"gpt-5.4"}, "stored-key", { AZURE_OPENAI_API_KEY: "env-key" })).toEqual({});
+ expect(desktopBootstrapCredentials({provider:"bedrock",model:"amazon.nova-2-lite-v1:0"}, undefined, { AWS_REGION: "us-east-1", AWS_BEARER_TOKEN_BEDROCK: "bearer", AWS_SECRET_ACCESS_KEY: "secret-fixture", AWS_ACCESS_KEY_ID: "AKIAFIXTURE" })).toEqual({
+  AWS_BEARER_TOKEN_BEDROCK: "bearer",
+  AWS_SECRET_ACCESS_KEY: "secret-fixture",
+  AWS_ACCESS_KEY_ID: "AKIAFIXTURE"
+ });
+ expect(desktopBootstrapCredentials({provider:"bedrock",model:"anthropic.claude-haiku-5-5"}, "stored-key", { BEDROCK_RUNTIME: "openai", BEDROCK_API_KEY: "env-key", BEDROCK_OPENAI_BASE_URL: "https://bedrock-mantle.example/v1" })).toEqual({});
+ expect(desktopBootstrapCredentials({provider:"openai",model:"gpt-6-luna"}, undefined, { OPENAI_API_KEY: "secret" })).toEqual({});
 });
 
 test("Vertex Desktop passes only explicit host ADC route settings, never API keys", () => {

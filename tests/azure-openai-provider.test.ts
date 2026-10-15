@@ -27,6 +27,9 @@ test("Azure OpenAI stays provisional and out of the empty transport fingerprint"
   expect(registry.transportFingerprint(env)).not.toBe(registry.transportFingerprint({ ...env, AZURE_OPENAI_API_VERSION: "2024-10-21" }));
   expect(registry.transportFingerprint(env)).not.toBe(registry.transportFingerprint({ ...env, AZURE_OPENAI_DEPLOYMENTS: "{\"chat\":\"gpt-5.4\"}" }));
   expect(registry.transportFingerprint(env)).toBe(registry.transportFingerprint({ ...env, AZURE_OPENAI_API_KEY: "other-key" }));
+  expect(registry.transportFingerprint({ AZURE_OPENAI_API_VERSION: "2024-10-21" })).toBe(registry.transportFingerprint({}));
+  expect(registry.transportFingerprint({ AZURE_OPENAI_DEPLOYMENTS: "{\"chat\":\"gpt-5.4\"}" })).toBe(registry.transportFingerprint({}));
+  expect(registry.transportFingerprint({ AZURE_OPENAI_ENDPOINT: endpoint })).toBe(registry.transportFingerprint({}));
 });
 
 test("deployment chat completions omit the model and keep the API key out of errors", async () => {

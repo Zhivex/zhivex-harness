@@ -1,12 +1,10 @@
 import { withAnthropicContinuation } from "./anthropic-continuation.js";
 import { createVertexModel, vertexConfigured, VERTEX_ENVIRONMENT } from "./vertex-auth.js";
 import {
-  AZURE_OPENAI_TRANSPORT_ENVIRONMENT,
   azureOpenAIConfigured,
   createAzureOpenAIModel
 } from "./azure-openai.js";
 import {
-  BEDROCK_TRANSPORT_ENVIRONMENT,
   bedrockConfigured,
   createBedrockModel
 } from "./bedrock.js";
@@ -457,8 +455,8 @@ const builtinConfigured = (
 const includeTransport = (id: string, env: NodeJS.ProcessEnv) => {
   if (id === "anthropic") return Boolean(env.ANTHROPIC_BASE_URL?.trim());
   if (id === "vertex") return environmentPresent(env, VERTEX_ENVIRONMENT);
-  if (id === "bedrock") return environmentPresent(env, BEDROCK_TRANSPORT_ENVIRONMENT);
-  if (id === "azure-openai") return environmentPresent(env, AZURE_OPENAI_TRANSPORT_ENVIRONMENT);
+  if (id === "bedrock") return bedrockConfigured(env);
+  if (id === "azure-openai") return azureOpenAIConfigured(env);
   return true;
 };
 

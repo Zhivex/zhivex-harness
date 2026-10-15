@@ -25,6 +25,10 @@ test("Bedrock stays provisional and out of the empty transport fingerprint", () 
   expect(registry.transportFingerprint(env)).not.toBe(registry.transportFingerprint({ ...env, BEDROCK_RUNTIME: "openai" }));
   expect(registry.transportFingerprint(env)).toBe(registry.transportFingerprint({ ...env, BEDROCK_API_KEY: "fixture-key" }));
   expect(registry.transportFingerprint(env)).toBe(registry.transportFingerprint({ ...env, AWS_BEARER_TOKEN_BEDROCK: "fixture-bearer" }));
+  expect(registry.transportFingerprint(env)).toBe(registry.transportFingerprint({ ...env, AWS_SECRET_ACCESS_KEY: "fixture-secret" }));
+  expect(registry.transportFingerprint({ AWS_PROFILE: "fixture" })).toBe(registry.transportFingerprint({}));
+  expect(registry.transportFingerprint({ BEDROCK_RUNTIME: "openai" })).toBe(registry.transportFingerprint({}));
+  expect(registry.transportFingerprint({ AWS_REGION: "us-east-1", BEDROCK_RUNTIME: "openai" })).toBe(registry.transportFingerprint({}));
 });
 
 test("Converse uses the region and the AWS credential chain without a live call", async () => {
@@ -47,6 +51,34 @@ test("Converse uses the region and the AWS credential chain without a live call"
     if (previous === undefined) delete process.env.AWS_REGION;
     else process.env.AWS_REGION = previous;
   }
+});
+
+test("static AWS credentials are passed to Converse and stay out of the default chain", () => {
+  const model = createBedrockModel("amazon.nova-2-lite-v1:0", {
+    AWS_REGION: "us-east-1",
+    AWS_ACCESS_KEY_ID: "AKIAFIXTURE",
+    AWS_SECRET_ACCESS_KEY: "secret-fixture",
+    AWS_SESSION_TOKEN: "session-fixture"
+  });
+  expect(mockState().config).toEqual({
+    maxAttempts: 1,
+    region: "us-east-1",
+    credentials: { accessKeyId: "AKIAFIXTURE", secretAccessKey: "secret-fixture", sessionToken: "session-fixture" }
+  });
+  expect(model.provider).toBe("bedrock");
+  const bearer = createBedrockModel("amazon.nova-2-lite-v1:0", {
+    AWS_REGION: "us-east-1",
+    AWS_BEARER_TOKEN_BEDROCK: "bearer-fixture",
+    AWS_ACCESS_KEY_ID: "AKIAFIXTURE",
+    AWS_SECRET_ACCESS_KEY: "secret-fixture"
+  });
+  expect(mockState().config).toEqual({
+    maxAttempts: 1,
+    region: "us-east-1",
+    token: { token: "bearer-fixture" },
+    authSchemePreference: ["httpBearerAuth"]
+  });
+  expect(bearer.provider).toBe("bedrock");
 });
 
 test("an explicit bearer selects token auth and is removed from errors", async () => {

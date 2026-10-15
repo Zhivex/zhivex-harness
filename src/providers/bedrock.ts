@@ -74,8 +74,10 @@ export function bedrockConfigured(env: NodeJS.ProcessEnv): boolean {
   } catch { return false; }
 }
 
+const BEDROCK_STATIC_CREDENTIALS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"] as const;
+
 export function bedrockEnvironment(env: NodeJS.ProcessEnv, secret?: string): NodeJS.ProcessEnv {
-  const names = [...BEDROCK_TRANSPORT_ENVIRONMENT, ...BEDROCK_CREDENTIAL_ENVIRONMENT];
+  const names = [...BEDROCK_TRANSPORT_ENVIRONMENT, ...BEDROCK_CREDENTIAL_ENVIRONMENT, ...BEDROCK_STATIC_CREDENTIALS];
   const picked: Record<string, string> = {};
   for (const name of names) {
     const value = env[name]?.trim();
@@ -101,12 +103,20 @@ export function createBedrockModel(model: string, env: NodeJS.ProcessEnv): Langu
   }
   const region = bedrockRegion(env);
   const bearer = env.AWS_BEARER_TOKEN_BEDROCK?.trim();
-  // Omit static credentials so the AWS SDK default chain (roles, SSO, profile) applies.
-  // An explicit bearer in this environment selects token auth instead of that chain.
+  const accessKeyId = env.AWS_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = env.AWS_SECRET_ACCESS_KEY?.trim();
+  const sessionToken = env.AWS_SESSION_TOKEN?.trim();
+  // An explicit bearer selects token auth. A complete static key pair is passed
+  // through when the process environment will not retain it. Otherwise the AWS
+  // SDK default chain (roles, SSO, profile) applies. AWS_PROFILE is not passed.
+  const staticCredentials = !bearer && accessKeyId && secretAccessKey
+    ? { accessKeyId, secretAccessKey, ...(sessionToken ? { sessionToken } : {}) }
+    : undefined;
   return sanitizeBedrockModel(createBedrock({
     region,
-    ...(bearer ? { apiKey: bearer } : {})
-  })(model), bearer ? [bearer] : []);
+    ...(bearer ? { apiKey: bearer } : {}),
+    ...(staticCredentials ? { credentials: staticCredentials } : {})
+  })(model), [bearer, secretAccessKey, sessionToken].filter((value): value is string => Boolean(value)));
 }
 
 function sanitizeBedrockModel(model: LanguageModel, secrets: readonly string[]): LanguageModel {
