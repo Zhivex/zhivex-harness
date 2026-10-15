@@ -1,6 +1,17 @@
 #!/usr/bin/env node
+import { nodeEngineError } from "./cli/node-engine.js";
 import { shortCliHelp } from "./cli/cli-help.js";
-import { HARNESS_VERSION } from "./version.js";
+import { HARNESS_VERSION, NODE_ENGINE_RANGE } from "./version.js";
+
+// Bun satisfies its own engine range. Node is checked before help or version
+// so an unsupported runtime stops before the engine loads.
+if (!process.versions.bun) {
+  const engineError = nodeEngineError(process.versions.node, NODE_ENGINE_RANGE);
+  if (engineError) {
+    process.stderr.write(engineError);
+    process.exit(1);
+  }
+}
 
 // Only unambiguous informational invocations bypass the full argument parser.
 // Mixed flags, command help and errors retain the existing CLI semantics.

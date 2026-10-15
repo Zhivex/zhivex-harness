@@ -97,7 +97,10 @@ export const compactToolResult = (result: { toolName: string; isError?: boolean;
   const error = result.error && typeof result.error === "object" ? result.error as Record<string, unknown> : {};
   const message = typeof error.message === "string" ? error.message : "";
   let reason = "operation failed; inspect diagnostics for details";
-  if (error.code === "TOOL_INPUT_VALIDATION_ERROR") reason = "invalid arguments; the assistant can correct and retry";
+  if (message === "Denied by the operator."
+    || message === "Computer action was denied by the approval policy."
+    || /^Tool ".+" was denied by the approval policy\.$/.test(message)) reason = "rejected by you";
+  else if (error.code === "TOOL_INPUT_VALIDATION_ERROR") reason = "invalid arguments; the assistant can correct and retry";
   else if (error.code === "ENOENT" || /^ENOENT: /.test(message)) reason = "file not found; list files to locate the correct path";
   else if ((message.startsWith("Dependency package or path was not found in ") || message.startsWith("Dependency path was not found in "))) reason = "dependency path not found; list the package files before retrying";
   else if (message.startsWith("Dependency ") && message.includes(" is not installed in this workspace\'s node_modules.")) reason = "dependency not installed; check the project installation";

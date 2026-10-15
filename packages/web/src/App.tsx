@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
 import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
+import { reviewScopeSummary } from "../../../desktop/src/review-scope.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
   applyActivityPage,
@@ -11,6 +12,7 @@ import { action, context, reconnect } from "./api.js";
 import { ModelSelectionRejectedError } from "./request-failure.js";
 import { ComposerDrafts } from "./composer-drafts.js";
 import "./composer.css";
+import { counted, limitsReadError, limitsSaveError } from "./limit-copy.js";
 import { LimitsDialog } from "./LimitsDialog.js";
 import type { LimitSettings, LimitScope } from "./limit-settings.js";
 import type { LimitPreferences } from "./limit-store.js";
@@ -38,6 +40,11 @@ const key = () => crypto.randomUUID();
 type LimitsInfo = { workspaceKey: string; legacyPending?: boolean; preferences: LimitPreferences; pricing: LimitPricing | null;
   host: { costUsd: number | null; steps: number | null; toolCalls: number | null; tokens: number | null; durationMinutes: number | null } };
 const human = (text: string) => text.replaceAll("_", " ").replaceAll("-", " ");
+const hostLimitNote = (host: LimitsInfo["host"]) => Object.entries(host).filter(([, value]) => value !== null).map(([name, value]) => {
+  if (name === "costUsd") return ` Host: ${value} estimated USD (not a guaranteed financial cap).`;
+  const singular = name === "steps" ? "step" : name === "toolCalls" ? "tool call" : name === "tokens" ? "token" : "minute";
+  return ` Host: ${counted(Number(value), singular)}.`;
+}).join("");
 const active = (status: string) =>
   ["running", "created", "queued", "cancel_requested"].includes(status);
 const errorText = (error: unknown) =>
@@ -118,7 +125,7 @@ export function App() {
     let stopped = false;
     void action<LimitsInfo>(workspaceKey, "limits").then(info => {
       if (!stopped) setLimitsInfo(info);
-    }).catch(() => { if (!stopped) setLimitsError("No se pudieron leer los límites. Reconecta para volver a consultar."); });
+    }).catch(() => { if (!stopped) setLimitsError(limitsReadError); });
     return () => { stopped = true; };
   }, [workspaceKey, refresh, run?.runId]);
   async function saveLimits(scope: LimitScope, settings: LimitSettings) {
@@ -130,7 +137,7 @@ export function App() {
       setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits"));
       setLimitsOpen(false);
     } catch {
-      setLimitsError("No se confirmó el cambio. Cierra y vuelve a abrir para consultar los límites antes de guardar otra vez.");
+      setLimitsError(limitsSaveError);
       setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits").catch(() => undefined));
     } finally { limitsSavingRef.current = false; setLimitsSaving(false); }
   }
@@ -765,7 +772,7 @@ export function App() {
           <button className="limits-launcher" disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
             onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
             <SlidersHorizontalIcon size={18} />{limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(t => t.value !== null)
-              ? `Límites de ${limitsInfo.preferences.task ? "próxima tarea" : "proyecto"}` : limitsInfo && Object.values(limitsInfo.host).some(v => v !== null) ? "Política del host activa" : "Sin límites configurados"}
+              ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}` : limitsInfo && Object.values(limitsInfo.host).some(v => v !== null) ? "Host policy active" : "No limits configured"}
           </button>
           <button
             className="subtle"
@@ -816,19 +823,19 @@ export function App() {
             <p className="state-guidance" id="composer-help">
               {composerHelp}
             </p>
-            {runLimits && <div className="run-limits-summary" aria-label="Límites de la tarea actual">
-              <span>Origen: {runLimits.origin === "task" ? "próxima tarea" : runLimits.origin === "project" ? "proyecto" : "sin umbrales de usuario"}. {runLimits.consumption.steps} pasos · {runLimits.consumption.toolCalls} herramientas · {runLimits.consumption.tokens} tokens reportados.</span>
-              <details><summary>Ver umbrales de esta tarea</summary>
-                <p>Gasto estimado: {runLimits.consumption.costUsd === null ? "no disponible" : `$${runLimits.consumption.costUsd.toFixed(6)}`} · Duración activa: {runLimits.consumption.durationMinutes.toFixed(2)} min.</p>
+            {runLimits && <div className="run-limits-summary" aria-label="Limits for the current task">
+              <span>Origin: {runLimits.origin === "task" ? "next task" : runLimits.origin === "project" ? "project" : "no user thresholds"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")} reported.</span>
+              <details><summary>View thresholds for this task</summary>
+                <p>Estimated spend: {runLimits.consumption.costUsd === null ? "unavailable" : `$${runLimits.consumption.costUsd.toFixed(6)}`} · Active duration: {runLimits.consumption.durationMinutes.toFixed(2)} min.</p>
                 {Object.entries(runLimits.settings).filter(([, threshold]) => threshold.value !== null).map(([name, threshold]) => <p key={name}>
-                  {({ costUsd: "Gasto estimado (USD)", tokens: "Tokens", steps: "Pasos", toolCalls: "Herramientas", durationMinutes: "Duración (min)" } as Record<string, string>)[name]}: {threshold.value} · {threshold.action === "notify" ? "Avisar" : "Detener"}.
+                  {({ costUsd: "Estimated spend (USD)", tokens: "Tokens", steps: "Steps", toolCalls: "Tools", durationMinutes: "Duration (min)" } as Record<string, string>)[name]}: {threshold.value} · {threshold.action === "notify" ? "Notify" : "Stop"}.
                 </p>)}
-                {runLimits.pricing && <p>Precio orientativo: {runLimits.pricing.source}. La estimación puede superar el umbral; no es un tope financiero garantizado.</p>}
+                {runLimits.pricing && <p>Advisory price: {runLimits.pricing.source}. The estimate can exceed the threshold; it is not a guaranteed financial cap.</p>}
               </details>
-              {runLimits.observationError && <p role="alert">No se pudo observar el consumo de forma fiable. Reconecta para inspeccionar la tarea; los umbrales no están garantizados.</p>}
+              {runLimits.observationError && <p role="alert">Consumption could not be observed reliably. Reconnect to inspect the task; thresholds are not guaranteed.</p>}
               {runLimits.notices.map(notice => <p key={notice.name} role="status">
-                Umbral de {({ costUsd: "gasto estimado", tokens: "tokens", steps: "pasos", toolCalls: "herramientas", durationMinutes: "duración" })[notice.name]} alcanzado: {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} / {notice.threshold}.
-                {notice.action === "notify" ? " Aviso; la tarea puede continuar." : runLimits.cancellationRequested ? " Cancelación solicitada; se conserva el trabajo registrado. Para continuar, inicia otra tarea." : " La tarea ya había terminado al observar el umbral."}
+                Threshold for {({ costUsd: "estimated spend", tokens: "tokens", steps: "steps", toolCalls: "tool calls", durationMinutes: "duration" })[notice.name]} reached: {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} / {notice.threshold}.
+                {notice.action === "notify" ? " Notice; the task can continue." : runLimits.cancellationRequested ? " Cancellation requested; recorded work is kept. To continue, start another task." : " The task had already finished when the threshold was observed."}
               </p>)}
             </div>}
             {run?.status === "waiting_approval" && (
@@ -1074,9 +1081,7 @@ export function App() {
                     Exact pending operation
                   </h3>
                   <p className="review-scope">
-                    {review.items.length} operation
-                    {review.items.length === 1 ? "" : "s"} ·{" "}
-                    {viewed.paths.length} file{viewed.paths.length === 1 ? "" : "s"}
+                    {reviewScopeSummary(review.items.length, viewed.paths.length, viewed.commands)}
                   </p>
                   {reviewInvalid && (
                     <p className="restriction" role="status">
@@ -1262,7 +1267,7 @@ export function App() {
         onCancel={() => setLimitsOpen(false)} onSave={(scope, settings) => void saveLimits(scope, settings)}
         saving={limitsSaving} saveBlocked={Boolean(limitsError)} pricingAvailable={limitsInfo.pricing !== null} error={limitsError}
         unboundedDefault={Object.values(limitsInfo.host).every(v => v === null)}
-        technicalNotice={`${limitsInfo.legacyPending ? "Hay una tarea previa pendiente. Se conserva la política del host; reinicia Web al terminarla o cancelarla para activar los nuevos defaults. " : ""}Se mantienen los límites por operación, modelo, estado y protección contra bucles.${Object.entries(limitsInfo.host).filter(([, value]) => value !== null).map(([name, value]) => ` Host: ${value} ${name === "steps" ? "pasos" : name === "toolCalls" ? "herramientas" : name === "tokens" ? "tokens" : name === "costUsd" ? "USD estimados (no es un tope financiero garantizado)" : "minutos"}.`).join("")}`} />}
+        technicalNotice={`${limitsInfo.legacyPending ? "A previous task is still pending. Host policy is kept; restart Web after it finishes or is cancelled so the new defaults apply. " : ""}Per-operation, model, state, and loop-protection limits remain in place.${hostLimitNote(limitsInfo.host)}`} />}
       <div className="sr-only" role="status" aria-live="polite">
         {stateLabel}
       </div>

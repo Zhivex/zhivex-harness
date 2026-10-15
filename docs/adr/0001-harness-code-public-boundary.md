@@ -2,6 +2,10 @@
 
 Status: proposed for review (HAR-HU-36). Date: 2026-09-28.
 
+Current status, 2026-10-15: the boundary shipped. Published npm `latest` is
+Harness 1.4.0 and Code 0.3.0. This checkout prepares Harness 1.4.1 and Code 0.3.1.
+The text below is the original proposal, not a current inventory.
+
 This records a design, not a completed package extraction or permission to publish.
 The inspected source is `0865d09ec24ec0a26219a295910097845843c8c0` (manifest 1.2.0).
 The [evidence report](../reports/HAR_HU_36_2026-09-28.md) and

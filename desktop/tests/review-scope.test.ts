@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filesViewedLabel, reviewScope, preventDecisionEnter, type ReviewScope } from "../src/review-scope.js";
+import { filesViewedLabel, reviewScope, reviewScopeSummary, preventDecisionEnter, type ReviewScope } from "../src/review-scope.js";
 
 const review = (items: ReviewScope["items"]): ReviewScope => ({ runId: "run", revision: 1, ticketId: "ticket", items });
 
@@ -11,6 +11,13 @@ describe("review decision scope", () => {
     ]));
     expect(scope.paths).toEqual(["src/a.ts", "src/b.ts"]);
     expect(scope.approveLabel).toBe("Approve 2 files + 1 command");
+  });
+
+  test("summarizes command-only reviews without a zero file count", () => {
+    expect(reviewScopeSummary(1, 0, 1)).toBe("1 operation · 1 command");
+    expect(reviewScopeSummary(2, 0, 2)).toBe("2 operations · 2 commands");
+    expect(reviewScopeSummary(1, 1, 0)).toBe("1 operation · 1 file");
+    expect(reviewScopeSummary(1, 2, 1)).toBe("1 operation · 2 files · 1 command");
   });
 
   test("handles files-only and commands-only reviews", () => {

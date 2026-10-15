@@ -130,4 +130,12 @@ test("ten-row logo, composer and footer fit in 24 rows at 80 columns", () => {
   expect(stacked.welcome).toBe(15);
   expect(stacked.total).toBeLessThanOrEqual(24);
   expect(visualRows(render(44, 24), 44)).toBeLessThan(24);
+  const footer48 = formatComposerFooter(48, false, state).join("\n");
+  const footer32 = formatComposerFooter(32, false, state).join("\n");
+  expect(footer48).toContain("ask before changes");
+  expect(footer48).toContain("ready");
+  expect(footer48).not.toMatch(/read\ny/);
+  expect(footer32).toContain("ask before changes");
+  expect(footer32).not.toMatch(/befor\ne/);
+  expect(formatComposerFooter(80, false, state)[1]).toContain("openai/gpt-5.6-luna · ask before changes · ready");
 });

@@ -64,7 +64,9 @@ export const consoleStatusParts = (input: ConsoleComposerInput) => {
   const showRun = Boolean(input.runUsage && (hasRunCap || incomplete || (hasNextCap && typeof input.runUsage.estimatedUsd === "number")));
   const attachments = (input.attachments ?? 0) > 0 ? `${input.attachments} attached` : "";
   return [
-    `${input.model} · ${approvalPhrase(input)} · ${input.status}`,
+    input.model,
+    approvalPhrase(input),
+    input.status,
     ...(attachments ? [attachments] : []),
     ...(showRun && input.runUsage ? [`Run est. ${usd(input.runUsage.estimatedUsd)}${input.runUsage.usageComplete ? "" : " INCOMPLETE"}${hasRunCap ? ` / ${money(runCap)} cap` : ""}`] : []),
     ...(hasNextCap ? [`Next run cap ${money(nextCap)}`] : []),
@@ -73,19 +75,40 @@ export const consoleStatusParts = (input: ConsoleComposerInput) => {
 
 export const consoleStatusText = (input: ConsoleComposerInput) => consoleStatusParts(input).join(" · ");
 
-/** Keep each clause whole so `Run est. unknown INCOMPLETE` stays on one row. */
+/** Keep a clause whole while it fits. Overflow wraps on spaces; only a single over-wide word breaks mid-word. */
+const wrapClause = (text: string, width: number): string[] => {
+  if (terminalCellWidth(text) <= width) return [text];
+  const lines: string[] = [];
+  let current = "";
+  for (const word of text.split(" ")) {
+    if (terminalCellWidth(word) > width) {
+      if (current) lines.push(current);
+      current = "";
+      lines.push(...consoleLines(word, width));
+      continue;
+    }
+    const next = current ? `${current} ${word}` : word;
+    if (current && terminalCellWidth(next) > width) {
+      lines.push(current);
+      current = word;
+    } else current = next;
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+};
+
 const packClauses = (parts: readonly string[], width: number) => {
   const lines: string[] = [];
   let current = "";
   for (const part of parts) {
     const next = current ? `${current} · ${part}` : part;
     if (current && terminalCellWidth(next) > width) {
-      lines.push(current);
+      lines.push(...wrapClause(current, width));
       current = part;
     } else current = next;
   }
-  if (current) lines.push(current);
-  return lines.flatMap(line => terminalCellWidth(line) > width ? consoleLines(line, width) : [line]);
+  if (current) lines.push(...wrapClause(current, width));
+  return lines;
 };
 
 export const consoleStateLines = (input: ConsoleComposerInput, columns = 80) =>

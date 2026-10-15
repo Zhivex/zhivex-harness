@@ -3,12 +3,17 @@
 ## Pending patch: 2026-10-14
 
 This checkout prepares Code `0.3.1`, pinned exactly to Harness `1.4.1`, for npm
-`latest`. Published Code `0.2.0` and Harness `1.3.0` on `latest` remain
-unchanged. Published npm `next` is Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
-The matched engine carries the Vertex transient-failure retry and retains
-explicit monetary output caps. The local browser retries reconciliation when a
-command finishes during reconnect. SDK pins, approval and transport protections,
-and provider/API tiers stay as they are on main, including Vertex 1.2.4.
+`latest`. Published Code `0.3.0` and Harness `1.4.0` are the current `latest`
+packages. Published npm `next` is Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
+The Vertex transient-failure retry and explicit monetary output caps shipped in
+Code `0.3.0` / Harness `1.4.0`. This patch keeps the narrow composer readable,
+says when you rejected an operation, checks Node before startup, describes
+command reviews as commands, and shows web limits in English. The local browser
+retries reconciliation when a command finishes during reconnect. Core moves to
+1.33.0 for private-host checks. Anthropic 0.14.0, OpenAI 0.16.0 and Vertex 1.2.7
+replace the previous adapter pins; Agents, Qwen, Meta and Gemini stay as they
+are on main. Optional `@napi-rs/keyring` is 2.1.1. Approval and transport
+protections and provider/API tiers stay unchanged.
 Desktop stays private alpha with the same engine binding. The 1.4.0 preparation
 below remains historical; its evidence does not certify or authorize `0.3.1`.
 
