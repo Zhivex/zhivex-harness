@@ -38,8 +38,10 @@ test("Converse uses the region and the AWS credential chain without a live call"
     const result = await model.generate(input);
     expect(result.text).toBe("ok");
     expect(mockState().commands[0]?.input).toMatchObject({ modelId: "anthropic.claude-haiku-5-5" });
+    const stream = model.stream;
+    if (!stream) throw new Error("Bedrock model does not expose stream.");
     const chunks = [];
-    for await (const event of await model.stream(input)) chunks.push(event);
+    for await (const event of await stream(input)) chunks.push(event);
     expect(chunks).toContainEqual(expect.objectContaining({ type: "text-delta", textDelta: "ok" }));
   } finally {
     if (previous === undefined) delete process.env.AWS_REGION;
@@ -67,7 +69,7 @@ test("OpenAI-compatible Bedrock is Tier A and posts to the configured base URL",
   const secret = "fixture-bedrock-api-key";
   const original = globalThis.fetch;
   let seen: { url?: string; authorization?: string | null; model?: string } = {};
-  globalThis.fetch = async (url, init) => {
+  globalThis.fetch = Object.assign(async (url: string | URL | Request, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     seen = { url: String(url), authorization: headers.get("authorization"), model: JSON.parse(String(init?.body)).model };
     if (headers.get("authorization") === `Bearer ${secret}-reject`) {
@@ -79,7 +81,7 @@ test("OpenAI-compatible Bedrock is Tier A and posts to the configured base URL",
       output_text: "ok",
       usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 }
     });
-  };
+  }, { preconnect: original.preconnect });
   try {
     const model = createBedrockModel("anthropic.claude-haiku-5-5", {
       BEDROCK_RUNTIME: "openai",

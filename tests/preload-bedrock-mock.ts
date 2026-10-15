@@ -19,7 +19,7 @@ mock.module("@aws-sdk/client-bedrock-runtime", () => {
       state.commands.push(command);
       if (state.fail) {
         const message = state.fail;
-        state.fail = undefined;
+        delete state.fail;
         throw new Error(message);
       }
       if (command?.constructor?.name === "ConverseStreamCommand") {

@@ -34,7 +34,7 @@ test("deployment chat completions omit the model and keep the API key out of err
   const ambient = process.env.AZURE_OPENAI_API_VERSION;
   process.env.AZURE_OPENAI_API_VERSION = "2099-01-01";
   let seen: { url?: string; apiKey?: string | null; model?: unknown } = {};
-  globalThis.fetch = async (url, init) => {
+  globalThis.fetch = Object.assign(async (url: string | URL | Request, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     const body = JSON.parse(String(init?.body));
     seen = { url: String(url), apiKey: headers.get("api-key"), model: body.model };
@@ -42,7 +42,7 @@ test("deployment chat completions omit the model and keep the API key out of err
       return new Response(JSON.stringify({ error: { message: secret } }), { status: 401, headers: { "content-type": "application/json" } });
     }
     return Response.json(chat);
-  };
+  }, { preconnect: original.preconnect });
   try {
     const model = createAzureOpenAIModel("gpt-5.4", {
       AZURE_OPENAI_API_KEY: secret,
@@ -79,10 +79,10 @@ test("deployment chat completions omit the model and keep the API key out of err
 test("a deployment map overlays base-model capabilities and still calls the deployment", async () => {
   const original = globalThis.fetch;
   let url = "";
-  globalThis.fetch = async (request) => {
+  globalThis.fetch = Object.assign(async (request: string | URL | Request) => {
     url = String(request);
     return Response.json(chat);
-  };
+  }, { preconnect: original.preconnect });
   try {
     const mapped = createAzureOpenAIModel("contoso-chat", {
       AZURE_OPENAI_API_KEY: secret,
