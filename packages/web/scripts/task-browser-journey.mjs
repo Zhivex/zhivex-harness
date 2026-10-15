@@ -92,7 +92,14 @@ try {
   await page.getByRole('button', { name: 'Start governed task', exact: true }).click();
   async function approve() {
     await page.getByRole('button', { name: 'Review proposed operation', exact: true }).first().click();
-    await page.getByRole('button', { name: /^Approve/ }).click();
+    const decision = page.getByRole('button', { name: /^Approve/ });
+    await decision.waitFor();
+    const files = page.locator('[data-action="view-file"]');
+    if (await files.count()) {
+      assert.equal(await decision.isEnabled(), false, 'File approval stays disabled until every changed file is viewed');
+      for (const checkbox of await files.all()) await checkbox.check();
+    }
+    await decision.click();
   }
   // Existing exact-review controls retain their original labels and authority.
   await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'waiting approval');

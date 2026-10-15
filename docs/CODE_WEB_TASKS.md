@@ -14,8 +14,9 @@ action on a fresh review ticket; model prose and a completed run are not accepta
 1. Open `zhivex-code web`, select an allowed workspace and create an empty session.
    Choose **Define task**. Enter the goal, exact existing editable files, package
    checks and explicit input/output/total token limits for the entire task.
-2. Review each proposed edit/check through the existing exact approval controls.
-   Execution, deterministic checks and human acceptance remain separate statuses.
+2. Review each proposed edit or check through the existing exact approval controls.
+   Mark every changed file viewed before approval. Execution, deterministic
+   checks, and human acceptance remain separate statuses.
 3. Open **Result, checks and provenance** for paths, contract/current-byte identity,
    required checks and human requirements. The renderer displays host evidence;
    assistant prose does not establish a passing check or permission.
