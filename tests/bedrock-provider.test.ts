@@ -32,9 +32,9 @@ test("Converse uses the region and the AWS credential chain without a live call"
   process.env.AWS_REGION = "eu-central-1";
   try {
     const model = createBedrockModel("anthropic.claude-haiku-5-5", { AWS_DEFAULT_REGION: "us-west-2" });
-    expect(mockState().config).toEqual({ region: "us-west-2" });
-    expect(agent(model).reasoning).toBe(false);
-    expect(agent(model).agentCapabilities).toMatchObject({ supportTier: "tier-c", approvalRequests: false, toolChoiceNone: false });
+    expect(mockState().config).toEqual({ maxAttempts: 1, region: "us-west-2" });
+    expect(agent(model).reasoning).toBe(true);
+    expect(agent(model).agentCapabilities).toMatchObject({ supportTier: "tier-b", approvalRequests: false, toolChoiceNone: true });
     const result = await model.generate(input);
     expect(result.text).toBe("ok");
     expect(mockState().commands[0]?.input).toMatchObject({ modelId: "anthropic.claude-haiku-5-5" });
@@ -52,7 +52,12 @@ test("Converse uses the region and the AWS credential chain without a live call"
 test("an explicit bearer selects token auth and is removed from errors", async () => {
   const secret = "fixture-bearer-token";
   const model = createBedrockModel("amazon.nova-2-lite-v1:0", { AWS_REGION: "us-east-1", AWS_BEARER_TOKEN_BEDROCK: secret });
-  expect(mockState().config).toEqual({ region: "us-east-1", token: { token: secret } });
+  expect(mockState().config).toEqual({
+    maxAttempts: 1,
+    region: "us-east-1",
+    token: { token: secret },
+    authSchemePreference: ["httpBearerAuth"]
+  });
   mockState().fail = `AccessDenied ${secret} account 123456789012`;
   try {
     await model.generate(input);

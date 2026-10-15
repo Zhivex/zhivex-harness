@@ -16,7 +16,9 @@ shipped in 1.4.0. This patch keeps the narrow composer readable, says when an
 operation was rejected, shows web limits in English, hides the Node 22 SQLite
 warning, checks the Node engine at startup, and describes command reviews as
 commands. A local web reconnect that overlaps a finishing command reads durable
-state again so reconciliation can enable the next session. Core is 1.33.0.
+state again so reconciliation can enable the next session. That patch pinned
+Core 1.33.0. Unreleased Bedrock and Azure OpenAI routes pin Core 1.34.0,
+`@zhivex-ai/bedrock@2.0.7`, and `@zhivex-ai/azure-openai@0.7.8`.
 Anthropic is 0.14.0, OpenAI is 0.16.0 and Vertex is 1.2.7, because Vertex 1.2.7
 requires those OpenAI and Anthropic ranges. Agents stays 1.11.0, Qwen 0.16.4,
 Meta 0.2.9 and Gemini 0.13.0. The development MCP server package is 2.3.1.

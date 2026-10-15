@@ -17,7 +17,9 @@ Source version: `1.4.1` (stable publication to `latest` pending), with Code
 footer, rejection copy, English web limits, the Node 22 SQLite warning, the
 startup Node engine check, and command-review copy. It also retries a local web
 reconnect that overlaps a finishing command and pins Core 1.33.0, Anthropic
-0.14.0, OpenAI 0.16.0 and Vertex 1.2.7. The Vertex transient-failure retry and
+0.14.0, OpenAI 0.16.0 and Vertex 1.2.7. Unreleased Bedrock and Azure OpenAI
+routes pin Core 1.34.0, `@zhivex-ai/bedrock@2.0.7` and `@zhivex-ai/azure-openai@0.7.8`.
+The Vertex transient-failure retry and
 explicit output caps above 2,048 already shipped in 1.4.0. Agents, Qwen, Meta
 and Gemini stay at the versions already on main. Beta/experimental APIs and
 provisional provider routes do not become stable. Desktop keeps `0.1.0-alpha.1` and private distribution. This

@@ -16,10 +16,10 @@ export const BEDROCK_CREDENTIAL_ENVIRONMENT = [
 ] as const;
 
 /**
- * SDK matrix after Zhivex/zhivex-ai-sdk#165: Converse is Tier B and
- * `runtime: "openai"` is Tier A. Published `@zhivex-ai/bedrock@2.0.6` still
- * reports Converse as `tier-c` (no reasoning, `toolChoiceNone: false`).
- * Harness reports that installed label and does not relabel the model.
+ * SDK matrix: Converse is Tier B and `runtime: "openai"` is Tier A.
+ * Published `@zhivex-ai/bedrock@2.0.7` reports those labels. Converse includes
+ * reasoning and `toolChoiceNone`. Harness reports the installed label and
+ * does not relabel the model.
  */
 export const BEDROCK_MATRIX_TIER = {
   converse: "tier-b",
