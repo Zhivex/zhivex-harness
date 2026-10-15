@@ -1,3 +1,5 @@
+import { TaskPanel } from './TaskPanel.js';
+import type { HarnessClientData } from '@zhivex-ai/harness/protocol';
 import { useEffect, useRef, useState } from "react";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
 import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
@@ -83,6 +85,7 @@ export function App() {
   activityRef.current = activity;
   const [run, setRun] = useState<HarnessClientRun>();
   const [runUnavailable, setRunUnavailable] = useState(false);
+  const [hasTask, setHasTask] = useState(false);
   const [review, setReview] = useState<TicketedApprovalReview>();
   const viewed = useViewedFiles(review, run?.runId, run?.revision);
   const [prompt, setPrompt] = useState("");
@@ -207,6 +210,7 @@ export function App() {
     activityRef.current = empty;
     setActivity(empty);
     setStateLoading(Boolean(workspaceKey && sessionId));
+    setHasTask(false);
   }, [workspaceKey, sessionId]);
   useEffect(() => {
     if (!workspaceKey || !sessionId) return;
@@ -410,7 +414,7 @@ export function App() {
     );
   }
   async function start() {
-    if (!session || !prompt.trim() || !canMutate || busy) return;
+    if (!session || !prompt.trim() || !canMutate || busy || hasTask) return;
     const input = prompt;
     const selected = { workspaceKey, sessionId: session.sessionId };
     await perform(
@@ -843,6 +847,7 @@ export function App() {
                 Go to pending review ↓
               </a>
             )}
+            {hasTask && <a className="task-jump subtle" href="#task-evidence">View task and evidence ↓</a>}
             <div
               className="messages"
               role="log"
@@ -996,10 +1001,10 @@ export function App() {
                 </div>
                 <button
                   className="primary"
-                  disabled={!session || !prompt.trim() || !canMutate || busy}
+                  disabled={!session || !prompt.trim() || !canMutate || busy || hasTask}
                   type="submit"
                 >
-                  Run task <span>↑</span>
+                  {hasTask ? "Use task review to continue" : <>Run task <span>↑</span></>}
                 </button>
               </div>
             </form>
@@ -1028,6 +1033,13 @@ export function App() {
             {modelSelectionError && <p id="model-selection-error" className="model-help" role="alert">{modelSelectionError}</p>}
           </ChatRoot>
           <aside className="inspector" aria-label="Review and activity">
+            {workspace && session && <TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(':')}
+              workspace={workspace} session={session} {...(run ? { run } : {})} enabled={canMutate} connected={connected && !needsReconcile}
+              prompt={prompt} perform={perform} onTask={setHasTask} onResult={(data: HarnessClientData) => {
+                if (data.kind === 'run') { setRun(data.run); setSession(data.session); }
+                setRefresh(n => n + 1);
+              }} />}
+
             <section
               className="review-panel"
               id="review-panel"

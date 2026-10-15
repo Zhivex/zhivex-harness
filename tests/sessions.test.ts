@@ -239,6 +239,21 @@ describe("durable CLI sessions", () => {
     })).rejects.toThrow("Run-reference limit");
   });
 
+  test("observes cancellation requested before the session index saw running", async () => {
+    const { store } = await fixture();
+    const session = await store.create({ title: "cancel during active invocation" });
+    await store.appendRun(session.sessionId, {
+      runId: "cancel-run", provider: "openai", model: "gpt-5.6-luna", status: "created"
+    });
+    const requested = await store.updateRun(session.sessionId, "cancel-run", { status: "cancel_requested" });
+    expect(requested.runs[0]?.status).toBe("cancel_requested");
+    expect((await store.get(session.sessionId))?.runs[0]?.status).toBe("cancel_requested");
+    const settled = await store.updateRun(session.sessionId, "cancel-run", { status: "cancelled" });
+    expect(settled.runs[0]?.status).toBe("cancelled");
+    await expect(store.updateRun(session.sessionId, "cancel-run", { status: "running" }))
+      .rejects.toThrow("transition");
+  });
+
   test("serializes concurrent writers across SQLite handles with revision checks", async () => {
     const { workspace, stateDirectory, store: first } = await fixture();
     const second = await openCliSessionStore({

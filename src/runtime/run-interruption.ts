@@ -1,6 +1,31 @@
 import type { AgentRunOutput, AgentRunState, AgentStoreScope } from "@zhivex-ai/core";
 import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 
+/** Capture the winning source before relaying its abort. Nested AbortSignal.any
+ * trees can propagate a different ancestor's reason on supported Node versions. */
+export const composeRunInterruption = (caller: AbortSignal | undefined,
+  deadline: AbortSignal | undefined, failure: AbortSignal) => {
+  const controller = new AbortController();
+  let winner: 'cancelled' | 'timed_out' | undefined;
+  const cleanups: Array<() => void> = [];
+  const dispose = () => { for (const cleanup of cleanups.splice(0)) cleanup(); };
+  for (const [signal, kind] of [[caller, 'cancelled'], [deadline, 'timed_out'], [failure, undefined]] as const) {
+    if (!signal || controller.signal.aborted) continue;
+    const abort = () => {
+      if (controller.signal.aborted) return;
+      winner = kind;
+      controller.abort(signal.reason);
+      dispose();
+    };
+    if (signal.aborted) abort();
+    else {
+      signal.addEventListener('abort', abort, { once: true });
+      cleanups.push(() => signal.removeEventListener('abort', abort));
+    }
+  }
+  return { signal: controller.signal, kind: () => winner, dispose };
+};
+
 /** Called only after the interrupted runtime has settled and released its lease. */
 export const settleInterruptedRun = async (
   store: AgentRunStore, runId: string, scope?: AgentStoreScope,

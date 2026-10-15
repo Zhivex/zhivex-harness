@@ -16,18 +16,21 @@ const sameScope = (a: AgentRunState['scope'], b: AgentRunState['scope']) =>
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
 /** Internal read set, checked again inside task invocation admission. No new store or recovery credit. */
-export async function readTaskContinuity(host: ZhivexHarness, taskId: string) {
-  const budget = await inspectHarnessTaskBudget(host, taskId);
+export async function readTaskContinuityEvidence(host: ZhivexHarness, taskId: string, options: { legacyRunId?: string; allowedRunIds?: readonly string[] } = {}) {
+  const budget = options.legacyRunId === undefined ? await inspectHarnessTaskBudget(host, taskId) : null;
+  const runIds = budget?.runs ?? [options.legacyRunId!];
+  // Validate the complete read set before accessing any run, journal or artifact.
+  if (options.allowedRunIds && runIds.some(id => !options.allowedRunIds!.includes(id))) throw new Error('TASK_PROJECTION_SCOPE_MISMATCH');
   const reasons = new Set<string>();
   const observed: { state: AgentRunState; journal: AgentToolCallJournalEntry[] }[] = [];
   const absent: string[] = [];
   const snapshots: { runId: string; ledger: NonNullable<ReturnType<typeof readTaskAcceptanceLedger>>; snapshot: Awaited<ReturnType<typeof nativeTaskSnapshot>> }[] = [];
   const runs = [];
-  if (budget.invocationPending) reasons.add('TASK_BUDGET_INVOCATION_UNCERTAIN');
-  if (budget.admissionsClosed) reasons.add('TASK_BUDGET_CANCELLED');
-  if (!budget.usageComplete) reasons.add('TASK_BUDGET_UNCERTAIN');
-  if (budget.runs.length > 256) throw new Error('TASK_CONTINUITY_CAPACITY');
-  for (const runId of budget.runs) {
+  if (budget?.invocationPending) reasons.add('TASK_BUDGET_INVOCATION_UNCERTAIN');
+  if (budget?.admissionsClosed) reasons.add('TASK_BUDGET_CANCELLED');
+  if (budget && !budget.usageComplete) reasons.add('TASK_BUDGET_UNCERTAIN');
+  if (runIds.length > 256) throw new Error('TASK_CONTINUITY_CAPACITY');
+  for (const runId of runIds) {
     const loaded = await host.store.load(runId, host.config.scope);
     if (!loaded) { absent.push(runId); reasons.add('TASK_CONTINUITY_RUN_MISSING'); continue; }
     const state = structuredClone(loaded);
@@ -114,9 +117,18 @@ export async function readTaskContinuity(host: ZhivexHarness, taskId: string) {
     }
     for (const run of snapshots) if ((await nativeTaskSnapshot(host.workspace, run.ledger, run.runId)).snapshotDigest !== run.snapshot.snapshotDigest) throw new Error('TASK_CONTINUITY_CHANGED');
   };
-  await verify();
-  if (JSON.stringify(await inspectHarnessTaskBudget(host, taskId)) !== JSON.stringify(budget)) throw new Error('TASK_CONTINUITY_CHANGED');
-  return { report, verify };
+  const verifyAll = async () => {
+    await verify();
+    if (budget && JSON.stringify(await inspectHarnessTaskBudget(host, taskId)) !== JSON.stringify(budget)) throw new Error('TASK_CONTINUITY_CHANGED');
+  };
+  await verifyAll();
+  return { report, verify, verifyAll };
+}
+
+/** Invocation admission always requires the existing authoritative budget. */
+export async function readTaskContinuity(host: ZhivexHarness, taskId: string) {
+  const result = await readTaskContinuityEvidence(host, taskId);
+  return { ...result, report: { ...result.report, budget: result.report.budget! } };
 }
 
 /** Host-only Experimental inspection; no model, writes, approval, cancellation revival or replay. */

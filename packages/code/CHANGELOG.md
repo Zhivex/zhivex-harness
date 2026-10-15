@@ -1,5 +1,10 @@
 # Code changelog
 
+## Unreleased
+
+- Add a task and evidence panel to the existing local web client: goal, revision, artifact and check provenance, task-wide accounting, and explicit accept, correct, and continue actions. Keep exact tool approvals, cancellation, and chat presentation in their existing surfaces.
+- Migration: use the matched experimental Harness `task.control.v1` host. Existing sessions remain readable; ordinary chat has no required task contract. New governed tasks initially require a clean native Git workspace, existing tracked text files, package checks, and explicit token limits. Failed or uncertain effects are never replayed automatically; unknown consumption blocks continuation. No published version or SDK pin changes.
+
 ## 0.3.1 - 2026-10-15
 
 - Pin exactly Harness 1.4.1 and Core 1.33.0. Optional `@napi-rs/keyring` moves from 2.1.0 to 2.1.1; a missing entry still reads as absent. Publish only after that engine is verified on `latest`. Published Code 0.3.0 is `latest`. Published Code 0.3.0-rc.8 remains `next`.

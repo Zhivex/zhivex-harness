@@ -208,6 +208,8 @@ Publishing Code requires a compatible Harness release, authenticated scope/name
 verification and the release compatibility gates in
 [ADR 0001](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md).
 Local packing does not establish npm permissions or public availability.
+The additive [task projection v1](CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73) exposes existing task evidence through the client/service without moving execution or judgment into a renderer. `/protocol` exports its bounded schema and pure snapshot reducer.
+
 ## Experimental task acceptance contracts
 
 `runHarness(host, input, { taskAcceptance })` accepts application-owned requirements

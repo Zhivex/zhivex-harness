@@ -42,6 +42,7 @@ export async function runWeb(args: string[]) {
           modelInstance: model,
           env,
           storeBackend: "sqlite",
+          usageAccounting: {},
           subagentProfiles: [],
         }),
         secrets,

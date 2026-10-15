@@ -4,6 +4,12 @@ All notable changes to Zhivex Harness are documented in this file.
 
 The project follows Semantic Versioning. During `0.x`, minor releases may change user-facing contracts when the change is documented with a migration note. Patch releases remain backwards compatible bug fixes.
 
+## Unreleased
+
+- Add experimental Code web task definition, bounded exact delivery review, explicit human acceptance, requirement correction, and budgeted continuation through additive host-owned client commands. Keep check verification, human decisions, and provider usage uncertainty distinct. Failed pre-admission continuations retain scoped previous evidence without inventing budget admissions; ordinary chat cannot bypass a governed task's budget.
+- Migration: negotiate `task.control.v1`; existing chat and task projection v1 remain supported. Use matched Code and Harness builds. Native governed tasks require a clean Git baseline, existing bounded tracked files, declared package checks, and explicit token limits. Human acceptance records operator acknowledgement, not measured semantic quality. No store migration, default cap, automatic retry, or release is introduced. See [Code web tasks](docs/CODE_WEB_TASKS.md).
+- Add experimental versioned `task.get` snapshots over the existing client/service protocol. Project deterministic contract, byte, and check evidence separately from semantic and human acceptance, retain authoritative budget uncertainty, and prohibit automatic effect replay. Negotiate `task.projection.v1`; legacy commands and opt-in budget behavior remain compatible. No new store.
+
 ## 1.4.1 - 2026-10-15
 
 - Retry a local web reconnect when a command finishes during the durable read, so reconciliation can enable the next session.

@@ -11,6 +11,7 @@ export type {
   TicketedApprovalReview,
 };
 export interface WebWorkspace {
+  taskProtocol?: { connectionId: string; projectId: string; capabilities: readonly string[] };
   key: string;
   name: string;
   workspace: string;

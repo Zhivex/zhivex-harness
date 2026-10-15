@@ -201,7 +201,7 @@ const ACTIVE_STATUSES = new Set<SessionRunStatus>([
   "cancel_requested"
 ]);
 const STATUS_TRANSITIONS: Readonly<Record<SessionRunStatus, ReadonlySet<SessionRunStatus>>> = {
-  created: new Set(["created", "running", "waiting_approval", "completed", "failed", "cancelled", "timed_out"]),
+  created: new Set(["created", "running", "waiting_approval", "completed", "failed", "cancel_requested", "cancelled", "timed_out"]),
   running: new Set(["running", "waiting_approval", "cancel_requested", "completed", "failed", "cancelled", "timed_out"]),
   waiting_approval: new Set(["waiting_approval", "running", "cancel_requested", "completed", "failed", "cancelled", "timed_out"]),
   cancel_requested: new Set(["cancel_requested", "cancelled", "failed", "timed_out"]),
