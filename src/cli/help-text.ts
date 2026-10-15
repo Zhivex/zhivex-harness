@@ -41,6 +41,8 @@ Advanced operations and automation:
   zhx state status
   zhx state export <backup.json>
   zhx state import <backup.json> [--apply]
+  zhx export-audit <task-id> --out <directory>
+  zhx verify-audit --out <directory>
 
 The long command zhivex-harness remains supported for compatibility.
 
@@ -120,6 +122,8 @@ Options (automation and advanced configuration):
   --cascade                      Cancel a run and its known child runs
   --final                        Record terminal cancellation immediately
   --apply                        Apply a validated state import (default: dry-run)
+  --out <directory>              Audit pack directory (export-audit, verify-audit)
+  --signing-key-file <path>      HMAC key file for an audit pack
   -h, --help                     Show this help
   -v, --version                  Show the version
 

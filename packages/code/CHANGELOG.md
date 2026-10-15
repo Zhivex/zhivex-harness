@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `zhivex-code export-audit <task-id> --out <directory>` and `zhivex-code verify-audit --out <directory>`. Both call the experimental `@zhivex-ai/harness/audit` entrypoint. Verification reads the pack and signing key without resolving provider, store, or budget configuration. This note does not publish a release or change the Harness pin.
 - Add a task and evidence panel to the existing local web client: goal, revision, artifact and check provenance, task-wide accounting, and explicit accept, correct, and continue actions. Keep exact tool approvals, cancellation, and chat presentation in their existing surfaces.
 - Migration: use the matched experimental Harness `task.control.v1` host. Existing sessions remain readable; ordinary chat has no required task contract. New governed tasks initially require a clean native Git workspace, existing tracked text files, package checks, and explicit token limits. Failed or uncertain effects are never replayed automatically; unknown consumption blocks continuation. No published version or SDK pin changes.
 

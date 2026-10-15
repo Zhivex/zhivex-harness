@@ -28,6 +28,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Installed recovery laboratory](https://github.com/Zhivex/zhivex-harness/blob/main/docs/TASK_RECOVERY_LAB.md): contributor fixtures for the evidence read. The laboratory guide stays in the repository and is not part of the published package.
 - [Experimental ACP text sessions](ACP.md) and [workspace checkpoint restoration](WORKSPACE_CHECKPOINTS.md).
 - [Durable operations](DURABLE_OPERATIONS.md), [repository editing](REPOSITORY_EDITING.md) and [change envelopes](CHANGE_ENVELOPES.md).
+- [Audit pack](AUDIT_PACK.md): experimental signed export of one run or guided task.
 - [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).
 
 ## Contribute and maintain

@@ -907,6 +907,8 @@
       "changes",
       "state",
       "memory",
+      "export-audit",
+      "verify-audit",
       "help",
       "version"
     ],

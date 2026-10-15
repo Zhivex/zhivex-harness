@@ -826,6 +826,21 @@ expiry are checked separately. Patch bytes and producer authenticity remain
 unverified. No envelope v1 fields are added. Concurrent source changes and hard
 capacity limits reject export; bounded tree/history truncation is reported.
 
+### Audit pack (Experimental)
+
+`zhx export-audit <task-id> --out <directory>` writes one signed directory for a
+run, or for every run recorded on a guided task account. `zhx verify-audit --out <directory>`
+recomputes the file hashes and the HMAC. It does not resolve provider, store, or
+budget configuration. Both commands also accept the workspace locator options
+(`--workspace`, `--state-dir`, `--store`, `--tenant`, `--user`, `--namespace`)
+and `--json`. Export also accepts `--session <sessionId>` and is the command
+that resolves those options.
+
+`--out` and `--signing-key-file` are experimental flags for these commands. They
+are not part of the stable option list. The signing key comes from
+`--signing-key-file` or `ZHIVEX_AUDIT_SIGNING_KEY` and is never written into the
+pack. See [Audit pack](AUDIT_PACK.md).
+
 ## Experimental project memory (unreleased)
 
 `zhx memory` supports `remember`, `list`, `read`, `update`, `forget`, `suggest`, `accept`, `context`, `clear`, `enable` and `disable`. Content is one quoted argument. Updates, acceptance and forgetting require the current revision. `--source` supplies a provenance label; `--no-memory` disables curated retrieval and SDK memory loading/capture for a local run/chat/resume invocation. Existing workspace/tenant/user/namespace flags select scope. See [Project memory](PROJECT_MEMORY.md) for bounds, review, deletion semantics and next-release pairing.

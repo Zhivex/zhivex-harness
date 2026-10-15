@@ -35,7 +35,10 @@ const usage: Record<string, string> = {
   "changes:create": "zhx changes create <input.json> --patch <artifact>",
   "changes:verify": "zhx changes verify <envelope.json> --patch <artifact> [options]",
   "state:status": "zhx state status", "state:export": "zhx state export <backup.json>",
-  "state:import": "zhx state import <backup.json> [--apply]", version: "zhx --version",
+  "state:import": "zhx state import <backup.json> [--apply]",
+  "export-audit": "zhx export-audit <task-id> --out <directory> [--session <sessionId>]",
+  "verify-audit": "zhx verify-audit --out <directory>",
+  version: "zhx --version",
 };
 
 export const shortCliHelp = (version: string) => `Zhivex Harness v${version}
@@ -67,6 +70,16 @@ export function formatCliHelp(topic: string | undefined, version: string, full: 
   if (topic === "all") return full;
   const contract = CLI_COMMAND_OPTION_CONTRACTS[topic as CliCommandOptionContractKey];
   if (!contract) {
+    if (topic === "export-audit" || topic === "verify-audit") {
+      return `Zhivex Harness — ${topic}\n\nUsage: ${usage[topic]}\n\n` +
+        "Experimental audit pack. Signs a directory with HMAC-SHA256.\n" +
+        "  --out <directory>              New directory for export, or the pack to verify\n" +
+        "  --signing-key-file <path>      Key file (overrides ZHIVEX_AUDIT_SIGNING_KEY)\n" +
+        "  --session <id>                 Include the redacted activity journal (export only)\n" +
+        "  --json                         Print the manifest or verification document\n\n" +
+        "The key must be 32 to 4096 bytes and is not written into the pack.\n" +
+        "See docs/AUDIT_PACK.md.\n";
+    }
     return `Zhivex Harness — ${topic}\n\n` + Object.entries(usage)
       .filter(([key]) => key.startsWith(`${topic}:`)).map(([, command]) => `  ${command}`).join("\n") +
       `\n\nUse zhx ${topic} <subcommand> --help for its options.`;
