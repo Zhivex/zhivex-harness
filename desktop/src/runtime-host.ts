@@ -1,6 +1,6 @@
 import { createCheckpointReviewHost } from "./checkpoint-review.js";
-import {defaultModelSelection, modelSelectionSchema} from "./model-selection.js";
-import { vertexConfigured } from "@zhivex-ai/harness/desktop/v1/providers";
+import {defaultModelSelection, desktopBootstrapCredentials, modelSelectionSchema} from "./model-selection.js";
+import { azureOpenAIConfigured, bedrockConfigured, vertexConfigured } from "@zhivex-ai/harness/desktop/v1/providers";
 import {createHash} from "node:crypto";
 import {openCredentialStore} from "./credential-store.js";
 import { utilityProcess } from "electron";
@@ -18,8 +18,9 @@ export async function launchProjectRuntime(project: DesktopProject, options: {to
   const stored=options.fixture&&!options.fixtureCredentialHelper?undefined:await openCredentialStore((options.fixture?options.fixtureCredentialHelper:options.credentialHelper)??path.join(options.buildDirectory,"credential-store"), {provider: modelSelection.provider}).read();
  if(stored&&!['present','missing'].includes(stored.status))throw new Error("CREDENTIAL_STORE_UNAVAILABLE");
  const secret=stored?.secret;
- const credentialConfigured = options.fixture || Boolean(secret) || (modelSelection.provider === "vertex" && vertexConfigured(process.env));
+ const credentialConfigured = options.fixture || Boolean(secret) || (modelSelection.provider === "vertex" && vertexConfigured(process.env)) || (modelSelection.provider === "bedrock" && bedrockConfigured(process.env)) || (modelSelection.provider === "azure-openai" && azureOpenAIConfigured(process.env));
  const workerEnv:NodeJS.ProcessEnv=Object.fromEntries(Object.entries(process.env).filter(([key])=>options.fixture||!/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)$/i.test(key)));
+ const bootstrapCredentials = desktopBootstrapCredentials(modelSelection, secret, process.env);
  const worker = utilityProcess.fork(path.join(options.buildDirectory, "runtime.cjs"), [JSON.stringify({ toolPolicyFile: options.toolPolicyFile, modelSelection, workspace: project.workspace, stateDirectory: options.stateDirectory, directory: options.directory, fixture: options.fixture, fixtureOci: options.fixture && options.fixtureOci === true, fixtureEffectCrash: options.fixture && options.fixtureEffectCrash === true, recover: options.recover })], { env:workerEnv, serviceName: `Harness · ${project.name}`, stdio: "pipe" });
   if (options.fixture) worker.stderr?.on("data", chunk => process.stderr.write(chunk));
   let exited = false; const stopped = new Promise<void>(resolve => worker.once("exit", () => { exited = true; resolve(); }));
@@ -28,7 +29,7 @@ export async function launchProjectRuntime(project: DesktopProject, options: {to
       const timer = setTimeout(() => reject(new Error("RUNTIME_START_TIMEOUT")), 15000);
       worker.once("message", message => { clearTimeout(timer); if (message?.kind === "ready") resolve(message); else reject(new Error("RUNTIME_START_FAILED")); });
       worker.once("exit", () => { clearTimeout(timer); reject(new Error("RUNTIME_EXITED")); });
- worker.postMessage({kind:"credential-bootstrap",...(secret?{secret}:{})});
+ worker.postMessage({kind:"credential-bootstrap",...(secret?{secret}:{}),...(Object.keys(bootstrapCredentials).length?{credentials:bootstrapCredentials}:{})});
     });
     const credentials = await readHarnessLocalCredentials(ready.credentialsPath);
     const hello = await requestHarnessLocalService(credentials, "hello", { versions: [1] }); if (!hello.ok) throw new Error("PROTOCOL_UNSUPPORTED");

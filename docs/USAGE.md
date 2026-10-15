@@ -149,8 +149,10 @@ zhivex-harness run --execution oci --oci-shell ask "use a reviewed shell pipelin
 | Qwen | `qwen3.8-max` | `DASHSCOPE_API_KEY` or `QWEN_API_KEY` · RC.10 default; fresh release-bound certification pending. |
 | OpenAI | `gpt-6-luna` | `OPENAI_API_KEY` · new default; fresh release-bound certification required |
 | Gemini | `gemini-3.6-flash` | `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` · provisional until the harness live matrix passes |
+| Amazon Bedrock | `anthropic.claude-haiku-5-5` | AWS credential chain plus `AWS_REGION` or `AWS_DEFAULT_REGION` · provisional; `BEDROCK_RUNTIME=openai` is a separate Tier A path and is not live-certified |
+| Azure OpenAI | `gpt-5.4` | `AZURE_OPENAI_API_KEY` and https `AZURE_OPENAI_ENDPOINT` · provisional until the harness live matrix passes |
 
-Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
+Override any model with `--model`. Optional provider overrides are `META_BASE_URL`, `QWEN_BASE_URL`, `QWEN_WORKSPACE_ID`, `QWEN_REGION`, `OPENAI_BASE_URL`, and `GEMINI_BASE_URL`. Bedrock also reads `AWS_REGION`, `AWS_DEFAULT_REGION`, `AWS_PROFILE`, `BEDROCK_RUNTIME`, and `BEDROCK_OPENAI_BASE_URL`. Azure OpenAI also reads `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, and `AZURE_OPENAI_DEPLOYMENTS`. Non-credential transport settings are hash-bound to durable resumes without persisting their values.
 
 The exact `v1.0.0` release passed protected base, delegation, routing and model-directed OCI gates for Meta, Qwen and OpenAI on 2026-09-20. The representative matrix passed 14/14 cases per provider on its authorized second attempt. Gemini remains provisional. See the [release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md#current-public-status) for artifact identity and the preserved first-attempt failure. Controlled and official-SDK MCP interoperability are separate transport evidence. Credential detection and deterministic tests do not replace real provider certification.
 

@@ -2988,6 +2988,56 @@
           "name": "vertexRoute",
           "kind": "runtime",
           "tier": "experimental"
+        },
+        {
+          "name": "bedrockConfigured",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "bedrockEnvironment",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "bedrockOpenAIBaseURL",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "bedrockRegion",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "bedrockRuntime",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "azureOpenAIConfigured",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "azureOpenAIEnvironment",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "azureOpenAIEndpoint",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "azureOpenAIApiVersion",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "azureOpenAIDeployments",
+          "kind": "runtime",
+          "tier": "experimental"
         }
       ]
     },

@@ -58,7 +58,12 @@ jobs:
         run: bun run prepare:desktop
 
       - name: Install pinned Electron runtime
-        run: node desktop/node_modules/electron/install.js
+        run: |
+          for attempt in 1 2 3; do
+            node desktop/node_modules/electron/install.js && exit 0
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
 
       - name: Audit desktop dependencies
         run: bun run ../scripts/audit-dependencies.ts
@@ -122,7 +127,12 @@ jobs:
 
       - name: Prepare desktop native tests on macOS
         if: runner.os == 'macOS'
-        run: node desktop/node_modules/electron/install.js
+        run: |
+          for attempt in 1 2 3; do
+            node desktop/node_modules/electron/install.js && exit 0
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
 
       - name: Prepare isolated Linux credential store
         if: runner.os == 'Linux'

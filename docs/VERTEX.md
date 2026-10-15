@@ -44,7 +44,7 @@ Errors expose bounded categories for authentication, permission, unavailable
 model/route, rate limit and server failures. Raw Google payloads, token values,
 credential paths and service-account identities are not retained in errors.
 
-The integration pins `@zhivex-ai/vertex@1.2.7` with Core 1.33.0 and
+The integration pins `@zhivex-ai/vertex@1.2.7` with Core 1.34.0 and
 `google-auth-library@11.1.0`. Deterministic tests exercise the installed SDK's
 transport, streaming, signed continuation, approval/reopen and route mismatch.
 They are not evidence of a live project, renewable ADC or IAM authorization.

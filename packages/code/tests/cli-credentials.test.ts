@@ -20,6 +20,20 @@ function fixture(environment: NodeJS.ProcessEnv = {}) {
   return { keys, store, ui, accesses: () => accesses, output: () => output };
 }
 
+test("Bedrock Converse does not store an API key and Azure accepts a managed key with its endpoint", async () => {
+  const converse = fixture({ AWS_REGION: "us-east-1" });
+  expect(await converse.store.inspect("bedrock")).toEqual({ source: "environment", configured: true });
+  expect(await converse.store.configure("bedrock", converse.ui([]))).toBe(true);
+  expect(converse.accesses()).toBe(0);
+  const openai = fixture({ BEDROCK_RUNTIME: "openai", BEDROCK_OPENAI_BASE_URL: "https://bedrock-mantle.example/v1" });
+  await openai.store.configure("bedrock", openai.ui(["temporary"], "fixture-bedrock-key"));
+  expect((await openai.store.providerEnvironment("bedrock", openai.ui([]))).BEDROCK_API_KEY).toBe("fixture-bedrock-key");
+  const azure = fixture({ AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com" });
+  await azure.store.configure("azure-openai", azure.ui(["temporary"], "fixture-azure-key"));
+  expect((await azure.store.providerEnvironment("azure-openai", azure.ui([]))).AZURE_OPENAI_API_KEY).toBe("fixture-azure-key");
+  await expect(fixture({}).store.providerEnvironment("azure-openai", fixture().ui([]))).rejects.toThrow("AZURE_OPENAI_ENDPOINT");
+});
+
 test("environment aliases win without touching the keychain or global environment", async () => {
   const f = fixture({ QWEN_API_KEY: "environment-key" });
   f.keys.set("qwen", "stored-key");

@@ -9,8 +9,9 @@ The Vertex transient-failure retry and explicit monetary output caps shipped in
 Code `0.3.0` / Harness `1.4.0`. This patch keeps the narrow composer readable,
 says when you rejected an operation, checks Node before startup, describes
 command reviews as commands, and shows web limits in English. The local browser
-retries reconciliation when a command finishes during reconnect. Core moves to
-1.33.0 for private-host checks. Anthropic 0.14.0, OpenAI 0.16.0 and Vertex 1.2.7
+retries reconciliation when a command finishes during reconnect. That patch
+moved Core to 1.33.0 for private-host checks. Unreleased Bedrock and Azure
+OpenAI routes pin Core 1.34.0. Anthropic 0.14.0, OpenAI 0.16.0 and Vertex 1.2.7
 replace the previous adapter pins; Agents, Qwen, Meta and Gemini stay as they
 are on main. Optional `@napi-rs/keyring` is 2.1.1. Approval and transport
 protections and provider/API tiers stay unchanged.

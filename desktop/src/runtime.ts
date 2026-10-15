@@ -1,4 +1,4 @@
-import {defaultModelSelection, modelSelectionSchema, providerEnvironment} from "./model-selection.js";
+import {defaultModelSelection, DESKTOP_BOOTSTRAP_CREDENTIAL_NAMES, modelSelectionSchema, providerEnvironment} from "./model-selection.js";
 import type {DesktopModelSelection} from "./bridge.js";
 import { protectPersistenceSecret } from "@zhivex-ai/harness/desktop/v1/state";
 import {desktopProviderModel} from "./provider-model.js";
@@ -15,8 +15,9 @@ import type { LanguageModel } from "@zhivex-ai/agents";
 const parent = (process as NodeJS.Process & { parentPort: { postMessage(value: unknown): void; on(event: "message", listener: (event: { data: unknown }) => void): void } }).parentPort;
 async function boot() {
     const config = JSON.parse(process.argv[2]!) as { toolPolicyFile?: string; modelSelection?: DesktopModelSelection; workspace: string; directory: string; fixture: boolean; fixtureOci?: boolean; fixtureEffectCrash?: boolean; stateDirectory?: string; recover: boolean };
-    const bootstrap=await new Promise<{secret?:string}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("BOOTSTRAP_TIMEOUT")),10000);parent.on("message",event=>{const value=event.data;if(!value||typeof value!=="object"||!("kind" in value)||value.kind!=="credential-bootstrap")return;clearTimeout(timer);if(Object.keys(value).some(k=>!["kind","secret"].includes(k))||("secret" in value&&(typeof value.secret!=="string"||!value.secret||value.secret.length>8192)))return reject(new Error("BOOTSTRAP_INVALID"));resolve(value as {secret?:string});});});
+    const bootstrap=await new Promise<{secret?:string;credentials:Record<string,string>}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("BOOTSTRAP_TIMEOUT")),10000);const allowed=new Set<string>(DESKTOP_BOOTSTRAP_CREDENTIAL_NAMES);parent.on("message",event=>{const value=event.data;if(!value||typeof value!=="object"||!("kind" in value)||value.kind!=="credential-bootstrap")return;clearTimeout(timer);const keys=Object.keys(value);if(keys.some(k=>!["kind","secret","credentials"].includes(k))||("secret" in value&&(typeof value.secret!=="string"||!value.secret||value.secret.length>8192)))return reject(new Error("BOOTSTRAP_INVALID"));const credentials:Record<string,string>={};if("credentials" in value){if(!value.credentials||typeof value.credentials!=="object"||Array.isArray(value.credentials))return reject(new Error("BOOTSTRAP_INVALID"));for(const [name,entry] of Object.entries(value.credentials as Record<string,unknown>)){if(!allowed.has(name)||typeof entry!=="string"||!entry.trim()||entry.length>8192)return reject(new Error("BOOTSTRAP_INVALID"));credentials[name]=entry;}}resolve({...("secret" in value?{secret:value.secret as string}:{}),credentials});});});
  const modelSelection = modelSelectionSchema.parse(config.modelSelection ?? defaultModelSelection());
+ const providerHost: NodeJS.ProcessEnv = {...process.env, ...bootstrap.credentials};
 
  if(bootstrap.secret)protectPersistenceSecret(bootstrap.secret);
  const base = createMockLanguageModel();
@@ -52,10 +53,10 @@ async function boot() {
         }
     };
     let fixtureClockOffset = 0;
-    const harness = await createHarness({...(config.toolPolicyFile ? { toolPolicyFile: config.toolPolicyFile } : {}),env:config.fixture ? {} : providerEnvironment(modelSelection, bootstrap.secret),storeBackend:"sqlite", workspace: config.workspace, ...(config.stateDirectory ? { stateDirectory: config.stateDirectory } : {}), ...modelSelection, modelInstance:config.fixture?mock:desktopProviderModel(modelSelection,bootstrap.secret), subagentProfiles: [], ...(config.fixture && config.fixtureOci ? { executionBackend: "oci", ociAllowedCommands: ["node", "bun"], ociRuntimeAdapter: fixtureOciRuntime() } : {}) });
+    const harness = await createHarness({...(config.toolPolicyFile ? { toolPolicyFile: config.toolPolicyFile } : {}),env:config.fixture ? {} : providerEnvironment(modelSelection, bootstrap.secret, providerHost),storeBackend:"sqlite", workspace: config.workspace, ...(config.stateDirectory ? { stateDirectory: config.stateDirectory } : {}), ...modelSelection, modelInstance:config.fixture?mock:desktopProviderModel(modelSelection,bootstrap.secret,providerHost), subagentProfiles: [], ...(config.fixture && config.fixtureOci ? { executionBackend: "oci", ociAllowedCommands: ["node", "bun"], ociRuntimeAdapter: fixtureOciRuntime() } : {}) });
     try {
         if (config.recover) try { await recoverHarnessLocalService(harness, config.directory); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-        const service = await startHarnessLocalService(harness, { directory: config.directory, sensitiveValues: [...hostSensitiveValues(process.env),...(bootstrap.secret?[bootstrap.secret]:[])], ...(config.fixture ? { maxEvents: 8, approvalNow: () => Date.now() + fixtureClockOffset } : {}) });
+        const service = await startHarnessLocalService(harness, { directory: config.directory, sensitiveValues: [...hostSensitiveValues(process.env),...Object.values(bootstrap.credentials),...(bootstrap.secret?[bootstrap.secret]:[])], ...(config.fixture ? { maxEvents: 8, approvalNow: () => Date.now() + fixtureClockOffset } : {}) });
         if (config.fixture && config.fixtureEffectCrash) {
             const complete = harness.store.completeToolExecution!.bind(harness.store);
             harness.store.completeToolExecution = async (entry, options) => {

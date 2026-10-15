@@ -140,6 +140,8 @@
     "docs/MCP_STDIO.md",
     "docs/adr/0002-isolated-mcp-stdio.md",
     "docs/VERTEX.md",
+    "docs/BEDROCK.md",
+    "docs/AZURE_OPENAI.md",
     "docs/TOOL_POLICY.md",
     "docs/fixtures/mcp-stdio-contract-v1.json",
     "docs/PROJECT_MEMORY.md",
@@ -162,7 +164,7 @@
     "readiness:1.0": "bun run scripts/check-1-0-readiness.ts",
     "readiness:1.0:release": "bun run scripts/check-1-0-readiness.ts --release",
     "typecheck": "tsc --noEmit",
-    "test": "bun test ./tests ./desktop/tests",
+    "test": "bun test --preload ./tests/preload-bedrock-mock.ts ./tests ./desktop/tests",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
     "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100 --repetitions 3 --warmups 0",
@@ -216,7 +218,9 @@
   "dependencies": {
     "@zhivex-ai/agents": "1.11.0",
     "@zhivex-ai/anthropic": "0.14.0",
-    "@zhivex-ai/core": "1.33.0",
+    "@zhivex-ai/azure-openai": "0.7.8",
+    "@zhivex-ai/bedrock": "2.0.7",
+    "@zhivex-ai/core": "1.34.0",
     "@zhivex-ai/gemini": "0.13.0",
     "@zhivex-ai/meta": "0.2.9",
     "@zhivex-ai/openai": "0.16.0",
@@ -226,7 +230,7 @@
     "zod": "4.6.5"
   },
   "overrides": {
-    "@zhivex-ai/core": "1.33.0"
+    "@zhivex-ai/core": "1.34.0"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.8.0",

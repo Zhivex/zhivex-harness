@@ -1,5 +1,13 @@
 import { withAnthropicContinuation } from "./anthropic-continuation.js";
 import { createVertexModel, vertexConfigured, VERTEX_ENVIRONMENT } from "./vertex-auth.js";
+import {
+  azureOpenAIConfigured,
+  createAzureOpenAIModel
+} from "./azure-openai.js";
+import {
+  bedrockConfigured,
+  createBedrockModel
+} from "./bedrock.js";
 import { withQwenHostedPolicy } from "./qwen-hosted-policy.js";
 import { createMetaContinuationFetch } from "./meta-continuation.js";
 import { createMetaReplayModel } from "./meta-replay.js";
@@ -21,7 +29,7 @@ import { createGemini } from "@zhivex-ai/gemini";
 import { createOpenAI } from "@zhivex-ai/openai";
 import { createQwen, type QwenRegion } from "@zhivex-ai/qwen";
 
-export const PROVIDERS = ["meta", "qwen", "openai", "gemini", "anthropic", "vertex"] as const;
+export const PROVIDERS = ["meta", "qwen", "openai", "gemini", "anthropic", "vertex", "bedrock", "azure-openai"] as const;
 
 export type BuiltInHarnessProvider = (typeof PROVIDERS)[number];
 export type HarnessProvider = BuiltInHarnessProvider | (string & {});
@@ -397,7 +405,7 @@ export const createProviderRegistry = (
         ));
         return Object.freeze({
           ...registration.descriptor,
-          configured: registration.descriptor.id === "vertex" ? vertexConfigured(env) : credentials.length === 0 || credentials.some((credential) => credential.present),
+          configured: builtinConfigured(registration.descriptor.id, env, credentials),
           credentials,
           configuration: providerConfiguration(registration.diagnostics, env)
         });
@@ -407,8 +415,7 @@ export const createProviderRegistry = (
       // Preserve pre-Anthropic transport bindings when the new route uses its default.
       // An explicit endpoint remains part of the binding and invalidates stale resumes.
       const transport = frozenRegistrations.filter(registration =>
-        (registration.descriptor.id !== "anthropic" || Boolean(env.ANTHROPIC_BASE_URL?.trim())) &&
-        (registration.descriptor.id !== "vertex" || VERTEX_ENVIRONMENT.some(name => Boolean(env[name]?.trim())))
+        includeTransport(registration.descriptor.id, env)
       ).map((registration) => {
         const names = [
           registration.diagnostics.endpointEnvironmentVariable,
@@ -428,6 +435,29 @@ export const createProviderRegistry = (
     ])
   });
   return registry;
+};
+
+const environmentPresent = (env: NodeJS.ProcessEnv, names: readonly string[]) =>
+  names.some(name => Boolean(env[name]?.trim()));
+
+const builtinConfigured = (
+  id: string,
+  env: NodeJS.ProcessEnv,
+  credentials: readonly { readonly present: boolean }[]
+) => {
+  if (id === "vertex") return vertexConfigured(env);
+  if (id === "bedrock") return bedrockConfigured(env);
+  if (id === "azure-openai") return azureOpenAIConfigured(env);
+  return credentials.length === 0 || credentials.some((credential) => credential.present);
+};
+
+/** Unconfigured routes stay out of the hash so existing resumes keep their binding. */
+const includeTransport = (id: string, env: NodeJS.ProcessEnv) => {
+  if (id === "anthropic") return Boolean(env.ANTHROPIC_BASE_URL?.trim());
+  if (id === "vertex") return environmentPresent(env, VERTEX_ENVIRONMENT);
+  if (id === "bedrock") return bedrockConfigured(env);
+  if (id === "azure-openai") return azureOpenAIConfigured(env);
+  return true;
 };
 
 const optionalQwenRegion = (value: string | undefined): QwenRegion | undefined => {
@@ -699,6 +729,48 @@ export const BUILTIN_PROVIDER_REGISTRATIONS: readonly ProviderRegistration[] = O
         ...(baseURL ? { baseURL } : {})
       })(model);
     }
+  },
+  {
+    descriptor: {
+      id: "bedrock",
+      name: "Amazon Bedrock",
+      defaultModel: bundledDefaultModel("bedrock"),
+      credentialNames: ["BEDROCK_API_KEY", "AWS_BEARER_TOKEN_BEDROCK"],
+      capabilities: HARNESS_PROVIDER_CAPABILITIES,
+      support: "provisional"
+    },
+    diagnostics: {
+      endpointEnvironmentVariable: "BEDROCK_OPENAI_BASE_URL",
+      presence: [
+        { key: "region", environmentVariable: "AWS_REGION" },
+        { key: "defaultRegion", environmentVariable: "AWS_DEFAULT_REGION" },
+        { key: "profile", environmentVariable: "AWS_PROFILE" }
+      ],
+      enums: [{
+        key: "runtime",
+        environmentVariable: "BEDROCK_RUNTIME",
+        allowedValues: ["converse", "openai"]
+      }]
+    },
+    factory: ({ model, env }) => createBedrockModel(model, env)
+  },
+  {
+    descriptor: {
+      id: "azure-openai",
+      name: "Azure OpenAI",
+      defaultModel: bundledDefaultModel("azure-openai"),
+      credentialNames: ["AZURE_OPENAI_API_KEY"],
+      capabilities: HARNESS_PROVIDER_CAPABILITIES,
+      support: "provisional"
+    },
+    diagnostics: {
+      endpointEnvironmentVariable: "AZURE_OPENAI_ENDPOINT",
+      presence: [
+        { key: "apiVersion", environmentVariable: "AZURE_OPENAI_API_VERSION" },
+        { key: "deployments", environmentVariable: "AZURE_OPENAI_DEPLOYMENTS" }
+      ]
+    },
+    factory: ({ model, env }) => createAzureOpenAIModel(model, env)
   }
 ]);
 

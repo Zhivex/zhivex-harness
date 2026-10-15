@@ -1,18 +1,40 @@
 import {test, expect} from "bun:test";
 import {mkdtemp, mkdir, rm} from "node:fs/promises";
 import {execFileSync} from "node:child_process";
-import {desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
+import {desktopBootstrapCredentials, desktopProviders, defaultModelSelection, modelSelectionSchema, providerEnvironment} from "../src/model-selection.js";
 import {openProjectRegistry} from "../src/projects.js";
 import {prepareModelTransition} from "../src/model-transition.js";
 import type {HarnessClientResponse} from "../../src/client/index.js";
 
 test("existing providers map only their own Keychain credential into the runtime",()=>{
- expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","gemini","meta","openai","qwen","vertex"]);
+ expect(desktopProviders().map(p=>p.id).sort()).toEqual(["anthropic","azure-openai","bedrock","gemini","meta","openai","qwen","vertex"]);
  for(const [provider,key] of Object.entries({anthropic:"ANTHROPIC_API_KEY",openai:"OPENAI_API_KEY",qwen:"DASHSCOPE_API_KEY",meta:"MODEL_API_KEY",gemini:"GEMINI_API_KEY"})){
   expect(providerEnvironment({provider,model:"test-model"},"fixture-secret")).toEqual({[key]:"fixture-secret"});
   expect(providerEnvironment({provider,model:"test-model"})).toEqual({});
  }
  for(const bad of [{provider:"deepseek",model:"test"},{provider:"qwen",model:""},{provider:"qwen",model:"x\ny"},{provider:"qwen",model:"test",baseURL:"https://untrusted.test"}]) expect(modelSelectionSchema.safeParse(bad).success).toBe(false);
+});
+
+test("Bedrock and Azure OpenAI desktop environments copy only their own route settings", () => {
+ expect(providerEnvironment({provider:"bedrock",model:"anthropic.claude-haiku-5-5"}, "unused-key", { AWS_REGION: "us-east-1", OPENAI_API_KEY: "secret" })).toEqual({ AWS_REGION: "us-east-1" });
+ expect(providerEnvironment({provider:"azure-openai",model:"gpt-5.4"}, "azure-secret", { AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/", OPENAI_API_KEY: "secret" })).toEqual({
+  AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com/",
+  AZURE_OPENAI_API_KEY: "azure-secret"
+ });
+ expect(providerEnvironment({provider:"bedrock",model:"amazon.nova-2-lite-v1:0"}, undefined, { AWS_REGION: "us-east-1", AWS_ACCESS_KEY_ID: "AKIAFIXTURE", AWS_SECRET_ACCESS_KEY: "secret-fixture", OPENAI_API_KEY: "secret" })).toEqual({
+  AWS_REGION: "us-east-1",
+  AWS_ACCESS_KEY_ID: "AKIAFIXTURE",
+  AWS_SECRET_ACCESS_KEY: "secret-fixture"
+ });
+ expect(desktopBootstrapCredentials({provider:"azure-openai",model:"gpt-5.4"}, undefined, { AZURE_OPENAI_API_KEY: "env-key", AZURE_OPENAI_ENDPOINT: "https://example.openai.azure.com" })).toEqual({ AZURE_OPENAI_API_KEY: "env-key" });
+ expect(desktopBootstrapCredentials({provider:"azure-openai",model:"gpt-5.4"}, "stored-key", { AZURE_OPENAI_API_KEY: "env-key" })).toEqual({});
+ expect(desktopBootstrapCredentials({provider:"bedrock",model:"amazon.nova-2-lite-v1:0"}, undefined, { AWS_REGION: "us-east-1", AWS_BEARER_TOKEN_BEDROCK: "bearer", AWS_SECRET_ACCESS_KEY: "secret-fixture", AWS_ACCESS_KEY_ID: "AKIAFIXTURE" })).toEqual({
+  AWS_BEARER_TOKEN_BEDROCK: "bearer",
+  AWS_SECRET_ACCESS_KEY: "secret-fixture",
+  AWS_ACCESS_KEY_ID: "AKIAFIXTURE"
+ });
+ expect(desktopBootstrapCredentials({provider:"bedrock",model:"anthropic.claude-haiku-5-5"}, "stored-key", { BEDROCK_RUNTIME: "openai", BEDROCK_API_KEY: "env-key", BEDROCK_OPENAI_BASE_URL: "https://bedrock-mantle.example/v1" })).toEqual({});
+ expect(desktopBootstrapCredentials({provider:"openai",model:"gpt-6-luna"}, undefined, { OPENAI_API_KEY: "secret" })).toEqual({});
 });
 
 test("Vertex Desktop passes only explicit host ADC route settings, never API keys", () => {
