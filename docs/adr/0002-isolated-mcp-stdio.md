@@ -16,9 +16,12 @@ activate stdio, change configuration schema 1, or claim isolated execution passe
   private workspace volume and optional read-only dependencies. Its adapter has
   finite `run`/`runBatch`, not an interactive stdio process lease. All MCP is
   currently rejected with OCI enforcement before discovery.
-- Installed `@zhivex-ai/core` 1.26.0 exposes `McpClient`, call options with abort,
-  timeout/idempotency key, and an HTTP transport; no executable stdio factory was
-  found in this dependency. The control-plane transport enum is not an executor.
+- At this proposal, installed `@zhivex-ai/core` 1.26.0 exposed `McpClient`, call
+  options with abort, timeout/idempotency key, and an HTTP transport; no executable
+  stdio factory was found in that dependency. The control-plane transport enum is
+  not an executor.
+- The current pin is `@zhivex-ai/core` 1.33.0, which includes an experimental
+  stdio client. Harness still does not treat that factory as the OCI boundary.
 
 MCP stdio uses UTF-8 newline-delimited JSON-RPC on stdin/stdout; stderr is a
 separate diagnostic stream. Preserve message correlation and initialization.

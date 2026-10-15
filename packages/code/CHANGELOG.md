@@ -1,15 +1,17 @@
 # Code changelog
 
-## 0.3.1 - 2026-10-14
+## 0.3.1 - 2026-10-15
 
-- Pin exactly Harness 1.4.1. Publish only after that engine is verified on `latest`. Published Code 0.2.0 remains `latest`. Published Code 0.3.0-rc.8 remains `next`.
-- Carry the matched engine's Vertex transient-failure retry and explicit monetary output caps. The local browser retries reconciliation when a command finishes during reconnect.
+- Pin exactly Harness 1.4.1 and Core 1.33.0. Publish only after that engine is verified on `latest`. Published Code 0.3.0 is `latest`. Published Code 0.3.0-rc.8 remains `next`.
+- Keep the composer footer readable below 48 columns, say `rejected by you` when an operation is rejected, check the Node engine before startup, and describe command reviews as commands.
+- The local browser retries reconciliation when a command finishes during reconnect, and its limits copy is English.
+- The matched engine's Vertex transient-failure retry and explicit monetary output caps shipped in Harness 1.4.0 / Code 0.3.0. This patch does not add them.
 - This preparation does not authorize tags, paid calls or a campaign.
 
-## 0.3.0 - 2026-10-09
+## 0.3.0 - 2026-10-14
 
-- Pin exactly Harness 1.4.0 and set the npm dist-tag to `latest`. Publish only after that engine is verified on `latest`. Published Code 0.2.0 remains `latest`. Published Code 0.3.0-rc.8 remains `next`.
-- This package is not identical to `code-v0.3.0-rc.8` (`5bba06c86fc82b34b67cec607053948f8e00d0d1`). It includes the review screen shared by shell `--continue` and `/pending` ([PR201](https://github.com/Zhivex/zhivex-harness/pull/201)), the one-line status and summary and the 48×24 first-welcome logo ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)), and the public package README ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)). The matched engine runtime under `src/` is identical to that tag.
+- Published on npm `latest`, pinned exactly to Harness 1.4.0 (`53cdfd338cd33f4786629a30ca7f7a8782ba0ac8`). That engine includes the Vertex transient-failure retry. Explicit monetary output caps above 2,048 were already in the 1.4.0-rc.7 engine. Published Code 0.3.0-rc.8 remains `next`.
+- This package is not identical to `code-v0.3.0-rc.8` (`5bba06c86fc82b34b67cec607053948f8e00d0d1`). It includes the review screen shared by shell `--continue` and `/pending` ([PR201](https://github.com/Zhivex/zhivex-harness/pull/201)), the one-line status and summary and the 48×24 first-welcome logo ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)), and the public package README ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)). The matched published engine is the 1.4.0 tag, which adds the Vertex retry on top of that rc.8 runtime.
 - The interactive console reviews pending approvals on one screen, keeps the idle status and the final summary to one line, and shows the logo on the first welcome of a new session at 48×24.
 - This preparation does not authorize tags, paid calls or a campaign.
 

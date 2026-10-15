@@ -1,8 +1,8 @@
 # Review a small task in Code
 
-This workflow is an unreleased experimental CLI addition. Published Code 0.2.0
-and 0.3.0-rc.1 do not have `/task`. Use the candidate artifact prepared by your
-operator; this document does not authorize publishing RC.3 or changing npm tags.
+`/task` shipped in published Code 0.3.0 (Harness 1.4.0). This checkout prepares
+Code 0.3.1. Published Code 0.2.0 and 0.3.0-rc.1 do not have `/task`. This
+document does not authorize a new tag or a change to npm dist-tags.
 
 Start in a clean Git repository with a working package check. Selected files must
 remain visible to Git diff: ignored untracked files and files marked

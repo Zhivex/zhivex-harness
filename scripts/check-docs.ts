@@ -151,7 +151,7 @@ const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY
 const expectedCurrentSdkDependencies = {
   "@zhivex-ai/agents": "1.11.0",
   "@zhivex-ai/anthropic": "0.13.2",
-  "@zhivex-ai/core": "1.31.0",
+  "@zhivex-ai/core": "1.33.0",
   "@zhivex-ai/gemini": "0.13.0",
   "@zhivex-ai/meta": "0.2.9",
   "@zhivex-ai/openai": "0.14.1",

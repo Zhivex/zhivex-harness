@@ -3,7 +3,7 @@
 New interactive Web/terminal tasks have no accumulated spend, token, step,
 tool-call or duration cap unless configured. This change uses the published SDK contract from
 Zhivex/zhivex-ai-sdk PR 142 (Core/SDK 1.31.0, Agents 1.11.0). Direct Harness, Code
-and Web Core/Agents pins and the root Core override use those verified releases.
+and the root Core override now pin Core 1.33.0; Agents stays 1.11.0.
 Provider package pins, headless policies and release gates remain unchanged.
 
 The Web header opens the approved gradual configuration modal. Next task settings
@@ -21,7 +21,7 @@ Unsupported pricing tiers and unaccounted auxiliary usage make the estimate
 unavailable. The price source is visible on the run. No money is reserved and this
 is not a guaranteed financial cap.
 
-**Avisar** records a notice and lets the run continue. **Detener** requests the
+**Notify** records a notice and lets the run continue. **Stop** requests the
 existing active-run cancellation once, after observing the threshold. An in-flight
 operation or final response can exceed it; completed work is not rolled back.
 Consumption and durable effects remain recorded. Cancellation produces a cancelled

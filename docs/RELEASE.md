@@ -5,19 +5,20 @@
 The source version is `1.4.1`, pending publication to `latest`.
 This checkout prepares Harness `1.4.1` and Code `0.3.1` for npm `latest`, with
 Code pinned exactly to the engine and private Desktop bound to the same Harness
-version. Both patch versions are unpublished. Published `latest` stays Harness
-`1.3.0` and Code `0.2.0`. Published npm `next` is Harness `1.4.0-rc.8` and Code
-`0.3.0-rc.8`. The mutable `release-status.json` keeps the verified Harness 1.3.0
-`latest` record. Do not rewrite it to `1.4.1` until that publication has its own
+version. Both patch versions are unpublished. Published `latest` is Harness
+`1.4.0` and Code `0.3.0`. Published npm `next` is Harness `1.4.0-rc.8` and Code
+`0.3.0-rc.8`. The mutable `release-status.json` records the verified Harness 1.4.0
+`latest` publication. Do not rewrite it to `1.4.1` until that publication has its own
 registry integrity, provenance and release-bound live evidence.
 
-The patch carries the Vertex transient-failure classification, bounded jittered
-retry, and empty-model-turn retry. It retains explicit monetary output caps
-above 2,048: the ledger uses 2,048 only when a request omits its cap, and an
-insufficient reservation fails before transport. A local web reconnect that
-overlaps a finishing command reads durable state again so reconciliation can
-enable the next session. SDK pins stay Core 1.31.0, Agents 1.11.0, Anthropic
-0.13.2, OpenAI 0.14.1, Qwen 0.16.4, Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0.
+The Vertex transient-failure classification and explicit output caps above 2,048
+shipped in 1.4.0. This patch keeps the narrow composer readable, says when an
+operation was rejected, shows web limits in English, hides the Node 22 SQLite
+warning, checks the Node engine at startup, and describes command reviews as
+commands. A local web reconnect that overlaps a finishing command reads durable
+state again so reconciliation can enable the next session. Core is 1.33.0.
+Other SDK pins stay Agents 1.11.0, Anthropic 0.13.2, OpenAI 0.14.1, Qwen 0.16.4,
+Vertex 1.2.4, Meta 0.2.9 and Gemini 0.13.0.
 Vertex 1.2.7 is not included: its changelog is dependency updates only, and the
 bump fails the coordinated Vertex 1.2.4 pin. Maintenance updates are ACP SDK
 1.8.0, `@types/node` 26.6.5, CodeQL Action 4.38.3, setup-node 7.1.0,

@@ -3,9 +3,9 @@
 - Status: published on npm as `latest`
 - Baseline date: 2026-09-20
 
-Version `1.3.0` is published and verified on npm `latest`.
+Version `1.4.0` is published and verified on npm `latest`.
 `release-status.json` records that Harness registry bytes, source and protected
-release evidence. Code `0.2.0`, pinned to Harness `1.3.0`, is the published Code
+release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 `0.3.0-rc.8`. This checkout prepares Harness `1.4.1` and Code `0.3.1` for
 `latest`. Publication is pending and is not claimed here.
@@ -13,13 +13,15 @@ package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 ## Prepared source: 1.4.1
 
 Source version: `1.4.1` (stable publication to `latest` pending), with Code
-`0.3.1` pinned exactly to Harness `1.4.1`. The patch carries the Vertex
-transient-failure retry, retains explicit monetary output caps, and retries a
-local web reconnect that overlaps a finishing command. SDK pins stay at the
-versions already on main, including Vertex 1.2.4. Beta/experimental APIs and
-provisional provider routes do not become stable. Desktop keeps
-`0.1.0-alpha.1` and private distribution. This preparation does not create tags
-or publish. The unpublished 1.4.0 preparation remains historical.
+`0.3.1` pinned exactly to Harness `1.4.1`. The patch fixes the narrow composer
+footer, rejection copy, English web limits, the Node 22 SQLite warning, the
+startup Node engine check, and command-review copy. It also retries a local web
+reconnect that overlaps a finishing command and pins Core 1.33.0. The Vertex
+transient-failure retry and explicit output caps above 2,048 already shipped in
+1.4.0. Other adapter pins stay at the versions already on main, including
+Vertex 1.2.4. Beta/experimental APIs and provisional provider routes do not
+become stable. Desktop keeps `0.1.0-alpha.1` and private distribution. This
+preparation does not create tags or publish.
 
 ## Published release: 1.3.0
 
@@ -87,9 +89,9 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `0.11.1` | Security and release hardening | Bounded reads, recoverable cleanup, and fail-closed release evidence | Published on npm | S |
 | `1.0.0` | Stable contract | Supported compatibility and release guarantees | Published on npm; superseded on `latest` | L |
 | `1.2.0` | Compatible minor | CLI, context, local service and governed delegation | Published on npm; superseded on `latest` | L |
-| `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Published on npm as `latest` | M |
-| `1.4.0` | Stable Code product | Code 0.3.0 pinned to the 1.4.0 engine | Pending stable publication | L |
-| `1.4.1` | Patch | Vertex retry, explicit output caps, Code 0.3.1 | Pending stable publication | S |
+| `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Published on npm; superseded on `latest` | M |
+| `1.4.0` | Stable Code product | Code 0.3.0 pinned to the 1.4.0 engine | Published on npm as `latest` | L |
+| `1.4.1` | Patch | Footer, review copy, English limits, Node check, Code 0.3.1 | Pending stable publication | S |
 
 Relative size is for sequencing only; dates require a capacity decision.
 
