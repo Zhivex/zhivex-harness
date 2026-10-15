@@ -12,7 +12,7 @@ import { action, context, reconnect } from "./api.js";
 import { ModelSelectionRejectedError } from "./request-failure.js";
 import { ComposerDrafts } from "./composer-drafts.js";
 import "./composer.css";
-import { counted } from "./limit-copy.js";
+import { counted, limitsReadError, limitsSaveError } from "./limit-copy.js";
 import { LimitsDialog } from "./LimitsDialog.js";
 import type { LimitSettings, LimitScope } from "./limit-settings.js";
 import type { LimitPreferences } from "./limit-store.js";
@@ -125,7 +125,7 @@ export function App() {
     let stopped = false;
     void action<LimitsInfo>(workspaceKey, "limits").then(info => {
       if (!stopped) setLimitsInfo(info);
-    }).catch(() => { if (!stopped) setLimitsError("No se pudieron leer los límites. Reconecta para volver a consultar."); });
+    }).catch(() => { if (!stopped) setLimitsError(limitsReadError); });
     return () => { stopped = true; };
   }, [workspaceKey, refresh, run?.runId]);
   async function saveLimits(scope: LimitScope, settings: LimitSettings) {
@@ -137,7 +137,7 @@ export function App() {
       setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits"));
       setLimitsOpen(false);
     } catch {
-      setLimitsError("No se confirmó el cambio. Cierra y vuelve a abrir para consultar los límites antes de guardar otra vez.");
+      setLimitsError(limitsSaveError);
       setLimitsInfo(await action<LimitsInfo>(workspaceKey, "limits").catch(() => undefined));
     } finally { limitsSavingRef.current = false; setLimitsSaving(false); }
   }

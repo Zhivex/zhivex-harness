@@ -9,7 +9,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 - Retry a local web reconnect when a command finishes during the durable read, so reconciliation can enable the next session.
 - Keep the Code composer footer readable below 48 columns: model, approval mode and status stay separate clauses and wrap on words.
 - Show a rejected operation as "rejected by you" instead of "operation failed", without echoing the tool name.
-- Show the local web limits dialog and run summary in English, including singular step, tool-call and token counts.
+- Show the local web limits dialog, its load and save failures, and the run summary in English, including singular step, tool-call and token counts.
 - Hide the Node 22 ExperimentalWarning for built-in SQLite before the first product line. Other warnings still print.
 - Refuse to start the Harness and Code CLIs when Node is older than engines.node (>=22.13.0), including --help and --version. Bun keeps its own engine check.
 - Describe command reviews as a command that does not run, in the Code terminal and the local web review scope.
