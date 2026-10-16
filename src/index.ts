@@ -503,3 +503,4 @@ export type { HarnessMcpResourceClient } from "./integrations/mcp.js";
 
 export { runHarnessDurableReviewGroup, inspectHarnessReviewGroup, cancelHarnessReviewGroup } from "./runtime/durable-review-group.js";
 export type { HarnessDurableReviewGroupResult } from "./runtime/durable-review-group.js";
+export type { HarnessSharedBudgetOptions } from "./runtime/shared-budget.js";
