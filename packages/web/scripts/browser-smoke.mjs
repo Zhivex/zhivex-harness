@@ -100,8 +100,20 @@ await page.route("**/api/action", async (route) => {
   return route.fulfill({ response });
 });
 async function viewReviewFiles() {
-  await page.getByLabel("Approval review", { exact: true }).waitFor();
-  for (const checkbox of await page.locator('[data-action="view-file"]').all()) await checkbox.check();
+  const approve = page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ });
+  await approve.waitFor();
+  // Reconnect clears the ticket before the next review arrives. Keep marking files
+  // until that later ticket is on screen and Approve is enabled.
+  await page.waitForFunction(() => {
+    const button = document.querySelector("button[data-decision='approve']");
+    if (!(button instanceof HTMLButtonElement)) return false;
+    const boxes = [...document.querySelectorAll("[data-action='view-file']")];
+    if (/\d+ files?/.test(button.textContent ?? "") && boxes.length === 0) return false;
+    for (const box of boxes) {
+      if (box instanceof HTMLInputElement && !box.checked) box.click();
+    }
+    return !button.disabled;
+  });
 }
 async function reviewEnterDoesNotDecide() {
   const before = commands.filter(command => command === "decide").length;
