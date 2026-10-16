@@ -279,8 +279,11 @@ support remain unchanged; estimated budgets are not guaranteed financial caps.
    From a clean checkout of that main commit, create an annotated
    `code-v0.2.0` tag and push it. Never move or overwrite release tags.
 4. Dispatch `release-code.yml` **at that tag**, with input `tag` matching it and
-   `channel=latest`, `mode=oidc`, and `confirm_publication=true`. Dispatching
-   main while supplying a different tag is rejected.
+   `channel=latest`, `mode=oidc`, and `confirm_publication=true`. A no-permission
+   job resolves that annotated tag to the workflow commit and requires the commit
+   to be reachable from `main` before provenance OIDC, provider-free validation,
+   or npm publication starts. Dispatching main while supplying a different tag
+   is rejected.
 
 ```sh
 gh workflow run release-code.yml --ref code-v0.2.0 \

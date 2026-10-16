@@ -925,10 +925,24 @@ for (const required of [
     failures.push(`.github/workflows/release.yml is missing the release-bound live gate: ${required}.`);
   }
 }
-if (!liveCertificationWorkflow.includes("ref: ${{ inputs.tag }}") ||
+if (!liveCertificationWorkflow.includes("uses: ./.github/workflows/resolve-protected-release-ref.yml") ||
+  !liveCertificationWorkflow.includes("ref: ${{ needs.resolve-release-commit.outputs.sha }}") ||
+  liveCertificationWorkflow.includes("ref: ${{ inputs.tag }}") ||
   !liveCertificationWorkflow.includes("fetch-depth: 0") ||
   !liveCertificationWorkflow.includes("--tag \"$RELEASE_TAG\"")) {
-  failures.push(".github/workflows/live-certification.yml must bind certification to an exact annotated tag.");
+  failures.push(".github/workflows/live-certification.yml must bind certification to the trusted release commit.");
+}
+const codeReleaseWorkflow = await readFile(path.join(workspace, ".github", "workflows", "release-code.yml"), "utf8");
+for (const [file, workflow] of [
+  [".github/workflows/release.yml", releaseWorkflow],
+  [".github/workflows/release-code.yml", codeReleaseWorkflow]
+] as const) {
+  if (!workflow.includes("uses: ./.github/workflows/resolve-protected-release-ref.yml") ||
+    !workflow.includes("ref: ${{ needs.resolve-release-commit.outputs.sha }}") ||
+    workflow.includes("ref: ${{ inputs.tag }}") ||
+    !workflow.includes("permissions: {}")) {
+    failures.push(`${file} must resolve the tag in a no-permission job before checkout.`);
+  }
 }
 for (const [file, workflow] of [
   [".github/workflows/release.yml", releaseWorkflow],

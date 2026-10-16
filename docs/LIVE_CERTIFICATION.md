@@ -63,6 +63,8 @@ The package exposes dedicated Bun scripts for:
 
 Live scripts require an explicit network opt-in and explicit local credentials. Provider selection and model or endpoint overrides use the normal configuration contract. The scripts fail closed when prerequisites are missing and print the required invocation without revealing configured values.
 
+The manual workflow and the release-bound live job both wait for a no-permission resolver. That resolver accepts an annotated `vX.Y.Z` or `vX.Y.Z-rc.N` tag whose commit is the dispatched workflow commit and an ancestor of `main`, then later steps check out that SHA. Provider secrets and Vertex `id-token: write` are granted only after it succeeds. Confirm the `live-certification` environment reviewers and selected-tag deployment rule described in [Public repository security](PUBLIC_SECURITY.md) before dispatch.
+
 Keep credentials and account-specific configuration only in the ignored local environment file. Never commit that file or copy its contents into prompts, fixtures, evidence, or issue reports.
 
 ## Support labels

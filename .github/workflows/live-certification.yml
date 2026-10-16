@@ -15,17 +15,29 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: live-provider-certification-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
+  resolve-release-commit:
+    name: Resolve annotated tag on main
+    permissions: {}
+    uses: ./.github/workflows/resolve-protected-release-ref.yml
+    with:
+      tag: ${{ inputs.tag }}
+      kind: harness
+
   certify:
+    needs: resolve-release-commit
+    if: ${{ needs.resolve-release-commit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: live-certification
+    permissions:
+      contents: read
+      id-token: write
 
     env:
       RELEASE_TAG: ${{ inputs.tag }}
@@ -45,11 +57,20 @@ jobs:
       WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     steps:
-      - name: Checkout
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+
+      - name: Checkout resolved release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Setup Bun
