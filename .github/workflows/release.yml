@@ -30,22 +30,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-release-commit:
+    name: Resolve annotated tag on main
+    if: ${{ inputs.confirm_publication && github.repository == 'Zhivex/zhivex-harness' }}
+    permissions: {}
+    # Local reusable workflow: defense in depth, not the trust boundary.
+    # GitHub loads this file from the dispatched ref, which can rewrite or omit it.
+    # The boundary is the npm environment deployment tags and the tag ruleset.
+    uses: ./.github/workflows/resolve-protected-release-ref.yml
+    with:
+      tag: ${{ inputs.tag }}
+      kind: harness
+
   validate:
     name: Build and validate exact tarball
-    if: ${{ inputs.confirm_publication && github.repository == 'Zhivex/zhivex-harness' }}
+    needs: resolve-release-commit
+    if: ${{ inputs.confirm_publication && github.repository == 'Zhivex/zhivex-harness' && needs.resolve-release-commit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
 
     env:
       RELEASE_TAG: ${{ inputs.tag }}
       RELEASE_CHANNEL: ${{ inputs.channel }}
 
     steps:
-      - name: Checkout annotated release tag
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+
+      - name: Checkout resolved release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Setup Bun
@@ -140,10 +165,11 @@ jobs:
   publish:
     name: Publish validated tarball
     needs:
+      - resolve-release-commit
       - validate
       - certify-live
       - representative-evaluation
-    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}
+    if: ${{ needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm
@@ -156,11 +182,20 @@ jobs:
       RELEASE_CHANNEL: ${{ inputs.channel }}
 
     steps:
-      - name: Checkout annotated release tag
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+
+      - name: Checkout resolved release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Setup Bun
@@ -227,8 +262,10 @@ jobs:
 
   certify-live:
     name: Certify exact release tag with live providers
-    needs: validate
-    if: ${{ needs.validate.result == 'success' }}
+    needs:
+      - resolve-release-commit
+      - validate
+    if: ${{ needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: live-certification
@@ -256,11 +293,20 @@ jobs:
 
 
     steps:
-      - name: Checkout annotated release tag
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+
+      - name: Checkout resolved release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Setup Bun
@@ -585,8 +631,8 @@ jobs:
 
   representative-evaluation:
     name: Certify representative repository matrix
-    needs: [validate, certify-live]
-    if: ${{ needs.validate.result == 'success' && needs.certify-live.result == 'success' }}
+    needs: [resolve-release-commit, validate, certify-live]
+    if: ${{ needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' && needs.certify-live.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: live-certification
@@ -603,11 +649,20 @@ jobs:
       WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
 
     steps:
-      - name: Checkout annotated release tag
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+
+      - name: Checkout resolved release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
 
       - name: Setup Bun
@@ -736,7 +791,7 @@ jobs:
   summary:
     name: Release outcome
     if: ${{ always() }}
-    needs: [validate, certify-live, representative-evaluation, publish]
+    needs: [resolve-release-commit, validate, certify-live, representative-evaluation, publish]
     runs-on: ubuntu-latest
     permissions: {}
     steps:
@@ -744,7 +799,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           RELEASE_CHANNEL: ${{ inputs.channel }}
-          SOURCE_COMMIT: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ needs.resolve-release-commit.outputs.sha || github.sha }}
           VALIDATION: ${{ needs.validate.result }}
           LIVE: ${{ needs.certify-live.result }}
           REPRESENTATIVE: ${{ needs.representative-evaluation.result }}

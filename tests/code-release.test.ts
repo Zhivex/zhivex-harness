@@ -185,7 +185,8 @@ test("Code workflow validates channel before registry reads and publishes retain
   const publish = workflow.jobs.publish;
   expect(publish.environment).toBe("npm");
   expect(publish.permissions["id-token"]).toBe("write");
-  expect(publish.needs).toBe("validate");
+  expect(publish.needs).toEqual(["resolve-release-commit", "validate"]);
+  expect(publish.if).toContain("needs.resolve-release-commit.result == 'success'");
   expect(publish.if).toContain("inputs.confirm_publication");
   const publication = publish.steps.find((s: any) => s.run?.includes(" publish "));
   expect(publication.if).toBe("steps.registry.outputs.status == 'absent'");

@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { REPRESENTATIVE_DATASET_NAME, REPRESENTATIVE_DATASET_REVISION } from "../scripts/generate-representative-evidence.js";
 
 type WorkflowStep = { id?: string; name?: string; run?: string; if?: string; env?: Record<string, string>; with?: Record<string, unknown>; uses?: string };
-type Workflow = { jobs: Record<string, { needs?: string | string[]; if?: string; env: Record<string, string>; steps: WorkflowStep[] }> };
+type Workflow = { jobs: Record<string, { needs?: string | string[]; if?: string; permissions?: Record<string, string>; env: Record<string, string>; steps: WorkflowStep[] }> };
 const readWorkflow = async (name: string) => Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows", name), "utf8")) as Workflow;
 const candidateModels = async () => {
   const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8"));
@@ -26,7 +26,8 @@ test('manual certification covers the release live gates, model pins, route cred
     on: {workflow_dispatch: {inputs: {providers: {default: string}}}}; permissions: Record<string,string>
   };
   expect(yaml.on.workflow_dispatch.inputs.providers.default).toBe(release.env.ZHIVEX_HARNESS_LIVE_PROVIDERS!);
-  expect(yaml.permissions['id-token']).toBe('write');
+  expect(yaml.permissions['id-token']).toBeUndefined();
+  expect(manualWorkflow.jobs.certify?.permissions?.['id-token']).toBe('write');
   for (const [key, value] of Object.entries(release.env)) {
     if (key.endsWith('_MODEL') || key.startsWith('VERTEX_') || key === 'GOOGLE_CLOUD_PROJECT') expect(manual.env[key]).toBe(value);
   }
@@ -102,7 +103,7 @@ describe("release workflow version source", () => {
     const workflow = await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8");
     expect(workflow).not.toContain("continue-on-error:");
     expect(workflow).toContain('ZHIVEX_HARNESS_LIVE_FAIL_FAST: "1"');
-    expect(workflow).toContain("needs: [validate, certify-live]");
+    expect(workflow).toContain("needs: [resolve-release-commit, validate, certify-live]");
     expect(workflow).toContain("needs.certify-live.result == 'success'");
     for (const name of ["Evaluate Meta", "Evaluate Qwen", "Evaluate OpenAI"]) {
       const block = workflow.match(new RegExp(`- name: ${name}[^\\n]*\\n([\\s\\S]*?)(?=\\n      - name:)`))?.[0];
@@ -124,7 +125,9 @@ describe("release workflow version source", () => {
         "description: Annotated vX.Y.Z or vX.Y.Z-rc.N tag; must match package.json and resolve to main"
       );
       expect(workflow).toContain("required: true");
-      expect(workflow).toContain("ref: ${{ inputs.tag }}");
+      expect(workflow).not.toContain("ref: ${{ inputs.tag }}");
+      expect(workflow).toContain("ref: ${{ needs.resolve-release-commit.outputs.sha }}");
+      expect(workflow).toContain("uses: ./.github/workflows/resolve-protected-release-ref.yml");
       expect(workflow).not.toMatch(/default:\s+v\d+\.\d+\.\d+/);
     });
   }
@@ -216,10 +219,10 @@ describe("release workflow version source", () => {
   test("publication requires complete artifact-bound representative evidence", async () => {
     const workflow = await readWorkflow("release.yml");
     const publication = workflow.jobs.publish!;
-    expect(publication.needs).toEqual(["validate", "certify-live", "representative-evaluation"]);
+    expect(publication.needs).toEqual(["resolve-release-commit", "validate", "certify-live", "representative-evaluation"]);
     for (const gate of publication.needs!) expect(publication.if).toContain(`needs.${gate}.result == 'success'`);
     const representative = workflow.jobs["representative-evaluation"]!;
-    expect(representative.needs).toEqual(["validate", "certify-live"]);
+    expect(representative.needs).toEqual(["resolve-release-commit", "validate", "certify-live"]);
     expect(representative.env.REPRESENTATIVE_DATASET_NAME).toBe(REPRESENTATIVE_DATASET_NAME);
     expect(representative.env.REPRESENTATIVE_DATASET_REVISION).toBe(REPRESENTATIVE_DATASET_REVISION);
     const tasks = (await readFile(path.join(workspace, representative.env.REPRESENTATIVE_DATASET!), "utf8"))
@@ -360,7 +363,7 @@ test("release preflight precedes Docker and full validation; transfer supports r
   expect(preflight).toBeLessThan(steps.findIndex(step => step.run?.includes("docker pull")));
   expect(preflight).toBeLessThan(steps.findIndex(step => step.run?.includes("bun run release:check")));
   expect(steps.find(step => step.with?.name === "npm-release-${{ github.sha }}")?.with?.["retention-days"]).toBe(30);
-  expect(workflow.jobs.summary!.needs).toEqual(["validate", "certify-live", "representative-evaluation", "publish"]);
+  expect(workflow.jobs.summary!.needs).toEqual(["resolve-release-commit", "validate", "certify-live", "representative-evaluation", "publish"]);
   expect(workflow.jobs.summary!.if).toBe("${{ always() }}");
   expect(workflow.jobs.publish!.needs).not.toContain("summary");
 });

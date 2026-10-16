@@ -38,9 +38,22 @@ env:
   RELEASE_CHANNEL: ${{ inputs.channel }}
 
 jobs:
+  resolve-release-commit:
+    name: Resolve annotated tag on main
+    if: ${{ github.repository == 'Zhivex/zhivex-harness' }}
+    permissions: {}
+    # Local reusable workflow: defense in depth, not the trust boundary.
+    # GitHub loads this file from the dispatched ref, which can rewrite or omit it.
+    # The boundary is the npm environment deployment tags and the tag ruleset.
+    uses: ./.github/workflows/resolve-protected-release-ref.yml
+    with:
+      tag: ${{ inputs.tag }}
+      kind: code
+
   validate:
     name: Validate exact Code release artifact
-    if: ${{ github.repository == 'Zhivex/zhivex-harness' }}
+    needs: resolve-release-commit
+    if: ${{ github.repository == 'Zhivex/zhivex-harness' && needs.resolve-release-commit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -48,10 +61,19 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+      - name: Checkout resolved release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -128,8 +150,10 @@ jobs:
 
   publish:
     name: Publish retained Code artifact with OIDC
-    needs: validate
-    if: ${{ inputs.mode == 'oidc' && inputs.confirm_publication && needs.validate.result == 'success' }}
+    needs:
+      - resolve-release-commit
+      - validate
+    if: ${{ inputs.mode == 'oidc' && inputs.confirm_publication && needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm
@@ -138,10 +162,19 @@ jobs:
       actions: read
       id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Require trusted release commit
+        env:
+          RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          printf 'trusted release commit %s\n' "$RELEASE_SHA"
+      - name: Checkout resolved release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve-release-commit.outputs.sha }}
           fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:

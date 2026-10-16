@@ -1,0 +1,109 @@
+name: Resolve protected release ref
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Annotated release tag
+        required: true
+        type: string
+      kind:
+        description: harness or code
+        required: true
+        type: string
+    outputs:
+      sha:
+        description: Full commit SHA of the annotated tag
+        value: ${{ jobs.resolve.outputs.sha }}
+
+permissions: {}
+
+jobs:
+  resolve:
+    name: Resolve annotated tag on main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      sha: ${{ steps.bind.outputs.sha }}
+    steps:
+      - name: Resolve annotated tag to a main commit
+        id: bind
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          TAG_KIND: ${{ inputs.kind }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$TAG_KIND" != "harness" && "$TAG_KIND" != "code" ]]; then
+            printf 'unsupported release tag kind\n' >&2
+            exit 1
+          fi
+
+          if [[ "$TAG_KIND" == "harness" ]]; then
+            pattern='^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$'
+          else
+            pattern='^code-v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$'
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ $pattern ]]; then
+            printf 'release tag does not match the annotated tag pattern\n' >&2
+            exit 1
+          fi
+
+          if [[ ! "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            printf 'workflow commit is not a full SHA\n' >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REPOSITORY" != "Zhivex/zhivex-harness" ]]; then
+            printf 'release workflows run only in Zhivex/zhivex-harness\n' >&2
+            exit 1
+          fi
+
+          # Harness and Code both require the exact tag ref. A dispatch from
+          # main can match the tagged commit and still be excluded from
+          # tag-only environments and Vertex identity. This check is defense
+          # in depth, not the trust boundary: the dispatched ref loads this
+          # file and can omit it. See docs/PUBLIC_SECURITY.md.
+          if [[ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]]; then
+            printf 'dispatch the workflow from the exact annotated tag ref\n' >&2
+            exit 1
+          fi
+
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          export GIT_TERMINAL_PROMPT=0
+          workdir="$(mktemp -d)"
+          trap 'rm -rf "$workdir"' EXIT
+          git -c init.defaultBranch=main init --quiet "$workdir"
+          git -C "$workdir" remote add origin "$remote"
+          git -C "$workdir" -c credential.helper= -c http.extraheader= fetch --quiet --no-tags origin "refs/heads/main:refs/remotes/origin/main"
+          git -C "$workdir" -c credential.helper= -c http.extraheader= fetch --quiet origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          object_type="$(git -C "$workdir" for-each-ref --format='%(objecttype)' "refs/tags/${RELEASE_TAG}")"
+          peeled_type="$(git -C "$workdir" for-each-ref --format='%(*objecttype)' "refs/tags/${RELEASE_TAG}")"
+          tag_name="$(git -C "$workdir" for-each-ref --format='%(tag)' "refs/tags/${RELEASE_TAG}")"
+          commit="$(git -C "$workdir" for-each-ref --format='%(*objectname)' "refs/tags/${RELEASE_TAG}")"
+
+          if [[ "$object_type" != "tag" || "$peeled_type" != "commit" || "$tag_name" != "$RELEASE_TAG" ]]; then
+            printf 'tag must be an annotated tag object pointing at one commit\n' >&2
+            exit 1
+          fi
+
+          if [[ ! "$commit" =~ ^[0-9a-f]{40}$ ]]; then
+            printf 'annotated tag did not peel to a full commit SHA\n' >&2
+            exit 1
+          fi
+
+          if [[ "$commit" != "$GITHUB_SHA" ]]; then
+            printf 'annotated tag commit does not match the protected workflow commit\n' >&2
+            exit 1
+          fi
+
+          if ! git -C "$workdir" merge-base --is-ancestor "$commit" refs/remotes/origin/main; then
+            printf 'annotated tag commit is not reachable from main\n' >&2
+            exit 1
+          fi
+
+          printf 'sha=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+          printf 'resolved %s to %s\n' "$RELEASE_TAG" "$commit"
