@@ -28,8 +28,16 @@ const needsOf = (job: Job) => job.needs === undefined ? [] : Array.isArray(job.n
 
 const git = async (args: string[], cwd?: string) => {
   const child = Bun.spawn(["git", ...args], {
-    cwd, stdout: "pipe", stderr: "pipe", stdin: "ignore",
-    env: { ...process.env, GIT_AUTHOR_NAME: "Release", GIT_AUTHOR_EMAIL: "release@example.com", GIT_COMMITTER_NAME: "Release", GIT_COMMITTER_EMAIL: "release@example.com" }
+    stdout: "pipe", stderr: "pipe", stdin: "ignore",
+    env: {
+      PATH: process.env.PATH ?? "",
+      HOME: process.env.HOME ?? "",
+      GIT_AUTHOR_NAME: "Release",
+      GIT_AUTHOR_EMAIL: "release@example.com",
+      GIT_COMMITTER_NAME: "Release",
+      GIT_COMMITTER_EMAIL: "release@example.com"
+    },
+    ...(cwd === undefined ? {} : { cwd })
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited
