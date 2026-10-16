@@ -7,6 +7,10 @@
 - Add a task and evidence panel to the existing local web client: goal, revision, artifact and check provenance, task-wide accounting, and explicit accept, correct, and continue actions. Keep exact tool approvals, cancellation, and chat presentation in their existing surfaces.
 - Migration: use the matched experimental Harness `task.control.v1` host. Existing sessions remain readable; ordinary chat has no required task contract. New governed tasks initially require a clean native Git workspace, existing tracked text files, package checks, and explicit token limits. Failed or uncertain effects are never replayed automatically; unknown consumption blocks continuation. No published version or SDK pin changes.
 
+## 0.3.2 - 2026-10-16
+
+- Reuse an equivalent Rekor transparency-log entry when npm provenance generation receives HTTP 409 for the same proposed DSSE entry. The existing entry is fetched and checked for the exact envelope, payload hash, signature, and certificate before the bundle is accepted. Workflow identity and release-commit verification stay in place. The Harness pin remains 1.4.1.
+
 ## 0.3.1 - 2026-10-15
 
 - Pin exactly Harness 1.4.1 and Core 1.33.0. Optional `@napi-rs/keyring` moves from 2.1.0 to 2.1.1; a missing entry still reads as absent. Publish only after that engine is verified on `latest`. Published Code 0.3.0 is `latest`. Published Code 0.3.0-rc.8 remains `next`.
