@@ -16,12 +16,18 @@ export const budgetLedgerNamespace = (namespace: string) => {
   return `${BUDGET_LEDGER_NAMESPACE}:${namespace}`;
 };
 
+/**
+ * A named source becomes `__zhivex_budget__:<namespace>`.
+ * An omitted namespace uses the trailing-colon owner, which `budgetLedgerNamespace` never produces, so it cannot join a named ledger.
+ */
 export const budgetLedgerScope = (scope: Pick<AgentStoreScope, "tenantId" | "userId" | "namespace">): AgentStoreScope => {
-  if (!scope.namespace) throw new HarnessStateConflictError("The budget ledger requires the source namespace.");
+  if (scope.namespace && isReservedBudgetNamespace(scope.namespace)) {
+    throw new HarnessStateConflictError("The budget ledger namespace is reserved.");
+  }
   return {
     tenantId: scope.tenantId,
     ...(scope.userId ? { userId: scope.userId } : {}),
-    namespace: budgetLedgerNamespace(scope.namespace)
+    namespace: scope.namespace ? budgetLedgerNamespace(scope.namespace) : `${BUDGET_LEDGER_NAMESPACE}:`
   };
 };
 
@@ -31,7 +37,7 @@ const sameIdentity = (left: AgentStoreScope | undefined, right: AgentStoreScope)
 /** Translate the SDK's collapsed namespace onto the bound owner before the file or SQLite store. */
 export const bindBudgetLedgerStore = (primary: AgentRunStore, scope: AgentStoreScope, budget: AgentRunStore = primary): AgentRunStore => {
   const bound = budgetLedgerScope(scope);
-  const ownerNamespace = scope.namespace!;
+  const ownerNamespace = scope.namespace ?? "";
   const isSdkBudget = (value: AgentStoreScope | undefined) =>
     sameIdentity(value, bound) && value?.namespace === BUDGET_LEDGER_NAMESPACE;
   const isBoundBudget = (value: AgentStoreScope | undefined) =>

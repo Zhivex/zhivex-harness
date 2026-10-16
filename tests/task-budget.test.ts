@@ -216,6 +216,22 @@ test('a task ledger stays bound to its source namespace', async () => {
   expect(other.accountRunId).not.toBe(account.accountRunId);
 });
 
+test('an omitted namespace keeps its own ledger and still opens a task account', async () => {
+  const store = createInMemoryAgentRunStore();
+  const unnamed = { tenantId: 'task-budget-tests', userId: 'operator' };
+  const named = { ...unnamed, namespace: 'alpha' };
+  const account = await TaskBudget.open({ store, scope: unnamed, taskId: 'shared-name', policy });
+  const other = await TaskBudget.open({ store, scope: named, taskId: 'shared-name', policy });
+  const budgetRunId = `budget_${fingerprintAgentHarness({ budgetId: account.accountRunId, scope: unnamed }).slice('sha256:'.length)}`;
+  const stored = await store.load(budgetRunId, budgetLedgerScope(unnamed));
+  expect(stored?.scope?.namespace).toBe('__zhivex_budget__:');
+  expect(stored?.metadata?.budgetOwnerNamespace).toBe('');
+  expect(await store.load(budgetRunId, budgetLedgerScope(named))).toBeUndefined();
+  expect(await store.load(budgetRunId, { ...unnamed, namespace: '__zhivex_budget__' })).toBeUndefined();
+  expect(other.accountRunId).not.toBe(account.accountRunId);
+  expect(await account.summary()).toMatchObject({ taskId: 'shared-name', usageComplete: true });
+});
+
 test('legacy and partial snapshots cannot create a fresh task account or ledger', async () => {
   const store = createInMemoryAgentRunStore();
   await expect(TaskBudget.open({ store, scope, taskId: 'legacy', policy, requireExisting: true })).rejects.toThrow('TASK_BUDGET_MISSING');
