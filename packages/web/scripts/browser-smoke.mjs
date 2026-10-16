@@ -106,11 +106,11 @@ async function viewReviewFiles() {
   // until that later ticket is on screen and Approve is enabled.
   await page.waitForFunction(() => {
     const button = document.querySelector("button[data-decision='approve']");
-    if (!(button instanceof HTMLButtonElement)) return false;
+    if (!button) return false;
     const boxes = [...document.querySelectorAll("[data-action='view-file']")];
     if (/\d+ files?/.test(button.textContent ?? "") && boxes.length === 0) return false;
     for (const box of boxes) {
-      if (box instanceof HTMLInputElement && !box.checked) box.click();
+      if (box.tagName === "INPUT" && !box.checked) box.click();
     }
     return !button.disabled;
   });
