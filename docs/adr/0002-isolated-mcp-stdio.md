@@ -120,7 +120,7 @@ host spawn from `createHarnessMcpTools` or by buffering a never-ending `run`.
 | --- | --- |
 | Client commands run during session creation | Reject before admission; zero host/container processes and zero discovery calls. |
 | TOCTOU, swapped image/argv or replayed admission | Digest/identity recheck at launch; receipt scope/expiry/single-use tests. |
-| Secret/environment exfiltration | Empty inherited environment, restricted references, network denial, redacted audit; canary checks inside/outside boundary. |
+| Secret/environment exfiltration | Empty inherited environment, restricted references, network denial, redacted audit, and optional flagging of high-entropy or encoded strings from credential-bearing servers. Output stays untrusted data. Canary checks inside and outside the boundary. |
 | Filesystem escape and host mutation | No bind mounts, no-follow snapshot/import rules, resource limits and reviewed publication; symlink/traversal fixtures. |
 | Tool metadata or prompt injection escalates authority | Independent host policy and per-call approvals; untrusted descriptions/results remain data. |
 | Hung/forking/noisy process | Absolute deadlines, frame/queue/stderr/resource bounds and whole-boundary cleanup. |

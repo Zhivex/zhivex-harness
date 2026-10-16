@@ -26,6 +26,8 @@ export async function withAdmittedMcpLaunch<T>(options: {
       workspace: options.scope.workspace, maxWorkspaceBytes: proposal.limits.maxWorkspaceBytes }, async files => {
       // Keep secret values out of proposals, fingerprints and argv. No inherited
       // process environment is available to the isolated server through this map.
+      // The server's stdout is untrusted data: encodings of these values can still
+      // leave the boundary, so credential-bearing launches flag them in tool results.
       const environment: Record<string, string> = { HOME: '/tmp', TMPDIR: '/tmp', LANG: 'C.UTF-8', HOSTNAME: 'mcp', ...proposal.environment };
       const controller = new AbortController();
       let timer: ReturnType<typeof setTimeout> | undefined;

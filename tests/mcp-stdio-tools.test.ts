@@ -39,6 +39,36 @@ test('full input validator checks enum and unexpected fields before dispatch', a
   await execute(tools, { choice: 'allowed' }); expect(f.calls()).toBe(1);
 });
 
+test('credential-bearing results flag encodings and high-entropy tokens without rewriting discovery', async () => {
+  const secret = 'correct-horse-battery-staple-secret';
+  const encoded = Buffer.from(secret).toString('base64');
+  const hex = Buffer.from(secret).toString('hex');
+  const blob = Buffer.from('unrelated high entropy marker value 123456789').toString('base64url');
+  const f = fixture({ ...listed(), description: `docs ${encoded}` }, { content: [{ type: 'text', text: `plain ${secret} b64 ${encoded} hex ${hex} blob ${blob} status ok` }] });
+  const tools = await createIsolatedMcpTools({ client: f.client, proposal, sensitiveValues: [secret], flagEncodedSecrets: true });
+  const result = JSON.stringify(await execute(tools, { choice: 'allowed' }));
+  expect(result).not.toContain(secret);
+  expect(result).not.toContain(encoded);
+  expect(result).not.toContain(hex);
+  expect(result).not.toContain(blob);
+  expect(result).toContain('[REDACTED]');
+  expect(result).toContain('[ENCODED]');
+  expect(result).toContain('[HIGH_ENTROPY]');
+  expect(result).toContain('status ok');
+});
+
+test('encoded flagging stays off unless requested and ordinary text is unchanged', async () => {
+  const secret = 'correct-horse-battery-staple-secret';
+  const f = fixture(listed(), { content: [{ type: 'text', text: `token ${secret} status ok` }] });
+  const tools = await createIsolatedMcpTools({ client: f.client, proposal, sensitiveValues: [secret] });
+  const result = JSON.stringify(await execute(tools, { choice: 'allowed' }));
+  expect(result).not.toContain(secret);
+  expect(result).toContain('[REDACTED]');
+  expect(result).toContain('status ok');
+  expect(result).not.toContain('[HIGH_ENTROPY]');
+  expect(result).not.toContain('[ENCODED]');
+});
+
 test('explicit secrets are scrubbed from nested content and keys before tool output', async () => {
   const f = fixture(listed(), { content: [{ type: 'text', text: 'token CANARY_VALUE' }], structuredContent: { CANARY_VALUE: ['CANARY_VALUE'] } });
   const tools = await createIsolatedMcpTools({ client: f.client, proposal, sensitiveValues: ['CANARY_VALUE'] });
