@@ -62,7 +62,10 @@ channels without compatible review evidence receive EXPLICIT_REVIEW_REQUIRED and
 leave the operation pending. The local CLI in ask mode displays a complete bounded
 payload and issues host evidence after explicit confirmation, without cached session
 grants. With this policy, `resume --approve` also requires interactive review;
-noninteractive invocation remains pending. Desktop accepts the operator-owned
+noninteractive invocation remains pending. `zhivex-code web --tool-policy` applies that file only when a single
+`--workspace` is set. More than one workspace with a shared policy is a usage
+error, so projects cannot inherit each other's approvals. `zhivex-code project add
+--tool-policy <path>` records a policy for that folder alone. Desktop accepts the operator-owned
 policy through its `--tool-policy` startup argument. Its main process consumes a
 bounded, expiring review ticket and sends the exact decision to the runtime through
 their private process channel. The renderer cannot issue review evidence, and the

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Rework the local web workspace around review: a sessions drawer, light and dark themes, a movable diff panel, and a searchable model selector. `zhivex-code project add` registers a folder for a running local server. Tool policy stays per project. This note does not publish a release.
 - Select provisional Amazon Bedrock and Azure OpenAI from the matched engine. Converse uses the AWS credential chain and region and reports Tier B on published Bedrock 2.0.7. The OpenAI-compatible Bedrock runtime and Azure OpenAI can use a keychain or temporary API key with their required https endpoint. Pin Core 1.34.0 with that engine. No live calls, tags, or publication are authorized.
 - Add `zhivex-code export-audit <task-id> --out <directory>` and `zhivex-code verify-audit --out <directory>`. Both call the experimental `@zhivex-ai/harness/audit` entrypoint. Verification reads the pack and signing key without resolving provider, store, or budget configuration. This note does not publish a release or change the Harness pin.
 - Add a task and evidence panel to the existing local web client: goal, revision, artifact and check provenance, task-wide accounting, and explicit accept, correct, and continue actions. Keep exact tool approvals, cancellation, and chat presentation in their existing surfaces.

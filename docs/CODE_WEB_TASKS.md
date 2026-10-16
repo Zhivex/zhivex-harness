@@ -11,7 +11,7 @@ action on a fresh review ticket; model prose and a completed run are not accepta
 
 ## Operator flow
 
-1. Open `zhivex-code web`, select an allowed workspace and create an empty session.
+1. Open `zhivex-code web`, open Sessions, choose an allowed project and create an empty session.
    Choose **Define task**. Enter the goal, exact existing editable files, package
    checks and explicit input/output/total token limits for the entire task.
 2. Review each proposed edit or check through the existing exact approval controls.
