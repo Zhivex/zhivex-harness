@@ -279,3 +279,46 @@ jobs:
           node -e 'const expected = require("./package.json").version; import("./dist/index.js").then((module) => { if (module.HARNESS_VERSION !== expected) process.exit(1); })'
           node dist/verify-historical-migrations.js
           node --input-type=module -e 'import { mkdtemp, rm } from "node:fs/promises"; import os from "node:os"; import path from "node:path"; import { openCliSessionStore, resolveHarnessConfig } from "./dist/index.js"; const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-node-compat-")); try { const config = resolveHarnessConfig({ workspace }); const store = await openCliSessionStore({ workspace, stateDirectory: config.stateDirectory, scope: config.scope }); const session = await store.create({ title: "node-compat" }); if ((await store.get(session.sessionId))?.title !== "node-compat") process.exitCode = 1; store.close(); } finally { await rm(workspace, { recursive: true, force: true }); }'
+
+  workflow-lint:
+    name: Lint GitHub Actions workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Lint workflows with actionlint
+        run: |
+          set -euo pipefail
+          version="1.7.12"
+          case "$(uname -m)" in
+            x86_64)
+              suffix="linux_amd64"
+              checksum="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+              ;;
+            aarch64)
+              suffix="linux_arm64"
+              checksum="325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
+              ;;
+            *)
+              printf 'unsupported architecture for actionlint\n' >&2
+              exit 1
+              ;;
+          esac
+          archive="actionlint_${version}_${suffix}.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/rhysd/actionlint/releases/download/v${version}/${archive}"
+          echo "${checksum}  ${archive}" | sha256sum -c -
+          tar -xzf "$archive" actionlint
+          # SC2016 matches quoted node and bun programs. SC2129 and SC2155 are existing redirect and export style warnings.
+          ./actionlint -shellcheck "$(command -v shellcheck)" \
+            -ignore 'SC2016:' \
+            -ignore 'SC2129:' \
+            -ignore 'SC2155:'
