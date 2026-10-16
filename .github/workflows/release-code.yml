@@ -73,7 +73,7 @@ jobs:
           bun run build:code
           bun run typecheck:code
           bun run test:code
-          bun test tests/code-release.test.ts
+          bun test tests/code-release.test.ts tests/code-bootstrap-provenance.test.ts
       - name: Pack one immutable Code artifact and fetch published engine
         run: |
           mkdir -p release-code-artifacts
