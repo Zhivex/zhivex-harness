@@ -17,6 +17,6 @@ test("supported Node still prints the Code version before the engine loads", () 
     cwd: fileURLToPath(new URL("..", import.meta.url)),
   });
   expect(result.status).toBe(0);
-  expect(result.stdout.trim()).toBe("0.3.1");
+  expect(result.stdout.trim()).toBe("0.3.2");
   expect(result.stderr).toBe("");
 });
