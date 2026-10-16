@@ -128,11 +128,11 @@ export function assertCodePayload(names: string[]): void {
     assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/", "package/docs/"].includes(name) ||
       /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name) ||
       ["package/dist/web-assets/", "package/dist/web-assets/assets/", "package/dist/web-assets/index.html"].includes(name) ||
-      /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css)$/.test(name), `Unexpected Code payload: ${name}`);
+      /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2)$/.test(name), `Unexpected Code payload: ${name}`);
   }
   for (const name of codePayloadFiles) assert(names.includes(name), `Missing ${name}`);
-  for (const extension of ["js", "css"]) {
-    assert(names.some(name => /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css)$/.test(name) &&
+  for (const extension of ["js", "css", "woff2"]) {
+    assert(names.some(name => /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2)$/.test(name) &&
       name.endsWith(`.${extension}`)), `Missing compiled web ${extension} asset`);
   }
 }

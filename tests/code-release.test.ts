@@ -11,6 +11,7 @@ const webPayload = {
   "package/dist/web-assets/index.html": '<script type="module" src="/assets/index-abc123.js"></script><link rel="stylesheet" href="/assets/index-abc123.css">',
   "package/dist/web-assets/assets/index-abc123.js": "export {};\n",
   "package/dist/web-assets/assets/index-abc123.css": "body { color: white; }\n",
+  "package/dist/web-assets/assets/geist-sans-latin-400-normal-abc123.woff2": "woff2\n",
 };
 
 test("Code artifact accepts the two shipped offline examples and binds exact bytes", async () => {
@@ -51,7 +52,8 @@ test("Code payload rejects arbitrary examples, source, secrets, traversal, neste
   assertCodePayload([...required, "package/", "package/dist/", "package/examples/", "package/dist/chunk-abc123.js"]);
   for (const unexpected of ["package/examples/other.mjs", "package/examples/.env", "package/examples/nested/first-use.mjs",
     "package/docs/other.md", "package/docs/.env", "package/src/cli.ts", "package/dist/cli.js.map", "package/dist/.hidden.js", "package/dist/nested/cli.js",
-    "package/dist/../secret.js", "package/../secret", "/package/dist/cli.js", "package/dist/cliXjs", "package/README.md.bak", "package/dist/web-assets/other.png", "package/dist/web-assets/zhivex-icon.png.js"]) {
+    "package/dist/../secret.js", "package/../secret", "/package/dist/cli.js", "package/dist/cliXjs", "package/README.md.bak", "package/dist/web-assets/other.png", "package/dist/web-assets/zhivex-icon.png.js",
+    "package/dist/web-assets/assets/font.ttf", "package/dist/fonts/geist.woff2"]) {
     expect(() => assertCodePayload([...required, unexpected])).toThrow("Unexpected Code payload");
   }
   for (const missing of required) expect(() => assertCodePayload(required.filter(name => name !== missing))).toThrow("Missing");
