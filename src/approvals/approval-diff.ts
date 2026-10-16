@@ -5,7 +5,7 @@ import type { HarnessClientRun } from "../client/protocol.js";
 import type { ApprovalDecisionView } from "./approval-history.js";
 export const APPROVAL_DIFFS_KEY = "clientApprovalDiffsV1";
 const sha = z.string().regex(/^sha256:[a-f0-9]{64}$/);
-const file = z.object({ path: z.string().max(1024), expectedDigest: sha.nullable(), before: z.string().nullable(), after: z.string().nullable(), afterDigest: sha.nullable(), beforeMode: z.number().int().optional(), afterMode: z.number().int().optional(), operation: z.enum(["create", "update", "delete"]).optional() }).strict();
+const file = z.object({ path: z.string().max(1024), expectedDigest: sha.nullable(), before: z.string().nullable(), after: z.string().nullable(), afterDigest: sha.nullable(), beforeMode: z.number().int().optional(), afterMode: z.number().int().optional(), operation: z.enum(["create", "update", "delete", "restore"]).optional() }).strict();
 const archive = z.object({ approvalId: z.string().max(256), digest: z.string().regex(/^[a-f0-9]{64}$/), proposalId: sha, files: z.array(file).min(1).max(50) }).strict();
 const archives = z.array(archive).max(512);
 export type AppliedDiff = { status: "complete"; files: z.infer<typeof file>[]; redacted?: boolean } | { status: "unavailable" };

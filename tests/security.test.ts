@@ -162,7 +162,11 @@ describe("security regressions", () => {
     await rm(dataPath);
     await symlink(outsideFile, dataPath);
 
-    await expect(workspace.restoreQuarantined({ quarantineId: quarantined.quarantineId })).rejects.toThrow();
+    await expect(workspace.restoreQuarantined({
+      quarantineId: quarantined.quarantineId,
+      destination: "src/index.ts",
+      expectedDigest: source.digest
+    })).rejects.toThrow();
     await expect(readFile(path.join(root, "src", "index.ts"), "utf8")).rejects.toThrow();
     expect(await readFile(outsideFile, "utf8")).toBe("outside\n");
   });
@@ -177,7 +181,8 @@ describe("security regressions", () => {
     try {
       await expect(workspace.restoreQuarantined({
         quarantineId: quarantined.quarantineId,
-        destination: "src/restored.ts"
+        destination: "src/restored.ts",
+        expectedDigest: source.digest
       })).rejects.toThrow();
       await expect(readFile(path.join(root, "src", "restored.ts"), "utf8")).rejects.toThrow();
       expect(await readFile(dataPath, "utf8")).toContain("value = 1");

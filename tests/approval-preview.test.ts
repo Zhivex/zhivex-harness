@@ -37,3 +37,24 @@ test("create preview is absence-bound and service projection degrades stale appr
     expect(await readdir(dir)).toEqual([]); await writeFile(path.join(dir, "new.txt"), "concurrent");
     expect((await attachApprovalPreviews(run(), workspace)).approvals[0]!.filePreview).toEqual({ status: "unavailable" });
 });
+test("restore preview pins destination and quarantined bytes without writing", async () => {
+    const { dir, workspace } = await setup();
+    const body = "quarantined secret\n";
+    await writeFile(path.join(dir, "gone.txt"), body);
+    const quarantined = await workspace.quarantineFile({ path: "gone.txt", expectedDigest: digest(body) });
+    const pinned = { quarantineId: quarantined.quarantineId, destination: "back.txt", expectedDigest: digest(body) };
+    const run = (args: unknown): HarnessClientRun => ({ runId: "r", revision: 4, status: "waiting_approval", output: "", approvals: [{ approvalId: "a", digest: "a".repeat(64), provider: "p", kind: "tool", expiresAt: 123, action: { name: "restore_file", arguments: JSON.stringify(args) } }] });
+    expect((await attachApprovalPreviews(run(pinned), workspace)).approvals[0]!.filePreview).toEqual({ status: "complete", proposalId: digest(body), files: [{ path: "back.txt", expectedDigest: digest(body), before: null, after: body, afterDigest: digest(body), operation: "restore" }] });
+    expect(await readdir(dir)).toEqual([".zhivex-harness"]);
+    for (const args of [
+        { quarantineId: quarantined.quarantineId },
+        { quarantineId: quarantined.quarantineId, destination: "back.txt" },
+        { quarantineId: quarantined.quarantineId, expectedDigest: digest(body) },
+        { quarantineId: quarantined.quarantineId, destination: "back.txt", expectedDigest: digest("other") },
+        { quarantineId: quarantined.quarantineId, destination: ".ENV", expectedDigest: digest(body) }
+    ]) expect((await attachApprovalPreviews(run(args), workspace)).approvals[0]!.filePreview).toEqual({ status: "unavailable" });
+    await writeFile(path.join(dir, "back.txt"), "occupant\n");
+    expect((await attachApprovalPreviews(run(pinned), workspace)).approvals[0]!.filePreview).toEqual({ status: "unavailable" });
+    expect(await readFile(path.join(dir, "back.txt"), "utf8")).toBe("occupant\n");
+    expect(workspace.mutationAudit().map(entry => entry.operation)).toEqual(["quarantine"]);
+});

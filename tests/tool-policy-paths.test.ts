@@ -24,8 +24,12 @@ test('exact edit projections refuse malformed multi-file input before effects', 
 
 test('unavailable tools and non-enumerable path-scoped tools reject at construction', () => {
   expect(() => validateBuiltinToolPolicy(rule(['absent']), ['read_file'])).toThrow('unavailable');
-  for (const name of ['search_files', 'list_files', 'run_check', 'restore_file', 'constructor']) {
+  for (const name of ['search_files', 'list_files', 'run_check', 'constructor']) {
     expect(() => validateBuiltinToolPolicy(rule([name]), [name])).toThrow('safely resolve');
   }
+  expect(() => validateBuiltinToolPolicy(rule(['restore_file']), ['restore_file'])).not.toThrow();
+  const restore = builtinToolPolicyPathResolver(rule(['restore_file']));
+  expect(restore('restore_file', { quarantineId: 'q1', destination: 'private.txt', expectedDigest: `sha256:${'a'.repeat(64)}` })).toEqual(['private.txt']);
+  expect(createHarnessToolPolicy(rule(['restore_file'])).evaluate({ toolName: 'restore_file', paths: ['private.txt'] }).decision).toBe('deny');
   expect(() => validateBuiltinToolPolicy({ schemaVersion: 1, rules: [{ id: 'deny-checks', tools: ['run_check'], decision: 'deny', reason: 'No commands' }] }, ['run_check'])).not.toThrow();
 });

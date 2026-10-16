@@ -195,7 +195,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   restore_file: tool({
     name: "restore_file",
-    description: "Restore a quarantined file to its original path or an explicit safe destination without overwriting content unexpectedly.",
+    description: "Restore a quarantined file to the required destination after the reviewed expectedDigest matches the quarantined bytes. Restore does not fall back to the original path and never overwrites an existing file.",
     schema: restoreFileInputSchema,
     ...mutationApproval,
     execute: async (input, context) => serializeJsonValue(editContractDocument(

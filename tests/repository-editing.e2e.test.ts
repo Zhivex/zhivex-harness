@@ -193,6 +193,7 @@ describe("trusted repository editing fixture", () => {
     await expect(readFile(path.join(root, "src", "restore-me.ts"), "utf8")).rejects.toThrow();
     const restored = await workspace.restoreQuarantined({
       quarantineId: quarantined.quarantineId,
+      destination: "src/restore-me.ts",
       expectedDigest: recoverable.digest
     });
     expect(restored).toMatchObject({
@@ -295,6 +296,7 @@ describe("trusted repository editing fixture", () => {
     await writeFixtureFile(root, "src/restore-me.ts", "newer destination\n");
     await expect(workspace.restoreQuarantined({
       quarantineId: quarantined.quarantineId,
+      destination: "src/restore-me.ts",
       expectedDigest: recoverable.digest
     })).rejects.toThrow(/exist|overwrite|destination/i);
     expect(await readFile(path.join(root, "src", "restore-me.ts"), "utf8")).toBe("newer destination\n");

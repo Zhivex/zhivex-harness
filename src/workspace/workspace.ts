@@ -473,7 +473,7 @@ export class Workspace {
     if (!isInside(this.root, candidate)) throw new HarnessWorkspaceError(`The path escapes the workspace: ${relativePath}`);
     const relative = wirePath(path.relative(this.root, candidate));
     if (relative && isHardIgnored(relative)) {
-      const blocked = relative.split("/").find((segment) => HARD_IGNORES.has(segment.toLocaleLowerCase()) || isSensitiveName(segment));
+      const blocked = relative.split("/").find((segment) => HARD_IGNORES.has(segment.toLowerCase()) || isSensitiveName(segment));
       throw new HarnessWorkspaceError(`The path is protected by the harness policy: ${blocked}`);
     }
     return candidate;
@@ -1463,6 +1463,56 @@ export class Workspace {
     return { quarantineId, path: parsed.path, digest: source.digest, audit };
   }
 
+  private async readRestorableQuarantine(quarantineId: string) {
+    const directory = await this.secureQuarantineDirectory(false);
+    let manifest: QuarantineManifest;
+    try {
+      const manifestFile = await this.readInternalRegularFile(
+        path.join(directory, `${quarantineId}.json`),
+        "Quarantine manifest",
+        64 * 1024
+      );
+      manifest = JSON.parse(manifestFile.contents.toString("utf8")) as QuarantineManifest;
+    } catch {
+      throw new HarnessWorkspaceError(`Quarantine entry was not found: ${quarantineId}.`);
+    }
+    if (manifest.schemaVersion !== 1 || manifest.quarantineId !== quarantineId || manifest.status !== "quarantined") {
+      throw new HarnessWorkspaceError(`Quarantine entry is not restorable: ${quarantineId}.`);
+    }
+    const dataPath = path.join(directory, `${quarantineId}.data`);
+    const dataFile = await this.readInternalRegularFile(dataPath, "Quarantine payload", MAX_FILE_BYTES);
+    const digest = digestBytes(dataFile.contents);
+    if (digest !== manifest.digest) {
+      throw new HarnessWorkspaceError(`Quarantine digest mismatch: ${quarantineId}.`);
+    }
+    return { manifest, dataPath, dataFile, digest };
+  }
+
+  /** Read-only preview of a pinned restore. Destination and digest are required, and nothing is written. */
+  async previewRestore(input: unknown) {
+    const parsed = restoreFileInputSchema.parse(input);
+    const quarantined = await this.readRestorableQuarantine(parsed.quarantineId);
+    if (parsed.expectedDigest !== quarantined.digest) {
+      throw new HarnessWorkspaceError(`Quarantine digest mismatch: ${parsed.quarantineId}.`);
+    }
+    const destination = await this.safePath(parsed.destination, { allowMissing: true });
+    if (destination.exists) throw new HarnessWorkspaceError(`Restore destination already exists: ${parsed.destination}.`);
+    let after: string;
+    try { after = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(quarantined.dataFile.contents); }
+    catch { throw new HarnessWorkspaceError("Preview requires valid UTF-8 text."); }
+    return {
+      proposalId: parsed.expectedDigest,
+      files: [{
+        path: parsed.destination,
+        expectedDigest: parsed.expectedDigest,
+        before: null,
+        after,
+        afterDigest: quarantined.digest,
+        operation: "restore" as const
+      }]
+    };
+  }
+
   async restoreQuarantined(input: RestoreFileInput): Promise<RestoreFileResult> {
     return withWorkspaceMutation(this.root, () => this.restoreQuarantinedLocked(input));
   }
@@ -1470,28 +1520,12 @@ export class Workspace {
   private async restoreQuarantinedLocked(input: RestoreFileInput): Promise<RestoreFileResult> {
     const parsed = restoreFileInputSchema.parse(input);
     this.checkAuditCapacity();
-    const directory = await this.secureQuarantineDirectory(false);
-    let manifest: QuarantineManifest;
-    try {
-      const manifestFile = await this.readInternalRegularFile(
-        path.join(directory, `${parsed.quarantineId}.json`),
-        "Quarantine manifest",
-        64 * 1024
-      );
-      manifest = JSON.parse(manifestFile.contents.toString("utf8")) as QuarantineManifest;
-    } catch {
-      throw new HarnessWorkspaceError(`Quarantine entry was not found: ${parsed.quarantineId}.`);
-    }
-    if (manifest.schemaVersion !== 1 || manifest.quarantineId !== parsed.quarantineId || manifest.status !== "quarantined") {
-      throw new HarnessWorkspaceError(`Quarantine entry is not restorable: ${parsed.quarantineId}.`);
-    }
-    const dataPath = path.join(directory, `${parsed.quarantineId}.data`);
-    const dataFile = await this.readInternalRegularFile(dataPath, "Quarantine payload", MAX_FILE_BYTES);
-    const digest = digestBytes(dataFile.contents);
-    if (digest !== manifest.digest || (parsed.expectedDigest && parsed.expectedDigest !== digest)) {
+    const quarantined = await this.readRestorableQuarantine(parsed.quarantineId);
+    if (parsed.expectedDigest !== quarantined.digest) {
       throw new HarnessWorkspaceError(`Quarantine digest mismatch: ${parsed.quarantineId}.`);
     }
-    const destinationPath = parsed.destination ?? manifest.originalPath;
+    const { manifest, dataPath, dataFile, digest } = quarantined;
+    const destinationPath = parsed.destination;
     const destination = await this.safePath(destinationPath, { allowMissing: true });
     if (destination.exists) throw new HarnessWorkspaceError(`Restore destination already exists: ${destinationPath}.`);
     await this.secureWorkspaceDirectory(path.dirname(destination.path));

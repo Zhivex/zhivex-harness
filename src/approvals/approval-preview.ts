@@ -5,19 +5,19 @@ import { createEditProposal, editProposalInputSchema, fileDigestSchema, type App
 import type { ReplacementEdit } from "../workspace/replacement-edits.js";
 import type { Workspace } from "../workspace/workspace.js";
 import type { HarnessClientRun } from "../client/protocol.js";
-export interface ApprovalPreviewFile { path: string; expectedDigest: string | null; before: string | null; after: string | null; afterDigest: string | null; beforeMode?: number; afterMode?: number; operation?: "create" | "update" | "delete" }
+export interface ApprovalPreviewFile { path: string; expectedDigest: string | null; before: string | null; after: string | null; afterDigest: string | null; beforeMode?: number; afterMode?: number; operation?: "create" | "update" | "delete" | "restore" }
 export type ApprovalFilePreview = { status: "complete"; proposalId: string; files: ApprovalPreviewFile[] } | { status: "unavailable" };
 /** Explicitly requested read projection; never trusts renderer-supplied paths or changes. */
 export async function attachApprovalPreviews(run: HarnessClientRun, workspace: Workspace, options: { environment?: HarnessOciExecutionEnvironment | undefined; scope?: AgentStoreScope | undefined } = {}): Promise<HarnessClientRun> {
     let remaining = 256 * 1024;
     for (const approval of run.approvals) {
         const action = approval.action as { name?: unknown; arguments?: unknown } | null;
-        if (!action || !["apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"].includes(String(action.name))) continue;
+        if (!action || !["apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits", "restore_file"].includes(String(action.name))) continue;
         approval.filePreview = { status: "unavailable" };
         try {
             if (typeof action.arguments !== "string" || Buffer.byteLength(action.arguments) > 256 * 1024) continue;
             const args: unknown = JSON.parse(action.arguments);
-            const preview = action.name === "apply_environment_patch" || action.name === "verify_and_apply_environment_patch" ? await (async () => {
+            const preview = action.name === "restore_file" ? await workspace.previewRestore(args) : action.name === "apply_environment_patch" || action.name === "verify_and_apply_environment_patch" ? await (async () => {
                 if (!options.environment) throw new Error("OCI_REVIEW_UNAVAILABLE");
                 const patchId = fileDigestSchema.parse((args as { patchId?: unknown })?.patchId);
                 const patch = await options.environment.previewPatch({ runId: run.runId, ...(options.scope ? { scope: options.scope } : {}) }, patchId);
