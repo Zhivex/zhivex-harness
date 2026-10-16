@@ -19,10 +19,19 @@ const argv = process.argv.slice(2);
 if (argv.length === 1 && ["--version", "-v", "version"].includes(argv[0]!)) {
   process.stdout.write(`${CODE_VERSION}\n`);
 } else if (argv.length === 1 && ["--help", "-h", "help"].includes(argv[0]!)) {
-  process.stdout.write(`${shortCliHelp(CODE_VERSION)}\nLocal browser: zhivex-code web [--workspace <path>]\n`);
+  process.stdout.write(`${shortCliHelp(CODE_VERSION)}\nLocal browser: zhivex-code web [--workspace <path>]\nRegister a folder: zhivex-code project add\n`);
 } else if (argv[0] === "web") {
   const { runWeb } = await import("./web-entry.js");
   await runWeb(argv.slice(1));
+} else if (argv[0] === "project") {
+  const { runProjectCli } = await import("../../web/src/project-cli.js");
+  try {
+    await runProjectCli(argv.slice(1));
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "PROJECT_FAILED";
+    process.stderr.write(`${code}. Use zhivex-code project --help.\n`);
+    process.exitCode = 1;
+  }
 } else {
   const { runCli } = await import("./cli.js");
   await runCli(argv);

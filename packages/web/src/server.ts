@@ -96,6 +96,8 @@ const actions = z.discriminatedUnion("action", [
       approve: z.boolean(),
     })
     .strict(),
+  z.object({ action: z.literal("overview"), ...base }).strict(),
+  z.object({ action: z.literal("forgetProject"), ...base }).strict(),
 ]);
 const secret = () => randomBytes(32).toString("hex");
 const equal = (actual: unknown, expected: string) =>
@@ -179,6 +181,7 @@ export async function staticInventory(
           ".css": "text/css; charset=utf-8",
           ".svg": "image/svg+xml",
           ".png": "image/png",
+          ".woff2": "font/woff2",
         };
         files.set(
           "/" + path.relative(root, canonical).split(path.sep).join("/"),
@@ -197,12 +200,60 @@ export async function staticInventory(
   return files;
 }
 
+async function pendingReviews(runtime: WebRuntime) {
+  try {
+    const listed = await runtime.command({ method: "session.list" }) as {
+      ok?: boolean;
+      data?: { kind?: string; sessions?: { sessionId: string; title?: string; runs: { runId: string; status: string }[] }[] };
+    };
+    if (!listed.ok || listed.data?.kind !== "sessions" || !listed.data.sessions) return [];
+    const pending = [];
+    for (const session of listed.data.sessions) {
+      const latest = session.runs.at(-1);
+      if (latest?.status !== "waiting_approval") continue;
+      let expiresAt: number | undefined;
+      try {
+        const detail = await runtime.command({ method: "run.get", sessionId: session.sessionId, runId: latest.runId }) as {
+          ok?: boolean;
+          data?: { kind?: string; run?: { approvals?: { expiresAt?: number }[] } };
+        };
+        const times = detail.ok && detail.data?.kind === "run"
+          ? (detail.data.run?.approvals ?? []).map((item) => item.expiresAt).filter((value): value is number => typeof value === "number")
+          : [];
+        if (times.length) expiresAt = Math.min(...times);
+      } catch { /* A missing deadline is omitted rather than invented. */ }
+      pending.push({
+        sessionId: session.sessionId,
+        ...(session.title ? { title: session.title } : {}),
+        runId: latest.runId,
+        ...(expiresAt !== undefined ? { expiresAt } : {}),
+      });
+    }
+    return pending;
+  } catch {
+    return [];
+  }
+}
+
+export interface UnavailableProject {
+  key: string;
+  name: string;
+  workspace: string;
+  provider: string;
+  model: string;
+  unavailable: true;
+  cause: string;
+  toolPolicy?: string;
+}
+
 export async function startWebServer(options: {
   runtimes: WebRuntime[];
+  unavailable?: UnavailableProject[];
   assetsDirectory: string;
   host?: string;
   port?: number;
   now?: () => number;
+  onForgetProject?: (workspaceKey: string) => Promise<void>;
 }) {
   if (options.host !== undefined && options.host !== "127.0.0.1")
     throw new Error("WEB_LOOPBACK_REQUIRED");
@@ -214,9 +265,48 @@ export async function startWebServer(options: {
   )
     throw new Error("WEB_PORT_INVALID");
   const files = await staticInventory(options.assetsDirectory);
-  const runtimes = new Map(
-    options.runtimes.map((runtime) => [runtime.workspace.key, runtime]),
-  );
+  const runtimeOrder = [...options.runtimes];
+  const runtimes = new Map(runtimeOrder.map((runtime) => [runtime.workspace.key, runtime]));
+  const unavailable = new Map((options.unavailable ?? []).map((project) => [project.key, project]));
+  const listedWorkspaces = () => [
+    ...runtimeOrder.map((runtime) => runtime.workspace),
+    ...unavailable.values(),
+  ];
+  const directory = {
+    attach(runtime: WebRuntime) {
+      unavailable.delete(runtime.workspace.key);
+      const existing = runtimeOrder.findIndex((item) => item.workspace.key === runtime.workspace.key);
+      if (existing >= 0) {
+        runtimeOrder[existing] = runtime;
+        runtimes.set(runtime.workspace.key, runtime);
+        return true;
+      }
+      if (runtimeOrder.length + unavailable.size >= 8) return false;
+      runtimeOrder.push(runtime);
+      runtimes.set(runtime.workspace.key, runtime);
+      return true;
+    },
+    markUnavailable(project: UnavailableProject) {
+      runtimes.delete(project.key);
+      const index = runtimeOrder.findIndex((item) => item.workspace.key === project.key);
+      if (index >= 0) runtimeOrder.splice(index, 1);
+      unavailable.set(project.key, project);
+    },
+    async detach(key: string) {
+      const runtime = runtimes.get(key);
+      runtimes.delete(key);
+      const index = runtimeOrder.findIndex((item) => item.workspace.key === key);
+      if (index >= 0) runtimeOrder.splice(index, 1);
+      unavailable.delete(key);
+      if (runtime) await runtime.close();
+    },
+    known(key: string) {
+      return runtimes.has(key) || unavailable.has(key);
+    },
+    clearUnavailable(key: string) {
+      unavailable.delete(key);
+    },
+  };
   const bootstrap = secret();
   // This public cookie label is not a credential. Its value is sealed below.
   const cookieName = `zhivex_web_${randomBytes(8).toString("hex")}`;
@@ -285,7 +375,7 @@ export async function startWebServer(options: {
           );
           return send(res, 200, {
             csrf,
-            workspaces: options.runtimes.map((r) => r.workspace),
+            workspaces: listedWorkspaces(),
           });
         }
         const cookie =
@@ -314,15 +404,32 @@ export async function startWebServer(options: {
           if (!parsed.success) return fault(res, 400, "WEB_INVALID_REQUEST");
           return send(res, 200, {
             csrf: client.csrf,
-            workspaces: options.runtimes.map((r) => r.workspace),
+            workspaces: listedWorkspaces(),
           });
         }
         if (route !== "/api/action") return fault(res, 404, "WEB_NOT_FOUND");
         const parsed = actions.safeParse(await body(req));
         if (!parsed.success) return fault(res, 400, "WEB_INVALID_REQUEST");
         const { action, workspaceKey, ...args } = parsed.data;
+        if (action === "overview") {
+          if (!directory.known(workspaceKey)) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
+          const projects = [];
+          for (const runtime of runtimeOrder) {
+            projects.push({ key: runtime.workspace.key, name: runtime.workspace.name, pending: await pendingReviews(runtime) });
+          }
+          for (const project of unavailable.values()) {
+            projects.push({ key: project.key, name: project.name, pending: [], unavailable: true, cause: project.cause });
+          }
+          return send(res, 200, { projects });
+        }
+        if (action === "forgetProject") {
+          if (!directory.known(workspaceKey)) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
+          await options.onForgetProject?.(workspaceKey);
+          await directory.detach(workspaceKey);
+          return send(res, 200, { ok: true, workspaces: listedWorkspaces() });
+        }
         const runtime = runtimes.get(workspaceKey);
-        if (!runtime) return fault(res, 404, "WEB_WORKSPACE_REJECTED");
+        if (!runtime) return fault(res, unavailable.has(workspaceKey) ? 409 : 404, unavailable.has(workspaceKey) ? "WEB_PROJECT_UNAVAILABLE" : "WEB_WORKSPACE_REJECTED");
         switch (action) {
           case "taskReview": {
             for (const [id, ticket] of taskReviews) if (ticket.expiresAt <= now()) taskReviews.delete(id);
@@ -465,6 +572,7 @@ export async function startWebServer(options: {
   return {
     origin,
     launchUrl: `${origin}/#connect=${bootstrap}`,
+    directory,
     close() {
       return (closePromise ??= (async () => {
         closing = true;
@@ -474,7 +582,7 @@ export async function startWebServer(options: {
         );
         // Cancel through the existing runtime owner, then drain admitted commands.
         const results = await Promise.allSettled(
-          options.runtimes.map((r) => r.close()),
+          runtimeOrder.map((r) => r.close()),
         );
         await Promise.allSettled([...pending]);
         server.closeAllConnections();

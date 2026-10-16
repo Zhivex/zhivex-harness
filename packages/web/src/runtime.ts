@@ -30,6 +30,7 @@ export async function attachRuntime(
   recover: boolean,
   secrets: readonly string[] = [],
   legacyPending = false,
+  toolPolicyLabel?: string,
 ) {
   const limitDirectory = path.join(harness.config.stateDirectory, "web-limits");
   await validateStateDirectory(harness.config.workspace, limitDirectory);
@@ -92,6 +93,7 @@ export async function attachRuntime(
         workspace: redactor.text(harness.config.workspace),
         provider: harness.config.provider,
         model: redactor.text(harness.config.model),
+        ...(toolPolicyLabel ? { toolPolicy: toolPolicyLabel } : {}),
       },
       async command(value: Record<string, unknown>) {
         return redactor.response(await command(value));

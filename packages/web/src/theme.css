@@ -1,0 +1,96 @@
+/* Geist Sans and JetBrains Mono are bundled under the SIL Open Font License. */
+@font-face {
+  font-family: Geist;
+  src: url("./fonts/geist-sans-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Geist;
+  src: url("./fonts/geist-sans-latin-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0a0a;
+  --surface: #161313;
+  --surface-2: #1f1b1a;
+  --border: #3a3331;
+  --text: #f2eeec;
+  --text-secondary: #ada39f;
+  --accent: #ff3b30;
+  --accent-ink: #140000;
+  --focus: #ff5a4f;
+  --pending: #f2b65c;
+  --approved: #63cf95;
+  --rejected: #b0a8a5;
+  --stale: #8fb0ff;
+  --error: #ff8b85;
+  --ink: #f2eeec;
+  --ink-text: #1a1514;
+  --diff-add-text: #9be3b6;
+  --diff-add-bg: #122419;
+  --diff-del-text: #ffb4ac;
+  --diff-del-bg: #2d1412;
+  --shadow: #00000066;
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #faf8f6;
+  --surface: #ffffff;
+  --surface-2: #f3efeb;
+  --border: #ddd6cf;
+  --text: #1a1514;
+  --text-secondary: #5f5752;
+  --accent: #c30500;
+  --accent-ink: #ffffff;
+  --focus: #c30500;
+  --pending: #8f5200;
+  --approved: #1b6e45;
+  --rejected: #5c5552;
+  --stale: #3a5a96;
+  --error: #a3121c;
+  --ink: #1a1514;
+  --ink-text: #ffffff;
+  --diff-add-text: #14532d;
+  --diff-add-bg: #e4f2e9;
+  --diff-del-text: #8b1a12;
+  --diff-del-bg: #f9e5e2;
+  --shadow: #1a151414;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #faf8f6;
+    --surface: #ffffff;
+    --surface-2: #f3efeb;
+    --border: #ddd6cf;
+    --text: #1a1514;
+    --text-secondary: #5f5752;
+    --accent: #c30500;
+    --accent-ink: #ffffff;
+    --focus: #c30500;
+    --pending: #8f5200;
+    --approved: #1b6e45;
+    --rejected: #5c5552;
+    --stale: #3a5a96;
+    --error: #a3121c;
+    --ink: #1a1514;
+    --ink-text: #ffffff;
+    --diff-add-text: #14532d;
+    --diff-add-bg: #e4f2e9;
+    --diff-del-text: #8b1a12;
+    --diff-del-bg: #f9e5e2;
+    --shadow: #1a151414;
+  }
+}

@@ -17,6 +17,10 @@ export interface WebWorkspace {
   workspace: string;
   provider: string;
   model: string;
+  /** Basename of this project's own tool policy. Absent when the project has none. */
+  toolPolicy?: string;
+  unavailable?: boolean;
+  cause?: string;
 }
 export interface WebContext {
   csrf: string;
@@ -30,6 +34,26 @@ export interface WebModelChoice {
   configured: boolean;
   capabilities: string[];
   validation: string;
+  group?: "primary" | "other";
+  order?: number;
+  /** Present only when the catalog publishes a context window. */
+  contextWindow?: { tokens: number; type: "combined" | "input" };
+  /** Present only when the catalog publishes a USD price. */
+  cost?: { currency: "USD"; inputPerMillionTokens: number; outputPerMillionTokens: number };
+}
+export interface WebPendingReview {
+  sessionId: string;
+  title?: string;
+  runId: string;
+  expiresAt?: number;
+}
+export interface WebProjectOverview {
+  key: string;
+  name: string;
+  pending: WebPendingReview[];
+  unavailable?: boolean;
+  cause?: string;
+  readError?: string;
 }
 export interface WebModelSelection {
   provider: string;

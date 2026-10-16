@@ -1,9 +1,15 @@
 import { TaskPanel } from './TaskPanel.js';
-import type { HarnessClientData } from '@zhivex-ai/harness/protocol';
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { ModelPicker } from "./ModelPicker.js";
+import { AddProjectDialog, SessionsDrawer, type DrawerProject } from "./SessionsDrawer.js";
+import { applyTheme, readThemeChoice, THEME_KEY, type ThemeChoice } from "./theme.js";
+import { runStatusLabel, sessionStatusLabel } from "./status-label.js";
+import { clampDiffHeight, clampDiffWidth, defaultDiffLayout, DIFF_LAYOUT_KEY, DIFF_MIN_HEIGHT, DIFF_MIN_WIDTH, effectiveDiffPosition, EMPTY_DIFF_WIDTH, maxDiffHeight, maxDiffWidth, nextDiffPosition, nudgeDiffSize, readDiffLayout, sideFits, NARROW_TABS, type DiffLayoutPreference, type DiffPosition } from "./diff-layout.js";
+import { altShiftAction, isTextField } from "./shortcuts.js";
+import { choiceKey } from "./model-choice.js";
+import type { WebProjectOverview } from "./contracts.js";
 import { ChatRoot, Message } from "@zhivex-ai/react/components";
 import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
-import { reviewScopeSummary } from "../../../desktop/src/review-scope.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
   applyActivityPage,
@@ -72,7 +78,6 @@ const recovery: Record<string, string> = {
 
 export function App() {
   const [modelChoices, setModelChoices] = useState<WebModelChoice[]>([]);
-  const [modelChoice, setModelChoice] = useState("");
   const [modelError, setModelError] = useState("");
   const [modelSelectionError, setModelSelectionError] = useState("");
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -99,6 +104,7 @@ export function App() {
   const reconnectInFlight = useRef(false);
   const [reconnecting, setReconnecting] = useState(false);
   const mutationEpoch = useRef(0);
+  const contextEpoch = useRef(0);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [stateLoading, setStateLoading] = useState(false);
   const [needsReconcile, setNeedsReconcile] = useState(false);
@@ -117,6 +123,26 @@ export function App() {
   const limitsSavingRef = useRef(false);
   const [limitsError, setLimitsError] = useState("");
   const [runLimits, setRunLimits] = useState<RunLimits | null>(null);
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => readThemeChoice(globalThis.localStorage));
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [overview, setOverview] = useState<WebProjectOverview[]>([]);
+  const [extraSessions, setExtraSessions] = useState<Record<string, HarnessClientSession[]>>({});
+  const [collapsedProjects, setCollapsedProjects] = useState<string[]>(() => {
+    try { const value = JSON.parse(localStorage.getItem("zhivex.code.drawer.v1") ?? "[]"); return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
+    catch { return []; }
+  });
+  const [statusFilter, setStatusFilter] = useState(false);
+  const [diffLayout, setDiffLayout] = useState<DiffLayoutPreference>(() => readDiffLayout(globalThis.localStorage?.getItem(DIFF_LAYOUT_KEY) ?? null));
+  const [viewport, setViewport] = useState({ width: globalThis.innerWidth || 1440, height: globalThis.innerHeight || 900 });
+  const [modelOpen, setModelOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<"chat" | "review">("chat");
+  const [announce, setAnnounce] = useState("");
+  const favoriteToggle = useRef<(() => void) | null>(null);
+  const drawerButton = useRef<HTMLButtonElement>(null);
+  const jump = useRef<{ key: string; sessionId: string } | null>(null);
+  const previousPosition = useRef<DiffPosition>("side");
   const selection = useRef({ workspaceKey: "", sessionId: "" });
   selection.current = { workspaceKey, sessionId: session?.sessionId ?? "" };
   function editPrompt(text: string) {
@@ -145,6 +171,22 @@ export function App() {
     } finally { limitsSavingRef.current = false; setLimitsSaving(false); }
   }
   useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => setResolvedTheme(applyTheme(themeChoice, media.matches));
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [themeChoice]);
+  useEffect(() => {
+    if (viewport.width < NARROW_TABS && mobilePane === "review")
+      document.getElementById("review-panel")?.focus();
+  }, [mobilePane, viewport.width]);
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  useEffect(() => {
     if (focusPrompt.current && session && !stateLoading && !pending) {
       focusPrompt.current = false;
       promptInput.current?.focus();
@@ -167,6 +209,19 @@ export function App() {
         setConnected(false);
         setError(errorText(e));
       });
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const epoch = contextEpoch.current;
+      void reconnect().then(next => {
+        if (epoch !== contextEpoch.current) return;
+        setContext(previous => {
+          const same = JSON.stringify(previous?.workspaces) === JSON.stringify(next.workspaces);
+          return same && previous ? previous : { ...next, csrf: previous?.csrf ?? next.csrf };
+        });
+      }).catch(() => undefined);
+    }, 2000);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     if (!workspaceKey) return;
@@ -273,6 +328,11 @@ export function App() {
         timer = setTimeout(() => void poll(), page.hasMore ? 20 : 650);
       } catch (e) {
         if (obsolete()) return;
+        // A model switch briefly rejects reads. That is not a lost connection.
+        if (errorText(e) === "WEB_MODEL_CHANGE_IN_PROGRESS") {
+          timer = setTimeout(() => void poll(), 200);
+          return;
+        }
         setStateLoading(false);
         setConnected(false);
         setError(errorText(e));
@@ -369,6 +429,7 @@ export function App() {
         // newer receipt and read once more. A command that is still active
         // does not invalidate this snapshot, so cancellation stays available.
         if (epoch !== mutationEpoch.current) continue;
+        contextEpoch.current += 1;
         setContext(c);
         setWorkspaceKey(target);
         setSessions(list.data.sessions);
@@ -484,6 +545,14 @@ export function App() {
       }
     });
   }
+  useEffect(() => {
+    if (run?.status !== "waiting_approval" || review || !canMutate) return;
+    if (diffLayout.minimized) {
+      setAnnounce("A review needs you. Restore the review to decide.");
+      return;
+    }
+    void loadReview();
+  }, [run?.status, run?.runId, run?.revision, canMutate, review, diffLayout.minimized]);
   const reviewInvalid = review
     ? !run ||
       review.runId !== run.runId ||
@@ -569,20 +638,19 @@ export function App() {
     }
   }
   const workspace = ctx?.workspaces.find((w) => w.key === workspaceKey);
-  const currentModel = JSON.stringify([workspace?.provider, workspace?.model]);
+  const currentModel = workspace?.provider && workspace.model ? choiceKey({ provider: workspace.provider, model: workspace.model }) : "";
   useEffect(() => {
     if (!workspaceKey || !connected) return;
     let stopped = false;
-    setModelChoices([]); setModelError(""); setModelSelectionError(""); setModelChoice(currentModel); setModelsLoading(true);
+    setModelChoices([]); setModelError(""); setModelSelectionError(""); setModelsLoading(true);
     void action<{choices: WebModelChoice[]}>(workspaceKey, "models")
       .then(result => { if (!stopped) setModelChoices(result.choices); })
       .catch(error => { if (!stopped) setModelError(errorText(error)); })
       .finally(() => { if (!stopped) setModelsLoading(false); });
     return () => { stopped = true; };
   }, [workspaceKey, connected, currentModel, ctx]);
-  async function selectModel() {
-    if (!canMutate || busy || review || !modelChoice || modelChoice === currentModel) return;
-    const [provider, model] = JSON.parse(modelChoice) as string[];
+  async function selectModelChoice(provider: string, model: string) {
+    if (!canMutate || busy || review || choiceKey({ provider, model }) === currentModel) return;
     setModelSelectionError("");
     await perform("Applying model for future tasks…", async () => {
       try {
@@ -603,10 +671,82 @@ export function App() {
         throw error;
       }
       setReview(undefined);
-      const c = await reconnect(); setContext(c);
+      const c = await reconnect();
+      contextEpoch.current += 1;
+      setContext(c);
       setRefresh(n => n + 1);
     }, true);
   }
+  function saveDiff(next: DiffLayoutPreference) {
+    setDiffLayout(next);
+    localStorage.setItem(DIFF_LAYOUT_KEY, JSON.stringify(next));
+  }
+  function resetDiffSize() {
+    saveDiff({ ...diffLayout, widthPx: defaultDiffLayout().widthPx, heightPx: defaultDiffLayout().heightPx });
+  }
+  useEffect(() => {
+    if (!workspaceKey || !connected) return;
+    let stopped = false;
+    const load = () => {
+      void action<{ projects: WebProjectOverview[] }>(workspaceKey, "overview").then(result => {
+        if (!stopped) setOverview(result.projects);
+      }).catch(() => undefined);
+    };
+    load();
+    const timer = setInterval(load, 3000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [workspaceKey, connected, refresh]);
+  useEffect(() => {
+    const target = jump.current;
+    if (!target || target.key !== workspaceKey || sessionsLoading) return;
+    const found = sessions.find(sessionItem => sessionItem.sessionId === target.sessionId);
+    if (!found) return;
+    jump.current = null;
+    chooseSession(found);
+    setDrawerOpen(false);
+  }, [workspaceKey, sessions, sessionsLoading]);
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (modelOpen) { setModelOpen(false); return; }
+        if (drawerOpen) { setDrawerOpen(false); drawerButton.current?.focus(); return; }
+        if (addProjectOpen) { setAddProjectOpen(false); return; }
+        if (effectiveDiffPosition(diffLayout.position, viewport.width) === "full" && !diffLayout.minimized) {
+          saveDiff({ ...diffLayout, position: previousPosition.current });
+          return;
+        }
+        if (document.getElementById("review-panel")?.contains(document.activeElement)) promptInput.current?.focus();
+        return;
+      }
+      const actionName = altShiftAction(event);
+      if (!actionName) return;
+      if (actionName === "favorite") { event.preventDefault(); favoriteToggle.current?.(); return; }
+      if (actionName === "model") {
+        if (isTextField(event.target) || run?.status === "waiting_approval") return;
+        event.preventDefault();
+        setModelOpen(true);
+        return;
+      }
+      if (isTextField(event.target) && actionName !== "approve" && actionName !== "reject") return;
+      if (actionName === "drawer") { event.preventDefault(); setDrawerOpen(open => !open); return; }
+      if (actionName === "session") { event.preventDefault(); if (canMutate) void create(); return; }
+      if (actionName === "minimize") { event.preventDefault(); saveDiff({ ...diffLayout, minimized: !diffLayout.minimized }); return; }
+      if (actionName === "position") {
+        event.preventDefault();
+        const current = effectiveDiffPosition(diffLayout.position, viewport.width);
+        if (current !== "full") previousPosition.current = current;
+        saveDiff({ ...diffLayout, position: nextDiffPosition(current, viewport.width), minimized: false });
+        return;
+      }
+      const reviewFocused = document.getElementById("review-panel")?.contains(document.activeElement);
+      if (!reviewFocused || diffLayout.minimized) return;
+      event.preventDefault();
+      if (actionName === "approve") document.querySelector<HTMLButtonElement>("[data-decision='approve']:enabled")?.click();
+      if (actionName === "reject") document.querySelector<HTMLButtonElement>("[data-decision='reject']:enabled")?.click();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   const stateLabel = loading
     ? "Loading state…"
     : !connected
@@ -616,7 +756,7 @@ export function App() {
         : runUnavailable
           ? "State unavailable"
           : run
-            ? human(run.status)
+            ? runStatusLabel(run.status)
             : "Ready";
   const composerHelp = needsReconcile
     ? "The response was not confirmed. Reconnect before another action; nothing is retried automatically."
@@ -641,192 +781,115 @@ export function App() {
       status:
         tool.status === "running"
           ? r.status === "waiting_approval"
-            ? "awaiting approval"
+            ? "Needs you"
             : active(r.status)
-              ? "running"
-              : "no completion receipt"
+              ? "Running"
+              : "Not finished"
           : tool.status,
     })),
   );
   const checks = tools.filter((t) => t.name === "run_check");
-  const selected = sessions.filter((s) =>
-    (s.title ?? s.sessionId).toLowerCase().includes(search.toLowerCase()),
-  );
+  const position = effectiveDiffPosition(diffLayout.position, viewport.width);
+  const reviewWaiting = run?.status === "waiting_approval";
+  const emptyReview = !reviewWaiting;
+  const narrow = viewport.width < NARROW_TABS;
+  const diffWidth = emptyReview || diffLayout.minimized ? EMPTY_DIFF_WIDTH : clampDiffWidth(diffLayout.widthPx, viewport.width);
+  const diffHeight = clampDiffHeight(diffLayout.heightPx, viewport.height);
+  const remaining = Math.max(0, reviewDeadline - now);
+  const expiresLabel = `${Math.floor(remaining / 60000)}:${String(Math.floor((remaining / 1000) % 60)).padStart(2, "0")}`;
+  const projects: DrawerProject[] = (ctx?.workspaces ?? []).map(item => ({
+    ...item,
+    pending: overview.find(project => project.key === item.key)?.pending.filter(() => !item.unavailable).length ?? 0,
+  }));
+  const grouped = projects.length > 1;
+  const pendingItems = overview.flatMap(project => project.unavailable ? [] : project.pending.map(item => ({ ...item, key: project.key })));
+  pendingItems.sort((a, b) => (a.expiresAt ?? Number.MAX_SAFE_INTEGER) - (b.expiresAt ?? Number.MAX_SAFE_INTEGER));
+  const collapsed = new Set(grouped ? projects.filter(project => project.key !== workspaceKey && project.pending === 0 && (collapsedProjects.includes(project.key) || collapsedProjects.length === 0)).map(project => project.key) : []);
+  const sessionMap: Record<string, HarnessClientSession[] | undefined> = { ...extraSessions };
+  if (workspaceKey) sessionMap[workspaceKey] = sessionsLoading ? undefined : sessions;
+  const connectionLabel = !connected ? "Connection unavailable" : needsReconcile ? "Reconciliation required" : "Connected";
+  const canSwitch = !cancelling && !reconnecting && !needsReconcile && !pending;
+  const currentChoice = modelChoices.find(choice => choiceKey(choice) === currentModel);
+  function openPending(items = pendingItems) {
+    if (items.length === 1) {
+      const item = items[0]!;
+      jump.current = { key: item.key, sessionId: item.sessionId };
+      saveDiff({ ...diffLayout, minimized: false });
+      if (item.key !== workspaceKey) setWorkspaceKey(item.key);
+      else {
+        const found = sessions.find(sessionItem => sessionItem.sessionId === item.sessionId);
+        if (found) chooseSession(found);
+      }
+      setDrawerOpen(false);
+      return;
+    }
+    if (items.length > 1) {
+      setStatusFilter(true);
+      setDrawerOpen(true);
+    }
+  }
+  function toggleProject(key: string) {
+    setCollapsedProjects(previous => {
+      const seeded = previous.length ? previous : projects.filter(project => project.key !== workspaceKey && project.pending === 0).map(project => project.key);
+      const next = seeded.includes(key) ? seeded.filter(item => item !== key) : [...seeded, key];
+      localStorage.setItem("zhivex.code.drawer.v1", JSON.stringify(next));
+      return next;
+    });
+    if (!extraSessions[key] && key !== workspaceKey) {
+      void action<Sessions>(key, "sessions").then(result => {
+        setExtraSessions(current => ({ ...current, [key]: result.data.sessions }));
+      }).catch(() => undefined);
+    }
+  }
+  const frameStyle = { "--diff-width": `${diffWidth}px`, "--diff-height": `${diffHeight}px` } as CSSProperties;
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#task-workspace">
-        Skip to task workspace
-      </a>
-      <aside className="sidebar" aria-label="Workspace navigation">
+    <div className="app-shell" data-theme={resolvedTheme}>
+      <a className="skip-link" href="#task-workspace">Skip to task workspace</a>
+      <header className="topbar">
         <a href="/" className="brand" aria-label="Zhivex Code home">
-          <img className="brand-mark" src="/zhivex-icon.png" alt="" width={36} height={36} />
-          <span>
-            zhivex<span className="brand-code">code</span>
-          </span>
-          <span className="local-tag">LOCAL</span>
+          <img className="brand-mark" src="/zhivex-icon.png" alt="" width={28} height={28} />
+          <span>ZHIVEX</span>
         </a>
-        <div className="workspace-picker">
-          <label htmlFor="workspace">WORKSPACE</label>
-          <select
-            id="workspace"
-            value={workspaceKey}
-            disabled={
-              Boolean(pending) || cancelling || reconnecting || needsReconcile
-            }
-            onChange={(e) => {
-              setPrompt("");
-              setSearch("");
-              setWorkspaceKey(e.target.value);
-            }}
-          >
-            {ctx?.workspaces.map((w) => (
-              <option key={w.key} value={w.key}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-          <p title={workspace?.workspace}>
-            {workspace?.workspace ?? "Connecting to local engine…"}
-          </p>
-        </div>
-        <div className="sessions-heading">
-          <span>SESSIONS</span>
-          <button
-            className="icon-button"
-            aria-label="New session"
-            disabled={!canMutate}
-            onClick={() => void create()}
-          >
-            ＋
-          </button>
-        </div>
-        <input
-          className="session-search"
-          aria-label="Search sessions"
-          placeholder="Find a session…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <nav
-          className="session-list"
-          aria-label="Sessions"
-          aria-busy={sessionsLoading}
-        >
-          {sessionsLoading ? (
-            <p className="session-empty" role="status">
-              Loading sessions…
-            </p>
-          ) : (
-            !selected.length && (
-              <p className="session-empty">
-                {search
-                  ? "No sessions match your search."
-                  : connected
-                    ? "No sessions yet. Create one to start."
-                    : "Reconnect to load sessions."}
-              </p>
-            )
-          )}
-          {selected.map((s) => (
-            <button
-              key={s.sessionId}
-              className={
-                sessionId === s.sessionId
-                  ? "session-row selected"
-                  : "session-row"
-              }
-              aria-current={sessionId === s.sessionId ? "page" : undefined}
-              disabled={
-                Boolean(pending) || cancelling || reconnecting || needsReconcile
-              }
-              onClick={() => chooseSession(s)}
-            >
-              <span className="session-icon">◈</span>
-              <span>
-                <strong>{s.title ?? "Untitled session"}</strong>
-                <small>
-                  {s.runs.length} turn{s.runs.length === 1 ? "" : "s"} ·{" "}
-                  {new Date(s.updatedAt).toLocaleDateString()}
-                </small>
-              </span>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className={connected ? "status-dot" : "status-dot offline"} />
-          <span>
-            {loading
-              ? "Reading local state…"
-              : connected
-                ? "Local engine connected"
-                : "Connection unavailable"}
-          </span>
-          <small>Harness protocol v1</small>
-        </div>
-      </aside>
-      <main id="task-workspace" tabIndex={-1}>
-        <header className="topbar">
-          <div>
-            <span className="breadcrumb">
-              {workspace?.name ?? "Workspace"} <span>/</span>
-            </span>
-            <h1>{session?.title ?? "Developer workspace"}</h1>
-          </div>
-          <div className="topbar-actions">
-          <button className="limits-launcher" disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
-            onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
-            <SlidersHorizontalIcon size={18} />{limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(t => t.value !== null)
-              ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}` : limitsInfo && Object.values(limitsInfo.host).some(v => v !== null) ? "Host policy active" : "No limits configured"}
-          </button>
-          <button
-            className="subtle"
-            disabled={reconnecting || cancelling}
-            onClick={() => void restoreConnection()}
-          >
-            ↻ Reconnect
-          </button>
-          </div>
-        </header>
-        {error && (
-          <div role="alert" className="error-banner">
-            <strong>{human(error)}</strong>
-            <span>
-              {recovery[error] ??
-                "Read the current session state before submitting another action."}
-            </span>
-            <button
-              className="subtle"
-              aria-label="Dismiss error"
-              onClick={() => setError("")}
-            >
-              ×
-            </button>
-          </div>
-        )}
-        {(pending || cancelling || reconnecting) && (
-          <div className="operation-status" role="status">
-            {reconnecting
-              ? "Reading durable state…"
-              : cancelling
-                ? "Requesting cancellation…"
-                : pending === "Starting task…" && run && active(run.status)
-                  ? "Task admitted. Following host activity…"
-                  : pending}
-          </div>
-        )}
-        <div className={`content-grid ${review ? "with-review" : ""}`}>
-          <ChatRoot className="conversation" label="Task stream" theme="dark">
-            <div className="section-heading">
-              <span>Task stream</span>
-              <span
-                className={`pill ${run?.status === "waiting_approval" ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable ? "warning" : ""}`}
-              >
-                {stateLabel}
-              </span>
-            </div>
-            <p className="state-guidance" id="composer-help">
-              {composerHelp}
-            </p>
+        {grouped ? <button type="button" className="project-switch" aria-haspopup="dialog" onClick={() => { setDrawerOpen(true); setStatusFilter(false); }}>
+          {workspace?.name ?? "Project"} <span aria-hidden="true">▾</span>
+        </button> : <p className="project-crumb">{workspace?.name ?? "Project"} /</p>}
+        <h1>{session?.title ?? "Developer workspace"}</h1>
+        <button type="button" className={pendingItems.length ? "needs-you-count" : "needs-you-count quiet"} onClick={() => openPending()}>
+          {pendingItems.length === 1 ? "1 needs you" : pendingItems.length ? `${pendingItems.length} need you` : "Nothing needs you"}
+        </button>
+        <span className={connected && !needsReconcile ? "connection-label" : "connection-label warning"}>{loading ? "Reading local state…" : connectionLabel}</span>
+        {(!connected || needsReconcile) && <button className="subtle" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconnect</button>}
+        <button ref={drawerButton} type="button" className="subtle" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
+        <button type="button" className="icon-button" aria-label="New session" disabled={!canMutate} onClick={() => void create()}>New session</button>
+        <button className="limits-launcher" disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
+          onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
+          <SlidersHorizontalIcon size={18} />{limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(threshold => threshold.value !== null)
+            ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}` : limitsInfo && Object.values(limitsInfo.host).some(value => value !== null) ? "Host policy active" : "No limits configured"}
+        </button>
+        <button type="button" className="subtle" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
+          const next: ThemeChoice = themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system";
+          localStorage.setItem(THEME_KEY, next);
+          setThemeChoice(next);
+        }}>{resolvedTheme === "dark" ? "Dark" : "Light"}</button>
+      </header>
+      {error && <div role="alert" className="error-banner">
+        <strong>{human(error)}</strong>
+        <span>{recovery[error] ?? "Read the current session state before submitting another action."}</span>
+        <button className="subtle" aria-label="Dismiss error" onClick={() => setError("")}>×</button>
+      </div>}
+      {(pending || cancelling || reconnecting) && <div className="operation-status" role="status">
+        {reconnecting ? "Reading durable state…" : cancelling ? "Requesting cancellation…" : pending === "Starting task…" && run && active(run.status) ? "Task admitted. Following host activity…" : pending}
+      </div>}
+      {narrow && <div className="pane-tabs" role="tablist" aria-label="Workspace sections">
+        <button type="button" role="tab" aria-selected={mobilePane === "chat"} onClick={() => setMobilePane("chat")}>Chat</button>
+        <button type="button" role="tab" aria-selected={mobilePane === "review"} onClick={() => setMobilePane("review")}>Review</button>
+      </div>}
+      <div id="task-workspace" className="workspace-frame" data-position={diffLayout.minimized ? "minimized" : position} data-empty={emptyReview ? "true" : "false"} data-pane={narrow ? mobilePane : "both"} style={frameStyle} tabIndex={-1}>
+        <section className="chat-column">
+          <ChatRoot className="conversation" label="Task stream" theme={resolvedTheme}>
+            <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable ? "warning" : ""}`}>{stateLabel}</span></div>
+            <p className="state-guidance" id="composer-help">{composerHelp}</p>
+            {sessionsLoading && <p className="session-empty" role="status">Loading sessions…</p>}
             {runLimits && <div className="run-limits-summary" aria-label="Limits for the current task">
               <span>Origin: {runLimits.origin === "task" ? "next task" : runLimits.origin === "project" ? "project" : "no user thresholds"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")} reported.</span>
               <details><summary>View thresholds for this task</summary>
@@ -842,447 +905,157 @@ export function App() {
                 {notice.action === "notify" ? " Notice; the task can continue." : runLimits.cancellationRequested ? " Cancellation requested; recorded work is kept. To continue, start another task." : " The task had already finished when the threshold was observed."}
               </p>)}
             </div>}
-            {run?.status === "waiting_approval" && (
-              <a className="review-jump subtle" href="#review-panel">
-                Go to pending review ↓
-              </a>
-            )}
-            {hasTask && <a className="task-jump subtle" href="#task-evidence">View task and evidence ↓</a>}
-            <div
-              className="messages"
-              role="log"
-              aria-label="Run activity"
-              aria-live="off"
-            >
-              {!activity.order.length && loading && (
-                <p className="loading-state" role="status">
-                  Loading durable activity…
-                </p>
-              )}
-              {!activity.order.length &&
-                !loading &&
-                connected &&
-                !session?.runs.length && (
-                  <div className="empty-state">
-                    <img className="workspace-glyph" src="/zhivex-icon.png" alt="" width={56} height={56} />
-                    <p className="eyebrow">YOUR CODE. YOUR WORKSPACE.</p>
-                    <h2>What are we building?</h2>
-                    <p>
-                      Start a task, follow the work, and review
-                      <br />
-                      each operation that needs your approval.
-                    </p>
-                    <div className="starter-list">
-                      {[
-                        "Inspect this project and suggest a focused improvement",
-                        "Explain the architecture and existing checks",
-                        "Review the current changes for potential issues",
-                      ].map((text) => (
-                        <button
-                          key={text}
-                          disabled={!session || Boolean(pending)}
-                          onClick={() => {
-                            editPrompt(text);
-                            promptInput.current?.focus();
-                          }}
-                        >
-                          {text}
-                          <span>↗</span>
-                        </button>
-                      ))}
-                    </div>
-                    {!session && (
-                      <button
-                        className="primary"
-                        disabled={!canMutate}
-                        onClick={() => void create()}
-                      >
-                        Create a session
-                      </button>
-                    )}
-                  </div>
-                )}
-              {activity.order.map((id) => {
-                const retained = activity.runs[id]!;
-                const r =
-                  runUnavailable && session?.runs.at(-1)?.runId === id
-                    ? { ...retained, status: "state unavailable" }
-                    : retained;
-                return (
-                  <div className="turn" key={id}>
-                    {r.prompt && (
-                      <Message
-                        showActions={false}
-                        showStatus={false}
-                        message={{
-                          id: `user-${id}`,
-                          role: "user",
-                          parts: [{ type: "text", text: r.prompt }],
-                          createdAt: 0,
-                          status: "complete",
-                        }}
-                      />
-                    )}
-                    <article className="assistant-response" aria-label="Assistant response" aria-busy={active(r.status)}>
-                      <MessageMarkdown text={r.text || (r.status === "waiting_approval"
-                        ? "The proposed operation is ready for your review."
-                        : active(r.status) ? "Working in your local workspace…"
-                        : (r.status === "failed" && run?.runId === id
-                          ? providerStreamFailureText(run.error?.providerDiagnostic)
-                          : undefined) ?? "No text output recorded.")} />
-                    </article>
-                    {r.truncated && (
-                      <p className="muted">Retained output is truncated.</p>
-                    )}
-                    <div className="turn-footer">
-                      <code>{id.slice(0, 18)}</code>
-                      <span>{human(r.status)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {activity.recovered && (
-                <p className="recovery-note">
-                  Reconstructed from the durable activity snapshot.
-                </p>
-              )}
-            </div>
-            <form
-              className="composer"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void start();
-              }}
-            >
-              <label className="sr-only" htmlFor="prompt">
-                Task prompt
-              </label>
-              <textarea
-                id="prompt"
-                ref={promptInput}
-                aria-describedby="composer-help"
-                placeholder={
-                  session
-                    ? "Describe a task for this workspace…"
-                    : "Create a session to begin…"
-                }
-                value={prompt}
-                maxLength={65536}
-                disabled={!session || cancelling || (Boolean(pending) && pending !== "Starting task…" && !busy)}
-                onChange={(e) => editPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                    e.preventDefault();
-                    void start();
-                  }
-                }}
-              />
-              <div className="composer-actions">
-                <div className="model-picker">
-                  <label className="sr-only" htmlFor="model-choice">Provider and model</label>
-                  <select id="model-choice" value={modelChoice || currentModel}
-                    disabled={!canMutate || busy || run?.status === "waiting_approval" || !modelChoices.length}
-                    aria-describedby={modelSelectionError ? "model-help model-selection-error" : "model-help"}
-                    onChange={e => { setModelChoice(e.target.value); setModelSelectionError(""); }}>
-                    {!modelChoices.some(c => JSON.stringify([c.provider,c.model]) === currentModel) &&
-                      <option value={currentModel}>{workspace?.provider} / {workspace?.model} (current host model)</option>}
-                    {[...new Set(modelChoices.map(c => c.provider))].map(provider => {
-                      const items = modelChoices.filter(c => c.provider === provider);
-                      return <optgroup key={provider} label={items[0]!.providerName}>
-                        {items.map(c => <option key={c.model} value={JSON.stringify([c.provider,c.model])} disabled={!c.configured}>
-                          {c.name}{!c.configured ? " · credential unavailable" : c.validation === "unverified" ? " · unverified" : ""}
-                        </option>)}
-                      </optgroup>;
-                    })}
-                  </select>
-                  {modelChoice && modelChoice !== currentModel && <button type="button"
-                    disabled={!canMutate || busy || run?.status === "waiting_approval"}
-                    onClick={() => void selectModel()}>Apply model</button>}
+            {hasTask && <a className="task-jump subtle" href="#task-evidence">View task and evidence</a>}
+            <div className="messages" role="log" aria-label="Run activity" aria-live="off">
+              {!activity.order.length && loading && <p className="loading-state" role="status">Loading durable activity…</p>}
+              {!activity.order.length && !loading && connected && !session?.runs.length && <div className="empty-state">
+                <img className="workspace-glyph" src="/zhivex-icon.png" alt="" width={56} height={56} />
+                <p className="eyebrow">YOUR CODE. YOUR WORKSPACE.</p>
+                <h2>What are we building?</h2>
+                <p>Start a task, follow the work, and review each operation that needs your approval.</p>
+                <div className="starter-list">
+                  {["Inspect this project and suggest a focused improvement", "Explain the architecture and existing checks", "Review the current changes for potential issues"].map(text => (
+                    <button key={text} disabled={!session || Boolean(pending)} onClick={() => { editPrompt(text); promptInput.current?.focus(); }}>{text}<span>↗</span></button>
+                  ))}
                 </div>
-                <button
-                  className="primary"
-                  disabled={!session || !prompt.trim() || !canMutate || busy || hasTask}
-                  type="submit"
-                >
-                  {hasTask ? "Use task review to continue" : <>Run task <span>↑</span></>}
-                </button>
-              </div>
-            </form>
-            <div className="composer-note">
-              <span>⌘ / Ctrl + Enter to run</span>
-              <span>Credentials stay on the host</span>
+                {!session && <button className="primary" disabled={!canMutate} onClick={() => void create()}>Create a session</button>}
+              </div>}
+              {activity.order.map(id => {
+                const retained = activity.runs[id]!;
+                const item = runUnavailable && session?.runs.at(-1)?.runId === id ? { ...retained, status: "state unavailable" } : retained;
+                return <div className="turn" key={id}>
+                  {item.prompt && <Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} />}
+                  <article className="assistant-response" aria-label="Assistant response" aria-busy={active(item.status)}>
+                    <MessageMarkdown text={item.text || (item.status === "waiting_approval" ? "The proposed operation is ready for your review." : active(item.status) ? "Working in your local workspace…" : (item.status === "failed" && run?.runId === id ? providerStreamFailureText(run.error?.providerDiagnostic) : undefined) ?? "No text output recorded.")} />
+                  </article>
+                  {item.truncated && <p className="muted">Retained output is truncated.</p>}
+                  <div className="turn-footer"><span>{runStatusLabel(item.status === "state unavailable" ? undefined : item.status)}</span></div>
+                  <details className="technical-details"><summary>Technical details</summary><p>Run {id}</p></details>
+                </div>;
+              })}
+              {activity.recovered && <p className="recovery-note">Activity recovered from the saved snapshot.</p>}
             </div>
-            {drafts.current.read(selection.current).recovery !== undefined && (
-              <details className="composer-recovery">
-                <summary>Recover submitted text</summary>
-                <p>The submission could not be confirmed. Reconnect to inspect the current run before sending another task.</p>
-                <pre>{drafts.current.read(selection.current).recovery}</pre>
-                <button type="button" disabled={Boolean(prompt)} onClick={() => {
-                  if (drafts.current.recover(selection.current)) {
-                    setPrompt(drafts.current.read(selection.current).text);
-                    promptInput.current?.focus();
-                  }
-                }}>Restore to empty composer</button>
-              </details>
-            )}
-            <p id="model-help" className="model-help">
-              {modelsLoading ? "Reading configured providers and model choices…" : modelError ? "Model choices unavailable. Reconnect to refresh." : !modelChoices.length
-                ? "Using the host model. No selectable catalog is available."
-                : "Applies to future tasks in this workspace. Credential presence does not verify model access."}
-            </p>
-            {modelSelectionError && <p id="model-selection-error" className="model-help" role="alert">{modelSelectionError}</p>}
-          </ChatRoot>
-          <aside className="inspector" aria-label="Review and activity">
-            {workspace && session && <TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(':')}
+            {workspace && session && <TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(":")}
               workspace={workspace} session={session} {...(run ? { run } : {})} enabled={canMutate} connected={connected && !needsReconcile}
-              prompt={prompt} perform={perform} onTask={setHasTask} onResult={(data: HarnessClientData) => {
-                if (data.kind === 'run') { setRun(data.run); setSession(data.session); }
+              prompt={prompt} perform={perform} onTask={setHasTask} onResult={(data) => {
+                if (data.kind === "run") { setRun(data.run); setSession(data.session); }
                 setRefresh(n => n + 1);
               }} />}
-
-            <section
-              className="review-panel"
-              id="review-panel"
-              tabIndex={-1}
-              aria-label="Pending review"
-            >
-              <div className="section-heading">
-                <span>Review</span>
-                <span className="count">{run?.approvals.length ?? 0}</span>
+            {!tools.length ? null : <ul className="tool-list" aria-label="Activity and checks">
+              {tools.map((tool, index) => <li key={index}><strong>{human(tool.name)}</strong><small>{tool.exitCode === undefined ? tool.status : `exit ${tool.exitCode}${tool.timedOut ? " · timed out" : ""}`}</small></li>)}
+            </ul>}
+            {checks.length > 0 && <p className="check-summary">{checks.filter(check => check.exitCode === 0 && !check.timedOut).length}/{checks.length} checks passed</p>}
+            {diffLayout.minimized && reviewWaiting && <div className="restore-bar" role="status">
+              <span>Needs you · {viewed.approveLabel.replace(/^Approve /, "")} · Expires in {expiresLabel}</span>
+              <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: false })}>Restore review</button>
+            </div>}
+            <form className="composer" onSubmit={event => { event.preventDefault(); void start(); }}>
+              <label className="sr-only" htmlFor="prompt">Task prompt</label>
+              <textarea id="prompt" ref={promptInput} aria-describedby="composer-help" placeholder={session ? "Describe a task for this workspace…" : "Create a session to begin…"} value={prompt} maxLength={65536}
+                disabled={!session || cancelling || (Boolean(pending) && pending !== "Starting task…" && !busy)}
+                onChange={event => editPrompt(event.target.value)}
+                onKeyDown={event => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); void start(); } }} />
+              <div className="composer-actions">
+                <ModelPicker choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
+                  configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
+                  unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
+                  onApply={choice => void selectModelChoice(choice.provider, choice.model)} favoriteToggle={favoriteToggle} />
+                <button className="primary" disabled={!session || !prompt.trim() || !canMutate || busy || hasTask} type="submit">{hasTask ? "Use task review to continue" : <>Run task <span>↑</span></>}</button>
               </div>
-              {run?.status === "waiting_approval" ? (
-                <>
-                  <div className="approval-notice">
-                    <span>◈</span>
-                    <div>
-                      <strong>Your approval is required</strong>
-                      <p>
-                        Inspect the exact operation and its content
-                        preconditions before continuing.
-                      </p>
-                    </div>
+            </form>
+            <div className="composer-note"><span>⌘ / Ctrl + Enter to run</span><span>Credentials stay on the host</span></div>
+            {drafts.current.read(selection.current).recovery !== undefined && <details className="composer-recovery">
+              <summary>Recover submitted text</summary>
+              <p>The submission could not be confirmed. Reconnect to inspect the current run before sending another task.</p>
+              <pre>{drafts.current.read(selection.current).recovery}</pre>
+              <button type="button" disabled={Boolean(prompt)} onClick={() => { if (drafts.current.recover(selection.current)) { setPrompt(drafts.current.read(selection.current).text); promptInput.current?.focus(); } }}>Restore to empty composer</button>
+            </details>}
+            {(active(run?.status ?? "") || reviewWaiting) && <button className="danger" disabled={!canCancel} onClick={() => void cancel()}>{run?.status === "cancel_requested" ? "Cancellation requested" : cancelling ? "Requesting cancellation…" : "Cancel run"}</button>}
+          </ChatRoot>
+        </section>
+        {!diffLayout.minimized && position !== "full" && !emptyReview && <div role="separator" className="diff-handle" tabIndex={0}
+          aria-orientation={position === "side" ? "vertical" : "horizontal"}
+          aria-valuenow={position === "side" ? diffWidth : diffHeight}
+          aria-valuemin={position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}
+          aria-valuemax={position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}
+          aria-label={position === "side" ? "Diff width" : "Diff height"}
+          title={`${position === "side" ? diffWidth : diffHeight} px. Minimum ${position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}. Maximum ${position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}.`}
+          onDoubleClick={() => resetDiffSize()}
+          onKeyDown={event => {
+            if (event.key === "Enter") { event.preventDefault(); resetDiffSize(); return; }
+            const horizontal = position === "side";
+            const keys = horizontal ? ["ArrowLeft", "ArrowRight", "Home", "End"] : ["ArrowUp", "ArrowDown", "Home", "End"];
+            if (!keys.includes(event.key)) return;
+            event.preventDefault();
+            if (horizontal) saveDiff({ ...diffLayout, widthPx: nudgeDiffSize(diffWidth, event.key, event.shiftKey, DIFF_MIN_WIDTH, maxDiffWidth(viewport.width)) });
+            else saveDiff({ ...diffLayout, heightPx: nudgeDiffSize(diffHeight, event.key, event.shiftKey, DIFF_MIN_HEIGHT, maxDiffHeight(viewport.height)) });
+          }}><span /></div>}
+        <aside className="diff-column" id="review-panel" tabIndex={-1} aria-label="Pending review">
+          <div className="review-toolbar">
+            <h2 id="review-heading" ref={reviewHeading} tabIndex={-1}>{workspace?.name ?? "Project"} · Change review</h2>
+            <div role="radiogroup" aria-label="Review position">
+              {(["side", "bottom", "full"] as const).map(value => <button key={value} type="button" role="radio" aria-checked={diffLayout.position === value}
+                disabled={value === "side" && !sideFits(viewport.width)} className={value === "side" && !sideFits(viewport.width) ? "struck" : undefined}
+                onClick={() => { if (position !== "full") previousPosition.current = position; saveDiff({ ...diffLayout, position: value, minimized: false }); }}>{value === "side" ? "Side" : value === "bottom" ? "Bottom" : "Fullscreen"}</button>)}
+            </div>
+            <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: !diffLayout.minimized })}>{diffLayout.minimized ? "Restore" : "Minimize"}</button>
+            {position === "full" && <button type="button" onClick={() => saveDiff({ ...diffLayout, position: previousPosition.current === "full" ? "side" : previousPosition.current })}>Exit fullscreen</button>}
+          </div>
+          {diffLayout.position === "side" && !sideFits(viewport.width) && <p className="layout-note">Side by side does not fit this window. The review moves below the chat. Your saved preference returns when the window is wider.</p>}
+          {reviewWaiting ? <div className="review-content" aria-label="Approval review">
+            <button type="button" className="subtle" disabled={!canMutate} onClick={() => void loadReview()}>{review ? "Reload review" : "Reload review"}</button>
+            {reviewInvalid && <p className="restriction" role="status">{reviewInvalid}</p>}
+            {review && <>
+              <p className="review-scope">{workspace?.name}: {viewed.approveLabel.replace(/^Approve /, "Covers ")}. Expires in {expiresLabel}.</p>
+              <p>{reviewConsequence}</p>
+              {review.items.map(item => <article key={item.approvalId}>
+                <h3 className="review-operation">{human(item.name)}</h3>
+                <p>{item.consequence}</p>
+                {item.files.map((file, index) => <div className="review-file" key={`${file.path}-${index}`}>
+                  <div className="review-file-header">
+                    <h4>{file.path}</h4>
+                    <label><input type="checkbox" data-action="view-file" checked={viewed.isViewed(file.path)} onChange={event => viewed.setViewed(file.path, event.target.checked)} />{viewed.isViewed(file.path) ? "Viewed" : "Unviewed"}<span className="sr-only"> {file.path}</span></label>
                   </div>
-                  <button
-                    className="primary wide"
-                    disabled={!canMutate}
-                    onClick={() => void loadReview()}
-                  >
-                    {review
-                      ? "Refresh exact review"
-                      : "Review proposed operation"}
-                  </button>
-                </>
-              ) : (
-                <div className="quiet-state">
-                  <span aria-hidden="true">
-                    {loading || !connected || needsReconcile || runUnavailable ? "…" : "✓"}
-                  </span>
-                  <p>
-                    {loading
-                      ? "Loading approval state…"
-                      : !connected || needsReconcile || runUnavailable
-                        ? "Approval state unavailable."
-                        : "No operations awaiting approval."}
-                  </p>
-                  <small>Requests will appear here before execution.</small>
-                </div>
-              )}
-              {review && (
-                <div className="review-content" aria-label="Approval review">
-                  <h3 ref={reviewHeading} tabIndex={-1}>
-                    Exact pending operation
-                  </h3>
-                  <p className="review-scope">
-                    {reviewScopeSummary(review.items.length, viewed.paths.length, viewed.commands)}
-                  </p>
-                  {reviewInvalid && (
-                    <p className="restriction" role="status">
-                      {reviewInvalid}
-                    </p>
-                  )}
-                  <p className="muted">
-                    Run revision {review.revision} · exact pending set
-                  </p>
-                  {review.items.map((item) => (
-                    <article key={item.approvalId}>
-                      <h4 className="review-operation">{human(item.name)}</h4>
-                      <p>{item.consequence}</p>
-                      {item.files.map((file, index) => (
-                        <div className="review-file" key={index}>
-                          <div className="review-file-header">
-                            <h4>{file.path}</h4>
-                            <label>
-                              <input
-                                type="checkbox"
-                                data-action="view-file"
-                                checked={viewed.isViewed(file.path)}
-                                onChange={event => viewed.setViewed(file.path, event.target.checked)}
-                              />
-                              Viewed<span className="sr-only"> {file.path}</span>
-                            </label>
-                          </div>
-                          <FileDiff before={file.before} after={file.after} />
-                        </div>
-                      ))}
-                      {item.commands.map((command, index) => (
-                        <pre key={index}>{command}</pre>
-                      ))}
-                      <details>
-                        <summary>Exact payload and preconditions</summary>
-                        <pre>{item.payload}</pre>
-                        <code>{item.payloadDigest}</code>
-                      </details>
-                      {!item.complete && (
-                        <p role="status" className="restriction">
-                          Approval unavailable: {item.restriction}
-                        </p>
-                      )}
-                    </article>
-                  ))}
-                  <p>{reviewConsequence}</p>
-                  {viewed.paths.length ? <p role="status">{viewed.viewedLabel}</p> : null}
-                  {!viewed.allViewed ? <p id="review-viewed-hint">View all files to approve</p> : null}
-                  <div className="decision-actions">
-                    <button
-                      type="button"
-                      className="subtle"
-                      disabled={!canMutate || Boolean(reviewInvalid)}
-                      onKeyDown={preventDecisionEnter}
-                      onClick={() => void decide(false)}
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      className="primary"
-                      aria-describedby={!viewed.allViewed ? "review-viewed-hint" : undefined}
-                      disabled={
-                        !canMutate ||
-                        !review.canApprove ||
-                        !viewed.allViewed ||
-                        Boolean(reviewInvalid)
-                      }
-                      onKeyDown={preventDecisionEnter}
-                      onClick={() => void decide(true)}
-                    >
-                      {viewed.approveLabel}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-            <section className="activity-panel">
-              <div className="section-heading">
-                <span>Activity & checks</span>
-                <span className="count">{tools.length}</span>
-              </div>
-              {!tools.length ? (
-                <div className="quiet-state small">
-                  <p>Tool activity appears as work progresses.</p>
-                </div>
-              ) : (
-                <ul className="tool-list">
-                  {tools.map((tool, i) => (
-                    <li key={i}>
-                      <span
-                        className={
-                          tool.status === "failed"
-                            ? "tool-icon failed"
-                            : "tool-icon"
-                        }
-                      >
-                        {tool.status === "failed"
-                          ? "!"
-                          : tool.status === "running"
-                            ? "◌"
-                            : tool.status === "completed"
-                              ? "✓"
-                              : "◇"}
-                      </span>
-                      <div>
-                        <strong>{human(tool.name)}</strong>
-                        <small>
-                          {tool.exitCode === undefined
-                            ? human(tool.status)
-                            : `exit ${tool.exitCode}${tool.timedOut ? " · timed out" : ""}`}
-                        </small>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {checks.length > 0 && (
-                <p className="check-summary">
-                  {checks.filter((c) => c.exitCode === 0 && !c.timedOut).length}
-                  /{checks.length} checks passed
-                </p>
-              )}
-            </section>
-            {run && (
-              <section className="run-panel">
-                <div className="section-heading">
-                  <span>Current run</span>
-                </div>
-                <dl>
-                  <dt>Status</dt>
-                  <dd>{human(run.status)}</dd>
-                  <dt>Revision</dt>
-                  <dd>{run.revision}</dd>
-                </dl>
-                {(active(run.status) || run.status === "waiting_approval") && (
-                  <button
-                    className="danger wide"
-                    disabled={!canCancel}
-                    onClick={() => void cancel()}
-                  >
-                    {run.status === "cancel_requested"
-                      ? "Cancellation requested"
-                      : cancelling
-                        ? "Requesting cancellation…"
-                        : "Cancel run"}
-                  </button>
-                )}
-                {run.decisions
-                  ?.filter((d) => d.finalDiff?.status === "complete")
-                  .map((d) => (
-                    <details key={d.approvalId}>
-                      <summary>
-                        Applied change ·{" "}
-                        {d.finalDiff?.status === "complete"
-                          ? d.finalDiff.files.length
-                          : 0}{" "}
-                        files
-                      </summary>
-                      {d.finalDiff?.status === "complete" &&
-                        d.finalDiff.files.map((f, i) => (
-                          <div className="review-file" key={i}>
-                            <h4>{f.path}</h4>
-                            <FileDiff
-                              before={f.before ?? undefined}
-                              after={f.after ?? undefined}
-                            />
-                          </div>
-                        ))}
-                    </details>
-                  ))}
-              </section>
-            )}
-            <p className="local-note">
-              This browser is paired with a local process. Workspace access and
-              execution remain governed by Harness.
-            </p>
-          </aside>
-        </div>
-      </main>
+                  <FileDiff before={file.before} after={file.after} />
+                  <p className="diff-end">End of changes in {file.path}</p>
+                </div>)}
+                {item.commands.map((command, index) => <pre key={index}>{command}</pre>)}
+                <details className="technical-details"><summary>Technical details</summary><pre>{item.payload}</pre></details>
+                {!item.complete && <p role="status" className="restriction">Approval unavailable: {item.restriction}</p>}
+              </article>)}
+              {viewed.paths.length ? <p role="status">{viewed.viewedLabel}</p> : null}
+              {!viewed.allViewed ? <p id="review-viewed-hint">View all files to approve</p> : null}
+            </>}
+            <div className="decision-actions">
+              <button type="button" className="subtle" data-decision="reject" disabled={!canMutate || Boolean(reviewInvalid) || !review} onKeyDown={preventDecisionEnter} onClick={() => void decide(false)}>Reject</button>
+              <button type="button" className="approve" data-decision="approve" aria-describedby={!viewed.allViewed ? "review-viewed-hint" : undefined}
+                disabled={!canMutate || !review?.canApprove || !viewed.allViewed || Boolean(reviewInvalid)} onKeyDown={preventDecisionEnter} onClick={() => void decide(true)}>{viewed.approveLabel}</button>
+            </div>
+          </div> : <div className="quiet-state"><p>No changes to review.</p><small>Requests show up here before anything runs.</small></div>}
+          {run?.decisions?.filter(decision => decision.finalDiff?.status === "complete").map(decision => <details key={decision.approvalId}>
+            <summary>Applied change · {decision.finalDiff?.status === "complete" ? decision.finalDiff.files.length : 0} files</summary>
+            {decision.finalDiff?.status === "complete" && decision.finalDiff.files.map((file, index) => <div className="review-file" key={index}><h4>{file.path}</h4><FileDiff before={file.before ?? undefined} after={file.after ?? undefined} /></div>)}
+          </details>)}
+          {workspace?.toolPolicy ? <p className="project-policy">Tool policy: {workspace.toolPolicy}</p> : null}
+          <p className="local-note">This browser is paired with a local process on this computer. Files stay in this project.</p>
+        </aside>
+      </div>
+      <SessionsDrawer open={drawerOpen} grouped={grouped} projects={projects} currentKey={workspaceKey} collapsed={collapsed} sessions={sessionMap}
+        loadingKey={sessionsLoading ? workspaceKey : ""} sessionId={session?.sessionId} search={search} statusFilter={statusFilter}
+        statusFor={(projectKey, item) => sessionStatusLabel(item.runs.at(-1)?.status, projectKey === workspaceKey && item.sessionId === session?.sessionId && reviewInvalid.startsWith("The run changed"))}
+        canSwitch={canSwitch} onSearch={setSearch} onClose={() => { setDrawerOpen(false); setStatusFilter(false); drawerButton.current?.focus(); }}
+        onToggle={toggleProject} onOpenProject={key => { if (projects.find(project => project.key === key)?.unavailable) return; setWorkspaceKey(key); setDrawerOpen(false); }}
+        onChoose={(key, item) => { if (key !== workspaceKey) { jump.current = { key, sessionId: item.sessionId }; setWorkspaceKey(key); } else chooseSession(item); setDrawerOpen(false); if (item.runs.at(-1)?.status === "waiting_approval") saveDiff({ ...diffLayout, minimized: false }); }}
+        onAdd={() => setAddProjectOpen(true)} onForget={key => { void action(key, "forgetProject").then(() => reconnect().then(next => { contextEpoch.current += 1; setContext(next); })).catch(error => setError(errorText(error))); }}
+        returnFocus={drawerButton} />
+      <AddProjectDialog open={addProjectOpen} onClose={() => setAddProjectOpen(false)} />
       {limitsOpen && limitsInfo?.workspaceKey === workspaceKey && <LimitsDialog
         initial={{ task: limitsInfo.preferences.task ?? limitsInfo.preferences.project, project: limitsInfo.preferences.project }}
         onCancel={() => setLimitsOpen(false)} onSave={(scope, settings) => void saveLimits(scope, settings)}
         saving={limitsSaving} saveBlocked={Boolean(limitsError)} pricingAvailable={limitsInfo.pricing !== null} error={limitsError}
-        unboundedDefault={Object.values(limitsInfo.host).every(v => v === null)}
+        unboundedDefault={Object.values(limitsInfo.host).every(value => value === null)}
         technicalNotice={`${limitsInfo.legacyPending ? "A previous task is still pending. Host policy is kept; restart Web after it finishes or is cancelled so the new defaults apply. " : ""}Per-operation, model, state, and loop-protection limits remain in place.${hostLimitNote(limitsInfo.host)}`} />}
-      <div className="sr-only" role="status" aria-live="polite">
-        {stateLabel}
-      </div>
+      <div className="sr-only" role="status" aria-live="polite">{stateLabel}. {announce}</div>
     </div>
   );
 }
