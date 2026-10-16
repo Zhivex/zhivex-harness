@@ -188,13 +188,14 @@ try {
   await page
     .getByRole("button", { name: "Create a session", exact: true })
     .waitFor();
-  // A context read may fail after pairing/reload. Reconnect must bootstrap the UI.
+  // Keep failing context until the alert is visible. A one-shot route can be
+  // consumed by the background context poll and the reloaded page then looks healthy.
   await page.route("**/api/context", async (route) => {
-    await page.unroute("**/api/context");
     await route.abort("failed");
   });
   await page.reload();
   await page.getByRole("alert").waitFor();
+  await page.unroute("**/api/context");
   await capture("web-initial-error-desktop.png");
   await reconnectState();
   await page
@@ -332,6 +333,41 @@ try {
     true,
   );
   steps.push("keyboard diff navigation and focused review heading");
+  await page.getByRole("button", { name: "1 needs you", exact: true }).waitFor();
+  const widthHandle = page.getByRole("separator", { name: "Diff width" });
+  const widthBefore = Number(await widthHandle.getAttribute("aria-valuenow"));
+  const widthBox = await widthHandle.boundingBox();
+  assert.ok(widthBox);
+  await page.mouse.move(widthBox.x + widthBox.width / 2, widthBox.y + 30);
+  await page.mouse.down();
+  await page.mouse.move(widthBox.x + widthBox.width / 2 + 120, widthBox.y + 30, { steps: 6 });
+  await page.mouse.up();
+  const widthAfter = Number(await page.getByRole("separator", { name: "Diff width" }).getAttribute("aria-valuenow"));
+  assert.ok(widthAfter < widthBefore, `${widthAfter} should be below ${widthBefore}`);
+  assert.ok(widthAfter >= 420);
+  const dragged = await page.evaluate(() => JSON.parse(document.defaultView.localStorage.getItem("zhivex.code.diffLayout.v1")));
+  assert.equal(dragged.widthPx, widthAfter);
+  const past = await page.getByRole("separator", { name: "Diff width" }).boundingBox();
+  await page.mouse.move(past.x + past.width / 2, past.y + 30);
+  await page.mouse.down();
+  await page.mouse.move(past.x + 2400, past.y + 30, { steps: 4 });
+  await page.mouse.up();
+  assert.equal(Number(await page.getByRole("separator", { name: "Diff width" }).getAttribute("aria-valuenow")), 420);
+  assert.ok((await page.locator(".chat-column").boundingBox()).width >= 360);
+  await page.getByRole("button", { name: "Minimize", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector(".workspace-frame")?.getAttribute("data-position") === "minimized");
+  assert.equal(await page.locator(".diff-column").count(), 0);
+  assert.equal(await page.locator("[data-decision='approve'], [data-decision='reject']").count(), 0);
+  assert.equal(await page.locator(".workspace-frame").evaluate(el => el.ownerDocument.defaultView.getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length), 1);
+  await page.getByRole("button", { name: "Restore review", exact: true }).click();
+  await page.getByLabel("Approval review", { exact: true }).waitFor();
+  steps.push("pointer drag persists the diff width and minimize leaves only the restore bar");
+  await openProject("beacon");
+  await openSessions();
+  await page.getByRole("group", { name: "atlas sessions" }).locator(".session-row").first().waitFor();
+  await openProject("atlas");
+  await page.getByLabel("Approval review", { exact: true }).waitFor();
+  steps.push("a non-current project with pending work shows its sessions when the drawer opens");
   assert.equal(await page.getByRole("button", { name: "Approve 1 file", exact: true }).isEnabled(), false);
   assert.equal(await page.getByRole("button", { name: "Reject", exact: true }).isEnabled(), true);
   await page.getByText("View all files to approve", { exact: true }).waitFor();
@@ -786,13 +822,14 @@ try {
   steps.push("lost admitted model-switch response requires reconciliation and confirms the new host model without replay");
 
   // A matching code from the later context read is not a model rejection.
+  // Leave the fault in place until that alert shows; the 2s context poll must not consume it.
   await page.route("**/api/context", async route => {
-    await page.unroute("**/api/context");
     await route.fulfill({status:400,json:{ok:false,error:{code:"WEB_MODEL_CHANGE_BUSY"}}});
   });
   const switchesBeforeContext = commands.filter(c => c === "selectModel").length;
   const contextModel = await applyOtherModel(originalModel);
   await page.getByRole("alert").getByText("WEB MODEL CHANGE BUSY", {exact:true}).waitFor();
+  await page.unroute("**/api/context");
   await page.waitForFunction(() => document.querySelector('.pill')?.textContent === "Reconciliation required");
   assert.equal(await picker.isDisabled(), true);
   await reconnectState();

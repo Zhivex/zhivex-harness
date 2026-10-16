@@ -94,7 +94,7 @@ export function SessionsDrawer(props: {
               <button type="button" onClick={() => props.onForget(project.key)}>Remove from list</button>
             </div>}
             {!collapsed && !project.unavailable && <div role="group" className="session-list" aria-label={props.grouped ? `${project.name} sessions` : "Sessions"}>
-              {props.loadingKey === project.key && !props.sessions[project.key] ? <p className="session-empty" role="status">Loading sessions…</p> : null}
+              {props.sessions[project.key] === undefined ? <p className="session-empty" role="status">Loading sessions…</p> : null}
               {sessions.map(session => {
                 const status = props.statusFor(project.key, session);
                 return <button key={session.sessionId} type="button" data-tree-item className={props.sessionId === session.sessionId && project.key === props.currentKey ? "session-row selected" : "session-row"}

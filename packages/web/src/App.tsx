@@ -141,6 +141,7 @@ export function App() {
   const [announce, setAnnounce] = useState("");
   const favoriteToggle = useRef<(() => void) | null>(null);
   const drawerButton = useRef<HTMLButtonElement>(null);
+  const sessionLoads = useRef(new Set<string>());
   const jump = useRef<{ key: string; sessionId: string } | null>(null);
   const previousPosition = useRef<DiffPosition>("side");
   const selection = useRef({ workspaceKey: "", sessionId: "" });
@@ -828,6 +829,13 @@ export function App() {
       setDrawerOpen(true);
     }
   }
+  function loadProjectSessions(key: string) {
+    if (!key || key === workspaceKey || extraSessions[key] || sessionLoads.current.has(key)) return;
+    sessionLoads.current.add(key);
+    void action<Sessions>(key, "sessions").then(result => {
+      setExtraSessions(current => current[key] ? current : { ...current, [key]: result.data.sessions });
+    }).catch(() => undefined).finally(() => { sessionLoads.current.delete(key); });
+  }
   function toggleProject(key: string) {
     setCollapsedProjects(previous => {
       const seeded = previous.length ? previous : projects.filter(project => project.key !== workspaceKey && project.pending === 0).map(project => project.key);
@@ -835,12 +843,17 @@ export function App() {
       localStorage.setItem("zhivex.code.drawer.v1", JSON.stringify(next));
       return next;
     });
-    if (!extraSessions[key] && key !== workspaceKey) {
-      void action<Sessions>(key, "sessions").then(result => {
-        setExtraSessions(current => ({ ...current, [key]: result.data.sessions }));
-      }).catch(() => undefined);
-    }
+    loadProjectSessions(key);
   }
+  const expandedOtherProjects = projects
+    .filter(project => project.key !== workspaceKey && !project.unavailable && !collapsed.has(project.key))
+    .map(project => project.key)
+    .sort()
+    .join("\n");
+  useEffect(() => {
+    if (!drawerOpen) return;
+    for (const key of expandedOtherProjects.split("\n")) loadProjectSessions(key);
+  }, [drawerOpen, expandedOtherProjects]);
   const frameStyle = { "--diff-width": `${diffWidth}px`, "--diff-height": `${diffHeight}px` } as CSSProperties;
   return (
     <div className="app-shell" data-theme={resolvedTheme}>
@@ -945,8 +958,8 @@ export function App() {
               {tools.map((tool, index) => <li key={index}><strong>{human(tool.name)}</strong><small>{tool.exitCode === undefined ? tool.status : `exit ${tool.exitCode}${tool.timedOut ? " · timed out" : ""}`}</small></li>)}
             </ul>}
             {checks.length > 0 && <p className="check-summary">{checks.filter(check => check.exitCode === 0 && !check.timedOut).length}/{checks.length} checks passed</p>}
-            {diffLayout.minimized && reviewWaiting && <div className="restore-bar" role="status">
-              <span>Needs you · {viewed.approveLabel.replace(/^Approve /, "")} · Expires in {expiresLabel}</span>
+            {diffLayout.minimized && <div className="restore-bar" role="status">
+              <span>{reviewWaiting ? `Needs you · ${viewed.approveLabel.replace(/^Approve /, "")} · Expires in ${expiresLabel}` : "Review is minimized"}</span>
               <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: false })}>Restore review</button>
             </div>}
             <form className="composer" onSubmit={event => { event.preventDefault(); void start(); }}>
@@ -980,6 +993,34 @@ export function App() {
           aria-valuemax={position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}
           aria-label={position === "side" ? "Diff width" : "Diff height"}
           title={`${position === "side" ? diffWidth : diffHeight} px. Minimum ${position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}. Maximum ${position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}.`}
+          onPointerDown={event => {
+            if (event.pointerType === "mouse" && event.button !== 0) return;
+            event.preventDefault();
+            const handle = event.currentTarget;
+            const pointerId = event.pointerId;
+            const horizontal = position === "side";
+            const origin = horizontal ? event.clientX : event.clientY;
+            const initial = horizontal ? diffWidth : diffHeight;
+            const layout = diffLayout;
+            const viewportWidth = viewport.width;
+            const viewportHeight = viewport.height;
+            handle.setPointerCapture(pointerId);
+            const move = (ev: PointerEvent) => {
+              const delta = (horizontal ? ev.clientX : ev.clientY) - origin;
+              const next = initial - delta;
+              if (horizontal) saveDiff({ ...layout, widthPx: clampDiffWidth(next, viewportWidth) });
+              else saveDiff({ ...layout, heightPx: clampDiffHeight(next, viewportHeight) });
+            };
+            const finish = () => {
+              if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+              handle.removeEventListener("pointermove", move);
+              handle.removeEventListener("pointerup", finish);
+              handle.removeEventListener("pointercancel", finish);
+            };
+            handle.addEventListener("pointermove", move);
+            handle.addEventListener("pointerup", finish);
+            handle.addEventListener("pointercancel", finish);
+          }}
           onDoubleClick={() => resetDiffSize()}
           onKeyDown={event => {
             if (event.key === "Enter") { event.preventDefault(); resetDiffSize(); return; }
@@ -990,7 +1031,7 @@ export function App() {
             if (horizontal) saveDiff({ ...diffLayout, widthPx: nudgeDiffSize(diffWidth, event.key, event.shiftKey, DIFF_MIN_WIDTH, maxDiffWidth(viewport.width)) });
             else saveDiff({ ...diffLayout, heightPx: nudgeDiffSize(diffHeight, event.key, event.shiftKey, DIFF_MIN_HEIGHT, maxDiffHeight(viewport.height)) });
           }}><span /></div>}
-        <aside className="diff-column" id="review-panel" tabIndex={-1} aria-label="Pending review">
+        {!diffLayout.minimized && <aside className="diff-column" id="review-panel" tabIndex={-1} aria-label="Pending review">
           <div className="review-toolbar">
             <h2 id="review-heading" ref={reviewHeading} tabIndex={-1}>{workspace?.name ?? "Project"} · Change review</h2>
             <div role="radiogroup" aria-label="Review position">
@@ -1038,7 +1079,7 @@ export function App() {
           </details>)}
           {workspace?.toolPolicy ? <p className="project-policy">Tool policy: {workspace.toolPolicy}</p> : null}
           <p className="local-note">This browser is paired with a local process on this computer. Files stay in this project.</p>
-        </aside>
+        </aside>}
       </div>
       <SessionsDrawer open={drawerOpen} grouped={grouped} projects={projects} currentKey={workspaceKey} collapsed={collapsed} sessions={sessionMap}
         loadingKey={sessionsLoading ? workspaceKey : ""} sessionId={session?.sessionId} search={search} statusFilter={statusFilter}
