@@ -104,8 +104,14 @@ export async function addRegisteredProject(directory: string, options: {
   }
   const file = options.file ?? defaultRegistryPath();
   const projects = await readProjectRegistry(file);
-  if (projects.some(project => project.path === folder)) {
-    return projects.map(project => project.path === folder ? { ...project, ...(toolPolicy ? { toolPolicy } : {}) } : project);
+  const existing = projects.find(project => project.path === folder);
+  if (existing) {
+    // Re-adding without a policy keeps the stored one. A new policy must hit disk
+    // before the CLI reports success, or the web runtime keeps the old file.
+    if (!toolPolicy || existing.toolPolicy === toolPolicy) return projects;
+    const next = projects.map(project => project.path === folder ? { ...project, toolPolicy } : project);
+    await writeProjectRegistry(next, file);
+    return next;
   }
   if (projects.length >= PROJECT_LIMIT) throw new Error("PROJECT_LIMIT");
   const next = [...projects, {
@@ -147,29 +153,38 @@ export function projectFailureCause(code: string, folder: string) {
 export interface ActiveProject {
   path: string;
   source: "flag" | "registry";
+  toolPolicy?: string;
 }
 
 export interface RegistrySyncPlan {
   start: RegisteredProject[];
   detach: string[];
   unavailable: { project: RegisteredProject; cause: string }[];
+  /** Registry projects already open whose stored policy differs from the running runtime. */
+  refresh: RegisteredProject[];
 }
 
 /** Decide which registered folders to open. Explicit flag workspaces are never detached. */
 export function planRegistrySync(active: ActiveProject[], registry: RegisteredProject[] | undefined, limit = PROJECT_LIMIT): RegistrySyncPlan {
-  if (!registry) return { start: [], detach: [], unavailable: [] };
+  if (!registry) return { start: [], detach: [], unavailable: [], refresh: [] };
   const registered = new Set(registry.map(project => project.path));
-  const activePaths = new Set(active.map(project => project.path));
+  const activeByPath = new Map(active.map(project => [project.path, project]));
   const detach = active.filter(project => project.source === "registry" && !registered.has(project.path)).map(project => project.path);
   const room = Math.max(0, limit - (active.length - detach.length));
   const start: RegisteredProject[] = [];
+  const refresh: RegisteredProject[] = [];
   const unavailable: RegistrySyncPlan["unavailable"] = [];
   for (const project of registry) {
-    if (activePaths.has(project.path) && !detach.includes(project.path)) continue;
+    const current = activeByPath.get(project.path);
+    if (current && !detach.includes(project.path)) {
+      // Flag workspaces keep the explicit --tool-policy. Registry workspaces follow the file.
+      if (current.source === "registry" && (current.toolPolicy ?? "") !== (project.toolPolicy ?? "")) refresh.push(project);
+      continue;
+    }
     if (start.length < room) start.push(project);
     else unavailable.push({ project, cause: `The local engine is already serving ${limit} projects. Remove one to open this project.` });
   }
-  return { start, detach, unavailable };
+  return { start, detach, unavailable, refresh };
 }
 
 export async function safeRegistryRead(file = defaultRegistryPath()) {

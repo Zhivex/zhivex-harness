@@ -30,7 +30,9 @@ import {
   writeProjectRegistry,
 } from "../src/project-registry.js";
 import { runProjectCli } from "../src/project-cli.js";
-import { parseWebArgs } from "../src/cli.js";
+import { parseWebArgs, reconcileRegistryProjects } from "../src/cli.js";
+import { startWebServer } from "../src/server.js";
+import type { WebRuntime } from "../src/runtime.js";
 import type { WebModelChoice } from "../src/contracts.js";
 
 const directories: string[] = [];
@@ -203,4 +205,86 @@ test("project add confirms the typed path and does not ask the browser for a fol
   const projects = await readProjectRegistry(file);
   expect(projects[0]?.path).toBe(folder);
   expect(projects[0]?.toolPolicy).toBe(path.join(root, "policy.json"));
+  await runProjectCli(["add"], { cwd: folder, file, prompt: async () => folder });
+  expect((await readProjectRegistry(file))[0]?.toolPolicy).toBe(path.join(root, "policy.json"));
+  await writeFile(path.join(root, "other-policy.json"), "{}\n", { mode: 0o600 });
+  await runProjectCli(["add", "--tool-policy", path.join(root, "other-policy.json")], {
+    cwd: folder,
+    file,
+    prompt: async () => folder,
+  });
+  expect((await readProjectRegistry(file))[0]?.toolPolicy).toBe(path.join(root, "other-policy.json"));
 });
+
+test("a registry policy change is reopened and the web runtime lists the new policy", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "zhivex-policy-runtime-"));
+  directories.push(root);
+  const folder = path.join(root, "atlas");
+  const assets = path.join(root, "assets");
+  const file = path.join(root, "projects.json");
+  const policy = path.join(root, "restricted.json");
+  await mkdir(folder);
+  await mkdir(assets);
+  await writeFile(path.join(assets, "index.html"), "<!doctype html><title>fixture</title>\n");
+  await writeFile(policy, "{}\n", { mode: 0o600 });
+  await runProjectCli(["add"], { cwd: folder, file, prompt: async () => folder });
+  await runProjectCli(["add", "--tool-policy", policy], { cwd: folder, file, prompt: async () => folder });
+  const registered = await readProjectRegistry(file);
+  expect(registered[0]?.toolPolicy).toBe(policy);
+  const previous = stubRuntime("atlas-key", folder, undefined);
+  const host = await startWebServer({ runtimes: [previous], assetsDirectory: assets });
+  try {
+    const opened: string[] = [];
+    await reconcileRegistryProjects({
+      registered,
+      active: [{ path: folder, source: "registry" }],
+      keyFor: candidate => candidate === folder ? previous.workspace.key : undefined,
+      detach: async () => { await previous.close(); },
+      drop() {},
+      async open(project) {
+        opened.push(project.toolPolicy ?? "");
+        return stubRuntime("atlas-key", folder, project.toolPolicy ? path.basename(project.toolPolicy) : undefined);
+      },
+      attach: runtime => host.directory.attach(runtime),
+      markUnavailable: project => host.directory.markUnavailable(project),
+      clearUnavailable: key => host.directory.clearUnavailable(key),
+      unavailableKey: () => undefined,
+      rememberUnavailable: (workspace, cause) => ({ key: "unavailable", name: "atlas", workspace, provider: "", model: "", unavailable: true, cause }),
+    });
+    expect(opened).toEqual([policy]);
+    const origin = host.origin;
+    const headers = { origin, "content-type": "application/json", "x-zhivex-web": "1" };
+    const token = new URL(host.launchUrl).hash.slice("#connect=".length);
+    const pair = await fetch(origin + "/api/connect", { method: "POST", headers, body: JSON.stringify({ token }) });
+    const doc = await pair.json() as { csrf: string; workspaces: { toolPolicy?: string }[] };
+    expect(doc.workspaces[0]?.toolPolicy).toBe("restricted.json");
+    const cookie = pair.headers.get("set-cookie")!.split(";")[0]!;
+    const context = await fetch(origin + "/api/context", {
+      method: "POST",
+      headers: { ...headers, cookie, "x-zhivex-csrf": doc.csrf },
+      body: "{}",
+    });
+    const again = await context.json() as { workspaces: { toolPolicy?: string }[] };
+    expect(again.workspaces.map(item => item.toolPolicy)).toEqual(["restricted.json"]);
+    expect(planRegistrySync([{ path: folder, source: "flag" }], registered).refresh).toEqual([]);
+    const removed = planRegistrySync([{ path: folder, source: "registry", toolPolicy: policy }], registered.map(project => ({ path: project.path, name: project.name, addedAt: project.addedAt })));
+    expect(removed.refresh.map(project => project.toolPolicy)).toEqual([undefined]);
+  } finally {
+    await host.close();
+  }
+});
+
+function stubRuntime(key: string, folder: string, toolPolicy: string | undefined): WebRuntime {
+  return {
+    workspace: {
+      key,
+      name: "atlas",
+      workspace: folder,
+      provider: "openai",
+      model: "fixture",
+      ...(toolPolicy ? { toolPolicy } : {}),
+    },
+    forgetIdentity() {},
+    async close() {},
+  } as unknown as WebRuntime;
+}

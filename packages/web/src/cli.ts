@@ -11,7 +11,7 @@ import { selectWebServiceDirectory, webStartupDiagnostic } from "./service-direc
 import { startInteractiveWebRuntime } from "./interactive-startup.js";
 import { manageWebRuntime } from "./managed-runtime.js";
 import type { WebModelChoice } from "./contracts.js";
-import { planRegistrySync, projectFailureCause, removeRegisteredPath, safeRegistryRead } from "./project-registry.js";
+import { planRegistrySync, projectFailureCause, removeRegisteredPath, safeRegistryRead, type ActiveProject, type RegisteredProject } from "./project-registry.js";
 import { createHash } from "node:crypto";
 import type { UnavailableProject } from "./server.js";
 
@@ -99,6 +99,49 @@ async function openBrowser(url: string) {
   });
 }
 
+/** Apply a registry read to the running directory: detach removals, reopen policy changes, and start new folders. */
+export async function reconcileRegistryProjects(options: {
+  registered: RegisteredProject[] | undefined;
+  active: ActiveProject[];
+  keyFor(path: string): string | undefined;
+  detach(key: string): Promise<void>;
+  drop(path: string): void;
+  open(project: RegisteredProject): Promise<WebRuntime | undefined>;
+  attach(runtime: WebRuntime): boolean;
+  markUnavailable(project: UnavailableProject): void;
+  clearUnavailable(key: string): void;
+  unavailableKey(path: string): string | undefined;
+  rememberUnavailable(folder: string, cause: string): UnavailableProject;
+}) {
+  if (!options.registered) return;
+  const plan = planRegistrySync(options.active, options.registered);
+  for (const folder of [...plan.detach, ...plan.refresh.map(project => project.path)]) {
+    const key = options.keyFor(folder);
+    if (key) await options.detach(key);
+    options.drop(folder);
+  }
+  for (const project of [...plan.refresh, ...plan.start, ...plan.unavailable.map(item => item.project)]) {
+    const blocked = plan.unavailable.find(item => item.project.path === project.path);
+    if (blocked && !plan.start.includes(project) && !plan.refresh.includes(project)) {
+      options.markUnavailable(options.rememberUnavailable(project.path, blocked.cause));
+      continue;
+    }
+    try {
+      const runtime = await options.open(project);
+      if (!runtime) continue;
+      const stale = options.unavailableKey(project.path);
+      if (stale) options.clearUnavailable(stale);
+      if (!options.attach(runtime)) {
+        await runtime.close();
+        options.drop(project.path);
+      }
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      options.markUnavailable(options.rememberUnavailable(project.path, projectFailureCause(code, project.path)));
+    }
+  }
+}
+
 export async function runWebCli(
   args: string[],
   assetsDirectory: string,
@@ -120,7 +163,7 @@ export async function runWebCli(
       throw new Error("WEB_PLATFORM_UNSUPPORTED");
     const serviceDirectory = await selectWebServiceDirectory();
     const seen = new Set<string>();
-    const tracked = new Map<string, { key: string; source: "flag" | "registry" }>();
+    const tracked = new Map<string, { key: string; source: "flag" | "registry"; toolPolicy?: string }>();
     const unavailableProjects: UnavailableProject[] = [];
     const unavailableKeys = new Map<string, string>();
     const v = parsed.values;
@@ -146,7 +189,7 @@ export async function runWebCli(
         };
       }) : started.runtime;
       seen.add(workspace);
-      tracked.set(workspace, { key: runtime.workspace.key, source });
+      tracked.set(workspace, { key: runtime.workspace.key, source, ...(toolPolicy ? { toolPolicy } : {}) });
       return runtime;
     }
     function rememberUnavailable(folder: string, cause: string, source: "flag" | "registry") {
@@ -217,34 +260,19 @@ export async function runWebCli(
           return;
         }
         registryWarned = false;
-        const plan = planRegistrySync([...tracked].map(([projectPath, value]) => ({ path: projectPath, source: value.source })), registered);
-        for (const folder of plan.detach) {
-          const item = tracked.get(folder);
-          if (item) await server.directory.detach(item.key);
-          tracked.delete(folder);
-          seen.delete(folder);
-        }
-        for (const project of [...plan.start, ...plan.unavailable.map(item => item.project)]) {
-          if (plan.unavailable.some(item => item.project.path === project.path) && !plan.start.includes(project)) {
-            server.directory.markUnavailable(rememberUnavailable(project.path, plan.unavailable.find(item => item.project.path === project.path)!.cause, "registry"));
-            continue;
-          }
-          try {
-            const runtime = await openWorkspace(project.path, "registry", project.toolPolicy);
-            if (!runtime) continue;
-            const stale = unavailableKeys.get(project.path);
-            if (stale) server.directory.clearUnavailable(stale);
-            unavailableKeys.delete(project.path);
-            if (!server.directory.attach(runtime)) {
-              await runtime.close();
-              tracked.delete(project.path);
-              seen.delete(project.path);
-            }
-          } catch (error) {
-            const code = error instanceof Error ? error.message : "";
-            server.directory.markUnavailable(rememberUnavailable(project.path, projectFailureCause(code, project.path), "registry"));
-          }
-        }
+        await reconcileRegistryProjects({
+          registered,
+          active: [...tracked].map(([projectPath, value]) => ({ path: projectPath, source: value.source, ...(value.toolPolicy ? { toolPolicy: value.toolPolicy } : {}) })),
+          keyFor: folder => tracked.get(folder)?.key,
+          detach: key => server.directory.detach(key),
+          drop(folder) { tracked.delete(folder); seen.delete(folder); },
+          open: project => openWorkspace(project.path, "registry", project.toolPolicy) as Promise<WebRuntime | undefined>,
+          attach: runtime => server.directory.attach(runtime),
+          markUnavailable: project => server.directory.markUnavailable(project),
+          clearUnavailable: key => server.directory.clearUnavailable(key),
+          unavailableKey: folder => unavailableKeys.get(folder),
+          rememberUnavailable: (folder, cause) => rememberUnavailable(folder, cause, "registry"),
+        });
       })().catch(() => undefined).finally(() => { syncing = false; });
     }, 1000);
     let stopping = false;
