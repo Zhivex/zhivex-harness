@@ -61,11 +61,14 @@ jobs:
             exit 1
           fi
 
-          if [[ "$TAG_KIND" == "code" ]]; then
-            if [[ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]]; then
-              printf 'dispatch the Code workflow from the annotated tag\n' >&2
-              exit 1
-            fi
+          # Harness and Code both require the exact tag ref. A dispatch from
+          # main can match the tagged commit and still be excluded from
+          # tag-only environments and Vertex identity. This check is defense
+          # in depth, not the trust boundary: the dispatched ref loads this
+          # file and can omit it. See docs/PUBLIC_SECURITY.md.
+          if [[ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]]; then
+            printf 'dispatch the workflow from the exact annotated tag ref\n' >&2
+            exit 1
           fi
 
           remote="https://github.com/${GITHUB_REPOSITORY}.git"

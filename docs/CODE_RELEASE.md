@@ -278,12 +278,17 @@ support remain unchanged; estimated budgets are not guaranteed financial caps.
    verification as ordered in [the Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md).
    From a clean checkout of that main commit, create an annotated
    `code-v0.2.0` tag and push it. Never move or overwrite release tags.
-4. Dispatch `release-code.yml` **at that tag**, with input `tag` matching it and
-   `channel=latest`, `mode=oidc`, and `confirm_publication=true`. A no-permission
-   job resolves that annotated tag to the workflow commit and requires the commit
-   to be reachable from `main` before provenance OIDC, provider-free validation,
-   or npm publication starts. Dispatching main while supplying a different tag
-   is rejected.
+4. Dispatch `release-code.yml` **from that exact tag ref**, with input `tag`
+   matching it and `channel=latest`, `mode=oidc`, and `confirm_publication=true`.
+   A no-permission job is defense in depth, not the trust boundary, because
+   GitHub loads it from the dispatched ref. When it still runs, it requires
+   `GITHUB_REF` to be exactly `refs/tags/code-v0.2.0`, resolves that annotated
+   tag to the workflow commit, and requires the commit to be reachable from
+   `main` before provenance OIDC, provider-free validation, or npm publication
+   starts. Dispatch from `main` or any other ref is rejected, including when
+   the commit matches the tag. Publication still depends on the `npm`
+   environment allowing only selected `v*` and `code-v*` tags, and on the tag
+   ruleset in [Public repository security](PUBLIC_SECURITY.md).
 
 ```sh
 gh workflow run release-code.yml --ref code-v0.2.0 \
@@ -353,10 +358,13 @@ In npm package settings, configure GitHub Actions with organization `Zhivex`,
 repository `zhivex-harness`, workflow filename `release-code.yml`, and environment
 `npm`. Enable the allowed action `npm publish`; the OIDC job uses direct
 publishing after GitHub approval, not `npm stage publish`. Preserve the GitHub
-environment's required human approval. Then prepare a
+environment's required human approval and the selected-tag deployment rule in
+[Public repository security](PUBLIC_SECURITY.md). That environment rule, with
+the maintainer-only tag ruleset, is the trust boundary. The in-repo resolver is
+defense in depth, not the trust boundary. Then prepare a
 new Code stable or RC version and annotated tag through the same PR and main CI process.
-Dispatch its tag with the matching channel, `mode=oidc` and
-`confirm_publication=true`. Stable versions require `latest` and a stable exact
+Dispatch the workflow from that exact tag ref, with the matching channel, `mode=oidc` and
+`confirm_publication=true`. A dispatch from `main` is rejected. Stable versions require `latest` and a stable exact
 Harness dependency; canonical RC versions require `next`. Version/channel drift
 fails before engine downloads. An RC may pin a stable engine. Stable publication
 does not upgrade beta/experimental APIs, provisional providers or Desktop alpha.

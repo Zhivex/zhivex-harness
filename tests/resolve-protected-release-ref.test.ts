@@ -51,6 +51,9 @@ const resolverScript = async () => {
   const script = workflow.jobs.resolve?.steps?.find(step => step.run?.includes("merge-base --is-ancestor"))?.run;
   expect(script).toBeDefined();
   expect(script).toContain('remote="https://github.com/${GITHUB_REPOSITORY}.git"');
+  expect(script).toContain('if [[ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]]');
+  expect(script).toContain("dispatch the workflow from the exact annotated tag ref");
+  expect(script).not.toContain('TAG_KIND" == "code"');
   expect(script).not.toContain("RELEASE_REF_REMOTE");
   expect(script).not.toContain("secrets.");
   return script!;
@@ -73,6 +76,7 @@ test("protected release workflows bind the tag before secrets and id-token", asy
     const workflow = await readWorkflow(file);
     const source = await readFile(path.join(workflowDir, file), "utf8");
     expect(source).not.toContain("ref: ${{ inputs.tag }}");
+    expect(source).toContain("defense in depth, not the trust boundary");
     const resolve = workflow.jobs["resolve-release-commit"];
     expect(resolve?.permissions).toEqual({});
     expect(resolve?.uses).toBe("./.github/workflows/resolve-protected-release-ref.yml");
@@ -168,7 +172,7 @@ test("annotated tag resolution accepts only the workflow commit on main", async 
       return { code, stdout, stderr, output: await readFile(output, "utf8") };
     };
 
-    const harness = await run({ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/heads/main" });
+    const harness = await run({ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.3" });
     expect(harness.code, harness.stderr).toBe(0);
     expect(harness.output).toBe(`sha=${mainSha}\n`);
     const candidate = await run({ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3-rc.2", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.3-rc.2" });
@@ -183,7 +187,9 @@ test("annotated tag resolution accepts only the workflow commit on main", async 
       [{ TAG_KIND: "harness", RELEASE_TAG: "v1.2.4", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.4" }, "annotated tag object"],
       [{ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: sideSha, GITHUB_REF: "refs/tags/v1.2.3" }, "protected workflow commit"],
       [{ TAG_KIND: "harness", RELEASE_TAG: "v9.9.9", GITHUB_SHA: sideSha, GITHUB_REF: "refs/tags/v9.9.9" }, "not reachable from main"],
-      [{ TAG_KIND: "code", RELEASE_TAG: "code-v0.1.0", GITHUB_SHA: mainSha, GITHUB_REF: "refs/heads/main" }, "annotated tag"],
+      [{ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/heads/main" }, "exact annotated tag ref"],
+      [{ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.3-rc.2" }, "exact annotated tag ref"],
+      [{ TAG_KIND: "code", RELEASE_TAG: "code-v0.1.0", GITHUB_SHA: mainSha, GITHUB_REF: "refs/heads/main" }, "exact annotated tag ref"],
       [{ TAG_KIND: "code", RELEASE_TAG: "code-v0.9.9", GITHUB_SHA: sideSha, GITHUB_REF: "refs/tags/code-v0.9.9" }, "not reachable from main"],
       [{ TAG_KIND: "branch", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.3" }, "unsupported release tag kind"],
       [{ TAG_KIND: "harness", RELEASE_TAG: "v1.2.3", GITHUB_SHA: mainSha, GITHUB_REF: "refs/tags/v1.2.3", GITHUB_REPOSITORY: "fork/zhivex-harness" }, "Zhivex/zhivex-harness"]

@@ -223,7 +223,9 @@ for (const required of [
   "## Enabled no-cost controls",
   "## Cost-gated controls left disabled",
   "larger GitHub-hosted runners",
-  "Local credentials are never copied to GitHub automatically"
+  "Local credentials are never copied to GitHub automatically",
+  "defense in depth, not the trust boundary",
+  "only maintainers can create"
 ]) {
   if (!publicSecurity.includes(required)) {
     failures.push(`docs/PUBLIC_SECURITY.md is missing: ${required}.`);
