@@ -8,6 +8,7 @@ import { SqliteDatabase } from "./sqlite-database.js";
 import { sqliteAdapter } from "./operations.js";
 import { ensurePrivateDatabase } from "./sessions.js";
 import { HarnessConfigError, HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/errors.js";
+import { isReservedBudgetNamespace } from "../runtime/budget-ledger-scope.js";
 
 export const HARNESS_PROJECT_MEMORY_SCHEMA_VERSION = 1 as const;
 export const HARNESS_PROJECT_MEMORY_LIMITS = Object.freeze({ entries: 128, entryBytes: 4096,
@@ -56,7 +57,7 @@ export const projectMemoryBinding = (workspace: string, scope: AgentStoreScope) 
   segment(scope.tenantId);
   if (scope.userId !== undefined) segment(scope.userId);
   if (scope.namespace !== undefined) segment(scope.namespace);
-  if (scope.namespace === "__zhivex_budget__") throw new HarnessConfigError("Reserved memory namespace.");
+  if (isReservedBudgetNamespace(scope.namespace)) throw new HarnessConfigError("Reserved memory namespace.");
   const key = (kind: string, value: string) => createHash("sha256").update(kind).update("\0").update(value).digest("hex");
   const workspaceKey = key("workspace", workspace);
   const scopeKey = key("scope", `${scope.tenantId}\0${scope.userId ?? ""}\0${scope.namespace ?? ""}`);

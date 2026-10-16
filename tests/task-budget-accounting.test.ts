@@ -6,6 +6,7 @@ import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { resolveHarnessConfig } from '../src/runtime/config.js';
 import { openHarnessPersistence } from '../src/persistence/operations.js';
 import { TaskBudget } from '../src/runtime/task-budget.js';
+import { budgetLedgerNamespace } from '../src/runtime/budget-ledger-scope.js';
 import { UsageLedger, inspectTaskMonetaryUsage } from '../src/runtime/usage-ledger.js';
 
 const pricing = { schemaVersion: 1 as const, prices: [{ provider: 'mock', model: 'accounting', inputUsdPerMillion: 0,
@@ -103,6 +104,8 @@ test('a retained monetary receipt cannot hide a deleted token allocation', async
   const scope = { ...config.scope, namespace: '__zhivex_budget__' };
   const id = `budget_${fingerprintAgentHarness({ budgetId: account.accountRunId, scope: config.scope }).slice('sha256:'.length)}`;
   const stored = (await persistence.store.load(id, scope))!;
+  expect(stored.scope?.namespace).toBe(budgetLedgerNamespace(config.scope.namespace!));
+  expect(stored.metadata?.budgetOwnerNamespace).toBe(config.scope.namespace);
   const allocations = structuredClone(stored.metadata!.allocations) as Record<string, { tokens: { totalTokens: number } }>;
   for (const [key, entry] of Object.entries(allocations)) if (entry.tokens.totalTokens > 0) delete allocations[key];
   await persistence.store.save({ ...stored, revision: stored.revision! + 1,
