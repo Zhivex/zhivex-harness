@@ -23,7 +23,8 @@ const hiddenEscape = (codePoint: number): string | undefined => {
   if (codePoint >= 0x202a && codePoint <= 0x202e) return hex4(codePoint);
   if (codePoint >= 0x2066 && codePoint <= 0x2069) return hex4(codePoint);
   if (codePoint === 0x2028 || codePoint === 0x2029) return hex4(codePoint);
-  if (codePoint < 0x20 || (codePoint >= 0x7f && codePoint <= 0x9f)) return hex4(codePoint);
+  // Carriage return stays a carriage return so CRLF file text remains exact.
+  if ((codePoint < 0x20 && codePoint !== 0x0d) || (codePoint >= 0x7f && codePoint <= 0x9f)) return hex4(codePoint);
   if (codePoint === 0xe0001 || (codePoint >= 0xe0020 && codePoint <= 0xe007f)) return `\\u{${codePoint.toString(16)}}`;
   return undefined;
 };

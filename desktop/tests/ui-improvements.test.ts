@@ -104,7 +104,7 @@ test("diff displays changed lines while retaining exact complete contents", () =
   expect(html).toContain("diff-added");
   expect(html).toContain("diff-removed");
   expect(html).toContain("Next change");
-  expect(html).toContain("same\\u000d\nbefore\\u000d\nlast");
+  expect(html).toContain("same\r\nbefore\r\nlast");
   expect(html).toContain("after &lt;script&gt;");
   expect(html).not.toContain("<script>");
 });
