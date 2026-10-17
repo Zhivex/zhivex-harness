@@ -8,12 +8,12 @@ Version `1.4.0` is published and verified on npm `latest`.
 release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 `0.3.0-rc.8`. Harness `1.4.1` and Code `0.3.2` are published on `latest`. This checkout
-prepares Harness `1.4.2` and Code `0.3.3` for `latest`. Publication is pending and is not claimed here.
+prepares Harness `1.5.0` and Code `0.4.0` for `latest`. Publication is pending and is not claimed here.
 
-## Prepared source: 1.4.2
+## Prepared source: 1.5.0
 
-Source version: `1.4.2` (stable publication to `latest` pending), with Code
-`0.3.3` pinned exactly to Harness `1.4.2`. It ships the experimental audit pack,
+Source version: `1.5.0` (stable publication to `latest` pending), with Code
+`0.4.0` pinned exactly to Harness `1.5.0`. It ships the experimental audit pack,
 provisional Bedrock and Azure OpenAI routes, experimental Code web task control,
 the reworked local web workspace with its security fixes, and the release-tag
 binding hardening. This preparation does not create tags or publish.
@@ -102,7 +102,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.3.0` | Engine and Code release closure | Independent Code 0.1.0 with exact engine dependency | Published on npm; superseded on `latest` | M |
 | `1.4.0` | Stable Code product | Code 0.3.0 pinned to the 1.4.0 engine | Published on npm as `latest` | L |
 | `1.4.1` | Patch | Footer, review copy, English limits, Node check, Code 0.3.1 | Published | S |
-| `1.4.2` | Patch | Audit pack, Bedrock/Azure routes, web task control, web workspace rework, Code 0.3.3 | Pending stable publication | S |
+| `1.5.0` | Minor | Audit pack, Bedrock/Azure routes, web task control, web workspace rework, Code 0.4.0 | Pending stable publication | S |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

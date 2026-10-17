@@ -1,13 +1,13 @@
 # Release process
 
-## Pending patch: 1.4.2
+## Pending minor: 1.5.0
 
-The source version is `1.4.2`, pending publication to `latest`. This checkout
-prepares Harness `1.4.2` and Code `0.3.3` for npm `latest`, with Code pinned
+The source version is `1.5.0`, pending publication to `latest`. This checkout
+prepares Harness `1.5.0` and Code `0.4.0` for npm `latest`, with Code pinned
 exactly to the engine and private Desktop bound to the same Harness version.
-Published `latest` is Harness `1.4.1` and Code `0.3.2`. It adds the `v1.4.2`
+Published `latest` is Harness `1.4.1` and Code `0.3.2`. It adds the `v1.5.0`
 representative mapping with the same Meta, Qwen and OpenAI models as `v1.4.1`
-and does not change provider/API tiers. Annotated `v1.4.2` then `code-v0.3.3`
+and does not change provider/API tiers. Annotated `v1.5.0` then `code-v0.4.0`
 on the same reviewed main SHA, `channel=latest`, run through the unchanged
 protected workflows and their environment approvals.
 
