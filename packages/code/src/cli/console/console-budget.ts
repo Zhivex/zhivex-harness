@@ -16,10 +16,10 @@ export const webBudgetOptions = <T extends HarnessConfigInput>(options: T, env: 
   const explicitTokens = tokenOptions.some(key => options[key] !== undefined) || tokenEnvironment.some(key => env[key] !== undefined);
   return {
     ...options,
-    unlimitedSteps: explicitSteps ? options.unlimitedSteps : false,
-    unlimitedToolCalls: explicitTools ? options.unlimitedToolCalls : false,
-    unlimitedDuration: explicitTime ? options.unlimitedDuration : false,
-    unlimitedTokens: explicitTokens ? options.unlimitedTokens : false,
+    unlimitedSteps: explicitSteps ? options.unlimitedSteps === true : false,
+    unlimitedToolCalls: explicitTools ? options.unlimitedToolCalls === true : false,
+    unlimitedDuration: explicitTime ? options.unlimitedDuration === true : false,
+    unlimitedTokens: explicitTokens ? options.unlimitedTokens === true : false,
   };
 };
 
