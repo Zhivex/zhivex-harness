@@ -105,7 +105,7 @@ const wrapCode = (gutter: string, code: string, width: number) => {
 };
 
 const gutterFor = (oldNo: number | null, newNo: number | null, mark: string) =>
-  `${oldNo === null ? "      " : String(oldNo).padStart(6, " ")} ${newNo === null ? "      " : String(newNo).padStart(6, " ")} ${mark} `;
+  `${oldNo === null ? "      " : String(oldNo).padStart(6, " ")} ${newNo === null ? "      " : String(newNo).padStart(6, " ")} ${mark}`;
 
 /**
  * Line numbers, word markers, indent-preserving soft wrap, and collapsed-context banners.

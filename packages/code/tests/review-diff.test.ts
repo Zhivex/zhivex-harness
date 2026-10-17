@@ -83,4 +83,17 @@ test("the review names the intent, counts each file, and keeps indentation when 
   expect(short.lines.length).toBeLessThan(40);
   expect(short.lines[marker - 1]?.trim()).not.toBe("");
   expect(short.lines[marker + 1]).toContain("Waiting for your decision");
+  const greeting = renderReviewedDiff("--- greeting.mjs\n+++ greeting.mjs\n@@ -1,1 +1,1 @@\n-export const greeting = (name) => `Hi, ${name}`;\n+export const greeting = (name) => `Hello, ${name}!`;\n", 100);
+  const greetingText = greeting.lines.join("\n");
+  expect(greetingText).toContain("---");
+  expect(greetingText).toContain("+++");
+  expect(greetingText).toContain("-export const greeting");
+  expect(greetingText).toContain("+export const greeting");
+  const literal = "command.indexOf(\"\\u0000\")";
+  const escaped = renderReviewedDiff(`@@ -1,1 +1,1 @@\n-${literal}\n+command.indexOf(\"\0\")\n`, 120);
+  const escapedText = escaped.lines.join("\n");
+  expect(escapedText).toContain(literal);
+  expect(escapedText).toContain("command.indexOf(\"\\0\")");
+  expect(escapedText).not.toContain("^@");
+  expect(escapedText).not.toContain("\\\\u0000");
 });

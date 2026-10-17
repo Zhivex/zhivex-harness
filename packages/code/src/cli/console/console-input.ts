@@ -215,7 +215,7 @@ export class ConsoleInput {
     this.reviewLinesDrawn = 0;
   }
   private styleReviewLine(line: string) {
-    const gutter = line.length > 15 && line[15] === " " && (line[14] === "+" || line[14] === "-") ? line[14] : "";
+    const gutter = line.length > 14 && line[13] === " " && (line[14] === "+" || line[14] === "-") ? line[14] : "";
     const mark = line.startsWith("+") || line.startsWith("-") || line.startsWith("@@") ? line[0] : gutter;
     const code = line.startsWith("( Z )") ? "1;38;5;210" : mark === "+" ? "38;5;120"
       : mark === "-" ? "38;5;210" : mark === "@" || line.startsWith("@@") ? "38;5;117"

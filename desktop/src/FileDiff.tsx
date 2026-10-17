@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { diffLines } from "diff";
-import { revealInvisiblePieces, revealInvisibleText } from "../../src/review/reveal-invisible.js";
+import { revealInvisiblePieces, revealInvisibleText } from "./reveal-invisible.js";
 
 export function FileDiff({
   before,
