@@ -6,6 +6,8 @@ export interface ConsoleReview {
   body: string;
   /** One or two lines of intent, kept above the scrolling diff. */
   summary?: string;
+  /** A one-line notice kept above the diff, including a restored pending review. */
+  banner?: string;
   /** Per-file `path  +added −removed` lines, kept above the scrolling diff. */
   fileList?: string;
   /** Preformatted diff. Line indexes are hunk headers for n/p. */
@@ -92,9 +94,10 @@ const itemLines = (items: readonly ReviewItem[], selected: number, width: number
 export const reviewFrame = (review: ConsoleReview, items: readonly ReviewItem[],
   selected: number, _query: string, offset: number, columns = 80, rows = 24, wrappedBody?: readonly string[]) => {
   const width = consoleWidth(columns);
+  const banner = review.banner ? wrapWords(review.banner, width).slice(0, 2) : [];
   const summary = review.summary ? wrapWords(review.summary, width).slice(0, 2) : [];
   const files = review.fileList ? review.fileList.split("\n").filter(Boolean).flatMap(line => wrapWords(line, width)) : [];
-  const preface = [...summary, ...files];
+  const preface = [...banner, ...summary, ...files];
   const body = wrappedBody ?? consoleLines(review.body, width);
   const hint = hintFor(width, selected);
   const title = consoleLabel(review.title, width);

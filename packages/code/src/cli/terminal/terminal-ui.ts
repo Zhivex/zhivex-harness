@@ -132,7 +132,7 @@ export const formatApproval = (
 export interface TerminalApprovalResolverOptions {
   ask(question: string): Promise<string>;
   select?: import("../cli-credentials.js").CredentialInput["select"];
-  review?: (review: { title: string; body: string; summary?: string; fileList?: string; headerRight?: string; files?: number; layout?: (width: number) => { lines: readonly string[]; hunks: readonly number[] } }, items: readonly {value: string; label: string; detail?: string; key?: string}[]) => Promise<string | undefined>;
+  review?: (review: { title: string; body: string; summary?: string; fileList?: string; banner?: string; headerRight?: string; files?: number; layout?: (width: number) => { lines: readonly string[]; hunks: readonly number[] } }, items: readonly {value: string; label: string; detail?: string; key?: string}[]) => Promise<string | undefined>;
   /** Read each call so a one-key drop to manual applies to the next approval. */
   autoApprove?: () => AutoApprovePolicy;
   readText?: (relativePath: string) => Promise<{ text: string | null; undoable: boolean }>;
@@ -312,7 +312,10 @@ export const resolveTerminalApprovals = async (
           summary: summaryText,
           ...(summary.text ? { fileList: summary.text.trim() } : {}),
           body,
-          ...(!technical && trustedDiff ? { layout: (width: number) => renderReviewedDiff(diffBody, width) } : {}),
+          ...(!technical && trustedDiff ? {
+            layout: (width: number) => renderReviewedDiff(diffBody, width),
+            ...(restored ? { banner: restored.trimEnd() } : {}),
+          } : {}),
           ...(options.projectLabel ? { headerRight: options.projectLabel } : {}),
           files: files.length,
         }, items) : options.select ? await options.select("Waiting for your decision", items)

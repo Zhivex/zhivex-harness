@@ -150,6 +150,20 @@ test("a short review stays under the activity line with the decision against the
     expect(decision).toBe(end + 1);
     input.write("r");
     expect(await answer).toBe("n");
+    rendered = "";
+    const restored = ui.review({
+      title: "Waiting for your decision",
+      body: "● Restored: this conversation was waiting for your decision.\n" + body,
+      banner: "● Restored: this conversation was waiting for your decision.",
+      files: 1,
+      layout: width => renderReviewedDiff(body, width),
+    }, [
+      { value: "n", label: "Reject", key: "r", detail: "This change is not applied." },
+    ]);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(rendered.replace(/\x1b\[[0-9;]*m/g, "")).toContain("Restored:");
+    input.write("r");
+    expect(await restored).toBe("n");
   } finally { ui.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
 });
 
