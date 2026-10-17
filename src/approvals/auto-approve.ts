@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { readRegularFileNoFollow } from "../workspace/file-security.js";
 
 /** Opt-in approval policy. Manual is the default. Always-ask reasons are checked before any mode or allowlist. */
 export const AUTO_APPROVE_MODES = ["manual", "auto-edits", "auto-limits"] as const;
@@ -452,11 +453,10 @@ const readCurrent = async (rootDir: string, relativePath: string) => {
   if (!isInsideRoot(rootDir, relativePath)) return undefined;
   const full = path.resolve(rootDir, relativePath);
   try {
-    const info = await lstat(full);
-    if (info.isSymbolicLink() || !info.isFile()) return undefined;
-    if (info.size > SNAPSHOT_BYTES) return undefined;
-    const bytes = await readFile(full);
-    const text = snapshotText(bytes);
+    // One descriptor checks the inode and reads it. A path stat followed by
+    // readFile can observe a different file if the path is replaced.
+    const file = await readRegularFileNoFollow(full, { label: "Auto-approval snapshot", maxBytes: SNAPSHOT_BYTES });
+    const text = snapshotText(file.contents);
     return text.undoable ? text.text : undefined;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
