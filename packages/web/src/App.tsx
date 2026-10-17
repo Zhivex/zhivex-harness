@@ -26,7 +26,8 @@ import { ApprovalModeDialog, type ApprovalMode, type ApprovalRecord } from "./Ap
 import type { LimitSettings, LimitScope } from "./limit-settings.js";
 import type { LimitPreferences } from "./limit-store.js";
 import type { RunLimits, LimitPricing } from "./limit-observer.js";
-import { DesktopIcon, MoonIcon, PlusIcon, SlidersHorizontalIcon, SunIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, CodeIcon, DesktopIcon, FeatherIcon, MoonIcon, PlusIcon, SlidersHorizontalIcon, SparkleIcon, StackIcon, SunIcon, WrenchIcon } from "@phosphor-icons/react";
+import { ProviderMark } from "./ProviderMark.js";
 import { planComposerSend } from "./composer-plan.js";
 import { cancellationSupersedesFailure, mutationUnconfirmed } from "./mutation-outcome.js";
 import { statusCopy } from "./status-copy.js";
@@ -53,6 +54,11 @@ const key = () => crypto.randomUUID();
 type LimitsInfo = { workspaceKey: string; legacyPending?: boolean; preferences: LimitPreferences; pricing: LimitPricing | null;
   host: { costUsd: number | null; steps: number | null; toolCalls: number | null; tokens: number | null; durationMinutes: number | null } };
 const human = (text: string) => text.replaceAll("_", " ").replaceAll("-", " ");
+const SUGGESTIONS = [
+  { title: "Inspect this project", description: "Suggest one focused improvement.", prompt: "Inspect this project and suggest a focused improvement", icon: StackIcon },
+  { title: "Explain the architecture", description: "Walk through the layout and the checks already in place.", prompt: "Explain the architecture and existing checks", icon: CodeIcon },
+  { title: "Review current changes", description: "Look for issues in the work that is already here.", prompt: "Review the current changes for potential issues", icon: FeatherIcon },
+] as const;
 const hostLimitNote = (host: LimitsInfo["host"]) => Object.entries(host).filter(([, value]) => value !== null).map(([name, value]) => {
   if (name === "costUsd") return ` Host: ${value} estimated USD (not a guaranteed financial cap).`;
   const singular = name === "steps" ? "step" : name === "toolCalls" ? "tool call" : name === "tokens" ? "token" : "minute";
@@ -944,7 +950,13 @@ export function App() {
     if (!drawerOpen) return;
     for (const key of expandedOtherProjects.split("\n")) loadProjectSessions(key);
   }, [drawerOpen, expandedOtherProjects]);
+  function chooseTheme(next: ThemeChoice) {
+    localStorage.setItem(THEME_KEY, next);
+    setThemeChoice(next);
+  }
   const frameStyle = { "--diff-width": `${diffWidth}px`, "--diff-height": `${diffHeight}px` } as CSSProperties;
+  const assistantName = currentChoice?.name ?? workspace?.model ?? "Assistant";
+  const assistantProvider = currentChoice?.provider ?? workspace?.provider ?? "host";
   return (
     <div className="app-shell" data-theme={resolvedTheme}>
       <a className="skip-link" href="#task-workspace">Skip to task workspace</a>
@@ -982,9 +994,7 @@ export function App() {
           </button>
           <button type="button" className="icon-button topbar-icon" aria-label="New session" disabled={!canMutate} onClick={() => void create()}><PlusIcon size={16} /></button>
           <button type="button" className="icon-button topbar-icon" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
-            const next: ThemeChoice = themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system";
-            localStorage.setItem(THEME_KEY, next);
-            setThemeChoice(next);
+            chooseTheme(themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system");
           }}>{themeChoice === "system" ? <DesktopIcon size={16} /> : resolvedTheme === "dark" ? <MoonIcon size={16} /> : <SunIcon size={16} />}</button>
         </div>
       </header>
@@ -1036,19 +1046,34 @@ export function App() {
             <div className="messages" role="log" aria-label="Run activity" aria-live="off">
               {!activity.order.length && loading && <p className="loading-state" role="status">Loading durable activity…</p>}
               {!activity.order.length && !loading && connected && !session?.runs.length && <div className="empty-state">
-                <img className="workspace-glyph" src="/zhivex-icon.png" alt="" width={56} height={56} />
-                <p className="eyebrow">YOUR CODE. YOUR WORKSPACE.</p>
-                <ChatEmptyState title="What are we building?" description="Start a task, follow the work, and review each operation that needs your approval."
-                  starterPrompts={["Inspect this project and suggest a focused improvement", "Explain the architecture and existing checks", "Review the current changes for potential issues"]}
-                  onStarterPrompt={text => { editPrompt(text); void start(text); }} />
+                <div className="hero-mark" aria-hidden="true"><SparkleIcon size={28} /></div>
+                <p className="eyebrow">Your code. Your workspace.</p>
+                <ChatEmptyState title="What are we building?" description="Start a task, follow the work, and review each change that needs you." starterPrompts={[]} />
+                <div className="suggestion-grid">
+                  {SUGGESTIONS.map(suggestion => {
+                    const Icon = suggestion.icon;
+                    return <button key={suggestion.title} type="button" className="suggestion-card" onClick={() => { editPrompt(suggestion.prompt); void start(suggestion.prompt); }}>
+                      <span className="suggestion-card-top"><Icon size={18} aria-hidden="true" /><ArrowUpRightIcon size={14} aria-hidden="true" /></span>
+                      <span className="suggestion-title">{suggestion.title}</span>
+                      <span className="suggestion-copy">{suggestion.description}</span>
+                    </button>;
+                  })}
+                </div>
               </div>}
               {activity.order.map(id => {
                 const retained = activity.runs[id]!;
                 const item = runUnavailable && session?.runs.at(-1)?.runId === id ? { ...retained, status: "state unavailable" } : retained;
+                const working = active(item.status) && !item.text;
                 return <div className="turn" key={id}>
-                  {item.prompt && <Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} />}
+                  {item.prompt && <div className="user-turn"><Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} /></div>}
                   <article className="assistant-response" aria-label="Assistant response" aria-busy={active(item.status)}>
-                    <MessageMarkdown text={item.text || (item.status === "waiting_approval" ? "The proposed operation is ready for your review." : active(item.status) ? "Working in your local workspace…" : (item.status === "failed" && run?.runId === id ? providerStreamFailureText(run.error?.providerDiagnostic) : undefined) ?? "No text output recorded.")} />
+                    <div className="assistant-heading">
+                      <ProviderMark provider={assistantProvider} />
+                      <p>{assistantName}</p>
+                      <span>{working ? "typing…" : runStatusLabel(item.status === "state unavailable" ? undefined : item.status)}</span>
+                    </div>
+                    {working ? <div className="chat-typing" role="status" aria-label="Generating response"><span className="chat-dot" /><span className="chat-dot" /><span className="chat-dot" /></div>
+                      : <MessageMarkdown text={item.text || (item.status === "waiting_approval" ? "The proposed operation is ready for your review." : (item.status === "failed" && run?.runId === id ? providerStreamFailureText(run.error?.providerDiagnostic) : undefined) ?? "No text output recorded.")} />}
                   </article>
                   {item.truncated && <p className="muted">Retained output is truncated.</p>}
                   <div className="turn-footer"><span>{runStatusLabel(item.status === "state unavailable" ? undefined : item.status)}</span></div>
@@ -1064,14 +1089,17 @@ export function App() {
                 if (data.kind === "run") { setRun(data.run); setSession(data.session); }
                 setRefresh(n => n + 1);
               }} />}
-            {!tools.length ? null : <ul className="tool-list" aria-label="Activity and checks">
+            {!tools.length ? null : <div className="tool-activity">
+              <p className="tool-activity-label"><WrenchIcon size={14} aria-hidden="true" /> Runtime tools</p>
+              <ul className="tool-list" aria-label="Activity and checks">
               {groupToolRows(tools).map((group, index) => group.kind === "explore" ? <li key={index}>
                 <details className="explore-group">
                   <summary>Explored {group.count} {group.count === 1 ? "file" : "files"}</summary>
                   <ul>{group.tools.map((tool, toolIndex) => <li key={toolIndex}>{human(tool.name)} · {tool.status}</li>)}</ul>
                 </details>
-              </li> : <li key={index}><strong>{human(group.tool.name)}</strong><small>{group.tool.exitCode === undefined ? group.tool.status : `exit ${group.tool.exitCode}${group.tool.timedOut ? " · timed out" : ""}`}</small></li>)}
-            </ul>}
+              </li> : <li key={index} className="tool-pill"><strong>{human(group.tool.name)}</strong><small>{group.tool.exitCode === undefined ? group.tool.status : `exit ${group.tool.exitCode}${group.tool.timedOut ? " · timed out" : ""}`}</small></li>)}
+              </ul>
+            </div>}
             {checks.length > 0 && <p className="check-summary">{checks.filter(check => check.exitCode === 0 && !check.timedOut).length}/{checks.length} checks passed</p>}
             {diffLayout.minimized && <div className="restore-bar" role="status">
               <span>{reviewWaiting ? `Needs you · ${viewed.approveLabel.replace(/^Approve /, "")} · Expires in ${expiresLabel}` : "Review is minimized"}</span>
@@ -1205,7 +1233,7 @@ export function App() {
         onToggle={toggleProject} onOpenProject={key => { if (projects.find(project => project.key === key)?.unavailable) return; setWorkspaceKey(key); setDrawerOpen(false); }}
         onChoose={(key, item) => { if (key !== workspaceKey) { jump.current = { key, sessionId: item.sessionId }; setWorkspaceKey(key); } else chooseSession(item); setDrawerOpen(false); if (item.runs.at(-1)?.status === "waiting_approval") saveDiff({ ...diffLayout, minimized: false }); }}
         onAdd={() => setAddProjectOpen(true)} onForget={key => { void action(key, "forgetProject").then(() => reconnect().then(next => { contextEpoch.current += 1; setContext(next); })).catch(error => setError(errorText(error))); }}
-        returnFocus={drawerButton} />
+        returnFocus={drawerButton} themeChoice={themeChoice} onTheme={chooseTheme} />
       <AddProjectDialog open={addProjectOpen} onClose={() => setAddProjectOpen(false)} />
       {approvalOpen && <ApprovalModeDialog mode={approvalMode} records={approvalRecords} saving={approvalSaving} onClose={() => setApprovalOpen(false)}
         onSave={(scope, mode) => {

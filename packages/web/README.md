@@ -108,8 +108,8 @@ host review before accepting, correcting or continuing. See the
 
 The SDK was inspected through connected GitHub, without cloning or modifying it:
 [React package](https://github.com/Zhivex/zhivex-ai-sdk/tree/main/packages/react),
-`@zhivex-ai/react` 0.9.0. The private Zhivex chat repository was not readable from
-this environment. Harness uses HU-21 session/run revisions, exact approval digests
+`@zhivex-ai/react` 0.9.0. The Zhivex chat reference was used for layout and
+interaction, and reimplemented here without copying that private tree. Harness uses HU-21 session/run revisions, exact approval digests
 and durable activity pages. `useZhivexChat` and its fetch transport would add a
 second state and approval model, so they are not used.
 

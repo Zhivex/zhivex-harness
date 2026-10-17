@@ -52,6 +52,10 @@
   --card-line: #292d37;
   --field-bg: #1a1b1e;
   --field-line: #2a2d37;
+  --composer-surface: #1a1b1e;
+  --picker-surface: #171412;
+  --chat-canvas: #100e0e;
+  --bubble: #3a2220;
 }
 [data-theme="light"] {
   color-scheme: light;
@@ -85,6 +89,10 @@
   --card-line: #8d847d;
   --field-bg: #ffffff;
   --field-line: #8d847d;
+  --composer-surface: #ffffff;
+  --picker-surface: #ffffff;
+  --chat-canvas: #faf8f6;
+  --bubble: #f8e8e6;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -119,5 +127,9 @@
     --card-line: #8d847d;
     --field-bg: #ffffff;
     --field-line: #8d847d;
+    --composer-surface: #ffffff;
+    --picker-surface: #ffffff;
+    --chat-canvas: #faf8f6;
+    --bubble: #f8e8e6;
   }
 }

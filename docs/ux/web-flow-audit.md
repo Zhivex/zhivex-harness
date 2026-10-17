@@ -1,14 +1,14 @@
 # Web workspace flow
 
-The private Zhivex chat repository was not readable from this environment. The flow below follows the Harness brand tokens and `@zhivex-ai/react` 0.9.0. Approvals, file-view gates, and per-operation limits are unchanged.
+The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.9.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.
 
 ## First load
 
-The empty workspace showed a disabled composer, a separate “Create a session” step, and solid grey suggestion cards. Zhivex chat opens on a composer and sends a starter prompt immediately. The composer is ready on load. The first send creates the session and starts the task. Suggestion cards send.
+The empty workspace showed a disabled composer, a separate “Create a session” step, and solid grey suggestion cards. The empty state now opens with a mark, “What are we building?”, and three suggestion cards. Choosing a card sends that task. The composer is a rounded shell with the model control inside it, and it is ready on load. The first send creates the session and starts the task.
 
 ## Choosing a model
 
-Rows wrapped, concatenated metadata, and repeated “No credentials”. The picker now uses one line per model: name, capability chips, context and price, and a star. Configured providers come first. “Configured only” starts on. Unconfigured providers share one note that points at the CLI. Search matches model or provider names. The last-used model is remembered per workspace.
+Rows wrapped, concatenated metadata, and repeated “No credentials”. The picker is now a model library: provider mark, search, provider chips, and a card for each model with context, price, and a star. It stays a listbox. Search, typeahead, Home, and End still move the active card. “Configured only” starts on. Unconfigured providers share one note that points at the CLI. The last-used model is remembered per workspace.
 
 ## First message
 
@@ -16,7 +16,7 @@ Enter sends. Shift+Enter inserts a newline. Cmd/Ctrl+Enter still sends. “New s
 
 ## Streaming
 
-Consecutive read-only calls render as one collapsible “Explored N files” item. Other calls stay on their own rows. The change-review panel says when a run is only reading files, so nothing is waiting for approval.
+The user prompt sits in a bubble. The assistant row shows a provider mark, the workspace model, and “typing…” while text is still empty. Consecutive read-only calls collapse to “Explored N files”. Other calls are pills in a runtime-tools card. The change-review panel says when a run is only reading files, so nothing is waiting for approval.
 
 ## Approvals
 
@@ -56,7 +56,7 @@ A confirmed `EXECUTION_FAILED` now stays editable. The banner says “The task s
 
 ## Sessions
 
-The header is one 48px bar. The project and the session title share a baseline on the left. Connection and attention are a single control: a status dot and “Connected”, or “N needs you”, or Reconcile. Sessions, the limits control, a plus icon, and a theme icon sit on that same line at 32px. The theme control is an icon, not a “Dark” label. Narrow widths move the title onto its own row instead of letting controls overlap the corner.
+The header is one 48px bar, the same height as the chat reference bar. The project and the session title share a baseline on the left. Connection and attention are a single control: a status dot and “Connected”, or “N needs you”, or Reconcile. Sessions, the limits control, a plus icon, and a theme icon sit on that same line at 32px. The theme icon cycles system, light, and dark. Narrow widths move the title onto its own row instead of letting controls overlap the corner.
 
 ## Finishing and resuming
 
@@ -64,7 +64,7 @@ After a failed send, the composer keeps the message. The recovery card says it i
 
 ## Theme
 
-Hard-coded dark fills on buttons, cards, and headlines now use theme tokens. Light text and controls meet WCAG AA. Dark values for those controls stay the previous hex colors.
+Hard-coded dark fills on buttons, cards, and headlines use theme tokens. Composer, picker, conversation, and user-bubble surfaces follow the chat reference layout and stay on the Harness palette. Light text and controls meet WCAG AA. The sessions panel has an Appearance control with Light, Dark, and System. It writes the same `zhivex.code.theme.v1` value as the header icon.
 
 ## Narrow widths
 
