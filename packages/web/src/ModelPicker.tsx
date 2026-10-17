@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { StarIcon } from "@phosphor-icons/react";
 import type { WebModelChoice } from "./contracts.js";
 import { choiceKey, formatContext, formatCost, showsImages } from "./model-choice.js";
-import { modelRows, providerCredentialNote, readModelPickerMemory, rememberModel, toggleFavorite, MODEL_PICKER_KEY, type ModelPickerMemory, type ModelRow } from "./model-picker-state.js";
+import { modelRows, pickerKeyAction, readModelPickerMemory, rememberModel, toggleFavorite, MODEL_PICKER_KEY, type ModelPickerMemory, type ModelRow, type PickerKeyFocus } from "./model-picker-state.js";
 
 export function ModelPicker(props: {
   choices: WebModelChoice[];
@@ -14,39 +15,62 @@ export function ModelPicker(props: {
   unavailable: boolean;
   selectionError: string;
   open: boolean;
+  workspaceKey?: string;
+  configuredOnlyDefault?: boolean;
   onOpenChange: (open: boolean) => void;
   onApply: (choice: WebModelChoice) => void;
   favoriteToggle: { current: (() => void) | null };
 }) {
   const listId = useId();
   const [query, setQuery] = useState("");
-  const [memory, setMemory] = useState<ModelPickerMemory>({ favorites: [], recents: [] });
+  const [configuredOnly, setConfiguredOnly] = useState(props.configuredOnlyDefault ?? true);
+  const [unconfiguredOpen, setUnconfiguredOpen] = useState(false);
+  const [memory, setMemory] = useState<ModelPickerMemory>({ favorites: [], recents: [], lastUsedByWorkspace: {} });
   const [active, setActive] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const rows = useMemo(() => modelRows(props.choices, memory, query.trim()), [props.choices, memory, query]);
-  const activeRow = rows[active];
+  const memoryRef = useRef(memory);
+  memoryRef.current = memory;
+  const rowOptions = (configuredOnly: boolean) =>
+    props.workspaceKey ? { configuredOnly, workspaceKey: props.workspaceKey } : { configuredOnly };
+  const matched = useMemo(
+    () => modelRows(props.choices, memory, query.trim(), rowOptions(false)),
+    [props.choices, memory, query, props.workspaceKey],
+  );
+  const showUnconfigured = !configuredOnly && (unconfiguredOpen || query.trim().length > 0);
+  const shownRows = matched.filter(row => {
+    const parked = row.section === "unconfigured" && row.group !== "Favorites" && row.group !== "Recent";
+    if (configuredOnly) return row.choice.configured;
+    return showUnconfigured || !parked;
+  });
+  const activeIndex = shownRows.length ? Math.min(active, shownRows.length - 1) : 0;
+  const activeRow = shownRows[activeIndex];
+  const hiddenMatches = configuredOnly ? matched.filter(row => !row.choice.configured && row.group !== "Favorites" && row.group !== "Recent").length : 0;
   useEffect(() => {
     setMemory(readModelPickerMemory(localStorage.getItem(MODEL_PICKER_KEY)));
   }, []);
   useEffect(() => {
     if (!props.open) return;
     setQuery("");
-    setActive(Math.max(0, rows.findIndex(row => choiceKey(row.choice) === props.currentKey && !row.disabled)));
+    setConfiguredOnly(props.configuredOnlyDefault ?? true);
+    setUnconfiguredOpen(false);
+    const next = modelRows(props.choices, memoryRef.current, "", rowOptions(props.configuredOnlyDefault ?? true));
+    const index = next.findIndex(row => choiceKey(row.choice) === props.currentKey && !row.disabled);
+    setActive(index >= 0 ? index : 0);
     const timer = setTimeout(() => searchRef.current?.focus(), 0);
     return () => clearTimeout(timer);
   }, [props.open]);
+  useEffect(() => {
+    if (!props.open || !activeRow) return;
+    document.getElementById(activeRow.id)?.scrollIntoView({ block: "nearest" });
+  }, [props.open, activeRow?.id]);
   function persist(next: ModelPickerMemory) {
     setMemory(next);
     localStorage.setItem(MODEL_PICKER_KEY, JSON.stringify(next));
   }
-  function move(next: number) {
-    if (!rows.length) return;
-    setActive((next + rows.length) % rows.length);
-  }
   function apply(row: ModelRow | undefined) {
     if (!row || row.disabled) return;
-    persist(rememberModel(memory, choiceKey(row.choice)));
+    persist(rememberModel(memory, choiceKey(row.choice), props.workspaceKey));
     props.onOpenChange(false);
     props.onApply(row.choice);
     buttonRef.current?.focus();
@@ -55,8 +79,34 @@ export function ModelPicker(props: {
     if (!props.open || !activeRow) return;
     persist(toggleFavorite(memory, choiceKey(activeRow.choice)));
   };
-  const groups = [...new Set(rows.map(row => row.group))];
+  function onKey(event: ReactKeyboardEvent, focus: PickerKeyFocus, index = activeIndex) {
+    const action = pickerKeyAction(event.key, index, shownRows.length, focus);
+    if (!action) return;
+    if (action.type === "index") {
+      event.preventDefault();
+      setActive(action.index);
+      if (focus === "star") document.getElementById(shownRows[action.index]?.id ?? "")?.querySelector("button")?.focus();
+      return;
+    }
+    if (action.type === "apply") { event.preventDefault(); apply(shownRows[index]); return; }
+    if (action.type === "close") {
+      event.preventDefault();
+      event.stopPropagation();
+      props.onOpenChange(false);
+      buttonRef.current?.focus();
+      return;
+    }
+    if (action.type === "star") {
+      event.preventDefault();
+      document.getElementById(shownRows[index]?.id ?? "")?.querySelector("button")?.focus();
+      return;
+    }
+    if (action.type === "search") { event.preventDefault(); searchRef.current?.focus(); }
+  }
   const providerCount = new Set(props.choices.map(choice => choice.provider)).size;
+  const topRows = shownRows.filter(row => row.section === "configured" || row.group === "Favorites" || row.group === "Recent");
+  const bottomRows = shownRows.filter(row => row.section === "unconfigured" && row.group !== "Favorites" && row.group !== "Recent");
+  const unconfiguredProviders = new Set(matched.filter(row => row.section === "unconfigured" && row.group !== "Favorites" && row.group !== "Recent").map(row => row.group)).size;
   return <div className="model-picker">
     <button id="model-choice" ref={buttonRef} type="button" className="model-button" aria-label="Provider and model"
       aria-haspopup="listbox" aria-expanded={props.open} aria-controls={props.open ? listId : undefined}
@@ -74,55 +124,38 @@ export function ModelPicker(props: {
         : "The model is used for the next tasks in this workspace."}
     </p>
     {props.selectionError && <p id="model-selection-error" className="model-error" role="alert">{props.selectionError}</p>}
-    {props.open && <div className="model-popover" role="presentation">
-      <input ref={searchRef} role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls={listId}
-        aria-activedescendant={activeRow ? activeRow.id : undefined} aria-label="Search models"
-        placeholder={`Search ${props.choices.length} models from ${providerCount} providers`}
-        value={query} onChange={event => { setQuery(event.target.value); setActive(0); }}
-        onKeyDown={event => {
-          if (event.key === "ArrowDown") { event.preventDefault(); move(active + 1); }
-          else if (event.key === "ArrowUp") { event.preventDefault(); move(active - 1); }
-          else if (event.key === "Home") { event.preventDefault(); setActive(0); }
-          else if (event.key === "End") { event.preventDefault(); setActive(Math.max(0, rows.length - 1)); }
-          else if (event.key === "Enter") { event.preventDefault(); apply(activeRow); }
-          else if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); props.onOpenChange(false); buttonRef.current?.focus(); }
-          else if (event.key === "Tab") props.onOpenChange(false);
-        }} />
-      {rows.length === 0 ? <div className="model-empty" role="status">
-        <p>No model matches ‘{query.trim()}’. Try the provider name or clear the search.</p>
-        <button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>Clear search</button>
-      </div> : <div id={listId} role="listbox" aria-label="Models">
-        {groups.map(group => <div key={group} role="group" aria-label={group}>
-          <p className="model-group">{group}{providerCredentialNote(props.choices, group) ? " · No credentials · configure them in the CLI" : ""}</p>
-          {rows.filter(row => row.group === group).map(row => {
-            const index = rows.indexOf(row);
-            const current = choiceKey(row.choice) === props.currentKey;
-            const detail = [
-              showsImages(row.choice) ? "Images" : "",
-              row.favorite ? "Favorite" : "",
-              row.disabled ? "No credentials" : "",
-            ].filter(Boolean).join(", ");
-            return <div key={row.id} id={row.id} role="option" aria-selected={index === active} aria-disabled={row.disabled || undefined}
-              className={index === active ? "model-option active" : "model-option"}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => apply(row)}>
-              <span className="model-option-main">
-                {current ? <span aria-hidden="true">✓ </span> : null}
-                <Highlight text={row.choice.name} query={query.trim()} />
-                {row.choice.name !== row.choice.model ? <small>{row.choice.model}</small> : null}
-              </span>
-              <span className="model-option-meta">
-                {showsImages(row.choice) ? <span className="capability">Images</span> : null}
-                {formatContext(row.choice) ? <span>{formatContext(row.choice)}</span> : null}
-                {formatCost(row.choice) ? <span>{formatCost(row.choice)}</span> : null}
-                {row.disabled ? <span>No credentials</span> : null}
-                <button type="button" className={row.favorite ? "star on" : "star"} aria-label={row.favorite ? `Remove ${row.choice.name} from favorites` : `Add ${row.choice.name} to favorites`}
-                  aria-pressed={row.favorite} onClick={event => { event.stopPropagation(); persist(toggleFavorite(memory, choiceKey(row.choice))); }}>★</button>
-              </span>
-              <span className="sr-only">{detail}</span>
-            </div>;
-          })}
-        </div>)}
+    {props.open && <div className="model-popover" role="presentation" onMouseDown={event => {
+      const target = event.target as HTMLElement;
+      if (target.closest("input, button, summary, label, a")) return;
+      event.preventDefault();
+    }} onBlur={event => {
+      const next = event.relatedTarget;
+      if (next instanceof Node && event.currentTarget.contains(next)) return;
+      props.onOpenChange(false);
+    }}>
+      <div className="model-toolbar">
+        <input ref={searchRef} role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls={listId}
+          aria-activedescendant={activeRow ? activeRow.id : undefined} aria-label="Search models"
+          placeholder={`Search by model or provider · ${props.choices.length} models, ${providerCount} providers`}
+          value={query} onChange={event => { setQuery(event.target.value); setActive(0); }}
+          onKeyDown={event => onKey(event, "search")} />
+        <label className="configured-toggle">
+          <input type="checkbox" checked={configuredOnly} onChange={event => { setConfiguredOnly(event.target.checked); setActive(0); }} />
+          Configured only
+        </label>
+      </div>
+      {shownRows.length === 0 ? <div className="model-empty" role="status">
+        <p>{hiddenMatches > 0
+          ? `No configured model matches ‘${query.trim()}’. Turn off Configured only to include other providers.`
+          : `No model matches ‘${query.trim()}’. Try the provider name or clear the search.`}</p>
+        {query.trim() ? <button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>Clear search</button> : null}
+      </div> : <div id={listId} className="model-list" role="listbox" aria-label="Models">
+        <ModelGroups rows={topRows} indexOf={row => shownRows.indexOf(row)} query={query.trim()} currentKey={props.currentKey} activeId={activeRow?.id} onActive={setActive} onApply={apply} onFavorite={key => persist(toggleFavorite(memory, key))} onKey={onKey} />
+        {!configuredOnly && unconfiguredProviders > 0 ? <details className="model-unconfigured" open={showUnconfigured} onToggle={event => setUnconfiguredOpen(event.currentTarget.open)}>
+          <summary>{unconfiguredProviders === 1 ? "1 provider without credentials" : `${unconfiguredProviders} providers without credentials`}</summary>
+          <p className="model-unconfigured-hint">Configure credentials in the CLI.</p>
+          <ModelGroups rows={bottomRows} indexOf={row => shownRows.indexOf(row)} query={query.trim()} currentKey={props.currentKey} activeId={activeRow?.id} onActive={setActive} onApply={apply} onFavorite={key => persist(toggleFavorite(memory, key))} onKey={onKey} />
+        </details> : null}
       </div>}
       {props.choices.length > 0 && props.choices.every(choice => choice.validation === "unverified")
         ? <p className="model-footnote">These models are not verified in Zhivex.</p> : null}
@@ -130,6 +163,49 @@ export function ModelPicker(props: {
         : <p className="model-footnote">Current host model (not in the catalog).</p>}
     </div>}
   </div>;
+}
+
+function ModelGroups(props: {
+  rows: ModelRow[];
+  indexOf: (row: ModelRow) => number;
+  query: string;
+  currentKey: string;
+  activeId: string | undefined;
+  onActive: (index: number) => void;
+  onApply: (row: ModelRow) => void;
+  onFavorite: (key: string) => void;
+  onKey: (event: ReactKeyboardEvent, focus: PickerKeyFocus, index: number) => void;
+}) {
+  const groups: string[] = [];
+  for (const row of props.rows) if (!groups.includes(row.group)) groups.push(row.group);
+  return <>
+    {groups.map(group => <div key={group} role="group" aria-label={group}>
+      <p className="model-group">{group}</p>
+      {props.rows.filter(row => row.group === group).map(row => {
+        const meta = [formatContext(row.choice), formatCost(row.choice)].filter(Boolean).join(" · ");
+        const current = choiceKey(row.choice) === props.currentKey;
+        return <div key={row.id} id={row.id} role="option" aria-selected={row.id === props.activeId} aria-disabled={row.disabled || undefined}
+          data-active={row.id === props.activeId ? "true" : "false"} data-current={current ? "true" : "false"}
+          className="model-option"
+          onMouseEnter={() => props.onActive(props.indexOf(row))}
+          onClick={() => props.onApply(row)}>
+          <span className="model-option-name">
+            {current ? <span className="model-current" aria-hidden="true">✓</span> : null}
+            <Highlight text={row.choice.name} query={props.query} />
+          </span>
+          <span className="model-option-chips">
+            {showsImages(row.choice) ? <span className="capability">Images</span> : null}
+          </span>
+          <span className="model-option-meta" title={meta}>{meta}</span>
+          <button type="button" className={row.favorite ? "star on" : "star"} aria-label={row.favorite ? `Remove ${row.choice.name} from favorites` : `Add ${row.choice.name} to favorites`}
+            aria-pressed={row.favorite} onClick={event => { event.stopPropagation(); props.onFavorite(choiceKey(row.choice)); }}
+            onKeyDown={event => props.onKey(event, "star", props.indexOf(row))}>
+            <StarIcon size={16} weight={row.favorite ? "fill" : "regular"} aria-hidden="true" />
+          </button>
+        </div>;
+      })}
+    </div>)}
+  </>;
 }
 
 function Highlight(props: { text: string; query: string }) {

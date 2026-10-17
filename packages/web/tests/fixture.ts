@@ -151,9 +151,9 @@ export async function fixture({ interactive = false }: { interactive?: boolean }
       "sk-never-expose-fixturetoken",
     ]);
     const runtime = manageWebRuntime(initial, async () => [
-      {provider:"openai",providerName:"OpenAI",model:harness.config.model,name:"Fixture current",configured:true,capabilities:["chat","tools"],validation:"verified"},
-      {provider:"anthropic",providerName:"Anthropic",model:"fixture-next",name:"Fixture next",configured:true,capabilities:["chat","tools"],validation:"unverified"},
-      {provider:"gemini",providerName:"Gemini",model:"fixture-missing",name:"Fixture missing",configured:false,capabilities:["chat","tools"],validation:"unverified"},
+      {provider:"openai",providerName:"OpenAI",model:harness.config.model,name:"Fixture current",configured:true,capabilities:["chat","tools"],validation:"verified",contextWindow:{tokens:128000,type:"combined"},cost:{currency:"USD",inputPerMillionTokens:1.25,outputPerMillionTokens:10}},
+      {provider:"anthropic",providerName:"Anthropic",model:"fixture-next",name:"Fixture next",configured:true,capabilities:["chat","tools","vision"],validation:"unverified",contextWindow:{tokens:1050000,type:"combined"},cost:{currency:"USD",inputPerMillionTokens:10,outputPerMillionTokens:50}},
+      {provider:"gemini",providerName:"Gemini",model:"fixture-missing",name:"Fixture missing",configured:false,capabilities:["chat","tools"],validation:"unverified",contextWindow:{tokens:1050000,type:"combined"},cost:{currency:"USD",inputPerMillionTokens:10,outputPerMillionTokens:50}},
     ], async selection => {
       const next = await createHarness({workspace,modelInstance:model,
         provider: selection.provider as "openai" | "anthropic", model: selection.model,

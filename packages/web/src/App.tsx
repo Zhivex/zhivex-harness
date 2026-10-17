@@ -972,6 +972,7 @@ export function App() {
                 <ModelPicker choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
                   configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
                   unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
+                  workspaceKey={workspaceKey}
                   onApply={choice => void selectModelChoice(choice.provider, choice.model)} favoriteToggle={favoriteToggle} />
                 <button className="primary" disabled={!session || !prompt.trim() || !canMutate || busy || hasTask} type="submit">{hasTask ? "Use task review to continue" : <>Run task <span>↑</span></>}</button>
               </div>

@@ -18,7 +18,8 @@ import {
   CHAT_MIN_WIDTH,
 } from "../src/diff-layout.js";
 import { formatContext, formatCost, showsImages, toWebModelChoice } from "../src/model-choice.js";
-import { modelRows, providerCredentialNote, readModelPickerMemory, rememberModel, toggleFavorite } from "../src/model-picker-state.js";
+import { modelRows, pickerKeyAction, providerCredentialNote, readModelPickerMemory, rememberModel, toggleFavorite } from "../src/model-picker-state.js";
+import { themeTones } from "../src/theme-tones.js";
 import { altShiftAction } from "../src/shortcuts.js";
 import { runStatusLabel } from "../src/status-label.js";
 import {
@@ -49,12 +50,49 @@ test("direction B text pairs meet AA in both themes", () => {
     expect(contrastRatio(theme.accent === "#c30500" ? "#ffffff" : "#140000", theme.accent)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(theme.diffAddText, theme.diffAddBg)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(theme.diffDelText, theme.diffDelBg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(theme.text, theme.hover)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(theme.secondary, theme.hover)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(theme.text, theme.selected)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(theme.secondary, theme.selected)).toBeGreaterThanOrEqual(4.5);
   }
+  expect(contrastRatio(palette.light.border, palette.light.bg)).toBeGreaterThanOrEqual(3);
+  expect(contrastRatio(palette.light.border, palette.light.surface)).toBeGreaterThanOrEqual(3);
+  expect(contrastRatio(palette.light.border, palette.light.surface2)).toBeGreaterThanOrEqual(3);
   expect(palette.light.accent).toBe("#c30500");
   expect(palette.dark.accent).not.toBe("#fa0100");
   const css = readFileSync(new URL("../src/style.css", import.meta.url), "utf8");
   expect(css).toContain(".approve, .app-shell .primary { background: var(--ink)");
   expect(css).not.toContain("#fa0100");
+  for (const name of ["style.css", "composer.css", "task-panel.css"]) {
+    const file = readFileSync(new URL(`../src/${name}`, import.meta.url), "utf8");
+    expect(file).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+  }
+});
+
+test("light tone pairs meet AA and dark tones keep the previous hex", () => {
+  const theme = readFileSync(new URL("../src/theme.css", import.meta.url), "utf8");
+  const surfaces = ["#ffffff", "#faf8f6", "#f3efeb", "#e7e0da", "#e4ddd6", "#e4f2e9", "#f9e5e2", "#f8efe2"];
+  for (const [key, tone] of Object.entries(themeTones)) {
+    expect(theme).toContain(`--tone-${key}: ${tone.dark};`);
+    expect(theme).toContain(`--tone-${key}: ${tone.light};`);
+    if (tone.role === "text" || tone.role === "muted" || tone.role === "status") {
+      for (const background of surfaces) expect(contrastRatio(tone.light, background)).toBeGreaterThanOrEqual(4.5);
+    }
+    if (tone.role === "surface" || tone.role === "status-bg") {
+      expect(contrastRatio("#1a1514", tone.light)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio("#5f5752", tone.light)).toBeGreaterThanOrEqual(4.5);
+    }
+    if (tone.role === "border" || tone.role === "accent") {
+      for (const background of ["#ffffff", "#faf8f6", "#f3efeb"]) expect(contrastRatio(tone.light, background)).toBeGreaterThanOrEqual(3);
+    }
+    if (tone.role === "accent") expect(contrastRatio("#ffffff", tone.light)).toBeGreaterThanOrEqual(4.5);
+    if (tone.role === "ink") expect(contrastRatio("#ffffff", tone.light)).toBeGreaterThanOrEqual(4.5);
+    if (tone.role === "on-ink") {
+      expect(contrastRatio(tone.light, "#1a1514")).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(tone.light, "#c30500")).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(tone.light, "#3a3331")).toBeGreaterThanOrEqual(4.5);
+    }
+  }
 });
 
 test("diff layout clamps, skips side below 1024 and nudges from the keyboard", () => {
@@ -114,6 +152,47 @@ test("model rows group favorites and recents and keep unconfigured providers vis
   expect(providerCredentialNote(choices, "OpenAI")).toBe(false);
   expect(modelRows(choices, memory, "zzzz")).toEqual([]);
   expect(modelRows(choices, memory, "missing").map(row => row.choice.model)).toEqual(["fixture-missing"]);
+  expect(modelRows(choices, memory, "openai").map(row => row.choice.provider)).toEqual(["openai", "openai"]);
+  expect(modelRows(choices, memory, "Gemini").every(row => row.choice.provider === "gemini")).toBe(true);
+  const configuredOnly = modelRows(choices, memory, "", { configuredOnly: true });
+  expect(configuredOnly.every(row => row.choice.configured)).toBe(true);
+  expect(configuredOnly.some(row => row.choice.model === "fixture-missing")).toBe(false);
+  const ordered = modelRows([...choices].reverse(), memory, "");
+  const providerGroups = ordered.filter(row => row.group !== "Favorites" && row.group !== "Recent");
+  expect(providerGroups[0]?.section).toBe("configured");
+  expect(providerGroups.at(-1)?.section).toBe("unconfigured");
+  expect(providerGroups.findIndex(row => row.section === "unconfigured")).toBeGreaterThan(providerGroups.findIndex(row => row.section === "configured"));
+});
+
+test("the last used model is remembered per workspace and sorts first there", () => {
+  const choices: WebModelChoice[] = [
+    { provider: "openai", providerName: "OpenAI", model: "later", name: "Later", configured: true, capabilities: ["chat"], validation: "verified", order: 2 },
+    { provider: "openai", providerName: "OpenAI", model: "earlier", name: "Earlier", configured: true, capabilities: ["chat"], validation: "verified", order: 1 },
+    { provider: "gemini", providerName: "Gemini", model: "missing", name: "Missing", configured: false, capabilities: ["chat"], validation: "unverified" },
+  ];
+  const atlas = rememberModel(readModelPickerMemory(null), "openai/later", "atlas");
+  const both = rememberModel(atlas, "gemini/missing", "beacon");
+  expect(both.lastUsedByWorkspace).toEqual({ atlas: "openai/later", beacon: "gemini/missing" });
+  expect(readModelPickerMemory(JSON.stringify(both)).lastUsedByWorkspace?.atlas).toBe("openai/later");
+  expect(modelRows(choices, both, "", { workspaceKey: "atlas" }).filter(row => row.group === "OpenAI").map(row => row.choice.model)).toEqual(["later", "earlier"]);
+  expect(modelRows(choices, both, "", { workspaceKey: "other" }).filter(row => row.group === "OpenAI").map(row => row.choice.model)).toEqual(["earlier", "later"]);
+  expect(readModelPickerMemory("{")).toEqual({ favorites: [], recents: [], lastUsedByWorkspace: {} });
+});
+
+test("model picker keys move, select, favorite and dismiss", () => {
+  expect(pickerKeyAction("ArrowDown", 0, 3, "search")).toEqual({ type: "index", index: 1 });
+  expect(pickerKeyAction("ArrowUp", 0, 3, "search")).toEqual({ type: "index", index: 2 });
+  expect(pickerKeyAction("Home", 2, 3, "search")).toEqual({ type: "index", index: 0 });
+  expect(pickerKeyAction("End", 0, 3, "search")).toEqual({ type: "index", index: 2 });
+  expect(pickerKeyAction("Enter", 1, 3, "search")).toEqual({ type: "apply" });
+  expect(pickerKeyAction("Enter", 1, 0, "search")).toBeNull();
+  expect(pickerKeyAction("Escape", 1, 3, "search")).toEqual({ type: "close" });
+  expect(pickerKeyAction("ArrowRight", 1, 3, "search")).toEqual({ type: "star" });
+  expect(pickerKeyAction("ArrowLeft", 1, 3, "star")).toEqual({ type: "search" });
+  expect(pickerKeyAction("ArrowDown", 1, 3, "star")).toEqual({ type: "index", index: 2 });
+  expect(pickerKeyAction("Enter", 1, 3, "star")).toBeNull();
+  expect(pickerKeyAction(" ", 1, 3, "star")).toBeNull();
+  expect(pickerKeyAction("KeyA", 1, 3, "search")).toBeNull();
 });
 
 test("shortcuts are Alt+Shift codes and ignore bare or command chords", () => {

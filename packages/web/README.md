@@ -73,11 +73,13 @@ Check success uses exit
 code zero and absence of timeout; a successful tool transport alone is not a
 passing check. Browser-selected IDs and revisions never override host workspace,
 scope, credentials or tool policy. The provider/model control is a searchable popover. Choosing a row applies it
-to future tasks in the current workspace. The host catalogue lists non-retired
-chat/tool models, including providers that have no credentials; those rows stay
-visible and disabled and point at the CLI. Favorites and recents stay in
+to future tasks in the current workspace. Providers with saved credentials are
+listed first. Configured only is on by default; turn it off to open providers
+that still need credentials, with one hint to configure them in the CLI.
+Favorites, recents and the last model used in each workspace stay in
 `localStorage` under `zhivex.code.modelPicker.v1`. Context window and USD price
-are shown only when the catalogue publishes them. Images is the only capability
+are shown only when the catalogue publishes them, as muted secondary text on the
+same line as the model name. Images is the only capability
 badge unless the catalogue marks vision. It never
 writes credentials or changes execution grants. Credential presence does not
 verify account access or a model's support tier. Selection is blocked while any

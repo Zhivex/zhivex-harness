@@ -716,8 +716,14 @@ try {
   steps.push("in-memory drafts stay scoped to the selected session and workspace");
   const picker = page.getByLabel("Provider and model");
   await picker.click();
-  await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length === 3);
+  assert.equal(await page.getByRole("checkbox", { name: "Configured only" }).isChecked(), true);
+  await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length === 2);
+  assert.equal(await page.getByRole("option", { name: /Fixture missing/ }).count(), 0);
+  await page.getByRole("option", { name: /1,050,000 tokens · \$10/ }).waitFor();
+  await page.getByRole("checkbox", { name: "Configured only" }).uncheck();
+  await page.getByText("1 provider without credentials").click();
   assert.equal(await page.getByRole("option", { name: /Fixture missing/ }).getAttribute("aria-disabled"), "true");
+  assert.equal(await page.getByText("Configure credentials in the CLI.", { exact: true }).count(), 1);
   await page.getByLabel("Search models").fill("zzzz-not-a-model");
   await page.getByRole("button", { name: "Clear search", exact: true }).click();
   await page.keyboard.press("Escape");
@@ -725,6 +731,7 @@ try {
   assert.equal(await page.getByLabel("Task prompt").inputValue(), "draft for atlas");
   await applyModel("Fixture next");
   await page.waitForFunction(() => document.querySelector("#model-choice")?.dataset.value === "anthropic/fixture-next" && !document.querySelector("#model-choice")?.disabled);
+  assert.equal(await page.evaluate(() => Object.values(JSON.parse(globalThis.localStorage.getItem("zhivex.code.modelPicker.v1") ?? "{}").lastUsedByWorkspace ?? {}).includes("anthropic/fixture-next")), true);
   await page.reload();
   await page.waitForFunction(() => document.querySelector("#model-choice")?.dataset.value === "anthropic/fixture-next" && !document.querySelector("#model-choice")?.disabled);
   steps.push("configured provider/model changes explicitly apply to future tasks and survive reload; unavailable credentials stay disabled");
