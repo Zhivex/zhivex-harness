@@ -28,7 +28,17 @@ A read-only run says that nothing is waiting for approval. A run with no activit
 
 ## Errors and credentials
 
-Confirmed host failures, including `EXECUTION_FAILED`, used to lock the session as if the response had been lost. The banner said “EXECUTION FAILED” and “Read the current session state before submitting another action.” There was no usable reconcile control in the light theme. A confirmed failure now stays editable. The banner names what happened and the next action. A lost response still requires Reconcile, which only re-reads host state and does not replay start, decide, or cancel.
+The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Haz un análisis de seguridad del repo”, made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
+
+- A red banner, “EXECUTION FAILED” and “Read the current session state before submitting another action.” The banner had no Reconcile action.
+- The stream badge “Reconciliation required” and the line “The response was not confirmed. Reconnect before another action; nothing is retried automatically.”
+- “Origin: no user thresholds. 0 steps · 135 tool calls · 1803551 tokens reported.”
+- “Task evidence is unavailable. Refresh the host state before deciding. Ordinary chat may have no task contract.”
+- Every `list files`, `search files`, and `read file` call as its own completed row.
+- Change review saying “No changes to review. Requests show up here before anything runs.” even though the run had already read the repo.
+- The composer still holding the same prompt, with only “Recover submitted text”.
+
+A confirmed `EXECUTION_FAILED` now stays editable. The banner says “The task stopped” and tells the person to edit the message and send it again. The badge says “Error”, not “Reconciliation required”. Reconcile stays in the header for a lost response and only re-reads host state. It does not replay start, decide, or cancel. The checklist says to send a message or reconcile if a checklist should already be here. Read-only calls collapse into “Explored N files”. A read-only run says nothing is waiting for approval because the run is only reading files. The recovery card offers “Edit message” and “Send again”, and neither runs by itself.
 
 ## Sessions
 
@@ -36,7 +46,7 @@ The header is one 48px bar. The project and the session title share a baseline o
 
 ## Finishing and resuming
 
-After a failed send, the composer keeps the message and offers “Edit message” and “Send again”. Neither runs by itself. Reconcile reloads the host snapshot.
+After a failed send, the composer keeps the message. The recovery card says it is still there and offers “Send again”. “Edit message” puts the text back only when the composer was cleared. Neither runs by itself. Reconcile reloads the host snapshot.
 
 ## Theme
 

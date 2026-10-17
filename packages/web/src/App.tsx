@@ -795,7 +795,9 @@ export function App() {
           ? "Couldn't read this run"
           : run
             ? runStatusLabel(run.status)
-            : "Ready";
+            : error
+              ? "Error"
+              : "Ready";
   const composerHelp = needsReconcile
     ? "The last response did not arrive. Choose Reconcile to reload this session. Nothing is sent again on its own."
     : !connected
@@ -810,8 +812,8 @@ export function App() {
             ? "Review the proposed change, or cancel this run. Your next draft stays here."
             : run?.status === "cancel_requested"
               ? "Stop requested. Waiting for the host to confirm."
-              : run?.status === "failed"
-                ? "This task stopped. Edit the message and send it again."
+              : run?.status === "failed" || error
+                ? error ? statusCopy(error).next : "This task stopped. Edit the message and send it again."
               : busy
                 ? "Work is running. You can prepare the next message or stop this run."
                 : "Describe a task. The first message starts a session in this workspace.";
@@ -956,7 +958,7 @@ export function App() {
       <div id="task-workspace" className="workspace-frame" data-position={diffLayout.minimized ? "minimized" : position} data-empty={emptyReview ? "true" : "false"} data-pane={narrow ? mobilePane : "both"} style={frameStyle} tabIndex={-1}>
         <section className="chat-column">
           <ChatRoot className="conversation" label="Task stream" theme={resolvedTheme}>
-            <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable ? "warning" : ""}`}>{stateLabel}</span></div>
+            <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable || Boolean(error) ? "warning" : ""}`}>{stateLabel}</span></div>
             <p className="state-guidance" id="composer-help">{composerHelp}</p>
             {sessionsLoading && <p className="session-empty" role="status">Loading sessions…</p>}
             {runLimits && <div className="run-limits-summary" aria-label="Limits for the current task">
@@ -1039,7 +1041,9 @@ export function App() {
                 onApply={choice => void selectModelChoice(choice.provider, choice.model)} favoriteToggle={favoriteToggle} />} />
             <div className="composer-note"><span>Enter to send · Shift+Enter for a new line</span><span>Credentials stay on the host</span></div>
             {drafts.current.read(selection.current).recovery !== undefined && <div className="composer-recovery" role="status">
-              <p>This message did not finish. Edit it and send it again. It is not retried on its own.</p>
+              <p>{prompt.trim()
+                ? "This message did not finish. It is still in the composer. Change it if you need to, then choose Send again. It is not sent on its own."
+                : "This message did not finish. Choose Edit message to put it back, then Send again. It is not sent on its own."}</p>
               <pre>{drafts.current.read(selection.current).recovery}</pre>
               <button type="button" disabled={Boolean(prompt)} onClick={() => { if (drafts.current.recover(selection.current)) { setPrompt(drafts.current.read(selection.current).text); focusComposer(); } }}>Edit message</button>
               <button type="button" disabled={!prompt.trim() || !canMutate || busy} onClick={() => void start()}>Send again</button>
