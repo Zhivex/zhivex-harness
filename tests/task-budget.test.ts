@@ -8,6 +8,7 @@ import { createInMemoryAgentRunStore, createSqliteAgentRunStore } from '@zhivex-
 import { wrapLanguageModel, fingerprintAgentHarness, type AgentRunState, type LanguageModel, type ModelGenerateInput } from '@zhivex-ai/core';
 import { ProviderToolCallError } from '@zhivex-ai/core/provider';
 import { openHarnessPersistence, sqliteAdapter, type HarnessPersistence } from '../src/persistence/operations.js';
+import { budgetLedgerScope } from '../src/runtime/budget-ledger-scope.js';
 import { SqliteDatabase } from '../src/persistence/sqlite-database.js';
 import { resolveHarnessConfig } from '../src/runtime/config.js';
 import { createHarnessStateBackup, importHarnessStateBackup } from '../src/persistence/state-backup.js';
@@ -200,13 +201,44 @@ test('lease expiry while a transport is outstanding retains admission exposure f
   expect((await recovered.summary()).confirmed.totalTokens).toBe(15);
 });
 
+test('a task ledger stays bound to its source namespace', async () => {
+  const store = createInMemoryAgentRunStore();
+  const alpha = { tenantId: 'task-budget-tests', userId: 'operator', namespace: 'alpha' };
+  const beta = { ...alpha, namespace: 'beta' };
+  const account = await TaskBudget.open({ store, scope: alpha, taskId: 'shared-name', policy });
+  const other = await TaskBudget.open({ store, scope: beta, taskId: 'shared-name', policy });
+  const budgetRunId = `budget_${fingerprintAgentHarness({ budgetId: account.accountRunId, scope: alpha }).slice('sha256:'.length)}`;
+  expect(await store.load(budgetRunId, { ...alpha, namespace: '__zhivex_budget__' })).toBeUndefined();
+  const stored = await store.load(budgetRunId, budgetLedgerScope(alpha));
+  expect(stored?.scope?.namespace).toBe('__zhivex_budget__:alpha');
+  expect(stored?.metadata?.budgetOwnerNamespace).toBe('alpha');
+  expect(await store.load(budgetRunId, budgetLedgerScope(beta))).toBeUndefined();
+  expect(other.accountRunId).not.toBe(account.accountRunId);
+});
+
+test('an omitted namespace keeps its own ledger and still opens a task account', async () => {
+  const store = createInMemoryAgentRunStore();
+  const unnamed = { tenantId: 'task-budget-tests', userId: 'operator' };
+  const named = { ...unnamed, namespace: 'alpha' };
+  const account = await TaskBudget.open({ store, scope: unnamed, taskId: 'shared-name', policy });
+  const other = await TaskBudget.open({ store, scope: named, taskId: 'shared-name', policy });
+  const budgetRunId = `budget_${fingerprintAgentHarness({ budgetId: account.accountRunId, scope: unnamed }).slice('sha256:'.length)}`;
+  const stored = await store.load(budgetRunId, budgetLedgerScope(unnamed));
+  expect(stored?.scope?.namespace).toBe('__zhivex_budget__:');
+  expect(stored?.metadata?.budgetOwnerNamespace).toBe('');
+  expect(await store.load(budgetRunId, budgetLedgerScope(named))).toBeUndefined();
+  expect(await store.load(budgetRunId, { ...unnamed, namespace: '__zhivex_budget__' })).toBeUndefined();
+  expect(other.accountRunId).not.toBe(account.accountRunId);
+  expect(await account.summary()).toMatchObject({ taskId: 'shared-name', usageComplete: true });
+});
+
 test('legacy and partial snapshots cannot create a fresh task account or ledger', async () => {
   const store = createInMemoryAgentRunStore();
   await expect(TaskBudget.open({ store, scope, taskId: 'legacy', policy, requireExisting: true })).rejects.toThrow('TASK_BUDGET_MISSING');
   const account = await TaskBudget.open({ store, scope, taskId: 'snapshot', policy });
   const budgetId = account.accountRunId;
   const budgetRunId = `budget_${fingerprintAgentHarness({ budgetId, scope }).slice('sha256:'.length)}`;
-  await store.delete!(budgetRunId, { tenantId: scope.tenantId, userId: scope.userId, namespace: '__zhivex_budget__' });
+  await store.delete!(budgetRunId, budgetLedgerScope(scope));
   await expect(TaskBudget.open({ store, scope, taskId: 'snapshot', policy, requireExisting: true })).rejects.toThrow('TASK_BUDGET_LEDGER_MISSING');
 });
 
@@ -454,8 +486,7 @@ test('SQLite trigger protects task authority inserted after a stale retention re
   const database = new SqliteDatabase(persistence.databasePath!);
   try {
     const raw = createSqliteAgentRunStore({ db: sqliteAdapter(database) });
-    await expect(Promise.resolve().then(() => raw.delete!(budgetRunId,
-      { tenantId: config.scope.tenantId, userId: config.scope.userId!, namespace: '__zhivex_budget__' }))).rejects.toThrow('TASK_BUDGET_RETENTION_REQUIRED');
+    await expect(Promise.resolve().then(() => raw.delete!(budgetRunId, budgetLedgerScope(config.scope)))).rejects.toThrow('TASK_BUDGET_RETENTION_REQUIRED');
   } finally { database.close(); }
   expect((await account.summary()).usageComplete).toBe(true);
   // The trigger leaves cleanup of unrelated ordinary runs intact.

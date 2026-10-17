@@ -1524,7 +1524,7 @@ const importPatch = async (
     const rollbackErrors: unknown[] = [];
     for (const item of [...quarantined].reverse()) {
       try {
-        await host.restoreQuarantined({ quarantineId: item.quarantineId, expectedDigest: item.digest });
+        await host.restoreQuarantined({ quarantineId: item.quarantineId, destination: item.path, expectedDigest: item.digest });
       } catch (rollbackError) {
         rollbackErrors.push(rollbackError);
       }

@@ -37,38 +37,13 @@ import { validateStateDirectory } from "./state-directory.js";
 import { HarnessStateConflictError, HarnessWorkspaceError } from "../runtime/errors.js";
 
 import { TaskBudget, TASK_BUDGET_KEY, inspectTaskBudgetSummary } from '../runtime/task-budget.js';
+import { bindBudgetLedgerStore, budgetLedgerScope } from "../runtime/budget-ledger-scope.js";
 
 type SqliteDatabaseLike = SqliteAgentRunStoreOptions["db"];
 
-const budgetScopeFor = (config: HarnessConfig) => ({
-  tenantId: config.scope.tenantId,
-  ...(config.scope.userId ? { userId: config.scope.userId } : {}),
-  namespace: "__zhivex_budget__"
-});
-
-/** The SDK coordinator uses an isolated namespace; ordinary operations remain scope-bound. */
-const withBudgetLedgerStore = (primary: AgentRunStore, budget: AgentRunStore, config: HarnessConfig): AgentRunStore => {
-  const scope = budgetScopeFor(config);
-  const budgetScope = (value: AgentRunState["scope"]) => value?.namespace === scope.namespace &&
-    value.tenantId === scope.tenantId && (value.userId ?? undefined) === (scope.userId ?? undefined);
-  const assertId = (id: string) => { if (!/^budget_[a-f0-9]{64}$/.test(id)) throw new HarnessStateConflictError("Invalid budget ledger identity."); };
-  return {
-    ...primary,
-    load: async (id, requestedScope) => {
-      if (!budgetScope(requestedScope)) return primary.load(id, requestedScope);
-      assertId(id);
-      return budget.load(id, requestedScope);
-    },
-    save: async (state, options) => {
-      if (!budgetScope(state.scope)) return primary.save(state, options);
-      assertId(state.runId);
-      if (state.provider !== "zhivex" || state.modelId !== "budget-coordinator" || state.metadata?.budgetCoordinator !== true) {
-        throw new HarnessStateConflictError("Only SDK budget ledger states may use the reserved namespace.");
-      }
-      return budget.save(state, options);
-    }
-  };
-};
+/** The SDK coordinator addresses a collapsed namespace. Durable rows keep the source namespace in the owner. */
+const withBudgetLedgerStore = (primary: AgentRunStore, budget: AgentRunStore, config: HarnessConfig): AgentRunStore =>
+  bindBudgetLedgerStore(primary, config.scope, budget);
 
 export const HARNESS_SQLITE_FILE = "operations.sqlite";
 export const HARNESS_OPERATIONS_SCHEMA_VERSION = 1 as const;
@@ -580,7 +555,7 @@ export const openHarnessPersistence = async (
   config: HarnessConfig,
   options: { migrateLegacyFileStore?: boolean } = {}
 ): Promise<HarnessPersistence> => {
-  if (config.scope.namespace === "__zhivex_budget__") throw new HarnessStateConflictError("The budget ledger namespace is reserved.");
+  const budgetScope = budgetLedgerScope(config.scope);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   await ensurePrivateStateDirectory(config.stateDirectory);
   await protectStateFromGit(config.workspace, config.stateDirectory);
@@ -588,7 +563,7 @@ export const openHarnessPersistence = async (
   if (config.storeBackend === "file") {
     const store = withBudgetLedgerStore(
       createFileAgentRunStore({ directory: config.stateDirectory, scope: config.scope }),
-      createFileAgentRunStore({ directory: config.stateDirectory, scope: budgetScopeFor(config) }), config);
+      createFileAgentRunStore({ directory: config.stateDirectory, scope: budgetScope }), config);
     const migration = shouldMigrateLegacyRuns(config, options.migrateLegacyFileStore)
       ? await migrateLegacyFileRuns(config.stateDirectory, store, config)
       : emptyMigration();
@@ -644,7 +619,7 @@ export const openHarnessPersistence = async (
     const databaseLike = sqliteAdapter(database);
     const store = withBudgetLedgerStore(
       createSqliteAgentRunStore({ db: databaseLike, scope: config.scope, history: "incremental" }),
-      createSqliteAgentRunStore({ db: databaseLike, scope: budgetScopeFor(config) }), config);
+      createSqliteAgentRunStore({ db: databaseLike, scope: budgetScope }), config);
     // The database enforces retention at the deletion itself, including raw SDK
     // cleanup and another connection inserting task authority after a stale list.
     // Ordinary runs retain their existing cleanup behavior.

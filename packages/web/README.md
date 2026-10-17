@@ -25,7 +25,35 @@ prints only the base URL. If browser opening fails, startup shuts down with
 `WEB_BROWSER_OPEN_FAILED`; fix the OS opener and relaunch. `--no-open` is for
 supervision; it intentionally does not print a pairing capability.
 
-Only CLI-allowlisted canonical workspaces can be selected. Existing durable
+Only CLI-allowlisted canonical workspaces can be selected. Sessions live in a
+drawer, grouped by project when more than one project is open. A single project
+has no group headings and no project switcher. `zhivex-code project add`, run
+inside the project folder, confirms the full path and writes
+`~/.zhivex/projects.json` (mode 0600, or `ZHIVEX_PROJECT_REGISTRY`). A running
+`zhivex-code web` process notices the new project without a restart. The browser
+never asks for a folder and never opens one. `--state-dir` stays one workspace
+and does not load the registry. Removing a project drops the registry entry and
+does not delete files. At most eight projects are served; extras stay listed as
+Unavailable with a cause and do not stop the others.
+
+The review column is nearly the full width of the workspace. Its position is
+Side, Bottom, or Fullscreen, and it can be minimized. The choice is stored in
+`localStorage` under `zhivex.code.diffLayout.v1`. Below 1024px, Side is disabled
+and the review moves under the chat without overwriting the saved choice.
+Light and dark themes follow the system preference until the theme control
+picks Light or Dark; that choice is stored under `zhivex.code.theme.v1`.
+Brand red is reserved for items that need you. Approve uses the ink button.
+
+Keyboard shortcuts, using `event.code`: Alt+Shift+A approve and Alt+Shift+R
+reject only while the review has focus and the button is enabled; Alt+Shift+P
+cycles the review position; Alt+Shift+H minimizes it; Alt+Shift+M opens the
+model selector (not during a pending review and not from a text field);
+Alt+Shift+S favorites the highlighted model; Alt+Shift+J toggles the sessions
+drawer; Alt+Shift+N creates a session. There is no single-letter shortcut and
+no Ctrl/Cmd+K. Ctrl/Cmd+Enter still only runs the task. Esc leaves fullscreen,
+the model popover, or the drawer and never decides.
+
+Existing durable
 sessions can be selected and resumed after a reload/relaunch. The task stream
 uses Harness activity pages with atomic cursors, deduplication and expired-cursor
 snapshot recovery. A lost command response is reconciled by reading state,
@@ -44,9 +72,13 @@ requires reconciliation or a new session rather than showing an older run.
 Check success uses exit
 code zero and absence of timeout; a successful tool transport alone is not a
 passing check. Browser-selected IDs and revisions never override host workspace,
-scope, credentials or tool policy. The provider/model picker applies an explicit
-selection to future tasks in the current workspace using a host-issued catalogue
-of non-retired chat/tool models and existing configured credentials. It never
+scope, credentials or tool policy. The provider/model control is a searchable popover. Choosing a row applies it
+to future tasks in the current workspace. The host catalogue lists non-retired
+chat/tool models, including providers that have no credentials; those rows stay
+visible and disabled and point at the CLI. Favorites and recents stay in
+`localStorage` under `zhivex.code.modelPicker.v1`. Context window and USD price
+are shown only when the catalogue publishes them. Images is the only capability
+badge unless the catalogue marks vision. It never
 writes credentials or changes execution grants. Credential presence does not
 verify account access or a model's support tier. Selection is blocked while any
 workspace session has an unfinished run, including pending approval; a service
@@ -57,8 +89,11 @@ context after an admitted change requires reconciliation before another action;
 the browser never repeats the model change automatically.
 Failed attachment attempts restore the previous service or fail closed with
 restart guidance. The current custom host model remains visible when absent
-from the catalogue. An optional `--tool-policy` selects
-the existing Harness policy on the host. No new execution policy is introduced.
+from the catalogue. An optional `--tool-policy` selects the existing Harness policy for one
+explicit workspace. It is rejected when more than one `--workspace` is passed.
+`zhivex-code project add --tool-policy <path>` stores that policy on that
+project only. Approvals and policies are not shared across projects. No new
+execution policy is introduced.
 
 ## Governed task view (CODE-HU-05)
 

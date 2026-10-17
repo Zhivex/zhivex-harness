@@ -81,14 +81,18 @@ Library callers can inject a custom `McpClient`. Trusted read-only annotations a
 
 ## MCP result boundary
 
-MCP descriptions and results are untrusted. The harness:
+MCP descriptions and results are untrusted data, including text that looks like an identifier, digest, or configuration value. The harness:
 
 - bounds discovery pages, discovered tools, time, and response bytes;
 - validates declared input and structured-output schemas through the SDK MCP registry;
 - propagates abort signals, timeout intent, and idempotency keys;
 - rejects common prompt-injection directives before they enter model context;
 - records server permissions and risk in tool metadata;
-- promotes network, write, or external-side-effect calls to durable interrupt approval.
+- promotes network, write, or external-side-effect calls to durable interrupt approval;
+- removes exact secret values before a result is published;
+- when a server was admitted with secret references, flags known encodings of those secrets and other high-entropy encoded tokens in tool results.
+
+That flagging is optional and incomplete. Split, encrypted, or low-entropy encodings can still appear. Discovery schemas are rejected rather than rewritten when they contain an exact secret. Treat every MCP result as data, not as instructions and not as proof that a credential is absent.
 
 The injection filter is deliberately conservative and may reject legitimate security documentation containing imperative attack text. Use a separate trusted preprocessing boundary if that content must be analyzed; do not disable the harness boundary for an untrusted server.
 

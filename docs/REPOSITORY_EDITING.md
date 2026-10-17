@@ -72,7 +72,7 @@ The terminal prints the complete `apply_patch` approval arguments rather than tr
 
 `quarantine_file` requires the current digest and moves the file into harness-owned state. The result includes a `quarantineId` used for recovery. The model has no permanent-delete tool.
 
-`restore_file` accepts a quarantine identifier and an optional workspace destination. Restore is conflict-safe: it never overwrites an existing destination, and an optional expected digest can bind the operation to the quarantined bytes the operator reviewed. A successful restore is recorded independently from the quarantine operation.
+`restore_file` requires a quarantine identifier, the destination path, and the expected digest of the quarantined bytes. It does not fall back to the original path or restore bytes the operator did not pin. Restore is conflict-safe: it never overwrites an existing destination. The approval preview shows that destination and the quarantined text for the pinned digest. A successful restore is recorded independently from the quarantine operation.
 
 Quarantine is a recovery boundary, not a backup system. Retention and permanent cleanup remain operator responsibilities. Do not manually edit quarantine manifests or payloads while a run is active.
 

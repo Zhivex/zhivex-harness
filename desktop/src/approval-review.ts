@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { HarnessClientRun } from "@zhivex-ai/harness/protocol";
-export interface ApprovalReviewFile { path: string; expectedDigest: string | null; before?: string; after?: string; view: "literal-replacement" | "replacement-contents" | "operation" | "full-file"; afterDigest?: string | null; beforeMode?: number; afterMode?: number; operation?: "create" | "update" | "delete" }
+export interface ApprovalReviewFile { path: string; expectedDigest: string | null; before?: string; after?: string; view: "literal-replacement" | "replacement-contents" | "operation" | "full-file"; afterDigest?: string | null; beforeMode?: number; afterMode?: number; operation?: "create" | "update" | "delete" | "restore" }
 export interface ApprovalReviewItem {
     approvalId: string; digest: string; expiresAt: number; name: string; payloadDigest: string;
     payload: string; files: ApprovalReviewFile[]; commands: string[]; consequence: string;
@@ -26,7 +26,7 @@ export function projectApprovalReview(run: HarnessClientRun, redact: (text: stri
             if (typeof args.command === "string") commands.push(JSON.stringify([args.command, ...(Array.isArray(args.args) ? args.args : [])]));
             if (typeof args.script === "string") commands.push(args.script);
             if (Array.isArray(args.commands)) for (const entry of args.commands) { const c = object(entry); if (c && typeof c.command === "string") commands.push(JSON.stringify([c.command, ...(Array.isArray(c.args) ? c.args : [])])); }
-            const needsBase = ["apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits"].includes(name);
+            const needsBase = ["apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_environment_patch", "verify_and_apply_reviewed_edits", "restore_file"].includes(name);
             const preview = approval.filePreview;
             if (needsBase && preview?.status === "complete") {
                 files.length = 0;

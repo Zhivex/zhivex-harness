@@ -488,7 +488,11 @@ describe("Workspace", () => {
     expect((await workspace.listFiles()).files.some((file) => file.path.includes(quarantined.quarantineId))).toBe(false);
 
     await writeFile(path.join(root, "src", "moved.ts"), "new occupant\n", "utf8");
-    await expect(workspace.restoreQuarantined({ quarantineId: quarantined.quarantineId })).rejects.toThrow("already exists");
+    await expect(workspace.restoreQuarantined({
+      quarantineId: quarantined.quarantineId,
+      destination: "src/moved.ts",
+      expectedDigest: original.digest
+    })).rejects.toThrow("already exists");
     expect(await readFile(path.join(root, "src", "moved.ts"), "utf8")).toBe("new occupant\n");
 
     const restored = await workspace.restoreQuarantined({
@@ -498,7 +502,11 @@ describe("Workspace", () => {
     });
     expect(restored.digest).toBe(original.digest);
     expect((await stat(path.join(root, "src", "restored.ts"))).mode & 0o777).toBe(0o750);
-    await expect(workspace.restoreQuarantined({ quarantineId: quarantined.quarantineId })).rejects.toThrow("not restorable");
+    await expect(workspace.restoreQuarantined({
+      quarantineId: quarantined.quarantineId,
+      destination: "src/restored-again.ts",
+      expectedDigest: original.digest
+    })).rejects.toThrow("not restorable");
     expect(workspace.mutationAudit().map((entry) => entry.operation)).toEqual(["move", "quarantine", "restore"]);
   });
 

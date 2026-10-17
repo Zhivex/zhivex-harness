@@ -125,7 +125,7 @@
     },
     {
       "name": "Workspace",
-      "sha256": "sha256:3e26e6e06d28107c6191ff010e80470beaa34a548bef1556caa46c96a2f966fe"
+      "sha256": "sha256:42b53815d22e2734371ae5360f059779516f7304bc9a1941dc208d12b67f6a60"
     },
     {
       "name": "appendUserMessage",
@@ -165,7 +165,7 @@
     },
     {
       "name": "createHarness",
-      "sha256": "sha256:e93ba19038466b7ba57cdb6db2c8f0342e659473d09d522c019d3a631c575904"
+      "sha256": "sha256:0bf4f22db95c409dfa85fce488984f06efa84491fc7d4ef2351a053ea32701f3"
     },
     {
       "name": "createHarnessMcpTools",
@@ -173,7 +173,7 @@
     },
     {
       "name": "createHarnessOciExecutionEnvironment",
-      "sha256": "sha256:c4f8f25e3a78c2bcbdf4a6a2238e4afd2e80cf14bc91c414874088126d6f92cc"
+      "sha256": "sha256:6ae2d5238e49299c4c0ee9d9b5f0ddae4de86db9387c8469f7fd6f4518e20e6e"
     },
     {
       "name": "createHarnessStateBackup",
@@ -273,7 +273,7 @@
     },
     {
       "name": "runHarness",
-      "sha256": "sha256:d7bb7f4e0ebd6a3b1ad88bc60ec02847a13a6839c37abb2a0602d6b4250859fb"
+      "sha256": "sha256:82a768885893267b4c24aae1923726ae59c048f73c34ce1e92d0355981c6d46a"
     },
     {
       "name": "serializeStreamEvent",
@@ -427,7 +427,7 @@
     },
     {
       "name": "HarnessExecutionSession",
-      "sha256": "sha256:3bf8a21fccb5793b92bbbd10c6a99f07bf404096422246e8c18d93bff328c743"
+      "sha256": "sha256:15843c59747ef8d072a66f19c88031a2a2981be3cdebf3aabb836132b6f7c4b9"
     },
     {
       "name": "HarnessMcpConfiguration",
@@ -487,8 +487,8 @@
     },
     {
       "name": "ZhivexHarness",
-      "sha256": "sha256:c4af70e955997b69b0f48f52f52efca6f2374e13f9bc536760078a4ee08e984e"
+      "sha256": "sha256:2911bde71fdae2dff26f766d068c560375757fb6575f5aaec02ff3346c46ab94"
     }
   ],
-  "digest": "sha256:044531ba474a2576fadb3e9a091094daa81e9c8495b697d7ff6c69205b37d5e4"
+  "digest": "sha256:50be2a81cd0e7601d5610008081c406cecf9855c5ffd42d2faffba521b08873e"
 }

@@ -25,6 +25,42 @@ const resultSchema = z.object({
   _meta: record.optional()
 }).strict().refine(value => value.content !== undefined || value.structuredContent !== undefined);
 
+const ENCODED_MARK = '[ENCODED]';
+const ENTROPY_MARK = '[HIGH_ENTROPY]';
+
+function shannonEntropy(value: string) {
+  const counts = new Map<string, number>();
+  for (const char of value) counts.set(char, (counts.get(char) ?? 0) + 1);
+  let entropy = 0;
+  for (const count of counts.values()) {
+    const p = count / value.length;
+    entropy -= p * Math.log2(p);
+  }
+  return entropy;
+}
+
+/** UTF-8 base64, base64url, and hex of a secret. Shorter values stay on the exact-match path. */
+function secretEncodings(secret: string) {
+  if (Buffer.byteLength(secret) < 8) return [];
+  const bytes = Buffer.from(secret, 'utf8');
+  const base64 = bytes.toString('base64');
+  const base64Url = bytes.toString('base64url');
+  const hex = bytes.toString('hex');
+  return [...new Set([base64, base64.replace(/=+$/u, ''), base64Url, hex, hex.toUpperCase()])].filter(value => value.length >= 8);
+}
+
+/** Flag known encodings of admitted secrets, then other high-entropy encoded tokens. This is a hint, not proof a credential is absent. */
+function flagEncodedSecrets(value: string, secrets: readonly string[]) {
+  let text = value;
+  for (const encoding of secrets.flatMap(secretEncodings).sort((left, right) => right.length - left.length)) {
+    text = text.split(encoding).join(ENCODED_MARK);
+  }
+  const flag = (token: string) => shannonEntropy(token.replace(/=+$/u, '')) >= 3.5 ? ENTROPY_MARK : token;
+  text = text.replace(/[A-Za-z0-9+/_-]{24,}={0,2}/g, flag);
+  text = text.replace(/\b[a-fA-F0-9]{32,}\b/g, flag);
+  return text;
+}
+
 function compileSchema(schema: Record<string, unknown>): z.ZodType {
   const pending = [{ value: schema as unknown, depth: 0 }]; let nodes = 0;
   while (pending.length) {
@@ -42,11 +78,14 @@ function compileSchema(schema: Record<string, unknown>): z.ZodType {
   return z.fromJSONSchema(schema);
 }
 
-/** Host tool bridge. Existing agent execution supplies durable interrupt approvals. */
+/** Host tool bridge. Tool results are untrusted data. Existing agent execution supplies durable interrupt approvals.
+ * flagEncodedSecrets is optional. Credential-bearing servers use it to mark encodings and high-entropy tokens; it does not rewrite discovery schemas. */
 export async function createIsolatedMcpTools(options: {
   client: McpClient & { close(): Promise<void> };
   proposal: Readonly<McpStdioLaunchProposal>;
   sensitiveValues?: readonly string[];
+  /** When set, tool results flag known encodings of sensitiveValues and other high-entropy encoded strings. */
+  flagEncodedSecrets?: boolean;
   journal?: Pick<Parameters<typeof createJournaledMcpClient>[0], 'store' | 'runId' | 'scope'>;
 }): Promise<ToolSet> {
   const proposal = structuredClone(options.proposal);
@@ -60,17 +99,21 @@ export async function createIsolatedMcpTools(options: {
     throw new McpStdioClientError('protocol', message, effectful);
   };
   const secrets = [...new Set(options.sensitiveValues ?? [])].filter(Boolean).sort((a, b) => b.length - a.length);
+  const flagResults = options.flagEncodedSecrets === true;
   const redaction = createRedactionPolicy({ includeEmails: true });
-  const text = (value: string) => redaction.redactText(secrets.reduce((current, secret) => current.split(secret).join('[REDACTED]'), value));
-  const scrub = (value: unknown, depth = 0, budget = { nodes: 0 }): unknown => {
+  const text = (value: string, flag: boolean) => {
+    const redacted = redaction.redactText(secrets.reduce((current, secret) => current.split(secret).join('[REDACTED]'), value));
+    return flag ? flagEncodedSecrets(redacted, secrets) : redacted;
+  };
+  const scrub = (value: unknown, flag: boolean, depth = 0, budget = { nodes: 0 }): unknown => {
     if (depth > 32 || ++budget.nodes > 20000) throw new Error('MCP payload complexity limit exceeded.');
-    if (typeof value === 'string') return text(value);
-    if (Array.isArray(value)) return value.map(item => scrub(item, depth + 1, budget));
-    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [text(key), scrub(item, depth + 1, budget)]));
+    if (typeof value === 'string') return text(value, flag);
+    if (Array.isArray(value)) return value.map(item => scrub(item, flag, depth + 1, budget));
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [text(key, flag), scrub(item, flag, depth + 1, budget)]));
     return value;
   };
-  const bounded = (value: unknown) => {
-    const clean = scrub(value);
+  const bounded = (value: unknown, flag: boolean) => {
+    const clean = scrub(value, flag);
     if (Buffer.byteLength(JSON.stringify(value)) > proposal.limits.maxOutputBytes) throw new Error('MCP output limit exceeded.');
     return clean;
   };
@@ -85,7 +128,7 @@ export async function createIsolatedMcpTools(options: {
         const parsed = resultSchema.parse(response);
         const output = outputValidators.get(input.name);
         if (output && !parsed.isError && !output.safeParse(parsed.structuredContent).success) throw new Error('Output schema');
-        return bounded(parsed) as Awaited<ReturnType<McpClient['callTool']>>;
+        return bounded(parsed, flagResults) as Awaited<ReturnType<McpClient['callTool']>>;
       } catch { return invalidResponse('Isolated MCP result validation failed.', true); }
   };
   const validatedClient = { callTool: invoke, listTools: (input: Parameters<McpClient['listTools']>[0], callOptions?: McpCallToolOptions) => options.client.listTools(input, callOptions), close: () => options.client.close() };
@@ -94,7 +137,7 @@ export async function createIsolatedMcpTools(options: {
     async listTools(input, callOptions) {
       try {
         const response = await options.client.listTools(input, callOptions);
-        const clean = bounded(response);
+        const clean = bounded(response, false);
         // Never silently rewrite a schema or routing identifier to remove a
         // credential. Reject discovery before publishing any of its metadata.
         if (JSON.stringify(clean) !== JSON.stringify(response)) throw new Error('Sensitive discovery');

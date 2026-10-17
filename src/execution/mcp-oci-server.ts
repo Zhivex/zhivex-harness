@@ -215,7 +215,11 @@ async function launchMcpToolsOwned(options: McpToolLaunchOptions, groupRecoveryC
     return value;
   } });
   try {
-    const tools = await createIsolatedMcpTools({ client, proposal, sensitiveValues, journal });
+    // Isolated MCP output is untrusted. Credential-bearing servers additionally flag encodings and high-entropy tokens.
+    const tools = await createIsolatedMcpTools({
+      client, proposal, sensitiveValues, journal,
+      flagEncodedSecrets: Object.keys(proposal.secretReferences).length > 0
+    });
     const hostSession = issueMcpHostSession({ tools, ...journal, proposal, close: () => client.close() });
     return Object.freeze({ tools, hostSession, close: () => closeMcpHostSession(hostSession) });
   } catch {

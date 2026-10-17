@@ -240,3 +240,31 @@ test("file and sqlite persistence isolate coordinator ledgers while supporting d
     } finally { persistence.close(); }
   }
 });
+
+test("budget ledger owners keep the source namespace instead of collapsing to one bucket", async () => {
+  const { createAgentBudgetCoordinator, fingerprintAgentHarness } = await import("@zhivex-ai/core");
+  const { budgetLedgerNamespace, budgetLedgerScope } = await import("../src/runtime/budget-ledger-scope.js");
+  for (const storeBackend of ["file", "sqlite"] as const) {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-owner-workspace-"));
+    const stateDirectory = await mkdtemp(path.join(os.tmpdir(), "zhivex-budget-owner-state-"));
+    temporaryDirectories.push(workspace, stateDirectory);
+    const alpha = resolveHarnessConfig({ workspace, stateDirectory, storeBackend, tenantId: "budget-tenant", userId: "owner", namespace: "alpha" });
+    const beta = resolveHarnessConfig({ workspace, stateDirectory, storeBackend, tenantId: "budget-tenant", userId: "owner", namespace: "beta" });
+    const limits = { inputTokens: 10, outputTokens: 10, totalTokens: 20 };
+    const first = await openHarnessPersistence(alpha);
+    const second = await openHarnessPersistence(beta);
+    try {
+      const coordinator = createAgentBudgetCoordinator({ store: first.store, scope: alpha.scope, budgetId: "same-budget", limits });
+      await coordinator.reserve("call", { inputTokens: 10, outputTokens: 10, totalTokens: 20 });
+      await coordinator.settle("call", { inputTokens: 8, outputTokens: 2, totalTokens: 10 });
+      const other = createAgentBudgetCoordinator({ store: second.store, scope: beta.scope, budgetId: "same-budget", limits });
+      await other.reserve("call", { inputTokens: 10, outputTokens: 10, totalTokens: 20 });
+      const runId = `budget_${fingerprintAgentHarness({ budgetId: "same-budget", scope: alpha.scope }).slice("sha256:".length)}`;
+      const stored = await first.store.load(runId, { ...alpha.scope, namespace: "__zhivex_budget__" });
+      expect(stored?.scope?.namespace).toBe(budgetLedgerNamespace("alpha"));
+      expect(stored?.metadata?.budgetOwnerNamespace).toBe("alpha");
+      expect(await second.store.load(runId, { ...beta.scope, namespace: "__zhivex_budget__" })).toBeUndefined();
+      expect(await second.store.load(runId, budgetLedgerScope(beta.scope))).toBeUndefined();
+    } finally { first.close(); second.close(); }
+  }
+});

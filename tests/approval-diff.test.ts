@@ -30,6 +30,11 @@ test("verified reviewed edits bind their reviewed proposal separately from the O
     const decision = row(); decision.evidence!.reviewedProposalId = proposalId; decision.evidence!.proposalId = "sha256:" + "c".repeat(64);
     expect(attachAppliedDiffs(state(captured), [decision])[0]!.finalDiff?.status).toBe("complete");
 });
+test("a restore preview remains in the approval archive", () => {
+    const files = [{ ...file(null, "restored\n"), operation: "restore" as const }];
+    const captured = captureApprovalDiffs(state(), preview(files), new Set([approvalId]));
+    expect(captured[0]!.files[0]!.operation).toBe("restore");
+});
 test("the archive is bounded across a run and old evidence is retained", () => {
     let captured = captureApprovalDiffs(state(), preview(), new Set([approvalId]));
     for (let i = 0; i < 12; i++)captured = captureApprovalDiffs(state(captured), preview([file("a".repeat(128 * 1024), "b".repeat(128 * 1024))]), new Set([approvalId]));

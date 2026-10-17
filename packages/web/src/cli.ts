@@ -11,6 +11,9 @@ import { selectWebServiceDirectory, webStartupDiagnostic } from "./service-direc
 import { startInteractiveWebRuntime } from "./interactive-startup.js";
 import { manageWebRuntime } from "./managed-runtime.js";
 import type { WebModelChoice } from "./contracts.js";
+import { planRegistrySync, projectFailureCause, removeRegisteredPath, safeRegistryRead, type ActiveProject, type RegisteredProject } from "./project-registry.js";
+import { createHash } from "node:crypto";
+import type { UnavailableProject } from "./server.js";
 
 export const WEB_HELP = `Usage: zhivex-code web [options]
 
@@ -21,7 +24,7 @@ Open a local browser workspace using the same Harness engine and durable session
   --model <name>             Host model
   --profile <name>           Existing CLI profile
   --state-dir <path>         Existing Harness state directory (one workspace only)
-  --tool-policy <path>       Existing Harness tool policy
+  --tool-policy <path>       Tool policy for this single workspace (not shared)
   --port <number>            Loopback port (default: a free port)
   --recover                 Explicitly recover a proven dead service owner
   --no-open                 Run without opening a browser (for process supervision)
@@ -71,7 +74,8 @@ export function parseWebArgs(args: string[]) {
     !Number.isInteger(port) ||
     port < 0 ||
     port > 65535 ||
-    (values["--state-dir"] !== undefined && workspaces.length > 1)
+    (values["--state-dir"] !== undefined && workspaces.length > 1) ||
+    (values["--tool-policy"] !== undefined && workspaces.length > 1)
   )
     throw new Error("WEB_USAGE_INVALID");
   return {
@@ -95,6 +99,49 @@ async function openBrowser(url: string) {
   });
 }
 
+/** Apply a registry read to the running directory: detach removals, reopen policy changes, and start new folders. */
+export async function reconcileRegistryProjects(options: {
+  registered: RegisteredProject[] | undefined;
+  active: ActiveProject[];
+  keyFor(path: string): string | undefined;
+  detach(key: string): Promise<void>;
+  drop(path: string): void;
+  open(project: RegisteredProject): Promise<WebRuntime | undefined>;
+  attach(runtime: WebRuntime): boolean;
+  markUnavailable(project: UnavailableProject): void;
+  clearUnavailable(key: string): void;
+  unavailableKey(path: string): string | undefined;
+  rememberUnavailable(folder: string, cause: string): UnavailableProject;
+}) {
+  if (!options.registered) return;
+  const plan = planRegistrySync(options.active, options.registered);
+  for (const folder of [...plan.detach, ...plan.refresh.map(project => project.path)]) {
+    const key = options.keyFor(folder);
+    if (key) await options.detach(key);
+    options.drop(folder);
+  }
+  for (const project of [...plan.refresh, ...plan.start, ...plan.unavailable.map(item => item.project)]) {
+    const blocked = plan.unavailable.find(item => item.project.path === project.path);
+    if (blocked && !plan.start.includes(project) && !plan.refresh.includes(project)) {
+      options.markUnavailable(options.rememberUnavailable(project.path, blocked.cause));
+      continue;
+    }
+    try {
+      const runtime = await options.open(project);
+      if (!runtime) continue;
+      const stale = options.unavailableKey(project.path);
+      if (stale) options.clearUnavailable(stale);
+      if (!options.attach(runtime)) {
+        await runtime.close();
+        options.drop(project.path);
+      }
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      options.markUnavailable(options.rememberUnavailable(project.path, projectFailureCause(code, project.path)));
+    }
+  }
+}
+
 export async function runWebCli(
   args: string[],
   assetsDirectory: string,
@@ -116,43 +163,123 @@ export async function runWebCli(
       throw new Error("WEB_PLATFORM_UNSUPPORTED");
     const serviceDirectory = await selectWebServiceDirectory();
     const seen = new Set<string>();
+    const tracked = new Map<string, { key: string; source: "flag" | "registry"; toolPolicy?: string }>();
+    const unavailableProjects: UnavailableProject[] = [];
+    const unavailableKeys = new Map<string, string>();
+    const v = parsed.values;
+    const explicitPolicy = v["--tool-policy"] ? path.resolve(v["--tool-policy"]) : undefined;
+    async function openWorkspace(workspace: string, source: "flag" | "registry", toolPolicy?: string) {
+      if (seen.has(workspace)) return;
+      const configuration: HarnessConfigInput = {
+        workspace,
+        ...(v["--provider"] ? { provider: v["--provider"] } : {}),
+        ...(v["--model"] ? { model: v["--model"] } : {}),
+        ...(source === "flag" && v["--state-dir"] ? { stateDirectory: path.resolve(v["--state-dir"]) } : {}),
+        ...(toolPolicy ? { toolPolicyFile: toolPolicy } : {}),
+      };
+      const label = toolPolicy ? path.basename(toolPolicy) : undefined;
+      const launch = (interactive: boolean) => create(configuration, v["--profile"], interactive);
+      const started = await startInteractiveWebRuntime(launch, configured => attachRuntime(
+        configured.harness, serviceDirectory, parsed.recover && source === "flag", configured.secrets, false, label));
+      const runtime = modelChoices ? manageWebRuntime(started.runtime, modelChoices, async selection => {
+        const next = await create({ ...configuration, ...selection }, v["--profile"], started.interactive);
+        return {
+          attach: () => attachRuntime(next.harness, serviceDirectory, false, next.secrets, started.legacyPending, label),
+          dispose: () => next.harness.close(),
+        };
+      }) : started.runtime;
+      seen.add(workspace);
+      tracked.set(workspace, { key: runtime.workspace.key, source, ...(toolPolicy ? { toolPolicy } : {}) });
+      return runtime;
+    }
+    function rememberUnavailable(folder: string, cause: string, source: "flag" | "registry") {
+      const key = `unavailable.${createHash("sha256").update(folder).digest("hex").slice(0, 24)}`;
+      unavailableKeys.set(folder, key);
+      const project: UnavailableProject = {
+        key, name: path.basename(folder), workspace: folder, provider: "", model: "",
+        unavailable: true, cause, ...(source === "registry" ? {} : {}),
+      };
+      const index = unavailableProjects.findIndex(item => item.key === key);
+      if (index >= 0) unavailableProjects[index] = project;
+      else unavailableProjects.push(project);
+      return project;
+    }
     for (const input of parsed.workspaces) {
       const workspace = await realpath(path.resolve(input));
       if (!(await lstat(workspace)).isDirectory() || seen.has(workspace))
         throw new Error("WEB_WORKSPACE_INVALID");
-      seen.add(workspace);
-      const v = parsed.values;
-      const configuration: HarnessConfigInput = {
-          workspace,
-          ...(v["--provider"] ? { provider: v["--provider"] } : {}),
-          ...(v["--model"] ? { model: v["--model"] } : {}),
-          ...(v["--state-dir"]
-            ? { stateDirectory: path.resolve(v["--state-dir"]) }
-            : {}),
-          ...(v["--tool-policy"]
-            ? { toolPolicyFile: path.resolve(v["--tool-policy"]) }
-            : {}),
-        };
-      const launch = (interactive: boolean) => create(configuration, v["--profile"], interactive);
-      const started = await startInteractiveWebRuntime(launch, configured => attachRuntime(
-        configured.harness, serviceDirectory, parsed.recover, configured.secrets));
-      runtimes.push(modelChoices ? manageWebRuntime(started.runtime, modelChoices, async selection => {
-        const next = await create({ ...configuration, ...selection }, v["--profile"], started.interactive);
-        return {
-          attach: () => attachRuntime(next.harness, serviceDirectory, false, next.secrets, started.legacyPending),
-          dispose: () => next.harness.close(),
-        };
-      }) : started.runtime);
+      const runtime = await openWorkspace(workspace, "flag", explicitPolicy);
+      if (!runtime) throw new Error("WEB_WORKSPACE_INVALID");
+      runtimes.push(runtime);
+    }
+    if (!v["--state-dir"]) {
+      const registered = await safeRegistryRead();
+      if (registered) {
+        const plan = planRegistrySync([...tracked].map(([projectPath, value]) => ({ path: projectPath, source: value.source })), registered);
+        for (const project of plan.start) {
+          try {
+            const runtime = await openWorkspace(project.path, "registry", project.toolPolicy);
+            if (runtime) runtimes.push(runtime);
+          } catch (error) {
+            const code = error instanceof Error ? error.message : "";
+            rememberUnavailable(project.path, projectFailureCause(code, project.path), "registry");
+          }
+        }
+        for (const item of plan.unavailable) rememberUnavailable(item.project.path, item.cause, "registry");
+      }
     }
     const server = await startWebServer({
       runtimes,
+      unavailable: unavailableProjects,
       assetsDirectory,
       port: parsed.port,
+      onForgetProject: async (key) => {
+        const found = [...tracked.entries()].find(([, value]) => value.key === key);
+        if (!found) {
+          const folder = [...unavailableKeys.entries()].find(([, value]) => value === key)?.[0];
+          if (folder) await removeRegisteredPath(folder).catch(() => undefined);
+          return;
+        }
+        if (found[1].source === "registry") await removeRegisteredPath(found[0]);
+        tracked.delete(found[0]);
+        seen.delete(found[0]);
+      },
     });
+    let registryWarned = false;
+    let syncing = false;
+    const registryTimer = setInterval(() => {
+      if (syncing || v["--state-dir"]) return;
+      syncing = true;
+      void (async () => {
+        const registered = await safeRegistryRead();
+        if (!registered) {
+          if (!registryWarned) {
+            registryWarned = true;
+            process.stderr.write("PROJECT_REGISTRY_UNSAFE. Registered projects were not loaded.\n");
+          }
+          return;
+        }
+        registryWarned = false;
+        await reconcileRegistryProjects({
+          registered,
+          active: [...tracked].map(([projectPath, value]) => ({ path: projectPath, source: value.source, ...(value.toolPolicy ? { toolPolicy: value.toolPolicy } : {}) })),
+          keyFor: folder => tracked.get(folder)?.key,
+          detach: key => server.directory.detach(key),
+          drop(folder) { tracked.delete(folder); seen.delete(folder); },
+          open: project => openWorkspace(project.path, "registry", project.toolPolicy) as Promise<WebRuntime | undefined>,
+          attach: runtime => server.directory.attach(runtime),
+          markUnavailable: project => server.directory.markUnavailable(project),
+          clearUnavailable: key => server.directory.clearUnavailable(key),
+          unavailableKey: folder => unavailableKeys.get(folder),
+          rememberUnavailable: (folder, cause) => rememberUnavailable(folder, cause, "registry"),
+        });
+      })().catch(() => undefined).finally(() => { syncing = false; });
+    }, 1000);
     let stopping = false;
     const stop = () => {
       if (stopping) return;
       stopping = true;
+      clearInterval(registryTimer);
       void server.close().catch(() => {
         process.stderr.write("WEB_SHUTDOWN_FAILED\n");
         process.exitCode = 1;

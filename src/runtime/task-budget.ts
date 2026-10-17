@@ -2,6 +2,7 @@ import { taskUsageAdmission, type TaskUsageAdmission } from './task-usage-contex
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { bindBudgetLedgerStore, budgetLedgerScope } from "./budget-ledger-scope.js";
 import { createAgentBudgetCoordinator, fingerprintAgentHarness, serializeJsonValue,
   type AgentRunState, type AgentStoreScope, type LanguageModelMiddleware, type TokenUsage, type ToolSet } from '@zhivex-ai/core';
 import type { AgentRunStore } from '@zhivex-ai/agents/ops';
@@ -99,10 +100,10 @@ export class TaskBudget {
     this.accountRunId = TaskBudget.accountId(scope, taskId);
     this.policy = structuredClone(account.policy) as TaskBudgetPolicy & { closureReserve: number };
     const budgetId = this.accountRunId;
-    this.coordinator = createAgentBudgetCoordinator({ store, scope, budgetId, limits: this.policy.limits });
+    this.coordinator = createAgentBudgetCoordinator({ store: bindBudgetLedgerStore(store, scope), scope, budgetId, limits: this.policy.limits });
     this.coordinatorId = this.coordinator.id;
     this.budgetRunId = `budget_${fingerprintAgentHarness({ budgetId, scope }).slice('sha256:'.length)}`;
-    this.budgetScope = { tenantId: scope.tenantId, ...(scope.userId ? { userId: scope.userId } : {}), namespace: '__zhivex_budget__' };
+    this.budgetScope = budgetLedgerScope(scope);
   }
   static accountId(scope: AgentStoreScope, taskId: string) {
     return `task_budget_${fingerprintAgentHarness({ scope, taskId }).slice('sha256:'.length)}`;

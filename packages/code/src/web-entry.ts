@@ -3,6 +3,7 @@ import { createHarness, resolveHarnessConfig, providerAvailability } from "@zhiv
 import { bundledModelCatalog, catalogModels } from "@zhivex-ai/harness/code-support";
 import { protectPersistenceSecret } from "@zhivex-ai/harness/desktop/v1/state";
 import { runWebCli } from "../../web/src/cli.js";
+import { toWebModelChoice } from "../../web/src/model-choice.js";
 import { CliCredentials, credentialModel } from "./cli/cli-credentials.js";
 import { interactiveBudgetOptions } from "./cli/console/console-budget.js";
 import { applyCliProfile, resolveCliDefaults } from "./cli/cli-profiles.js";
@@ -54,9 +55,13 @@ export async function runWeb(args: string[]) {
         const status = await credentials.inspect(provider.id);
         return catalogModels(bundledModelCatalog, provider.id)
           .filter(model => model.capabilities.includes("chat") && model.capabilities.includes("tools") && model.lifecycle !== "retired")
-          .map(model => ({provider: provider.id, providerName: provider.name, model: model.id,
-            name: model.name, configured: status.configured, capabilities: model.capabilities,
-            validation: model.validation}));
+          .map(model => toWebModelChoice({
+            provider: provider.id, providerName: provider.name, id: model.id, name: model.name,
+            configured: status.configured, capabilities: model.capabilities, validation: model.validation,
+            group: model.group, order: model.order,
+            ...(model.limits ? { limits: { contextWindowTokens: model.limits.contextWindowTokens, contextWindowType: model.limits.contextWindowType } } : {}),
+            ...(model.pricing ? { pricing: model.pricing } : {}),
+          }));
       }))).flat();
     },
   );

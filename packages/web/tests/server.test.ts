@@ -510,6 +510,70 @@ test("real duration threshold cancels through the existing owner and is not a pa
   expect(prefs.preferences.task).toBeNull();
 });
 
+test("the local web token is a single-use 64 character secret", async () => {
+  const f = await setup();
+  expect(f.token).toMatch(/^[a-f0-9]{64}$/);
+  const guessed = await fetch(f.origin + "/api/connect", {
+    method: "POST",
+    headers: f.headers,
+    body: JSON.stringify({ token: "ab".repeat(32) }),
+  });
+  expect(guessed.status).toBe(401);
+  const replay = await fetch(f.origin + "/api/connect", {
+    method: "POST",
+    headers: f.headers,
+    body: JSON.stringify({ token: f.token }),
+  });
+  expect(replay.status).toBe(401);
+  const second = await fixture();
+  cleanups.push(second.cleanup);
+  const host = await second.boot();
+  cleanups.push(() => host.server.close());
+  const otherToken = new URL(host.server.launchUrl).hash.slice(9);
+  expect(otherToken).toMatch(/^[a-f0-9]{64}$/);
+  expect(otherToken).not.toBe(f.token);
+  const foreign = await fetch(f.origin + "/api/connect", {
+    method: "POST",
+    headers: f.headers,
+    body: JSON.stringify({ token: otherToken }),
+  });
+  expect(foreign.status).toBe(401);
+});
+
+test("an approval ticket from one project cannot decide another project's files", async () => {
+  const f = await setup();
+  const started = await f.call("start", {
+    sessionId: f.session.sessionId,
+    expectedRevision: f.session.revision,
+    idempotencyKey: "cross-project",
+    prompt: "edit-probe",
+  });
+  const review = await f.call("review", {
+    sessionId: f.session.sessionId,
+    runId: started.data.run.runId,
+  }) as unknown as { ticketId: string };
+  const listed = await fetch(f.origin + "/api/context", {
+    method: "POST",
+    headers: { ...f.headers, cookie: f.cookie, "x-zhivex-csrf": f.csrf },
+    body: "{}",
+  });
+  const body = await listed.json() as { workspaces: { key: string }[] };
+  const other = body.workspaces.find(workspace => workspace.key !== f.workspaceKey);
+  expect(other).toBeTruthy();
+  const crossed = await fetch(f.origin + "/api/action", {
+    method: "POST",
+    headers: { ...f.headers, cookie: f.cookie, "x-zhivex-csrf": f.csrf },
+    body: JSON.stringify({
+      action: "decide",
+      workspaceKey: other!.key,
+      ticketId: review.ticketId,
+      approve: true,
+    }),
+  });
+  expect(await crossed.json()).toMatchObject({ error: { code: "REVIEW_REQUIRED" } });
+  expect(await readFile(f.workspace + "/review.txt", "utf8")).toBe("before\n");
+});
+
 test("limits writes retain existing pairing, strict schema and revision guards", async () => {
   const f = await setup();
   const response = await fetch(f.origin + "/api/action", { method: "POST", headers: f.headers, body: JSON.stringify({ action: "configureLimits", workspaceKey: f.workspaceKey, scope: "project", settings: emptyLimitSettings(), expectedRevision: 0 }) });

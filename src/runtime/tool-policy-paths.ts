@@ -1,10 +1,11 @@
 import { z } from 'zod';
-import { applyEditProposalInputSchema, editProposalInputSchema, moveFileInputSchema, quarantineFileInputSchema, workspaceFilePathSchema } from '../workspace/edit-contracts.js';
+import { applyEditProposalInputSchema, editProposalInputSchema, moveFileInputSchema, quarantineFileInputSchema, restoreFileInputSchema, workspaceFilePathSchema } from '../workspace/edit-contracts.js';
 import { replacementEditSchema } from '../workspace/replacement-edits.js';
 import type { HarnessToolPolicy } from './tool-policy.js';
 
-// Versioned together with the schema-bound projections below. Directory searches,
-// shell commands and opaque restore IDs do not enumerate exact touched files.
+// Versioned together with the schema-bound projections below. Directory searches
+// and shell commands do not enumerate exact touched files. Restore enumerates the
+// required destination, not the quarantine id.
 export const BUILTIN_TOOL_POLICY_PATHS_VERSION = 'builtin-exact-files-v1';
 const one = z.object({ path: workspaceFilePathSchema });
 const many = z.object({ files: z.array(one).min(1).max(100) });
@@ -16,7 +17,8 @@ const resolvers: Record<string, (input: unknown) => readonly string[]> = {
   apply_patch: input => applyEditProposalInputSchema.parse(input).changes.map(change => change.path),
   apply_reviewed_replacement: input => [replacementEditSchema.parse(input).path],
   move_file: input => { const parsed = moveFileInputSchema.parse(input); return [parsed.source, parsed.destination]; },
-  quarantine_file: input => [quarantineFileInputSchema.parse(input).path]
+  quarantine_file: input => [quarantineFileInputSchema.parse(input).path],
+  restore_file: input => [restoreFileInputSchema.parse(input).destination]
 };
 
 export const validateBuiltinToolPolicy = (policy: HarnessToolPolicy, tools: readonly string[]) => {

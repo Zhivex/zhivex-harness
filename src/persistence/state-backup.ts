@@ -20,6 +20,7 @@ import { validateStateDirectory } from "./state-directory.js";
 import { validateRecordedWorkspace } from "./recorded-workspace.js";
 import { sdkCanonicalKey, sdkLegacyKey, sdkRunKeyMatches } from "./sdk-store-identity.js";
 import { assertTaskBudgetBackupLinks } from '../runtime/task-budget.js';
+import { BUDGET_LEDGER_NAMESPACE, BUDGET_OWNER_NAMESPACE_KEY, budgetLedgerNamespace } from "../runtime/budget-ledger-scope.js";
 
 export const HARNESS_STATE_BACKUP_SCHEMA_VERSION = 1 as const;
 export const HARNESS_STATE_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
@@ -201,7 +202,9 @@ const coordinatorIds = (runs: readonly { state: unknown }[]) => new Set(runs.fla
 const validateBudgetLedger = (config: HarnessConfig, run: z.infer<typeof runRecordSchema>, identities: ReadonlySet<string>) => {
   const state = validatedRunState(run.state, `Budget ledger ${run.key}`);
   const identity = state.metadata?.budgetIdentity;
-  if (state.scope?.namespace !== "__zhivex_budget__" || state.scope?.tenantId !== config.scope.tenantId ||
+  const ownerNamespace = config.scope.namespace;
+  if (!ownerNamespace || state.scope?.namespace !== budgetLedgerNamespace(ownerNamespace) || state.metadata?.[BUDGET_OWNER_NAMESPACE_KEY] !== ownerNamespace ||
+    state.scope?.tenantId !== config.scope.tenantId ||
     (state.scope?.userId ?? undefined) !== (config.scope.userId ?? undefined) || state.provider !== "zhivex" || state.modelId !== "budget-coordinator" ||
     state.metadata?.budgetCoordinator !== true || typeof identity !== "string" || !identities.has(identity) ||
     !/^budget_[a-f0-9]{64}$/.test(state.runId) || !sdkRunKeyMatches(run.key, state.scope, state.runId)) {
@@ -368,8 +371,10 @@ const readPayload = async (config: HarnessConfig, recordedWorkspace?: string, ac
       const metadata = state.metadata as Record<string, unknown> | undefined;
       if (typeof metadata?.budgetIdentity !== "string" || !identities.has(metadata.budgetIdentity)) {
         const scope = state.scope as Record<string, unknown> | undefined;
-        if (scope?.namespace === "__zhivex_budget__" && scope.tenantId === config.scope.tenantId &&
-          (scope.userId ?? undefined) === (config.scope.userId ?? undefined)) {
+        const sameTenant = scope?.tenantId === config.scope.tenantId &&
+          (scope?.userId ?? undefined) === (config.scope.userId ?? undefined);
+        const boundNamespace = config.scope.namespace ? budgetLedgerNamespace(config.scope.namespace) : undefined;
+        if (sameTenant && (scope?.namespace === BUDGET_LEDGER_NAMESPACE || scope?.namespace === boundNamespace)) {
           throw new HarnessStateConflictError("An unlinked shared budget ledger cannot be safely assigned to this backup scope; retain the original database.");
         }
         return [];

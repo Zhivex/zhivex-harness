@@ -138,8 +138,8 @@ export type QuarantineFileInput = z.infer<typeof quarantineFileInputSchema>;
 
 export const restoreFileInputSchema = z.strictObject({
   quarantineId: z.string().min(1).max(200).regex(/^[A-Za-z0-9._:-]+$/),
-  destination: workspaceFilePathSchema.optional(),
-  expectedDigest: fileDigestSchema.optional()
+  destination: workspaceFilePathSchema.describe("Required workspace path for the quarantined bytes. Restore does not fall back to the original path."),
+  expectedDigest: fileDigestSchema.describe("Required sha256 of the quarantined bytes the operator reviewed.")
 });
 
 export type RestoreFileInput = z.infer<typeof restoreFileInputSchema>;

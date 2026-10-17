@@ -90,8 +90,13 @@ try {
   await page.getByLabel('Total tokens', { exact: true }).fill('68192');
   await capture('task-definition-desktop');
   await page.getByRole('button', { name: 'Start governed task', exact: true }).click();
+  async function openProject(target, name) {
+    if ((await target.locator('.drawer-root').getAttribute('hidden')) !== null)
+      await target.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await target.getByRole('button', { name: `Open project ${name}`, exact: true }).click();
+  }
   async function approve() {
-    await page.getByRole('button', { name: 'Review proposed operation', exact: true }).first().click();
+    await page.getByLabel('Approval review', { exact: true }).waitFor();
     const decision = page.getByRole('button', { name: /^Approve/ });
     await decision.waitFor();
     const files = page.locator('[data-action="view-file"]');
@@ -102,12 +107,12 @@ try {
     await decision.click();
   }
   // Existing exact-review controls retain their original labels and authority.
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'waiting approval');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Needs you');
   await capture('task-pending-desktop');
   await approve();
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'waiting approval');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Needs you');
   await approve();
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'completed');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Done');
   await page.getByText('Checks: verified for these bytes', { exact: true }).waitFor();
   const beforeReview = await requests();
   await page.getByRole('button', { name: 'Review task', exact: true }).click();
@@ -133,6 +138,7 @@ try {
   const peer = await context.newPage();
   await peer.addInitScript(csrf => globalThis.sessionStorage.setItem('zhivex-web-csrf', csrf), await page.evaluate(() => globalThis.sessionStorage.getItem('zhivex-web-csrf')));
   await peer.goto(new URL(url).origin);
+  await peer.getByRole('button', { name: 'Sessions', exact: true }).click();
   await peer.locator('.session-row').first().click();
   await peer.getByRole('button', { name: 'Review task', exact: true }).click();
   await peer.getByLabel('I reviewed the diff and all human requirements for this snapshot.').check();
@@ -163,17 +169,18 @@ try {
   let continuations = 0;
   page.on('request', request => { if (request.url().endsWith('/api/action') && request.postDataJSON()?.action === 'taskContinue') continuations++; });
   await page.getByRole('button', { name: 'Confirm continuation', exact: true }).evaluate(e => { e.click(); e.click(); });
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'waiting approval');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Needs you');
   await approve();
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'completed');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Done');
   assert.equal(continuations, 1);
   await page.getByText('Checks: verified for these bytes', { exact: true }).waitFor();
   scenarios.push({ id: 'corrected-task-explicit-continuation-double-click', status: 'passed', continuationCommands: continuations });
   const afterContinuation = await requests();
-  await page.getByLabel('WORKSPACE', { exact: true }).selectOption({ label: 'beacon' });
+  await openProject(page, 'beacon');
   await page.waitForFunction(() => !document.querySelector('#task-evidence .count')); 
   assert.equal(await page.getByText('Revision 2', { exact: true }).count(), 0);
-  await page.getByLabel('WORKSPACE', { exact: true }).selectOption({ label: 'atlas' });
+  await openProject(page, 'atlas');
+  await page.getByRole('button', { name: 'Sessions', exact: true }).click();
   await page.locator('.session-row').first().click();
   await page.getByText('Revision 2', { exact: true }).waitFor();
   assert.equal(await requests(), afterContinuation);
@@ -190,11 +197,11 @@ try {
   await page.getByLabel('Output tokens', { exact: true }).fill('8192');
   await page.getByLabel('Total tokens', { exact: true }).fill('68192');
   await page.getByRole('button', { name: 'Start governed task', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'running');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Running');
   await page.getByRole('button', { name: 'Cancel run', exact: true }).click();
-  await page.waitForFunction(() => ['cancelled', 'Reconciliation required'].includes(document.querySelector('.pill')?.textContent));
+  await page.waitForFunction(() => ['Cancelled', 'Reconciliation required'].includes(document.querySelector('.pill')?.textContent));
   if (await page.getByRole('alert').count()) await page.getByRole('button', { name: 'Reconnect' }).click();
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'cancelled');
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Cancelled');
   await page.getByText('Host recorded cancellation. Provider stop remains unconfirmed; prior effects are retained.', { exact: true }).waitFor();
   await page.getByText('Task budget and continuation', { exact: true }).click();
   await page.getByText(/Cost is incomplete/).waitFor();
@@ -209,6 +216,7 @@ try {
   await stop();
   const restartedUrl = await launch();
   await page.goto(restartedUrl);
+  await page.getByRole('button', { name: 'Sessions', exact: true }).click();
   await page.locator('.session-row').first().click();
   await page.getByText('Host recorded cancellation. Provider stop remains unconfirmed; prior effects are retained.', { exact: true }).waitFor();
   assert.equal(await requests(), afterCancel);
