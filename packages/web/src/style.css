@@ -1028,6 +1028,7 @@ h2 {
 .composer { background: #1a1b1e; border-radius: 24px; border-color: rgb(182 160 255 / 0.16); box-shadow: 0 12px 40px -18px rgb(0 0 0 / 0.8); }
 .composer:focus-within { border-color: #b6a0ff; }
 .composer .primary { border-radius: 999px; }
+.app-shell .composer > button.zhivex-button--primary { display: none; }
 .model-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; flex: 1; }
 .model-picker select { width: 100%; max-width: 330px; min-width: 0; font-size: 12px; border-radius: 10px; }
 .model-picker button { border-color: #b6a0ff; padding: 5px 8px; font-size: 12px; }

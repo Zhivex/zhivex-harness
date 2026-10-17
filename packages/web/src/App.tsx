@@ -237,6 +237,7 @@ export function App() {
         setConnected(true);
         const saved = localStorage.getItem(`zhivex-session:${workspaceKey}`);
         const chosen = r.data.sessions.find((s) => s.sessionId === saved) ?? r.data.sessions[0];
+        setStateLoading(Boolean(chosen));
         setSession(chosen);
         setPrompt(drafts.current.read({ workspaceKey, sessionId: chosen?.sessionId ?? "" }).text);
       })
@@ -1061,8 +1062,9 @@ export function App() {
             </div>}
             <Composer className="composer" value={prompt} onValueChange={editPrompt} onSend={value => { void start(value); }} onStop={() => { void cancel(); }}
               status={active(run?.status ?? "") || cancelling || reviewWaiting ? "streaming" : "ready"} allowAttachments={false}
-              labels={{ inputLabel: "Task prompt", send: hasTask ? "Use task review to continue" : "Run task", stop: run?.status === "cancel_requested" ? "Stop requested" : cancelling ? "Requesting cancellation…" : "Cancel run", inputPlaceholder: "Describe a task for this workspace…" }}
-              textareaProps={{ "aria-describedby": "composer-help", maxLength: 65536, disabled: !canMutate || cancelling || hasTask || (Boolean(pending) && pending !== "Starting task…" && !busy) }}
+              labels={{ inputLabel: "Task prompt", send: "Send composer", stop: run?.status === "cancel_requested" ? "Stop requested" : cancelling ? "Requesting cancellation…" : "Cancel run", inputPlaceholder: "Describe a task for this workspace…" }}
+              textareaProps={{ "aria-describedby": "composer-help", maxLength: 65536, disabled: cancelling || loading || (Boolean(pending) && pending !== "Starting task…" && !busy) }}
+              trailingActions={<button type="button" className="primary" disabled={!prompt.trim() || !canMutate || busy || hasTask} onClick={() => void start()}>{hasTask ? "Use task review to continue" : "Run task"}</button>}
               leadingActions={<ModelPicker workspaceKey={workspaceKey} choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
                 configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
                 unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
