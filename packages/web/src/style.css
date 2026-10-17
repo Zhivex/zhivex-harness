@@ -1325,6 +1325,9 @@ h2 {
 .app-shell > header.topbar .topbar-chip:hover,
 .app-shell > header.topbar .connection-action:hover { background: var(--chip-bg-hover); }
 .app-shell > header.topbar .limits-launcher { max-width: 220px; }
+.app-shell > header.topbar .approval-mode { max-width: 8.5rem; margin-left: 8px; }
+.approval-choice { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; }
+.approval-choice input { margin-top: 4px; }
 .app-shell > header.topbar .limits-launcher span {
   overflow: hidden;
   text-overflow: ellipsis;

@@ -39,6 +39,7 @@ export interface ConsoleComposerInput {
   attachments?: number;
   automaticApprovals?: boolean;
   approvalMode?: "ask" | "auto" | "restricted";
+  autoApproveMode?: "manual" | "auto-edits" | "auto-limits";
   runUsage?: { estimatedUsd: number | null; limitUsd: number | null; usageComplete: boolean };
   nextLimitUsd?: number | null;
   contextTokens?: number;
@@ -50,8 +51,11 @@ const usd = (value: number | null | undefined) => typeof value === "number" ? `$
 const money = (value: number) => `$${value.toFixed(6)}`;
 const pendingDecision = (status: string) => status.startsWith("Waiting for your decision") || status.startsWith("approval pending");
 
-/** Ask / auto / restricted stay the same three modes. The ask phrase matches the idle composer. */
-const approvalPhrase = (input: ConsoleComposerInput) => input.approvalMode === "restricted" ? "restricted approvals"
+/** Ask / auto / restricted stay the same three modes. Opt-in auto-approve names itself when set. */
+const approvalPhrase = (input: ConsoleComposerInput) => input.autoApproveMode === "auto-edits" ? "auto-edits · m for manual"
+  : input.autoApproveMode === "auto-limits" ? "auto-limits · m for manual"
+  : input.autoApproveMode === "manual" ? "manual approvals"
+  : input.approvalMode === "restricted" ? "restricted approvals"
   : input.approvalMode === "auto" || input.automaticApprovals ? "auto approvals" : "ask before changes";
 
 /** One composer/dock line. Cost appears only for a real cap or an incomplete capped run. */
@@ -117,7 +121,8 @@ export const consoleStateLines = (input: ConsoleComposerInput, columns = 80) =>
 /** The service client keeps the previous four-line composer. Direct chat uses one status line. */
 const legacyStateLines = (input: ConsoleComposerInput, columns = 80) => {
   const width = consoleWidth(columns);
-  const policy = input.approvalMode === "restricted" ? "restricted approvals"
+  const policy = input.autoApproveMode ? approvalPhrase(input)
+    : input.approvalMode === "restricted" ? "restricted approvals"
     : input.approvalMode === "auto" || input.automaticApprovals ? "auto approvals" : "review approvals";
   const cap = (value: number | null | undefined) => typeof value === "number" ? money(value) : "none";
   return [

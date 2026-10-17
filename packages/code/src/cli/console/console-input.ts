@@ -146,6 +146,8 @@ export class ConsoleInput {
   private reviewOffset = 0;
   private reviewPage = 1;
   private reviewNotice: string | undefined;
+  private reviewHunks: readonly number[] = [];
+  private manualRequest: (() => void) | undefined;
   private reviewWrapped: {columns: number; lines: readonly string[]} | undefined;
   private selectionMatches() {
     const indexed = this.selection?.items.map((item, index) => ({...item, index})) ?? [];
@@ -169,7 +171,7 @@ export class ConsoleInput {
       write: text => { this.output.write(text); }, ask: prompt => this.question(prompt),
     });
     this.selection = {title, items};
-    this.menuSelection = 0;
+    if (!this.reviewing) this.menuSelection = 0;
     try {
       if (!this.reviewing) this.output.write(`\n${sanitizeTerminalText(title)}\n`);
       const answer = this.question(this.reviewing ? "" : "Filter > ", true);
@@ -178,6 +180,8 @@ export class ConsoleInput {
       return value === "" ? undefined : items[Number(value)]?.value;
     } finally { this.hideMenu(); this.selection = undefined; }
   }
+  /** One-key drop to Manual while a review is open. The current change still needs a decision. */
+  onManual(handler: () => void) { this.manualRequest = handler; }
   async review<T>(review: ConsoleReview, items: readonly {value: T; label: string; detail?: string; key?: string}[]): Promise<T | undefined> {
     if (!this.terminal || process.env.TERM === "dumb" || ((this.output as Writable & {rows?: number}).rows ?? 24) < 24 ||
       ((this.output as Writable & {columns?: number}).columns ?? 80) < 32) {
@@ -189,6 +193,8 @@ export class ConsoleInput {
     Object.assign(this.reader, { line: "", cursor: 0 });
     this.reviewing = review;
     this.reviewOffset = 0;
+    this.reviewHunks = [];
+    this.menuSelection = -1;
     this.reviewNotice = undefined;
     this.reviewWrapped = undefined;
     this.output.write("\x1b[?1049h");
@@ -274,15 +280,25 @@ export class ConsoleInput {
 
   private renderMenu() {
     if (this.reviewing && this.selection && this.pending) {
-      if (this.menuQuery !== this.reader.line) { this.menuSelection = 0; this.menuQuery = this.reader.line; }
+      if (!this.reviewing && this.menuQuery !== this.reader.line) { this.menuSelection = 0; this.menuQuery = this.reader.line; }
       const matches = this.selectionMatches();
-      this.menuSelection = Math.max(0, Math.min(this.menuSelection, matches.length - 1));
+      if (this.menuSelection >= matches.length) this.menuSelection = matches.length ? matches.length - 1 : -1;
       const columns = (this.output as Writable & {columns?: number}).columns ?? 80;
-      if (!this.reviewWrapped || this.reviewWrapped.columns !== columns) this.reviewWrapped = {
-        columns, lines: consoleLines(this.reviewing.body, consoleWidth(columns)),
-      };
+      const width = consoleWidth(columns);
+      let wrappedLines: readonly string[];
+      if (this.reviewing.layout) {
+        const laid = this.reviewing.layout(width);
+        this.reviewHunks = laid.hunks;
+        wrappedLines = laid.lines;
+      } else {
+        this.reviewHunks = [];
+        if (!this.reviewWrapped || this.reviewWrapped.columns !== columns) this.reviewWrapped = {
+          columns, lines: consoleLines(this.reviewing.body, width),
+        };
+        wrappedLines = this.reviewWrapped.lines;
+      }
       const frame = reviewFrame({...this.reviewing, ...(this.reviewNotice ? {notice: this.reviewNotice} : {})}, matches, this.menuSelection, this.reader.line, this.reviewOffset,
-        columns, (this.output as Writable & {rows?: number}).rows ?? 24, this.reviewWrapped.lines);
+        columns, (this.output as Writable & {rows?: number}).rows ?? 24, wrappedLines);
       this.reviewOffset = frame.offset;
       this.reviewPage = frame.capacity;
       const color = terminalSupportsColor(this.terminal);
@@ -449,6 +465,21 @@ export class ConsoleInput {
         this.reviewNotice = undefined;
         this.hideMenu();
         if (this.reviewing && plain.length === 1 && plain !== "\n" && plain !== "\r") {
+          if ((plain === "n" || plain === "p") && this.reviewHunks.length) {
+            const current = this.reviewOffset;
+            const target = plain === "n"
+              ? this.reviewHunks.find(hunk => hunk > current) ?? this.reviewHunks[0]
+              : [...this.reviewHunks].reverse().find(hunk => hunk < current) ?? this.reviewHunks.at(-1);
+            this.reviewOffset = target ?? 0;
+            this.renderMenu();
+            continue;
+          }
+          if (plain === "m" && this.manualRequest) {
+            this.manualRequest();
+            this.reviewNotice = "Approvals are manual. This change still needs a decision.";
+            this.renderMenu();
+            continue;
+          }
           if (/^[a-z]$/.test(plain)) {
             const index = this.selection?.items.findIndex(item => item.key === plain) ?? -1;
             if (index >= 0) {
@@ -462,7 +493,8 @@ export class ConsoleInput {
         if (this.selection && !/[\u0000-\u001f\u007f]/.test(plain) &&
             Buffer.byteLength(this.reader.line) + Buffer.byteLength(plain) > MAX_CONSOLE_INPUT_BYTES) continue;
         if (this.selection && (plain === "\n" || plain === "\r")) {
-          if (this.selectionMatches().length) this.finishSelection(true);
+          if (this.reviewing && this.menuSelection < 0) this.reviewNotice = "Highlight an action with the arrow keys. Enter does not approve or reject yet.";
+          else if (this.selectionMatches().length) this.finishSelection(true);
         } else if (plain === "?" && !this.selection && this.pending && this.completeCommands && !this.historySearch && !this.reader.line && !this.shortcutsShown) {
           this.shortcutsShown = true;
           this.output.write("\n" + CONSOLE_SHORTCUTS + "\n");
@@ -517,7 +549,8 @@ export class ConsoleInput {
         const previous = key.name === "up";
         key.name = "console-select"; key.meta = true;
         const count = Math.max(1, this.selectionMatches().length);
-        this.menuSelection = (this.menuSelection + (previous ? -1 : 1) + count) % count;
+        if (this.reviewing && this.menuSelection < 0) this.menuSelection = previous ? count - 1 : 0;
+        else this.menuSelection = (this.menuSelection + (previous ? -1 : 1) + count) % count;
       } else if (key.ctrl && key.name === "r") { key.name = "console-select"; key.ctrl = false; key.meta = true; }
       return;
     }

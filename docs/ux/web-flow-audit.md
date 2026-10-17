@@ -22,6 +22,12 @@ Consecutive read-only calls render as one collapsible “Explored N files” ite
 
 Approve and reject stay in the change-review panel. Every file must be viewed before approve. Enter does not decide. The stream shows a review card with no decision buttons.
 
+The header shows Manual, Auto-edits, or Auto with limits. Manual is the default. Auto-edits applies file edits inside the project. Auto with limits also runs commands named in the workspace allowlist. Network, secrets, git push, package publish, writes outside the project, deletes outside the project, and anything over a spend or token limit still wait for a person. Press m to return to Manual for this session. Each auto-approved edit is written to the audit log and can be undone while the file still matches the approved text.
+
+## Terminal review
+
+The terminal review names what the change does, lists each file with +/- counts, and shows line numbers with word-level markers. Unchanged context stays collapsed until Show full diff. n and p move between hunks. Nothing is highlighted until an arrow key, so Enter does not reject or approve by accident.
+
 ## Change review
 
 A read-only run says that nothing is waiting for approval. A run with no activity yet says that changes and commands will show up here first.

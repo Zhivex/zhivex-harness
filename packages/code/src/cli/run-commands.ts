@@ -1,5 +1,7 @@
 import { cliToolExecution } from "./tool-execution.js";
 import { approvalFileDiff } from "./terminal/file-diff.js";
+import { openAutoApproveController } from "./auto-approve-setup.js";
+import { readWorkspaceSnapshot } from "../../../../src/approvals/auto-approve.js";
 import { TerminalMarkdown } from "./terminal/terminal-markdown.js";
 import { resolveHarnessConfig, type HarnessConfigInput, type HarnessProvider, type HarnessSubagentProfile } from "@zhivex-ai/harness/engine";
 import { createHarness, runHarness } from "@zhivex-ai/harness/engine";
@@ -36,6 +38,7 @@ export const runOnce = async (options: CliOptions) => {
     throw new CliUsageError("Missing task. Example: zhivex-code run \"fix the tests\".");
   }
   const { harness, routes } = await createConfiguredHarness(options);
+  const autoApprove = await openAutoApproveController(harness.config.workspace, options);
   const tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown } = { streamedText: false };
   let closeAttempted = false;
   try {
@@ -51,7 +54,12 @@ export const runOnce = async (options: CliOptions) => {
       {
         onEvent: streamSink(options, tracker),
         resolveApprovals: terminalApprovalResolver(options.approvalMode ?? options.yes, undefined,
-          { workspace: harness.config.workspace, fileDiff: approval => approvalFileDiff(harness.workspace, approval) })
+          { workspace: harness.config.workspace,
+            fileDiff: approval => approvalFileDiff(harness.workspace, approval),
+            fileDiffFull: approval => approvalFileDiff(harness.workspace, approval, Number.POSITIVE_INFINITY),
+            autoApprove: () => autoApprove.policy(options.usageLimitUsd === 0),
+            readText: relative => readWorkspaceSnapshot(harness.config.workspace, relative),
+            auditRoot: harness.config.workspace })
       }
     );
     closeAttempted = true;

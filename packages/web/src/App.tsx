@@ -22,6 +22,7 @@ import { ComposerDrafts } from "./composer-drafts.js";
 import "./composer.css";
 import { counted, limitsReadError, limitsSaveError } from "./limit-copy.js";
 import { LimitsDialog } from "./LimitsDialog.js";
+import { ApprovalModeDialog, type ApprovalMode, type ApprovalRecord } from "./ApprovalModeDialog.js";
 import type { LimitSettings, LimitScope } from "./limit-settings.js";
 import type { LimitPreferences } from "./limit-store.js";
 import type { RunLimits, LimitPricing } from "./limit-observer.js";
@@ -105,6 +106,10 @@ export function App() {
   const [refresh, setRefresh] = useState(0);
   const [limitsInfo, setLimitsInfo] = useState<LimitsInfo>();
   const [limitsOpen, setLimitsOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("manual");
+  const [approvalRecords, setApprovalRecords] = useState<ApprovalRecord[]>([]);
+  const [approvalSaving, setApprovalSaving] = useState(false);
   const [limitsSaving, setLimitsSaving] = useState(false);
   const limitsSavingRef = useRef(false);
   const [limitsError, setLimitsError] = useState("");
@@ -142,6 +147,9 @@ export function App() {
     void action<LimitsInfo>(workspaceKey, "limits").then(info => {
       if (!stopped) setLimitsInfo(info);
     }).catch(() => { if (!stopped) setLimitsError(limitsReadError); });
+    void action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "autoApprove", { sessionId: selection.current.sessionId }).then(info => {
+      if (!stopped) { setApprovalMode(info.mode); setApprovalRecords(info.records); }
+    }).catch(() => undefined);
     return () => { stopped = true; };
   }, [workspaceKey, refresh, run?.runId]);
   async function saveLimits(scope: LimitScope, settings: LimitSettings) {
@@ -568,10 +576,20 @@ export function App() {
     await perform("Loading exact review…", async () => {
       // Start the local cutoff before the host issues its five-minute ticket.
       const deadline = Date.now() + 5 * 60_000;
-      const r = await action<TicketedApprovalReview>(workspaceKey, "review", {
+      const r = await action<TicketedApprovalReview & { autoApproved?: boolean; data?: { session?: HarnessClientSession; run?: HarnessClientRun }; records?: ApprovalRecord[] }>(workspaceKey, "review", {
         sessionId: session.sessionId,
         runId: run.runId,
       });
+      if (r.autoApproved) {
+        if (selection.current.workspaceKey === selected.workspaceKey && selection.current.sessionId === selected.sessionId) {
+          if (r.data?.session) setSession(r.data.session);
+          if (r.data?.run) setRun(r.data.run);
+          if (r.records) setApprovalRecords(r.records);
+          setReview(undefined);
+          setAnnounce("Auto-approved this change. Press m for Manual. Undo is in Approvals.");
+        }
+        return;
+      }
       if (
         selection.current.workspaceKey === selected.workspaceKey &&
         selection.current.sessionId === selected.sessionId
@@ -745,6 +763,14 @@ export function App() {
   }, [workspaceKey, sessions, sessionsLoading]);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      if ((event.key === "m" || event.key === "M") && !event.metaKey && !event.ctrlKey && !event.altKey && !isTextField(event.target) && !modelOpen && !limitsOpen && !approvalOpen && approvalMode !== "manual") {
+        event.preventDefault();
+        void action(workspaceKey, "setAutoApprove", { scope: "session", mode: "manual", sessionId: session?.sessionId ?? "" }).then(() => {
+          setApprovalMode("manual");
+          setAnnounce("Approvals are manual for this session.");
+        }).catch(() => setError("Could not switch approvals to Manual."));
+        return;
+      }
       if (event.key === "Escape") {
         if (modelOpen) { setModelOpen(false); return; }
         if (drawerOpen) { setDrawerOpen(false); drawerButton.current?.focus(); return; }
@@ -850,6 +876,7 @@ export function App() {
   const sessionMap: Record<string, HarnessClientSession[] | undefined> = { ...extraSessions };
   if (workspaceKey) sessionMap[workspaceKey] = sessionsLoading ? undefined : sessions;
   const connectionLabel = !connected ? "Not connected" : needsReconcile ? "Refresh needed" : "Connected";
+  const approvalLabel = approvalMode === "auto-edits" ? "Auto-edits" : approvalMode === "auto-limits" ? "Auto-limits" : "Manual";
   const limitsLabel = limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(threshold => threshold.value !== null)
     ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}`
     : limitsInfo && Object.values(limitsInfo.host).some(value => value !== null) ? "Default budgets" : "No limits configured";
@@ -927,6 +954,7 @@ export function App() {
               {pendingItems.length === 1 ? "1 needs you" : `${pendingItems.length} need you`}
             </button>
             : <span className="connection-label"><span className="status-dot" aria-hidden="true" />{connectionLabel}</span>}
+          <button type="button" className="subtle topbar-chip approval-mode" aria-label={`Approvals: ${approvalLabel}. Press m for Manual.`} title="Approvals. Press m for Manual." onClick={() => setApprovalOpen(true)}>{approvalLabel}</button>
         </div>
         <div className="topbar-actions">
           <button ref={drawerButton} type="button" className="subtle topbar-chip" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
@@ -1136,7 +1164,7 @@ export function App() {
               <button type="button" className="approve" data-decision="approve" aria-describedby={!viewed.allViewed ? "review-viewed-hint" : undefined}
                 disabled={!canMutate || !review?.canApprove || !viewed.allViewed || Boolean(reviewInvalid)} onKeyDown={preventDecisionEnter} onClick={() => void decide(true)}>{viewed.approveLabel}</button>
             </div>
-          </div> : <div className="quiet-state">{run ? <>
+          </div> : <div className="quiet-state">{approvalRecords.length > 0 && <p>Auto-approved {approvalRecords.at(-1)?.paths.join(", ") || approvalRecords.at(-1)?.name}. Undo is in Approvals. Press m for Manual.</p>}{run ? <>
             <p>Nothing is waiting for approval.</p>
             <small>{tools.length > 0 && tools.every(tool => isReadOnlyTool(tool.name)) ? "This run is only reading files, so there is nothing to approve." : "When a step wants to change files or run a command, it shows up here first."}</small>
           </> : <>
@@ -1160,6 +1188,21 @@ export function App() {
         onAdd={() => setAddProjectOpen(true)} onForget={key => { void action(key, "forgetProject").then(() => reconnect().then(next => { contextEpoch.current += 1; setContext(next); })).catch(error => setError(errorText(error))); }}
         returnFocus={drawerButton} />
       <AddProjectDialog open={addProjectOpen} onClose={() => setAddProjectOpen(false)} />
+      {approvalOpen && <ApprovalModeDialog mode={approvalMode} records={approvalRecords} saving={approvalSaving} onClose={() => setApprovalOpen(false)}
+        onSave={(scope, mode) => {
+          setApprovalSaving(true);
+          void action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "setAutoApprove", { scope, mode, sessionId: session?.sessionId ?? "" }).then(info => {
+            setApprovalMode(info.mode); setApprovalRecords(info.records); setApprovalOpen(false);
+          }).catch(() => setError("Could not save the approval mode.")).finally(() => setApprovalSaving(false));
+        }}
+        onUndo={id => {
+          setApprovalSaving(true);
+          void action(workspaceKey, "undoAutoApproval", { id }).then(async () => {
+            const info = await action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "autoApprove", { sessionId: session?.sessionId ?? "" });
+            setApprovalMode(info.mode); setApprovalRecords(info.records);
+            setAnnounce("Reverted the auto-approved change.");
+          }).catch(() => setError("Could not undo that change. It may have been edited since.")).finally(() => setApprovalSaving(false));
+        }} />}
       {limitsOpen && limitsInfo?.workspaceKey === workspaceKey && <LimitsDialog
         initial={{ task: limitsInfo.preferences.task ?? limitsInfo.preferences.project, project: limitsInfo.preferences.project }}
         onCancel={() => setLimitsOpen(false)} onSave={(scope, settings) => void saveLimits(scope, settings)}

@@ -50,13 +50,16 @@ test("decision labels stay whole at 44 and 80 columns and Enter only confirms th
   expect(narrowText).toContain("Decide later");
   expect(narrow.lines.join(" ")).toContain("Allow this exact check for this session");
   expect(narrowText).not.toContain("…");
-  expect(narrow.lines.length).toBe(24);
   const wide = reviewFrame({title: "Waiting for your decision", body: "diff", files: 1, headerRight: "~/demo · openai/gpt-5.6-luna"}, menu, 1, "", 0, 80, 24);
   const wideText = wide.lines.join("\n");
   expect(wideText).toContain("> a  Approve 1 file");
-  expect(wideText).toContain("Enter choose the highlighted item");
+  expect(wideText).toContain("Enter confirms the highlight");
   expect(wideText).toContain("~/demo · openai/gpt-5.6-luna");
-  expect(wideText).toContain("End of changes · 1 file, shown in full");
+  expect(wideText).toContain("End of changes · 1 file");
+  expect(narrow.lines.length).toBeLessThan(24);
+  const idle = reviewFrame({title: "Waiting for your decision", body: "diff", files: 1}, menu, -1, "", 0, 80, 24);
+  expect(idle.lines.some(line => line.startsWith("> "))).toBe(false);
+  expect(idle.lines.join("\n")).toContain("No action highlighted");
 });
 
 test("terminal width uses graphemes; controls remain inert and context never invents a percentage", () => {
@@ -70,7 +73,7 @@ test("terminal width uses graphemes; controls remain inert and context never inv
   expect(consoleStateLines({model: "openai/gpt-5.6-luna", status: "ready", runUsage: {estimatedUsd: null, limitUsd: null, usageComplete: false}}).join("\n")).not.toContain("unknown");
 });
 
-test("approval pager keeps a fresh reject default after paste, resize and details; escape leaves pending", async () => {
+test("approval pager does not highlight a decision until an arrow key; escape leaves pending", async () => {
   const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
   const input = new PassThrough(), output = new PassThrough();
   Object.assign(output, {columns: 44, rows: 24});
@@ -90,8 +93,11 @@ test("approval pager keeps a fresh reject default after paste, resize and detail
     expect(rendered).toContain("more lines");
     expect(rendered).toContain("PgUp/PgDn");
     Object.assign(output, {columns: 80}); output.emit("resize");
-    expect(rendered).toContain("> Reject");
-    input.write("\r"); expect(await answer).toBe(0);
+    expect(rendered).not.toContain("> Reject");
+    input.write("\r");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(answered).toBe(false);
+    input.write("\x1b[B\r"); expect(await answer).toBe(0);
     expect(rendered).toContain("\x1b[?1049l");
     const pending = console.review({title: "Waiting for your decision", body: "diff"}, items);
     input.write("\x03"); expect(await pending).toBeUndefined();
@@ -165,6 +171,26 @@ test("diff-first review retains full technical identity and whole-batch/exact gr
   expect(verifier).toContain("node --test exact.mjs");
 });
 
+test("a replacement review lists the file, its counts, and the stated intent", async () => {
+  const approval = { id: "approval-1", provider: "openai" as const, kind: "local-tool" as const,
+    name: "apply_reviewed_replacement",
+    arguments: JSON.stringify({ path: "packages/azure-openai/src/index.ts", oldText: "a", newText: "b", intent: "The shell tool should fail when rootDir is missing." }),
+    inputDigest: "sha256:original", rawData: null };
+  const diff = "Reviewed file diff · proposal\n--- \"packages/azure-openai/src/index.ts\"\n+++ \"packages/azure-openai/src/index.ts\"\n@@ -2268,1 +2268,1 @@\n-a\n+b\n";
+  let fileList = "";
+  let summary = "";
+  await resolveTerminalApprovals([approval], {
+    ask: async () => "n", write: () => {},
+    fileDiff: async () => diff,
+    review: async review => { fileList = review.fileList ?? ""; summary = review.summary ?? ""; return "n"; },
+  });
+  expect(fileList).toContain("packages/azure-openai/src/index.ts");
+  expect(fileList).toContain("modify");
+  expect(fileList).toContain("+1");
+  expect(fileList).toContain("−1");
+  expect(summary).toContain("shell tool should fail when rootDir is missing");
+});
+
 test("a stale preview offers reload and details, and no Approve", async () => {
   const approval = {id: "approval-1", provider: "openai" as const, kind: "local-tool" as const,
     name: "apply_reviewed_edits", arguments: '{"changes":[{"path":"greeting.mjs","content":"new","expectedDigest":"sha256:old"}]}', inputDigest: "sha256:original", rawData: null};
@@ -225,8 +251,8 @@ test("command reviews describe the command instead of a file write", async () =>
       ask: async () => "n", write: () => {},
       review: async (_view, items) => { choices.push([...items]); return "n"; },
     });
-    expect(choices[0]?.[0]).toMatchObject({ label: "Reject", detail: "The command does not run." });
-    expect(choices[0]?.find(item => item.label === "Approve 1 command")?.detail).toBe("Only this command, once.");
+    expect(choices[0]?.[0]).toMatchObject({ label: "Reject", detail: "This command does not run." });
+    expect(choices[0]?.find(item => item.label === "Approve this command")?.detail).toBe("Run only this command, once.");
   }
 });
 

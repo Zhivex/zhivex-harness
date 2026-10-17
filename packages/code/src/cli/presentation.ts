@@ -23,6 +23,7 @@ import {
   terminalSupportsColor
 } from "./terminal/terminal-ui.js";
 import { normalizeHarnessError } from "@zhivex-ai/harness/engine";
+import { decideBatch } from "../../../../src/approvals/auto-approve.js";
 import { type CliOptions } from "./arguments.js";
 import { resumeCommand } from "./resume-metadata.js";
 
@@ -68,12 +69,24 @@ export const approvalResponses = (
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; review?: NonNullable<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions["review"]>; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>; restored?: boolean; projectLabel?: string }
+  ui?: Omit<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions, "ask" | "write">
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
   return async (approvals) => {
     if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
     if (automaticallyApprove === true || automaticallyApprove === "auto") {
       return approvalResponses(approvals, true, "Approved by automatic mode.");
+    }
+    const policy = ui?.autoApprove?.();
+    if (policy && policy.mode !== "manual") {
+      const batch = decideBatch(approvals.map(approval => ({ name: approval.name, arguments: approval.arguments })), policy);
+      if (batch.auto && ui) {
+        const { review: _review, select: _select, ...rest } = ui;
+        return resolveTerminalApprovals(approvals, {
+          ask: async () => "",
+          write: () => undefined,
+          ...rest,
+        });
+      }
     }
     if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
     const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
