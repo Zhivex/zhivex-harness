@@ -1,5 +1,6 @@
 import type { AgentApprovalRequest } from "@zhivex-ai/agents";
 import { createEditProposal, editChangesSchema, type Workspace } from "@zhivex-ai/harness/engine";
+import { revealInvisible } from "../../../../../src/review/reveal-invisible.js";
 import { sanitizeTerminalText } from "./terminal-ui.js";
 
 export interface FileDiff { path: string; before: string | null; after: string | null }
@@ -19,7 +20,7 @@ export const formatFileDiff = ({ path, before, after }: FileDiff, context = 3): 
   const start = prefix - lead;
   const oldEnd = old.length - suffix + trail;
   const newEnd = next.length - suffix + trail;
-  const render = (mark: string, line: string) => mark + sanitizeTerminalText(line.endsWith("\n") ? line.slice(0, -1) : line) + "\n" +
+  const render = (mark: string, line: string) => mark + revealInvisible(line.endsWith("\n") ? line.slice(0, -1) : line) + "\n" +
     (line.endsWith("\n") ? "" : "\\ No newline at end of file\n");
   const banner = (count: number) => count > 0 ? `··· ${count} unchanged line${count === 1 ? "" : "s"}\n` : "";
   const oldCount = old.length ? oldEnd - start : 0;

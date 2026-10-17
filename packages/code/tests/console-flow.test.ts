@@ -3,6 +3,7 @@ import { PassThrough } from "node:stream";
 import { ConsoleInput } from "../src/cli/console/console-input.js";
 import { consoleLines, consoleLabel, consoleStateLines } from "../src/cli/console/console-presentation.js";
 import { reviewFrame } from "../src/cli/console/console-review.js";
+import { renderReviewedDiff } from "../src/cli/console/review-diff.js";
 import { ConsoleRunView } from "../src/cli/console/console-run-view.js";
 import { formatConsoleOutcome } from "../src/cli/console/console-outcome.js";
 import { checkpointRecovery } from "../src/cli/console/console-recovery.js";
@@ -98,10 +99,76 @@ test("approval pager does not highlight a decision until an arrow key; escape le
     await new Promise(resolve => setImmediate(resolve));
     expect(answered).toBe(false);
     input.write("\x1b[B\r"); expect(await answer).toBe(0);
-    expect(rendered).toContain("\x1b[?1049l");
+    expect(rendered).not.toContain("\x1b[?1049h");
+    expect(rendered).not.toContain("\x1b[?1049l");
     const pending = console.review({title: "Waiting for your decision", body: "diff"}, items);
     input.write("\x03"); expect(await pending).toBeUndefined();
   } finally { console.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
+});
+
+test("a short review stays under the activity line with the decision against the diff", async () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "xterm-256color";
+  const input = new PassThrough(), output = new PassThrough();
+  Object.assign(output, { columns: 80, rows: 40 });
+  let rendered = ""; output.on("data", chunk => { rendered += chunk.toString(); });
+  const ui = new ConsoleInput(input, output);
+  const body = [
+    '--- "packages/azure-openai/src/index.ts"',
+    '+++ "packages/azure-openai/src/index.ts"',
+    "@@ -2268,7 +2268,7 @@",
+    "     if (!command || command.trim().length === 0) {",
+    '-    if (command.includes("\0")) {',
+    '+    if (command.indexOf("ok") !== -1) {',
+    "     }",
+  ].join("\n");
+  try {
+    output.write("✓ Activity · reads: 1 · other operations: 1\n");
+    const answer = ui.review({
+      title: "Waiting for your decision",
+      body,
+      files: 1,
+      layout: width => renderReviewedDiff(body, width),
+    }, [
+      { value: "n", label: "Reject", key: "r", detail: "This change is not applied." },
+      { value: "y", label: "Approve this change", key: "a", detail: "Apply only the change shown above, once." },
+    ]);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(rendered).not.toContain("\x1b[?1049h");
+    expect(rendered).not.toContain("\x1b[H");
+    const plain = rendered.replace(/\x1b\[[0-9;]*m/g, "").replace(/\x1b\[K/g, "");
+    expect(plain).toContain('includes("\\0")');
+    expect(plain).not.toContain("\0");
+    const lines = plain.split(/\r?\n/);
+    const activity = lines.findIndex(line => line.includes("Activity"));
+    const header = lines.findIndex(line => line.includes("Review changes"));
+    const removed = lines.findIndex(line => line.includes("includes"));
+    const end = lines.findIndex(line => line.includes("End of changes"));
+    const decision = lines.findIndex(line => line.includes("Waiting for your decision"));
+    expect(header).toBe(activity + 1);
+    expect(end).toBeGreaterThan(removed);
+    expect(lines.slice(removed, end).every(line => line.trim() !== "")).toBe(true);
+    expect(decision).toBe(end + 1);
+    input.write("r");
+    expect(await answer).toBe("n");
+  } finally { ui.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
+});
+
+test("a dumb terminal review escapes a NUL before the numbered menu", async () => {
+  const oldTerm = process.env.TERM; process.env.TERM = "dumb";
+  const input = new PassThrough(), output = new PassThrough();
+  Object.assign(output, { columns: 80, rows: 40 });
+  let rendered = ""; output.on("data", chunk => { rendered += chunk.toString(); });
+  const ui = new ConsoleInput(input, output);
+  try {
+    const answer = ui.review({ title: "Waiting for your decision", body: 'if (command.includes("\0")) {' }, [
+      { value: "n", label: "Reject", key: "r" },
+    ]);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(rendered).toContain('includes("\\0")');
+    expect(rendered).not.toContain("\0");
+    input.write("r\n");
+    expect(await answer).toBe("n");
+  } finally { ui.close(); if (oldTerm === undefined) delete process.env.TERM; else process.env.TERM = oldTerm; }
 });
 
 test("a page key during review stays one sequence so the next slash command is intact", async () => {

@@ -1,3 +1,4 @@
+import { revealInvisible } from "../../../../../src/review/reveal-invisible.js";
 import { sanitizeTerminalText } from "../terminal/terminal-ui.js";
 import { terminalCellWidth } from "../terminal/terminal-table.js";
 
@@ -111,7 +112,7 @@ const gutterFor = (oldNo: number | null, newNo: number | null, mark: string) =>
  * The body is already terminal-safe. Callers must not hard-wrap it again.
  */
 export const renderReviewedDiff = (diff: string, width: number): RenderedReviewDiff => {
-  const source = sanitizeTerminalText(diff).split("\n");
+  const source = diff.split("\n").map(line => revealInvisible(line));
   const lines: string[] = [];
   const hunks: number[] = [];
   let oldNo = 0;

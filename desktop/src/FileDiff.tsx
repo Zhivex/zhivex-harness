@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { diffLines } from "diff";
+import { revealInvisiblePieces, revealInvisibleText } from "../../src/review/reveal-invisible.js";
 
 export function FileDiff({
   before,
@@ -78,7 +79,9 @@ export function FileDiff({
             {part.value
               .replace(/\n$/, "")
               .split("\n")
-              .map((line, j) => (
+              .map((line, j) => {
+                const pieces = revealInvisiblePieces(line);
+                return (
                 <div className="diff-line" key={j}>
                   <span className="line-number">
                     {part.added ? "" : oldLine++}
@@ -87,9 +90,12 @@ export function FileDiff({
                     {part.removed ? "" : newLine++}
                   </span>
                   <span>{part.added ? "+" : part.removed ? "−" : " "}</span>
-                  <code>{line || " "}</code>
+                  <code>{pieces.length ? pieces.map((piece, index) => piece.mark
+                    ? <span className="diff-invisible" key={index}>{piece.text}</span>
+                    : piece.text) : " "}</code>
                 </div>
-              ))}
+                );
+              })}
             {!part.value.endsWith("\n") ? (
               <div className="muted">\ No newline at end of file</div>
             ) : null}
@@ -99,9 +105,9 @@ export function FileDiff({
       <details>
         <summary>Complete contents · before and after</summary>
         <p>Before</p>
-        <pre className="removed">{before ?? "File missing"}</pre>
+        <pre className="removed">{before === undefined ? "File missing" : revealInvisibleText(before)}</pre>
         <p>After</p>
-        <pre className="added">{after ?? "File deleted"}</pre>
+        <pre className="added">{after === undefined ? "File deleted" : revealInvisibleText(after)}</pre>
       </details>
     </div>
   );

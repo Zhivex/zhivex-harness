@@ -57,4 +57,30 @@ test("the review names the intent, counts each file, and keeps indentation when 
     expect(line).not.toContain("«»");
   }
   expect(wide.lines.some(line => line.includes("«") && line.includes("»"))).toBe(true);
+  const nul = formatFileDiff({
+    path: "packages/azure-openai/src/index.ts",
+    before: '    if (command.includes("\0")) {\n',
+    after: '    if (command.indexOf("ok") !== -1) {\n',
+  });
+  expect(nul).toContain('includes("\\0")');
+  expect(nul).not.toContain("\0");
+  const hidden = renderReviewedDiff(nul, 80);
+  expect(hidden.lines.join("\n")).toContain("\\0");
+  expect(hidden.lines.join("\n")).not.toContain("\0");
+  const spaced = renderReviewedDiff("@@ -1,1 +1,1 @@\n-keep\t \n+keep\u200B\u202e\n", 80);
+  const spacedText = spaced.lines.join("\n");
+  expect(spacedText).toContain("→");
+  expect(spacedText).toContain("·");
+  expect(spacedText).toContain("\\u200B");
+  expect(spacedText).toContain("\\u202e");
+  expect(spacedText).not.toContain("\u200B");
+  expect(spacedText).not.toContain("\u202e");
+  const short = reviewFrame({ title: "Waiting for your decision", body: Array.from({ length: 7 }, () => " line").join("\n"), files: 1 }, [
+    { label: "Reject", key: "r", index: 0 },
+    { label: "Approve this change", key: "a", index: 1 },
+  ], -1, "", 0, 80, 40);
+  const marker = short.lines.findIndex(line => line.includes("End of changes"));
+  expect(short.lines.length).toBeLessThan(40);
+  expect(short.lines[marker - 1]?.trim()).not.toBe("");
+  expect(short.lines[marker + 1]).toContain("Waiting for your decision");
 });

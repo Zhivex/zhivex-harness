@@ -1,8 +1,8 @@
 import { createInterface, type Interface, type Key } from "node:readline";
 import { PassThrough, type Readable, Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
+import { revealInvisibleText } from "../../../../../src/review/reveal-invisible.js";
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
-import { terminalCellWidth } from "../terminal/terminal-table.js";
 
 import { CONSOLE_SHORTCUTS, consoleLabel, consoleLines, consoleWidth, chooseConsoleItem, formatComposer, formatComposerFooter,
   formatComposerPlaceholder, type ConsoleComposerInput } from "./console-presentation.js";
@@ -149,6 +149,8 @@ export class ConsoleInput {
   private reviewHunks: readonly number[] = [];
   private manualRequest: (() => void) | undefined;
   private reviewWrapped: {columns: number; lines: readonly string[]} | undefined;
+  /** Lines of the inline review currently on screen. Zero before the first paint. */
+  private reviewLinesDrawn = 0;
   private selectionMatches() {
     const indexed = this.selection?.items.map((item, index) => ({...item, index})) ?? [];
     if (this.reviewing) return indexed;
@@ -185,7 +187,7 @@ export class ConsoleInput {
   async review<T>(review: ConsoleReview, items: readonly {value: T; label: string; detail?: string; key?: string}[]): Promise<T | undefined> {
     if (!this.terminal || process.env.TERM === "dumb" || ((this.output as Writable & {rows?: number}).rows ?? 24) < 24 ||
       ((this.output as Writable & {columns?: number}).columns ?? 80) < 32) {
-      this.output.write(review.body + "\n");
+      this.output.write(revealInvisibleText(review.body) + "\n");
       return this.select(review.title, items);
     }
     this.hideMenu();
@@ -197,13 +199,45 @@ export class ConsoleInput {
     this.menuSelection = -1;
     this.reviewNotice = undefined;
     this.reviewWrapped = undefined;
-    this.output.write("\x1b[?1049h");
+    this.reviewLinesDrawn = 0;
     try { return await this.select(review.title, items); }
     finally {
+      this.eraseReview();
       this.reviewing = undefined;
       this.reviewWrapped = undefined;
-      this.output.write("\x1b[?1049l");
     }
+  }
+  /** Drop the inline review so the next transcript line continues under the activity line. */
+  private eraseReview() {
+    if (!this.reviewLinesDrawn) return;
+    const up = this.reviewLinesDrawn - 1;
+    this.output.write((up > 0 ? `\x1b[${up}A` : "") + "\r\x1b[J");
+    this.reviewLinesDrawn = 0;
+  }
+  private styleReviewLine(line: string) {
+    const gutter = line.length > 15 && line[15] === " " && (line[14] === "+" || line[14] === "-") ? line[14] : "";
+    const mark = line.startsWith("+") || line.startsWith("-") || line.startsWith("@@") ? line[0] : gutter;
+    const code = line.startsWith("( Z )") ? "1;38;5;210" : mark === "+" ? "38;5;120"
+      : mark === "-" ? "38;5;210" : mark === "@" || line.startsWith("@@") ? "38;5;117"
+      : line.startsWith("> ") || line.startsWith("Waiting for your decision") ? "1;38;5;222" : "";
+    const color = terminalSupportsColor(this.terminal);
+    return color && code ? `\x1b[${code}m${line}\x1b[0m` : line;
+  }
+  /**
+   * Draw the review where the cursor already is. A short diff stays under the
+   * activity line. Only a diff that fills the screen starts at the top.
+   */
+  private paintReview(lines: readonly string[]) {
+    const screen = (this.output as Writable & { rows?: number }).rows ?? 24;
+    const painted = lines.map(line => this.styleReviewLine(line) + "\x1b[K");
+    const fills = lines.length >= screen;
+    if (this.reviewLinesDrawn === 0 && fills) this.output.write("\x1b[H" + painted.join("\r\n") + "\x1b[J");
+    else if (this.reviewLinesDrawn === 0) this.output.write(painted.join("\r\n"));
+    else {
+      const up = this.reviewLinesDrawn - 1;
+      this.output.write((up > 0 ? `\x1b[${up}A` : "") + "\r" + painted.join("\r\n") + "\x1b[J");
+    }
+    this.reviewLinesDrawn = lines.length;
   }
   private taskPrompt = "";
   private shortcutsShown = false;
@@ -301,15 +335,7 @@ export class ConsoleInput {
         columns, (this.output as Writable & {rows?: number}).rows ?? 24, wrappedLines);
       this.reviewOffset = frame.offset;
       this.reviewPage = frame.capacity;
-      const color = terminalSupportsColor(this.terminal);
-      const style = (line: string) => {
-        const code = line.startsWith("( Z )") ? "1;38;5;210" : line.startsWith("+") ? "38;5;120"
-          : line.startsWith("-") ? "38;5;210" : line.startsWith("@@") ? "38;5;117"
-          : line.startsWith("> ") || line.startsWith("Waiting for your decision") ? "1;38;5;222" : "";
-        return color && code ? `\x1b[${code}m${line}\x1b[0m` : line;
-      };
-      this.output.write("\x1b[H" + frame.lines.map(line => style(line) + "\x1b[K").join("\r\n") +
-        `\x1b[J\x1b[${frame.filterRow};${1 + terminalCellWidth(frame.lines[frame.filterRow - 1] ?? "Filter > ")}H`);
+      this.paintReview(frame.lines);
       return;
     }
     this.hideMenu();

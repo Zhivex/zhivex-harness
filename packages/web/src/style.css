@@ -1127,6 +1127,7 @@ h2 {
 .review-panel pre, .review-content pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .review-panel button, .review-content button, .review-scope { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
 .diff-line code { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.diff-invisible { text-decoration: underline dotted; text-underline-offset: 2px; }
 
 /* Direction B: review-first layout, both themes. */
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); overflow-x: hidden; }

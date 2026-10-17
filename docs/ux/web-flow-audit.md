@@ -26,7 +26,7 @@ The header shows Manual, Auto-edits, or Auto with limits. Manual is the default.
 
 ## Terminal review
 
-The terminal review names what the change does, lists each file with +/- counts, and shows line numbers with word-level markers. Unchanged context stays collapsed until Show full diff. n and p move between hunks. Nothing is highlighted until an arrow key, so Enter does not reject or approve by accident.
+The terminal review names what the change does, lists each file with +/- counts, and shows line numbers with word-level markers. A short diff stays directly under the activity line, and the decision prompt sits on the next line after the diff. The screen scrolls only when the diff is taller than the terminal. Unchanged context stays collapsed until Show full diff. n and p move between hunks. Nothing is highlighted until an arrow key, so Enter does not reject or approve by accident. Control bytes, zero-width characters, bidi overrides, tabs, and trailing spaces are visible in the terminal diff and in the web file diff.
 
 ## Change review
 
