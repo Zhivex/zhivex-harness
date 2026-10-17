@@ -28,7 +28,7 @@ import type { LimitPreferences } from "./limit-store.js";
 import type { RunLimits, LimitPricing } from "./limit-observer.js";
 import { DesktopIcon, MoonIcon, PlusIcon, SlidersHorizontalIcon, SunIcon } from "@phosphor-icons/react";
 import { planComposerSend } from "./composer-plan.js";
-import { mutationUnconfirmed } from "./mutation-outcome.js";
+import { cancellationSupersedesFailure, mutationUnconfirmed } from "./mutation-outcome.js";
 import { statusCopy } from "./status-copy.js";
 import { groupToolRows, isReadOnlyTool } from "./activity-groups.js";
 import { MessageMarkdown } from "./MessageMarkdown.js";
@@ -87,6 +87,7 @@ export function App() {
   const [pending, setPending] = useState("");
   const inFlight = useRef(false);
   const cancelInFlight = useRef(false);
+  const recordedCancellations = useRef(0);
   const [cancelling, setCancelling] = useState(false);
   const reconnectInFlight = useRef(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -368,6 +369,7 @@ export function App() {
     // React state is not a lock: two activations can arrive before the next render.
     if (inFlight.current || cancelInFlight.current || reconnectInFlight.current) return;
     inFlight.current = true;
+    const cancellationsAtStart = recordedCancellations.current;
     mutationEpoch.current++;
     setError("");
     setPending(label);
@@ -376,11 +378,20 @@ export function App() {
       await job();
     } catch (e) {
       const code = errorText(e);
-      setError(code);
-      if (code === "WEB_REQUEST_FAILED") setConnected(false);
-      // A confirmed terminal result, including EXECUTION_FAILED, stays editable.
-      // Only a lost response locks the session, and it is never replayed.
-      if (mutation && mutationUnconfirmed(code)) setNeedsReconcile(true);
+      // Cancel accepts the run while this start is still open. The host then
+      // answers that start with EXECUTION_FAILED. The cancellation receipt is
+      // the outcome, so this late failure must not cover it with an alert.
+      const superseded = cancellationSupersedesFailure(
+        code,
+        cancelInFlight.current || recordedCancellations.current !== cancellationsAtStart,
+      );
+      if (!superseded) {
+        setError(code);
+        if (code === "WEB_REQUEST_FAILED") setConnected(false);
+        // A confirmed terminal result, including EXECUTION_FAILED, stays editable.
+        // Only a lost response locks the session, and it is never replayed.
+        if (mutation && mutationUnconfirmed(code)) setNeedsReconcile(true);
+      }
     } finally {
       mutationEpoch.current++;
       inFlight.current = false;
@@ -682,6 +693,8 @@ export function App() {
       });
       setSession(result.data.session);
       setRun(result.data.run);
+      if (result.data.run.status === "cancelled" || result.data.run.status === "cancel_requested")
+        recordedCancellations.current += 1;
     } catch (e) {
       const code = errorText(e);
       setError(code);

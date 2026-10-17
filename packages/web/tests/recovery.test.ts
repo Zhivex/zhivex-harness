@@ -8,7 +8,7 @@ import { composerHostActions, planComposerSend } from "../src/composer-plan.js";
 import { WEB_DEFAULT_STOP } from "../src/default-budgets.js";
 import { WebLimitMonitor } from "../src/limit-monitor.js";
 import { WebLimitStore } from "../src/limit-store.js";
-import { mutationUnconfirmed } from "../src/mutation-outcome.js";
+import { cancellationSupersedesFailure, mutationUnconfirmed } from "../src/mutation-outcome.js";
 import { statusCopy } from "../src/status-copy.js";
 
 test("a confirmed execution failure does not lock the session; a lost response does", () => {
@@ -22,6 +22,9 @@ test("a confirmed execution failure does not lock the session; a lost response d
   expect(copy.next.toLowerCase()).toContain("send it again");
   expect(`${copy.title} ${copy.next}`).not.toContain("EXECUTION FAILED");
   expect(statusCopy("WEB_REQUEST_FAILED").next.toLowerCase()).toContain("reconcile");
+  expect(cancellationSupersedesFailure("EXECUTION_FAILED", true)).toBe(true);
+  expect(cancellationSupersedesFailure("EXECUTION_FAILED", false)).toBe(false);
+  expect(cancellationSupersedesFailure("WEB_REQUEST_FAILED", true)).toBe(false);
 });
 
 test("the first message creates a session and then starts the task", () => {

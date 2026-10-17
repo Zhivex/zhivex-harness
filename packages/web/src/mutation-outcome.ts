@@ -30,3 +30,12 @@ export function mutationUnconfirmed(code: string): boolean {
   if (CONFIRMED_TERMINAL.has(code)) return false;
   return true;
 }
+
+/**
+ * An in-flight start that returns EXECUTION_FAILED after Cancel was accepted
+ * is that cancellation, not a separate failure. A lost response stays visible
+ * so the page can reconnect.
+ */
+export function cancellationSupersedesFailure(code: string, cancellationAccepted: boolean): boolean {
+  return cancellationAccepted && code === "EXECUTION_FAILED";
+}
