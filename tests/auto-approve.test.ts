@@ -13,11 +13,12 @@ import {
   planUndo,
   resolveAutoApprovePolicy,
   revertAutoApproval,
+  type AskReason,
   type AutoApprovePolicy,
 } from "../src/approvals/auto-approve.js";
 
 const root = "/workspace/demo";
-const policy = (mode: AutoApprovePolicy["mode"], allow: string[] = [], overLimit = false): AutoApprovePolicy => ({
+const policy = (mode: AutoApprovePolicy["mode"], allow: readonly string[] = [], overLimit = false): AutoApprovePolicy => ({
   mode, commandAllowlist: allow, rootDir: root, ...(overLimit ? { overLimit: true } : {}),
 });
 const edit = (file = "src/index.ts", content = "next\n") => ({
@@ -46,7 +47,7 @@ test("auto-limits approves an allowlisted command and refuses wildcards", () => 
 
 test("the always-ask list cannot be bypassed by mode or allowlist", () => {
   const open = policy("auto-limits", ["git", "npm", "pnpm", "bun", "yarn", "cargo", "curl", "rm", "ssh"]);
-  const cases: { facts: Parameters<typeof classifyApproval>[0]; reason: string }[] = [
+  const cases: { facts: Parameters<typeof classifyApproval>[0]; reason: AskReason }[] = [
     { facts: { name: "run_environment_shell", paths: [], commands: ["curl https://example.com"] }, reason: "network" },
     { facts: { name: "run_environment_command", paths: [], commands: ["ssh host"] }, reason: "network" },
     { facts: { name: "web_fetch", paths: [], commands: [] }, reason: "network" },
