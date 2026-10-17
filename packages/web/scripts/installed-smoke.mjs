@@ -202,7 +202,10 @@ try {
   const catalog = await configuredAction("models");
   if (sdk.evidence) {
     const limits = await configuredAction("limits");
-    assert(Object.values(limits.host).every(value => value === null), "New interactive Web defaults must have no cumulative ceiling");
+    assert.equal(limits.host.toolCalls, 32, "Web keeps a default tool-call ceiling, including read-only tools");
+    assert.equal(limits.host.tokens, 120000);
+    assert.equal(limits.host.steps, 50);
+    assert.equal(limits.host.durationMinutes, 15);
     assert.equal(limits.preferences.task, null);
   }
   assert(catalog.choices.length > 0);

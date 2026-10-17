@@ -5,7 +5,7 @@ import { protectPersistenceSecret } from "@zhivex-ai/harness/desktop/v1/state";
 import { runWebCli } from "../../web/src/cli.js";
 import { toWebModelChoice } from "../../web/src/model-choice.js";
 import { CliCredentials, credentialModel } from "./cli/cli-credentials.js";
-import { interactiveBudgetOptions } from "./cli/console/console-budget.js";
+import { webBudgetOptions } from "./cli/console/console-budget.js";
 import { applyCliProfile, resolveCliDefaults } from "./cli/cli-profiles.js";
 
 export async function runWeb(args: string[]) {
@@ -17,7 +17,7 @@ export async function runWeb(args: string[]) {
       const configuredOptions = await applyCliProfile(
         await resolveCliDefaults({ ...input, ...(profile ? { profile } : {}) }),
       );
-      const options = interactive ? interactiveBudgetOptions(configuredOptions) : configuredOptions;
+      const options = interactive ? webBudgetOptions(configuredOptions) : configuredOptions;
       const config = resolveHarnessConfig(options);
       if (!(await credentials.inspect(config.provider)).configured)
         throw new Error("WEB_CREDENTIALS_REQUIRED");

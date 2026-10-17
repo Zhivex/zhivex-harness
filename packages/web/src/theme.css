@@ -43,6 +43,15 @@
   --diff-del-text: #ffb4ac;
   --diff-del-bg: #2d1412;
   --shadow: #00000066;
+  --chip-bg: #191c24;
+  --chip-bg-hover: #292d39;
+  --chip-line: #373b47;
+  --muted-2: #a8acc0;
+  --headline: #e6e5ed;
+  --card-bg: #14171e;
+  --card-line: #292d37;
+  --field-bg: #1a1b1e;
+  --field-line: #2a2d37;
 }
 [data-theme="light"] {
   color-scheme: light;
@@ -67,6 +76,15 @@
   --diff-del-text: #8b1a12;
   --diff-del-bg: #f9e5e2;
   --shadow: #1a151414;
+  --chip-bg: #ffffff;
+  --chip-bg-hover: #f3efeb;
+  --chip-line: #8d847d;
+  --muted-2: #5c534e;
+  --headline: #1a1514;
+  --card-bg: #ffffff;
+  --card-line: #8d847d;
+  --field-bg: #ffffff;
+  --field-line: #8d847d;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
@@ -92,5 +110,14 @@
     --diff-del-text: #8b1a12;
     --diff-del-bg: #f9e5e2;
     --shadow: #1a151414;
+    --chip-bg: #ffffff;
+    --chip-bg-hover: #f3efeb;
+    --chip-line: #8d847d;
+    --muted-2: #5c534e;
+    --headline: #1a1514;
+    --card-bg: #ffffff;
+    --card-line: #8d847d;
+    --field-bg: #ffffff;
+    --field-line: #8d847d;
   }
 }

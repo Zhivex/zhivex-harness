@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 export async function limitsJourney(page, capture, commands) {
-  const launcher = () => page.getByRole("button", { name: /No limits configured|Limits for the next task|Limits for the project/ });
+  const launcher = () => page.getByRole("button", { name: /No limits configured|Default budgets|Limits for the next task|Limits for the project/ });
   const dialog = page.getByRole("dialog", { name: "Configure only what you need" });
   const open = async () => { await launcher().click(); await dialog.waitFor(); };
   const save = async () => { await dialog.getByRole("button", { name: "Save limits", exact: true }).click(); };

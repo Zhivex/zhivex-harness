@@ -129,8 +129,10 @@ async function capture(name, fullPage = true) {
   screenshots.push(name);
 }
 async function reconnectState() {
-  await page.getByRole("button", { name: "Reconnect", exact: true }).click();
-  await page.getByRole("button", { name: "Reconnect", exact: true }).waitFor({ state: "hidden" });
+  const button = page.getByRole("button", { name: /^(Reconnect|Reconcile)$/ }).first();
+  const label = (await button.innerText()).trim();
+  await button.click();
+  await page.getByRole("button", { name: label, exact: true }).waitFor({ state: "hidden" });
 }
 async function createSession() {
   await page.getByRole("button", { name: "New session", exact: true }).click();
@@ -186,7 +188,7 @@ try {
   await page.getByLabel("Task stream").getByText("Loading sessions…", { exact: true }).waitFor();
   await capture("web-loading-desktop.png");
   await page
-    .getByRole("button", { name: "Create a session", exact: true })
+    .getByLabel("Task prompt")
     .waitFor();
   // Keep failing context until the alert is visible. A one-shot route can be
   // consumed by the background context poll and the reloaded page then looks healthy.
@@ -199,7 +201,7 @@ try {
   await capture("web-initial-error-desktop.png");
   await reconnectState();
   await page
-    .getByRole("button", { name: "Create a session", exact: true })
+    .getByLabel("Task prompt")
     .waitFor();
   steps.push("recover initial context failure without re-pairing or replay");
   await openSessions();
@@ -210,9 +212,6 @@ try {
   await page.getByLabel("Search sessions").fill("");
   await closeSessions();
   steps.push("explicit empty and filtered session states");
-  await page
-    .getByRole("button", { name: "Create a session", exact: true })
-    .click();
   await page.getByLabel("Task prompt").waitFor({ state: "visible" });
   await page.waitForFunction(
     () => document.querySelector(".pill")?.textContent === "Ready",
@@ -272,9 +271,8 @@ try {
     await page.getByLabel("Task prompt").fill(newer);
     await page.getByRole("alert").waitFor();
     assert.equal(await page.getByLabel("Task prompt").inputValue(), newer);
-    await page.getByText("Recover submitted text", { exact: true }).click();
     assert.equal(await page.locator(".composer-recovery pre").textContent(), "composer rejected submission");
-    const restore = page.getByRole("button", { name: "Restore to empty composer" });
+    const restore = page.getByRole("button", { name: "Edit message" });
     assert.equal(await restore.isEnabled(), newer === "");
     if (!newer) {
       await restore.click();
@@ -430,7 +428,7 @@ try {
   await page.getByLabel("Approval review", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Reject", exact: true }).click();
   await page.waitForFunction(() =>
-    ["Done", "Error", "Cancelled", "Reconciliation required"].includes(
+    ["Done", "Error", "Cancelled", "Refresh needed"].includes(
       document.querySelector(".pill")?.textContent,
     ),
   );
@@ -500,8 +498,8 @@ try {
   await page.waitForFunction(
     () =>
       document.querySelector(".pill")?.textContent ===
-        "Reconciliation required" ||
-      document.querySelector(".pill")?.textContent === "State unavailable" ||
+        "Refresh needed" ||
+      document.querySelector(".pill")?.textContent === "Couldn't read this run" ||
       document.querySelector(".pill")?.textContent === "Error",
   );
   await reconnectState();
@@ -533,7 +531,7 @@ try {
   steps.push("mobile layout without horizontal overflow");
   await openProject("beacon");
   await page
-    .getByRole("button", { name: "Create a session", exact: true })
+    .getByLabel("Task prompt")
     .waitFor();
   steps.push("allowlisted workspace switch");
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -653,7 +651,7 @@ try {
   await context.setOffline(true);
   await page.waitForFunction(
     () =>
-      document.querySelector(".pill")?.textContent === "Connection unavailable",
+      document.querySelector(".pill")?.textContent === "Not connected",
   );
   assert.equal(
     await page.getByRole("button", { name: /^Approve (?:\d+ files?|\d+ commands?)/ }).isEnabled(),
@@ -690,11 +688,9 @@ try {
   await page.getByLabel("Task prompt").fill("draft for atlas");
   await openProject("beacon");
   await page
-    .getByRole("button", { name: "Create a session", exact: true })
+    .getByLabel("Task prompt")
     .waitFor();
-  await page
-    .getByRole("button", { name: "Create a session", exact: true })
-    .click();
+  await page.getByRole("button", { name: "New session", exact: true }).click();
   await page.waitForFunction(
     () => document.querySelector(".pill")?.textContent === "Ready",
   );
@@ -716,6 +712,7 @@ try {
   steps.push("in-memory drafts stay scoped to the selected session and workspace");
   const picker = page.getByLabel("Provider and model");
   await picker.click();
+  await page.getByRole("switch", { name: "Configured only" }).click();
   await page.waitForFunction(() => document.querySelectorAll('[role="option"]').length === 3);
   assert.equal(await page.getByRole("option", { name: /Fixture missing/ }).getAttribute("aria-disabled"), "true");
   await page.getByLabel("Search models").fill("zzzz-not-a-model");
@@ -749,11 +746,11 @@ try {
   steps.push("provider/model selection stays disabled while exact approval is pending");
   await page.getByLabel("Approval review", { exact: true }).waitFor();
   await page.getByRole("button", {name:"Reject", exact:true}).click();
-  await page.waitForFunction(() => ["Done", "Error", "Cancelled", "Reconciliation required"].includes(document.querySelector(".pill")?.textContent ?? ""));
+  await page.waitForFunction(() => ["Done", "Error", "Cancelled", "Refresh needed"].includes(document.querySelector(".pill")?.textContent ?? ""));
   await page.waitForFunction(() => {
     const pill = document.querySelector(".pill")?.textContent;
     const model = document.querySelector("#model-choice");
-    if (model && !model.disabled && pill !== "Reconciliation required" && pill !== "Connection unavailable" && pill !== "Loading state…") return true;
+    if (model && !model.disabled && pill !== "Refresh needed" && pill !== "Not connected" && pill !== "Loading…") return true;
     for (const button of document.querySelectorAll("button")) if (button.textContent === "Reconnect") button.click();
     return false;
   }, null, { timeout: 15000, polling: 400 });
@@ -785,7 +782,7 @@ try {
   await page.getByRole("alert").filter({hasText:/Model unchanged/}).waitFor();
   assert.equal(await picker.isEnabled(), true);
   assert.equal(await page.locator('.session-row:disabled').count(), 0);
-  assert.notEqual(await page.locator('.pill').textContent(), "Reconciliation required");
+  assert.notEqual(await page.locator('.pill').textContent(), "Refresh needed");
   await capture("web-model-rejected-desktop.png");
   await openSessions();
   await page.locator('.session-row').filter({hasText:"wait-for-cancel: preserve this draft"}).click();
@@ -830,7 +827,7 @@ try {
   const contextModel = await applyOtherModel(originalModel);
   await page.getByRole("alert").getByText("WEB MODEL CHANGE BUSY", {exact:true}).waitFor();
   await page.unroute("**/api/context");
-  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === "Reconciliation required");
+  await page.waitForFunction(() => document.querySelector('.pill')?.textContent === "Refresh needed");
   assert.equal(await picker.isDisabled(), true);
   await reconnectState();
   await page.waitForFunction(value => document.querySelector("#model-choice")?.dataset.value === value && !document.querySelector("#model-choice")?.disabled, contextModel);

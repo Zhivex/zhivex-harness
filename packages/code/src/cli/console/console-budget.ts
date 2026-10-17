@@ -8,7 +8,22 @@ const tokenEnvironment = ["ZHIVEX_HARNESS_MAX_INPUT_TOKENS", "ZHIVEX_HARNESS_MAX
   "ZHIVEX_HARNESS_MAX_TOTAL_TOKENS", "ZHIVEX_HARNESS_SUBAGENT_MAX_INPUT_TOKENS",
   "ZHIVEX_HARNESS_SUBAGENT_MAX_OUTPUT_TOKENS", "ZHIVEX_HARNESS_SUBAGENT_MAX_TOTAL_TOKENS"] as const;
 
-/** Only interactive entry points opt into these defaults. Explicit limits opt
+/** Web keeps finite engine ceilings, including read-only tools, unless the launch sets a number. */
+export const webBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => {
+  const explicitSteps = options.maxSteps !== undefined || env.ZHIVEX_HARNESS_MAX_STEPS !== undefined;
+  const explicitTools = options.maxToolCalls !== undefined || env.ZHIVEX_HARNESS_MAX_TOOL_CALLS !== undefined;
+  const explicitTime = options.timeoutMs !== undefined || env.ZHIVEX_HARNESS_TIMEOUT_MS !== undefined;
+  const explicitTokens = tokenOptions.some(key => options[key] !== undefined) || tokenEnvironment.some(key => env[key] !== undefined);
+  return {
+    ...options,
+    unlimitedSteps: explicitSteps ? options.unlimitedSteps : false,
+    unlimitedToolCalls: explicitTools ? options.unlimitedToolCalls : false,
+    unlimitedDuration: explicitTime ? options.unlimitedDuration : false,
+    unlimitedTokens: explicitTokens ? options.unlimitedTokens : false,
+  };
+};
+
+/** Only the interactive console opts into unlimited ceilings. Explicit limits opt
  * into bounded execution; SDK, service hosts and automation retain their policy. */
 export const interactiveBudgetOptions = <T extends HarnessConfigInput>(options: T, env: NodeJS.ProcessEnv = process.env) => ({
   ...options,

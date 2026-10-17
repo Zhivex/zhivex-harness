@@ -22,6 +22,7 @@ import { WebLimitMonitor } from "./limit-monitor.js";
 import type { LimitScope, LimitSettings } from "./limit-settings.js";
 import { validateStateDirectory } from "@zhivex-ai/harness/desktop/v1/state";
 import { hostConfigDigest } from "./host-config-digest.js";
+import { WEB_DEFAULT_STOP } from "./default-budgets.js";
 
 /** Server-owned workspace, identity, policy and provider. No browser configuration enters Harness. */
 export async function attachRuntime(
@@ -46,7 +47,7 @@ export async function attachRuntime(
     ...(catalogPrice.maxInputTokens === undefined ? {} : { maxInputTokens: catalogPrice.maxInputTokens }),
     source: `${catalogPrice.evidence.sourceUrl} (${catalogPrice.evidence.checkedAt})` } : null;
   let cancelLimits: () => Promise<void> = async () => {};
-  const limitMonitor = new WebLimitMonitor(limitStore, () => cancelLimits(), price, Date.now, hostConfigDigest(harness.config));
+  const limitMonitor = new WebLimitMonitor(limitStore, () => cancelLimits(), price, Date.now, hostConfigDigest(harness.config), WEB_DEFAULT_STOP);
   if (recover)
     try {
       await recoverHarnessLocalService(harness, directory);

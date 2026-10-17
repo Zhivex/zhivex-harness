@@ -108,14 +108,17 @@ host review before accepting, correcting or continuing. See the
 
 The SDK was inspected through connected GitHub, without cloning or modifying it:
 [React package](https://github.com/Zhivex/zhivex-ai-sdk/tree/main/packages/react),
-`@zhivex-ai/react` 0.6.2. Its `useZhivexChat`, reducer and fetch transport use
-`UIMessage`/chat chunks, chat replay cursors and SDK approval responses. Harness
-uses HU-21 session/run revisions, exact approval digests and durable activity
-pages. Adapting the hook would add an unnecessary second state/approval model.
+`@zhivex-ai/react` 0.9.0. The private Zhivex chat repository was not readable from
+this environment. Harness uses HU-21 session/run revisions, exact approval digests
+and durable activity pages. `useZhivexChat` and its fetch transport would add a
+second state and approval model, so they are not used.
 
-This client reuses only SDK `ChatRoot` and `Message` for presentation of sanitized
-plain text. It does not import chat hooks, provider clients, SDK approval cards
-or SDK transport. Desktop's existing `FileDiff`, `applyActivityPage`,
+This client reuses `ChatRoot`, `Message`, `Composer`, `ChatEmptyState` and
+`ReviewCard` (presentation only, with no decision callback). It does not import
+chat hooks, provider clients, or SDK transport. `ReviewCard` cannot require every
+file to be viewed or ignore Enter, so the authoritative approve and reject
+buttons stay in the change-review panel. The model picker stays local because
+0.9.0 does not export one. Desktop's existing `FileDiff`, `applyActivityPage`,
 `projectApprovalReview`, `ReviewTickets` and renderer redactor are reused unchanged.
 They are bundled at build time; Electron and Desktop credential/OS bridges are
 not runtime dependencies. The host uses only declared Harness `/engine`,
