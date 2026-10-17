@@ -15,6 +15,6 @@ test("supported Node still prints the version before the engine loads", () => {
   if (!process.versions.bun) return;
   const result = spawnSync(process.execPath, ["src/cli-entry.ts", "--version"], { encoding: "utf8" });
   expect(result.status).toBe(0);
-  expect(result.stdout.trim()).toBe("1.4.1");
+  expect(result.stdout.trim()).toBe("1.4.2");
   expect(result.stderr).toBe("");
 });

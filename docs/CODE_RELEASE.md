@@ -1,5 +1,16 @@
 # Code release procedure
 
+## Pending patch: 2026-10-16
+
+The source version is `1.4.2`, pending publication to `latest`. This checkout
+prepares Harness `1.4.2` and Code `0.3.3` for npm `latest`, with Code pinned
+exactly to the engine and private Desktop bound to the same Harness version.
+Published `latest` is Harness `1.4.1` and Code `0.3.2`. It adds the `v1.4.2`
+representative mapping with the same Meta, Qwen and OpenAI models as `v1.4.1`
+and does not change provider/API tiers. Annotated `v1.4.2` then `code-v0.3.3`
+on the same reviewed main SHA, `channel=latest`, run through the unchanged
+protected workflows and their environment approvals.
+
 ## Pending patch: 2026-10-14
 
 This checkout prepares Code `0.3.1`, pinned exactly to Harness `1.4.1`, for npm
