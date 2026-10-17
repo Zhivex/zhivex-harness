@@ -824,7 +824,11 @@ export function App() {
             ? runStatusLabel(run.status)
             : error
               ? "Error"
-              : "Ready";
+              // A mutation still in flight is not a settled idle session. Callers
+              // that wait for Ready must not continue on the session being replaced.
+              : pending
+                ? "Working…"
+                : "Ready";
   const composerHelp = needsReconcile
     ? "The last response did not arrive. Choose Reconcile to reload this session. Nothing is sent again on its own."
     : !connected
