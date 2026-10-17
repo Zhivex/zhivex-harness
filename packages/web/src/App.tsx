@@ -1064,7 +1064,7 @@ export function App() {
               status={active(run?.status ?? "") || cancelling || reviewWaiting ? "streaming" : "ready"} allowAttachments={false}
               labels={{ inputLabel: "Task prompt", send: "Send composer", stop: run?.status === "cancel_requested" ? "Stop requested" : cancelling ? "Requesting cancellation…" : "Cancel run", inputPlaceholder: "Describe a task for this workspace…" }}
               textareaProps={{ "aria-describedby": "composer-help", maxLength: 65536, disabled: cancelling || loading || (Boolean(pending) && pending !== "Starting task…" && !busy) }}
-              trailingActions={<button type="button" className="primary" disabled={!prompt.trim() || !canMutate || busy || hasTask} onClick={() => void start()}>{hasTask ? "Use task review to continue" : "Run task"}</button>}
+              trailingActions={<button type="button" className="primary" disabled={!prompt.trim() || !canMutate || hasTask || Boolean(run && (active(run.status) || run.status === "waiting_approval"))} onClick={() => void start()}>{hasTask ? "Use task review to continue" : "Run task"}</button>}
               leadingActions={<ModelPicker workspaceKey={workspaceKey} choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
                 configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
                 unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
