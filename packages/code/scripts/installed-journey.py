@@ -212,7 +212,7 @@ try:
         console.prompt()
         console.send("Fix greeting\n")
         frame = console.read("PgUp/PgDn")
-        assert "Reject" in frame and "Approve 1 file" in frame and "Decide later" in frame
+        assert "Reject" in frame and "Approve this change" in frame and "Decide later" in frame
         assert "( Z ) Review changes" in frame
         if columns >= 80: assert "openai/gpt-5.6-luna" in frame
         assert "estimatedUsd" not in frame  # Diff before technical JSON.
