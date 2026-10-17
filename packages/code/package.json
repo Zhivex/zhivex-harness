@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/code",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Zhivex terminal product powered by the Harness engine",
   "type": "module",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "node": ">=22.13.0"
   },
   "dependencies": {
-    "@zhivex-ai/harness": "1.4.1",
+    "@zhivex-ai/harness": "1.4.2",
     "@zhivex-ai/agents": "1.11.0",
     "@zhivex-ai/core": "1.34.0",
     "zod": "4.6.5"

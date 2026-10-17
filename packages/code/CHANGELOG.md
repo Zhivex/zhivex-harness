@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-10-16
+
+- Pin exactly Harness 1.4.2. Publish only after that engine is verified on `latest`. Published Code 0.3.2 is `latest`.
 - Pin `restore_file` to a destination and digest, bind each budget ledger to its source namespace, compare protected paths with locale-independent lowercase, and flag high-entropy output from credential-bearing MCP servers. This note does not publish a release.
 - Rework the local web workspace around review: a sessions drawer, light and dark themes, a movable diff panel, and a searchable model selector. `zhivex-code project add` registers a folder for a running local server. Tool policy stays per project. This note does not publish a release.
 - Select provisional Amazon Bedrock and Azure OpenAI from the matched engine. Converse uses the AWS credential chain and region and reports Tier B on published Bedrock 2.0.7. The OpenAI-compatible Bedrock runtime and Azure OpenAI can use a keychain or temporary API key with their required https endpoint. Pin Core 1.34.0 with that engine. No live calls, tags, or publication are authorized.
