@@ -81,7 +81,7 @@ try {
     } catch { /* A deliberately lost response has no authority; retain its request row. */ }
   });
   const capture = async name => { await page.screenshot({ path: output + '/' + name + '.png', fullPage: true }); screenshots.push(name + '.png'); };
-  await page.goto(url); await page.getByRole('button', { name: 'Create a session', exact: true }).click();
+  await page.goto(url); await page.getByRole('button', { name: 'New session', exact: true }).click();
   await page.getByRole('button', { name: 'Define task', exact: true }).click();
   await page.getByLabel('Objective', { exact: true }).fill('Review greeting behavior without changing its output');
   await page.getByLabel('Exact editable files, one per line').fill('greeting.mjs\neffects.log');
@@ -199,7 +199,7 @@ try {
   await page.getByRole('button', { name: 'Start governed task', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Running');
   await page.getByRole('button', { name: 'Cancel run', exact: true }).click();
-  await page.waitForFunction(() => ['Cancelled', 'Reconciliation required'].includes(document.querySelector('.pill')?.textContent));
+  await page.waitForFunction(() => ['Cancelled', 'Refresh needed'].includes(document.querySelector('.pill')?.textContent));
   if (await page.getByRole('alert').count()) await page.getByRole('button', { name: 'Reconnect' }).click();
   await page.waitForFunction(() => document.querySelector('.pill')?.textContent === 'Cancelled');
   await page.getByText('Host recorded cancellation. Provider stop remains unconfirmed; prior effects are retained.', { exact: true }).waitFor();

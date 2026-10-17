@@ -67,7 +67,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       else if (a.type === "agent-compaction") activity.phase("Updating context");
       else if (a.type === "tool-call") activity.start(typeof a.toolName === "string" ? a.toolName : undefined);
       else if (a.type === "tool-result") activity.finish(typeof a.toolName === "string" ? a.toolName : "tool", a.isError !== true);
-      else if (["agent-run-finish", "tool-approval-request", "agent-approval-request"].includes(String(a.type))) activity.flush();
+      else if (["agent-run-finish", "tool-approval-request", "agent-approval-request"].includes(String(a.type))) activity.flush({ summary: true });
       else if (a.type === "text-delta") activity.pause();
     };
     const pending=call(command).finally(()=>{finished=true;});
@@ -94,7 +94,7 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
       }
       const result=await pending;if(result.kind!=="run")throw new HarnessStateConflictError("Unexpected run response.");session=result.session;
       return{run:result.run,streamed};
-    }catch(e){throw annotate(e,sequence);}finally{activity.flush();consoleInput?.stopBackground();activeRun=undefined;}
+    }catch(e){throw annotate(e,sequence);}finally{activity.flush({ summary: true });consoleInput?.stopBackground();activeRun=undefined;}
   };
   const finish=(run:HarnessClientRun,streamed:boolean)=>{
     const document=cliRunResultDocumentSchema.parse(run.cliResult);

@@ -1,7 +1,17 @@
 import type { AgentStreamEvent } from "@zhivex-ai/agents";
 import { WebLimitStore } from "./limit-store.js";
 import { reachedLimits, type RunLimits, type LimitPricing } from "./limit-observer.js";
+import type { LimitSettings } from "./limit-settings.js";
 export type { LimitPricing } from "./limit-observer.js";
+
+function countStep(run: RunLimits, index: number) {
+  if (index >= 1) run.consumption.steps = Math.max(run.consumption.steps, index);
+}
+
+/** A tool-only stream, or a 0-based step index, is still at least one step. */
+function ensureStep(run: RunLimits) {
+  if (run.consumption.steps < 1) run.consumption.steps = 1;
+}
 
 /** One service owner, one active invocation. Never reserves money or changes engine policy. */
 export class WebLimitMonitor {
@@ -9,7 +19,7 @@ export class WebLimitMonitor {
   private active: { run: RunLimits; since: number; previousMinutes: number } | undefined;
   private timer: ReturnType<typeof setInterval> | undefined;
   private serial: Promise<unknown> = Promise.resolve();
-  constructor(private store: WebLimitStore, private cancel: () => Promise<void>, private price: LimitPricing | null, private now = Date.now, private hostDigest?: string) {}
+  constructor(private store: WebLimitStore, private cancel: () => Promise<void>, private price: LimitPricing | null, private now = Date.now, private hostDigest?: string, private defaults?: LimitSettings) {}
   private enqueue(job: () => Promise<void>) {
     const next = this.serial.then(job);
     this.serial = next.catch(() => {});
@@ -23,6 +33,9 @@ export class WebLimitMonitor {
     // Inactive snapshots remain durable; memory is bounded independently of usage.
     if (this.runs.size >= 64) for (const [id, previous] of this.runs) {
       if (previous !== this.active?.run && !previous.observationError) { this.runs.delete(id); break; }
+    }
+    if (run.origin === "default" && this.defaults && Object.values(run.settings).every(threshold => threshold.value === null)) {
+      run.settings = structuredClone(this.defaults);
     }
     this.runs.set(runId, run);
   }
@@ -49,12 +62,21 @@ export class WebLimitMonitor {
         if (run.settings.durationMinutes.value !== null) this.timer = setInterval(() => void this.enqueue(async () => {
           if (this.active?.run === run) await this.evaluate(run);
         }).catch(() => this.failed(run!.runId)), 250);
+      } else if (event.type === "agent-step-start") {
+        if (event.stepIndex >= 1) countStep(run, event.stepIndex);
+        else ensureStep(run);
+      } else if (event.type === "agent-run-update") {
+        if (event.run.currentStep >= 1) countStep(run, event.run.currentStep);
+        else if ((event.run.toolCalls ?? 0) > 0) ensureStep(run);
+        if (typeof event.run.toolCalls === "number") run.consumption.toolCalls = Math.max(run.consumption.toolCalls, event.run.toolCalls);
       } else if (event.type === "tool-result") {
         if (run.toolReceipts.includes(event.toolResult.toolCallId)) return;
         run.toolReceipts.push(event.toolResult.toolCallId);
         run.consumption.toolCalls++;
+        ensureStep(run);
       } else if (event.type === "agent-step-finish") {
-        run.consumption.steps = Math.max(run.consumption.steps, event.step.index);
+        if (event.step.index >= 1) countStep(run, event.step.index);
+        else ensureStep(run);
         if (event.step.index > run.reportedUsage.lastStep) {
           run.reportedUsage.lastStep = event.step.index;
           const usage = event.step.response?.usage;
@@ -70,6 +92,7 @@ export class WebLimitMonitor {
         }
       } else if (event.type === "agent-run-finish") {
         run.status = event.state.status;
+        if (event.state.steps.length >= 1) countStep(run, event.state.steps.length);
         run.consumption.tokens = Math.max(run.consumption.tokens, event.state.usage?.totalTokens ??
           (event.state.usage?.inputTokens ?? 0) + (event.state.usage?.outputTokens ?? 0));
         // Auxiliary model usage is included only when the SDK supplies a complete cumulative receipt.

@@ -32,6 +32,9 @@ The strongest matching decision wins: deny, then ask_user, then allow. Allow
 does not grant filesystem permissions or remove an existing approval. ask_user
 uses the current approval mechanism, including its configured automatic mode;
 it does not independently require a human. Human-only review is separate work.
+Opt-in auto-approve (`manual`, `auto-edits`, `auto-limits`) never bypasses a deny,
+an explicit host review, or the always-ask list (network, secrets, git push,
+package publish, paths outside the workspace, and an already reached spend or token limit).
 
 Built-in file resolvers cover read_file, read_files, propose_edits, apply_patch,
 apply_reviewed_edits, apply_reviewed_replacement, move_file and quarantine_file.

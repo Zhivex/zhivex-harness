@@ -348,6 +348,7 @@ test("real engine approval is scoped, single-use, durable on restart and rejects
     sessionId,
     runId,
   );
+  if (!("ticketId" in runtimeTicket)) throw new Error("expected a human review");
   await expect(
     f.runtime.decide("another-browser", runtimeTicket.ticketId, true),
   ).rejects.toThrow("REVIEW_REQUIRED");

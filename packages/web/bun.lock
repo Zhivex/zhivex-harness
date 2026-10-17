@@ -6,7 +6,7 @@
       "name": "@zhivex-ai/code-web",
       "dependencies": {
         "@phosphor-icons/react": "2.1.10",
-        "@zhivex-ai/react": "0.6.2",
+        "@zhivex-ai/react": "0.9.0",
         "diff": "9.0.0",
         "react": "19.2.0",
         "react-dom": "19.2.0",
@@ -21,7 +21,7 @@
         "@types/react": "19.2.0",
         "@types/react-dom": "19.2.0",
         "@zhivex-ai/agents": "1.11.0",
-        "@zhivex-ai/core": "1.34.0",
+        "@zhivex-ai/core": "1.35.0",
         "@zhivex-ai/harness": "1.4.0",
         "eslint": "9.39.4",
         "playwright": "1.58.2",
@@ -208,7 +208,7 @@
 
     "@zhivex-ai/anthropic": ["@zhivex-ai/anthropic@0.13.2", "", { "dependencies": { "@anthropic-ai/sdk": "0.131.0", "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-GrBBXY1+H9Vf5XKvWcwYn1kaSEBfYi4Tez7nw37LJo6kEdmk/6fL7u4EzpiR+KKUxz9C9qBkuuHO7ZtWNzxgyw=="],
 
-    "@zhivex-ai/core": ["@zhivex-ai/core@1.34.0", "", { "dependencies": { "ws": "^8.22.0", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-hw4oVBlM3Eu8sQH57XoYE8EfWyYDnCFqbZlRcjpt2kCHBRtY47UYfBvo5CRfd/qh3Sh+beGYPmvk8NHoF29TsQ=="],
+    "@zhivex-ai/core": ["@zhivex-ai/core@1.35.0", "", { "dependencies": { "ws": "^8.22.0", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-XMXkB/gjx4vZmIgJpazTWHdPYMC+oGX6eVdV+5DqGlUlDa54rr1tP6kyEdMsuk9nmybeNxe4V75fyZnhyBKfrA=="],
 
     "@zhivex-ai/gemini": ["@zhivex-ai/gemini@0.13.0", "", { "dependencies": { "@zhivex-ai/core": "^1.27.0", "zod": "^4.6.3" } }, "sha512-qmvO/vo2P+yxyMkwPSQ6vtIMz7AY8GRsgVTSm1Z87rsDosSa1TxZYNQDuqxZW8MvnmkJNp7DFmyuT29CbKvIRA=="],
 
@@ -220,7 +220,7 @@
 
     "@zhivex-ai/qwen": ["@zhivex-ai/qwen@0.16.4", "", { "dependencies": { "@zhivex-ai/core": "^1.29.0", "zod": "^4.6.3" } }, "sha512-JW+qtR8i/XVh1BE/2REgepTI/A/w81jSLBpNpvInm8mHub2iLSusN8lSmMXScuLsnkvXHzYd+w1uL/Dx/RkXDw=="],
 
-    "@zhivex-ai/react": ["@zhivex-ai/react@0.6.2", "", { "dependencies": { "@zhivex-ai/core": "^1.24.0" }, "peerDependencies": { "@ai-sdk/react": ">=4.0.0 <5", "@tanstack/react-virtual": "^3.14.13", "ai": ">=7.0.0 <8", "react": ">=18.2.0 <20", "react-dom": ">=18.2.0 <20", "react-markdown": "^10.1.0", "remark-gfm": "^4.0.1" }, "optionalPeers": ["@ai-sdk/react", "@tanstack/react-virtual", "ai", "react-markdown", "remark-gfm"] }, "sha512-Iu33wFklPP+LHOl/m1iFT85lZ75EOhMOv0LR/Qc9qr6bQAqktMdjDwb8AuCDQKc8dMZmy4Hjj36eEm4ShYkmNQ=="],
+    "@zhivex-ai/react": ["@zhivex-ai/react@0.9.0", "", { "dependencies": { "@zhivex-ai/core": "^1.35.0" }, "peerDependencies": { "@ai-sdk/react": ">=4.0.0 <5", "@tanstack/react-virtual": "^3.14.13", "ai": ">=7.0.0 <8", "react": ">=18.2.0 <20", "react-dom": ">=18.2.0 <20", "react-markdown": "^10.1.0", "remark-gfm": "^4.0.1" }, "optionalPeers": ["@ai-sdk/react", "@tanstack/react-virtual", "ai", "react-markdown", "remark-gfm"] }, "sha512-0tKh3FX2epZK4ttOZMQWbgp+xwIR4WiBY51Yrwy0FMqG6mc/pv68iNBLhfw+FSWiYffQI+9Azl6er0RVAbYCOw=="],
 
     "@zhivex-ai/vertex": ["@zhivex-ai/vertex@1.2.4", "", { "dependencies": { "@google-cloud/aiplatform": "^7.4.1", "@zhivex-ai/anthropic": "^0.13.2", "@zhivex-ai/core": "^1.30.0", "@zhivex-ai/openai": "^0.14.1", "google-auth-library": "^11.0.2", "zod": "^4.6.3" } }, "sha512-/sA/CcEfEvZEFe2DSHPDWCi8JtDyhbKPvAdexbgP5z3r9d1Frd6tDy69g5JGHFveno+EypKhPb7yy7KJi2I1Aw=="],
 
@@ -741,8 +741,6 @@
     "@zhivex-ai/gemini/@zhivex-ai/core": ["@zhivex-ai/core@1.29.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-Pz1+t4y67i8nE9auj/r97JNAhEGS2i9tYW+SHGrQfhxsWXEW2ovdsynjOJJf/14yoB/jcHAHs9Q1K67difnIGQ=="],
 
     "@zhivex-ai/harness/@zhivex-ai/core": ["@zhivex-ai/core@1.31.0", "", { "dependencies": { "ws": "^8.22.0", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-tPcQqOoGhYSpw00T3otnpaf5Z2BdN9o+qaa2lPXlYo17md5uLbyYcHsRKkFBEuwCU44IdFPkbVylVg69W25zfg=="],
-
-    "@zhivex-ai/react/@zhivex-ai/core": ["@zhivex-ai/core@1.29.0", "", { "dependencies": { "ws": "^8.21.3", "zod": "^4.6.3" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-Pz1+t4y67i8nE9auj/r97JNAhEGS2i9tYW+SHGrQfhxsWXEW2ovdsynjOJJf/14yoB/jcHAHs9Q1K67difnIGQ=="],
 
     "mdast-util-find-and-replace/escape-string-regexp": ["escape-string-regexp@5.0.0", "", {}, "sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw=="],
 

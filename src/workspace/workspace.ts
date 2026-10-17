@@ -32,6 +32,7 @@ import {
 import { resolvePackageCheckCommand } from "../execution/package-manager.js";
 import { runPortableProcess } from "../execution/process-runtime.js";
 import { HarnessWorkspaceError } from "../runtime/errors.js";
+import { binaryAfterEditMessage, firstDisallowedControlBytes, textGuards } from "./text-integrity.js";
 
 import { HARD_IGNORES, isSensitiveName, isHardIgnored } from './path-policy.js';
 const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
@@ -517,7 +518,11 @@ export class Workspace {
       maxBytes: MAX_FILE_BYTES
     });
     const { contents } = file;
-    if (!allowBinary && contents.includes(0)) throw new HarnessWorkspaceError("The file appears to be binary and cannot be read as text.");
+    if (!allowBinary && contents.includes(0)) {
+      const hit = firstDisallowedControlBytes(contents);
+      const where = hit ? `: ${hit.label} at L${hit.line}` : "";
+      throw new HarnessWorkspaceError(`The file appears to be binary and cannot be read as text${where}.`);
+    }
     return {
       path: wirePath(path.relative(this.root, safe.path)),
       absolutePath: safe.path,
@@ -1175,7 +1180,12 @@ export class Workspace {
     if (position < 0 || text.indexOf(edit.oldText, position + 1) >= 0) {
       throw new HarnessWorkspaceError("Replacement requires exactly one literal match; include more surrounding context.");
     }
-    return [{path: edit.path, expectedDigest: edit.expectedDigest, content: text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length)}];
+    return [{
+      path: edit.path,
+      expectedDigest: edit.expectedDigest,
+      content: text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length),
+      ...(edit.allowControlBytes === true ? { allowControlBytes: true as const } : {})
+    }];
   }
 
   async applyReplacement(input: ReplacementEdit): Promise<ApplyPatchResult> {
@@ -1249,6 +1259,7 @@ export class Workspace {
             throw new HarnessWorkspaceError(`Stale patch mode rejected for ${change.path}: expected ${modeBinding.beforeMode.toString(8)}, found ${before.mode.toString(8)}.`);
           }
         }
+        textGuards.beforeWrite(change.content, change.allowControlBytes === true);
         const temporary = await this.stageFile(
           safe.path,
           change.content,
@@ -1291,6 +1302,12 @@ export class Workspace {
           await unlink(item.temporary);
         }
         committed.push(item);
+        const published = await readRegularFileNoFollow(item.target, {
+          label: "The published file",
+          maxBytes: MAX_FILE_BYTES
+        });
+        const corrupt = textGuards.afterWrite(published.contents, item.change.allowControlBytes === true);
+        if (corrupt) throw new HarnessWorkspaceError(binaryAfterEditMessage(corrupt));
         await assertActive?.();
       }
     } catch (error) {

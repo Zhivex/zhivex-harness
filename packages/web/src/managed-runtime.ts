@@ -74,6 +74,15 @@ export function manageWebRuntime(
       try { return await current.configureLimits(...args); } finally { mutations--; } },
     async runLimits(...args) { ready(); return current.runLimits(...args); },
     async review(...args) { ready(); return current.review(...args); },
+    async autoApprove(sessionId?: string) { ready(); return current.autoApprove(sessionId); },
+    async setAutoApprove(...args) {
+      ready(); mutations++;
+      try { return await current.setAutoApprove(...args); } finally { mutations--; }
+    },
+    async undoAutoApproval(id: string) {
+      ready(); mutations++;
+      try { return await current.undoAutoApproval(id); } finally { mutations--; }
+    },
     async decide(...args) {
       ready(); mutations++;
       try { return await current.decide(...args); } finally { mutations--; }
