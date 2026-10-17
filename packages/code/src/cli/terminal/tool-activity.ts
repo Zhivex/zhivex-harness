@@ -1,3 +1,8 @@
+import { createRedactionPolicy } from "@zhivex-ai/agents";
+import { sanitizeTerminalText } from "./terminal-ui.js";
+
+const failureRedaction = createRedactionPolicy({ includeEmails: true });
+
 const labels: Readonly<Record<string, string>> = {
   read_file: "Reading a file", read_files: "Reading files", read_dependency: "Inspecting a dependency",
   search_files: "Searching files", search_many: "Searching the project", list_files: "Listing files",
@@ -76,9 +81,9 @@ export class ToolActivity {
     if (this.visible) this.write("\r\x1b[2K");
     this.visible = false;
   }
-  flush() {
+  flush(options?: { summary?: boolean }) {
     this.clear();
-    if (this.completed.size) {
+    if (options?.summary && this.completed.size) {
       const details = [...this.completed].map(([label, count]) => `${label}: ${count}`).join(" · ");
       this.write(`✓ Activity · ${details}\n`);
     }
@@ -91,15 +96,22 @@ const editLabels: Readonly<Record<string, string>> = {
   apply_reviewed_replacement: "Reviewed replacement applied", apply_environment_patch: "Environment changes imported",
 };
 
-/** Render only fixed categories. Never echo paths, arguments, outputs, or arbitrary errors. */
+const SAFE_CAUSE = /^(?:file is binary after edit:|Refusing to write a control byte|Stale patch|Replacement requires|Preview requires|The patch |oldText |Content exceeds|proposalId does not match)/;
+
+const clipCause = (message: string) =>
+  failureRedaction.redactText(sanitizeTerminalText(message)).replace(/\s+/g, " ").trim().slice(0, 240);
+
+/** Failures name a safe cause and the next step. Successful edits are grouped by the activity stream. */
 export const compactToolResult = (result: { toolName: string; isError?: boolean; error?: unknown }): string | undefined => {
-  if (!result.isError) return editLabels[result.toolName] ? `✓ ${editLabels[result.toolName]}` : undefined;
+  if (!result.isError) return undefined;
   const error = result.error && typeof result.error === "object" ? result.error as Record<string, unknown> : {};
   const message = typeof error.message === "string" ? error.message : "";
-  let reason = "operation failed; inspect diagnostics for details";
+  const binaryRead = /^The file appears to be binary and cannot be read as text(?:: ([^.]+))?/.exec(message);
+  let reason = "operation failed. Inspect /activity and retry that file.";
   if (message === "Denied by the operator."
     || message === "Computer action was denied by the approval policy."
     || /^Tool ".+" was denied by the approval policy\.$/.test(message)) reason = "rejected by you";
+  else if (binaryRead) reason = `file is binary${binaryRead[1] ? `: ${binaryRead[1]}` : ""}. Restore the text version, then read it again.`;
   else if (error.code === "TOOL_INPUT_VALIDATION_ERROR") reason = "invalid arguments; the assistant can correct and retry";
   else if (error.code === "ENOENT" || /^ENOENT: /.test(message)) reason = "file not found; list files to locate the correct path";
   else if ((message.startsWith("Dependency package or path was not found in ") || message.startsWith("Dependency path was not found in "))) reason = "dependency path not found; list the package files before retrying";
@@ -110,6 +122,10 @@ export const compactToolResult = (result: { toolName: string; isError?: boolean;
   else if (message === "Dependency access only permits package.json and TypeScript declaration files.") reason = "dependency file type is not permitted";
   else if (message === "Dependency directory links are not allowed.") reason = "dependency link is outside the permitted boundary";
   else if (message.startsWith("Dependency directory changed during inspection.")) reason = "dependency changed during inspection; retry the read";
+  else if (SAFE_CAUSE.test(message)) {
+    reason = clipCause(message);
+    if (!/not changed|reverted|retry|Read the file/i.test(reason)) reason += " Read the file again before retrying.";
+  }
   const operation = labels[result.toolName] ?? "Tool operation";
   return `✗ ${operation} · ${reason}${editLabels[result.toolName] && error.code === "TOOL_INPUT_VALIDATION_ERROR" ? " · edits not applied" : ""}`;
 };

@@ -7,7 +7,7 @@ import { CODE_TASK_KEY, codeTaskPrompt, freshCodeTaskBudgetRecap, freshCodeTaskR
 import { consoleWorkspaceDiff } from "./console/console-diff.js";
 import { handleConsoleBudget } from "./console/console-pricing.js";
 import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "./console/console-run-policy.js";
-import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
+import { ActivityHistory } from "./terminal/activity-history.js";
 import { chooseReasoning } from "./console/console-reasoning.js";
 import { reasoningEffortSchema } from "@zhivex-ai/harness/code-support";
 import { cliToolExecution } from "./tool-execution.js";
@@ -23,7 +23,7 @@ import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { ConsoleInput } from "./console/console-input.js";
 import { ConsoleRunView } from "./console/console-run-view.js";
-import { formatConsoleOutcome } from "./console/console-outcome.js";
+import { formatConsoleOutcome, formatTurnBanner } from "./console/console-outcome.js";
 import { checkpointRecovery } from "./console/console-recovery.js";
 import type { ConsoleComposerInput } from "./console/console-presentation.js";
 import { ConsoleAttachments, formatConsoleContext } from "./console/console-context.js";
@@ -254,8 +254,7 @@ export const chat = async (options: CliOptions) => {
 
   const createTracker = (runId: string) => {
     const rendering = createTaskTelemetry();
-    let offset = harness.workspace.mutationAudit().length;
-    const initialOffset = offset;
+    const initialOffset = harness.workspace.mutationAudit().length;
     rejectedDecisions = 0;
     displayLedger = inspectUsageLedger(harness.usageLedger?.summary(runId));
     const tracker: Parameters<typeof streamSink>[1] = {streamedText: false,
@@ -263,12 +262,13 @@ export const chat = async (options: CliOptions) => {
         rendering.measure("render", () => process.stdout.write(text));
         if (text) rendering.mark("first-visible-text");
       }, terminalSupportsColor(Boolean(process.stdout.isTTY)), () => process.stdout.columns || 80),
-      activityHistory, inputStatus: () => readline.backgroundStatus, consoleView: true};
+      activityHistory, inputStatus: () => readline.backgroundStatus, consoleView: true,
+      turnDiff: { added: 0, removed: 0 }};
     return {tracker, onTaskTelemetry: (snapshot: ReturnType<typeof rendering.snapshot>) => {
       rendering.finish();
       if (verbose) process.stderr.write(JSON.stringify({ taskTelemetry: snapshot, terminalTelemetry: rendering.snapshot() }) + "\n");
     }, outcome: (result: AgentRunOutput) => formatConsoleOutcome(result,
-      harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions),
+      harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions, tracker.turnDiff),
       onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
       if (event.type === "agent-step-start") requestInFlight = true;
       if (event.type === "agent-step-finish" || event.type === "agent-run-finish") requestInFlight = false;
@@ -276,17 +276,6 @@ export const chat = async (options: CliOptions) => {
       if (event.type === "agent-run-finish") contextTokens = estimateMessages(event.state.messages);
       runView.observe(event);
       await rendering.measure("render", () => streamSink({json: false, jsonl: false}, tracker, !verbose)(event));
-      if (event.type === "tool-result") {
-        const audit = harness.workspace.mutationAudit();
-        const receipt = formatAppliedFiles(audit.slice(offset), "/diff to review", "line");
-        offset = audit.length;
-        if (receipt) {
-          flushToolActivity(tracker);
-          tracker.markdown?.flush();
-          process.stderr.write(receipt);
-          activityHistory.add(receipt.trim());
-        }
-      }
     }};
   };
 
@@ -419,7 +408,7 @@ export const chat = async (options: CliOptions) => {
     messages = result.messages;
     displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
     contextTokens = estimateMessages(messages);
-    process.stderr.write(outcome(result) + "\n");
+    process.stderr.write(formatTurnBanner(outcome(result)));
     process.stderr.write(await freshCodeTaskRecap(harness, result.state));
     codeTask = restoredCodeTask(result.state);
     writeUsageLedger(result.state.metadata);
@@ -1072,7 +1061,7 @@ export const chat = async (options: CliOptions) => {
         attachments.clear();
         writeUsageLedger(result.state.metadata);
         displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
-        process.stderr.write(outcome(result) + "\n");
+        process.stderr.write(formatTurnBanner(outcome(result)));
         process.stderr.write(await freshCodeTaskRecap(harness, result.state));
         codeTask = restoredCodeTask(result.state);
         session = await sessionStore.updateRun(session.sessionId, runId, {

@@ -24,6 +24,12 @@ Approve and reject stay in the change-review panel. Every file must be viewed be
 
 The header shows Manual, Auto-edits, or Auto with limits. Manual is the default. Auto-edits applies file edits inside the project. Auto with limits also runs commands named in the workspace allowlist. Network, secrets, git push, package publish, writes outside the project, deletes outside the project, and anything over a spend or token limit still wait for a person. Press m to return to Manual for this session. Each auto-approved edit is written to the audit log and can be undone while the file still matches the approved text.
 
+## Terminal activity
+
+Each tool line names the action and its target: `Read src/x.ts L120-180`, `Searched "fetch(" in 14 files`, `Edited index.ts +3 −1: require rootDir`. A run of reads or searches collapses to one line; `/activity` expands the files. Consecutive edits to the same file become one line with the net line counts and the attempt count. A failure prints the cause and the next step, for example `file is binary after edit: NUL byte at L2283. The edit was reverted. Read the file again before retrying.` A rule separates turns. The summary names files changed, net +/−, and checks.
+
+Text edits refuse NUL and other control bytes unless `allowControlBytes` is set. If a published edit still turns a text file binary, that edit is reverted and the file bytes stay as they were.
+
 ## Terminal review
 
 The terminal review names what the change does, lists each file with +/- counts, and shows line numbers with word-level markers. A short diff stays directly under the activity line, and the decision prompt sits on the next line after the diff. The screen scrolls only when the diff is taller than the terminal. Unchanged context stays collapsed until Show full diff. n and p move between hunks. Nothing is highlighted until an arrow key, so Enter does not reject or approve by accident. Control bytes, zero-width characters, bidi overrides, tabs, and trailing spaces are visible in the terminal diff and in the web file diff.

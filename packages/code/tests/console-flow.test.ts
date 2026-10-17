@@ -5,7 +5,7 @@ import { consoleLines, consoleLabel, consoleStateLines } from "../src/cli/consol
 import { reviewFrame } from "../src/cli/console/console-review.js";
 import { renderReviewedDiff } from "../src/cli/console/review-diff.js";
 import { ConsoleRunView } from "../src/cli/console/console-run-view.js";
-import { formatConsoleOutcome } from "../src/cli/console/console-outcome.js";
+import { formatConsoleOutcome, formatTurnBanner } from "../src/cli/console/console-outcome.js";
 import { checkpointRecovery } from "../src/cli/console/console-recovery.js";
 import { resolveTerminalApprovals } from "../src/cli/terminal/terminal-ui.js";
 import { terminalCellWidth } from "../src/cli/terminal/terminal-table.js";
@@ -297,7 +297,7 @@ test("a stale preview offers reload and details, and no Approve", async () => {
 
 test("conversation completion retains tool failure and verification distinctions; recovery never advises blind retry", () => {
   const outcome = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "read_file", toolCallId: "read-1", isError: true}]}, 0, 1);
-  expect(outcome).toBe("Finished with errors · 1 action failed · /activity · 1 rejected");
+  expect(outcome).toBe("Finished with errors · 1 action failed · 0 files changed · net +0 −0 · no checks ran · /activity · 1 rejected");
   expect(outcome).not.toContain("completed");
   const recovery = checkpointRecovery("Restore conflicts with subsequent edits or a partially applied filesystem operation; manual recovery required.");
   expect(recovery).toContain("RESTORE BLOCKED"); expect(recovery).toContain("original digests");
@@ -305,10 +305,14 @@ test("conversation completion retains tool failure and verification distinctions
   const rejected = formatConsoleOutcome({status: "completed", state: {approvalHistory: [
     {requestId: "request", provider: "openai", kind: "local-tool", approve: false, toolCallId: "read-1", resolvedAt: 1},
   ]}, toolResults: [{toolName: "read_file", toolCallId: "read-1", isError: true}]}, 0, 1);
-  expect(rejected).toBe("Done · 0 files changed · no checks ran · 1 rejected");
+  expect(rejected).toBe("Done · 0 files changed · net +0 −0 · no checks ran · 1 rejected");
   expect(rejected).not.toContain("completed");
-  const checked = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "run_check", toolCallId: "check-1", isError: false, output: {exitCode: 0, command: ["bun", "--no-env-file", "run", "test"]}}]}, 1, 0);
-  expect(checked).toBe("Done · 1 file changed · checks: 1 passed, 0 failed");
+  const checked = formatConsoleOutcome({status: "completed", toolResults: [{toolName: "run_check", toolCallId: "check-1", isError: false, output: {exitCode: 0, command: ["bun", "--no-env-file", "run", "test"]}}]}, 1, 0, { added: 3, removed: 1 });
+  expect(checked).toBe("Done · 1 file changed · net +3 −1 · checks: 1 passed, 0 failed");
+  const banner = formatTurnBanner(rejected);
+  expect(banner.startsWith("\n────────────────────────────────\n")).toBe(true);
+  expect(banner.endsWith("\n\n")).toBe(true);
+  expect(banner).toContain(rejected);
 });
 
 test("command reviews describe the command instead of a file write", async () => {
