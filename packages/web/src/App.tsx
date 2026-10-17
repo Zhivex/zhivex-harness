@@ -918,26 +918,26 @@ export function App() {
             : <span className="session-title-static">New session</span>}
         </div>
         <div className="topbar-status">
-          {pendingItems.length > 0 && <button type="button" className="needs-you-count" onClick={() => openPending()}>
-            {pendingItems.length === 1 ? "1 needs you" : `${pendingItems.length} need you`}
-          </button>}
           {loading ? <span className="connection-label">Reading…</span>
             : !connected ? <button type="button" className="connection-action" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconnect</button>
             : needsReconcile || error ? <button type="button" className="connection-action" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconcile</button>
-            : <span className="connection-label">{connectionLabel}</span>}
+            : pendingItems.length > 0 ? <button type="button" className="needs-you-count" onClick={() => openPending()}>
+              {pendingItems.length === 1 ? "1 needs you" : `${pendingItems.length} need you`}
+            </button>
+            : <span className="connection-label"><span className="status-dot" aria-hidden="true" />{connectionLabel}</span>}
         </div>
         <div className="topbar-actions">
-          <button type="button" className="icon-button" aria-label="New session" disabled={!canMutate} onClick={() => void create()}><PlusIcon size={18} /></button>
-          <button ref={drawerButton} type="button" className="subtle" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
-          <button className="limits-launcher" aria-label={limitsLabel} disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
+          <button ref={drawerButton} type="button" className="subtle topbar-chip" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
+          <button className="limits-launcher topbar-chip" aria-label={limitsLabel} title={limitsLabel} disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
             onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
-            <SlidersHorizontalIcon size={18} /><span>{limitsLabel}</span>
+            <SlidersHorizontalIcon size={16} /><span>{limitsLabel}</span>
           </button>
-          <button type="button" className="icon-button" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
+          <button type="button" className="icon-button topbar-icon" aria-label="New session" disabled={!canMutate} onClick={() => void create()}><PlusIcon size={16} /></button>
+          <button type="button" className="icon-button topbar-icon" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
             const next: ThemeChoice = themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system";
             localStorage.setItem(THEME_KEY, next);
             setThemeChoice(next);
-          }}>{themeChoice === "system" ? <DesktopIcon size={18} /> : resolvedTheme === "dark" ? <MoonIcon size={18} /> : <SunIcon size={18} />}</button>
+          }}>{themeChoice === "system" ? <DesktopIcon size={16} /> : resolvedTheme === "dark" ? <MoonIcon size={16} /> : <SunIcon size={16} />}</button>
         </div>
       </header>
       {failureCopy && <div role="alert" className="error-banner">

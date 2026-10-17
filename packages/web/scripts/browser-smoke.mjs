@@ -140,6 +140,34 @@ async function createSession() {
     () => document.querySelector(".pill")?.textContent === "Ready",
   );
 }
+async function assertHeaderAligned() {
+  const report = await page.locator("header.topbar").evaluate((header) => {
+    const headerBox = header.getBoundingClientRect();
+    const nodes = [...header.querySelectorAll(".brand, .crumb, .topbar-status, .topbar-actions, .topbar-actions > button, .connection-label, .connection-action, .needs-you-count, .session-title, .session-title-static, .project-crumb, .project-switch")];
+    const rows = nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { top: rect.top, height: rect.height, left: rect.left, right: rect.right, bottom: rect.bottom };
+    }).filter((rect) => rect.height >= 16 && rect.right - rect.left >= 8);
+    const groups = [];
+    for (const rect of rows) {
+      const center = rect.top + rect.height / 2;
+      const group = groups.find((item) => Math.abs(item.center - center) < 18);
+      if (group) group.centers.push(center);
+      else groups.push({ center, centers: [center] });
+    }
+    const aligned = groups.every((group) => group.centers.every((center) => Math.abs(center - group.centers[0]) <= 1));
+    const inside = rows.every((rect) => rect.left >= headerBox.left - 1 && rect.right <= headerBox.right + 1 && rect.top >= headerBox.top - 1 && rect.bottom <= headerBox.bottom + 1);
+    const text = header.innerText.replace(/\s+/g, " ").trim();
+    const labeledNewSession = [...header.querySelectorAll("button")].filter((button) => (button.innerText ?? "").trim() === "New session").length;
+    return { height: headerBox.height, text, labeledNewSession, aligned, inside, groups: groups.length };
+  });
+  assert.equal(report.labeledNewSession, 0, report.text);
+  assert.equal((report.text.match(/New session/g) ?? []).length <= 1, true, report.text);
+  assert.equal(/Nothing needs you|\bDark\b|\bLight\b/.test(report.text), false, report.text);
+  assert.equal(report.aligned, true, JSON.stringify(report));
+  assert.equal(report.inside, true, JSON.stringify(report));
+  assert.equal(Math.round(report.height), report.groups > 1 ? 80 : 48, JSON.stringify(report));
+}
 const wait = () =>
   page.waitForFunction(
     () => document.querySelector(".pill")?.textContent === "Needs you",
@@ -203,6 +231,7 @@ try {
   await page
     .getByLabel("Task prompt")
     .waitFor();
+  await assertHeaderAligned();
   steps.push("recover initial context failure without re-pairing or replay");
   await openSessions();
   await page.getByLabel("Search sessions").fill("missing-session");
@@ -388,6 +417,7 @@ try {
   });
   for (const width of [390, 1120, 1280]) {
     await page.setViewportSize({ width, height: 900 });
+    await assertHeaderAligned();
     assert.equal(await page.evaluate(() => {
       const selectors = ['.review-file h4', '.diff-line code', '.diff-lines', '.review-scope', '.decision-actions button'];
       return selectors.every(selector => [...document.querySelectorAll(selector)].every(element => {

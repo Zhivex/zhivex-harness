@@ -32,7 +32,7 @@ Confirmed host failures, including `EXECUTION_FAILED`, used to lock the session 
 
 ## Sessions
 
-The header is one bar: project and editable session title, one connection or attention control, then Sessions, limits, a new-session icon, and a theme icon. “New session” is no longer repeated as a second title.
+The header is one 48px bar. The project and the session title share a baseline on the left. Connection and attention are a single control: a status dot and “Connected”, or “N needs you”, or Reconcile. Sessions, the limits control, a plus icon, and a theme icon sit on that same line at 32px. The theme control is an icon, not a “Dark” label. Narrow widths move the title onto its own row instead of letting controls overlap the corner.
 
 ## Finishing and resuming
 
