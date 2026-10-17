@@ -25,6 +25,15 @@ export function ModelPicker(props: {
   const [query, setQuery] = useState("");
   const [configuredOnly, setConfiguredOnly] = useState(props.configuredOnlyDefault ?? true);
   const [unconfiguredOpen, setUnconfiguredOpen] = useState(false);
+  const [seenOpen, setSeenOpen] = useState(props.open);
+  if (props.open !== seenOpen) {
+    setSeenOpen(props.open);
+    if (props.open) {
+      setQuery("");
+      setConfiguredOnly(props.configuredOnlyDefault ?? true);
+      setUnconfiguredOpen(false);
+    }
+  }
   const [memory, setMemory] = useState<ModelPickerMemory>({ favorites: [], recents: [], lastUsedByWorkspace: {} });
   const [active, setActive] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);

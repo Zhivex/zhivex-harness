@@ -80,6 +80,7 @@ export async function uxBrowserJourney(context, origin, csrf) {
     await page.getByRole("button", { name: "Theme system. Switch theme" }).click();
     await page.waitForFunction(() => globalThis.localStorage.getItem("zhivex.code.theme.v1") === "light");
     assert.equal(await page.locator(".app-shell").getAttribute("data-theme"), "light");
+    await page.getByRole("heading", { name: "What are we building?" }).waitFor();
     await assertWorkspaceContrast(page, "light");
     await captureTheme(page, "light");
     await page.getByRole("button", { name: "Theme light. Switch theme" }).click();
@@ -87,6 +88,7 @@ export async function uxBrowserJourney(context, origin, csrf) {
     await page.reload();
     await page.getByRole("button", { name: "Theme dark. Switch theme" }).waitFor();
     assert.equal(await page.locator(".app-shell").getAttribute("data-theme"), "dark");
+    await page.getByRole("heading", { name: "What are we building?" }).waitFor();
     await assertWorkspaceContrast(page, "dark");
     await captureTheme(page, "dark");
     await page.getByRole("button", { name: "Theme dark. Switch theme" }).click();
