@@ -5,7 +5,7 @@
     "": {
       "name": "@zhivex-ai/harness",
       "dependencies": {
-        "@zhivex-ai/agents": "1.11.0",
+        "@zhivex-ai/agents": "1.12.0",
         "@zhivex-ai/anthropic": "0.14.0",
         "@zhivex-ai/azure-openai": "0.7.8",
         "@zhivex-ai/bedrock": "2.0.7",
@@ -195,7 +195,7 @@
 
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
-    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.11.0", "", { "dependencies": { "@zhivex-ai/core": "^1.31.0" } }, "sha512-q9XcShjD1zM1dQlgeyEwMIJKeSGRYYRFP/SGVdMDE+aOxC6xQw85Mh1Y/eljSHPyMsYuaUHJuH2Zfflvb9a+sg=="],
+    "@zhivex-ai/agents": ["@zhivex-ai/agents@1.12.0", "", { "dependencies": { "@zhivex-ai/core": "^1.34.0" } }, "sha512-TeIM+oNXyClaHrzVo6/tzcE56FtgrGJRkTp1Q+YZL4DL3a+6zr94c3qMUMqwN9hPboNwDSD1GKEqqTWu6fqgWQ=="],
 
     "@zhivex-ai/anthropic": ["@zhivex-ai/anthropic@0.14.0", "", { "dependencies": { "@anthropic-ai/sdk": "0.131.0", "@zhivex-ai/core": "^1.30.0", "zod": "^4.6.3" } }, "sha512-7PEth5g2VkgIgLstjv294CT+Vnp1VKBaR3rRjvUmR8Ab9QexGCVnxupRbjD9t/8obu6Het7RAxz55NkY0TX3Dg=="],
 

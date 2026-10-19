@@ -216,7 +216,7 @@
     "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts"
   },
   "dependencies": {
-    "@zhivex-ai/agents": "1.11.0",
+    "@zhivex-ai/agents": "1.12.0",
     "@zhivex-ai/anthropic": "0.14.0",
     "@zhivex-ai/azure-openai": "0.7.8",
     "@zhivex-ai/bedrock": "2.0.7",
