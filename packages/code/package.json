@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/code",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Zhivex terminal product powered by the Harness engine",
   "type": "module",
   "license": "MIT",

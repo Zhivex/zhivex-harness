@@ -7,9 +7,9 @@ Version `1.4.0` is published and verified on npm `latest`.
 `release-status.json` records that Harness registry bytes, source and protected
 release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
-`0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. This checkout
-prepares Harness `1.6.2` for `latest`. Code stays version `0.4.0`, with its source pin on Harness `1.6.2`.
-Publication of 1.6.2 is pending and is not claimed here.
+`0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. Harness `1.6.2` is
+published on `latest`. This checkout prepares Code `0.4.1`, pinned exactly to Harness `1.6.2`.
+Publication of Code 0.4.1 is pending and is not claimed here.
 
 ## Prepared source: 1.6.2
 
