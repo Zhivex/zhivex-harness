@@ -1,15 +1,32 @@
 # Release process
 
-## Pending minor: 1.5.0
+## Pending minor: 1.6.0
 
-The source version is `1.5.0`, pending publication to `latest`. This checkout
-prepares Harness `1.5.0` and Code `0.4.0` for npm `latest`, with Code pinned
-exactly to the engine and private Desktop bound to the same Harness version.
+The source version is `1.6.0`, pending publication to `latest`. This checkout
+prepares Harness `1.6.0` for npm `latest`. Code stays version `0.4.0`. Its
+source pin is Harness `1.6.0` because installed acceptance requires that exact
+match. Published npm Code `0.4.0` remains pinned to Harness `1.5.0` and is not
+part of this release. Private Desktop binds to
+Harness `1.6.0`. Published `latest` is Harness `1.5.0` and Code `0.4.0`. It adds
+the `v1.6.0` representative mapping with the same Meta, Qwen and OpenAI models
+as `v1.5.0` and does not change provider/API tiers. The minor is opt-in
+auto-approve: `manual` stays the default, and `auto-edits` and `auto-limits`
+still ask for network, secrets, git push, publish, and writes outside the
+workspace. Annotated `v1.6.0` on the reviewed main SHA, `channel=latest`, runs
+through the unchanged protected workflow and its environment approvals. This
+preparation creates no tag and dispatches no workflow.
+
+## Previous preparation: 1.5.0
+
+The source version was `1.5.0`, pending publication to `latest`. That checkout
+prepared Harness `1.5.0` and Code `0.4.0` for npm `latest`, with Code pinned
+exactly to that engine and private Desktop bound to the same Harness version.
 Published `latest` is Harness `1.4.1` and Code `0.3.2`. It adds the `v1.5.0`
 representative mapping with the same Meta, Qwen and OpenAI models as `v1.4.1`
 and does not change provider/API tiers. Annotated `v1.5.0` then `code-v0.4.0`
 on the same reviewed main SHA, `channel=latest`, run through the unchanged
-protected workflows and their environment approvals.
+protected workflows and their environment approvals. That preparation does not
+certify 1.6.0.
 
 ## Pending patch: 1.4.1
 
