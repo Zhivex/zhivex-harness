@@ -1,5 +1,12 @@
 # Code release procedure
 
+## Harness 1.6.0 does not release Code
+
+Harness source is `1.6.0`, pending publication to `latest`. `@zhivex-ai/code`
+stays `0.4.0` with `@zhivex-ai/harness` pinned to `1.5.0`. Do not create a new
+Code version or a `code-v*` tag for this engine bump. The 0.4.0 preparation
+below is unchanged and does not certify Harness 1.6.0.
+
 ## Pending patch: 2026-10-16
 
 The source version is `1.5.0`, pending publication to `latest`. This checkout
