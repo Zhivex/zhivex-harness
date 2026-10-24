@@ -1,12 +1,19 @@
 # Code release procedure
 
-## Harness 1.6.2 does not release Code
+## Pending patch: Code 0.4.1
 
-Harness source is `1.6.2`, pending publication to `latest`. Installed
-acceptance requires the Code source pin to equal that candidate, so
-`@zhivex-ai/code` stays version `0.4.0` and pins `@zhivex-ai/harness` to
-`1.6.2`. Published npm Code `0.4.0` remains pinned to Harness `1.5.0`. Do not
-republish `0.4.0` and do not create a `code-v*` tag for this engine bump.
+Harness `1.6.2` is published on npm `latest`. This checkout prepares
+`@zhivex-ai/code` `0.4.1` for `latest`, pinned exactly to Harness `1.6.2`. The
+engine bump is its only change. Published npm Code `0.4.0` remains pinned to
+Harness `1.5.0` and is not republished. Annotated `code-v0.4.1` on the reviewed
+main SHA, `channel=latest`, runs through the unchanged protected workflow and
+its environment approval.
+
+## Previous preparation: Harness 1.6.2 did not release Code
+
+Harness `1.6.2` was prepared while `@zhivex-ai/code` stayed version `0.4.0`,
+with its source pin on `1.6.2` for installed acceptance. No `code-v*` tag was
+created for that engine bump.
 
 ## Pending patch: 2026-10-16
 
