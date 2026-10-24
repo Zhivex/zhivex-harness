@@ -6,6 +6,11 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 1.6.2 - 2026-10-24
+
+- Allow one continuity retry per provider in the release gate. Live certification of `v1.6.0` and `v1.6.1` (twice) failed only the multi-process continuity gate, each time on a different provider. A provider whose continuity run fails now gets one fresh retry of all phases and passes only if the retry passes. Every selected provider stays mandatory, and no other gate retries. The continuity evidence records which provider retried, the first attempt's sanitized cause, and the retry outcome. Runtime and CLI behavior and defaults are unchanged (#250).
+- 1.6.1 was tagged but not published, so 1.6.2 is the first npm release carrying the 1.6.1 compaction fix below.
+
 ## 1.6.1 - 2026-10-24
 
 - Mark compacted recollections that precede later user messages. Compaction keeps user steering and recent assistant replies in separate lists, so a stale reply naming a replaced objective could read as newer than the user message that superseded it. In the `v1.6.0` live certification, meta and qwen repeated their previous answer in the continuity gate. Recent entries followed by a later user message now carry a `[before later user messages] ` prefix. The summary schema, strategy id, and defaults are unchanged (#248).
