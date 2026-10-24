@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Pin private Desktop Electron 44.9.3 and its optional `undici` dependency at 7.30.1. Electron 44.5.1 is inside GHSA-jr5w-w6x2-84p9 (`<44.9.1`), and undici 7.29.1 is inside GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, and GHSA-xjj6-f33q-929c (`<7.30.1`). Desktop behavior is unchanged.
+- Pin the private web Playwright devDependency at 1.64.1 so `playwright install --with-deps chromium` can run on the Ubuntu 26.04 GitHub runner. Browser journeys still launch headless Chromium the same way.
 - Pin the published 2026-10-24 SDK batch: Core 1.36.0, Agents 1.12.0, OpenAI 0.17.0, Anthropic 0.15.0, Qwen 0.18.0, Gemini 0.14.0, Vertex 1.3.0, Azure OpenAI 0.8.0, Bedrock 2.1.0, and Meta 0.3.0. The web client pins React 0.10.0. The root Core override stays one runtime. `zod` is 4.6.7 and `google-auth-library` is 11.3.1 so the new adapter floors resolve to one copy. Harness and CLI defaults are unchanged: shared `topP`, `seed`, and `stopSequences` are not sent, `stopWhen` is not set, and voice is unused. `@types/bun` is 1.4.3. CodeQL init and analyze stay SHA-pinned at `6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee` (v4.39.0). This note does not publish a release.
 
 ## 1.5.0 - 2026-10-16
