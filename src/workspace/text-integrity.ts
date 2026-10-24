@@ -38,15 +38,15 @@ export const firstDisallowedControlBytes = (bytes: Uint8Array): ControlHit | und
 };
 
 export const refuseControlMessage = (hit: ControlHit) =>
-  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte, or set allowControlBytes if it is intentional.`;
+  `Refusing to write a control byte into a text file: ${hit.label} at L${hit.line}. The file was not changed. Remove the control byte.`;
 
 export const binaryAfterEditMessage = (hit: ControlHit) =>
   `file is binary after edit: ${hit.label} at L${hit.line}. The edit was reverted. Read the file again before retrying.`;
 
 /**
- * Text edits refuse NUL and other control bytes unless the caller sets
- * allowControlBytes. afterWrite is the publication check; tests replace it to
- * prove the rollback path.
+ * Text edits refuse NUL and other control bytes unless the host passes
+ * allowControlBytes. That switch is not part of the model tool schema.
+ * afterWrite is the publication check; tests replace it to prove the rollback path.
  */
 export const textGuards = {
   beforeWrite(content: string, allowControlBytes: boolean): void {

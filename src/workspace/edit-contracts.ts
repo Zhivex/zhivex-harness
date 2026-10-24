@@ -35,10 +35,7 @@ export const workspaceFilePathSchema = z.string()
 export const editChangeSchema = z.strictObject({
   path: workspaceFilePathSchema,
   expectedDigest: expectedEditDigestSchema,
-  content: z.string(),
-  allowControlBytes: z.literal(true).optional().describe(
-    "Set true only when the resulting text file is meant to contain a NUL or other control byte. Otherwise the edit is refused."
-  )
+  content: z.string()
 }).superRefine((change, context) => {
   if (Buffer.byteLength(change.content, "utf8") > MAX_EDIT_FILE_BYTES) {
     context.addIssue({

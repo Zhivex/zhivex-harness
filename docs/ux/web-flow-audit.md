@@ -28,7 +28,7 @@ The header shows Manual, Auto-edits, or Auto with limits. Manual is the default.
 
 Each tool line names the action and its target: `Read src/x.ts L120-180`, `Searched "fetch(" in 14 files`, `Edited index.ts +3 −1: require rootDir`. A run of reads or searches collapses to one line; `/activity` expands the files. Consecutive edits to the same file become one line with the net line counts and the attempt count. A failure prints the cause and the next step, for example `file is binary after edit: NUL byte at L2283. The edit was reverted. Read the file again before retrying.` A rule separates turns. The summary names files changed, net +/−, and checks.
 
-Text edits refuse NUL and other control bytes unless `allowControlBytes` is set. If a published edit still turns a text file binary, that edit is reverted and the file bytes stay as they were.
+Text edits refuse NUL and other control bytes in model-supplied text. The opt-in is host configuration, not a tool field, and it defaults off. If a published edit still turns a text file binary, that edit is reverted and the file bytes stay as they were.
 
 ## Terminal review
 

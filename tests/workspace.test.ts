@@ -610,9 +610,8 @@ test("an intentional control byte is written and a binary publication is reverte
     path: "src/index.ts",
     expectedDigest: current.digest,
     oldText: "value = 1",
-    newText: "value = 1\0",
-    allowControlBytes: true
-  });
+    newText: "value = 1\0"
+  }, { allowControlBytes: true });
   const written = await readFile(path.join(root, "src", "index.ts"));
   expect(written.includes(0)).toBe(true);
   await expect(workspace.readFile("src/index.ts")).rejects.toThrow("NUL byte at L1");
