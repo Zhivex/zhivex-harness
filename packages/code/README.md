@@ -102,7 +102,7 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 
 ## Releases
 
-npm `latest` is the stable channel (Code `0.4.0`, pinned to published Harness `1.5.0`). This checkout keeps Code `0.4.0` and pins `@zhivex-ai/harness@1.6.0` so installed acceptance matches the Harness candidate. That pin is not a new Code release, and `0.4.0` is not republished. npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
+npm `latest` is the stable channel (Code `0.4.0`, pinned to published Harness `1.5.0`). This checkout keeps Code `0.4.0` and pins `@zhivex-ai/harness@1.6.1` so installed acceptance matches the Harness candidate. That pin is not a new Code release, and `0.4.0` is not republished. npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
 
 Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
 

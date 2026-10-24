@@ -1,9 +1,20 @@
 # Release process
 
-## Pending minor: 1.6.0
+## Pending patch: 1.6.1
 
-The source version is `1.6.0`, pending publication to `latest`. This checkout
-prepares Harness `1.6.0` for npm `latest`. Code stays version `0.4.0`. Its
+The source version is `1.6.1`, pending publication to `latest`. It carries the
+1.6.0 changes plus the compaction chronology fix from #248, which addresses the
+meta and qwen continuity gate failures in the `v1.6.0` live certification.
+`v1.6.0` stays tagged and was not published. Code stays version `0.4.0` and its
+source pin is Harness `1.6.1`. Private Desktop binds to Harness `1.6.1`. It adds
+the `v1.6.1` representative mapping with the same Meta, Qwen and OpenAI models
+as `v1.6.0`. Annotated `v1.6.1` on the reviewed main SHA, `channel=latest`, runs
+through the unchanged protected workflow and its environment approvals.
+
+## Previous preparation: 1.6.0
+
+The source version was `1.6.0`, pending publication to `latest`. That checkout
+prepared Harness `1.6.0` for npm `latest`. Code stays version `0.4.0`. Its
 source pin is Harness `1.6.0` because installed acceptance requires that exact
 match. Published npm Code `0.4.0` remains pinned to Harness `1.5.0` and is not
 part of this release. Private Desktop binds to
@@ -14,7 +25,8 @@ auto-approve: `manual` stays the default, and `auto-edits` and `auto-limits`
 still ask for network, secrets, git push, publish, and writes outside the
 workspace. Annotated `v1.6.0` on the reviewed main SHA, `channel=latest`, runs
 through the unchanged protected workflow and its environment approvals. This
-preparation creates no tag and dispatches no workflow.
+preparation creates no tag and dispatches no workflow. Its live certification
+failed the continuity gate, so 1.6.0 was not published.
 
 ## Previous preparation: 1.5.0
 

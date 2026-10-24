@@ -6,6 +6,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 1.6.1 - 2026-10-24
+
+- Mark compacted recollections that precede later user messages. Compaction keeps user steering and recent assistant replies in separate lists, so a stale reply naming a replaced objective could read as newer than the user message that superseded it. In the `v1.6.0` live certification, meta and qwen repeated their previous answer in the continuity gate. Recent entries followed by a later user message now carry a `[before later user messages] ` prefix. The summary schema, strategy id, and defaults are unchanged (#248).
+
 ## 1.6.0 - 2026-10-24
 
 - Prepare minor Harness 1.6.0 for npm `latest`. The minor is opt-in auto-approve. Code stays version 0.4.0. Its source pin moves to Harness 1.6.0 because installed acceptance rejects a candidate that differs from that pin. Published npm Code 0.4.0 remains pinned to Harness 1.5.0 and is not republished. Private Desktop binds to this engine. The representative mapping for `v1.6.0` uses the same Meta, Qwen, and OpenAI models as `v1.5.0`. This preparation creates no tag and dispatches no workflow.
