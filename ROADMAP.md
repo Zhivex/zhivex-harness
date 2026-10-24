@@ -8,10 +8,19 @@ Version `1.4.0` is published and verified on npm `latest`.
 release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 `0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. This checkout
-prepares Harness `1.6.1` for `latest`. Code stays version `0.4.0`, with its source pin on Harness `1.6.1`.
-Publication of 1.6.1 is pending and is not claimed here.
+prepares Harness `1.6.2` for `latest`. Code stays version `0.4.0`, with its source pin on Harness `1.6.2`.
+Publication of 1.6.2 is pending and is not claimed here.
 
-## Prepared source: 1.6.1
+## Prepared source: 1.6.2
+
+Source version: `1.6.2` (stable publication to `latest` pending). It carries
+the 1.6.1 changes plus the continuity gate rule from #250: a provider whose
+continuity run fails gets one fresh retry, and every provider stays mandatory.
+`v1.6.0` and `v1.6.1` stay tagged and were not published. Code stays version
+`0.4.0`, with its source pin on Harness `1.6.2`. Private Desktop binds to
+Harness `1.6.2`. This preparation does not create tags or publish.
+
+## Prepared source: 1.6.1 (not published)
 
 Source version: `1.6.1` (stable publication to `latest` pending). It carries
 the 1.6.0 changes plus the compaction chronology fix from #248. `v1.6.0` stays
@@ -123,7 +132,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.4.1` | Patch | Footer, review copy, English limits, Node check, Code 0.3.1 | Published | S |
 | `1.5.0` | Minor | Audit pack, Bedrock/Azure routes, web task control, web workspace rework, Code 0.4.0 | Published on npm as `latest` | S |
 | `1.6.0` | Minor | Opt-in auto-approve, web workspace, named terminal actions | Tagged; not published, superseded by 1.6.1 | S |
-| `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Pending stable publication | S |
+| `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Tagged; not published, superseded by 1.6.2 | S |
+| `1.6.2` | Patch | One continuity retry per provider in the release gate | Pending stable publication | S |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

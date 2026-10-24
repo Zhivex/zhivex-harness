@@ -3,7 +3,7 @@
 Status: proposed for review (HAR-HU-36). Date: 2026-09-28.
 
 Current status, 2026-10-15: the boundary shipped. Published npm `latest` is
-Harness 1.4.0 and Code 0.3.0. This checkout prepares Harness 1.6.1. Code stays version 0.4.0, with its source pin on Harness 1.6.1. Published Code 0.4.0 remains pinned to Harness 1.5.0.
+Harness 1.4.0 and Code 0.3.0. This checkout prepares Harness 1.6.2. Code stays version 0.4.0, with its source pin on Harness 1.6.2. Published Code 0.4.0 remains pinned to Harness 1.5.0.
 The text below is the original proposal, not a current inventory.
 
 This records a design, not a completed package extraction or permission to publish.

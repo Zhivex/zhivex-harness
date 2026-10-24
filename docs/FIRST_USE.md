@@ -1,13 +1,13 @@
 # First use
 
-This guide targets stable `1.6.1`, pending publication to npm `latest`. The versioned install commands below become available only after protected publication. npm `latest` remains stable 1.5.0 until that publication.
+This guide targets stable `1.6.2`, pending publication to npm `latest`. The versioned install commands below become available only after protected publication. npm `latest` remains stable 1.5.0 until that publication.
 
 ## Install and start
 
 Install Node.js 22.13.0 or newer and Git. Then:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.6.1
+npm install -g @zhivex-ai/harness@1.6.2
 cd /path/to/your/project
 zhx
 ```
@@ -82,16 +82,16 @@ For command execution, configure [OCI isolation](EXECUTION_ENVIRONMENTS.md).
 With Bun 1.4.0 or newer and a supported Node runtime:
 
 ```sh
-bun add --global @zhivex-ai/harness@1.6.1
+bun add --global @zhivex-ai/harness@1.6.2
 zhx
 ```
 
 For a disposable version/help/environment check without a global installation:
 
 ```sh
-bunx @zhivex-ai/harness@1.6.1 --version
-bunx @zhivex-ai/harness@1.6.1 --help
-bunx @zhivex-ai/harness@1.6.1 doctor
+bunx @zhivex-ai/harness@1.6.2 --version
+bunx @zhivex-ai/harness@1.6.2 --help
+bunx @zhivex-ai/harness@1.6.2 doctor
 ```
 
 For source development, use the [contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md).

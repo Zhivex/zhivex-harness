@@ -1,15 +1,32 @@
 # Release process
 
-## Pending patch: 1.6.1
+## Pending patch: 1.6.2
 
-The source version is `1.6.1`, pending publication to `latest`. It carries the
+The source version is `1.6.2`, pending publication to `latest`. It carries the
+1.6.1 changes plus the continuity gate rule from #250. Three live certifications
+failed only the continuity gate, each on a different provider (`v1.6.0`: meta
+and qwen; `v1.6.1`: meta, then openai on the rerun). A provider whose
+continuity run fails now gets one fresh retry of all phases. It passes only if
+the retry passes, and all selected providers stay mandatory. The evidence
+records each retry and the first attempt's sanitized cause. `v1.6.0` and
+`v1.6.1` stay tagged and were not published. Code stays version `0.4.0` and its
+source pin is Harness `1.6.2`. Private Desktop binds to Harness `1.6.2`. It adds
+the `v1.6.2` representative mapping with the same Meta, Qwen and OpenAI models
+as `v1.6.1`. Annotated `v1.6.2` on the reviewed main SHA, `channel=latest`, runs
+through the unchanged protected workflow and its environment approvals.
+
+## Previous preparation: 1.6.1
+
+The source version was `1.6.1`, pending publication to `latest`. It carries the
 1.6.0 changes plus the compaction chronology fix from #248, which addresses the
 meta and qwen continuity gate failures in the `v1.6.0` live certification.
 `v1.6.0` stays tagged and was not published. Code stays version `0.4.0` and its
 source pin is Harness `1.6.1`. Private Desktop binds to Harness `1.6.1`. It adds
 the `v1.6.1` representative mapping with the same Meta, Qwen and OpenAI models
 as `v1.6.0`. Annotated `v1.6.1` on the reviewed main SHA, `channel=latest`, runs
-through the unchanged protected workflow and its environment approvals.
+through the unchanged protected workflow and its environment approvals. Its live
+certification failed the continuity gate twice (meta, then openai), so 1.6.1 was
+not published.
 
 ## Previous preparation: 1.6.0
 

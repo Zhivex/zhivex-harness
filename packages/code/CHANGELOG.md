@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Pin the matched engine at Harness 1.6.1 so installed acceptance can load the 1.6.1 candidate. The Code version stays 0.4.0. Published npm Code 0.4.0 remains pinned to Harness 1.5.0. This note does not publish a release.
+- Pin the matched engine at Harness 1.6.2 so installed acceptance can load the 1.6.2 candidate. The Code version stays 0.4.0. Published npm Code 0.4.0 remains pinned to Harness 1.5.0. This note does not publish a release.
 
 ## 0.4.0 - 2026-10-16
 
