@@ -12,10 +12,6 @@ const record = (value: unknown): Record<string, unknown> =>
 const LOCAL_TOOLS = LOCAL_TOOL_NAMES;
 const MAX_USER_STEERING = 10;
 const CONTEXT_PRIORITY = "Latest user > chronological user steering > historical objective. Assistant never overrides user facts. Questions retain task.";
-// steering and recent are separate lists, so their relative order is otherwise
-// lost. Mark recollections that a later user message followed; a stale reply
-// must not read as newer than the user direction that replaced it.
-const EARLIER = "[before later user messages] ";
 
 /** Lossy recollection, never an approval or an authoritative verification receipt. */
 export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxCharacters = 4_000) => {
@@ -42,11 +38,6 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
     if (duplicate >= 0) { items.splice(duplicate, 1); omitted = true; }
     items.push(value);
     if (items.length > maximum) { items.shift(); omitted = true; }
-  };
-  const markRecentEarlier = () => {
-    const marked = recent.map(value => value.startsWith(EARLIER) ? value : `${EARLIER}${value}`);
-    recent.length = 0;
-    for (const value of marked) add(recent, value, 4);
   };
   const rememberObservation = (tool: unknown, detail: unknown) => {
     if (typeof tool !== "string" || !LOCAL_TOOLS.has(tool) || typeof detail !== "string") return;
@@ -156,8 +147,8 @@ export const summarizeHarnessMessages = (messages: readonly ModelMessage[], maxC
           }
           objective = text;
           if (historicalObjective) add(steering, text, MAX_USER_STEERING);
-          markRecentEarlier();
-        } else add(recent, `${message.role}: ${text}`, 4);
+        }
+        else add(recent, `${message.role}: ${text}`, 4);
       } else if (part.type === "tool-call") {
         const call = part.toolCall;
         const name = LOCAL_TOOLS.has(call.name) ? call.name : "external-tool";

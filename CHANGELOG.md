@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Stop prefixing compacted recollections with `[before later user messages] `. In live certification of `v1.6.1` and `v1.6.2`, meta failed continuity phase 1 on its first attempt in 3 of 6 attempts: twice it returned its phase-0 answer byte for byte, once it called a tool. The only difference in that phase-1 request from `v1.6.0` was this prefix. With the earlier rendering, meta passed phase 1 on the first attempt in all 8 certification runs from `1.4.0-rc.6` through `1.6.0`. The compacted context returns to the `v1.6.0` rendering. The summary schema, strategy id, and defaults are unchanged. This reverts the rendering change from #248.
+
 ## 1.6.2 - 2026-10-24
 
 - Allow one continuity retry per provider in the release gate. Live certification of `v1.6.0` and `v1.6.1` (twice) failed only the multi-process continuity gate, each time on a different provider. A provider whose continuity run fails now gets one fresh retry of all phases and passes only if the retry passes. Every selected provider stays mandatory, and no other gate retries. The continuity evidence records which provider retried, the first attempt's sanitized cause, and the retry outcome. Runtime and CLI behavior and defaults are unchanged (#250).
