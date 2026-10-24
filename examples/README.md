@@ -2,7 +2,7 @@
 
 ## Isolated Bun installation
 
-Requirements: Bun 1.4.0+, Node.js 22.13.0+, and Git on macOS or Linux. After protected stable publication, this installs the 1.6.2 artifact in a temporary consumer, without building the source checkout or changing global tools:
+Requirements: Bun 1.4.0+, Node.js 22.13.0+, and Git on macOS or Linux. This installs the published 1.6.2 artifact in a temporary consumer, without building the source checkout or changing global tools:
 
 ```bash
 harness_demo_dir=$(mktemp -d)
