@@ -1,6 +1,6 @@
 # First use
 
-This guide targets stable `1.6.2`, pending publication to npm `latest`. The versioned install commands below become available only after protected publication. npm `latest` remains stable 1.5.0 until that publication.
+This guide targets stable `1.6.2`, published on npm `latest`.
 
 ## Install and start
 
