@@ -1,9 +1,9 @@
-import { continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, selectContinuityProviders } from './live-continuity-contract.js';
+import { CONTINUITY_PROVIDER_ATTEMPTS, continuityPhaseShouldRetry, createContinuityEvidence, continuityGateOutcome, continuityRetrySummaryLines, runContinuityProviderWithRetry, selectContinuityProviders } from './live-continuity-contract.js';
 import { transientBackoffMs } from '../src/runtime/provider-transient.js';
 /** Opt-in live conversation continuity across process restarts; no repository mutation. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createTextMessage, type JsonValue, type ModelMessage } from "@zhivex-ai/core";
@@ -98,52 +98,58 @@ if (process.argv[2] === "--child") {
     if (!api.providerAvailability(process.env).find(candidate => candidate.id === provider)?.configured) {
       rows.push({ provider, model, status: "missing_credentials" }); continue;
     }
-    const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-continuity-"));
-    const phases: Record<string, unknown>[] = [];
-    let processStarts = 0;
-    const started = Date.now();
-    try {
-      for (let phase = 0; phase < objectives.length; phase++) {
-        const sessionPath = path.join(root, "session.json");
-        let sessionSnapshot: string | undefined;
-        try { sessionSnapshot = await readFile(sessionPath, "utf8"); } catch { sessionSnapshot = undefined; }
-        let report: Record<string, unknown> | undefined;
-        for (let attempt = 1; attempt <= CONTINUITY_TRANSIENT_ATTEMPTS; attempt++) {
-          if (attempt > 1) {
-            if (sessionSnapshot === undefined) await rm(sessionPath, { force: true });
-            else await writeFile(sessionPath, sessionSnapshot);
+    rows.push(await runContinuityProviderWithRetry(provider, async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), "harness-live-continuity-"));
+      const phases: Record<string, unknown>[] = [];
+      let processStarts = 0;
+      const started = Date.now();
+      try {
+        for (let phase = 0; phase < objectives.length; phase++) {
+          const sessionPath = path.join(root, "session.json");
+          let sessionSnapshot: string | undefined;
+          try { sessionSnapshot = await readFile(sessionPath, "utf8"); } catch { sessionSnapshot = undefined; }
+          let report: Record<string, unknown> | undefined;
+          for (let attempt = 1; attempt <= CONTINUITY_TRANSIENT_ATTEMPTS; attempt++) {
+            if (attempt > 1) {
+              if (sessionSnapshot === undefined) await rm(sessionPath, { force: true });
+              else await writeFile(sessionPath, sessionSnapshot);
+            }
+            const child = Bun.spawn([process.execPath, path.resolve(import.meta.filename), "--child", provider, model, root, String(phase)],
+              { env: process.env, stdout: "pipe", stderr: "pipe" });
+            processStarts += 1;
+            const timer = setTimeout(() => child.kill(), 100_000);
+            // Capture and discard raw provider failures; share only classification.
+            const [exitCode] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+            clearTimeout(timer);
+            try { report = JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8")); }
+            catch { report = undefined; }
+            if (attempt === CONTINUITY_TRANSIENT_ATTEMPTS || !continuityPhaseShouldRetry(report)) {
+              report ??= { phase, status: "failed", reason: "child_request_or_runtime_failure", exitCode };
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, transientBackoffMs(attempt - 1, 5_000)));
           }
-          const child = Bun.spawn([process.execPath, path.resolve(import.meta.filename), "--child", provider, model, root, String(phase)],
-            { env: process.env, stdout: "pipe", stderr: "pipe" });
-          processStarts += 1;
-          const timer = setTimeout(() => child.kill(), 100_000);
-          // Capture and discard raw provider failures; share only classification.
-          const [exitCode] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-          clearTimeout(timer);
-          try { report = JSON.parse(await readFile(path.join(root, `phase-${phase}.json`), "utf8")); }
-          catch { report = undefined; }
-          if (attempt === CONTINUITY_TRANSIENT_ATTEMPTS || !continuityPhaseShouldRetry(report)) {
-            report ??= { phase, status: "failed", reason: "child_request_or_runtime_failure", exitCode };
-            break;
-          }
-          await new Promise(resolve => setTimeout(resolve, transientBackoffMs(attempt - 1, 5_000)));
+          phases.push(report ?? { phase, status: "failed", reason: "child_request_or_runtime_failure" });
+          if (phases.at(-1)?.status !== "passed") break;
         }
-        phases.push(report ?? { phase, status: "failed", reason: "child_request_or_runtime_failure" });
-        if (phases.at(-1)?.status !== "passed") break;
-      }
-      rows.push({ provider, model, status: phases.length === objectives.length && phases.every(item => item.status === "passed") ? "passed" : "failed",
-        processStarts, elapsedMs: Date.now() - started, phases });
-    } finally { await rm(root, { recursive: true, force: true }); }
+        return { provider, model, status: phases.length === objectives.length && phases.every(item => item.status === "passed") ? "passed" : "failed",
+          processStarts, elapsedMs: Date.now() - started, phases };
+      } finally { await rm(root, { recursive: true, force: true }); }
+    }));
   }
   const report = { schemaVersion: 1, kind: "live-conversation-continuity", runtime: process.env.ZHIVEX_HARNESS_LIVE_RUNTIME ? "selected-artifact" : "source",
     harnessVersion: api.HARNESS_VERSION, observedAt: new Date().toISOString(), status: rows.every(row => row.status === "passed") ? "passed" : "failed",
     scriptSha256: createHash("sha256").update(await readFile(import.meta.filename)).digest("hex"), rows,
-    limits, requireVerifiedDelivery: false,
+    limits, providerAttempts: CONTINUITY_PROVIDER_ATTEMPTS, requireVerifiedDelivery: false,
     comparisonNote: "Post-fix campaign raises generation/output ceilings to 8192 from the prior six-turn campaign's 2048/4096 to isolate memory behavior; success rates are not directly comparable.",
     ...(process.env.ZHIVEX_HARNESS_LIVE_RUNTIME ? { moduleSha256: createHash("sha256").update(await readFile(process.env.ZHIVEX_HARNESS_LIVE_RUNTIME)).digest("hex") } : {}),
     limitations: ["Six-turn synthetic memory scenario with forced compaction; not a natural long-session benchmark or release certification", "Conversation restarts between completed runs; suspended approval resume is tested separately", "Deterministic compaction; no auxiliary paid compactor"] };
   await mkdir(path.dirname(reportPath), { recursive: true });
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  // The release wrapper captures this process's output, so retries are recorded
+  // in the evidence file and, on GitHub, in the step summary.
+  const retryLines = continuityRetrySummaryLines(rows);
+  if (retryLines.length && process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `${retryLines.join("\n")}\n`);
   process.stdout.write(`${JSON.stringify({ ok: report.status === "passed", gate: "live-continuity-smoke",
     providers: rows.map(continuityGateOutcome) }, null, 2)}\n`);
   if (report.status !== "passed") process.exitCode = 1;

@@ -96,6 +96,48 @@ export function continuityPhaseShouldRetry(phase: Record<string, unknown> | unde
   return record.finishEvents === 0 && record.textEvents === 0 && record.textBytes === 0 && record.responseBytes === 0;
 }
 
+/** One full, fresh rerun per provider; every provider must still pass. */
+export const CONTINUITY_PROVIDER_ATTEMPTS = 2;
+
+/** Sanitized cause of a failed provider attempt: classification only, never provider text. */
+export function continuityAttemptSummary(row: Record<string, unknown>) {
+  const outcome = continuityGateOutcome(row);
+  if (outcome.ok) return { status: 'passed' as const };
+  const error = outcome.error!;
+  const continuity = error.details?.chain?.find(entry => entry.checkpoint === 'continuity_phase')?.continuity;
+  return { status: row.status === 'missing_credentials' ? 'missing_credentials' as const : 'failed' as const,
+    code: error.code, ...(error.category ? { category: error.category } : {}), retryable: error.retryable,
+    fingerprint: error.fingerprint, phase: continuity?.phase ?? null, failedChecks: continuity?.failedChecks ?? [],
+    finishReason: continuity?.evidence?.finishReason ?? 'unavailable' };
+}
+
+/**
+ * Model sampling makes a single six-phase run flaky for an otherwise healthy
+ * route. A failed provider run is repeated once from a fresh session; the
+ * provider passes only if that retry passes. Missing credentials never retry.
+ */
+export async function runContinuityProviderWithRetry(provider: string,
+  runAttempt: (attempt: number) => Promise<Record<string, unknown>>): Promise<Record<string, unknown>> {
+  const first = await runAttempt(1);
+  if (first.status === 'passed' || first.status === 'missing_credentials') return { ...first, provider, attempts: 1 };
+  const retry = await runAttempt(2);
+  return { ...retry, provider, attempts: CONTINUITY_PROVIDER_ATTEMPTS, retry: {
+    firstAttempt: continuityAttemptSummary({ ...first, provider }),
+    outcome: retry.status === 'passed' ? 'passed' : 'failed' } };
+}
+
+/** One bounded log line per retried provider for the workflow step summary. */
+export function continuityRetrySummaryLines(rows: readonly Record<string, unknown>[]): string[] {
+  return rows.flatMap(row => {
+    const retry = row.retry as { firstAttempt: ReturnType<typeof continuityAttemptSummary>; outcome: string } | undefined;
+    if (!retry) return [];
+    const first = retry.firstAttempt;
+    const cause = first.status === 'passed' ? 'passed' : `${first.code}, phase ${first.phase ?? 'n/a'}, failed checks ` +
+      `[${first.failedChecks.join(', ')}], finishReason ${first.finishReason}, fingerprint ${first.fingerprint}`;
+    return [`Continuity retry: ${String(row.provider)} first attempt failed (${cause}); retry ${retry.outcome}.`];
+  });
+}
+
 /** Keep the historical default cohort; new routes require explicit selection. */
 export function selectContinuityProviders(env:NodeJS.ProcessEnv,available:readonly HarnessProvider[]):HarnessProvider[] {
   const configured=env.ZHIVEX_HARNESS_LIVE_PROVIDERS;
