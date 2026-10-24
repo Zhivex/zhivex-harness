@@ -2,10 +2,11 @@
 
 ## Harness 1.6.0 does not release Code
 
-Harness source is `1.6.0`, pending publication to `latest`. `@zhivex-ai/code`
-stays `0.4.0` with `@zhivex-ai/harness` pinned to `1.5.0`. Do not create a new
-Code version or a `code-v*` tag for this engine bump. The 0.4.0 preparation
-below is unchanged and does not certify Harness 1.6.0.
+Harness source is `1.6.0`, pending publication to `latest`. Installed
+acceptance requires the Code source pin to equal that candidate, so
+`@zhivex-ai/code` stays version `0.4.0` and pins `@zhivex-ai/harness` to
+`1.6.0`. Published npm Code `0.4.0` remains pinned to Harness `1.5.0`. Do not
+republish `0.4.0` and do not create a `code-v*` tag for this engine bump.
 
 ## Pending patch: 2026-10-16
 

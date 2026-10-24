@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Pin Agents 1.12.0, Core 1.36.0, and Zod 4.6.7 with the matched engine. The Harness pin remains 1.5.0. This note does not publish a release.
+- Pin the matched engine at Harness 1.6.0 so installed acceptance can load the 1.6.0 candidate. The Code version stays 0.4.0. Published npm Code 0.4.0 remains pinned to Harness 1.5.0. This note does not publish a release.
 
 ## 0.4.0 - 2026-10-16
 

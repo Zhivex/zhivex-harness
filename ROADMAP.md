@@ -8,13 +8,15 @@ Version `1.4.0` is published and verified on npm `latest`.
 release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 `0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. This checkout
-prepares Harness `1.6.0` for `latest`. Code stays `0.4.0`, pinned to Harness `1.5.0`.
+prepares Harness `1.6.0` for `latest`. Code stays version `0.4.0`, with its source pin on Harness `1.6.0`.
 Publication of 1.6.0 is pending and is not claimed here.
 
 ## Prepared source: 1.6.0
 
 Source version: `1.6.0` (stable publication to `latest` pending). Code stays
-`0.4.0`, pinned exactly to Harness `1.5.0`, and is not released with this engine.
+version `0.4.0`. Its source pin is Harness `1.6.0` so installed acceptance
+matches this candidate. Published npm Code `0.4.0` remains pinned to Harness
+`1.5.0` and is not released with this engine.
 Private Desktop binds to Harness `1.6.0`. The minor adds opt-in auto-approve
 (`manual` remains the default), the reworked local web workspace, and named
 terminal actions. This preparation does not create tags or publish.

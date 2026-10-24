@@ -3,8 +3,10 @@
 ## Pending minor: 1.6.0
 
 The source version is `1.6.0`, pending publication to `latest`. This checkout
-prepares Harness `1.6.0` for npm `latest`. Code stays `0.4.0`, pinned exactly to
-Harness `1.5.0`, and is not part of this release. Private Desktop binds to
+prepares Harness `1.6.0` for npm `latest`. Code stays version `0.4.0`. Its
+source pin is Harness `1.6.0` because installed acceptance requires that exact
+match. Published npm Code `0.4.0` remains pinned to Harness `1.5.0` and is not
+part of this release. Private Desktop binds to
 Harness `1.6.0`. Published `latest` is Harness `1.5.0` and Code `0.4.0`. It adds
 the `v1.6.0` representative mapping with the same Meta, Qwen and OpenAI models
 as `v1.5.0` and does not change provider/API tiers. The minor is opt-in
