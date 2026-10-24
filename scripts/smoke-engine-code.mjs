@@ -159,7 +159,7 @@ const providerEnv = { ...nodeEnv, OPENAI_API_KEY: 'installed-fixture-only' };
       await copyFile(fileURLToPath(new URL('./installed-memory-consumer.mjs', import.meta.url)), memoryFixture);
       await run(process.execPath, [memoryFixture], consumer, nodeEnv);
       console.error(`${manager} installed consumer passed`);
-      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation', 'offline-project-memory-journeys', 'meta-0.2.9-raw-and-cli-usage'];
+      row.status = 'passed'; row.checks = ['ordered-local-install', 'manager-bin-launchers', 'disjoint-bin-ownership', 'imports', 'no-bun-in-path', 'approval-before-write', 'cross-process-durable-resume', 'cancel-persisted', 'cli-help', 'cli-execution', 'cli-durable-cancellation', 'offline-project-memory-journeys', 'meta-0.3.0-raw-and-cli-usage'];
     } catch (error) { row.error = String(error); console.error(`${manager} failed: ${row.error}`); }
   }
 console.log(JSON.stringify(report, null, 2));

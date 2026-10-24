@@ -91,11 +91,11 @@ export function createAzureOpenAIModel(model: string, env: NodeJS.ProcessEnv): L
     apiKey,
     endpoint,
     ...(apiVersion ? { apiVersion } : {}),
-    // Published 0.7.8 uses the base model for capabilities and request shape.
+    // Published 0.8.0 uses the base model for capabilities and request shape.
     // The deployment name remains the model id on the request.
     ...(Object.keys(deployments).length ? { deployments } : {})
   };
-  // Published 0.7.8 reads AZURE_OPENAI_API_VERSION from process.env when the
+  // Published 0.8.0 reads AZURE_OPENAI_API_VERSION from process.env when the
   // option is omitted. Hide that fallback so the harness env is the only source.
   const azure = apiVersion
     ? createAzureOpenAI(settings)

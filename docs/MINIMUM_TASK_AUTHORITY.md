@@ -52,11 +52,11 @@ dispatch/cap behavior, not provider billing guarantees or model quality.
 
 | Route | Direct guided task | Verified wire cap and dispatch boundary |
 | --- | --- | --- |
-| Built-in OpenAI (`@zhivex-ai/openai` 0.16.0) | Supported | Responses `max_output_tokens`; Chat `max_tokens` without reasoning or `max_completion_tokens` with reasoning; `maxRetries=0`, `maxProviderRequests=1` |
-| Built-in Anthropic API key (`@zhivex-ai/anthropic` 0.14.0) | Supported | Messages `max_tokens`; non-refreshable built-in credentials; `maxRetries=0` |
-| Built-in Gemini (`@zhivex-ai/gemini` 0.13.0) | Supported | `generationConfig.maxOutputTokens`; `maxRetries=0` |
-| Built-in Vertex (`@zhivex-ai/vertex` 1.2.7) | Supported | `generationConfig.maxOutputTokens`; real ADC callback, synthetic credential source in tests; `maxRetries=0` |
-| Qwen (`@zhivex-ai/qwen` 0.16.4) | Blocked as Code primary | Explicit Chat-mode middleware tested with capped `max_tokens`; Code has no explicit mode selector and Responses rejects `maxTokens` |
+| Built-in OpenAI (`@zhivex-ai/openai` 0.17.0) | Supported | Responses `max_output_tokens`; Chat `max_tokens` without reasoning or `max_completion_tokens` with reasoning; `maxRetries=0`, `maxProviderRequests=1` |
+| Built-in Anthropic API key (`@zhivex-ai/anthropic` 0.15.0) | Supported | Messages `max_tokens`; non-refreshable built-in credentials; `maxRetries=0` |
+| Built-in Gemini (`@zhivex-ai/gemini` 0.14.0) | Supported | `generationConfig.maxOutputTokens`; `maxRetries=0` |
+| Built-in Vertex (`@zhivex-ai/vertex` 1.3.0) | Supported | `generationConfig.maxOutputTokens`; real ADC callback, synthetic credential source in tests; `maxRetries=0` |
+| Qwen (`@zhivex-ai/qwen` 0.18.0) | Blocked as Code primary | Explicit Chat-mode middleware tested with capped `max_tokens`; Code has no explicit mode selector and Responses rejects `maxTokens` |
 | Meta | Blocked | Harness continuation fetch can replay a 400 response outside SDK retry admission |
 | Injected/custom adapters, refreshable Anthropic OAuth | Blocked | No vetted transport provenance; OAuth transport can replay a 401 after refresh outside ordinary retry admission |
 | Mock | Offline tests only | Synthetic usage is never billing evidence |

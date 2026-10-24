@@ -25,7 +25,7 @@ globalThis.fetch = async (input, options) => {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const harnessManifestPath = realpathSync(path.resolve('node_modules/@zhivex-ai/harness/package.json'));
   const harness = JSON.parse(readFileSync(harnessManifestPath, 'utf8'));
-  assert.equal(harness.dependencies['@zhivex-ai/meta'], '0.2.9');
+  assert.equal(harness.dependencies['@zhivex-ai/meta'], '0.3.0');
   const resolve = createRequire(harnessManifestPath);
   // Meta is import-only; require.resolve(package) would select an unsupported condition.
   const metaManifestPath = resolve.resolve.paths('@zhivex-ai/meta')
@@ -33,7 +33,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   assert(metaManifestPath, 'Harness has no installed Meta dependency');
   const metaManifest = JSON.parse(readFileSync(metaManifestPath, 'utf8'));
   const metaEntry = path.resolve(path.dirname(metaManifestPath), metaManifest.exports['.'].import);
-  assert.equal(metaManifest.version, '0.2.9');
+  assert.equal(metaManifest.version, '0.3.0');
   const { createMeta } = await import(pathToFileURL(metaEntry).href);
   const model = createMeta({ apiKey: 'installed-fixture-only', baseURL: 'https://meta-fixture.invalid/v1' })('muse-spark-1.3');
   for (const receipt of cases) for (const mode of ['generate', 'stream']) {

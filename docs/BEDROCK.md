@@ -4,8 +4,8 @@ Bedrock is a separate provider (`bedrock`). It is not enabled by the Anthropic
 direct API route. No live Harness certification has been run for this route.
 Pricing and context limits are not inferred.
 
-Published `@zhivex-ai/bedrock@2.0.7` is the adapter pinned by this tree. It
-requires Core `^1.34.0`, and this checkout pins `@zhivex-ai/core@1.34.0`.
+Published `@zhivex-ai/bedrock@2.1.0` is the adapter pinned by this tree. It
+requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.36.0`.
 This integration reports the installed adapter's labels and does not relabel
 them.
 
@@ -14,7 +14,7 @@ them.
 `BEDROCK_RUNTIME` is optional. An empty value or `converse` selects the Converse
 API. `openai` selects the OpenAI-compatible runtime. Any other value is rejected.
 
-Converse reports Tier B on the published 2.0.7 adapter: reasoning is supported
+Converse reports Tier B on the published 2.1.0 adapter: reasoning is supported
 and `toolChoiceNone` is true. Approval requests stay false on that runtime.
 Harness reports that installed label.
 
@@ -28,7 +28,7 @@ not read `OPENAI_API_KEY` or `OPENAI_BASE_URL` for this route.
 Converse uses the AWS SDK default credential chain: instance roles, SSO,
 shared config, and environment credentials. Set `AWS_REGION` or
 `AWS_DEFAULT_REGION` to a region such as `us-east-1`. `AWS_PROFILE` is part of
-the transport fingerprint. Published 2.0.7 accepts a profile and static
+the transport fingerprint. Published 2.1.0 accepts a profile and static
 credentials on the adapter. This route does not pass `AWS_PROFILE`. When
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are both set, and no bearer
 token is set, Converse uses that static pair and an optional

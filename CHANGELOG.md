@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Pin the published 2026-10-24 SDK batch: Core 1.36.0, Agents 1.12.0, OpenAI 0.17.0, Anthropic 0.15.0, Qwen 0.18.0, Gemini 0.14.0, Vertex 1.3.0, Azure OpenAI 0.8.0, Bedrock 2.1.0, and Meta 0.3.0. The web client pins React 0.10.0. The root Core override stays one runtime. `zod` is 4.6.7 and `google-auth-library` is 11.3.1 so the new adapter floors resolve to one copy. Harness and CLI defaults are unchanged: shared `topP`, `seed`, and `stopSequences` are not sent, `stopWhen` is not set, and voice is unused. `@types/bun` is 1.4.3. CodeQL init and analyze stay SHA-pinned at `6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee` (v4.39.0). This note does not publish a release.
+
 ## 1.5.0 - 2026-10-16
 
 - Prepare minor Harness 1.5.0 and Code 0.4.0 for npm `latest`. The minor covers the new experimental audit pack, provisional Bedrock and Azure OpenAI routes, and Code web task control; stable root exports and command contracts are unchanged. It ships with the exact Code engine pin, private Desktop binding and an additive representative mapping for `v1.5.0` using the unchanged Meta, Qwen and OpenAI models. Published `latest` is Harness 1.4.1 and Code 0.3.2. Tags and publication follow only through the protected release workflows.

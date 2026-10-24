@@ -86,7 +86,7 @@ Set an https `AZURE_OPENAI_ENDPOINT` before saving a key. Optional
 `AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS` stay in the
 environment and are not written to the keychain. A managed
 `AZURE_OPENAI_API_KEY` is allowed together with that endpoint. Published
-`@zhivex-ai/azure-openai@0.7.8` accepts a token provider, and this route still
+`@zhivex-ai/azure-openai@0.8.0` accepts a token provider, and this route still
 stores and sends the API key. See [Azure OpenAI](AZURE_OPENAI.md).
 
 ## Qwen interactive setup

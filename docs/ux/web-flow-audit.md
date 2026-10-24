@@ -1,6 +1,6 @@
 # Web workspace flow
 
-The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.9.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.
+The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.10.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.
 
 ## First load
 
