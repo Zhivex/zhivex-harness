@@ -13,7 +13,7 @@ The 1.1 support scope is tracked in the [machine-readable support matrix](./docs
 - the provider/model combinations marked certified in the package documentation; and
 - HTTPS or explicitly allowed loopback-HTTP MCP endpoints using the documented bounded JSON-RPC subset.
 
-Only the most recent published stable minor receives routine fixes. The exact `v1.3.0` tag passed the protected artifact, six-provider live and 42-case representative release jobs. Harness 1.5.0 and Code 0.4.0 are the published stable packages. This checkout prepares Code 0.4.1, pinned exactly to published Harness 1.6.2; published Code 0.4.0 remains pinned to Harness 1.5.0 until 0.4.1 completes verified publication. Gemini, Anthropic and Vertex remain provisional despite the release-bound live gates; the representative repository matrix covers only Meta, Qwen and OpenAI. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+Only the most recent published stable minor receives routine fixes. The exact `v1.3.0` tag passed the protected artifact, six-provider live and 42-case representative release jobs. Harness 1.5.0 and Code 0.4.0 are the published stable packages. Code 0.4.1, pinned exactly to Harness 1.6.2, is published on `latest`. Gemini, Anthropic and Vertex remain provisional despite the release-bound live gates; the representative repository matrix covers only Meta, Qwen and OpenAI. Live provider evidence is account-, model-, endpoint-, artifact-, and date-dependent; see [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
 
 ## Installation diagnostics
 

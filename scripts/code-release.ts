@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import type { ProvenanceStatement } from "./release-provenance.js";
 import { assertReleaseProvenance } from "./release-provenance.js";
+import { RegistryPropagationDeadlineError, RegistryPropagationError, runWithPropagationDeadline, timeoutWithinDeadline } from "./release-verification-deadline.js";
 
 const root = path.resolve(import.meta.dir, "..");
 const repository = "Zhivex/zhivex-harness";
@@ -90,6 +91,26 @@ export function assertCodeRegistryState(document: RegistryDocument, version: str
   if (!found) return "absent";
   assert.equal(found.dist?.integrity, integrity, "Published version has different immutable bytes; never rebuild or overwrite it");
   return "identical";
+}
+/** npm can take minutes to serve a new version; only propagation is retried, never different bytes. */
+export const CODE_REGISTRY_PROPAGATION_MS = 10 * 60_000;
+export const CODE_REGISTRY_RETRY_MS = 15_000;
+export function assertCodeRegistryPublished(document: RegistryDocument, version: string, integrity: string, channel: string): RegistryVersion {
+  if (assertCodeRegistryState(document, version, integrity) === "absent") throw new RegistryPropagationError(`${packageName}@${version} is absent from the registry`);
+  if (document["dist-tags"]?.[channel] !== version) throw new RegistryPropagationError(`${channel} does not point to ${version} yet`);
+  const published = document.versions![version]!;
+  if (!published.dist?.tarball) throw new RegistryPropagationError("registry metadata has no tarball URL yet");
+  if (!published.dist.attestations?.url) throw new RegistryPropagationError("registry metadata has no provenance attestation yet");
+  return published;
+}
+async function registryRead(url: string, deadlineMs: number): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(npmUrl(url), { headers: { "cache-control": "no-cache" }, signal: AbortSignal.timeout(timeoutWithinDeadline(deadlineMs, 60_000)) });
+  } catch (error) { throw new RegistryPropagationError(`${url} request failed: ${error instanceof Error ? error.message : String(error)}`); }
+  if (response.status === 404 || response.status === 429 || response.status >= 500) throw new RegistryPropagationError(`${url} returned HTTP ${response.status}`);
+  assert(response.ok, `Read ${url} failed: HTTP ${response.status}`);
+  return response;
 }
 export function assertCodeProvenance(statement: ProvenanceStatement, sha512Hex: string, version: string, sha: string): void {
   assert(statement.subject?.some(subject => subject.digest?.sha512 === sha512Hex), "Provenance must bind exact artifact");
@@ -231,22 +252,28 @@ async function main() {
     assert.equal(providers.kind, "providers"); console.log(`Standalone registry dependency acceptance passed: Code ${manifest.version}, Harness ${engineVersion}.`); return;
   }
   assert(["status", "verify"].includes(mode ?? ""), "Unknown release command");
-  const document = await json<RegistryDocument>(`${registry}%40zhivex-ai%2Fcode`, true);
-  const status = assertCodeRegistryState(document, manifest.version, integrity);
-  if (mode === "status") { console.log(status); return; }
-  assert.equal(status, "identical"); assert.equal(document["dist-tags"]?.[channel], manifest.version);
-  const published = document.versions![manifest.version]!;
-  assert(published.dist?.tarball);
-  const response = await fetch(npmUrl(published.dist.tarball), { signal: AbortSignal.timeout(60_000) }); assert(response.ok);
-  assert.equal(createHash("sha512").update(Buffer.from(await response.arrayBuffer())).digest("hex"), sha512Hex);
-  {
-    assert(published.dist.attestations?.url, "OIDC publication requires npm provenance");
-    const attestation = await json<{ attestations?: Array<{ predicateType?: string; bundle?: { dsseEnvelope?: { payload?: string } } }> }>(npmUrl(published.dist.attestations.url));
-    const payload = attestation.attestations?.find(item => item.predicateType === "https://slsa.dev/provenance/v1")?.bundle?.dsseEnvelope?.payload;
-    assert(payload, "Missing SLSA provenance payload");
-    const tag = `code-v${manifest.version}`;
-    assert.equal(run(["git", "cat-file", "-t", tag]), "tag");
-    assertCodeProvenance(JSON.parse(Buffer.from(payload, "base64").toString("utf8")), sha512Hex, manifest.version, run(["git", "rev-list", "-n", "1", tag]));
+  if (mode === "status") {
+    const document = await json<RegistryDocument>(`${registry}%40zhivex-ai%2Fcode`, true);
+    console.log(assertCodeRegistryState(document, manifest.version, integrity)); return;
+  }
+  const tag = `code-v${manifest.version}`;
+  assert.equal(run(["git", "cat-file", "-t", tag]), "tag");
+  const releaseCommit = run(["git", "rev-list", "-n", "1", tag]);
+  try {
+    await runWithPropagationDeadline(async deadlineMs => {
+      const document = await (await registryRead(`${registry}%40zhivex-ai%2Fcode`, deadlineMs)).json() as RegistryDocument;
+      const published = assertCodeRegistryPublished(document, manifest.version, integrity, channel);
+      const response = await registryRead(published.dist!.tarball!, deadlineMs);
+      assert.equal(createHash("sha512").update(Buffer.from(await response.arrayBuffer())).digest("hex"), sha512Hex, "Published tarball bytes differ from the exact release artifact");
+      const attestation = await (await registryRead(published.dist!.attestations!.url!, deadlineMs)).json() as { attestations?: Array<{ predicateType?: string; bundle?: { dsseEnvelope?: { payload?: string } } }> };
+      const payload = attestation.attestations?.find(item => item.predicateType === "https://slsa.dev/provenance/v1")?.bundle?.dsseEnvelope?.payload;
+      if (!payload) throw new RegistryPropagationError("SLSA provenance payload is not served yet");
+      assertCodeProvenance(JSON.parse(Buffer.from(payload, "base64").toString("utf8")), sha512Hex, manifest.version, releaseCommit);
+    }, { deadlineMs: performance.now() + CODE_REGISTRY_PROPAGATION_MS, retryDelayMs: CODE_REGISTRY_RETRY_MS });
+  } catch (error) {
+    if (!(error instanceof RegistryPropagationDeadlineError)) throw error;
+    const last = error.lastError;
+    throw new Error(`Code registry verification failed after ten minutes of propagation retries: ${last instanceof Error ? last.message : String(last)}`);
   }
   console.log(`Verified Code ${manifest.version}: exact registry bytes and ${channel}, GitHub provenance.`);
 }

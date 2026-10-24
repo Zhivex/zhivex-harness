@@ -1,11 +1,12 @@
 import { expect, test } from "bun:test";
-import { assertCodeManifest, assertCodeRegistryState, assertCodeReleaseIdentity, assertCodeProvenance, codeReleaseChannel, assertCodeReleaseChannel, inspectCodeArtifact, assertCodePayload } from "../scripts/code-release.js";
+import { assertCodeManifest, assertCodeRegistryPublished, CODE_REGISTRY_PROPAGATION_MS, CODE_REGISTRY_RETRY_MS, assertCodeRegistryState, assertCodeReleaseIdentity, assertCodeProvenance, codeReleaseChannel, assertCodeReleaseChannel, inspectCodeArtifact, assertCodePayload } from "../scripts/code-release.js";
 import manifest from "../packages/code/package.json";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+import { RegistryPropagationError } from "../scripts/release-verification-deadline.js";
 const webPayload = {
   "package/dist/web-assets/zhivex-icon.png": await readFile(new URL("../packages/web/public/zhivex-icon.png", import.meta.url)),
   "package/dist/web-assets/index.html": '<script type="module" src="/assets/index-abc123.js"></script><link rel="stylesheet" href="/assets/index-abc123.css">',
@@ -170,6 +171,25 @@ test("Stable registry channel permits promotion from initial RC latest without c
   expect(assertCodeRegistryState({ versions, "dist-tags": { latest: "0.1.0" } }, "0.1.0", "sha512-abc")).toBe("identical");
   expect(() => assertCodeRegistryState({ versions, "dist-tags": { latest: "0.2.0" } }, "0.1.0", "sha512-abc")).toThrow("older");
 });
+test("Code registry verification retries only propagation and fails immediately on different bytes", () => {
+  expect(CODE_REGISTRY_PROPAGATION_MS).toBe(600_000);
+  expect(CODE_REGISTRY_RETRY_MS).toBe(15_000);
+  const dist = { integrity: "sha512-abc", tarball: "https://registry.npmjs.org/t.tgz", attestations: { url: "https://registry.npmjs.org/a" } };
+  const versions = { "0.1.0": { name: manifest.name, version: "0.1.0", dist } };
+  const propagating = [
+    { "dist-tags": { latest: "0.0.9" } },
+    { versions, "dist-tags": { latest: "0.0.9" } },
+    { versions: { "0.1.0": { name: manifest.name, version: "0.1.0", dist: { integrity: "sha512-abc" } } }, "dist-tags": { latest: "0.1.0" } },
+    { versions: { "0.1.0": { name: manifest.name, version: "0.1.0", dist: { ...dist, attestations: {} } } }, "dist-tags": { latest: "0.1.0" } },
+  ];
+  for (const document of propagating) expect(() => assertCodeRegistryPublished(document, "0.1.0", "sha512-abc", "latest")).toThrow(RegistryPropagationError);
+  let mismatch: unknown;
+  try { assertCodeRegistryPublished({ versions, "dist-tags": { latest: "0.1.0" } }, "0.1.0", "sha512-other", "latest"); } catch (error) { mismatch = error; }
+  expect(mismatch).toBeInstanceOf(Error);
+  expect(mismatch).not.toBeInstanceOf(RegistryPropagationError);
+  expect(String(mismatch)).toContain("different immutable bytes");
+  expect(assertCodeRegistryPublished({ versions, "dist-tags": { latest: "0.1.0" } }, "0.1.0", "sha512-abc", "latest")).toEqual(versions["0.1.0"]);
+});
 test("Code workflow validates channel before registry reads and publishes retained bytes through protected OIDC", async () => {
   const workflow = Bun.YAML.parse(await readFile(new URL("../.github/workflows/release-code.yml", import.meta.url), "utf8")) as any;
   expect(workflow.on.workflow_dispatch.inputs.channel.options).toEqual(["latest", "next"]);
@@ -192,7 +212,7 @@ test("Code workflow validates channel before registry reads and publishes retain
   expect(publication.if).toBe("steps.registry.outputs.status == 'absent'");
   expect(publication.run).toContain('publish ./release-code-artifacts/code.tgz --ignore-scripts --access public --provenance --tag "$RELEASE_CHANNEL"');
   expect(publish.steps.some((s: any) => s.run?.includes("shasum -a 512 -c SHA512SUMS"))).toBe(true);
-  expect(publish.steps.some((s: any) => s.run?.includes("code-release.ts verify"))).toBe(true);
+  expect(publish.steps.find((s: any) => s.name === "Verify registry bytes, distribution tag and provenance").run).toBe("bun run scripts/code-release.ts verify release-code-artifacts/code.tgz");
   expect(publish.steps.some((s: any) => /bun (?:pm pack|run build)/.test(s.run ?? ""))).toBe(false);
 });
 test("Installed journey evidence is available for every main SHA across supported platforms", async () => {
