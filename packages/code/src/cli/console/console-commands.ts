@@ -20,6 +20,9 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/approve", "Approve the pending actions", true],
   ["/deny", "Deny the pending actions", true],
   ["/approvals", "Change approval mode for this CLI session", false],
+  ["/auto-approve", "Set Manual, Auto-edits, or Auto with limits for this session", false],
+  ["/manual", "Drop auto-approve back to Manual for this session", true],
+  ["/undo", "Revert the latest auto-approved file change", false],
   ["/continue", "Continue an interrupted task with retained results in a new run", false],
   ["/compact", "Compact conversation context", false],
   ["/compaction", "Choose a compaction model or inspect recommendations", false],
@@ -46,7 +49,7 @@ export const consoleCommands = (mode: ConsoleMode = "direct") =>
   CONSOLE_COMMAND_CATALOG.filter(([name, , service]) => mode === "service" ? service : name !== "/cancel");
 
 const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/task", "/diff", "/exit"]);
-const approvals = new Set(["/approvals", "/pending", "/approve", "/deny"]);
+const approvals = new Set(["/approvals", "/pending", "/approve", "/deny", "/auto-approve", "/manual", "/undo"]);
 
 export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct") => {
   const search = query.replace(/^\//, "").toLowerCase();
@@ -62,6 +65,8 @@ const argumentsFor: Readonly<Record<string, string>> = {
   "/checkpoint": "[capture|list|review|restore|retry]",
   "/compaction": "[provider:model|off|recommend]",
   "/approvals": "[ask|auto|restricted]",
+  "/auto-approve": "[manual|auto-edits|auto-limits|workspace <mode>]",
+  "/undo": "[audit id]",
   "/provider": "[id]", "/model": "[id]", "/route": "[role=provider[:model] | clear [role]]",
   "/review": "<task>", "/resume": "[last|sessionId]", "/new": "[title]",
   "/rename": "<title>", "/attach": "<path>", "/detach": "[path]", "/sessions": "[search]",

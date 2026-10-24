@@ -123,6 +123,8 @@ export interface CliOptions {
   apply: boolean;
   yes: boolean;
   approvalMode?: "ask" | "auto" | "restricted";
+  autoApproveMode?: "manual" | "auto-edits" | "auto-limits";
+  autoApproveAllow?: string[];
   approve?: boolean;
   json: boolean;
   jsonl: boolean;
@@ -171,13 +173,14 @@ const optionValue = (argv: string[], index: number, name: string) => {
 
 export const parseCliArgs = (argv: string[]): CliOptions => {
   const booleanOptions = new Set(["--token-budget", "--no-token-budget", "--yes", "--approve", "--deny", "--json", "--jsonl", "--continue", "--cascade", "--final", "--apply", "--help", "--version", "--no-project-context", "--no-memory", "--update"]);
+  const localValueOptions = new Set(["--auto-approve", "--auto-approve-allow"]);
   // Support shell-style --name=value without interpreting text after --.
   const separator = argv.indexOf("--");
   argv = argv.flatMap((arg, index) => {
     const equals = arg.indexOf("=");
     const name = arg.slice(0, equals);
     return (separator < 0 || index < separator) && equals > 0 &&
-      name in CLI_OPTION_DEFINITIONS && !booleanOptions.has(name)
+      (name in CLI_OPTION_DEFINITIONS || localValueOptions.has(name)) && !booleanOptions.has(name)
       ? [name, arg.slice(equals + 1)] : [arg];
   });
   let command: Command = "run";
@@ -556,6 +559,22 @@ export const parseCliArgs = (argv: string[]): CliOptions => {
         if (mode !== "ask" && mode !== "auto" && mode !== "restricted") throw new CliUsageError("--approval-mode must be ask, auto or restricted.");
         options.approvalMode = mode;
         options.yes = mode === "auto";
+        index += 1;
+        break;
+      }
+      case "--auto-approve": {
+        const mode = optionValue(argv, index, argument);
+        if (mode !== "manual" && mode !== "auto-edits" && mode !== "auto-limits") {
+          throw new CliUsageError("--auto-approve must be manual, auto-edits, or auto-limits.");
+        }
+        options.autoApproveMode = mode;
+        index += 1;
+        break;
+      }
+      case "--auto-approve-allow": {
+        const name = optionValue(argv, index, argument);
+        options.autoApproveAllow ??= [];
+        options.autoApproveAllow.push(name);
         index += 1;
         break;
       }

@@ -32,6 +32,12 @@ import {
 import { resolvePackageCheckCommand } from "../execution/package-manager.js";
 import { runPortableProcess } from "../execution/process-runtime.js";
 import { HarnessWorkspaceError } from "../runtime/errors.js";
+import { binaryAfterEditMessage, firstDisallowedControlBytes, textGuards } from "./text-integrity.js";
+
+/** Host-only. Model tool input cannot set this, and the default is off. */
+interface HostTextEditOptions {
+  allowControlBytes?: boolean;
+}
 
 import { HARD_IGNORES, isSensitiveName, isHardIgnored } from './path-policy.js';
 const IGNORE_FILES = [".gitignore", ".zhivex-harnessignore"] as const;
@@ -517,7 +523,11 @@ export class Workspace {
       maxBytes: MAX_FILE_BYTES
     });
     const { contents } = file;
-    if (!allowBinary && contents.includes(0)) throw new HarnessWorkspaceError("The file appears to be binary and cannot be read as text.");
+    if (!allowBinary && contents.includes(0)) {
+      const hit = firstDisallowedControlBytes(contents);
+      const where = hit ? `: ${hit.label} at L${hit.line}` : "";
+      throw new HarnessWorkspaceError(`The file appears to be binary and cannot be read as text${where}.`);
+    }
     return {
       path: wirePath(path.relative(this.root, safe.path)),
       absolutePath: safe.path,
@@ -1175,31 +1185,37 @@ export class Workspace {
     if (position < 0 || text.indexOf(edit.oldText, position + 1) >= 0) {
       throw new HarnessWorkspaceError("Replacement requires exactly one literal match; include more surrounding context.");
     }
-    return [{path: edit.path, expectedDigest: edit.expectedDigest, content: text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length)}];
+    return [{
+      path: edit.path,
+      expectedDigest: edit.expectedDigest,
+      content: text.slice(0, position) + edit.newText + text.slice(position + edit.oldText.length)
+    }];
   }
 
-  async applyReplacement(input: ReplacementEdit): Promise<ApplyPatchResult> {
+  async applyReplacement(input: ReplacementEdit, host: HostTextEditOptions = {}): Promise<ApplyPatchResult> {
     const changes = await this.replacementChanges(input);
     // applyPatch rechecks the digest at its existing atomic publication boundary.
-    return this.applyPatch({ proposalId: createEditProposal({ changes }).proposalId, changes });
+    return this.applyPatch({ proposalId: createEditProposal({ changes }).proposalId, changes }, host);
   }
 
-  async applyPatch(input: ApplyEditProposalInput): Promise<ApplyPatchResult> {
-    return this.applyPatchWithModes(input, new Map());
+  async applyPatch(input: ApplyEditProposalInput, host: HostTextEditOptions = {}): Promise<ApplyPatchResult> {
+    return this.applyPatchWithModes(input, new Map(), undefined, host);
   }
 
   async applyPatchWithModes(
     input: ApplyEditProposalInput,
     modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>,
-    assertActive?: () => Promise<void>
+    assertActive?: () => Promise<void>,
+    host: HostTextEditOptions = {}
   ): Promise<ApplyPatchResult> {
-    return withWorkspaceMutation(this.root, () => this.applyPatchWithModesLocked(input, modes, assertActive));
+    return withWorkspaceMutation(this.root, () => this.applyPatchWithModesLocked(input, modes, assertActive, host));
   }
 
   private async applyPatchWithModesLocked(
     input: ApplyEditProposalInput,
     modes: ReadonlyMap<string, { beforeMode?: number; afterMode: number }>,
-    assertActive?: () => Promise<void>
+    assertActive?: () => Promise<void>,
+    host: HostTextEditOptions = {}
   ): Promise<ApplyPatchResult> {
     const proposal = validateEditProposal(input);
     this.checkAuditCapacity(proposal.changes.length);
@@ -1249,6 +1265,7 @@ export class Workspace {
             throw new HarnessWorkspaceError(`Stale patch mode rejected for ${change.path}: expected ${modeBinding.beforeMode.toString(8)}, found ${before.mode.toString(8)}.`);
           }
         }
+        textGuards.beforeWrite(change.content, host.allowControlBytes === true);
         const temporary = await this.stageFile(
           safe.path,
           change.content,
@@ -1291,6 +1308,12 @@ export class Workspace {
           await unlink(item.temporary);
         }
         committed.push(item);
+        const published = await readRegularFileNoFollow(item.target, {
+          label: "The published file",
+          maxBytes: MAX_FILE_BYTES
+        });
+        const corrupt = textGuards.afterWrite(published.contents, host.allowControlBytes === true);
+        if (corrupt) throw new HarnessWorkspaceError(binaryAfterEditMessage(corrupt));
         await assertActive?.();
       }
     } catch (error) {

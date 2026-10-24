@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { HarnessClientSession } from "./contracts.js";
 import type { WebWorkspace } from "./contracts.js";
+import { ThemeSelector } from "./ThemeSelector.js";
+import type { ThemeChoice } from "./theme.js";
 
 export interface DrawerProject extends WebWorkspace {
   pending: number;
@@ -27,6 +29,8 @@ export function SessionsDrawer(props: {
   onAdd: () => void;
   onForget: (key: string) => void;
   returnFocus: { current: HTMLElement | null };
+  themeChoice: ThemeChoice;
+  onTheme: (choice: ThemeChoice) => void;
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -112,6 +116,7 @@ export function SessionsDrawer(props: {
         })}
       </div>
       <footer>
+        <ThemeSelector choice={props.themeChoice} onChange={props.onTheme} />
         {props.grouped ? <button type="button" onClick={props.onAdd}>Add project</button> : <button type="button" className="quiet-add" onClick={props.onAdd}>Add another project</button>}
       </footer>
     </aside>

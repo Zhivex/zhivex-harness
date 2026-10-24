@@ -1,0 +1,84 @@
+# Web workspace flow
+
+The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.10.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.
+
+## First load
+
+The empty workspace showed a disabled composer, a separate “Create a session” step, and solid grey suggestion cards. The empty state now opens with a mark, “What are we building?”, and three suggestion cards. Choosing a card sends that task. The composer is a rounded shell with the model control inside it, and it is ready on load. The first send creates the session and starts the task.
+
+## Choosing a model
+
+Rows wrapped, concatenated metadata, and repeated “No credentials”. The picker is now a model library: provider mark, search, provider chips, and a card for each model with context, price, and a star. It stays a listbox. Search, typeahead, Home, and End still move the active card. “Configured only” starts on. Unconfigured providers share one note that points at the CLI. The last-used model is remembered per workspace.
+
+## First message
+
+Enter sends. Shift+Enter inserts a newline. Cmd/Ctrl+Enter still sends. “New session” stays available. If no provider has credentials, the composer explains that and does not start a run.
+
+## Streaming
+
+The user prompt sits in a bubble. The assistant row shows a provider mark, the workspace model, and “typing…” while text is still empty. Consecutive read-only calls collapse to “Explored N files”. Other calls are pills in a runtime-tools card. The change-review panel says when a run is only reading files, so nothing is waiting for approval.
+
+## Approvals
+
+Approve and reject stay in the change-review panel. Every file must be viewed before approve. Enter does not decide. The stream shows a review card with no decision buttons.
+
+The header shows Manual, Auto-edits, or Auto with limits. Manual is the default. Auto-edits applies file edits inside the project. Auto with limits also runs commands named in the workspace allowlist. Network, secrets, git push, package publish, writes outside the project, deletes outside the project, and anything over a spend or token limit still wait for a person. Press m to return to Manual for this session. Each auto-approved edit is written to the audit log and can be undone while the file still matches the approved text.
+
+## Terminal activity
+
+Each tool line names the action and its target: `Read src/x.ts L120-180`, `Searched "fetch(" in 14 files`, `Edited index.ts +3 −1: require rootDir`. A run of reads or searches collapses to one line; `/activity` expands the files. Consecutive edits to the same file become one line with the net line counts and the attempt count. A failure prints the cause and the next step, for example `file is binary after edit: NUL byte at L2283. The edit was reverted. Read the file again before retrying.` A rule separates turns. The summary names files changed, net +/−, and checks.
+
+Text edits refuse NUL and other control bytes in model-supplied text. The opt-in is host configuration, not a tool field, and it defaults off. If a published edit still turns a text file binary, that edit is reverted and the file bytes stay as they were.
+
+## Terminal review
+
+The terminal review names what the change does, lists each file with +/- counts, and shows line numbers with word-level markers. A short diff stays directly under the activity line, and the decision prompt sits on the next line after the diff. The screen scrolls only when the diff is taller than the terminal. Unchanged context stays collapsed until Show full diff. n and p move between hunks. Nothing is highlighted until an arrow key, so Enter does not reject or approve by accident. Control bytes, zero-width characters, bidi overrides, tabs, and trailing spaces are visible in the terminal diff and in the web file diff.
+
+## Change review
+
+A read-only run says that nothing is waiting for approval. A run with no activity yet says that changes and commands will show up here first.
+
+## Errors and credentials
+
+The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Haz un análisis de seguridad del repo”, made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
+
+- A red banner, “EXECUTION FAILED” and “Read the current session state before submitting another action.” The banner had no Reconcile action.
+- The stream badge “Reconciliation required” and the line “The response was not confirmed. Reconnect before another action; nothing is retried automatically.”
+- “Origin: no user thresholds. 0 steps · 135 tool calls · 1803551 tokens reported.”
+- “Task evidence is unavailable. Refresh the host state before deciding. Ordinary chat may have no task contract.”
+- Every `list files`, `search files`, and `read file` call as its own completed row.
+- Change review saying “No changes to review. Requests show up here before anything runs.” even though the run had already read the repo.
+- The composer still holding the same prompt, with only “Recover submitted text”.
+
+The host had already confirmed the failure. The run was stored as `EXECUTION_FAILED` with those 135 calls and 1,803,551 tokens. Interactive web had been launched with the engine ceilings removed, so the read-only loop was not stopped at the default 32 tool calls. The page then treated that confirmed `EXECUTION_FAILED` as an unconfirmed mutation: every error code outside a short list locked the session, and `EXECUTION_FAILED` was not on the list. That is what drew “The response was not confirmed” and “Reconciliation required”. The response that failed to confirm was the page’s reading of a result the host had already stored, not a missing write. The provider sentence for why the stream died on call 135 was not recovered: error documents omit messages, and the captured screen did not include a Qwen stream diagnostic or a context-limit reason.
+
+A confirmed `EXECUTION_FAILED` now stays editable. The banner says “The task stopped” and tells the person to edit the message and send it again. The badge says “Error”, not “Reconciliation required”. Reconcile stays in the header for a lost response and only re-reads host state. It does not replay start, decide, or cancel. The checklist says to send a message or reconcile if a checklist should already be here. Read-only calls collapse into “Explored N files”. A read-only run says nothing is waiting for approval because the run is only reading files. The recovery card offers “Edit message” and “Send again”, and neither runs by itself.
+
+## Sessions
+
+The header is one 48px bar, the same height as the chat reference bar. The project and the session title share a baseline on the left. Connection and attention are a single control: a status dot and “Connected”, or “N needs you”, or Reconcile. Sessions, the limits control, a plus icon, and a theme icon sit on that same line at 32px. The theme icon cycles system, light, and dark. Narrow widths move the title onto its own row instead of letting controls overlap the corner.
+
+## Finishing and resuming
+
+After a failed send, the composer keeps the message. The recovery card says it is still there and offers “Send again”. “Edit message” puts the text back only when the composer was cleared. Neither runs by itself. Reconcile reloads the host snapshot.
+
+## Theme
+
+Hard-coded dark fills on buttons, cards, and headlines use theme tokens. Composer, picker, conversation, and user-bubble surfaces follow the chat reference layout and stay on the Harness palette. Light text and controls meet WCAG AA. The sessions panel has an Appearance control with Light, Dark, and System. It writes the same `zhivex.code.theme.v1` value as the header icon.
+
+## Narrow widths
+
+The header wraps the title onto its own row. The existing chat and review panes stay.
+
+## Budgets and telemetry
+
+Interactive web used to remove the engine ceilings, so one prompt could make 135 read-only calls and spend about 1.8 million tokens while the meter said “no user thresholds” and “0 steps”. Tool-only streams and a step index of 0 now count as at least one step. Web launches keep the engine ceilings (32 tool calls, 120,000 total tokens, 50 steps, 15 minutes) unless the launch sets a number. Read-only tools count. When the person has not set thresholds, the same stop values are applied to the visible meter and the existing cancel path. Stop requests cancellation. It does not promise a resumable pause. Context compaction stays on with the finite token ceiling.
+
+## Gaps in `@zhivex-ai/react`
+
+- Model picker. Proposed `ModelPicker` props: `models`, `configured`, `favorite`, `query`, `onSelect`, listbox keyboard handlers, and a truncated name with a tooltip.
+- Workspace memory. Proposed `useWorkspaceModel(workspaceId)` that returns the last-used id and a setter.
+- Session-creating send. Proposed `onSend` result `{ status: "needs-session" }` so the host can create a session without a second transport.
+- Review decisions. Proposed `approveDisabled`, `preventEnter`, and a reason that is not sent as the harness ticket.
+- Explored-file grouping. Proposed `groupActivity(entries)` that collapses consecutive read-only tool rows.
+- Reconcile. Proposed `canReconnect` plus `reconnect()` that only re-reads and never retries a mutation.

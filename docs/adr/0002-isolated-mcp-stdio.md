@@ -20,7 +20,7 @@ activate stdio, change configuration schema 1, or claim isolated execution passe
   options with abort, timeout/idempotency key, and an HTTP transport; no executable
   stdio factory was found in that dependency. The control-plane transport enum is
   not an executor.
-- The current pin is `@zhivex-ai/core` 1.34.0, which includes an experimental
+- The current pin is `@zhivex-ai/core` 1.36.0, which includes an experimental
   stdio client. Harness still does not treat that factory as the OCI boundary.
 
 MCP stdio uses UTF-8 newline-delimited JSON-RPC on stdin/stdout; stderr is a

@@ -1,3 +1,4 @@
+import { ActivityStream, type ActivityEmission } from "./terminal/activity-stream.js";
 import { ToolActivity, compactToolResult } from "./terminal/tool-activity.js";
 import type { ActivityHistory } from "./terminal/activity-history.js";
 import { USAGE_LEDGER_KEY, formatUsageLedger } from "@zhivex-ai/harness/code-support";
@@ -23,6 +24,7 @@ import {
   terminalSupportsColor
 } from "./terminal/terminal-ui.js";
 import { normalizeHarnessError } from "@zhivex-ai/harness/engine";
+import { decideBatch } from "../../../../src/approvals/auto-approve.js";
 import { type CliOptions } from "./arguments.js";
 import { resumeCommand } from "./resume-metadata.js";
 
@@ -68,12 +70,24 @@ export const approvalResponses = (
 export const terminalApprovalResolver = (
   automaticallyApprove: boolean | "ask" | "auto" | "restricted",
   ask?: (question: string) => Promise<string>,
-  ui?: { select?: import("./cli-credentials.js").CredentialInput["select"]; review?: NonNullable<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions["review"]>; workspace: string; sessionGrants?: Set<string>; fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>; restored?: boolean; projectLabel?: string }
+  ui?: Omit<import("./terminal/terminal-ui.js").TerminalApprovalResolverOptions, "ask" | "write">
 ): NonNullable<HarnessRunOptions["resolveApprovals"]> => {
   return async (approvals) => {
     if (automaticallyApprove === "restricted") return approvalResponses(approvals, false, "Denied by restricted approval mode.");
     if (automaticallyApprove === true || automaticallyApprove === "auto") {
       return approvalResponses(approvals, true, "Approved by automatic mode.");
+    }
+    const policy = ui?.autoApprove?.();
+    if (policy && policy.mode !== "manual") {
+      const batch = decideBatch(approvals.map(approval => ({ name: approval.name, arguments: approval.arguments })), policy);
+      if (batch.auto && ui) {
+        const { review: _review, select: _select, ...rest } = ui;
+        return resolveTerminalApprovals(approvals, {
+          ask: async () => "",
+          write: () => undefined,
+          ...rest,
+        });
+      }
     }
     if (!ask && (!process.stdin.isTTY || !process.stdout.isTTY)) return undefined;
     const readline = ask ? undefined : createInterface({ input: process.stdin, output: process.stdout });
@@ -129,15 +143,61 @@ export const printTerminalResult = (
 const proseLineOpen = new WeakSet<object>();
 const conversationStarted = new WeakSet<object>();
 const toolActivities = new WeakMap<object, ToolActivity>();
+const activityStreams = new WeakMap<object, ActivityStream>();
 const lastTerminalFailures = new WeakMap<object, string>();
-export const flushToolActivity = (tracker: object) => toolActivities.get(tracker)?.flush();
+
+interface ActivityHost {
+  activityHistory?: ActivityHistory;
+  turnDiff?: { added: number; removed: number };
+}
+
+const activityStreamFor = (tracker: ActivityHost) => {
+  let stream = activityStreams.get(tracker);
+  if (!stream) {
+    tracker.turnDiff ??= { added: 0, removed: 0 };
+    stream = new ActivityStream(tracker.turnDiff);
+    activityStreams.set(tracker, stream);
+  }
+  return stream;
+};
+
+const emitActivity = (tracker: ActivityHost, batch: readonly ActivityEmission[], print: boolean) => {
+  for (const item of batch) {
+    if (print && item.live) process.stderr.write(`${item.live}\n`);
+    for (const line of item.history) tracker.activityHistory?.add(line);
+  }
+};
+
+const recordActivity = (tracker: ActivityHost, event: AgentStreamEvent, print: boolean) => {
+  const stream = activityStreamFor(tracker);
+  const batch = event.type === "tool-call"
+    ? stream.noteCall(event.toolCall)
+    : event.type === "tool-result"
+      ? stream.noteResult(event.toolResult)
+      : event.type === "text-delta" || event.type === "agent-run-finish" || event.type === "error" || event.type === "tool-approval-request" || event.type === "agent-approval-request"
+        ? stream.flush()
+        : undefined;
+  if (!batch?.length) return;
+  if (print && batch.some(item => item.live)) toolActivities.get(tracker)?.pause();
+  emitActivity(tracker, batch, print);
+};
+
+export const flushToolActivity = (tracker: object) => {
+  const host = tracker as ActivityHost;
+  const stream = activityStreams.get(tracker);
+  if (stream) emitActivity(host, stream.flush(), true);
+  toolActivities.get(tracker)?.flush();
+};
 
 export const streamSink = (
   output: Pick<CliOptions, "json" | "jsonl">,
-  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string; consoleView?: boolean },
+  tracker: { streamedText: boolean; sequence?: number; markdown?: TerminalMarkdown; activityHistory?: ActivityHistory; inputStatus?: () => string; consoleView?: boolean; turnDiff?: { added: number; removed: number } },
   compact = false
 ) => async (event: AgentStreamEvent) => {
-  if (!output.json && !output.jsonl) tracker.activityHistory?.observe(event);
+  if (!output.json && !output.jsonl) {
+    recordActivity(tracker, event, compact);
+    tracker.activityHistory?.observe(event);
+  }
   if (output.jsonl) {
     tracker.sequence = (tracker.sequence ?? 0) + 1;
     process.stdout.write(`${serializeStreamEvent(event, tracker.sequence)}\n`);
@@ -176,17 +236,11 @@ export const streamSink = (
     }
     if (event.type === "tool-result") {
       activity.finish(event.toolResult.toolName, !event.toolResult.isError);
-      // Keep edits, checks and actionable failures explicit without fragmenting exploration.
-      const detail = compactToolResult(event.toolResult);
       const check = ["run_check", "run_environment_command"].includes(event.toolResult.toolName) || event.toolResult.toolName.startsWith("verify_and_apply_");
-      if (detail && !check) {
+      if (!check) {
         activity.pause();
-        tracker.markdown?.flush();
-        if (proseLineOpen.has(tracker)) { process.stdout.write("\n"); proseLineOpen.delete(tracker); }
-        process.stderr.write(`${detail}\n`);
         return;
       }
-      if (!check) return;
       activity.pause();
     } else if (["agent-run-finish", "error", "tool-approval-request", "agent-approval-request"].includes(event.type)) {
       tracker.markdown?.flush();

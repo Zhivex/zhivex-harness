@@ -102,6 +102,8 @@ Options (automation and advanced configuration):
   --max-parallel-reviews <1-4>   Review group concurrency ceiling (default: 2)
   --approval-mode <mode>        ask (default), auto, or restricted (deny approvals)
   --yes                          Alias for automatic approvals within existing permissions
+  --auto-approve <mode>          manual (default), auto-edits, or auto-limits. Always-ask operations still prompt
+  --auto-approve-allow <command> Executable allowed in auto-limits; repeatable. No wildcards. git push and publish still prompt
   --json                         Emit structured final output
   --jsonl                        Stream redacted JSON Lines, then the final result
   --cursor <cursor>              Continue a paginated run listing

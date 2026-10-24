@@ -4,14 +4,14 @@ Azure OpenAI is a separate provider (`azure-openai`). It does not reuse
 `OPENAI_API_KEY` or `OPENAI_BASE_URL`. No live Harness certification has been
 run for this route. Prices are not copied from the public OpenAI catalog.
 
-Published `@zhivex-ai/azure-openai@0.7.8` is the adapter pinned by this tree.
-It requires Core `^1.34.0`, and this checkout pins `@zhivex-ai/core@1.34.0`.
+Published `@zhivex-ai/azure-openai@0.8.0` is the adapter pinned by this tree.
+It requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.36.0`.
 Language models report Tier A. Hosted tool gates such as tool search follow
 the model id (`gpt-5.4` and `gpt-6-astra` in this adapter). An opaque
 deployment name does not receive those gates unless a deployment map names
 the base model.
 
-Published 0.7.8 accepts a deployments map and a token provider for Microsoft
+Published 0.8.0 accepts a deployments map and a token provider for Microsoft
 Entra ID. This route still authenticates with an API key and does not pass a
 token provider.
 
@@ -30,7 +30,7 @@ deployment name is not also sent as `model`. When it is omitted, requests use
 `AZURE_OPENAI_DEPLOYMENTS` is optional JSON, at most 8192 characters and 32
 entries. Each entry is `"name": "gpt-5.4"` or `"name": { "model": "gpt-5.4" }`.
 Deployment names and model ids are restricted to simple identifier characters.
-Harness passes the map to the adapter. Published 0.7.8 uses the base model for
+Harness passes the map to the adapter. Published 0.8.0 uses the base model for
 capabilities and request shape while the request still uses the deployment
 name. Harness also overlays those capability flags.
 

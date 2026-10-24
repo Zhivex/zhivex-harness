@@ -211,8 +211,11 @@ try:
         console = Console(narrow, columns=columns, rows=24)
         console.prompt()
         console.send("Fix greeting\n")
-        frame = console.read("PgUp/PgDn")
-        assert "Reject" in frame and "Approve 1 file" in frame and "Decide later" in frame
+        # A tall diff's overflow line also says PgUp/PgDn, above the decision
+        # menu. Wait for the unselected hint, then the hint's own pager text,
+        # so the footer is in the frame and is not left for the next read.
+        frame = console.read("No action highlighted") + console.read("PgUp/PgDn")
+        assert "Reject" in frame and "Approve this change" in frame and "Decide later" in frame
         assert "( Z ) Review changes" in frame
         if columns >= 80: assert "openai/gpt-5.6-luna" in frame
         assert "estimatedUsd" not in frame  # Diff before technical JSON.

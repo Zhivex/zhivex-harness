@@ -177,6 +177,22 @@ for (const script of ["live-provider-smoke", "live-orchestration-smoke", "live-e
 }
 
 
+test("approval arguments pass when allowControlBytes is absent and still reject it when present", () => {
+  const expected = { proposalId: "fixture-id", changes: [{ path: "fixture.txt", content: "expected", expectedDigest: null }] };
+  expect(() => liveProviderSmokeInternals.assertApprovalArguments({
+    proposalId: "fixture-id",
+    changes: [{ path: "fixture.txt", content: "expected", expectedDigest: null }]
+  }, expected)).not.toThrow();
+  let present: unknown;
+  try {
+    liveProviderSmokeInternals.assertApprovalArguments({
+      proposalId: "fixture-id",
+      changes: [{ path: "fixture.txt", content: "expected", expectedDigest: null, allowControlBytes: true }]
+    }, expected);
+  } catch (error) { present = error; }
+  expect((present as { approvalFields?: string[] }).approvalFields).toEqual(["unknown_fields"]);
+});
+
 test("approval mismatch diagnostics classify fields without retaining argument content", () => {
   const expected = { proposalId: "fixture-id", changes: [{ path: "fixture.txt", content: "expected", expectedDigest: null }] };
   let failure: unknown;

@@ -54,7 +54,7 @@ export function TaskPanel({ workspace, session, run, enabled, connected, prompt,
           onTask(true); setDefining(false); setError('');
         }
       } catch {
-        if (!stopped) setError('Task evidence is unavailable. Refresh the host state before deciding. Ordinary chat may have no task contract.');
+        if (!stopped) setError('This conversation has no task checklist. Send a message to continue, or choose Reconcile if a checklist should already be here.');
       } finally { if (!stopped) timer = setTimeout(() => void read(), 1000); }
     }
     void read();

@@ -1,11 +1,13 @@
 import { runHarnessTask as runHarness } from '@zhivex-ai/harness/code-support';
 import { approvalFileDiff } from "./terminal/file-diff.js";
+import { openAutoApproveController } from "./auto-approve-setup.js";
+import { publicAutoApproval, readAutoApprovals, readWorkspaceSnapshot, revertAutoApproval } from "../../../../src/approvals/auto-approve.js";
 import { handleConsoleCheckpoint } from "./console/console-checkpoints.js";
 import { CODE_TASK_KEY, codeTaskPrompt, freshCodeTaskBudgetRecap, freshCodeTaskRecap, keepCodeTask, prepareCodeTask, restoredCodeTask, recoverCodeTask, reviseCodeTask, type CodeTask } from "./console/console-task.js";
 import { consoleWorkspaceDiff } from "./console/console-diff.js";
 import { handleConsoleBudget } from "./console/console-pricing.js";
 import { consoleRunPolicyMetadata, restoreConsoleRunPolicy } from "./console/console-run-policy.js";
-import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
+import { ActivityHistory } from "./terminal/activity-history.js";
 import { chooseReasoning } from "./console/console-reasoning.js";
 import { reasoningEffortSchema } from "@zhivex-ai/harness/code-support";
 import { cliToolExecution } from "./tool-execution.js";
@@ -21,7 +23,7 @@ import { formatConsoleHelp } from "./console/console-commands.js";
 import { formatConsoleWelcome } from "./console/console-welcome.js";
 import { ConsoleInput } from "./console/console-input.js";
 import { ConsoleRunView } from "./console/console-run-view.js";
-import { formatConsoleOutcome } from "./console/console-outcome.js";
+import { formatConsoleOutcome, formatTurnBanner } from "./console/console-outcome.js";
 import { checkpointRecovery } from "./console/console-recovery.js";
 import type { ConsoleComposerInput } from "./console/console-presentation.js";
 import { ConsoleAttachments, formatConsoleContext } from "./console/console-context.js";
@@ -184,6 +186,15 @@ export const chat = async (options: CliOptions) => {
     throw error;
   }
 
+  const autoApprove = await openAutoApproveController(harness.config.workspace, options);
+  readline.onManual(() => autoApprove.setSession("manual"));
+  const limitsExceeded = () => {
+    const cap = runtimeOptions.usageLimitUsd;
+    const spent = displayLedger?.estimatedUsd;
+    if (typeof cap === "number" && typeof spent === "number" && spent >= cap) return true;
+    const budget = harness.config.budget;
+    return budget.unlimitedTokens === false && contextTokens >= budget.maxTotalTokens;
+  };
   let displayLedger = inspectUsageLedger((await latestState(session))?.metadata?.[USAGE_LEDGER_KEY]);
   let requestInFlight = false;
   let contextTokens = estimateMessages(messages);
@@ -197,6 +208,7 @@ export const chat = async (options: CliOptions) => {
     attachments: attachments.list().length,
     automaticApprovals: options.yes === true,
     ...(options.approvalMode ? {approvalMode: options.approvalMode} : {}),
+    autoApproveMode: autoApprove.policy().mode,
     ...(displayLedger ? {runUsage: requestInFlight ? {...displayLedger, estimatedUsd: null, usageComplete: false} : displayLedger} : {}),
     nextLimitUsd: runtimeOptions.usageLimitUsd ?? null,
     contextTokens,
@@ -223,6 +235,10 @@ export const chat = async (options: CliOptions) => {
           review: (review, items) => readline.review({...review, headerRight: review.headerRight ?? reviewProjectLabel()}, items),
           workspace: harness.config.workspace, sessionGrants,
           fileDiff: approval => approvalFileDiff(harness.workspace, approval),
+          fileDiffFull: approval => approvalFileDiff(harness.workspace, approval, Number.POSITIVE_INFINITY),
+          autoApprove: () => autoApprove.policy(limitsExceeded()),
+          readText: relative => readWorkspaceSnapshot(harness.config.workspace, relative),
+          auditRoot: harness.config.workspace,
           restored: reviewRestored,
           projectLabel: reviewProjectLabel(),
         })(approvals, context);
@@ -238,8 +254,7 @@ export const chat = async (options: CliOptions) => {
 
   const createTracker = (runId: string) => {
     const rendering = createTaskTelemetry();
-    let offset = harness.workspace.mutationAudit().length;
-    const initialOffset = offset;
+    const initialOffset = harness.workspace.mutationAudit().length;
     rejectedDecisions = 0;
     displayLedger = inspectUsageLedger(harness.usageLedger?.summary(runId));
     const tracker: Parameters<typeof streamSink>[1] = {streamedText: false,
@@ -247,12 +262,13 @@ export const chat = async (options: CliOptions) => {
         rendering.measure("render", () => process.stdout.write(text));
         if (text) rendering.mark("first-visible-text");
       }, terminalSupportsColor(Boolean(process.stdout.isTTY)), () => process.stdout.columns || 80),
-      activityHistory, inputStatus: () => readline.backgroundStatus, consoleView: true};
+      activityHistory, inputStatus: () => readline.backgroundStatus, consoleView: true,
+      turnDiff: { added: 0, removed: 0 }};
     return {tracker, onTaskTelemetry: (snapshot: ReturnType<typeof rendering.snapshot>) => {
       rendering.finish();
       if (verbose) process.stderr.write(JSON.stringify({ taskTelemetry: snapshot, terminalTelemetry: rendering.snapshot() }) + "\n");
     }, outcome: (result: AgentRunOutput) => formatConsoleOutcome(result,
-      harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions),
+      harness.workspace.mutationAudit().length - initialOffset, rejectedDecisions, tracker.turnDiff),
       onEvent: async (event: Parameters<ReturnType<typeof streamSink>>[0]) => {
       if (event.type === "agent-step-start") requestInFlight = true;
       if (event.type === "agent-step-finish" || event.type === "agent-run-finish") requestInFlight = false;
@@ -260,17 +276,6 @@ export const chat = async (options: CliOptions) => {
       if (event.type === "agent-run-finish") contextTokens = estimateMessages(event.state.messages);
       runView.observe(event);
       await rendering.measure("render", () => streamSink({json: false, jsonl: false}, tracker, !verbose)(event));
-      if (event.type === "tool-result") {
-        const audit = harness.workspace.mutationAudit();
-        const receipt = formatAppliedFiles(audit.slice(offset), "/diff to review", "line");
-        offset = audit.length;
-        if (receipt) {
-          flushToolActivity(tracker);
-          tracker.markdown?.flush();
-          process.stderr.write(receipt);
-          activityHistory.add(receipt.trim());
-        }
-      }
     }};
   };
 
@@ -403,7 +408,7 @@ export const chat = async (options: CliOptions) => {
     messages = result.messages;
     displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
     contextTokens = estimateMessages(messages);
-    process.stderr.write(outcome(result) + "\n");
+    process.stderr.write(formatTurnBanner(outcome(result)));
     process.stderr.write(await freshCodeTaskRecap(harness, result.state));
     codeTask = restoredCodeTask(result.state);
     writeUsageLedger(result.state.metadata);
@@ -583,6 +588,44 @@ export const chat = async (options: CliOptions) => {
           await replaceHarness({ ...runtimeOptions, maxSteps: Number(next), unlimitedSteps: false }, routes);
           process.stderr.write(`Step limit updated: ${harness.config.maxSteps} for next turns.\n`);
           if (codeTask) process.stderr.write("The current task retains its original budget authority; changing next-turn limits does not replenish it.\n");
+          continue;
+        }
+        if (command === "/manual") {
+          autoApprove.setSession("manual");
+          process.stderr.write("Approvals: manual for this session. The workspace file is unchanged.\n");
+          continue;
+        }
+        if (command === "/undo" || command.startsWith("/undo ")) {
+          const requested = command.slice("/undo".length).trim();
+          const entries = await readAutoApprovals(harness.config.workspace);
+          const target = requested || entries.at(-1)?.id;
+          if (!target) { process.stderr.write("No auto-approved change to undo.\n"); continue; }
+          const result = await revertAutoApproval(harness.config.workspace, target);
+          process.stderr.write(result.ok ? `Reverted ${result.paths.join(", ")}.\n` : `${result.reason}\n`);
+          continue;
+        }
+        if (command === "/auto-approve" || command.startsWith("/auto-approve ")) {
+          const requested = command.slice("/auto-approve".length).trim();
+          if (!requested) {
+            const policy = autoApprove.policy();
+            const recent = (await readAutoApprovals(harness.config.workspace)).slice(-5).map(publicAutoApproval);
+            process.stderr.write(`Approvals: ${policy.mode}. Allowlist: ${policy.commandAllowlist.join(", ") || "none"}. m or /manual returns to Manual.\n`);
+            if (recent.length) process.stderr.write(recent.map(item => `${item.id} · ${item.paths.join(", ") || item.name} · ${item.undoable ? "undoable" : "not undoable"}`).join("\n") + "\n");
+            continue;
+          }
+          const workspaceSave = requested.startsWith("workspace ");
+          const mode = (workspaceSave ? requested.slice("workspace ".length) : requested).trim();
+          if (mode !== "manual" && mode !== "auto-edits" && mode !== "auto-limits") {
+            process.stderr.write("Use /auto-approve manual|auto-edits|auto-limits, or /auto-approve workspace <mode>.\n");
+            continue;
+          }
+          if (workspaceSave) {
+            await autoApprove.saveWorkspace(mode);
+            process.stderr.write(`Approvals: ${mode} saved for this workspace.\n`);
+          } else {
+            autoApprove.setSession(mode);
+            process.stderr.write(`Approvals: ${mode} for this session. /manual drops back without changing the workspace file.\n`);
+          }
           continue;
         }
         if (command === "/approvals" || command.startsWith("/approvals ")) {
@@ -1018,7 +1061,7 @@ export const chat = async (options: CliOptions) => {
         attachments.clear();
         writeUsageLedger(result.state.metadata);
         displayLedger = inspectUsageLedger(result.state.metadata?.[USAGE_LEDGER_KEY]);
-        process.stderr.write(outcome(result) + "\n");
+        process.stderr.write(formatTurnBanner(outcome(result)));
         process.stderr.write(await freshCodeTaskRecap(harness, result.state));
         codeTask = restoredCodeTask(result.state);
         session = await sessionStore.updateRun(session.sessionId, runId, {

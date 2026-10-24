@@ -96,6 +96,15 @@ const actions = z.discriminatedUnion("action", [
       approve: z.boolean(),
     })
     .strict(),
+  z.object({ action: z.literal("autoApprove"), ...base, sessionId: id.optional() }).strict(),
+  z.object({
+    action: z.literal("setAutoApprove"),
+    ...base,
+    scope: z.enum(["session", "workspace"]),
+    mode: z.enum(["manual", "auto-edits", "auto-limits"]),
+    sessionId: id.optional(),
+  }).strict(),
+  z.object({ action: z.literal("undoAutoApproval"), ...base, id: z.string().regex(/^auto_[0-9a-f-]{36}$/i) }).strict(),
   z.object({ action: z.literal("overview"), ...base }).strict(),
   z.object({ action: z.literal("forgetProject"), ...base }).strict(),
 ]);
@@ -491,6 +500,16 @@ export async function startWebServer(options: {
                 (args as { approve: boolean }).approve,
               ),
             );
+          case "autoApprove":
+            return send(res, 200, await runtime.autoApprove((args as { sessionId?: string }).sessionId));
+          case "setAutoApprove": {
+            const value = args as { scope?: string; mode?: string; sessionId?: string };
+            if (value.scope !== "session" && value.scope !== "workspace") return fault(res, 400, "AUTO_APPROVE_CONFIG_INVALID");
+            if (value.mode !== "manual" && value.mode !== "auto-edits" && value.mode !== "auto-limits") return fault(res, 400, "AUTO_APPROVE_CONFIG_INVALID");
+            return send(res, 200, await runtime.setAutoApprove(value.scope, value.mode, value.sessionId));
+          }
+          case "undoAutoApproval":
+            return send(res, 200, await runtime.undoAutoApproval((args as { id: string }).id));
           default: {
             const methods = {
               task: "task.get",

@@ -2,7 +2,6 @@ import type { AgentStreamEvent } from "@zhivex-ai/agents";
 import { createRedactionPolicy } from "@zhivex-ai/agents";
 import type { MutationAuditEntry } from "@zhivex-ai/harness/engine";
 import { sanitizeTerminalText } from "./terminal-ui.js";
-import { compactToolResult } from "./tool-activity.js";
 
 const redaction = createRedactionPolicy({ includeEmails: true });
 const toolNames = new Set(["read_file", "read_files", "read_dependency", "search_files", "search_many", "list_files", "git_diff", "run_check", "run_environment_command", "propose_edits", "apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_patch", "verify_and_apply_replacement", "move_file", "quarantine_file", "restore_file"]);
@@ -23,8 +22,6 @@ export class ActivityHistory {
     if (event.type === "agent-run-start") this.add("Run started / resumed");
     else if (event.type === "agent-step-start") this.add("Waiting for model response");
     else if (event.type === "agent-compaction") this.add("Updating context");
-    else if (event.type === "tool-call") this.add(`Preparing ${safeName(event.toolCall.name)}`);
-    else if (event.type === "tool-result") this.add(compactToolResult(event.toolResult) ?? `${event.toolResult.isError ? "Failed" : "Finished"} ${safeName(event.toolResult.toolName)}`);
     else if (event.type === "tool-approval-request") this.add(`Waiting for approval: ${safeName(event.approval.name)}`);
     else if (event.type === "agent-approval-resolved") this.add(event.approval.approve ? "Approval granted" : "Approval denied");
     else if (event.type === "agent-run-finish") this.add(`Run ${event.status}`);

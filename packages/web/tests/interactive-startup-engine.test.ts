@@ -36,6 +36,7 @@ for (const interactive of [false, true]) test(`real exclusive restart preserves 
     expect(before).toBeDefined(); expect(receipt.data.run.revision).toBe(before!.revision!);
     expect(receipt.data.run.approvals).toEqual(started.data.run.approvals);
     const review = await runtime.review("fixture", session.sessionId, started.data.run.runId);
+    if (!("ticketId" in review)) throw new Error("expected a human review");
     const resumed = await runtime.decide("fixture", review.ticketId, true);
     expect(resumed.ok).toBe(true);
     if (resumed.ok && resumed.data.kind === "run") expect(resumed.data.run.status).toBe("completed");

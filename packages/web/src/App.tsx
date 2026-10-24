@@ -8,7 +8,7 @@ import { clampDiffHeight, clampDiffWidth, defaultDiffLayout, DIFF_LAYOUT_KEY, DI
 import { altShiftAction, isTextField } from "./shortcuts.js";
 import { choiceKey } from "./model-choice.js";
 import type { WebProjectOverview } from "./contracts.js";
-import { ChatRoot, Message } from "@zhivex-ai/react/components";
+import { ChatEmptyState, ChatRoot, Composer, Message, ReviewCard } from "@zhivex-ai/react/components";
 import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
@@ -22,10 +22,16 @@ import { ComposerDrafts } from "./composer-drafts.js";
 import "./composer.css";
 import { counted, limitsReadError, limitsSaveError } from "./limit-copy.js";
 import { LimitsDialog } from "./LimitsDialog.js";
+import { ApprovalModeDialog, type ApprovalMode, type ApprovalRecord } from "./ApprovalModeDialog.js";
 import type { LimitSettings, LimitScope } from "./limit-settings.js";
 import type { LimitPreferences } from "./limit-store.js";
 import type { RunLimits, LimitPricing } from "./limit-observer.js";
-import { SlidersHorizontalIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, CodeIcon, DesktopIcon, FeatherIcon, MoonIcon, PlusIcon, SlidersHorizontalIcon, SparkleIcon, StackIcon, SunIcon, WrenchIcon } from "@phosphor-icons/react";
+import { ProviderMark } from "./ProviderMark.js";
+import { planComposerSend } from "./composer-plan.js";
+import { cancellationSupersedesFailure, mutationUnconfirmed } from "./mutation-outcome.js";
+import { statusCopy } from "./status-copy.js";
+import { groupToolRows, isReadOnlyTool } from "./activity-groups.js";
 import { MessageMarkdown } from "./MessageMarkdown.js";
 import { providerStreamFailureText } from "./provider-stream-failure.js";
 import type {
@@ -48,6 +54,11 @@ const key = () => crypto.randomUUID();
 type LimitsInfo = { workspaceKey: string; legacyPending?: boolean; preferences: LimitPreferences; pricing: LimitPricing | null;
   host: { costUsd: number | null; steps: number | null; toolCalls: number | null; tokens: number | null; durationMinutes: number | null } };
 const human = (text: string) => text.replaceAll("_", " ").replaceAll("-", " ");
+const SUGGESTIONS = [
+  { title: "Inspect this project", description: "Suggest one focused improvement.", prompt: "Inspect this project and suggest a focused improvement", icon: StackIcon },
+  { title: "Explain the architecture", description: "Walk through the layout and the checks already in place.", prompt: "Explain the architecture and existing checks", icon: CodeIcon },
+  { title: "Review current changes", description: "Look for issues in the work that is already here.", prompt: "Review the current changes for potential issues", icon: FeatherIcon },
+] as const;
 const hostLimitNote = (host: LimitsInfo["host"]) => Object.entries(host).filter(([, value]) => value !== null).map(([name, value]) => {
   if (name === "costUsd") return ` Host: ${value} estimated USD (not a guaranteed financial cap).`;
   const singular = name === "steps" ? "step" : name === "toolCalls" ? "tool call" : name === "tokens" ? "token" : "minute";
@@ -57,24 +68,6 @@ const active = (status: string) =>
   ["running", "created", "queued", "cancel_requested"].includes(status);
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : "WEB_REQUEST_FAILED";
-const recovery: Record<string, string> = {
-  WEB_MODEL_CHANGE_BUSY: "Finish or cancel all active and pending-approval runs in this workspace before changing model.",
-  WEB_MODEL_NOT_CONFIGURED: "Configure this provider in the CLI first. Credential values are never entered here.",
-  WEB_MODEL_SWITCH_FAILED: "The model change failed. Reconnect to inspect the host configuration before another action.",
-  WEB_MODEL_UNAVAILABLE: "The host configuration is unavailable. Restart the local launcher and pair again.",
-  WEB_PAIRING_REQUIRED:
-    "Use the paired browser tab, or restart zhivex-code web to pair again.",
-  WEB_REQUEST_FAILED:
-    "Reconnect to read durable state before trying a new action.",
-  REVISION_CONFLICT: "The run changed. Refresh its review before deciding.",
-  REVIEW_REQUIRED:
-    "Open a fresh review. A submitted decision is never replayed.",
-  REVIEW_EXPIRED: "This review expired. Open a fresh review.",
-  RUN_STATE_UNAVAILABLE:
-    "The latest turn has no readable run state. Reconnect to inspect it; create a new session if it remains unavailable.",
-  WEB_CREDENTIALS_REQUIRED:
-    "Configure the existing CLI profile or launching environment, then restart.",
-};
 
 export function App() {
   const [modelChoices, setModelChoices] = useState<WebModelChoice[]>([]);
@@ -100,6 +93,7 @@ export function App() {
   const [pending, setPending] = useState("");
   const inFlight = useRef(false);
   const cancelInFlight = useRef(false);
+  const recordedCancellations = useRef(0);
   const [cancelling, setCancelling] = useState(false);
   const reconnectInFlight = useRef(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -114,11 +108,15 @@ export function App() {
   const runRef = useRef(run);
   runRef.current = run;
   const reviewHeading = useRef<HTMLHeadingElement>(null);
-  const promptInput = useRef<HTMLTextAreaElement>(null);
+  const [titleDraft, setTitleDraft] = useState("");
   const drafts = useRef(new ComposerDrafts());
   const [refresh, setRefresh] = useState(0);
   const [limitsInfo, setLimitsInfo] = useState<LimitsInfo>();
   const [limitsOpen, setLimitsOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("manual");
+  const [approvalRecords, setApprovalRecords] = useState<ApprovalRecord[]>([]);
+  const [approvalSaving, setApprovalSaving] = useState(false);
   const [limitsSaving, setLimitsSaving] = useState(false);
   const limitsSavingRef = useRef(false);
   const [limitsError, setLimitsError] = useState("");
@@ -156,6 +154,9 @@ export function App() {
     void action<LimitsInfo>(workspaceKey, "limits").then(info => {
       if (!stopped) setLimitsInfo(info);
     }).catch(() => { if (!stopped) setLimitsError(limitsReadError); });
+    void action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "autoApprove", { sessionId: selection.current.sessionId }).then(info => {
+      if (!stopped) { setApprovalMode(info.mode); setApprovalRecords(info.records); }
+    }).catch(() => undefined);
     return () => { stopped = true; };
   }, [workspaceKey, refresh, run?.runId]);
   async function saveLimits(scope: LimitScope, settings: LimitSettings) {
@@ -187,10 +188,11 @@ export function App() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+  useEffect(() => { setTitleDraft(session?.title ?? ""); }, [session?.sessionId, session?.title, session?.revision]);
   useEffect(() => {
     if (focusPrompt.current && session && !stateLoading && !pending) {
       focusPrompt.current = false;
-      promptInput.current?.focus();
+      focusComposer();
     }
   }, [session, stateLoading, pending]);
   useEffect(() => {
@@ -242,6 +244,7 @@ export function App() {
         setConnected(true);
         const saved = localStorage.getItem(`zhivex-session:${workspaceKey}`);
         const chosen = r.data.sessions.find((s) => s.sessionId === saved) ?? r.data.sessions[0];
+        setStateLoading(Boolean(chosen));
         setSession(chosen);
         setPrompt(drafts.current.read({ workspaceKey, sessionId: chosen?.sessionId ?? "" }).text);
       })
@@ -372,6 +375,7 @@ export function App() {
     // React state is not a lock: two activations can arrive before the next render.
     if (inFlight.current || cancelInFlight.current || reconnectInFlight.current) return;
     inFlight.current = true;
+    const cancellationsAtStart = recordedCancellations.current;
     mutationEpoch.current++;
     setError("");
     setPending(label);
@@ -379,9 +383,21 @@ export function App() {
     try {
       await job();
     } catch (e) {
-      setError(errorText(e));
-      if (errorText(e) === "WEB_REQUEST_FAILED") setConnected(false);
-      if (mutation) setNeedsReconcile(true);
+      const code = errorText(e);
+      // Cancel accepts the run while this start is still open. The host then
+      // answers that start with EXECUTION_FAILED. The cancellation receipt is
+      // the outcome, so this late failure must not cover it with an alert.
+      const superseded = cancellationSupersedesFailure(
+        code,
+        cancelInFlight.current || recordedCancellations.current !== cancellationsAtStart,
+      );
+      if (!superseded) {
+        setError(code);
+        if (code === "WEB_REQUEST_FAILED") setConnected(false);
+        // A confirmed terminal result, including EXECUTION_FAILED, stays editable.
+        // Only a lost response locks the session, and it is never replayed.
+        if (mutation && mutationUnconfirmed(code)) setNeedsReconcile(true);
+      }
     } finally {
       mutationEpoch.current++;
       inFlight.current = false;
@@ -459,6 +475,20 @@ export function App() {
       setRefresh((n) => n + 1);
     }
   }
+  async function commitTitle() {
+    const title = titleDraft.trim().slice(0, 96);
+    if (!session || !canMutate || !title || title === session.title) return;
+    await perform("Renaming session…", async () => {
+      const result = await action<Session>(workspaceKey, "rename", {
+        sessionId: session.sessionId,
+        expectedRevision: session.revision,
+        idempotencyKey: key(),
+        title,
+      });
+      setSession(result.data.session);
+      setSessions((previous) => previous.map((item) => item.sessionId === result.data.session.sessionId ? result.data.session : item));
+    }, true);
+  }
   async function create() {
     if (!canMutate) return;
     await perform(
@@ -475,50 +505,82 @@ export function App() {
       true,
     );
   }
-  async function start() {
-    if (!session || !prompt.trim() || !canMutate || busy || hasTask) return;
-    const input = prompt;
-    const selected = { workspaceKey, sessionId: session.sessionId };
+  const noCredentials = !modelsLoading && modelChoices.length > 0 && !modelChoices.some((choice) => choice.configured);
+  function focusComposer() {
+    document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Task prompt"]')?.focus();
+  }
+  async function start(text?: string) {
+    const input = text ?? prompt;
+    const plan = planComposerSend({
+      text: input,
+      hasSession: Boolean(session),
+      noCredentials,
+      canSend: canMutate && !busy && !hasTask,
+    });
+    if (plan === "ignore" || plan === "need-credentials") {
+      if (plan === "need-credentials") setError("WEB_CREDENTIALS_REQUIRED");
+      return;
+    }
+    const selected = { workspaceKey, sessionId: session?.sessionId ?? "" };
     await perform(
       "Starting task…",
       async () => {
         // perform acquired its synchronous lock. Consume before any awaited
-        // rename/start; completion must never clear a newer draft.
+        // create/rename/start; completion must never clear a newer draft.
         const submitted = drafts.current.consume(selected);
         setPrompt("");
+        let createdId = "";
         try {
+          let current = session;
+          if (!current) {
+            const created = await action<Session>(workspaceKey, "create", {
+              idempotencyKey: key(),
+              title: "New session",
+            });
+            current = created.data.session;
+            createdId = current.sessionId;
+            setSessions((previous) => [current!, ...previous.filter((item) => item.sessionId !== current!.sessionId)]);
+            setSession(current);
+          }
           // A cancellation receipt can precede the final session-index update.
           // Read the selected session before its revision-bound dispatch. This
           // is reconciliation only; a rejected start is never replayed.
-          let current = (await action<Session>(selected.workspaceKey, "session", {
-            sessionId: selected.sessionId,
+          let fresh = (await action<Session>(workspaceKey, "session", {
+            sessionId: current.sessionId,
           })).data.session;
-          if (!current.runs.length && current.title === "New session") {
-            current = (
+          if (!fresh.runs.length && fresh.title === "New session") {
+            fresh = (
               await action<Session>(workspaceKey, "rename", {
-                sessionId: current.sessionId,
-                expectedRevision: current.revision,
+                sessionId: fresh.sessionId,
+                expectedRevision: fresh.revision,
                 idempotencyKey: key(),
                 title: input.trim().slice(0, 96),
               })
             ).data.session;
           }
           const result = await action<Run>(workspaceKey, "start", {
-            sessionId: session.sessionId,
-            expectedRevision: current.revision,
+            sessionId: fresh.sessionId,
+            expectedRevision: fresh.revision,
             idempotencyKey: key(),
             prompt: input,
           });
-          if (selection.current.workspaceKey === selected.workspaceKey &&
-              selection.current.sessionId === selected.sessionId) {
+          const viewing = selection.current.sessionId === fresh.sessionId || selection.current.sessionId === selected.sessionId;
+          if (selection.current.workspaceKey === workspaceKey && viewing) {
             setSession(result.data.session);
             setRun(result.data.run);
           }
         } catch (error) {
           drafts.current.failed(submitted);
-          if (selection.current.workspaceKey === selected.workspaceKey &&
-              selection.current.sessionId === selected.sessionId)
-            setPrompt(drafts.current.read(selected).text);
+          const kept = drafts.current.read(selected).text;
+          const home = createdId ? { workspaceKey, sessionId: createdId } : selected;
+          if (createdId) {
+            drafts.current.edit(home, kept);
+            const recovery = drafts.current.read(selected).recovery;
+            if (recovery !== undefined) drafts.current.failed({ key: JSON.stringify([home.workspaceKey, home.sessionId]), text: recovery, consumedVersion: -1 });
+          }
+          if (selection.current.workspaceKey === workspaceKey &&
+              (selection.current.sessionId === selected.sessionId || selection.current.sessionId === createdId))
+            setPrompt(drafts.current.read(home).text);
           throw error;
         }
       },
@@ -532,10 +594,20 @@ export function App() {
     await perform("Loading exact review…", async () => {
       // Start the local cutoff before the host issues its five-minute ticket.
       const deadline = Date.now() + 5 * 60_000;
-      const r = await action<TicketedApprovalReview>(workspaceKey, "review", {
+      const r = await action<TicketedApprovalReview & { autoApproved?: boolean; data?: { session?: HarnessClientSession; run?: HarnessClientRun }; records?: ApprovalRecord[] }>(workspaceKey, "review", {
         sessionId: session.sessionId,
         runId: run.runId,
       });
+      if (r.autoApproved) {
+        if (selection.current.workspaceKey === selected.workspaceKey && selection.current.sessionId === selected.sessionId) {
+          if (r.data?.session) setSession(r.data.session);
+          if (r.data?.run) setRun(r.data.run);
+          if (r.records) setApprovalRecords(r.records);
+          setReview(undefined);
+          setAnnounce("Auto-approved this change. Press m for Manual. Undo is in Approvals.");
+        }
+        return;
+      }
       if (
         selection.current.workspaceKey === selected.workspaceKey &&
         selection.current.sessionId === selected.sessionId
@@ -627,10 +699,13 @@ export function App() {
       });
       setSession(result.data.session);
       setRun(result.data.run);
+      if (result.data.run.status === "cancelled" || result.data.run.status === "cancel_requested")
+        recordedCancellations.current += 1;
     } catch (e) {
-      setError(errorText(e));
-      setNeedsReconcile(true);
-      if (errorText(e) === "WEB_REQUEST_FAILED") setConnected(false);
+      const code = errorText(e);
+      setError(code);
+      if (code === "WEB_REQUEST_FAILED") setConnected(false);
+      if (mutationUnconfirmed(code)) setNeedsReconcile(true);
     } finally {
       mutationEpoch.current++;
       cancelInFlight.current = false;
@@ -708,6 +783,14 @@ export function App() {
   }, [workspaceKey, sessions, sessionsLoading]);
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      if ((event.key === "m" || event.key === "M") && !event.metaKey && !event.ctrlKey && !event.altKey && !isTextField(event.target) && !modelOpen && !limitsOpen && !approvalOpen && approvalMode !== "manual") {
+        event.preventDefault();
+        void action(workspaceKey, "setAutoApprove", { scope: "session", mode: "manual", sessionId: session?.sessionId ?? "" }).then(() => {
+          setApprovalMode("manual");
+          setAnnounce("Approvals are manual for this session.");
+        }).catch(() => setError("Could not switch approvals to Manual."));
+        return;
+      }
       if (event.key === "Escape") {
         if (modelOpen) { setModelOpen(false); return; }
         if (drawerOpen) { setDrawerOpen(false); drawerButton.current?.focus(); return; }
@@ -716,7 +799,7 @@ export function App() {
           saveDiff({ ...diffLayout, position: previousPosition.current });
           return;
         }
-        if (document.getElementById("review-panel")?.contains(document.activeElement)) promptInput.current?.focus();
+        if (document.getElementById("review-panel")?.contains(document.activeElement)) focusComposer();
         return;
       }
       const actionName = altShiftAction(event);
@@ -749,33 +832,41 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   });
   const stateLabel = loading
-    ? "Loading state…"
+    ? "Loading…"
     : !connected
-      ? "Connection unavailable"
+      ? "Not connected"
       : needsReconcile
-        ? "Reconciliation required"
+        ? "Refresh needed"
         : runUnavailable
-          ? "State unavailable"
+          ? "Couldn't read this run"
           : run
             ? runStatusLabel(run.status)
-            : "Ready";
+            : error
+              ? "Error"
+              // A mutation still in flight is not a settled idle session. Callers
+              // that wait for Ready must not continue on the session being replaced.
+              : pending
+                ? "Working…"
+                : "Ready";
   const composerHelp = needsReconcile
-    ? "The response was not confirmed. Reconnect before another action; nothing is retried automatically."
+    ? "The last response did not arrive. Choose Reconcile to reload this session. Nothing is sent again on its own."
     : !connected
-      ? "Connection lost. Admitted work may still be running on the host."
+      ? "The connection dropped. Work already admitted may still be running. Choose Reconcile to reload."
       : loading
-        ? "Reading the current session before enabling actions…"
+        ? "Reading this session before actions are available."
         : runUnavailable
-          ? recovery.RUN_STATE_UNAVAILABLE
+          ? statusCopy("RUN_STATE_UNAVAILABLE").next
+          : noCredentials
+            ? statusCopy("WEB_CREDENTIALS_REQUIRED").next
           : run?.status === "waiting_approval"
-            ? "Review the proposed operation or cancel this run. Your next draft stays here."
+            ? "Review the proposed change, or cancel this run. Your next draft stays here."
             : run?.status === "cancel_requested"
-              ? "Cancellation requested. Waiting for the host to confirm the final state."
+              ? "Stop requested. Waiting for the host to confirm."
+              : run?.status === "failed" || error
+                ? error ? statusCopy(error).next : "This task stopped. Edit the message and send it again."
               : busy
-                ? "Work is running. You can prepare the next draft or cancel this run."
-                : session
-                  ? "Your task runs in this workspace after you submit it."
-                  : "Create a session to begin.";
+                ? "Work is running. You can prepare the next message or stop this run."
+                : "Describe a task. The first message starts a session in this workspace.";
   const tools = Object.values(activity.runs).flatMap((r) =>
     Object.values(r.tools ?? {}).map((tool) => ({
       ...tool,
@@ -808,7 +899,12 @@ export function App() {
   const collapsed = new Set(grouped ? projects.filter(project => project.key !== workspaceKey && project.pending === 0 && (collapsedProjects.includes(project.key) || collapsedProjects.length === 0)).map(project => project.key) : []);
   const sessionMap: Record<string, HarnessClientSession[] | undefined> = { ...extraSessions };
   if (workspaceKey) sessionMap[workspaceKey] = sessionsLoading ? undefined : sessions;
-  const connectionLabel = !connected ? "Connection unavailable" : needsReconcile ? "Reconciliation required" : "Connected";
+  const connectionLabel = !connected ? "Not connected" : needsReconcile ? "Refresh needed" : "Connected";
+  const approvalLabel = approvalMode === "auto-edits" ? "Auto-edits" : approvalMode === "auto-limits" ? "Auto-limits" : "Manual";
+  const limitsLabel = limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(threshold => threshold.value !== null)
+    ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}`
+    : limitsInfo && Object.values(limitsInfo.host).some(value => value !== null) ? "Default budgets" : "No limits configured";
+  const failureCopy = error ? statusCopy(error) : undefined;
   const canSwitch = !cancelling && !reconnecting && !needsReconcile && !pending;
   const currentChoice = modelChoices.find(choice => choiceKey(choice) === currentModel);
   function openPending(items = pendingItems) {
@@ -854,7 +950,13 @@ export function App() {
     if (!drawerOpen) return;
     for (const key of expandedOtherProjects.split("\n")) loadProjectSessions(key);
   }, [drawerOpen, expandedOtherProjects]);
+  function chooseTheme(next: ThemeChoice) {
+    localStorage.setItem(THEME_KEY, next);
+    setThemeChoice(next);
+  }
   const frameStyle = { "--diff-width": `${diffWidth}px`, "--diff-height": `${diffHeight}px` } as CSSProperties;
+  const assistantName = currentChoice?.name ?? workspace?.model ?? "Assistant";
+  const assistantProvider = currentChoice?.provider ?? workspace?.provider ?? "host";
   return (
     <div className="app-shell" data-theme={resolvedTheme}>
       <a className="skip-link" href="#task-workspace">Skip to task workspace</a>
@@ -863,31 +965,43 @@ export function App() {
           <img className="brand-mark" src="/zhivex-icon.png" alt="" width={28} height={28} />
           <span>ZHIVEX</span>
         </a>
-        {grouped ? <button type="button" className="project-switch" aria-haspopup="dialog" onClick={() => { setDrawerOpen(true); setStatusFilter(false); }}>
-          {workspace?.name ?? "Project"} <span aria-hidden="true">▾</span>
-        </button> : <p className="project-crumb">{workspace?.name ?? "Project"} /</p>}
-        <h1>{session?.title ?? "Developer workspace"}</h1>
-        <button type="button" className={pendingItems.length ? "needs-you-count" : "needs-you-count quiet"} onClick={() => openPending()}>
-          {pendingItems.length === 1 ? "1 needs you" : pendingItems.length ? `${pendingItems.length} need you` : "Nothing needs you"}
-        </button>
-        <span className={connected && !needsReconcile ? "connection-label" : "connection-label warning"}>{loading ? "Reading local state…" : connectionLabel}</span>
-        {(!connected || needsReconcile) && <button className="subtle" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconnect</button>}
-        <button ref={drawerButton} type="button" className="subtle" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
-        <button type="button" className="icon-button" aria-label="New session" disabled={!canMutate} onClick={() => void create()}>New session</button>
-        <button className="limits-launcher" disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
-          onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
-          <SlidersHorizontalIcon size={18} />{limitsInfo && Object.values(limitsInfo.preferences.task ?? limitsInfo.preferences.project).some(threshold => threshold.value !== null)
-            ? `Limits for ${limitsInfo.preferences.task ? "the next task" : "the project"}` : limitsInfo && Object.values(limitsInfo.host).some(value => value !== null) ? "Host policy active" : "No limits configured"}
-        </button>
-        <button type="button" className="subtle" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
-          const next: ThemeChoice = themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system";
-          localStorage.setItem(THEME_KEY, next);
-          setThemeChoice(next);
-        }}>{resolvedTheme === "dark" ? "Dark" : "Light"}</button>
+        <div className="crumb">
+          {grouped ? <button type="button" className="project-switch" aria-haspopup="dialog" onClick={() => { setDrawerOpen(true); setStatusFilter(false); }}>
+            {workspace?.name ?? "Project"} <span aria-hidden="true">▾</span>
+          </button> : <span className="project-crumb">{workspace?.name ?? "Project"}</span>}
+          <span className="crumb-sep" aria-hidden="true">/</span>
+          {session ? <input className="session-title" aria-label="Session title" value={titleDraft} maxLength={96}
+            disabled={!canMutate} onChange={event => setTitleDraft(event.target.value)}
+            onBlur={() => void commitTitle()}
+            onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} />
+            : <span className="session-title-static">New session</span>}
+        </div>
+        <div className="topbar-status">
+          {loading ? <span className="connection-label">Reading…</span>
+            : !connected ? <button type="button" className="connection-action" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconnect</button>
+            : needsReconcile || error ? <button type="button" className="connection-action" disabled={reconnecting || cancelling} onClick={() => void restoreConnection()}>Reconcile</button>
+            : pendingItems.length > 0 ? <button type="button" className="needs-you-count" onClick={() => openPending()}>
+              {pendingItems.length === 1 ? "1 needs you" : `${pendingItems.length} need you`}
+            </button>
+            : <span className="connection-label"><span className="status-dot" aria-hidden="true" />{connectionLabel}</span>}
+          <button type="button" className="subtle topbar-chip approval-mode" aria-label={`Approvals: ${approvalLabel}. Press m for Manual.`} title="Approvals. Press m for Manual." onClick={() => setApprovalOpen(true)}>{approvalLabel}</button>
+        </div>
+        <div className="topbar-actions">
+          <button ref={drawerButton} type="button" className="subtle topbar-chip" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
+          <button className="limits-launcher topbar-chip" aria-label={limitsLabel} title={limitsLabel} disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
+            onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
+            <SlidersHorizontalIcon size={16} /><span>{limitsLabel}</span>
+          </button>
+          <button type="button" className="icon-button topbar-icon" aria-label="New session" disabled={!canMutate} onClick={() => void create()}><PlusIcon size={16} /></button>
+          <button type="button" className="icon-button topbar-icon" aria-label={`Theme ${themeChoice}. Switch theme`} onClick={() => {
+            chooseTheme(themeChoice === "system" ? "light" : themeChoice === "light" ? "dark" : "system");
+          }}>{themeChoice === "system" ? <DesktopIcon size={16} /> : resolvedTheme === "dark" ? <MoonIcon size={16} /> : <SunIcon size={16} />}</button>
+        </div>
       </header>
-      {error && <div role="alert" className="error-banner">
-        <strong>{human(error)}</strong>
-        <span>{recovery[error] ?? "Read the current session state before submitting another action."}</span>
+      {failureCopy && <div role="alert" className="error-banner">
+        <strong>{failureCopy.title}</strong>
+        <span>{failureCopy.next}</span>
+        {failureCopy.detail ? <span className="error-detail">{failureCopy.detail}</span> : null}
         <button className="subtle" aria-label="Dismiss error" onClick={() => setError("")}>×</button>
       </div>}
       {(pending || cancelling || reconnecting) && <div className="operation-status" role="status">
@@ -900,11 +1014,21 @@ export function App() {
       <div id="task-workspace" className="workspace-frame" data-position={diffLayout.minimized ? "minimized" : position} data-empty={emptyReview ? "true" : "false"} data-pane={narrow ? mobilePane : "both"} style={frameStyle} tabIndex={-1}>
         <section className="chat-column">
           <ChatRoot className="conversation" label="Task stream" theme={resolvedTheme}>
-            <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable ? "warning" : ""}`}>{stateLabel}</span></div>
+            <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable || Boolean(error) ? "warning" : ""}`}>{stateLabel}</span></div>
             <p className="state-guidance" id="composer-help">{composerHelp}</p>
             {sessionsLoading && <p className="session-empty" role="status">Loading sessions…</p>}
             {runLimits && <div className="run-limits-summary" aria-label="Limits for the current task">
-              <span>Origin: {runLimits.origin === "task" ? "next task" : runLimits.origin === "project" ? "project" : "no user thresholds"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")} reported.</span>
+              <span>{runLimits.origin === "task" ? "Limits for this task" : runLimits.origin === "project" ? "Project limits" : "Default budgets"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")}.</span>
+              <div className="budget-meters">
+                {(["toolCalls", "tokens", "steps", "durationMinutes"] as const).map(name => {
+                  const max = runLimits.settings[name].value ?? limitsInfo?.host[name] ?? null;
+                  const used = runLimits.consumption[name];
+                  if (max === null || used === null) return null;
+                  const label = name === "toolCalls" ? "Tool calls" : name === "durationMinutes" ? "Minutes" : name === "tokens" ? "Tokens" : "Steps";
+                  return <label key={name} className="budget-meter">{label}<progress value={Math.min(used, max)} max={max} />{name === "durationMinutes" ? used.toFixed(1) : Math.round(used)} / {max}</label>;
+                })}
+              </div>
+              <p className="muted">Read-only tools count toward these budgets. Long conversations are compacted automatically. Choose Stop to cancel; recorded work stays.</p>
               <details><summary>View thresholds for this task</summary>
                 <p>Estimated spend: {runLimits.consumption.costUsd === null ? "unavailable" : `$${runLimits.consumption.costUsd.toFixed(6)}`} · Active duration: {runLimits.consumption.durationMinutes.toFixed(2)} min.</p>
                 {Object.entries(runLimits.settings).filter(([, threshold]) => threshold.value !== null).map(([name, threshold]) => <p key={name}>
@@ -912,78 +1036,93 @@ export function App() {
                 </p>)}
                 {runLimits.pricing && <p>Advisory price: {runLimits.pricing.source}. The estimate can exceed the threshold; it is not a guaranteed financial cap.</p>}
               </details>
-              {runLimits.observationError && <p role="alert">Consumption could not be observed reliably. Reconnect to inspect the task; thresholds are not guaranteed.</p>}
+              {runLimits.observationError && <p role="alert">Usage could not be tracked reliably. Choose Reconcile, then check this task. Limits may not have been applied.</p>}
               {runLimits.notices.map(notice => <p key={notice.name} role="status">
-                Threshold for {({ costUsd: "estimated spend", tokens: "tokens", steps: "steps", toolCalls: "tool calls", durationMinutes: "duration" })[notice.name]} reached: {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} / {notice.threshold}.
-                {notice.action === "notify" ? " Notice; the task can continue." : runLimits.cancellationRequested ? " Cancellation requested; recorded work is kept. To continue, start another task." : " The task had already finished when the threshold was observed."}
+                {({ costUsd: "Estimated spend", tokens: "Tokens", steps: "Steps", toolCalls: "Tool calls", durationMinutes: "Time" })[notice.name]} reached {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} of {notice.threshold}.
+                {notice.action === "notify" ? " The task can continue." : runLimits.cancellationRequested ? " Stop requested. Recorded work is kept. Send a new message to continue." : " The task had already finished."}
               </p>)}
             </div>}
             {hasTask && <a className="task-jump subtle" href="#task-evidence">View task and evidence</a>}
             <div className="messages" role="log" aria-label="Run activity" aria-live="off">
               {!activity.order.length && loading && <p className="loading-state" role="status">Loading durable activity…</p>}
               {!activity.order.length && !loading && connected && !session?.runs.length && <div className="empty-state">
-                <img className="workspace-glyph" src="/zhivex-icon.png" alt="" width={56} height={56} />
-                <p className="eyebrow">YOUR CODE. YOUR WORKSPACE.</p>
-                <h2>What are we building?</h2>
-                <p>Start a task, follow the work, and review each operation that needs your approval.</p>
-                <div className="starter-list">
-                  {["Inspect this project and suggest a focused improvement", "Explain the architecture and existing checks", "Review the current changes for potential issues"].map(text => (
-                    <button key={text} disabled={!session || Boolean(pending)} onClick={() => { editPrompt(text); promptInput.current?.focus(); }}>{text}<span>↗</span></button>
-                  ))}
+                <div className="hero-mark" aria-hidden="true"><SparkleIcon size={28} /></div>
+                <p className="eyebrow">Your code. Your workspace.</p>
+                <ChatEmptyState title="What are we building?" description="Start a task, follow the work, and review each change that needs you." starterPrompts={[]} />
+                <div className="suggestion-grid">
+                  {SUGGESTIONS.map(suggestion => {
+                    const Icon = suggestion.icon;
+                    return <button key={suggestion.title} type="button" className="suggestion-card" onClick={() => { editPrompt(suggestion.prompt); void start(suggestion.prompt); }}>
+                      <span className="suggestion-card-top"><Icon size={18} aria-hidden="true" /><ArrowUpRightIcon size={14} aria-hidden="true" /></span>
+                      <span className="suggestion-title">{suggestion.title}</span>
+                      <span className="suggestion-copy">{suggestion.description}</span>
+                    </button>;
+                  })}
                 </div>
-                {!session && <button className="primary" disabled={!canMutate} onClick={() => void create()}>Create a session</button>}
               </div>}
               {activity.order.map(id => {
                 const retained = activity.runs[id]!;
                 const item = runUnavailable && session?.runs.at(-1)?.runId === id ? { ...retained, status: "state unavailable" } : retained;
+                const working = active(item.status) && !item.text;
                 return <div className="turn" key={id}>
-                  {item.prompt && <Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} />}
+                  {item.prompt && <div className="user-turn"><Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} /></div>}
                   <article className="assistant-response" aria-label="Assistant response" aria-busy={active(item.status)}>
-                    <MessageMarkdown text={item.text || (item.status === "waiting_approval" ? "The proposed operation is ready for your review." : active(item.status) ? "Working in your local workspace…" : (item.status === "failed" && run?.runId === id ? providerStreamFailureText(run.error?.providerDiagnostic) : undefined) ?? "No text output recorded.")} />
+                    <div className="assistant-heading">
+                      <ProviderMark provider={assistantProvider} />
+                      <p>{assistantName}</p>
+                      <span>{working ? "typing…" : runStatusLabel(item.status === "state unavailable" ? undefined : item.status)}</span>
+                    </div>
+                    {working ? <div className="chat-typing" role="status" aria-label="Generating response"><span className="chat-dot" /><span className="chat-dot" /><span className="chat-dot" /></div>
+                      : <MessageMarkdown text={item.text || (item.status === "waiting_approval" ? "The proposed operation is ready for your review." : (item.status === "failed" && run?.runId === id ? providerStreamFailureText(run.error?.providerDiagnostic) : undefined) ?? "No text output recorded.")} />}
                   </article>
                   {item.truncated && <p className="muted">Retained output is truncated.</p>}
                   <div className="turn-footer"><span>{runStatusLabel(item.status === "state unavailable" ? undefined : item.status)}</span></div>
                   <details className="technical-details"><summary>Technical details</summary><p>Run {id}</p></details>
                 </div>;
               })}
-              {activity.recovered && <p className="recovery-note">Activity recovered from the saved snapshot.</p>}
+              {activity.recovered && <p className="recovery-note">Earlier messages were restored from the saved session.</p>}
             </div>
+            {reviewWaiting && run && <ReviewCard reviewId={`${run.runId}:${run.revision}`} heading="Change review" description="Use the change review panel to approve or reject. Approval stays off until every file has been viewed." />}
             {workspace && session && <TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(":")}
               workspace={workspace} session={session} {...(run ? { run } : {})} enabled={canMutate} connected={connected && !needsReconcile}
               prompt={prompt} perform={perform} onTask={setHasTask} onResult={(data) => {
                 if (data.kind === "run") { setRun(data.run); setSession(data.session); }
                 setRefresh(n => n + 1);
               }} />}
-            {!tools.length ? null : <ul className="tool-list" aria-label="Activity and checks">
-              {tools.map((tool, index) => <li key={index}><strong>{human(tool.name)}</strong><small>{tool.exitCode === undefined ? tool.status : `exit ${tool.exitCode}${tool.timedOut ? " · timed out" : ""}`}</small></li>)}
-            </ul>}
+            {!tools.length ? null : <div className="tool-activity">
+              <p className="tool-activity-label"><WrenchIcon size={14} aria-hidden="true" /> Runtime tools</p>
+              <ul className="tool-list" aria-label="Activity and checks">
+              {groupToolRows(tools).map((group, index) => group.kind === "explore" ? <li key={index}>
+                <details className="explore-group">
+                  <summary>Explored {group.count} {group.count === 1 ? "file" : "files"}</summary>
+                  <ul>{group.tools.map((tool, toolIndex) => <li key={toolIndex}>{human(tool.name)} · {tool.status}</li>)}</ul>
+                </details>
+              </li> : <li key={index} className="tool-pill"><strong>{human(group.tool.name)}</strong><small>{group.tool.exitCode === undefined ? group.tool.status : `exit ${group.tool.exitCode}${group.tool.timedOut ? " · timed out" : ""}`}</small></li>)}
+              </ul>
+            </div>}
             {checks.length > 0 && <p className="check-summary">{checks.filter(check => check.exitCode === 0 && !check.timedOut).length}/{checks.length} checks passed</p>}
             {diffLayout.minimized && <div className="restore-bar" role="status">
               <span>{reviewWaiting ? `Needs you · ${viewed.approveLabel.replace(/^Approve /, "")} · Expires in ${expiresLabel}` : "Review is minimized"}</span>
               <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: false })}>Restore review</button>
             </div>}
-            <form className="composer" onSubmit={event => { event.preventDefault(); void start(); }}>
-              <label className="sr-only" htmlFor="prompt">Task prompt</label>
-              <textarea id="prompt" ref={promptInput} aria-describedby="composer-help" placeholder={session ? "Describe a task for this workspace…" : "Create a session to begin…"} value={prompt} maxLength={65536}
-                disabled={!session || cancelling || (Boolean(pending) && pending !== "Starting task…" && !busy)}
-                onChange={event => editPrompt(event.target.value)}
-                onKeyDown={event => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); void start(); } }} />
-              <div className="composer-actions">
-                <ModelPicker choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
-                  configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
-                  unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
-                  onApply={choice => void selectModelChoice(choice.provider, choice.model)} favoriteToggle={favoriteToggle} />
-                <button className="primary" disabled={!session || !prompt.trim() || !canMutate || busy || hasTask} type="submit">{hasTask ? "Use task review to continue" : <>Run task <span>↑</span></>}</button>
-              </div>
-            </form>
-            <div className="composer-note"><span>⌘ / Ctrl + Enter to run</span><span>Credentials stay on the host</span></div>
-            {drafts.current.read(selection.current).recovery !== undefined && <details className="composer-recovery">
-              <summary>Recover submitted text</summary>
-              <p>The submission could not be confirmed. Reconnect to inspect the current run before sending another task.</p>
+            <Composer className="composer" value={prompt} onValueChange={editPrompt} onSend={value => { void start(value); }} onStop={() => { void cancel(); }}
+              status={active(run?.status ?? "") || cancelling || reviewWaiting ? "streaming" : "ready"} allowAttachments={false}
+              labels={{ inputLabel: "Task prompt", send: "Send composer", stop: run?.status === "cancel_requested" ? "Stop requested" : cancelling ? "Requesting cancellation…" : "Cancel run", inputPlaceholder: "Describe a task for this workspace…" }}
+              textareaProps={{ "aria-describedby": "composer-help", maxLength: 65536, disabled: cancelling || loading || (Boolean(pending) && pending !== "Starting task…" && !busy) }}
+              trailingActions={<button type="button" className="primary" disabled={!prompt.trim() || !canMutate || hasTask || Boolean(run && (active(run.status) || run.status === "waiting_approval"))} onClick={() => void start()}>{hasTask ? "Use task review to continue" : "Run task"}</button>}
+              leadingActions={<ModelPicker workspaceKey={workspaceKey} choices={modelChoices} currentKey={currentModel} currentLabel={currentChoice ? `${currentChoice.name} · ${currentChoice.providerName}` : `${workspace?.model ?? "Host model"} · ${workspace?.provider ?? "Host"}`}
+                configured={currentChoice ? currentChoice.configured : true} disabled={!canMutate || busy || reviewWaiting} pendingReview={reviewWaiting} loading={modelsLoading}
+                unavailable={Boolean(modelError)} selectionError={modelSelectionError} open={modelOpen} onOpenChange={setModelOpen}
+                onApply={choice => void selectModelChoice(choice.provider, choice.model)} favoriteToggle={favoriteToggle} />} />
+            <div className="composer-note"><span>Enter to send · Shift+Enter for a new line</span><span>Credentials stay on the host</span></div>
+            {drafts.current.read(selection.current).recovery !== undefined && <div className="composer-recovery" role="status">
+              <p>{prompt.trim()
+                ? "This message did not finish. It is still in the composer. Change it if you need to, then choose Send again. It is not sent on its own."
+                : "This message did not finish. Choose Edit message to put it back, then Send again. It is not sent on its own."}</p>
               <pre>{drafts.current.read(selection.current).recovery}</pre>
-              <button type="button" disabled={Boolean(prompt)} onClick={() => { if (drafts.current.recover(selection.current)) { setPrompt(drafts.current.read(selection.current).text); promptInput.current?.focus(); } }}>Restore to empty composer</button>
-            </details>}
-            {(active(run?.status ?? "") || reviewWaiting) && <button className="danger" disabled={!canCancel} onClick={() => void cancel()}>{run?.status === "cancel_requested" ? "Cancellation requested" : cancelling ? "Requesting cancellation…" : "Cancel run"}</button>}
+              <button type="button" disabled={Boolean(prompt)} onClick={() => { if (drafts.current.recover(selection.current)) { setPrompt(drafts.current.read(selection.current).text); focusComposer(); } }}>Edit message</button>
+              <button type="button" disabled={!prompt.trim() || !canMutate || busy} onClick={() => void start()}>Send again</button>
+            </div>}
           </ChatRoot>
         </section>
         {!diffLayout.minimized && position !== "full" && !emptyReview && <div role="separator" className="diff-handle" tabIndex={0}
@@ -1072,7 +1211,13 @@ export function App() {
               <button type="button" className="approve" data-decision="approve" aria-describedby={!viewed.allViewed ? "review-viewed-hint" : undefined}
                 disabled={!canMutate || !review?.canApprove || !viewed.allViewed || Boolean(reviewInvalid)} onKeyDown={preventDecisionEnter} onClick={() => void decide(true)}>{viewed.approveLabel}</button>
             </div>
-          </div> : <div className="quiet-state"><p>No changes to review.</p><small>Requests show up here before anything runs.</small></div>}
+          </div> : <div className="quiet-state">{approvalRecords.length > 0 && <p>Auto-approved {approvalRecords.at(-1)?.paths.join(", ") || approvalRecords.at(-1)?.name}. Undo is in Approvals. Press m for Manual.</p>}{run ? <>
+            <p>Nothing is waiting for approval.</p>
+            <small>{tools.length > 0 && tools.every(tool => isReadOnlyTool(tool.name)) ? "This run is only reading files, so there is nothing to approve." : "When a step wants to change files or run a command, it shows up here first."}</small>
+          </> : <>
+            <p>No changes to review.</p>
+            <small>When a step wants to change files or run a command, it shows up here first.</small>
+          </>}</div>}
           {run?.decisions?.filter(decision => decision.finalDiff?.status === "complete").map(decision => <details key={decision.approvalId}>
             <summary>Applied change · {decision.finalDiff?.status === "complete" ? decision.finalDiff.files.length : 0} files</summary>
             {decision.finalDiff?.status === "complete" && decision.finalDiff.files.map((file, index) => <div className="review-file" key={index}><h4>{file.path}</h4><FileDiff before={file.before ?? undefined} after={file.after ?? undefined} /></div>)}
@@ -1088,8 +1233,23 @@ export function App() {
         onToggle={toggleProject} onOpenProject={key => { if (projects.find(project => project.key === key)?.unavailable) return; setWorkspaceKey(key); setDrawerOpen(false); }}
         onChoose={(key, item) => { if (key !== workspaceKey) { jump.current = { key, sessionId: item.sessionId }; setWorkspaceKey(key); } else chooseSession(item); setDrawerOpen(false); if (item.runs.at(-1)?.status === "waiting_approval") saveDiff({ ...diffLayout, minimized: false }); }}
         onAdd={() => setAddProjectOpen(true)} onForget={key => { void action(key, "forgetProject").then(() => reconnect().then(next => { contextEpoch.current += 1; setContext(next); })).catch(error => setError(errorText(error))); }}
-        returnFocus={drawerButton} />
+        returnFocus={drawerButton} themeChoice={themeChoice} onTheme={chooseTheme} />
       <AddProjectDialog open={addProjectOpen} onClose={() => setAddProjectOpen(false)} />
+      {approvalOpen && <ApprovalModeDialog mode={approvalMode} records={approvalRecords} saving={approvalSaving} onClose={() => setApprovalOpen(false)}
+        onSave={(scope, mode) => {
+          setApprovalSaving(true);
+          void action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "setAutoApprove", { scope, mode, sessionId: session?.sessionId ?? "" }).then(info => {
+            setApprovalMode(info.mode); setApprovalRecords(info.records); setApprovalOpen(false);
+          }).catch(() => setError("Could not save the approval mode.")).finally(() => setApprovalSaving(false));
+        }}
+        onUndo={id => {
+          setApprovalSaving(true);
+          void action(workspaceKey, "undoAutoApproval", { id }).then(async () => {
+            const info = await action<{ mode: ApprovalMode; records: ApprovalRecord[] }>(workspaceKey, "autoApprove", { sessionId: session?.sessionId ?? "" });
+            setApprovalMode(info.mode); setApprovalRecords(info.records);
+            setAnnounce("Reverted the auto-approved change.");
+          }).catch(() => setError("Could not undo that change. It may have been edited since.")).finally(() => setApprovalSaving(false));
+        }} />}
       {limitsOpen && limitsInfo?.workspaceKey === workspaceKey && <LimitsDialog
         initial={{ task: limitsInfo.preferences.task ?? limitsInfo.preferences.project, project: limitsInfo.preferences.project }}
         onCancel={() => setLimitsOpen(false)} onSave={(scope, settings) => void saveLimits(scope, settings)}

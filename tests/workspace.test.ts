@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { createEditProposal } from "../src/workspace/edit-contracts.js";
 import { runPortableProcess } from "../src/execution/process-runtime.js";
+import { textGuards } from "../src/workspace/text-integrity.js";
 import { Workspace } from "../src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
@@ -576,6 +577,70 @@ test("exact replacement preserves BOM and CRLF and rejects malformed UTF-8", asy
   const invalid = await workspace.readFile("invalid.txt");
   await expect(workspace.applyReplacement({ path: "invalid.txt", expectedDigest: invalid.digest, oldText: "A", newText: "B" })).rejects.toThrow("UTF-8");
   expect(await readFile(path.join(root, "invalid.txt"))).toEqual(Buffer.from([0xff, 65]));
+});
+
+test("text edits refuse NUL and control bytes unless explicitly allowed", async () => {
+  const { root, workspace } = await fixture();
+  const original = await readFile(path.join(root, "src", "index.ts"));
+  const current = await workspace.readFile("src/index.ts");
+  await expect(workspace.applyReplacement({
+    path: "src/index.ts",
+    expectedDigest: current.digest,
+    oldText: "value = 1",
+    newText: "value =\n\0"
+  })).rejects.toThrow("Refusing to write a control byte into a text file: NUL byte at L2");
+  expect(await readFile(path.join(root, "src", "index.ts"))).toEqual(original);
+  expect(workspace.mutationAudit()).toHaveLength(0);
+  await expect(workspace.applyPatch({
+    proposalId: createEditProposal({ changes: [{ path: "src/index.ts", expectedDigest: current.digest, content: "export const value = 1;\n\u0001" }] }).proposalId,
+    changes: [{ path: "src/index.ts", expectedDigest: current.digest, content: "export const value = 1;\n\u0001" }]
+  })).rejects.toThrow("U+0001 at L2");
+  expect(await readFile(path.join(root, "src", "index.ts"))).toEqual(original);
+  const changes = [{ path: "new.ts", expectedDigest: null, content: "\0" }];
+  const created = createEditProposal({ changes });
+  await expect(workspace.applyPatch({ proposalId: created.proposalId, changes })).rejects.toThrow("NUL byte at L1");
+  await expect(stat(path.join(root, "new.ts"))).rejects.toThrow();
+});
+
+test("an intentional control byte is written and a binary publication is reverted", async () => {
+  const { root, workspace } = await fixture();
+  const original = await readFile(path.join(root, "src", "index.ts"));
+  const current = await workspace.readFile("src/index.ts");
+  await workspace.applyReplacement({
+    path: "src/index.ts",
+    expectedDigest: current.digest,
+    oldText: "value = 1",
+    newText: "value = 1\0"
+  }, { allowControlBytes: true });
+  const written = await readFile(path.join(root, "src", "index.ts"));
+  expect(written.includes(0)).toBe(true);
+  await expect(workspace.readFile("src/index.ts")).rejects.toThrow("NUL byte at L1");
+  const repaired = await workspace.readFile("src/index.ts").catch(() => undefined);
+  expect(repaired).toBeUndefined();
+  const binary = await workspace.inspectFile("src/index.ts");
+  const clean = "export const value = 2;\n";
+  const proposal = createEditProposal({ changes: [{ path: "src/index.ts", expectedDigest: binary.digest, content: clean }] });
+  await workspace.applyPatch({ proposalId: proposal.proposalId, changes: [{ path: "src/index.ts", expectedDigest: binary.digest, content: clean }] });
+  expect(await readFile(path.join(root, "src", "index.ts"), "utf8")).toBe(clean);
+
+  const restore = textGuards.afterWrite;
+  textGuards.afterWrite = () => ({ line: 2283, label: "NUL byte" });
+  try {
+    const file = await workspace.readFile("src/index.ts");
+    const before = await readFile(path.join(root, "src", "index.ts"));
+    const audits = workspace.mutationAudit().length;
+    await expect(workspace.applyReplacement({
+      path: "src/index.ts",
+      expectedDigest: file.digest,
+      oldText: "value = 2",
+      newText: "value = 3"
+    })).rejects.toThrow("file is binary after edit: NUL byte at L2283. The edit was reverted. Read the file again before retrying.");
+    expect(await readFile(path.join(root, "src", "index.ts"))).toEqual(before);
+    expect(workspace.mutationAudit()).toHaveLength(audits);
+  } finally {
+    textGuards.afterWrite = restore;
+  }
+  expect(original.equals(Buffer.from("export const value = 1;\n"))).toBe(true);
 });
 
 test("default reads are small and explicit ranges can retrieve the remaining lines", async () => {

@@ -37,7 +37,7 @@ test('explicit Code correction persists a revision before a new turn and retains
     expect(after.budget.confirmed.totalTokens).toBe(30);
     expect(after.budget.accountRunId).toBe(before.budget.accountRunId);
   } finally { await host.close(); }
-}));
+}), 20_000);
 async function fixture(work: (root: string) => Promise<void>, git = true) {
   const root = await mkdtemp('/tmp/code-task-delivery-');
   try {

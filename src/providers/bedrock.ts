@@ -17,7 +17,7 @@ export const BEDROCK_CREDENTIAL_ENVIRONMENT = [
 
 /**
  * SDK matrix: Converse is Tier B and `runtime: "openai"` is Tier A.
- * Published `@zhivex-ai/bedrock@2.0.7` reports those labels. Converse includes
+ * Published `@zhivex-ai/bedrock@2.1.0` reports those labels. Converse includes
  * reasoning and `toolChoiceNone`. Harness reports the installed label and
  * does not relabel the model.
  */

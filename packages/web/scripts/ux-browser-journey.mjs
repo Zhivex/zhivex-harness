@@ -38,6 +38,7 @@ export async function uxBrowserJourney(context, origin, csrf) {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: "Provider and model" }).click();
+    await page.getByRole("switch", { name: "Configured only" }).click();
     await page.getByLabel("Search models").fill("zzzz-not-a-model");
     await page.getByRole("button", { name: "Clear search", exact: true }).click();
     await page.getByRole("option", { name: /Fixture missing/ }).waitFor();

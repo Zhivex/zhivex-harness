@@ -4,6 +4,14 @@ import { terminalCellWidth } from "../terminal/terminal-table.js";
 export interface ConsoleReview {
   title: string;
   body: string;
+  /** One or two lines of intent, kept above the scrolling diff. */
+  summary?: string;
+  /** A one-line notice kept above the diff, including a restored pending review. */
+  banner?: string;
+  /** Per-file `path  +added −removed` lines, kept above the scrolling diff. */
+  fileList?: string;
+  /** Preformatted diff. Line indexes are hunk headers for n/p. */
+  layout?: (width: number) => { lines: readonly string[]; hunks: readonly number[] };
   /** `~/project · provider/model` on the right of the one-line header. */
   headerRight?: string;
   /** Files represented in the diff, for the end-of-changes line. */
@@ -21,11 +29,16 @@ export interface ReviewItem {
 
 const fits = (text: string, width: number) => terminalCellWidth(text) <= width;
 
-const hintFor = (width: number) => {
-  const options = [
-    "↑↓ move · Enter choose the highlighted item · a approves · PgUp/PgDn scroll",
-    "↑↓ move · Enter chooses highlight · a approves · PgUp/PgDn",
-    "Enter chooses highlight · PgUp/PgDn",
+const hintFor = (width: number, selected: number) => {
+  const options = selected < 0 ? [
+    "No action highlighted · ↑↓ then a or r · n/p hunks · PgUp/PgDn",
+    "No action highlighted · a or r · PgUp/PgDn",
+    "a approve · r reject · PgUp/PgDn",
+    "PgUp/PgDn",
+  ] : [
+    "↑↓ move · Enter confirms the highlight · n/p hunks · PgUp/PgDn",
+    "Enter confirms the highlight · PgUp/PgDn",
+    "n/p hunks · PgUp/PgDn",
     "PgUp/PgDn",
   ];
   return options.find(option => fits(option, width)) ?? "PgUp/PgDn";
@@ -81,8 +94,12 @@ const itemLines = (items: readonly ReviewItem[], selected: number, width: number
 export const reviewFrame = (review: ConsoleReview, items: readonly ReviewItem[],
   selected: number, _query: string, offset: number, columns = 80, rows = 24, wrappedBody?: readonly string[]) => {
   const width = consoleWidth(columns);
+  const banner = review.banner ? wrapWords(review.banner, width).slice(0, 2) : [];
+  const summary = review.summary ? wrapWords(review.summary, width).slice(0, 2) : [];
+  const files = review.fileList ? review.fileList.split("\n").filter(Boolean).flatMap(line => wrapWords(line, width)) : [];
+  const preface = [...banner, ...summary, ...files];
   const body = wrappedBody ?? consoleLines(review.body, width);
-  const hint = hintFor(width);
+  const hint = hintFor(width, selected);
   const title = consoleLabel(review.title, width);
   const notice = review.notice ? consoleLabel(review.notice, width) : undefined;
   let details = true;
@@ -97,20 +114,22 @@ export const reviewFrame = (review: ConsoleReview, items: readonly ReviewItem[],
     else showNotice = false;
     footer = footerOf();
   }
-  const capacity = Math.max(1, rows - footer.length - 2);
+  const chrome = preface.length + footer.length + 2;
+  const capacity = Math.max(1, rows - chrome);
   const start = Math.max(0, Math.min(offset, Math.max(0, body.length - capacity)));
-  const visible = body.slice(start, start + capacity);
+  const visible = body.slice(start, start + Math.min(capacity, body.length));
   const remaining = Math.max(0, body.length - (start + visible.length));
-  const files = review.files ?? 0;
-  const fileLabel = files === 1 ? "1 file" : `${files} files`;
+  const count = review.files ?? 0;
+  const fileLabel = count === 1 ? "1 file" : `${count} files`;
   const marker = remaining > 0
-    ? `↓ ${remaining} more lines · PgUp/PgDn`
-    : files > 0 ? `End of changes · ${fileLabel}, shown in full` : "End of changes · shown in full";
+    ? `↓ ${remaining} more lines · n/p hunks · PgUp/PgDn`
+    : count > 0 ? `End of changes · ${fileLabel}` : "End of changes";
   const lines = [headerLine(review.headerRight ?? "", width),
+    ...preface,
     ...visible,
-    ...Array<string>(Math.max(0, capacity - visible.length)).fill(""),
     consoleLabel(marker, width),
     ...footer];
   const selectedRow = lines.findIndex(line => line.startsWith("> "));
-  return { lines, offset: start, capacity, filterRow: (selectedRow >= 0 ? selectedRow : lines.length - 1) + 1 };
+  const decisionRow = lines.findIndex(line => line.includes("Reject") || line.includes("Approve"));
+  return { lines, offset: start, capacity, filterRow: (selectedRow >= 0 ? selectedRow : Math.max(0, decisionRow)) + 1 };
 };

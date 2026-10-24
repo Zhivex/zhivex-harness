@@ -234,12 +234,15 @@ const assertApprovalArguments = (actual: unknown, expected: ReturnType<typeof ex
     const changes = Array.isArray(record.changes) ? record.changes : [];
     const change = changes[0] && typeof changes[0] === "object" ? changes[0] as Record<string, unknown> : {};
     const wanted = expected.changes[0]!;
+    // allowControlBytes is not a contract field. Absence matches; a present
+    // extra key, including that name, is still unknown_fields.
+    const changeKeys = ["path", "content", "expectedDigest"] as const;
     const fields = [
       ...(record.proposalId !== expected.proposalId ? ["proposalId"] : []),
       ...(changes.length !== expected.changes.length ? ["change_count"] : []),
-      ...(["path", "content", "expectedDigest"] as const).filter(key => change[key] !== wanted[key]),
+      ...changeKeys.filter(key => change[key] !== wanted[key]),
       ...(Object.keys(record).some(key => key !== "proposalId" && key !== "changes") ||
-        Object.keys(change).some(key => !["path", "content", "expectedDigest"].includes(key)) ? ["unknown_fields"] : [])
+        Object.keys(change).some(key => !changeKeys.includes(key as typeof changeKeys[number])) ? ["unknown_fields"] : [])
     ];
     throw Object.assign(error as Error, { approvalFields: fields.length ? fields : ["shape"] });
   }

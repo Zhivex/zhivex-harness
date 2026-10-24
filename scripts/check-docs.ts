@@ -149,16 +149,16 @@ const providerConfig = `${await readFile(path.join(workspace, "src", "runtime", 
 }`;
 const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
-  "@zhivex-ai/agents": "1.11.0",
-  "@zhivex-ai/anthropic": "0.14.0",
-  "@zhivex-ai/azure-openai": "0.7.8",
-  "@zhivex-ai/bedrock": "2.0.7",
-  "@zhivex-ai/core": "1.34.0",
-  "@zhivex-ai/gemini": "0.13.0",
-  "@zhivex-ai/meta": "0.2.9",
-  "@zhivex-ai/openai": "0.16.0",
-  "@zhivex-ai/qwen": "0.16.4",
-  "@zhivex-ai/vertex": "1.2.7"
+  "@zhivex-ai/agents": "1.12.0",
+  "@zhivex-ai/anthropic": "0.15.0",
+  "@zhivex-ai/azure-openai": "0.8.0",
+  "@zhivex-ai/bedrock": "2.1.0",
+  "@zhivex-ai/core": "1.36.0",
+  "@zhivex-ai/gemini": "0.14.0",
+  "@zhivex-ai/meta": "0.3.0",
+  "@zhivex-ai/openai": "0.17.0",
+  "@zhivex-ai/qwen": "0.18.0",
+  "@zhivex-ai/vertex": "1.3.0"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {
   if (manifest.dependencies?.[packageName] !== expectedVersion) {

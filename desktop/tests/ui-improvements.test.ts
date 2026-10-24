@@ -108,3 +108,18 @@ test("diff displays changed lines while retaining exact complete contents", () =
   expect(html).toContain("after &lt;script&gt;");
   expect(html).not.toContain("<script>");
 });
+test("diff text shows NUL, zero-width, bidi, tabs, and trailing spaces", () => {
+  const html = renderToStaticMarkup(createElement(FileDiff, {
+    before: "if (command.includes(\"\0\")) {\t \n",
+    after: "if (command.includes(\"\u200B\u202e\"))\n",
+  }));
+  expect(html).toContain("\\0");
+  expect(html).toContain("\\u200B");
+  expect(html).toContain("\\u202e");
+  expect(html).toContain("→");
+  expect(html).toContain("·");
+  expect(html).toContain("diff-invisible");
+  expect(html).not.toContain("\0");
+  expect(html).not.toContain("\u200B");
+  expect(html).not.toContain("\u202e");
+});

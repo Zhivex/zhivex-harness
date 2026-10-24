@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Pin Agents 1.12.0, Core 1.36.0, and Zod 4.6.7 with the matched engine. The Harness pin remains 1.5.0. This note does not publish a release.
+
 ## 0.4.0 - 2026-10-16
 
 - Minor release for new features: the reworked local web workspace, `zhivex-code project add`, `export-audit` and `verify-audit`, and the task and evidence panel. Pin exactly Harness 1.5.0. Publish only after that engine is verified on `latest`. Published Code 0.3.2 is `latest`.
