@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 test("Stable certification retains Flash and Contributor without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
   validateReleaseMetadata(input, false, "latest");
-  expect(input.version).toBe("1.6.0");
+  expect(input.version).toBe("1.6.1");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
     .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0")?.models)

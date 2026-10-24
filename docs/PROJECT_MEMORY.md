@@ -7,7 +7,7 @@ generated automatically; hosts may submit a suggestion for operator review.
 
 ## CLI
 
-Use `zhx` with Harness 1.6.0, pending publication. `zhivex-code` stays on Code 0.4.0. Its source pin is Harness 1.6.0; published Code 0.4.0 remains pinned to Harness 1.5.0. Commands
+Use `zhx` with Harness 1.6.1, pending publication. `zhivex-code` stays on Code 0.4.0. Its source pin is Harness 1.6.1; published Code 0.4.0 remains pinned to Harness 1.5.0. Commands
 print bounded JSON, including the selected workspace/scope hashes. Quote content
 as one argument. Memory commands do not start a model or read credentials.
 
