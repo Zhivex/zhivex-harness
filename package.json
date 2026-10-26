@@ -247,6 +247,6 @@
   },
   "packageManager": "bun@1.4.0",
   "optionalDependencies": {
-    "@napi-rs/keyring": "2.1.1"
+    "@napi-rs/keyring": "2.1.2"
   }
 }
