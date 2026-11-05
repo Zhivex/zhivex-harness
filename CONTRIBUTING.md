@@ -27,6 +27,7 @@ if [ "$(uname -s)" = Darwin ]; then
 fi
 bun run check
 bun audit
+(cd packages/web && bun run ../../scripts/audit-dependencies.ts)
 bun pm untrusted
 bun run pack:inspect
 ```
@@ -44,6 +45,13 @@ files; all production path, ownership, mode and symlink checks still run.
 Never remove the runner's repository markers or disable those checks.
 
 Behavior changes should include focused success, failure-path, and security regression coverage. Update the README, relevant contract guide, changelog, and migration notes when a public CLI, configuration, persisted-state, JSON, or library contract changes.
+
+The web package has its own lockfile and CI audit. Its scoped `minimatch`
+override applies only to `@typescript-eslint/typescript-estree`, whose upstream
+range still includes [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+Remove it when that dependency requests a patched major; ESLint retains its
+compatible, unaffected v3 dependency. Bun 1.4.0 supports the scoped override and
+its v3 lockfile format.
 
 Live provider and MCP checks are opt-in and must be reported separately from deterministic and installed-artifact proof. Never commit credentials, `.env`, provider outputs containing secrets, or local `.zhivex-harness` state.
 
