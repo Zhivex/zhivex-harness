@@ -23,6 +23,15 @@ CI installs dependencies with `--ignore-scripts`, then explicitly runs
 installs the pinned, checksum-verified Electron binary needed by native tests;
 other dependency lifecycle scripts remain disabled.
 
+The Desktop lock pins `glob` 14.0.3 and `minimatch` 11.0.4 through overrides
+because `@electron/asar` still requests vulnerable major versions
+([glob advisory](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4),
+[minimatch advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249)).
+Keep these until the upstream ranges include patched releases. The ASAR
+compatibility test covers file discovery and native-file unpacking; macOS CI
+also packages and exercises the application. Audit the separate lock with
+`(cd desktop && bun run ../scripts/audit-dependencies.ts)`.
+
 `prepare:desktop` builds Harness and installs its exact tarball in a private
 consumer under `desktop/.harness/`. Desktop uses the public package exports from
 that installation; it never links to repository source. To test an existing
