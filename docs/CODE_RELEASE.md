@@ -1,13 +1,13 @@
 # Code release procedure
 
-## Pending patch: Code 0.4.1
+## Published patch: Code 0.4.1
 
-Harness `1.6.2` is published on npm `latest`. This checkout prepares
-`@zhivex-ai/code` `0.4.1` for `latest`, pinned exactly to Harness `1.6.2`. The
-engine bump is its only change. Published npm Code `0.4.0` remains pinned to
+Harness `1.6.2` is published on npm `latest`. `@zhivex-ai/code` `0.4.1` is
+published on `latest`, pinned exactly to Harness `1.6.2`. The engine bump is
+its only change. Published npm Code `0.4.0` remains pinned to
 Harness `1.5.0` and is not republished. Annotated `code-v0.4.1` on the reviewed
-main SHA, `channel=latest`, runs through the unchanged protected workflow and
-its environment approval.
+main SHA, `channel=latest`, ran through the protected workflow and its
+environment approval.
 
 ## Previous preparation: Harness 1.6.2 did not release Code
 

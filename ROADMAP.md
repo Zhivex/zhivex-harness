@@ -8,17 +8,18 @@ Version `1.4.0` is published and verified on npm `latest`.
 release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
 package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 `0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. Harness `1.6.2` is
-published on `latest`. This checkout prepares Code `0.4.1`, pinned exactly to Harness `1.6.2`.
-Publication of Code 0.4.1 is pending and is not claimed here.
+published on `latest`. Code `0.4.1`, pinned exactly to Harness `1.6.2`, is published on
+`latest`.
 
-## Prepared source: 1.6.2
+## Published: 1.6.2
 
-Source version: `1.6.2` (stable publication to `latest` pending). It carries
+Harness `1.6.2` is published on npm `latest` from tag `v1.6.2`. It carries
 the 1.6.1 changes plus the continuity gate rule from #250: a provider whose
 continuity run fails gets one fresh retry, and every provider stays mandatory.
-`v1.6.0` and `v1.6.1` stay tagged and were not published. Code stays version
-`0.4.0`, with its source pin on Harness `1.6.2`. Private Desktop binds to
-Harness `1.6.2`. This preparation does not create tags or publish.
+`v1.6.0` and `v1.6.1` stay tagged and were not published. This release kept
+Code at version `0.4.0`, with its source pin on Harness `1.6.2`. Private Desktop
+binds to Harness `1.6.2`. Code `0.4.1`, pinned exactly to Harness `1.6.2`, was
+then published on `latest`.
 
 ## Prepared source: 1.6.1 (not published)
 
