@@ -5,7 +5,7 @@ Azure OpenAI is a separate provider (`azure-openai`). It does not reuse
 run for this route. Prices are not copied from the public OpenAI catalog.
 
 Published `@zhivex-ai/azure-openai@0.8.0` is the adapter pinned by this tree.
-It requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.36.0`.
+It requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.37.0`.
 Language models report Tier A. Hosted tool gates such as tool search follow
 the model id (`gpt-5.4` and `gpt-6-astra` in this adapter). An opaque
 deployment name does not receive those gates unless a deployment map names

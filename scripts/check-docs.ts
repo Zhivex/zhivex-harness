@@ -153,11 +153,11 @@ const expectedCurrentSdkDependencies = {
   "@zhivex-ai/anthropic": "0.15.0",
   "@zhivex-ai/azure-openai": "0.8.0",
   "@zhivex-ai/bedrock": "2.1.0",
-  "@zhivex-ai/core": "1.36.0",
+  "@zhivex-ai/core": "1.37.0",
   "@zhivex-ai/gemini": "0.14.0",
   "@zhivex-ai/meta": "0.3.0",
   "@zhivex-ai/openai": "0.17.0",
-  "@zhivex-ai/qwen": "0.18.0",
+  "@zhivex-ai/qwen": "0.18.1",
   "@zhivex-ai/vertex": "1.3.0"
 } as const;
 for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDependencies)) {

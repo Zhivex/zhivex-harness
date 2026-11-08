@@ -5,7 +5,7 @@ direct API route. No live Harness certification has been run for this route.
 Pricing and context limits are not inferred.
 
 Published `@zhivex-ai/bedrock@2.1.0` is the adapter pinned by this tree. It
-requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.36.0`.
+requires Core `^1.36.0`, and this checkout pins `@zhivex-ai/core@1.37.0`.
 This integration reports the installed adapter's labels and does not relabel
 them.
 
