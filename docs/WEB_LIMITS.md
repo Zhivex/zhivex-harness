@@ -3,7 +3,7 @@
 New interactive Web/terminal tasks have no accumulated spend, token, step,
 tool-call or duration cap unless configured. This change uses the published SDK contract from
 Zhivex/zhivex-ai-sdk PR 142 (Core/SDK 1.31.0, Agents 1.11.0). Direct Harness, Code
-and the root Core override now pin Core 1.36.0; Agents is 1.12.0.
+and the root Core override now pin Core 1.37.0; Agents is 1.12.0.
 Provider package pins are Anthropic 0.15.0, OpenAI 0.17.0 and Vertex 1.3.0.
 Headless policies and release gates remain unchanged.
 

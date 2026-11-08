@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Pin `@zhivex-ai/core` 1.37.0, including the root override, the Code and web package pins, and a web override so the published Harness dependency uses that same runtime, and `@zhivex-ai/qwen` 0.18.1. Qwen 0.18.1 depends on Core `^1.37.0`. Harness and CLI defaults are unchanged. The Qwen adapter rejects non-string portable-decision instructions and adds PixVerse V6 request shaping; Harness does not expose that video surface.
+
 ## 1.6.2 - 2026-10-24
 
 - Allow one continuity retry per provider in the release gate. Live certification of `v1.6.0` and `v1.6.1` (twice) failed only the multi-process continuity gate, each time on a different provider. A provider whose continuity run fails now gets one fresh retry of all phases and passes only if the retry passes. Every selected provider stays mandatory, and no other gate retries. The continuity evidence records which provider retried, the first attempt's sanitized cause, and the retry outcome. Runtime and CLI behavior and defaults are unchanged (#250).
