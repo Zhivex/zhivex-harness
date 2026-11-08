@@ -6,6 +6,8 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+- Update the development dependency `@agentclientprotocol/sdk` from 1.8.0 to 2.1.0. SDK 2.1 removes `ClientSideConnection`; the Docker interoperability client now uses `client().connect(...)` and the same ACP v1 methods. `@modelcontextprotocol/server` stays at 2.3.1 because that peer is optional and this client does not import it. The Harness ACP server is unchanged.
+
 ## 1.6.2 - 2026-10-24
 
 - Allow one continuity retry per provider in the release gate. Live certification of `v1.6.0` and `v1.6.1` (twice) failed only the multi-process continuity gate, each time on a different provider. A provider whose continuity run fails now gets one fresh retry of all phases and passes only if the retry passes. Every selected provider stays mandatory, and no other gate retries. The continuity evidence records which provider retried, the first attempt's sanitized cause, and the retry outcome. Runtime and CLI behavior and defaults are unchanged (#250).

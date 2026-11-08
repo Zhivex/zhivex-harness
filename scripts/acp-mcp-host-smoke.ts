@@ -69,7 +69,7 @@ let calls=0;require('node:readline').createInterface({input:process.stdin}).on('
       await serveAcpStdio(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,
         input: child.stdout, output: child.stdin, permissionTimeoutMs: 30_000 });
       assert.equal(await exited, 0, diagnostics);
-      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@1.5.1', permissions: 2 });
+      assert.deepEqual(JSON.parse(diagnostics), { status: 'passed', client: '@agentclientprotocol/sdk@2.1.0', permissions: 2 });
     } finally { clearTimeout(deadline); child.kill(); }
   } else {
   const connection = createAcpConnection(host.adapter, { workspace: host.workspace, mcpSessionProvider: host.mcpSessionProvider,
@@ -97,6 +97,6 @@ let calls=0;require('node:readline').createInterface({input:process.stdin}).on('
   assert.deepEqual(await owned(), baseline);
   console.log(JSON.stringify({ status: 'passed', checks: ['acp-session-registration', 'two-real-servers', 'fresh-host-admission-per-invocation',
     'two-client-permissions-before-effects', 'two-durable-calls', 'client-env-redacted', 'cleanup-confirmed'],
-    scope: sdkClient ? 'Independent official ACP SDK 1.5.1 client process over stdio with real Docker servers; fixture model, no editor certification'
+    scope: sdkClient ? 'Independent official ACP SDK 2.1.0 client process over stdio with real Docker servers; fixture model, no editor certification'
       : 'In-process ACP request fixture with real Docker and durable adapter; independent ACP client acceptance remains pending' }, null, 2));
 } finally { await host?.close(); persistence.close(); await rm(root, { recursive: true, force: true }); }
