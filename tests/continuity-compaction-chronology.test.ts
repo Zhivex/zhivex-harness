@@ -65,6 +65,13 @@ test.each(["qwen", "meta"] as const)("%s: recent entries stay role-labelled and 
       const state = JSON.parse(envelope) as { steering: string[]; recent?: string[] };
       for (const entry of state.recent ?? []) expect(entry).toMatch(/^(?:assistant|tool|Untrusted semantic recollection)[ :(]/);
       expect(envelope).not.toContain("[before later user messages]");
+      // Chronology stays in steering order and role labels. The bracket prefix is
+      // not what keeps a stale answer from reading as the current objective.
+      for (const stale of objectives.slice(0, phase)) {
+        const entries = (state.recent ?? []).filter(value => value.includes(`"objective":"${stale}"`));
+        if (phase === 1) expect(entries.length).toBeGreaterThan(0);
+        for (const entry of entries) expect(entry.startsWith("assistant: ")).toBe(true);
+      }
       const change = state.steering.findIndex(entry => entry.startsWith(`Change the active objective to ${objectives[phase]}.`));
       expect(change).toBeGreaterThan(0);
       expect(envelope).not.toContain(`\\"objective\\":\\"${objectives[phase]}\\"`);

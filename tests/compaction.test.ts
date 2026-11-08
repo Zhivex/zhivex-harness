@@ -9,8 +9,25 @@ import { createAdaptiveCompaction } from "../src/context/adaptive-compaction.js"
 import { Workspace } from "../src/workspace/workspace.js";
 
 const text = (value: string): ModelMessage => ({ role: "user", parts: [{ type: "text", text: value }] });
+const assistant = (value: string): ModelMessage => ({ role: "assistant", parts: [{ type: "text", text: value }] });
 const result = (name: string, output: Record<string, unknown>, isError = false): ModelMessage => ({
   role: "tool", parts: [{ type: "tool-result", toolResult: { toolCallId: "check-1", toolName: name, output: serializeJsonValue(output), isError } }]
+});
+
+test("recollections keep a role label after a later user objective and omit the in-band earlier marker", () => {
+  const stale = JSON.stringify({ codename: "ORCHID-742", compatibility: "keep-public-api", rejectedApproach: "schema-rewrite", objective: "diagnose-parser" });
+  const { summary } = summarizeHarnessMessages([
+    text("Project codename: ORCHID-742. Active project objective: diagnose-parser."),
+    assistant(stale),
+    text("Change the active objective to design-cache. Correction: project codename is now ORCHID-913, replacing ORCHID-742.")
+  ]);
+  const state = JSON.parse(summary) as { objective: string; steering: string[]; recent: string[] };
+  expect(summary).not.toContain("[before later user messages]");
+  expect(state.recent.some(entry => entry.startsWith("assistant: ") && entry.includes('"objective":"diagnose-parser"'))).toBe(true);
+  expect(state.recent.every(entry => /^(?:assistant|user|tool|Untrusted semantic recollection)[ :(]/.test(entry))).toBe(true);
+  expect(state.objective).toContain("design-cache");
+  expect(state.steering[0]).toContain("diagnose-parser");
+  expect(state.steering.at(-1)).toContain("design-cache");
 });
 
 test("keeps check failures and the latest correction through noise and repeated compaction", () => {
