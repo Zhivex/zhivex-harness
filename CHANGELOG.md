@@ -7,6 +7,7 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 ## Unreleased
 
 - Update the development dependency `@agentclientprotocol/sdk` from 1.8.0 to 2.1.0. SDK 2.1 removes `ClientSideConnection`; the Docker interoperability client now uses `client().connect(...)` and the same ACP v1 methods. `@modelcontextprotocol/server` stays at 2.3.1 because that peer is optional and this client does not import it. The Harness ACP server is unchanged.
+- Pin `@zhivex-ai/core` 1.37.0, including the root override, the Code and web package pins, and a web override so the published Harness dependency uses that same runtime, and `@zhivex-ai/qwen` 0.18.1. Qwen 0.18.1 depends on Core `^1.37.0`. Harness and CLI defaults are unchanged. The Qwen adapter rejects non-string portable-decision instructions and adds PixVerse V6 request shaping; Harness does not expose that video surface.
 
 ## 1.6.2 - 2026-10-24
 
