@@ -1,10 +1,10 @@
 # Release process
 
-## Prepared patch: 1.6.3
+## Published patch: 1.6.3
 
-The source version is `1.6.3`, pending publication to `latest`. Code `0.4.2` pins this engine exactly; private Desktop binds to the same candidate. Published `latest` remains Harness `1.6.2` and Code `0.4.1`. The patch updates Core/Qwen, keyring and the ACP interoperability client, and includes dependency security maintenance. Public contracts, default models and provider tiers are unchanged. The additive `v1.6.3` representative mapping preserves the `v1.6.2` model pins.
+`@zhivex-ai/harness@1.6.3` is the latest public npm release, published and verified on 2026-11-10. Annotated `v1.6.3` resolves to `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a`. The [protected Harness workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42865111096) passed exact-artifact, mandatory OCI, all six-provider live gates and 42/42 representative cases before publishing. Registry bytes, `latest` and SLSA source/workflow provenance were independently verified.
 
-Preparation validates local candidate artifacts. Final certification requires the reviewed release commit on `main`, successful exact-SHA CI, CodeQL, Code journeys and Web workflows, and an annotated `v1.6.3` tag. The protected Harness release workflow must pass exact-artifact, mandatory OCI, six-provider live and representative gates before publication. Publish Code only after Harness registry integrity and source-bound provenance pass. Keep `release-status.json` as historical evidence until the new release has its own verified publication. See [the preparation report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md) for candidate evidence and remaining gates.
+Code `0.4.2`, pinned exactly to Harness `1.6.3`, was published and verified afterward in its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) on the same source commit. Private Desktop retains its alpha status and engine binding. Public contracts, default models and provider tiers are unchanged. `release-status.json` now records this verified Harness publication. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md) for times, hashes, CI and certification links; the [preparation report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md) remains historical.
 
 ## Published patch: 1.6.2
 

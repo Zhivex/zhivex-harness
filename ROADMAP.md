@@ -1,19 +1,13 @@
 # Zhivex Harness Roadmap
 
-- Status: published on npm as `latest`
-- Baseline date: 2026-09-20
+- Status: Harness `1.6.3` and Code `0.4.2` published and verified on npm `latest`
+- Current publication date: 2026-11-10
 
-Version `1.4.0` is published and verified on npm `latest`.
-`release-status.json` records that Harness registry bytes, source and protected
-release evidence. Code `0.3.0`, pinned to Harness `1.4.0`, is the published Code
-package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
-`0.3.0-rc.8`. Harness `1.5.0` and Code `0.4.0` are published on `latest`. Harness `1.6.2` is
-published on `latest`. Code `0.4.1`, pinned exactly to Harness `1.6.2`, is published on
-`latest`.
+Published npm `next` remains Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. `release-status.json` records the verified Harness 1.6.3 artifact and release-bound certification.
 
-## Prepared: 1.6.3 / Code 0.4.2
+## Published: 1.6.3 / Code 0.4.2
 
-Source version: `1.6.3` (stable publication to `latest` pending), paired with Code `0.4.2`. This maintenance patch carries the SDK, keyring, ACP client and dependency security updates already reviewed on main. Provider tiers and model defaults are unchanged. New source/artifact certification is required.
+Harness `1.6.3` and Code `0.4.2` were published from `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a` after exact-main checks, protected artifact validation, six-provider live certification and 42/42 representative cases. Code pins Harness 1.6.3 exactly and passed real registry installation before publication. Both registry artifacts, dist-tags and source-bound provenance were independently verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md). Provider tiers, model defaults and private Desktop alpha status are unchanged.
 
 ## Published: 1.6.2
 
@@ -138,8 +132,8 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.5.0` | Minor | Audit pack, Bedrock/Azure routes, web task control, web workspace rework, Code 0.4.0 | Published on npm as `latest` | S |
 | `1.6.0` | Minor | Opt-in auto-approve, web workspace, named terminal actions | Tagged; not published, superseded by 1.6.1 | S |
 | `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Tagged; not published, superseded by 1.6.2 | S |
-| `1.6.2` | Patch | One continuity retry per provider in the release gate | Pending stable publication | S |
-| `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Pending stable publication | S |
+| `1.6.2` | Patch | One continuity retry per provider in the release gate | Published on npm as `latest` | S |
+| `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Published on npm as `latest` | S |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

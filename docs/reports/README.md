@@ -54,6 +54,8 @@ Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-
 
 ## Release validation
 
+- [Verified Harness 1.6.3 / Code 0.4.2 publication](PUBLICATION_1_6_3_CODE_0_4_2.md): protected workflows, six-provider certification, 42/42 representative cases and registry/provenance verification. [Machine-readable evidence](evidence/publication-1.6.3-code-0.4.2-2026-11-10.json).
+
 - [HAR-HU-12 stable onboarding — September 20](HAR_HU_12_2026-09-20.md): published 1.0.0 installation, version/help/doctor, documentation guards and evidence limits.
 
 - [RC14 validation and publication hold — September 10](RC14_VALIDATION_2026-09-10.md): new live cohort, frozen source identity, validation boundaries and conditions to resume publication.

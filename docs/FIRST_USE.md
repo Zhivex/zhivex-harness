@@ -1,6 +1,6 @@
 # First use
 
-This guide targets source candidate `1.6.3`, pending publication. Registry commands below apply after publication; current npm `latest` remains `1.6.2`.
+This guide targets stable `1.6.3`, published and verified on npm `latest`.
 
 ## Install and start
 
