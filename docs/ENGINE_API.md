@@ -1,7 +1,7 @@
 # Engine API and Code integration
 
 The terminal-independent package entrypoints shipped in Harness 1.3.0 and remain
-in Harness 1.6.2, published on npm `latest`. They are not present in Harness 1.2.0.
+in Harness 1.6.3, published on npm `latest`. They are not present in Harness 1.2.0.
 The protected workflow validated the exact stable tarball, live gates and
 registry integrity/provenance; local candidate smoke remains contributor evidence. Do not install registry 1.2.0 and
 expect the new entrypoints to exist.

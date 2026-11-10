@@ -102,7 +102,7 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 
 ## Releases
 
-npm `latest` is the stable channel (Code `0.4.1`, pinned exactly to published Harness `1.6.2`). npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
+npm `latest` is the stable channel (Code `0.4.2`, pinned exactly to published Harness `1.6.3`). npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
 
 Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
 
@@ -123,4 +123,4 @@ In a repository checkout, install the root lockfile with `bun install --frozen-l
 
 `bun run smoke:installed` packs Code, installs it with npm and that pinned Harness dependency, and exercises the offline tutorial in a Linux or macOS terminal. To reuse an existing tarball: `node scripts/installed-journey.mjs /absolute/path/to/code.tgz`.
 
-Source candidate: Code `0.4.2` pins Harness `1.6.3`; both await publication. The published channels above remain unchanged.
+Code `0.4.2` and its exact Harness `1.6.3` dependency are published and verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).

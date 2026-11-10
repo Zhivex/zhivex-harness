@@ -5,7 +5,7 @@
 ## 0.4.2 - 2026-11-10
 
 - Pin exactly Harness 1.6.3 and Core 1.37.0. Include the local Web dependency security updates without changing terminal or approval contracts.
-- Retain the ten-minute registry propagation window in the protected publication verifier. Publish only after Harness 1.6.3 is published and verified.
+- Retain the ten-minute registry propagation window in the protected publication verifier. Published and verified after Harness 1.6.3, with actual registry resolution, retained-artifact acceptance and source-bound provenance. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).
 
 ## 0.4.1 - 2026-10-24
 

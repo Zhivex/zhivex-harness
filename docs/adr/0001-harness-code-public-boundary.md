@@ -2,8 +2,7 @@
 
 Status: proposed for review (HAR-HU-36). Date: 2026-09-28.
 
-Current status, 2026-10-15: the boundary shipped. Published npm `latest` is
-Harness 1.4.0 and Code 0.3.0. Harness 1.6.2 is published on `latest`. Code 0.4.1, pinned exactly to Harness 1.6.2, is published on `latest`.
+Current status, 2026-11-10: the boundary shipped. Published and verified npm `latest` is Harness 1.6.3 and Code 0.4.2, with Code pinned exactly to Harness 1.6.3. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).
 The text below is the original proposal, not a current inventory.
 
 This records a design, not a completed package extraction or permission to publish.

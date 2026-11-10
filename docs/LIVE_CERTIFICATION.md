@@ -2,6 +2,12 @@
 
 Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
 
+## Stable 1.6.3 cohort
+
+Harness `v1.6.3` at `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a` passed the [protected release workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42865111096) on 2026-11-10. Exact-artifact validation, OCI, base approval/restart, compaction, reviewer orchestration, mixed routing, model-directed execution and multi-process continuity all passed. Meta, Qwen, OpenAI, Anthropic, Gemini and Vertex each passed continuity on the first attempt. The Meta/Qwen/OpenAI representative matrix passed 42/42 cases (14 per provider), with zero failures or omissions.
+
+Code `0.4.2` was subsequently [published and verified](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) against the actual published Harness dependency. Both registry tarballs, `latest` tags and source-bound SLSA provenance were independently verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md). This evidence applies only to the exact tagged artifacts. Provider stability tiers and default model selections are unchanged; the provisional routes do not acquire three-provider representative coverage.
+
 ## Stable 1.3.0 cohort
 
 Harness RC7 passed exact-artifact, all six live-provider gates and the 42-case

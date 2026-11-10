@@ -1,5 +1,7 @@
 # Harness 1.6.3 / Code 0.4.2 preparation
 
+Historical preparation snapshot. Publication subsequently completed on 2026-11-10; see [verified publication and protected evidence](PUBLICATION_1_6_3_CODE_0_4_2.md). The candidate hashes and pending statements below describe the pre-publication state.
+
 Date: 2026-11-10. Base: `8ef92245a0a3548c6ccba7e28fbcd1cdfd44bace`.
 Target channel: `latest`. Status: prepared locally; protected release certification and publication pending.
 

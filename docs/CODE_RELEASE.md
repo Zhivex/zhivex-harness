@@ -1,10 +1,10 @@
 # Code release procedure
 
-## Prepared patch: Code 0.4.2
+## Published patch: Code 0.4.2
 
-Code `0.4.2` pins Harness `1.6.3` exactly and is pending publication to `latest`. Published Code `0.4.1` and Harness `1.6.2` remain unchanged. The private Web development dependency stays on the published Harness `1.6.2` so clean CI can install its frozen lockfile before the candidate exists in the registry; offline tests explicitly link the built `1.6.3` candidate.
+Code `0.4.2` is published and verified on npm `latest`, pinned exactly to Harness `1.6.3`. Annotated `code-v0.4.2` resolves to `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a`, the same commit as `v1.6.3`. The [protected OIDC workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) passed actual registry resolution of the already verified Harness release, retained-artifact terminal/Web journeys and four-manager acceptance before publication. Independent verification confirmed the published bytes, `latest` and source-bound provenance. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).
 
-After Harness publication and registry/provenance verification, use annotated `code-v0.4.2` on the same reviewed main SHA, `channel=latest`, `mode=oidc`, and the protected `release-code.yml` workflow. The final Code gate must resolve the real published Harness dependency without candidate overrides, then verify retained-artifact installation and provenance. Local paired-artifact tests do not substitute for that registry gate. See [the preparation report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md).
+The private Web development dependency remains pinned to Harness `1.6.2`; offline contributor setup links the built candidate explicitly. This development pin is separate from the published Code dependency on Harness `1.6.3`. Published npm `next` remains Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
 
 ## Published patch: Code 0.4.1
 
