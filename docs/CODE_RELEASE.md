@@ -1,5 +1,11 @@
 # Code release procedure
 
+## Prepared patch: Code 0.4.2
+
+Code `0.4.2` pins Harness `1.6.3` exactly and is pending publication to `latest`. Published Code `0.4.1` and Harness `1.6.2` remain unchanged. The private Web development dependency stays on the published Harness `1.6.2` so clean CI can install its frozen lockfile before the candidate exists in the registry; offline tests explicitly link the built `1.6.3` candidate.
+
+After Harness publication and registry/provenance verification, use annotated `code-v0.4.2` on the same reviewed main SHA, `channel=latest`, `mode=oidc`, and the protected `release-code.yml` workflow. The final Code gate must resolve the real published Harness dependency without candidate overrides, then verify retained-artifact installation and provenance. Local paired-artifact tests do not substitute for that registry gate. See [the preparation report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md).
+
 ## Published patch: Code 0.4.1
 
 Harness `1.6.2` is published on npm `latest`. `@zhivex-ai/code` `0.4.1` is

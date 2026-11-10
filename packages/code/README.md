@@ -122,3 +122,5 @@ bun test tests
 In a repository checkout, install the root lockfile with `bun install --frozen-lockfile --ignore-scripts`, build at the repository root, then run `bun run packages/code/scripts/link-local-engine.ts`. That links the built engine into Code's ignored `node_modules` for local API work. It does not run as an install script, and it does not bundle engine source. Installed acceptance must use the Harness version this package declares.
 
 `bun run smoke:installed` packs Code, installs it with npm and that pinned Harness dependency, and exercises the offline tutorial in a Linux or macOS terminal. To reuse an existing tarball: `node scripts/installed-journey.mjs /absolute/path/to/code.tgz`.
+
+Source candidate: Code `0.4.2` pins Harness `1.6.3`; both await publication. The published channels above remain unchanged.
