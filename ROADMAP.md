@@ -11,6 +11,10 @@ package on `latest`. Published npm `next` is Harness `1.4.0-rc.8` and Code
 published on `latest`. Code `0.4.1`, pinned exactly to Harness `1.6.2`, is published on
 `latest`.
 
+## Prepared: 1.6.3 / Code 0.4.2
+
+Source version: `1.6.3` (stable publication to `latest` pending), paired with Code `0.4.2`. This maintenance patch carries the SDK, keyring, ACP client and dependency security updates already reviewed on main. Provider tiers and model defaults are unchanged. New source/artifact certification is required.
+
 ## Published: 1.6.2
 
 Harness `1.6.2` is published on npm `latest` from tag `v1.6.2`. It carries
@@ -135,6 +139,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.6.0` | Minor | Opt-in auto-approve, web workspace, named terminal actions | Tagged; not published, superseded by 1.6.1 | S |
 | `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Tagged; not published, superseded by 1.6.2 | S |
 | `1.6.2` | Patch | One continuity retry per provider in the release gate | Pending stable publication | S |
+| `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Pending stable publication | S |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

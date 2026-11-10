@@ -6,6 +6,10 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 1.6.3 - 2026-11-10
+
+- Prepare a maintenance patch for npm `latest`, paired with Code 0.4.2 and the private Desktop engine binding. Existing public APIs, storage formats, model defaults and provider tiers are unchanged. Publication and release-bound live certification are pending.
+- Include the keyring 2.1.2 update and dependency security maintenance for the private Web/Desktop clients.
 - Update the development dependency `@agentclientprotocol/sdk` from 1.8.0 to 2.1.0. SDK 2.1 removes `ClientSideConnection`; the Docker interoperability client now uses `client().connect(...)` and the same ACP v1 methods. `@modelcontextprotocol/server` stays at 2.3.1 because that peer is optional and this client does not import it. The Harness ACP server is unchanged.
 - Pin `@zhivex-ai/core` 1.37.0, including the root override, the Code and web package pins, and a web override so the published Harness dependency uses that same runtime, and `@zhivex-ai/qwen` 0.18.1. Qwen 0.18.1 depends on Core `^1.37.0`. Harness and CLI defaults are unchanged. The Qwen adapter rejects non-string portable-decision instructions and adds PixVerse V6 request shaping; Harness does not expose that video surface.
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.4.2 - 2026-11-10
+
+- Pin exactly Harness 1.6.3 and Core 1.37.0. Include the local Web dependency security updates without changing terminal or approval contracts.
+- Retain the ten-minute registry propagation window in the protected publication verifier. Publish only after Harness 1.6.3 is published and verified.
+
 ## 0.4.1 - 2026-10-24
 
 - Pin exactly Harness 1.6.2, published on npm `latest`. No other Code changes. Published Code 0.4.0 stays pinned to Harness 1.5.0.
