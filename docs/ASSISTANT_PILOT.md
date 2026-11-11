@@ -1,19 +1,19 @@
-# Assistant — validación y preparación del piloto
+# Assistant — validation and pilot preparation
 
-Estado: candidato local, no publicado. Fases 0–4 implementadas. La fase 5 prepara
-el onboarding y valida el software localmente; el piloto de varios días con
-cuentas reales tiene su propia aceptación y **todavía no está ejecutado**.
+Status: unpublished local candidate. Phases 0–4 implemented. Phase 5 prepares
+onboarding and validates the software locally; the multi-day pilot with
+real accounts has its own acceptance criteria and **has not yet been run**.
 
-Para la primera sesión de uso, seguir la [guía de pruebas de hoy](ASSISTANT_FIRST_DAY.md).
+For the first usage session, follow the [first-day test guide](ASSISTANT_FIRST_DAY.md).
 
-## Onboarding de punta a punta
+## End-to-end onboarding
 
-Usar una máquina local con Node >=22.13, Bun >=1.4, red y navegador local. Elegir
-un directorio corto y privado (por ejemplo `$HOME/.zhx-pilot`) y un propietario
-estable (`local-owner`). Si ya se usa fase 3/4, conservar directorio y configuración;
-si se viene del perfil sin Calendar, usar un directorio nuevo.
+Use a local machine with Node >=22.13, Bun >=1.4, network and a local browser. Choose
+a short private directory (for example `$HOME/.zhx-pilot`) and a stable owner
+(`local-owner`). If already using phase 3/4, keep the directory and configuration;
+if coming from the profile without Calendar, use a new directory.
 
-1. Desde la raíz del repo, preparar el candidato de esta rama:
+1. From the repository root, prepare this branch's candidate:
 
    ```sh
    bun run build
@@ -21,67 +21,67 @@ si se viene del perfil sin Calendar, usar un directorio nuevo.
    bun run --cwd packages/assistant build
    ```
 
-   La dependencia publicada 1.6.3 todavía no incluye los exports experimentales
-   usados por Assistant. `prepare:local` instala el artefacto local sin cambiar el
-   manifiesto. Después de reinstalar dependencias, repetir esa preparación.
+   Published dependency 1.6.3 does not yet include the experimental exports
+   used by Assistant. `prepare:local` installs the local artifact without changing the
+   manifest. Repeat preparation after reinstalling dependencies.
 
-2. Crear un bot dedicado a polling, obtener su token y el ID numérico propio
-   mediante una fuente de confianza. Configurar `ASSISTANT_TELEGRAM_BOT_TOKEN` en
-   el entorno. El bot no debe tener webhook activo. No compartir token, clave ni
-   código de vinculación en el repo o en evidencias del piloto.
+2. Create a dedicated polling bot, obtain its token and your own numeric ID
+   through a trusted source. Set `ASSISTANT_TELEGRAM_BOT_TOKEN` in
+   the environment. The bot must not have an active webhook. Do not share the token, key or
+   pairing code in the repository or pilot evidence.
 
-3. Habilitar Calendar API y configurar un cliente OAuth Desktop y su consentimiento
-   según [Calendar](ASSISTANT_CALENDAR.md). Configurar en el entorno
-   `ASSISTANT_GOOGLE_CLIENT_ID`, `ASSISTANT_GOOGLE_CLIENT_SECRET` si corresponde y
-   `ASSISTANT_CREDENTIAL_KEY` (32 bytes aleatorios, base64). Conservar esa clave
-   fuera del directorio de estado y reutilizarla después de reinicios. Configurar
-   también la credencial del proveedor del modelo elegido; para OpenAI, seguir
-   la [guía de credenciales](CREDENTIALS.md).
+3. Enable Calendar API and configure a Desktop OAuth client and consent
+   as described in [Calendar](ASSISTANT_CALENDAR.md). Set
+   `ASSISTANT_GOOGLE_CLIENT_ID`, `ASSISTANT_GOOGLE_CLIENT_SECRET` if applicable and
+   `ASSISTANT_CREDENTIAL_KEY` (32 random bytes, base64) in the environment. Keep this key
+   outside the state directory and reuse it after restarts. Also configure
+   credentials for the chosen model provider; for OpenAI, follow
+   the [credentials guide](CREDENTIALS.md).
 
-4. Ejecutar la comprobación offline, sustituyendo el ID de ejemplo:
+4. Run the offline check, replacing the example ID:
 
    ```sh
    bun run --cwd packages/assistant start --doctor --directory "$HOME/.zhx-pilot" --owner local-owner --provider openai --calendar --telegram-owner 123456789
    ```
 
-   Debe terminar con `ok: true`. Valida forma de configuración, versión de Node
-   y directorio, proveedor reconocido y configuración local del proveedor; no
-   crea estado ni consulta servicios. No prueba validez remota de credenciales,
-   permisos Google, webhook, propietario remoto ni compatibilidad del estado
-   existente. La salida enumera expresamente estas comprobaciones pendientes.
+   It must finish with `ok: true`. It validates configuration shape, Node version
+   and directory, recognized provider and local provider configuration; it neither
+   creates state nor queries services. It does not test remote credential validity,
+   Google permissions, webhooks, remote owner identity or existing state
+   compatibility. The output explicitly lists these pending checks.
 
-5. Con el host detenido, conectar Google desde el mismo equipo:
+5. With the host stopped, connect Google from the same machine:
 
    ```sh
    bun run --cwd packages/assistant start --directory "$HOME/.zhx-pilot" --owner local-owner --calendar-connect
    bun run --cwd packages/assistant start --directory "$HOME/.zhx-pilot" --owner local-owner --calendar-status
    ```
 
-   Abrir la URL impresa y consentir con la cuenta de prueba prevista. El callback
-   es loopback; no usar una sesión remota sin acceso al navegador de esa máquina.
-   `calendar-status` consulta estado local, no certifica vigencia remota del token.
+   Open the printed URL and consent with the intended test account. The callback
+   is loopback; do not use a remote session without access to that machine's browser.
+   `calendar-status` queries local state and does not certify remote token validity.
 
-6. Iniciar el proceso en primer plano:
+6. Start the foreground process:
 
    ```sh
    bun run --cwd packages/assistant start --directory "$HOME/.zhx-pilot" --owner local-owner --provider openai --calendar --calendar-id primary --telegram-owner 123456789 --web
    ```
 
-   Debe imprimir `assistant-ready`. Desde la cuenta elegida, enviar al bot por
-   privado el `/start CODE` mostrado localmente, dentro de diez minutos. Esperar
-   “Propietario vinculado”. Un usuario distinto, grupo o código vencido no vincula.
-   Conservar los mismos flags al reiniciar. No ejecutar dos hosts sobre el mismo
-   estado ni dos consumidores polling del mismo bot.
-   Abrir también el enlace privado `assistant-web` para probar agenda,
-   conversaciones y revisiones desde el navegador. El enlace cambia al reiniciar.
+   It must print `assistant-ready`. From the chosen account, privately send the bot
+   the locally displayed `/start CODE` within ten minutes. Wait for
+   the owner-linked confirmation. Another user, a group or an expired code cannot link.
+   Keep the same flags when restarting. Do not run two hosts on the same
+   state or two polling consumers for the same bot.
+   Also open the private `assistant-web` link to test schedule,
+   conversations and reviews from the browser. The link changes on restart.
 
-7. Pedir la agenda y luego un cambio acotado sobre un evento de prueba organizado
-   por la cuenta. Usar asistentes de prueba bajo control del piloto: aprobar
-   solicita notificaciones a todos. Verificar antes/después, horario, calendario
-   y asistentes en la revisión; solo sus botones aprueban/rechazan. El texto del
-   modelo no concede permisos. Comprobar el resultado en Calendar.
+7. Ask for the schedule, then a bounded change to a test event organized
+   by the account. Use test attendees under pilot control: approval
+   requests notifications to everyone. Verify before/after, time, calendar
+   and attendees in the review; only its buttons approve/reject. Model text
+   does not grant permissions. Check the result in Calendar.
 
-8. Activar el resumen explícitamente desde Telegram:
+8. Explicitly enable the summary from Telegram:
 
    ```text
    /daily 08:00 America/Argentina/Buenos_Aires
@@ -90,79 +90,79 @@ si se viene del perfil sin Calendar, usar un directorio nuevo.
    /daily status
    ```
 
-   Ajustar hora y zona al piloto. El próximo horario siempre es futuro al activar.
-   Verificar recepción y conflictos, luego probar `/daily pause`, `/daily resume`
-   y `/daily delete`. Detalles de DST, recuperación, presupuesto y olvido en
-   [automatizaciones](ASSISTANT_AUTOMATIONS.md).
+   Adjust time and zone for the pilot. The next time is always in the future on activation.
+   Verify receipt and conflicts, then try `/daily pause`, `/daily resume`
+   and `/daily delete`. DST, recovery, budget and forgetting details are in
+   [automations](ASSISTANT_AUTOMATIONS.md).
 
-## Recuperación y cierre
+## Recovery and shutdown
 
-- Apagado normal: SIGINT/SIGTERM (Ctrl+C), esperar `assistant-stopped`; reiniciar
-  con el mismo comando, **sin** `--recover`.
-- Caída real: comprobar que el proceso anterior murió y reiniciar con `--recover`.
-  Un propietario vivo se rechaza. No borrar locks, `host.json` ni bases para saltar
-  esta protección. `--recover` no es el inicio normal: sin un lock recuperable el
-  servicio puede responder ENOENT.
-- Aprobación pendiente: `/pending` muestra el estado persistido. No renueva el
-  vencimiento; una revisión cambiada o vencida exige cancelar y proponer de nuevo.
-- Escritura incierta Calendar: pedir reconciliación de la operación existente.
-  No crear otra modificación para forzar un reenvío. Si no se puede confirmar por
-  lectura, inspeccionar el evento localmente y detener esa prueba del piloto.
-- Envío incierto Telegram: no se reenvía automáticamente. Registrar incertidumbre
-  y comprobar el chat antes de cualquier intervención manual.
-- Refresh rechazado: detener host y repetir `--calendar-connect` con la misma
-  cuenta sin desconectarla primero; así se conserva su identidad. Una cuenta
-  distinta falla cerrada. Clave incorrecta requiere recuperar la clave original,
-  no reemplazar el archivo de estado.
-- Finalizar piloto: pausar/eliminar resumen, detener host y ejecutar
-  `--calendar-disconnect` con directorio/owner. Si devuelve `revoked: false`,
-  completar revocación desde Google. Revocar también el bot si deja de usarse.
-  Desconectar y reconectar crea otra identidad: usar un nuevo host para ella.
+- Normal shutdown: SIGINT/SIGTERM (Ctrl+C), wait for `assistant-stopped`; restart
+  with the same command, **without** `--recover`.
+- Actual crash: verify the previous process died and restart with `--recover`.
+  A live owner is rejected. Do not delete locks, `host.json` or databases to bypass
+  protection. `--recover` is not normal startup: without a recoverable lock, the
+  service may return ENOENT.
+- Pending approval: `/pending` shows persisted state. It does not renew
+  expiry; a changed or expired revision requires cancellation and a new proposal.
+- Uncertain Calendar write: request reconciliation of the existing operation.
+  Do not create another modification to force a resend. If reading cannot confirm it,
+  inspect the event locally and stop that pilot test.
+- Uncertain Telegram send: it is not resent automatically. Record uncertainty
+  and check the chat before any manual intervention.
+- Rejected refresh: stop the host and repeat `--calendar-connect` with the same
+  account without disconnecting first; this preserves its identity. A different
+  account fails closed. A wrong key requires recovering the original key,
+  not replacing the state file.
+- End the pilot: pause/delete the summary, stop the host and run
+  `--calendar-disconnect` with directory/owner. If it returns `revoked: false`,
+  complete revocation from Google. Also revoke the bot if no longer used.
+  Disconnecting and reconnecting creates another identity: use a new host for it.
 
-## Matriz de aceptación del piloto real
+## Real pilot acceptance matrix
 
-Registrar al menos tres días locales, sin afirmar que la validación offline los
-sustituye. El operador completa una fila por escenario y conserva la evidencia
-privada fuera del repo:
+Record at least three local days, without claiming offline validation replaces
+them. The operator completes one row per scenario and keeps private evidence
+outside the repository:
 
-| Escenario | Resultado esperado | Estado real |
+| Scenario | Expected result | Actual status |
 | --- | --- | --- |
-| OAuth, vínculo, conversación y lectura | Cuenta y propietario correctos | Pendiente |
-| Cambio aprobado y callback repetido | Un cambio; segundo callback sin efecto | Pendiente |
-| Rechazo/cancelación/vencimiento | Ninguna escritura | Pendiente |
-| Evento editado por otro cliente antes de aprobar | Conflicto y nueva aprobación | Pendiente |
-| Reinicio con revisión pendiente | Misma acción/digest; no permisos nuevos | Pendiente |
-| Resumen durante tres días | Día/zona/conflictos correctos; una ocurrencia por día | Pendiente |
-| Caída antes del horario y recuperación ese día | Solo el día actual, sin backlog | Pendiente |
-| Pausa, corrección y olvido | Sin nuevos envíos pendientes ni activación implícita | Pendiente |
-| Expiración/revocación y reconsentimiento | Diagnóstico; recuperación sin cambiar de cuenta | Pendiente |
-| Cierre del piloto | Automatización detenida y credenciales revocadas | Pendiente |
+| OAuth, linking, conversation and reading | Correct account and owner | Pending |
+| Approved change and repeated callback | One change; second callback has no effect | Pending |
+| Rejection/cancellation/expiry | No write | Pending |
+| Event edited by another client before approval | Conflict and new approval | Pending |
+| Restart with pending review | Same action/digest; no new permissions | Pending |
+| Summary over three days | Correct day/zone/conflicts; one occurrence per day | Pending |
+| Crash before scheduled time and recovery that day | Current day only, no backlog | Pending |
+| Pause, correction and forgetting | No new pending sends or implicit activation | Pending |
+| Expiry/revocation and renewed consent | Diagnostics; recovery without changing accounts | Pending |
+| Pilot shutdown | Automation stopped and credentials revoked | Pending |
 
-Criterio para detener el piloto: escritura sin aprobación, propietario equivocado,
-cuenta/calendario incorrectos, efecto duplicado, datos secretos en salidas o
-incertidumbre que no pueda explicar el registro. Detener proceso y conservar
-estado para diagnóstico. No borrar evidencia ni aprobar repetidamente para “probar”.
+Stop criteria: unapproved write, wrong owner,
+incorrect account/calendar, duplicate effect, secret data in outputs or
+uncertainty the journal cannot explain. Stop the process and preserve
+state for diagnosis. Do not delete evidence or approve repeatedly to “test”.
 
-## Trazabilidad y evidencia
+## Traceability and evidence
 
-Conversación: update Telegram → inbox/intent → sesión/run Harness → revisión con
-digest → operación Calendar → resultado → outbox/message_id. Resumen:
-comando propietario → revisión del horario/preferencias → `daily:AAAA-MM-DD` →
-fragmentos outbox/message_id. La entrega es independiente de la ejecución:
-`enqueued` no significa recibido; `uncertain` no significa fallido.
+Conversation: Telegram update → inbox/intent → Harness session/run → review with
+digest → Calendar operation → result → outbox/message_id. Summary:
+owner command → schedule/preference revision → `daily:YYYY-MM-DD` →
+outbox chunks/message_id. Delivery is independent of execution:
+`enqueued` does not mean received; `uncertain` does not mean failed.
 
-Usar `/pending`, `/daily status`, `/memory list` y diagnóstico del host embebido.
-Si hace falta investigar, detener primero el host y examinar una copia privada de
-sus stores Assistant; no modificar tablas internas de Harness. Las bases contienen
-datos personales aunque los tokens OAuth estén cifrados. No adjuntar tokens,
-claves, URL OAuth ni bases completas al reporte compartido.
+Use `/pending`, `/daily status`, `/memory list` and embedded host diagnostics.
+If investigation is needed, first stop the host and inspect a private copy of
+its Assistant stores; do not modify internal Harness tables. Databases contain
+personal data even though OAuth tokens are encrypted. Do not attach tokens,
+keys, OAuth URLs or complete databases to the shared report.
 
-Plantilla por observación: fecha/hora UTC y zona local; escenario; revisión de
-código y hash de candidato; updateId; runId/operationId u occurrenceId; IDs de
-mensajes; esperado/observado; intervención manual; estado final. Usar identificadores
-opacos en el reporte compartido y mantener contenido privado por separado.
+Observation template: UTC date/time and local zone; scenario; code revision
+and candidate hash; updateId; runId/operationId or occurrenceId; message
+IDs; expected/observed; manual intervention; final state. Use opaque
+identifiers in the shared report and keep private content separate.
 
-## Validación reproducible local
+## Reproducible local validation
 
 ```sh
 bun run typecheck
@@ -176,33 +176,33 @@ bun run test:code
 bun run --cwd packages/assistant smoke:installed
 ```
 
-Reconstruir el candidato primero si cambió Harness. Los tests de recuperación
-usan sockets locales y procesos Node; necesitan un entorno que los permita.
-La aceptación instalada cubre onboarding offline y comandos CLI, OAuth simulado,
-Calendar → host → Telegram → resumen, datos hostiles sin autoridad, aprobaciones,
-ETags, duplicados, respuesta perdida, SIGKILL, zonas/DST y preferencias. Los tests
-no hacen un consentimiento real, no demuestran entrega de correos ni certifican
-la configuración de una cuenta de producción.
+Rebuild the candidate first if Harness changed. Recovery tests
+use local sockets and Node processes; they need an environment that permits them.
+Installed acceptance covers offline onboarding and CLI commands, simulated OAuth,
+Calendar → host → Telegram → summary, hostile data without authority, approvals,
+ETags, duplicates, lost responses, SIGKILL, zones/DST and preferences. Tests
+do not perform real consent, demonstrate email delivery or certify
+production-account configuration.
 
-## Evidencia local — 2026-11-10
+## Local evidence — 2026-11-10
 
-| Comprobación | Resultado |
+| Check | Result |
 | --- | --- |
-| Harness + Desktop (`bun run test`) | 2376 pass, 1 skip por plataforma, 0 fail; 14990 aserciones, 292 archivos |
-| Code (`bun run test:code`) | 170 pass, 0 fail; 2583 aserciones |
-| Assistant consumidor instalado | 42 pass, 0 fail; 226 aserciones; tipos, build y ejemplo Node correctos |
-| Tipos raíz y tooling | Aprobados |
-| Arquitectura y contratos públicos | Aprobados |
-| Migraciones históricas 0.10.0/0.11.1 | Aprobadas |
-| Documentación y whitespace | Aprobados |
+| Harness + Desktop (`bun run test`) | 2376 passed, 1 platform skip, 0 failed; 14990 assertions, 292 files |
+| Code (`bun run test:code`) | 170 passed, 0 failed; 2583 assertions |
+| Assistant installed consumer | 42 passed, 0 failed; 226 assertions; types, build and Node example passed |
+| Root and tooling types | Passed |
+| Architecture and public contracts | Passed |
+| Historical migrations 0.10.0/0.11.1 | Passed |
+| Documentation and whitespace | Passed |
 
-Candidato instalado: Harness 1.6.3 no publicado, SHA-256
+Installed candidate: unpublished Harness 1.6.3, SHA-256
 `773a1929d356d5b2a72bf6a5d4b2215f425573992dd8dabee97c01228b9474b5`.
-El hash identifica ese artefacto ensayado; no certifica el paquete de registry.
-La prueba omitida corresponde al rechazo del handoff nativo en plataformas no
-soportadas, condición que no aplica en esta máquina. No hubo fallos omitidos.
+The hash identifies that tested artifact; it does not certify the registry package.
+The skipped test concerns native handoff rejection on unsupported
+platforms, a condition that does not apply on this machine. No failures were omitted.
 
-La validación local incluye reinicios reales de procesos y SIGKILL; los servicios
-Google, Telegram y modelos se simulan. No se ejecutaron despliegues, publicación,
-merge, consentimiento real ni piloto de varios días. La rama sigue siendo
-`feat/assistant-phase-0`; la matriz real anterior permanece pendiente.
+Local validation includes real process restarts and SIGKILL; Google,
+Telegram and model services are simulated. No deployment, publication,
+merge, real consent or multi-day pilot was performed. The branch remains
+`feat/assistant-phase-0`; the real acceptance matrix above remains pending.

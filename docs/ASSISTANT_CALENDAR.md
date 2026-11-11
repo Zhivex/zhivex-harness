@@ -1,117 +1,117 @@
-# Assistant — Calendar (fase 3)
+# Assistant — Calendar (phase 3)
 
-Integración local de un propietario y un calendario fijo. Assistant es dueño de
-OAuth, credenciales y registro de operaciones; Harness conserva la política,
-aprobaciones durables y ejecución. No se agregan endpoints Google al motor.
+Local integration for one owner and one fixed calendar. Assistant owns
+OAuth, credentials and the operation journal; Harness retains policy,
+durable approvals and execution. No Google endpoints are added to the engine.
 
-## Conectar y ejecutar
+## Connect and run
 
-Preparar el candidato local y construir Assistant según su [README](../packages/assistant/README.md).
-En Google Cloud habilitar Calendar API, configurar consentimiento (y usuario de
-prueba si corresponde) y crear un cliente OAuth de tipo **Desktop app**. Se usa
-[OAuth para aplicaciones instaladas](https://developers.google.com/identity/protocols/oauth2/native-app)
-con PKCE S256, estado de un solo uso y callback en `127.0.0.1` con puerto efímero.
-El navegador debe poder llegar al loopback de la máquina que ejecuta Assistant.
+Prepare the local candidate and build Assistant following its [README](../packages/assistant/README.md).
+In Google Cloud, enable Calendar API, configure consent (and a test user
+if applicable) and create an OAuth client of type **Desktop app**. This uses
+[OAuth for installed applications](https://developers.google.com/identity/protocols/oauth2/native-app)
+with PKCE S256, single-use state and a callback on `127.0.0.1` with an ephemeral port.
+The browser must be able to reach the loopback interface of the machine running Assistant.
 
-Configurar en el entorno:
+Set these environment variables:
 
-- `ASSISTANT_GOOGLE_CLIENT_ID`: cliente Desktop.
-- `ASSISTANT_GOOGLE_CLIENT_SECRET`: si está incluido en la configuración del cliente.
-- `ASSISTANT_CREDENTIAL_KEY`: clave aleatoria de 32 bytes codificada en base64.
-  Generarla una vez (por ejemplo `openssl rand -base64 32`), guardarla fuera del
-  directorio de estado y reutilizarla tras reinicios. No se genera ni reemplaza
-  automáticamente; una clave distinta no puede descifrar la conexión existente.
-- Credencial del proveedor del modelo y `ASSISTANT_TELEGRAM_BOT_TOKEN`, como en
-  las [instrucciones Telegram](ASSISTANT_TELEGRAM.md).
+- `ASSISTANT_GOOGLE_CLIENT_ID`: Desktop client.
+- `ASSISTANT_GOOGLE_CLIENT_SECRET`: if included in the client configuration.
+- `ASSISTANT_CREDENTIAL_KEY`: a random 32-byte key encoded as base64.
+  Generate it once (for example `openssl rand -base64 32`), store it outside
+  the state directory and reuse it after restarts. It is not generated or replaced
+  automatically; a different key cannot decrypt the existing connection.
+- Model provider credentials and `ASSISTANT_TELEGRAM_BOT_TOKEN`, as in
+  the [Telegram instructions](ASSISTANT_TELEGRAM.md).
 
-Con el host detenido:
+With the host stopped:
 
 ```sh
 bun run --cwd packages/assistant start --directory "$HOME/.zhx-cal" --owner local-owner --calendar-connect
 ```
 
-Abrir la URL impresa en el navegador y completar el consentimiento. Se solicitan
-`openid`, `email` y `calendar.events`. No enviar códigos, tokens ni la clave a
-Telegram. El flujo vence en diez minutos; no ofrece un callback remoto público.
-Luego iniciar el host con el mismo directorio, propietario y credenciales:
+Open the printed URL in your browser and complete consent. Requested scopes are
+`openid`, `email` and `calendar.events`. Do not send codes, tokens or the key to
+Telegram. The flow expires in ten minutes; it does not offer a public remote callback.
+Then start the host with the same directory, owner and credentials:
 
 ```sh
 bun run --cwd packages/assistant start --directory "$HOME/.zhx-cal" --owner local-owner --provider openai --calendar --calendar-id primary --telegram-owner 123456789
 ```
 
-Reemplazar el ID por el propietario y completar la vinculación local de Telegram.
-`--calendar-id` queda fijado al perfil del host; por defecto es `primary`.
-Para consultar o desconectar, detener el host y ejecutar el mismo comando base
-con `--calendar-status` o `--calendar-disconnect`. La desconexión elimina primero
-el acceso local y reporta si Google confirmó la revocación. Si `revoked` es falso,
-revocar también desde la cuenta Google. Un refresh rechazado exige nuevo consentimiento.
+Replace the ID with the owner's ID and complete local Telegram linking.
+`--calendar-id` is fixed in the host profile; its default is `primary`.
+To inspect or disconnect, stop the host and run the same base command
+with `--calendar-status` or `--calendar-disconnect`. Disconnection first removes
+local access and reports whether Google confirmed revocation. If `revoked` is false,
+also revoke access from the Google account. A rejected refresh requires new consent.
 
-**Compatibilidad del directorio:** el perfil de fases anteriores permanece inmutable.
-Habilitar Calendar requiere un nuevo directorio privado y nueva vinculación de
-Telegram; no se migran conversaciones ni aprobaciones al perfil ampliado. Cambiar
-calendario o reconectar después de desconectar también requiere un nuevo host.
-Reautorizar la misma cuenta sin desconectarla conserva la identidad de conexión.
-Nunca borrar `host.json` para eludir esta comprobación.
+**Directory compatibility:** profiles from earlier phases remain immutable.
+Enabling Calendar requires a new private directory and new Telegram linking;
+conversations and approvals are not migrated to the expanded profile. Changing
+calendars or reconnecting after disconnection also requires a new host.
+Reauthorizing the same account without disconnecting preserves connection identity.
+Never delete `host.json` to bypass this check.
 
-## Flujo de una modificación
+## Modification flow
 
-1. `calendar_read_list/read` consulta el calendario. Listado: hasta 100 eventos
-   por página, intervalo máximo de 90 días, paginación y completitud explícitas.
-2. `calendar_read_propose` obtiene el evento y persiste una propuesta de 15 minutos.
-   Devuelve al modelo solo `operationId` y digest SHA-256 de la propuesta inmutable.
-3. `calendar_write_apply` solicita la aprobación normal de Harness. El host carga
-   la propuesta desde su registro y muestra en Telegram evento, calendario,
-   cuenta, antes/después, asistentes, vencimiento y efectos de notificación.
-   El contenido mostrado queda ligado a la revisión de Telegram y al digest.
-   La referencia evita que la redacción de PII del motor altere los argumentos
-   durante la recuperación. No se confía en un resumen escrito por el modelo.
-4. Al aprobar, se valida propietario/chat/mensaje/revisión y se vuelve a consultar
-   el evento. Cualquier ETag diferente exige nueva propuesta y aprobación.
-5. Antes del PATCH se persiste `dispatching`. Se envía `If-Match` con el ETag
-   aprobado, `sendUpdates=all` y un marcador privado `zhivexOperation`, conservando
-   las demás propiedades privadas. Un 412 produce conflicto, sin reintento.
-6. Solo se confirma al verificar marcador y campos finales. Repetir una operación
-   confirmada devuelve el resultado guardado, sin otro PATCH.
+1. `calendar_read_list/read` queries the calendar. Listing: up to 100 events
+   per page, a maximum 90-day interval, explicit pagination and completeness.
+2. `calendar_read_propose` retrieves the event and persists a 15-minute proposal.
+   It returns only `operationId` and the immutable proposal's SHA-256 digest to the model.
+3. `calendar_write_apply` requests normal Harness approval. The host loads
+   the proposal from its journal and shows the event, calendar,
+   account, before/after, attendees, expiry and notification effects in Telegram.
+   Displayed content is bound to the Telegram review and digest.
+   The reference prevents engine PII redaction from altering arguments
+   during recovery. A model-written summary is not trusted.
+4. Approval validates owner/chat/message/revision and fetches the event again.
+   Any different ETag requires a new proposal and approval.
+5. Before PATCH, `dispatching` is persisted. The request sends `If-Match` with the approved
+   ETag, `sendUpdates=all` and a private `zhivexOperation` marker, preserving
+   other private properties. A 412 produces a conflict without retrying.
+6. Confirmation requires verifying the marker and final fields. Repeating a confirmed
+   operation returns the stored result without another PATCH.
 
-Se reutilizan los [ETags condicionales de Calendar](https://developers.google.com/workspace/calendar/api/guides/version-resources)
-y el parámetro de notificaciones de [events.patch](https://developers.google.com/workspace/calendar/api/v3/reference/events/patch).
-El resultado confirma que se solicitó notificar; no demuestra entrega de correos.
+This reuses [Calendar conditional ETags](https://developers.google.com/workspace/calendar/api/guides/version-resources)
+and the notification parameter of [events.patch](https://developers.google.com/workspace/calendar/api/v3/reference/events/patch).
+The result confirms that notification was requested; it does not prove email delivery.
 
-## Recuperación y límites
+## Recovery and limitations
 
-Credenciales y estado OAuth se cifran con AES-256-GCM; la clave permanece externa.
-El registro SQLite separado (`state/calendar.sqlite`) y sus permisos privados
-protegen propuestas, que contienen datos de eventos y asistentes **sin cifrado**.
-El host mantiene exclusión por proceso. Tras una caída, `--recover` solo acepta
-un propietario muerto y convierte `dispatching` en `uncertain`.
+Credentials and OAuth state are encrypted with AES-256-GCM; the key remains external.
+The separate SQLite journal (`state/calendar.sqlite`) and its private permissions
+protect proposals, which contain event and attendee data **without encryption**.
+The host maintains process exclusion. After a crash, `--recover` only accepts
+a dead owner and converts `dispatching` to `uncertain`.
 
-`calendar_read_reconcile` lee Google: si encuentra marcador y campos exactos,
-confirma; en caso contrario mantiene incertidumbre. Nunca repite un PATCH por
-un timeout. Una operación incierta bloquea nuevas modificaciones del evento.
-El MVP requiere inspección local cuando la lectura no puede resolverla; no tiene
-un botón para forzar reenvíos ni promete entrega exactamente una vez en Google.
+`calendar_read_reconcile` reads Google: if it finds the marker and exact fields,
+it confirms; otherwise, uncertainty remains. It never repeats a PATCH after
+a timeout. An uncertain operation blocks further modifications to the event.
+The MVP requires local inspection when reading cannot resolve it; it has no
+button to force resends and does not promise exactly-once delivery in Google.
 
-Se permite cambiar título e inicio/fin de eventos individuales con hora, normales,
-y organizados por el calendario conectado. No se admite crear/borrar eventos,
-modificar invitados, series, instancias recurrentes, eventos de día completo o
-con listas de asistentes incompletas. Lecturas son herramientas de confianza del
-host, limitadas a endpoints fijos; las escrituras siguen la política de Harness.
-Una política que exija revisión explícita del host no se elude desde Telegram.
+Title and start/end changes are allowed for normal, individual timed events
+organized by the connected calendar. Creating/deleting events,
+modifying guests, series, recurring instances, all-day events or events
+with incomplete attendee lists are unsupported. Reads are trusted host tools,
+restricted to fixed endpoints; writes follow Harness policy.
+A policy requiring explicit host review cannot be bypassed through Telegram.
 
-## Evidencia
+## Evidence
 
-`packages/assistant/tests/calendar.test.ts` cubre OAuth/PKCE/estado, refresh y
-revocación simulados, cifrado y clave incorrecta, rechazo de otra cuenta, propuestas
-vencidas/alteradas, ETags y carrera 412, respuestas perdidas antes/después de PATCH,
-recuperación del registro y ausencia de reenvíos. La prueba integrada usa el host
-real, aprobación Telegram persistida, reinicio de ambos y cambio de evento antes
-de aprobar. El callback OAuth se verifica con HTTP loopback real.
+`packages/assistant/tests/calendar.test.ts` covers OAuth/PKCE/state, simulated refresh
+and revocation, encryption and wrong keys, rejection of other accounts, expired/tampered
+proposals, ETags and 412 races, lost responses before/after PATCH,
+journal recovery and absence of resends. The integrated test uses the real host,
+persisted Telegram approval, restart of both and event changes before
+approval. The OAuth callback is verified with real loopback HTTP.
 
-Las APIs de Google y Telegram y el modelo se simulan. Falta validar consentimiento,
-políticas del proyecto Google y entrega real de notificaciones con cuentas de prueba;
-esta fase no despliega ni envía mensajes/eventos reales.
+Google and Telegram APIs and the model are simulated. Consent,
+Google project policies and actual notification delivery still require validation with test accounts;
+this phase neither deploys nor sends real messages/events.
 
-Validación local 2026-11-10: consumidor instalado con 29 pruebas, 149 aserciones,
-0 fallos; typecheck y ejemplo offline Node correctos. Candidato Harness 1.6.3
-no publicado, SHA-256 `37f38a0d090658981b9a085b39f11b8ba37023e608a32ca1c4dbc3f731bbf5b2`.
-También pasaron arquitectura, contratos, documentación y `git diff --check`.
+Local validation 2026-11-10: installed consumer with 29 tests, 149 assertions,
+0 failures; typecheck and offline Node example passed. Unpublished Harness candidate 1.6.3,
+SHA-256 `37f38a0d090658981b9a085b39f11b8ba37023e608a32ca1c4dbc3f731bbf5b2`.
+Architecture, contracts, documentation and `git diff --check` also passed.

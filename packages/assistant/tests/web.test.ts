@@ -29,6 +29,16 @@ test('local web authenticates, rejects cross-origin mutations and persists conve
     const state = await (await fetch(web.origin + '/api/state', { headers })).json() as any;
     expect(state.sessions).toHaveLength(1); expect(state.sessions[0].runs).toHaveLength(1);
     expect(state.timeZone).toBe('America/Argentina/Buenos_Aires');
+    expect((await fetch(web.origin + '/api/task-metrics')).status).toBe(401);
+    const metrics = await (await fetch(web.origin + '/api/task-metrics', { headers })).json() as any;
+    expect(metrics.tasks).toHaveLength(1);
+    expect(metrics.tasks[0].outcome).toBe('unverified');
+    expect(metrics.tasks[0].estimatedUsd).toBeNull();
+    const feedback = { taskId: metrics.tasks[0].taskId, expectedRevision: metrics.tasks[0].revision, outcome: 'success', category: 'general' };
+    expect((await fetch(web.origin + '/api/task-metrics/feedback', { method: 'POST', headers: { ...headers, origin: 'https://evil.test' }, body: JSON.stringify(feedback) })).status).toBe(403);
+    expect((await fetch(web.origin + '/api/task-metrics/feedback', { method: 'POST', headers, body: JSON.stringify({ ...feedback, expectedRevision: '0'.repeat(64) }) })).status).toBe(409);
+    expect((await fetch(web.origin + '/api/task-metrics/feedback', { method: 'POST', headers, body: JSON.stringify(feedback) })).status).toBe(200);
+
     expect(await (await fetch(web.origin + '/api/agenda', { headers })).json()).toMatchObject({ connected: false });
     expect((await fetch(web.origin + '/api/automation', { method: 'POST', headers, body: JSON.stringify({ command: '/daily pause' }) })).status).toBe(409);
     await web.close(); web = undefined; await host.close(); host = undefined;
@@ -60,11 +70,20 @@ test('web review revalidates exact actions and never repeats an approved effect'
     expect((await post('message', { prompt: 'Update note', key: randomUUID() })).status).toBe(200);
     const state = await (await fetch(web.origin + '/api/state', { headers })).json() as any;
     const session = state.sessions[0], run = session.runs[0]; expect(run.review.canDecide).toBe(true);
+    const pendingMetrics = await host.taskMetrics.report();
+    expect(pendingMetrics.tasks).toHaveLength(1);
+    expect(pendingMetrics.tasks[0]).toMatchObject({ endedAt: null, durationMs: null, outcome: 'unverified' });
+
     const decision = { sessionId: session.sessionId, runId: run.runId, digest: run.review.digest, approve: true, key: randomUUID() };
     expect((await post('decision', { ...decision, digest: '0'.repeat(64) })).status).toBe(409);
     expect(await readFile(directory + '/workspace/note.txt', 'utf8')).toBe('before');
     expect((await post('decision', decision)).status).toBe(200);
     expect(await readFile(directory + '/workspace/note.txt', 'utf8')).toBe('after');
+    const completedMetrics = await host.taskMetrics.report();
+    expect(completedMetrics.tasks).toHaveLength(1);
+    expect(completedMetrics.tasks[0]?.runCount).toBe(1);
+    expect(completedMetrics.tasks[0]?.durationMs).not.toBeNull();
+
     const modified = (await stat(directory + '/workspace/note.txt')).mtimeMs;
     expect((await post('decision', decision)).status).toBe(409);
     expect((await stat(directory + '/workspace/note.txt')).mtimeMs).toBe(modified);

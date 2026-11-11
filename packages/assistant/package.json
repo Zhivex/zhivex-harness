@@ -21,7 +21,8 @@
     "smoke:installed": "bun run scripts/smoke-installed.ts",
     "build:web": "vite build --config web/vite.config.ts",
     "dev:web": "vite --config web/vite.config.ts",
-    "build:launcher": "bun run build && bun run scripts/build-launcher.ts"
+    "build:launcher": "bun run build && bun run scripts/build-launcher.ts",
+    "eval:tasks": "bun run scripts/evaluate-tasks.ts"
   },
   "dependencies": {
     "@zhivex-ai/core": "1.37.0",

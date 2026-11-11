@@ -53,18 +53,18 @@ and runs the offline example with Node. Host tests launch separate Node processe
 kill/recover the service, resume an exact approval and check conversation context.
 Dependency installation may require network access; no model API is called.
 
-## Abrir y configurar desde la web
+## Open and configure from the web
 
-Abrí `release-artifacts/Zhivex Assistant.app` con doble clic (macOS). El modo
-administrado abre el navegador, permite configurar el modelo y las conexiones,
-y guarda los secretos en el llavero del sistema. No requiere terminal durante
-el onboarding. Ver [guía web de primera sesión](../../docs/ASSISTANT_WEB_ONBOARDING.md).
+Double-click `release-artifacts/Zhivex Assistant.app` (macOS). Managed mode opens
+the browser, lets you configure the model and connections,
+and saves secrets in the system keychain. No terminal is required during
+onboarding. See the [first-session web guide](../../docs/ASSISTANT_WEB_ONBOARDING.md).
 
-Para generar el lanzador desde esta copia preparada:
-`bun run --cwd packages/assistant build:launcher`. Es un lanzador local que
-requiere este checkout y Node; todavía no es una distribución autónoma firmada.
+To generate the launcher from this prepared checkout:
+`bun run --cwd packages/assistant build:launcher`. It is a local launcher that
+requires this checkout and Node; it is not yet a signed standalone distribution.
 
-## Run (host CLI avanzado)
+## Run (advanced CLI host)
 
 Choose a short private path because Unix sockets have a path-length limit:
 
@@ -102,8 +102,8 @@ automatically. The token stays in memory, and uncertain sends are not auto-retri
 
 ## Pilot onboarding
 
-Para probar hoy con Calendar, Telegram y la web local, seguir el
-[recorrido de primera sesión](../../docs/ASSISTANT_FIRST_DAY.md).
+To try Calendar, Telegram and the local web today, follow the
+[first-session walkthrough](../../docs/ASSISTANT_FIRST_DAY.md).
 
 Follow the [complete pilot guide](../../docs/ASSISTANT_PILOT.md) for offline preflight
 (`--doctor`), Google consent, Telegram pairing, recovery and the three-day acceptance
@@ -116,21 +116,21 @@ composed Calendar/MCP modules. See [configuration, extension contract and compat
 The instance remains single-owner. Existing Calendar-only profiles remain compatible;
 changing provider or composing additional modules requires a fresh runtime directory.
 
-## Web local
+## Local web
 
-La interfaz web incluye agenda, conversaciones, revisión de acciones y edición del
-resumen diario. Agregá `--web` al comando de inicio y abrí el enlace privado que
-imprime el host. Ver [guía web](../../docs/ASSISTANT_WEB.md) para ejecución, demo,
-seguridad local y límites del piloto. La demo visual se inicia con
-`bun run --cwd packages/assistant dev:web` y `?demo=1` en la URL.
+The web interface includes schedule, conversations, action review and daily
+summary editing. Add `--web` to the start command and open the private link
+printed by the host. See the [web guide](../../docs/ASSISTANT_WEB.md) for execution, demo,
+local security and pilot limitations. Start the visual demo with
+`bun run --cwd packages/assistant dev:web` and `?demo=1` in the URL.
 
-### Muse / Meta y Qwen
+### Muse / Meta and Qwen
 
-El onboarding web ofrece Muse / Meta y Qwen con sus adaptadores nativos del
-harness. No requieren configurar el protocolo. La búsqueda web integrada sigue
-siendo exclusiva de OpenAI. Los perfiles anteriores permanecen compatibles.
+Web onboarding offers Muse / Meta and Qwen through their native Harness
+adapters. Protocol configuration is unnecessary. Integrated web search remains
+exclusive to OpenAI. Previous profiles remain compatible.
 
-Para configuración CLI v1, el campo `provider` también admite:
+For CLI v1 configuration, the `provider` field also accepts:
 
 ```json
 { "kind": "meta", "model": "muse-spark-1.3", "apiKeyEnv": "MODEL_API_KEY" }
@@ -140,15 +140,27 @@ Para configuración CLI v1, el campo `provider` también admite:
 { "kind": "qwen", "model": "qwen3.6-plus", "apiKeyEnv": "DASHSCOPE_API_KEY", "region": "singapore" }
 ```
 
-Usá un modelo habilitado en tu cuenta. Qwen admite `workspaceId` y las regiones
-`singapore`, `beijing`, `hong-kong`, `tokyo`, `frankfurt` y `virginia`. Fuera de
-Singapur se requiere un workspace explícito; sin workspace se conserva el
-endpoint internacional del SDK. Las claves se leen de la variable indicada y
-no se incluyen en el archivo JSON. En la API TypeScript, pasá esta configuración
-como `assistantProvider` a `startAssistantHost`; `compatibleProvider` sigue
-aceptando las configuraciones OpenAI compatibles anteriores.
+Use a model enabled for your account. Qwen supports `workspaceId` and regions
+`singapore`, `beijing`, `hong-kong`, `tokyo`, `frankfurt` and `virginia`. Outside
+Singapore, an explicit workspace is required; without a workspace, the SDK's
+international endpoint is preserved. Keys are read from the named variable and
+are not included in the JSON file. In the TypeScript API, pass this configuration
+as `assistantProvider` to `startAssistantHost`; `compatibleProvider` still
+accepts previous OpenAI-compatible configurations.
 
-Para QwenCloud, agregá `"service": "qwencloud"` a la configuración Qwen
-(por ejemplo con `"model": "qwen3.8-flash"`). Para una clave de Token Plan,
-usá `"service": "token-plan"`. Estas rutas no requieren región ni workspace.
-Omitir `service` conserva Model Studio y los perfiles existentes.
+For QwenCloud, add `"service": "qwencloud"` to the Qwen configuration
+(for example with `"model": "qwen3.8-flash"`). For a Token Plan key,
+use `"service": "token-plan"`. These routes require neither region nor workspace.
+Omitting `service` preserves Model Studio and existing profiles.
+
+## Task metrics and evaluation preparation
+
+Conversation runs now produce private, durable task observations for duration,
+explicit corrections, operator-verified outcomes and estimated token cost.
+Completed runs remain unverified until reviewed. Missing usage or pricing remains
+unknown. Read the [task metrics guide](../../docs/ASSISTANT_TASK_METRICS.md) for
+pricing, authenticated report/feedback APIs, grouping semantics and scope limits.
+
+Validate the initial 30-case suite with `bun run eval:tasks --validate` or prepare
+90 unexecuted trials with `bun run eval:tasks --plan /tmp/assistant-evaluation.json`.
+These commands do not call a model or modify external services.

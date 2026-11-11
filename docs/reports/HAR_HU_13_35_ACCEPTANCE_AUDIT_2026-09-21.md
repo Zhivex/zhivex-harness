@@ -1,34 +1,34 @@
-# Auditoría de aceptación HAR-HU-13–35
+# HAR-HU-13–35 acceptance audit
 
-Revisión del checkout `0191246`, implementación de actualizador `70b04a1`, rama `feat/harness-desktop`. Notion consultado nuevamente para las 23 HU; sus 69 criterios están enumerados en el JSON de esta auditoría con la evidencia correspondiente. No hubo push, publicación ni llamadas nuevas a proveedores.
+Review of checkout `0191246`, updater implementation `70b04a1`, branch `feat/harness-desktop`. Notion consulted again for all 23 HUs; their 69 criteria are listed in this audit's JSON with corresponding evidence. No push, publication or new provider calls.
 
-## Resultado
+## Result
 
-| Alcance | Resultado comprobado | Pendiente |
+| Scope | Verified result | Pending |
 | --- | --- | --- |
-| HU13–20 | Implementadas y marcadas Hecha / Pendiente de publicación en Notion. Paquete CLI instalado, primer uso y PTY revalidados. Dataset y 22 intentos conservados coinciden con el informe. | El piloto produjo HOLD: 6/10 correctas en ambos artefactos; esto no habilita release ni uso diario certificado. |
-| HU21–25 | Contrato, servicio, replay y CLI implementados. Notion mantiene los 15 criterios cerrados. El smoke del paquete instalado incluye cliente de referencia y servicio. | Sin publicación. |
-| HU26–30 | Desktop alpha implementado; runtime separado, conversación, aprobación y recuperación cubiertos por informes y smoke instalado del incremento actual. Cuatro geometrías del paquete actual pasan. | Sin certificación general de providers/OCI ni beta firmada. |
-| HU31–33 | Worktrees, entrega Git/PR y llavero implementados. El paquete actual vuelve a pasar dos tareas concurrentes, reinicio, commit/push/PR únicos, recuperación de respuestas perdidas y limpieza revisada. | GitHub simulado y remotos Git locales; no se certifica autenticación live. |
-| HU34 | DMG local preparado, instalado y verificado; versiones, hashes y documentación conservados. | Developer ID, notarización y aceptación de distribución firmada, diferidos expresamente por el usuario. |
-| HU35 | Consulta/descarga/instalación/reinicio/recuperación conectados. Backup, fallos y controles de acceso tienen evidencia local. | Configuración real de confianza y demostración positiva de actualización/recuperación firmada. El build sigue deshabilitando actualizaciones sin esa configuración. |
+| HU13–20 | Implemented and marked Done / Pending publication in Notion. Installed CLI package, first use and PTY revalidated. Dataset and 22 preserved attempts match the report. | The pilot produced HOLD: 6/10 correct in both artifacts; this does not enable release or certified daily use. |
+| HU21–25 | Contract, service, replay and CLI implemented. Notion retains all 15 closed criteria. Installed-package smoke includes reference client and service. | No publication. |
+| HU26–30 | Desktop alpha implemented; separate runtime, conversation, approval and recovery covered by reports and the current increment's installed smoke. Four current-package geometries pass. | No general provider/OCI certification or signed beta. |
+| HU31–33 | Worktrees, Git/PR delivery and keychain implemented. Current package again passes two concurrent tasks, restart, unique commit/push/PR, lost-response recovery and reviewed cleanup. | Simulated GitHub and local Git remotes; live authentication is not certified. |
+| HU34 | Local DMG prepared, installed and verified; versions, hashes and documentation preserved. | Developer ID, notarization and signed-distribution acceptance explicitly deferred by the user. |
+| HU35 | Query/download/install/restart/recovery connected. Backup, failures and access controls have local evidence. | Real trust configuration and positive demonstration of signed update/recovery. Build continues disabling updates without that configuration. |
 
-Las HU34–35 permanecen En curso / Por verificar en Notion. No se sustituyen sus criterios por pruebas de componentes, claves efímeras ni verificación de firma simulada. La preparación local solicitada avanzó, pero el objetivo completo no está demostrado.
+HU34–35 remain In progress / To verify in Notion. Component tests, ephemeral keys and simulated signature verification do not substitute for their criteria. Requested local preparation advanced, but the full objective is not demonstrated.
 
-## Comprobaciones de este cierre
+## Completion checks
 
-- `bun run docs:check`: 111 archivos; aprobado.
-- `bun run contract:check` y `bun run typecheck:tooling`: aprobados.
-- `bun run migration:check`: fixtures publicados 0.10.0/0.11.1 aprobados.
-- `bun run build` y `bun --no-env-file run smoke:artifact`: aprobados. El script incluye PTY, primer uso, contrato de cliente y servicio contra el paquete instalado. Usa proveedores offline.
-- `bun run --cwd desktop smoke:worktrees:packaged`: aprobado; evidencia `/tmp/har-tasks-USYWyg/report` y resultado preservado en el JSON de auditoría. Los pushes de esta prueba van a un bare repo temporal; la rama de implementación no se pusheó.
-- `bun run desktop/scripts/smoke-layout.ts --packaged`: sidebar/contenido correctos a 720 y 1120 píxeles, con panel abierto y cerrado. Reporte `/tmp/har-layout-XSfX5b/report.json`.
-- Los manifiestos de instalación del incremento anterior identifican el DMG SHA-256 `0fd6156ca88bb6422287dbc3cbedb00ed98fcdb785e1ece9285d3e4e95625404` y la instalación temporal con imagen desmontada.
+- `bun run docs:check`: 111 files; passed.
+- `bun run contract:check` and `bun run typecheck:tooling`: passed.
+- `bun run migration:check`: published fixtures 0.10.0/0.11.1 passed.
+- `bun run build` and `bun --no-env-file run smoke:artifact`: passed. The script includes PTY, first use, client contract and service against the installed package. It uses offline providers.
+- `bun run --cwd desktop smoke:worktrees:packaged`: passed; evidence `/tmp/har-tasks-USYWyg/report` and result preserved in audit JSON. Test pushes target a temporary bare repository; the implementation branch was not pushed.
+- `bun run desktop/scripts/smoke-layout.ts --packaged`: sidebar/content correct at 720 and 1120 pixels, with panel open and closed. Report `/tmp/har-layout-XSfX5b/report.json`.
+- Installation manifests from the previous increment identify DMG SHA-256 `0fd6156ca88bb6422287dbc3cbedb00ed98fcdb785e1ece9285d3e4e95625404` and temporary installation with the image unmounted.
 
-## Límite de cierre
+## Completion boundary
 
-La firma/notarización fueron diferidas por el usuario. No corresponde crear identidades, inventar valores de confianza, publicar un feed ni omitir verificaciones nativas para declarar cerradas esas HU. El bloqueo de cierre firmado se mantuvo durante los últimos incrementos y la auditoría. No se modifica esa decisión ni se vuelve a pedir autorización para lo ya resuelto.
+Signing/notarization were deferred by the user. Creating identities, inventing trust values, publishing a feed or bypassing native checks to declare those HUs closed is inappropriate. The signed-completion blocker remained throughout recent increments and the audit. That decision is unchanged and authorization already settled is not requested again.
 
-La exclusión SQLite protege clientes actuales que participan en el protocolo; no certifica clientes antiguos ni bibliotecas directas ajenas a él. Es una limitación conservada explícitamente, no evidencia de exclusión universal. El formato actual es 1 y los formatos incompatibles se rechazan; no se promete una migración para un esquema futuro no implementado.
+SQLite exclusion protects current clients participating in the protocol; it does not certify old clients or unrelated direct libraries. This is an explicitly preserved limitation, not evidence of universal exclusion. Current format is 1 and incompatible formats are rejected; no migration for an unimplemented future schema is promised.
 
-Se preservan sin incorporar los cambios de formato del usuario en `desktop/src/ReviewPanel.tsx` y su carpeta `output/`.
+User formatting changes in `desktop/src/ReviewPanel.tsx` and their `output/` directory are preserved without incorporation.

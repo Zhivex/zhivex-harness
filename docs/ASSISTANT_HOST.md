@@ -3,9 +3,9 @@
 Implemented on 2026-11-10. Requires the local candidate; not published. See
 [Assistant setup](../packages/assistant/README.md) for Bun commands.
 
-La fase 2 agrega [Telegram](ASSISTANT_TELEGRAM.md) mediante `--telegram-owner`
-y `ASSISTANT_TELEGRAM_BOT_TOKEN`; las garantías de recuperación aquí descriptas
-se mantienen.
+Phase 2 adds [Telegram](ASSISTANT_TELEGRAM.md) through `--telegram-owner`
+and `ASSISTANT_TELEGRAM_BOT_TOKEN`; the recovery guarantees described here
+remain in place.
 
 ## Engine profile API
 

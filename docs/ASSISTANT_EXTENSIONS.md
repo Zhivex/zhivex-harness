@@ -1,94 +1,94 @@
-# Assistant: proveedores configurables y módulos componibles
+# Assistant: configurable providers and composable modules
 
-Una instancia por propietario. Esta extensión vive en Assistant sobre APIs públicas
-de Harness; no agrega multiusuario, carga de código desde el chat ni instalación
-automática de plugins. Las configuraciones son decisiones del operador local.
+One instance per owner. This extension lives in Assistant on public Harness
+APIs; it adds no multi-user support, chat-supplied code loading or automatic
+plugin installation. Configuration is a local operator decision.
 
-## Proveedores compatibles con OpenAI
+## OpenAI-compatible providers
 
-Ejemplo editable: [compatible-calendar.json](../packages/assistant/examples/compatible-calendar.json).
-Reemplazar endpoint/modelo y declarar solo capacidades verificadas del modelo.
-Guardar el secreto en la variable indicada por `apiKeyEnv`, nunca en el JSON.
-Después de preparar el candidato local de Harness y construir Assistant:
+Editable example: [compatible-calendar.json](../packages/assistant/examples/compatible-calendar.json).
+Replace endpoint/model and declare only verified model capabilities.
+Store the secret in the variable named by `apiKeyEnv`, never in JSON.
+After preparing the local Harness candidate and building Assistant:
 
 ```sh
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /ruta/assistant.json --telegram-owner 123456789 --doctor
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /ruta/assistant.json --telegram-owner 123456789
+bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /path/assistant.json --telegram-owner 123456789 --doctor
+bun run --cwd packages/assistant start --directory "$HOME/.zhx-compatible" --owner local-owner --config /path/assistant.json --telegram-owner 123456789
 ```
 
-Conectar OAuth antes de iniciar, según la [guía del piloto](ASSISTANT_PILOT.md),
-usando `--calendar-connect` sin `--config`. La configuración Calendar continúa
-leyendo sus credenciales de las variables existentes. Se puede omitir Calendar
-y usar otros módulos o un perfil general sin herramientas.
+Connect OAuth before starting, following the [pilot guide](ASSISTANT_PILOT.md),
+using `--calendar-connect` without `--config`. Calendar configuration still
+reads credentials from the existing variables. Calendar can be omitted
+in favor of other modules or a general profile without tools.
 
-El proveedor configurable requiere:
+The configurable provider requires:
 
-- `kind: openai-compatible`, `baseURL`, `model` y `apiKeyEnv` explícitos.
-- `apiMode: chat` para `/chat/completions`, o `responses` para `/responses`.
-  No hay autodetección ni fallback silencioso entre protocolos. El modo elegido
-  prevalece sobre opciones por llamada.
-- `capabilities.streaming` y `capabilities.tools` verdaderos. `toolChoice`,
-  `parallelToolCalls`, `structuredOutput`, `jsonMode` y `reasoning` son opcionales,
-  falsos por defecto. Esta declaración habilita modelos desconocidos en el SDK;
-  no certifica que el servidor realmente cumpla el contrato.
-- HTTPS sin credenciales embebidas, query ni fragmento. Para un servidor local
-  HTTP en `localhost`, `127.0.0.1` o `[::1]`, usar `allowInsecureLocalhost: true`.
-  Las redirecciones se rechazan. No habilita HTTP remoto ni búsqueda de endpoints.
+- Explicit `kind: openai-compatible`, `baseURL`, `model` and `apiKeyEnv`.
+- `apiMode: chat` for `/chat/completions`, or `responses` for `/responses`.
+  No autodetection or silent fallback between protocols. The chosen mode
+  overrides per-call options.
+- `capabilities.streaming` and `capabilities.tools` set to true. `toolChoice`,
+  `parallelToolCalls`, `structuredOutput`, `jsonMode` and `reasoning` are optional,
+  false by default. This declaration enables unknown models in the SDK;
+  it does not certify that the server actually fulfills the contract.
+- HTTPS without embedded credentials, query or fragment. For a local HTTP
+  server on `localhost`, `127.0.0.1` or `[::1]`, use `allowInsecureLocalhost: true`.
+  Redirects are rejected. This enables neither remote HTTP nor endpoint discovery.
 
-`--doctor` valida configuración y presencia de la variable de credencial sin
-llamar al proveedor. No comprueba capacidades reales. El transporte usa
-`@zhivex-ai/openai` y mantiene los resultados de herramientas en formato envelope.
-Las herramientas hospedadas de OpenAI no se conceden por declarar compatibilidad.
+`--doctor` validates configuration and credential-variable presence without
+calling the provider. It does not check actual capabilities. Transport uses
+`@zhivex-ai/openai` and keeps tool results in envelope format.
+Declaring compatibility does not grant OpenAI hosted tools.
 
-Endpoint, protocolo, modelo, referencia de credencial y capacidades forman un
-digest ligado al perfil durable. Cambiarlos requiere un directorio nuevo; cambiar
-el valor del secreto manteniendo la referencia permite rotarlo. El secreto no se
-incluye en ese digest, las instrucciones ni el diagnóstico. Una sesión con el
-proveedor anterior no se migra automáticamente al proveedor configurable.
+Endpoint, protocol, model, credential reference and capabilities form a
+digest bound to the durable profile. Changing them requires a new directory; changing
+the secret value while keeping the reference allows rotation. The secret is not
+included in that digest, instructions or diagnostics. A session with the
+previous provider is not automatically migrated to the configurable provider.
 
-La API embebida acepta `compatibleProvider` en `startAssistantHost`. Es mutuamente
-excluyente con `engine.provider`, `engine.model` y `engine.modelInstance` para
-impedir configuración ambigua. La ruta previa `--provider`/`--model` sigue disponible
-si el archivo no define proveedor.
+The embedded API accepts `compatibleProvider` in `startAssistantHost`. It is mutually
+exclusive with `engine.provider`, `engine.model` and `engine.modelInstance` to
+prevent ambiguous configuration. The previous `--provider`/`--model` path remains available
+if the file does not define a provider.
 
-## Componer Calendar y otras herramientas
+## Compose Calendar and other tools
 
-[composed-modules.json](../packages/assistant/examples/composed-modules.json) muestra
-Calendar y un módulo MCP HTTP. Reemplazar endpoint, herramientas y referencia de
-credencial por valores de una integración propia. Ejecutar con `--config` y, si
-el JSON no define proveedor, los flags `--provider`/`--model` habituales.
-No combinar `--config` con `--calendar` o acciones de OAuth en el mismo comando.
+[composed-modules.json](../packages/assistant/examples/composed-modules.json) shows
+Calendar and an HTTP MCP module. Replace endpoint, tools and credential reference
+with values from your own integration. Run with `--config` and, if
+JSON does not define a provider, the usual `--provider`/`--model` flags.
+Do not combine `--config` with `--calendar` or OAuth actions in one command.
 
-Cada módulo declara identidad/versión, instrucciones, lista exacta de herramientas,
-permisos y configuración. Los nombres de servidores deben comenzar con `id_`;
-las herramientas expuestas son `servidor_herramienta`. No se admiten catálogos
-abiertos, colisiones, prefijos alternativos ni recursos MCP en este primer contrato.
-El archivo admite solo los tipos `calendar` y `mcp`; un módulo MCP declarativo usa
-HTTP y referencias `ZHIVEX_MCP_*` para cabeceras. Nunca carga rutas JavaScript,
-comandos shell o paquetes indicados por un mensaje.
+Each module declares identity/version, instructions, an exact tool list,
+permissions and configuration. Server names must start with `id_`;
+exposed tools are `server_tool`. Open catalogs,
+collisions, alternative prefixes and MCP resources are unsupported in this first contract.
+The file accepts only `calendar` and `mcp` types; a declarative MCP module uses
+HTTP and `ZHIVEX_MCP_*` header references. It never loads JavaScript paths,
+shell commands or packages supplied by a message.
 
-Harness continúa evaluando permisos, aprobaciones, límites y cancelación. Declarar
-`read`/`network` no evita la política de revisión. Solo adaptadores locales de
-lectura confiables pueden usar el tratamiento existente de anotaciones de lectura.
+Harness continues evaluating permissions, approvals, limits and cancellation. Declaring
+`read`/`network` does not bypass review policy. Only trusted local read
+adapters can use the existing read-annotation handling.
 
-## Contrato para desarrolladores
+## Developer contract
 
-Exports públicos de Assistant:
+Public Assistant exports:
 
 - `AssistantModule`: `id`, `version`, `open(context)`.
-- `AssistantModuleContext`: directorio privado de la instancia, propietario y
-  bandera de recuperación explícita. El módulo debe mantener su estado separado
-  y vincularlo al propietario; compartir proceso no constituye un sandbox.
-- `AssistantModuleInstance`: binding estable sin secretos, perfil, configuración
-  MCP, clientes opcionales, cierre; opcionalmente herramientas que requieren
-  detalles de revisión, su resolver y una fuente de agenda de solo lectura.
-- `createCalendarModule(options)`: implementación Calendar con OAuth/registro de
-  operaciones existente, propuesta exacta, revisión Telegram y agenda diaria.
-- `createMcpModule(options)`: fábrica para HTTP o clientes locales inyectados. Los
-  clientes locales deben ser provistos por código de confianza, junto con un
-  `binding` de su cuenta/configuración y `close` si poseen recursos.
+- `AssistantModuleContext`: private instance directory, owner and
+  explicit recovery flag. The module must keep its state separate
+  and bind it to the owner; sharing a process does not constitute a sandbox.
+- `AssistantModuleInstance`: stable binding without secrets, profile, MCP
+  configuration, optional clients, shutdown; optionally tools requiring
+  review details, their resolver and a read-only schedule source.
+- `createCalendarModule(options)`: Calendar implementation with existing OAuth/operation
+  journal, exact proposals, Telegram review and daily schedule.
+- `createMcpModule(options)`: factory for HTTP or injected local clients. Local
+  clients must be supplied by trusted code, together with an
+  account/configuration `binding` and `close` if they own resources.
 
-Ejemplo embebido:
+Embedded example:
 
 ```ts
 const host = await startAssistantHost({
@@ -98,55 +98,55 @@ const host = await startAssistantHost({
 });
 ```
 
-El host ordena módulos por ID, valida namespaces y combina perfiles y clientes.
-Si falla la apertura, cierra lo que ya abrió; al apagar, intenta cerrar todos los
-módulos aunque uno falle. Los módulos reciben capacidades mediante sus adaptadores;
-no se permite mezclar módulos con `engine.agentProfile`, `engine.mcpConfiguration`
-o `engine.mcpClients`. Para personalizar herramientas se usa otro módulo.
+The host sorts modules by ID, validates namespaces and combines profiles and clients.
+If opening fails, it closes what it already opened; on shutdown, it attempts to close all
+modules even if one fails. Modules receive capabilities through their adapters;
+combining modules with `engine.agentProfile`, `engine.mcpConfiguration`
+or `engine.mcpClients` is disallowed. Use another module to customize tools.
 
-Los resolvers de revisión agregan detalles al texto ligado a la revisión Telegram.
-Si se declara `reviewTools` sin resolver, el arranque falla. En un bridge embebido
-manual, pasar `host.approvalDetails`, `host.reviewTools` y `host.agendaSource` para
-conservar la revisión y automatización. El host automático los conecta por sí mismo.
-Solo puede existir una fuente de agenda para el resumen diario; dos fallan en
-arranque para evitar elegir una cuenta implícitamente.
+Review resolvers add details to the text bound to the Telegram review.
+Declaring `reviewTools` without a resolver fails startup. In a manually embedded
+bridge, pass `host.approvalDetails`, `host.reviewTools` and `host.agendaSource` to
+preserve review and automation. The automatic host connects them itself.
+Only one schedule source can exist for the daily summary; two fail at
+startup to avoid implicitly selecting an account.
 
-## Compatibilidad y recuperación
+## Compatibility and recovery
 
-`calendar: options` y `--calendar` son atajos del módulo Calendar. Calendar solo,
-sin proveedor configurable, conserva el perfil v1, nombres de herramientas,
-almacenamiento, binding y revisión anteriores. Sus tests de aprobaciones y
-recuperación siguen aplicando; no se requiere reconectar esa cuenta.
+`calendar: options` and `--calendar` are shortcuts for the Calendar module. Calendar alone,
+without a configurable provider, preserves the previous v1 profile, tool names,
+storage, binding and review. Its approval and recovery tests
+still apply; reconnecting that account is unnecessary.
 
-Agregar/quitar módulos, cambiar versiones/bindings o activar un proveedor
-configurable produce un perfil diferente. El host rechaza el estado anterior;
-usar un directorio nuevo, sin borrar `host.json` ni reciclar aprobaciones. El orden
-de módulos no cambia el perfil. El mecanismo `preserveProfile` se reserva a
-adaptadores de compatibilidad confiables que ya incluyen su identidad en el perfil;
-Calendar v1 lo usa para conservar sesiones existentes.
+Adding/removing modules, changing versions/bindings or enabling a configurable
+provider produces a different profile. The host rejects previous state;
+use a new directory without deleting `host.json` or recycling approvals. Module
+order does not change the profile. `preserveProfile` is reserved for trusted
+compatibility adapters that already include their identity in the profile;
+Calendar v1 uses it to preserve existing sessions.
 
-La instancia sigue fijada a un propietario, un bot y una conversación privada.
-Para otra persona usar directorio, credenciales y bot separados. No hay aislamiento
-entre módulos maliciosos ejecutados en el mismo proceso: las extensiones embebidas
-son código de confianza del operador.
+The instance remains fixed to one owner, one bot and one private conversation.
+For another person, use separate directory, credentials and bot. There is no isolation
+between malicious modules executing in the same process: embedded extensions
+are operator-trusted code.
 
-## Validación y límites
+## Validation and limitations
 
-Pruebas offline cubren Chat y Responses con modelo desconocido, streaming, modo
-forzado, declaración de capacidades, secretos fuera del binding, endpoints
-inválidos, composición determinista, colisiones, cierre al fallar, configuración
-sin imports ejecutables y cambio de perfil rechazado. Servidores HTTP locales
-simulan ambos protocolos durante herramienta → aprobación → reinicio → resolución,
-comprobando un único efecto. Calendar se prueba junto a un segundo módulo con
-aprobación Telegram y revalidación de eventos.
+Offline tests cover Chat and Responses with unknown models, streaming, forced
+mode, capability declarations, secrets excluded from bindings, invalid endpoints,
+deterministic composition, collisions, cleanup after failures, configuration
+without executable imports and rejected profile changes. Local HTTP servers
+simulate both protocols during tool → approval → restart → resolution,
+checking a single effect. Calendar is tested alongside a second module with
+Telegram approval and event revalidation.
 
-Esto no certifica proveedores comerciales, modelos locales específicos o un
-servidor MCP real. Antes del piloto de cada endpoint ejecutar una prueba controlada
-de streaming, herramientas, aprobación/reinicio, cancelación y errores. No basta
-con que el endpoint responda a una petición de texto.
+This does not certify commercial providers, specific local models or a
+real MCP server. Before piloting each endpoint, run a controlled test
+of streaming, tools, approval/restart, cancellation and errors. A successful
+text response from the endpoint is insufficient.
 
-Aceptación local 2026-11-10: consumidor instalado con 51 pruebas, 282 aserciones,
-0 fallos; tipos, build y ejemplo offline Node aprobados. Arquitectura, contratos,
-documentación y `git diff --check` aprobados. Candidato Harness 1.6.3 no publicado,
+Local acceptance 2026-11-10: installed consumer with 51 tests, 282 assertions,
+0 failures; types, build and offline Node example passed. Architecture, contracts,
+documentation and `git diff --check` passed. Unpublished Harness candidate 1.6.3,
 SHA-256 `b199a154e3bfc95654df10cdc48f887f974098567f5c8bcb07646db106e04a1f`.
-No se ejecutaron llamadas a proveedores reales, publicación ni merge.
+No real provider calls, publication or merge were performed.

@@ -1,610 +1,606 @@
-# Recuperación de reparaciones: diagnóstico de desarrollo
+# Repair recovery: development diagnosis
 
 > Historical snapshot: findings and outcomes apply to the checkout and attempt
 > recorded below. For the subsequent stable release outcome, see
 > [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
 > Later publication does not change failed evaluation results.
 
-**Corrección implementada; aceptación live y GA todavía pendientes.**
+**Correction implemented; live acceptance and GA still pending.**
 
-El fingerprint `fe23962a75a1376aa486d886cd84986beba7daecf721dfdce7e3fc800f8ef82d`
-de los fallos OpenAI del holdout RC14 corresponde exactamente a
-`REPAIR_VERIFICATION_RETRIES_EXHAUSTED`. La evidencia histórica no contiene el
-stdout del verificador: no permite atribuir el fallo de su aserción a una causa
-concreta, ni concluir que esta corrección resolverá todas las entregas fallidas.
+Fingerprint `fe23962a75a1376aa486d886cd84986beba7daecf721dfdce7e3fc800f8ef82d`
+from OpenAI failures in the RC14 holdout corresponds exactly to
+`REPAIR_VERIFICATION_RETRIES_EXHAUSTED`. Historical evidence lacks verifier
+stdout: it cannot attribute assertion failure to a specific cause
+or establish that this correction will resolve all failed deliveries.
 
-Una regresión independiente reprodujo un defecto del controlador: después de
-fallar una verificación, cada comando diagnóstico con exit code distinto de cero
-consumía otro reintento de verificación. Tres diagnósticos agotaban el límite aun
-sin haber intentado verificar nuevamente. Las mutaciones fallidas también
-consumían ese contador.
+An independent regression reproduced a controller defect: after a failed
+verification, each diagnostic command with a nonzero exit code
+consumed another verification retry. Three diagnostics exhausted the limit even
+without another verification attempt. Failed mutations also
+consumed that counter.
 
-Ahora esos eventos mantienen la obligación de recuperación sin incrementar el
-contador de verificaciones. Los intentos reales de verificación sí lo incrementan;
-tres fallos reales siguen bloqueando el run. No se elimina la aprobación ni se
-importa ningún candidato sin verificación exitosa. Los límites de pasos, tokens,
-herramientas y comandos de recuperación siguen vigentes.
+Those events now retain the recovery obligation without incrementing the
+verification counter. Actual verification attempts still increment it;
+three actual failures still block the run. Approval is not removed and no
+candidate is imported without successful verification. Step, token,
+tool and recovery-command limits remain in force.
 
-También se corrigió el evaluador SWE-bench para el nuevo aislamiento OCI:
+The SWE-bench evaluator was also corrected for the new OCI isolation:
 
-- La captura del candidato y el preflight usan el scope del Harness.
-- El padre conserva el directorio de estado hasta terminar la limpieza, incluso
-  si el proceso del driver muere.
-- La limpieza usa la identidad de ejecución en metadata validada, no el hash del
-  run ID público. Las regresiones rechazan metadata de otro run o directorio.
+- Candidate capture and preflight use the Harness scope.
+- The parent retains the state directory until cleanup finishes, even
+  if the driver process dies.
+- Cleanup uses execution identity in validated metadata, not the public
+  run ID hash. Regressions reject metadata from another run or directory.
 
-Validación local: la regresión de diagnóstico falló antes del cambio y pasó
-después. Las 38 pruebas enfocadas pasan; la suite completa pasó 529 tests, junto
-a contratos, tipos, migraciones, evaluaciones, benchmarks y MCP. El gate completo
-se detuvo en `docker start failed` durante el smoke OCI; queda pendiente repetir
-esa frontera sin la carga concurrente de restauración/reproducción.
+Local validation: the diagnostic regression failed before the change and passed
+afterward. All 38 focused tests pass; the full suite passed 529 tests, together
+with contracts, types, migrations, evaluations, benchmarks and MCP. The full gate
+stopped at `docker start failed` during the OCI smoke; that boundary must be repeated
+without concurrent restoration/reproduction load.
 
-La reproducción live usa `django__django-15851` como **dato de desarrollo**, nunca
-como holdout nuevo, con límites y modelos del manifiesto anterior. El primer
-intento terminó antes de llamar al modelo porque la imagen histórica había sido
-eliminada. Se reconstruyó desde los digests originales con el Dockerfile guardado.
-El nuevo intento conserva hashes de fuentes y resultados en
-`results/swebench/ga-recovery-development-2026-09-19-restored/` y terminó: OpenAI completó y entregó patch; Qwen retuvo un candidato sin
-verificador y terminó `REPAIR_INCOMPLETE`. La [evidencia sanitizada](evidence/ga-recovery-development-2026-09-19.json)
-preserva ambos resultados.
-La presencia de un patch entregado no equivale a corrección oficial: este intento
-diagnóstico no ejecuta el grader independiente.
+Live reproduction uses `django__django-15851` as **development data**, never
+as a fresh holdout, with limits and models from the previous manifest. The first
+attempt ended before calling the model because the historical image had been
+deleted. It was rebuilt from original digests using the saved Dockerfile.
+The new attempt preserves source hashes and results in
+`results/swebench/ga-recovery-development-2026-09-19-restored/` and finished: OpenAI completed and delivered a patch; Qwen retained a candidate without a
+verifier and ended `REPAIR_INCOMPLETE`. The [sanitized evidence](evidence/ga-recovery-development-2026-09-19.json)
+preserves both results.
+A delivered patch does not equal official correctness: this diagnostic
+attempt does not run the independent grader.
 
-Antes de GA todavía se requiere completar la validación de recuperación,
-congelar el candidato, predeclarar una cohorte nueva y sus criterios, ejecutar
-grading independiente y reunir la matriz representativa y los gates del release.
+Before GA, recovery validation must still complete,
+the candidate must be frozen, a fresh cohort and criteria predeclared, independent
+grading executed and the representative matrix and release gates collected.
 
+## Second adjustment and validation in progress
 
-## Segundo ajuste y validación en curso
+The Qwen case confirmed that registering a verifier before editing was only an
+instruction. The OCI controller now rejects mutations without a concrete
+verifier registered through `repair_plan`, before executing the tool.
+A regression checks no write on rejection and execution after
+plan registration. This does not certify the proposed command is sufficient:
+approval and independent checking remain necessary.
 
-El caso Qwen confirmó que registrar un verificador antes de editar era sólo una
-instrucción. El controlador OCI ahora rechaza mutaciones sin un verificador
-concreto registrado mediante `repair_plan`, antes de ejecutar la herramienta.
-Una regresión comprueba ausencia de escritura al rechazar y ejecución después
-de registrar el plan. Esto no certifica que el comando propuesto sea suficiente:
-la aprobación y la comprobación independiente siguen siendo necesarias.
+After this adjustment, 530 tests and tooling types passed. The OCI smoke passed
+on repeat without concurrent load. The development comparison with official
+grading is running sequentially for OpenAI and Qwen, one repetition of the
+case and a mini-SWE-agent control for each provider, with original limits and source
+hashes frozen by the runner. Results in
+`results/swebench/ga-recovery-graded-{openai,qwen}/`. This is neither a fresh holdout
+nor GA approval; the result is detailed below.
 
-Después de este ajuste pasaron 530 tests y tipos de tooling. El smoke OCI pasó
-al repetirse sin la carga concurrente. La comparación de desarrollo con grading
-oficial está ejecutándose secuencialmente para OpenAI y Qwen, una repetición del
-caso y control mini-SWE-agent para cada proveedor, con límites originales y hashes
-de fuente congelados por el runner. Resultados en
-`results/swebench/ga-recovery-graded-{openai,qwen}/`. No se presenta como holdout
-nuevo ni como una aprobación de GA; el resultado se detalla a continuación.
+## Official result and projected-budget correction
 
+The preceding comparison finished without missing samples or grader failures.
+Harness resolved 0/1 with OpenAI and 0/1 with Qwen; mini-SWE-agent resolved 1/1 with
+each provider. OpenAI stopped at `WORK_TOKEN_BUDGET` before editing; Qwen
+ended `REPAIR_INCOMPLETE`. [Complete sanitized evidence](evidence/ga-recovery-graded-development-2026-09-19.json).
+These attempts are neither excluded nor presented as successful validation.
 
-## Resultado oficial y corrección del presupuesto proyectado
+Another inconsistency was reproduced: budget calculates projected usage for
+the next call, but the progress controller entered finalization only
+based on already recorded usage. It could therefore stop after registering a plan
+with a verifier, before using the reserve to produce the candidate.
 
-La comparación anterior terminó sin samples faltantes ni fallos del grader.
-Harness resolvió 0/1 con OpenAI y 0/1 con Qwen; mini-SWE-agent resolvió 1/1 con
-cada proveedor. OpenAI se detuvo en `WORK_TOKEN_BUDGET` antes de editar; Qwen
-terminó `REPAIR_INCOMPLETE`. [Evidencia completa sanitizada](evidence/ga-recovery-graded-development-2026-09-19.json).
-No se excluyen estos intentos ni se presentan como validación exitosa.
+That projection is now calculated first and focused finalization activates when
+the next step reaches the threshold. Before a candidate exists, reserve
+is enabled only with a concrete registered verifier. The total limit is unchanged;
+global exploration and calls exceeding the total budget remain
+blocked. The regression fails before the correction and passes afterward, including
+rejection above the total limit. All 31 module tests pass.
 
-Se reprodujo otra inconsistencia: el presupuesto calcula el consumo proyectado
-de la siguiente llamada, pero el controlador de progreso entraba en cierre sólo
-por consumo ya registrado. Por eso podía detenerse después de registrar un plan
-con verificador, antes de poder usar la reserva para producir el candidato.
+A second development comparison is running in
+`results/swebench/ga-recovery-graded-v2-{openai,qwen}/`, with the same task, limits,
+models, control and official grading. Correct delivery must still be demonstrated
+before freezing a fresh cohort; GA remains NO-GO.
 
-Ahora se calcula primero esa proyección y se activa el cierre focalizado cuando
-el siguiente paso alcanza el umbral. Antes de tener candidato, la reserva sólo
-se habilita si hay un verificador concreto registrado. El límite total no cambia;
-se siguen bloqueando exploración global y llamadas que excederían el presupuesto
-total. La regresión falla antes de la corrección y pasa después, incluyendo el
-rechazo al superar el límite total. Las 31 pruebas del módulo pasan.
+## Second comparison and recovery obligation
 
-Está en curso una segunda comparación de desarrollo en
-`results/swebench/ga-recovery-graded-v2-{openai,qwen}/`, con la misma tarea, límites,
-modelos, control y grading oficial. Sigue pendiente demostrar entrega correcta
-antes de congelar una cohorte nueva; GA permanece NO-GO.
+The second comparison finished: Harness 0/1 and control 1/1 for both providers.
+OpenAI failed with `ProviderToolCallError` and `incomplete_arguments`; that attempt
+lacks complete accounting and cannot certify budget or delivery.
+Qwen ended `REPAIR_INCOMPLETE` during recovery. Official grading passed
+without errors and all attempts remain in the denominator.
+[Sanitized evidence](evidence/ga-recovery-graded-v2-2026-09-19.json).
 
+Another regression reproduced that during recovery the controller left tool
+selection automatic despite a pending obligation.
+It now requests a tool (`required`) when supported by the provider/mode;
+Qwen modes with thinking restrictions retain compatibility.
+A final response still neither authorizes import nor satisfies the obligation.
+The test fails before and passes afterward; all 32 focused tests pass.
 
-## Segunda comparación y obligación de recuperación
+The next development series is fixed before observing results:
+`ga-recovery-v3-{openai,qwen}`, same task and limits, three repetitions for each
+agent/provider (12 samples including controls), official grading and preservation
+of all failures. This is not a fresh holdout or a substitute for GA gates.
 
-La segunda comparación terminó: Harness 0/1 y control 1/1 en ambos proveedores.
-OpenAI falló por `ProviderToolCallError` con `incomplete_arguments`; ese intento
-no tiene accounting completo y no puede certificar presupuesto ni entrega.
-Qwen terminó `REPAIR_INCOMPLETE` durante recuperación. El grading oficial pasó
-sin errores y todos los intentos permanecen en el denominador.
-[Evidencia sanitizada](evidence/ga-recovery-graded-v2-2026-09-19.json).
+## Three-repetition result
 
-Otra regresión reprodujo que durante recuperación el controlador dejaba la
-selección de herramienta en automático, aunque existía una obligación pendiente.
-Ahora solicita una herramienta (`required`) cuando el proveedor/modo lo soporta;
-los modos de Qwen con restricciones de thinking conservan su compatibilidad.
-Una respuesta final sigue sin autorizar importación ni satisfacer la obligación.
-La prueba falla antes y pasa después; las 32 pruebas enfocadas pasan.
+Series v3 completed all 12 samples, without missing samples or grader failures:
 
-La siguiente serie de desarrollo queda fijada antes de observar resultados:
-`ga-recovery-v3-{openai,qwen}`, misma tarea y límites, tres repeticiones para cada
-agente/proveedor (12 samples contando controles), grading oficial y conservación
-de todos los fallos. No constituye holdout nuevo ni sustituye los gates de GA.
-
-
-## Resultado de las tres repeticiones
-
-La serie v3 terminó sus 12 samples, sin faltantes ni fallos del grader:
-
-| Proveedor | Harness | Control mini-SWE-agent |
+| Provider | Harness | mini-SWE-agent control |
 | --- | --- | --- |
-| OpenAI | 1/3 entregas correctas | 3/3 |
-| Qwen | 0/3 entregas correctas | 3/3 |
-
-OpenAI tuvo un fallo de verificación y otro de argumentos incompletos con
-accounting incompleto. Qwen tuvo dos reparaciones incompletas y un límite de
-presupuesto de entrada. [Evidencia completa](evidence/ga-recovery-v3-2026-09-19.json).
-Estos resultados mantienen NO-GO y no se usan como evidencia de una cohorte nueva.
-
-Una regresión integrada adicional confirma que, con Qwen en Chat y thinking
-apagado, `toolChoice: required` llega al modelo después de aprobación y fallo de
-verificación. El diagnóstico de transporte terminó por INPUT_TOKEN_BUDGET con
-accounting completo: las once primeras solicitudes no incluían tool choice y
-la última sí llevaba `required`, con thinking apagado. Confirma su envío, no
-que el servicio lo respete en el fallo anterior. El wrapper sólo leyó `max_tokens`;
-Qwen usa `max_completion_tokens`, por lo que el valor nulo registrado no prueba
-ausencia de límite. No se conservaron prompts, respuestas, argumentos ni claves
-en esa traza.
-
-El tarball local del commit `41bd1cb4ab8481a7413f096a0817f612fe9806fe` pasó instalado
-por separado en Node 22.13.0 y Node 24.0.0 para macOS arm64.
-[Evidencia de consumidores](evidence/ga-node-consumers-2026-09-19.json). Esto no
-reemplaza Linux ni los checks remotos. La subida de la rama fue rechazada por la
-revisión automática de permisos; el PR permanece local y su exportación espera
-autorización explícita del operador.
-
-## Diagnóstico del verificador para recuperación
-
-Una regresión adicional reprodujo que el fallo de verificación devolvía sólo
-exit code y timeout al agente. Ahora ambos verificadores compuestos conservan
-stdout/stderr redactados y limitados a 2048 caracteres por canal, preservando el
-principio y el final cuando se truncan. El contenido está marcado como salida no
-confiable; no cambia aprobaciones, límites ni la prohibición de importar después
-de un fallo. La redacción por patrones no elimina necesariamente datos de negocio
-arbitrarios impresos por el comando aprobado.
-
-La regresión falló antes y pasa después. Se actualizó la expectativa anterior de
-omisión completa en el resultado interno: las pruebas ahora distinguen feedback
-del agente, mensaje genérico de error y telemetría exportable. Estas dos últimas
-superficies siguen omitiendo el diagnóstico. Pasan 533 tests, tipos de runtime y
-tooling, contratos de preparación y las cinco comprobaciones de seguridad local.
-La eficacia live de esta corrección todavía no se ha medido; los resultados v3
-corresponden al runtime anterior y siguen conservados íntegros.
-
-[Evidencia local del diagnóstico corregido](evidence/ga-verifier-feedback-2026-09-19.json)
-incluye hashes de fuentes, suite, probes de seguridad e instalación del paquete.
-La serie v4 usa la misma tarea de desarrollo, una repetición por proveedor y
-agente, y conserva los límites y el grader de las series anteriores. Su arranque
-inicial falló antes de llamar a los proveedores por credenciales no heredadas;
-el arranque posterior carga el entorno local. No es una cohorte nueva.
-
-## Resultado v4 y finalización sin candidato
-
-La serie terminó sus cuatro samples con grading completo: Harness 0/1 y control
-1/1 en ambos proveedores. OpenAI falló por `incomplete_arguments`, sin accounting
-completo; Qwen terminó `completed` sin candidato ni verificación y el grader lo
-marcó incorrecto. Ninguno alcanzó el fallo de verificador que esta serie pretendía
-evaluar. [Evidencia íntegra sanitizada](evidence/ga-recovery-v4-2026-09-19.json).
-
-Una regresión local reproduce la finalización después de registrar un plan con
-verificador, antes de editar. La corrección exige una acción de herramienta en
-modos compatibles y rechaza la finalización sin entrega: resultado y checkpoint
-quedan `failed` con `REPAIR_INCOMPLETE`. No cambia presupuestos, aprobación ni
-criterios de grading. Su eficacia live queda pendiente.
-
-Un fixture SSE independiente reproduce otra limitación en OpenAI 0.13.2: el
-adaptador rechaza `output_item.done` incompleto antes de consumir el evento
-terminal que contiene el uso. `bun run scripts/validate-openai-stream-usage.ts`
-sale con código 1: exige simultáneamente rechazar la llamada incompleta, no
-emitir herramientas y conservar los contadores exactos del fixture. No usa red
-ni credenciales reales. No demuestra que el intento live tuviera ese mismo
-evento terminal, pero explica una ruta concreta hacia accounting incompleto.
-La limitación permanece abierta; no se estiman tokens ni se habilitan reintentos
-con consumo desconocido.
-
-Validación posterior a la corrección de finalización: 534 tests sin fallos,
-tipos de runtime/tooling, contratos de preparación, documentación e instalación
-del paquete correctos. El probe separado de accounting sigue fallando y no está
-contabilizado como aceptación aprobada ni oculto dentro de la suite verde.
-
-## Serie v5 y propuesta para el SDK
-
-La siguiente serie de desarrollo mantuvo tarea, límites y una repetición por
-agente/proveedor. Terminó sus cuatro samples con grading completo:
-OpenAI Harness 1/1 y control 1/1; Qwen Harness 0/1 y control 1/1. Qwen produjo
-una edición, solicitó verificación y ejecutó un comando de diagnóstico, pero
-terminó fallido sin patch importado. Ambos intentos Harness tuvieron accounting
-completo. [Evidencia completa](evidence/ga-recovery-v5-2026-09-19.json).
-Una sola entrega OpenAI en datos ya conocidos no acredita mejora general ni
-sustituye el holdout nuevo. La retención de release sigue vigente.
-
-El registry sigue publicando OpenAI 0.13.2. Se preparó un parche aislado del SDK
-en [la propuesta original del SDK](https://github.com/Zhivex/zhivex-harness/tree/c94a6c1cff9d6cbf0a3c66c05f7ce16df1d3cc38/upstream-fixes/openai-terminal-usage), fuera del paquete distribuido del
-Harness y sin modificar el checkout concurrente del SDK. Difiere el rechazo de
-un item incompleto hasta poder leer uso terminal válido; nunca emite la llamada
-incompleta. Once regresiones y el typecheck aislado pasan. El parche todavía
-requiere contrato de error público tipado, checks completos del SDK, revisión,
-publicación y consumo en el presupuesto del Harness. No corrige la dependencia
-instalada ni constituye evidencia de release. El probe sobre 0.13.2 sigue rojo.
-
-Actualización del parche SDK: el contrato Core ahora incluye `usage` opcional,
-validado, copiado y congelado. Una copia aislada del commit base pasó 2078 tests,
-tipos, build y documentación con Bun 1.4.2, además del smoke de consumidores
-instalados. Se actualizaron únicamente la firma de `errors.d.ts`, tests, README
-y changeset correspondientes. No se modificó el checkout concurrente del SDK.
-
-El presupuesto del Harness consume ese campo sólo en un `ProviderToolCallError`
-del proveedor correcto, conserva el error y evita contarlo dos veces después de
-un finish. El consumo ausente, inválido o de un error no reconocido sigue siendo
-desconocido. Pasan 543 tests y el paquete instalado. La integración con tarballs
-locales del SDK corregido conservó 12 tokens de entrada y 8 de salida, sin ejecutar
-herramientas y manteniendo el run fallido. Las identidades están en la evidencia
-del parche. El adapter publicado sigue en 0.13.2 sin la corrección; falta integrar,
-revisar y publicar el SDK, actualizar la dependencia y certificar el candidato.
-
-## Continuación acotada ante finalización prematura
-
-Una regresión independiente demuestra que el controlador puede recuperar una
-finalización normal del modelo que todavía deja una reparación pendiente. La
-aplicación solicita `read_task` una única vez a través de los gates ordinarios,
-conserva el uso real de esa respuesta y vuelve a ofrecer al modelo la tarea
-original. El contador se persiste y no se reinicia al reanudar. El recordatorio
-no autoriza ediciones, no aumenta presupuestos y no extiende las dos solicitudes
-de selección de verificador. Errores, cancelación, límite de salida o uso
-desconocido no lo activan; se espera el cierre normal del stream para evitar
-continuar después de un error tardío.
-
-Las regresiones cubren continuación hasta una edición/verificación aprobada,
-rechazo de una segunda finalización prematura, restauración del contador, uso
-exacto y límites. Pasan 551 tests, tipos y contratos. La serie v6 ejecuta una
-repetición Qwen y su control sobre la misma tarea de desarrollo, sin modificar
-límites ni grader. Su resultado no constituye holdout nuevo.
-
-La serie v6 terminó: Harness 0/1, control 1/1, grading completo y accounting
-completo. Harness agotó WORK_TOKEN_BUDGET después de intentar editar sin plan;
-la mutación no se ejecutó y el siguiente turno volvió a leer archivos. No hubo
-candidato ni verificación, por lo que este intento no mide la eficacia del
-recordatorio ante finalización prematura. Se conserva íntegro como fallo.
-[Evidencia v6](evidence/ga-recovery-v6-2026-09-19.json) y
-[regresiones del recordatorio](evidence/ga-completion-reminder-2026-09-19.json).
-La próxima frontera es la transición desde REPAIR_PLAN_REQUIRED hacia un plan
-válido, manteniendo presupuestos y la prohibición de editar sin verificador.
-
-## Transición desde edición sin plan
-
-La regresión falló antes y pasó después: rechazar una edición sin verificador
-ahora persiste `planRequired`. Los dos siguientes intentos como máximo ofrecen
-`repair_plan` y `read_task`; un guard de ejecución impide saltarse el catálogo
-restringido. El límite persiste al reanudar y no abre la reserva de cierre ni
-incrementa los presupuestos. Sólo un verificador válido retira la obligación;
-la edición y su verificación mantienen sus aprobaciones normales.
-
-Una prueba integrada reproduce rechazo, planificación, edición y verificación
-aprobada hasta entrega. La serie v7 mide esta variante en la misma tarea Qwen de
-desarrollo, con una repetición y control, manteniendo los límites y grader.
-
-La serie v7 terminó con Harness 0/1 y control 1/1, sin faltantes ni fallos del
-grader, y accounting completo. El Harness consumió 94.008 tokens de entrada en
-13 llamadas y el siguiente preflight alcanzó INPUT_TOKEN_BUDGET. Registró un
-plan en el turno 9; los tres siguientes intentos fueron rechazados por
-REPAIR_PLAN_SCOPE y después hubo repetición de exploración. Los códigos se
-identifican comparando el fingerprint con los mensajes constantes del runtime.
-No hubo intento de edición: esta muestra no ejercita la transición nueva y no
-permite atribuirle eficacia live. [Evidencia v7](evidence/ga-recovery-v7-2026-09-19.json).
-
-La validación local de esta variante pasó 554 tests, tipos, contratos, docs y
-paquete instalado. [Hashes y frontera de evidencia](evidence/ga-plan-transition-2026-09-19.json).
-El parche SDK quedó además en la rama local `feat/ga-terminal-usage`, commit
-`989ba33`, con historial normal desde el commit base y sin modificar el checkout
-concurrente. Sus ocho archivos coinciden byte a byte con la copia validada.
-No se hizo push ni publicación; continúa pendiente la autorización de exportación.
-
-## Contexto persistente del alcance del plan
-
-Una regresión independiente encontró que la proyección de trabajo del modelo
-omitía las rutas que el controlador de progreso sí persistía y restringía. Tras
-restaurar un estado con historial compactado, esa proyección no recuperaba los
-archivos permitidos. Ahora obtiene directamente del controlador las rutas
-normalizadas y los cupos restantes de lectura/comandos de cierre. Consultar esta
-vista no activa cierre ni modifica los límites; las rutas fuera del plan siguen
-rechazadas. La integración del Harness también verifica que las rutas llegan a
-los siguientes turnos reales del modelo simulado.
-
-Pasan 555 tests, tipos, contratos y paquete instalado. Se revisó y regeneró el
-snapshot: cambiaron los hashes transitivos de `runHarness` y `HarnessRunOptions`
-porque su diagnóstico referencia el tipo del controlador; los campos públicos
-de estadísticas siguen iguales. La serie v8 mide una repetición Qwen y control
-con el mismo presupuesto y grader. No se atribuye causalidad a la omisión para
-los fallos live anteriores sin evidencia adicional.
-
-La serie v8 terminó con Harness 0/1 por WORK_TOKEN_BUDGET y control 1/1.
-Accounting y grading completos; no se descarta el fallo ni se acredita eficacia
-live a partir de las regresiones. [Evidencia v8](evidence/ga-recovery-v8-2026-09-19.json)
-y [validación local por hash](evidence/ga-working-context-2026-09-19.json).
-El siguiente diagnóstico debe aislar el efecto del catálogo/contexto antes de
-añadir reglas nuevas. Una variante diagnóstica no sustituirá el perfil del
-producto ni se contará como aceptación GA.
-
-## Diagnóstico del catálogo reducido
-
-La variante aislada de cinco herramientas, predeclarada en
-[el plan](evidence/ga-catalog-ablation-plan-2026-09-19.json), terminó con Harness
-0/1 y control 1/1; grading y accounting completos. Harness consumió 41.620
-tokens de entrada y 680 de salida en nueve llamadas. Tras compactar, solicitó
-una herramienta no registrada y terminó con EXECUTION_FAILED. No se atribuye
-causalidad a la compactación a partir de esta sola muestra.
-
-Se conservan ambas muestras, el informe y la identidad de fuente en
-[la evidencia](evidence/ga-catalog-ablation-2026-09-19.json). Frente al baseline
-v8 sólo cambió el driver: catálogo e instrucciones renderizadas conjuntamente.
-El shell ya disponible usa sus propios cupos; no son las mismas rutas ejecutadas
-que las lecturas nativas. La variante no modifica el perfil del producto y no
-cuenta como aceptación GA. Este resultado no justifica promover el catálogo
-reducido ni demuestra que el tamaño del catálogo explique los fallos previos.
-
-La inspección del SDK instalado y una regresión de transporte descartan una
-pérdida determinística del catálogo o de las instrucciones de sistema en la
-compactación ordinaria: cinco solicitudes conservan ambos elementos idénticos,
-con más de una compactación intermedia. Pasan 13 tests de
-`tests/sdk-compaction.test.ts` y tipos de tooling. Esta prueba usa un modelo
-simulado y no explica por sí sola la elección live de una herramienta no
-registrada; no se introdujo un cambio especulativo del runtime. La próxima
-investigación necesita evidencia del catálogo efectivo en el límite del
-proveedor, conservando la política de telemetría sin prompts ni secretos.
-
-El driver ahora instrumenta el límite de entrada al adapter, por dentro de los
-middlewares del controlador y presupuesto. `modelCatalog` conserva por llamada
-los nombres locales ofrecidos y, para cada llamada devuelta, si fue ofrecida y
-si pertenece al registro del driver. Los nombres externos se sustituyen por
-`other-tool`; no se guardan argumentos, esquemas, mensajes ni errores crudos.
-La evidencia se limita a 100 solicitudes y 64 llamadas devueltas por solicitud,
-con contadores explícitos de omisiones. Una interrupción conserva
-`completed: false` y no modifica el error ni los eventos.
-
-Pasan 12 tests del driver y observador, y tipos de tooling. La prueba de orden
-demuestra que observa el catálogo restringido por política, no sólo el inicial.
-Esto mide el contrato neutral que recibe el adapter; no captura los bytes HTTP
-ni prueba qué catálogo vio el servicio remoto. Las llamadas sintéticas del
-controlador no llegan al adapter y no forman parte de esta medición. Todavía
-no hay una nueva muestra live con esta instrumentación; no se atribuye una
-causa al fallo anterior ni se declara mejoría de entrega.
-
-La siguiente muestra, con catálogo completo y observación en el adapter, quedó
-[predeclarada](evidence/ga-catalog-observed-plan-2026-09-19.json), pero **no se
-inició**: la revisión automática de permisos rechazó el envío externo por no
-constar autorización específica del contenido y destino. Se solicitó permiso
-para el caso público, fragmentos del repositorio de evaluación e instrucciones
-del Harness hacia Qwen internacional, con una ejecución por candidato y los
-límites originales. No se reintentó por otra vía.
-[Estado separado de la evidencia live](evidence/ga-catalog-observed-status-2026-09-19.json).
-La validación local conjunta de observación, compactación y driver pasa 25 tests.
-
-## Integración de la corrección publicada del SDK
-
-Tras la confirmación del operador, la consulta pública con `bun info` verifica
-Core 1.22.0, OpenAI 0.13.3 y Qwen 0.14.3. El Harness fija ahora esas versiones
-en package.json y bun.lock, incluido el override de Core. Agents 1.8.0,
-Gemini 0.12.1 y Meta 0.2.6 siguen siendo las versiones consultadas. Se actualizó
-la documentación del lote y su comprobación exacta; los relatos anteriores
-sobre OpenAI 0.13.2 se conservan como evidencia histórica.
-
-El probe `validate-openai-stream-usage.ts` pasa con el paquete publicado:
-error incomplete_arguments, cero llamadas de herramienta emitidas y uso
-12/8 conservado. No usa red de proveedores. Pasan 559 tests, tipos de runtime
-y tooling, build y smoke del tarball instalado. El primer intento de smoke
-falló por EPERM del directorio temporal; la repetición con permisos terminó
-correctamente. Esto cierra la dependencia del parche local para esta aceptación,
-no acredita por sí solo provenance del SDK ni una nueva certificación live.
-
-La autorización pendiente de Qwen y la de push del Harness siguen siendo
-fronteras independientes. La confirmación de publicación del SDK no se tomó
-como autorización de esas operaciones. GA permanece NO-GO por los pendientes
-de entrega fiable y certificación final.
-
-La aceptación integrada también pasa con `runHarness` del workspace y el
-adapter del registry: el run falla sin ejecutar herramientas y contabiliza
-12 tokens de entrada y 8 de salida, con usageComplete=true. Se incorporó
-como regresión automática en `tests/model-budget-error-usage.test.ts`; sus
-10 casos y tipos de tooling pasan. La prueba inyecta SSE local, sin llamadas
-a proveedores. [Versiones, hashes y límites](evidence/ga-published-sdk-2026-09-19.json).
-
-## Prueba Qwen autorizada con dependencias publicadas
-
-Tras autorización explícita, la muestra con catálogo completo terminó con
-Harness 0/1 y mini-SWE-agent 1/1, grading y accounting completos. Harness
-consumió 64.624 tokens de entrada y 915 de salida en nueve llamadas; el control
-20.189 y 597 en ocho. El Harness terminó por WORK_TOKEN_BUDGET, sin candidato
-ni verificación. Las nueve solicitudes conservaron las 13 herramientas y un
-mensaje de sistema; todas las llamadas devueltas estaban ofrecidas y registradas.
-No hubo omisiones de observación. Esta muestra no reproduce el fallo previo
-de herramienta desconocida y no demuestra la causa de ese fallo histórico.
-
-Se conserva la [evidencia completa saneada](evidence/ga-catalog-observed-2026-09-19.json).
-El cambio conjunto de dependencias y observación impide atribuir diferencias a
-una sola variable. Es una tarea conocida de desarrollo, no holdout ni aceptación
-GA. Los límites y el grader no cambiaron. La autorización de la prueba Qwen no
-se extiende al push ni a publicación del Harness.
-
-El fingerprint del último error coincide exactamente con el mensaje constante
-REPAIR_PLAN_REQUIRED: el modelo intentó una edición sin registrar antes el
-verificador. La edición se rechazó y el siguiente turno quedó bloqueado por
-el presupuesto de trabajo. La frontera a investigar es la planificación
-tardía y la reserva de recuperación; esta evidencia no justifica retirar la
-precondición de verificación ni ampliar los límites para obtener un aprobado.
-
-## Reserva para recuperar una edición rechazada sin plan
-
-La transición observada se reprodujo sin red: tras rechazar una edición sin
-verificador, el controlador ofrecía sólo repair_plan/read_task, pero el budget
-no consideraba esa obligación como cierre. Con el 70% ya consumido, la llamada
-fallaba antes de poder registrar el plan. La nueva regresión falló antes del
-arreglo y pasa después, también restaurando el estado.
-
-La obligación planRequired habilita ahora la reserva existente para los dos
-intentos restringidos de planificación. Se mantiene la prohibición de ejecutar
-la edición, el límite durable de intentos y el techo total de tokens; una
-segunda prueba confirma rechazo al alcanzar ese techo. El fingerprint de
-política pasa a repair-v3-reserved-plan-recovery para distinguir los checkpoints
-del contrato anterior. No se incrementaron los límites del benchmark.
-
-Pasan 562 tests tras la corrección de reserva, además de tipos. Esta aceptación
-es determinística: todavía no demuestra una mejora de entrega live.
-
-La repetición Qwen con la corrección terminó: Harness 0/1 y control 1/1,
-grading y accounting completos. Harness consumió 22.916 tokens de entrada y
-949 de salida en cinco llamadas. Intentó editar sin plan en el tercer turno;
-los dos turnos de selección explícita ofrecieron repair_plan/read_task pero
-no devolvieron llamadas desde el adapter. El read_task observado en el cuarto
-turno es el recordatorio sintético del controlador, no una llamada de Qwen.
-No hubo candidato ni verificación. El fallo ocurrió antes de alcanzar la
-reserva, por lo que esta muestra no evalúa su eficacia live.
-[Evidencia íntegra saneada](evidence/ga-plan-reserve-2026-09-19.json).
-
-Una nueva prueba sin red verifica el cuerpo Chat serializado por Qwen 0.14.3
-con el controlador real: tool_choice selecciona explícitamente repair_plan,
-enable_thinking=false y el catálogo contiene sólo repair_plan/read_task.
-Pasan la prueba y tipos de tooling. Esta comprobación verifica serialización
-local; no acredita los bytes de la solicitud live histórica ni identifica la
-causa de la ausencia de llamadas en la respuesta remota. No se relajó la
-verificación ni se aumentaron intentos o presupuestos.
-
-## Pérdida de llamadas Qwen al finalizar con stop
-
-Un diagnóstico live mínimo con fixture sintético aisló una diferencia entre
-servicio y adapter. Con selección explícita repair_plan, el servicio devolvió
-25 fragmentos tool_calls y finish_reason=stop; Qwen 0.14.3 emitió cero llamadas.
-Con selección required devolvió 24 fragmentos y finish_reason=tool_calls, y el
-adapter sí emitió repair_plan. Ninguna herramienta se ejecutó.
-[Evidencia saneada](evidence/ga-qwen-tool-choice-2026-09-19.json).
-
-La inspección del adapter confirma que sólo vacía los buffers cuando el motivo
-es tool_calls. `bun run scripts/validate-qwen-terminal-tool-call.ts` reproduce
-sin red la pérdida con JSON completo y final stop: exit 1, cero llamadas, uso
-12/8 conservado. Este defecto es del adapter; aún falta corregirlo y validar
-que length, streams truncados y argumentos inválidos nunca habiliten ejecución.
-No se infieren los bytes de las respuestas del benchmark a partir del fixture.
-
-La corrección está preparada en la rama local SDK
-`feat/qwen-terminal-tool-calls`, sobre el commit posterior al release
-identificado en [la PR del SDK](https://github.com/Zhivex/zhivex-ai-sdk/pull/103).
-Pasan 209 tests Qwen, 2.424 tests SDK, tipos, docs y build. El adapter compilado
-pasa el mismo fixture que falla en Qwen 0.14.3: una llamada emitida, finish
-normalizado tool-calls y uso 12/8. El parche valida el lote completo antes de
-emitir efectos; casos truncados o inválidos se rechazan. Incluye changeset y
-el mínimo Core 1.22.0. No está publicado ni instalado en el Harness; no se
-hizo push. La prueba del build local no acredita aún el paquete publicado.
-
-La corrección Qwen quedó en el commit local SDK `35e2bb4`. Pasó el smoke de
-consumidores instalados (51 entrypoints y golden path determinístico con Bun
-1.4.2). El diagnóstico live sintético con el adapter compilado recupera ahora
-repair_plan tanto con selección explícita y final stop como con required y
-final tool_calls, conservando uso.
-[Evidencia posterior](evidence/ga-qwen-tool-choice-patched-2026-09-19.json).
-No ejecutó herramientas ni evaluó una reparación; falta integrar el paquete
-publicado y repetir la aceptación del Harness. No se hizo push ni publicación.
-
-## Reparación completa con tarball Qwen corregido
-
-Una copia aislada del Harness instaló el tarball local construido del commit
-SDK 35e2bb4, conservando el catálogo, política, tarea, límites y grader. Los
-hashes de fuente congelados sólo difieren del baseline en package.json y
-bun.lock; el hash SHA-256 del tarball queda ligado al plan y resultado.
-
-Resultado: **Harness 1/1 y control 1/1**, grading y accounting completos.
-Harness registró plan, verificó e importó el parche y pasó el evaluador
-independiente, con 71.480 tokens de entrada y 1.252 de salida. El control
-consumió 19.344 y 545. Se preservan todas las muestras y fallos anteriores.
-[Evidencia](evidence/ga-qwen-patched-package-2026-09-19.json).
-
-Es una sola tarea conocida de desarrollo y un paquete local con el mismo
-número de versión que el publicado, distinguido por hash; no constituye
-certificación del registry, holdout ni prueba estadística de fiabilidad.
-El Harness principal sigue fijando Qwen 0.14.3 publicado. El siguiente gate
-es revisar/publicar la corrección SDK, integrarla por versión y verificar la
-cohorte representativa y holdout con el candidato final. No se hizo push ni
-se promovió el ledger a GA.
-
-La revisión final añadió una regresión de error explícito tardío del proveedor:
-el lote ya completo no debe emitirse si después llega ese error. Falló antes y
-pasó después. El commit local SDK `c850ae0` lo rechaza conservando uso reportado
-sin propagar detalles crudos. Pasan 2.425 tests, tipos, docs, build y aceptación
-offline del adapter compilado. La evidencia live y de consumidores anterior
-sigue vinculada a `35e2bb4`; no se atribuye al nuevo commit. El parche y el
-texto de PR quedaron actualizados; no se hizo push.
-
-El smoke de consumidores instalados se repitió y pasó sobre el commit final
-SDK c850ae0 (51 entrypoints, Bun 1.4.2). La evidencia live sigue ligada al
-commit anterior. Se solicitó autorización específica para subir la rama SDK
-y abrir un PR; sigue pendiente. No hay publicación del parche Qwen ni se
-puede certificar el candidato final del Harness contra esa versión publicada.
-
-Por autorización explícita del operador, se ejecutó version-packages: Qwen
-0.14.4 y changelog preparados, Core/SDK sin bump. Se incorporó main, resolviendo
-sólo un comentario del gate de rangos, y pasaron de nuevo 2.425 tests, tipos,
-docs, build y consumidores instalados (51 entrypoints). La rama se subió y
-la [PR #103](https://github.com/Zhivex/zhivex-ai-sdk/pull/103) quedó abierta
-sin draft, head e4cc9eb3e8218b604f58eccc3a8830f24e9fa71b. CI y CodeQL estaban
-en curso al comprobarla. No se hizo merge ni publicación.
-
-## Integración del Qwen publicado y nueva muestra
-
-La PR #103 fue mergeada externamente. CI, CodeQL y consumidores Node pasaron;
-provider conformance provenance quedó skipped. El release
+| OpenAI | 1/3 correct deliveries | 3/3 |
+| Qwen | 0/3 correct deliveries | 3/3 |
+
+OpenAI had one verification failure and one incomplete-argument failure with
+incomplete accounting. Qwen had two incomplete repairs and one input-budget
+limit. [Complete evidence](evidence/ga-recovery-v3-2026-09-19.json).
+These results maintain NO-GO and are not evidence from a fresh cohort.
+
+An additional integrated regression confirms that with Qwen in Chat and thinking
+off, `toolChoice: required` reaches the model after approval and verification
+failure. The transport diagnostic ended at INPUT_TOKEN_BUDGET with
+complete accounting: the first eleven requests lacked tool choice and
+the last carried `required` with thinking off. This confirms it was sent, not
+that the service respected it in the previous failure. The wrapper read only `max_tokens`;
+Qwen uses `max_completion_tokens`, so the recorded null value does not prove
+absence of a limit. No prompts, responses, arguments or keys were retained
+in that trace.
+
+The local tarball of commit `41bd1cb4ab8481a7413f096a0817f612fe9806fe` passed separate
+installation on Node 22.13.0 and Node 24.0.0 for macOS arm64.
+[Consumer evidence](evidence/ga-node-consumers-2026-09-19.json). This does not
+replace Linux or remote checks. Branch upload was rejected by automatic
+permission review; the PR remains local and export awaits
+explicit operator authorization.
+
+## Verifier diagnostics for recovery
+
+An additional regression reproduced that verification failure returned only
+exit code and timeout to the agent. Both composite verifiers now preserve
+redacted stdout/stderr bounded to 2048 characters per channel, retaining the
+beginning and end when truncated. Content is marked as untrusted output;
+approvals, limits and the prohibition on importing after failure are unchanged.
+Pattern-based redaction does not necessarily remove arbitrary business
+data printed by an approved command.
+
+The regression failed before and passes afterward. The previous expectation of
+complete omission in the internal result was updated: tests now distinguish agent
+feedback, generic error message and exportable telemetry. The latter two
+surfaces still omit diagnostics. 533 tests, runtime and tooling types,
+preparation contracts and all five local security checks pass.
+The live effectiveness of this correction has not yet been measured; v3 results
+belong to the previous runtime and remain fully preserved.
+
+[Local evidence of corrected diagnostics](evidence/ga-verifier-feedback-2026-09-19.json)
+includes source hashes, suite, security probes and package installation.
+Series v4 uses the same development task, one repetition per provider and
+agent, preserving limits and grader from previous series. Its initial
+startup failed before provider calls because credentials were not inherited;
+the subsequent startup loads the local environment. This is not a fresh cohort.
+
+## V4 result and completion without a candidate
+
+The series completed all four samples with full grading: Harness 0/1 and control
+1/1 for both providers. OpenAI failed with `incomplete_arguments`, without complete
+accounting; Qwen ended `completed` without candidate or verification and the grader
+marked it incorrect. Neither reached the verifier failure this series intended
+to evaluate. [Complete sanitized evidence](evidence/ga-recovery-v4-2026-09-19.json).
+
+A local regression reproduces completion after registering a plan with a
+verifier but before editing. The correction requires a tool action in
+compatible modes and rejects completion without delivery: result and checkpoint
+become `failed` with `REPAIR_INCOMPLETE`. Budgets, approval and
+grading criteria are unchanged. Live effectiveness remains pending.
+
+An independent SSE fixture reproduces another limitation in OpenAI 0.13.2: the
+adapter rejects incomplete `output_item.done` before consuming the terminal
+event containing usage. `bun run scripts/validate-openai-stream-usage.ts`
+exits with code 1: it simultaneously requires rejecting the incomplete call, emitting no
+tools and preserving exact fixture counters. It uses no network
+or real credentials. This does not demonstrate the live attempt had the same
+terminal event, but explains a concrete path to incomplete accounting.
+The limitation remains open; tokens are not estimated and retries
+with unknown usage are not enabled.
+
+Validation after the completion correction: 534 tests without failures,
+runtime/tooling types, preparation contracts, documentation and package
+installation passed. The separate accounting probe still fails and is not
+counted as passing acceptance or hidden inside the green suite.
+
+## V5 series and SDK proposal
+
+The next development series retained task, limits and one repetition per
+agent/provider. It completed four samples with full grading:
+OpenAI Harness 1/1 and control 1/1; Qwen Harness 0/1 and control 1/1. Qwen produced
+an edit, requested verification and executed a diagnostic command, but
+ended failed without an imported patch. Both Harness attempts had complete
+accounting. [Complete evidence](evidence/ga-recovery-v5-2026-09-19.json).
+One OpenAI delivery on known data does not establish general improvement or
+replace a fresh holdout. The release hold remains in force.
+
+The registry still publishes OpenAI 0.13.2. An isolated SDK patch was prepared
+in [the original SDK proposal](https://github.com/Zhivex/zhivex-harness/tree/c94a6c1cff9d6cbf0a3c66c05f7ce16df1d3cc38/upstream-fixes/openai-terminal-usage), outside the distributed
+Harness package and without modifying the concurrent SDK checkout. It defers rejection of
+an incomplete item until valid terminal usage can be read; it never emits the incomplete
+call. Eleven regressions and isolated typecheck pass. The patch still
+requires a typed public error contract, full SDK checks, review,
+publication and consumption by the Harness budget. It does not fix the installed
+dependency or constitute release evidence. The 0.13.2 probe remains red.
+
+SDK patch update: the Core contract now includes optional `usage`,
+validated, copied and frozen. An isolated copy of the base commit passed 2078 tests,
+types, build and documentation with Bun 1.4.2, plus the installed-consumer
+smoke. Only the corresponding `errors.d.ts` signature, tests, README
+and changeset were updated. The concurrent SDK checkout was not modified.
+
+The Harness budget consumes this field only on a `ProviderToolCallError`
+from the correct provider, preserves the error and avoids double counting after
+a finish. Missing or invalid usage or usage from an unrecognized error remains
+unknown. 543 tests and the installed package pass. Integration with local
+tarballs of the corrected SDK preserved 12 input and 8 output tokens without executing
+tools and with the run still failed. Identities are in the patch evidence.
+The published adapter remains 0.13.2 without the correction; SDK integration,
+review and publication, dependency update and candidate certification remain pending.
+
+## Bounded continuation after premature completion
+
+An independent regression demonstrates the controller can recover a normal
+model completion that still leaves a repair pending. The
+application requests `read_task` once through ordinary gates,
+preserves actual usage from that response and offers the original task to the model
+again. The counter persists and does not reset on resume. The reminder
+does not authorize edits, increase budgets or extend the two verifier-selection
+requests. Errors, cancellation, output limits or unknown usage
+do not activate it; normal stream closure is awaited to avoid
+continuing after a late error.
+
+Regressions cover continuation to approved editing/verification,
+rejection of a second premature completion, counter restoration, exact usage
+and limits. 551 tests, types and contracts pass. Series v6 runs one
+Qwen repetition and its control on the same development task, without changing
+limits or grader. Its result is not a fresh holdout.
+
+Series v6 finished: Harness 0/1, control 1/1, complete grading and accounting.
+Harness exhausted WORK_TOKEN_BUDGET after attempting to edit without a plan;
+the mutation did not execute and the next turn read files again. There was no
+candidate or verification, so this attempt does not measure the effectiveness of the
+premature-completion reminder. It is fully preserved as a failure.
+[V6 evidence](evidence/ga-recovery-v6-2026-09-19.json) and
+[reminder regressions](evidence/ga-completion-reminder-2026-09-19.json).
+The next boundary is the transition from REPAIR_PLAN_REQUIRED to a valid
+plan, preserving budgets and the prohibition on editing without a verifier.
+
+## Transition from editing without a plan
+
+The regression failed before and passed afterward: rejecting an edit without a verifier
+now persists `planRequired`. At most the next two attempts offer
+`repair_plan` and `read_task`; an execution guard prevents bypassing the restricted
+catalog. The limit persists on resume and neither opens finalization reserve nor
+increases budgets. Only a valid verifier removes the obligation;
+editing and verification retain normal approvals.
+
+An integrated test reproduces rejection, planning, editing and approved
+verification through delivery. Series v7 measures this variant on the same Qwen
+development task, with one repetition and control, preserving limits and grader.
+
+Series v7 finished with Harness 0/1 and control 1/1, no missing samples or grader
+failures, and complete accounting. Harness consumed 94,008 input tokens in
+13 calls and the next preflight reached INPUT_TOKEN_BUDGET. It registered a
+plan at turn 9; the next three attempts were rejected with
+REPAIR_PLAN_SCOPE and exploration then repeated. Codes are
+identified by comparing fingerprints with constant runtime messages.
+There was no edit attempt: this sample does not exercise the new transition or
+establish live effectiveness. [V7 evidence](evidence/ga-recovery-v7-2026-09-19.json).
+
+Local validation of this variant passed 554 tests, types, contracts, docs and
+installed package. [Hashes and evidence boundary](evidence/ga-plan-transition-2026-09-19.json).
+The SDK patch also landed on local branch `feat/ga-terminal-usage`, commit
+`989ba33`, with normal history from the base commit and without modifying the concurrent
+checkout. Its eight files match the validated copy byte for byte.
+No push or publication occurred; export authorization remains pending.
+
+## Persistent plan-scope context
+
+An independent regression found that the model's working projection
+omitted paths that the progress controller persisted and restricted. After
+restoring state with compacted history, that projection did not recover
+allowed files. It now retrieves normalized paths and remaining finalization
+read/command quotas directly from the controller. Querying this
+view neither activates finalization nor changes limits; out-of-plan paths remain
+rejected. Harness integration also verifies paths reach
+subsequent actual turns of the simulated model.
+
+555 tests, types, contracts and installed package pass. The snapshot was reviewed
+and regenerated: transitive hashes of `runHarness` and `HarnessRunOptions` changed
+because diagnostics reference the controller type; public statistics
+fields remain unchanged. Series v8 measures one Qwen repetition and control
+with the same budget and grader. The omission is not assigned causal responsibility
+for previous live failures without further evidence.
+
+Series v8 finished with Harness 0/1 due to WORK_TOKEN_BUDGET and control 1/1.
+Accounting and grading complete; the failure is not discarded and regressions
+do not establish live effectiveness. [V8 evidence](evidence/ga-recovery-v8-2026-09-19.json)
+and [hash-bound local validation](evidence/ga-working-context-2026-09-19.json).
+The next diagnosis must isolate catalog/context effects before
+adding new rules. A diagnostic variant will not replace the product
+profile or count as GA acceptance.
+
+## Reduced-catalog diagnosis
+
+The isolated five-tool variant, predeclared in
+[the plan](evidence/ga-catalog-ablation-plan-2026-09-19.json), finished with Harness
+0/1 and control 1/1; grading and accounting complete. Harness consumed 41,620
+input and 680 output tokens in nine calls. After compaction, it requested
+an unregistered tool and ended with EXECUTION_FAILED. Compaction is not assigned
+causal responsibility based on this single sample.
+
+Both samples, report and source identity are preserved in
+[the evidence](evidence/ga-catalog-ablation-2026-09-19.json). Against baseline
+v8 only the driver changed: catalog and instructions rendered together.
+The already available shell uses its own quotas; these are not the same executed paths
+as native reads. The variant does not modify the product profile or
+count as GA acceptance. This result justifies neither promoting the reduced
+catalog nor claiming catalog size explains previous failures.
+
+Inspection of the installed SDK and a transport regression rule out
+deterministic catalog or system-instruction loss during ordinary
+compaction: five requests retain both elements identically,
+with more than one intervening compaction. All 13 tests in
+`tests/sdk-compaction.test.ts` and tooling types pass. This test uses a simulated
+model and does not itself explain live selection of an unregistered
+tool; no speculative runtime change was introduced. The next
+investigation needs evidence of the effective catalog at the provider
+boundary, preserving telemetry policy without prompts or secrets.
+
+The driver now instruments the adapter input boundary, inside controller
+and budget middleware. `modelCatalog` preserves per call
+the local names offered and, for each returned call, whether it was offered and
+belongs to the driver registry. External names are replaced with
+`other-tool`; arguments, schemas, messages and raw errors are not saved.
+Evidence is limited to 100 requests and 64 returned calls per request,
+with explicit omission counters. An interruption preserves
+`completed: false` and does not modify the error or events.
+
+12 driver/observer tests and tooling types pass. The ordering test
+demonstrates observation of the policy-restricted catalog, not just the initial one.
+This measures the neutral contract received by the adapter; it does not capture HTTP
+bytes or prove which catalog the remote service saw. Synthetic controller
+calls do not reach the adapter and are outside this measurement. There is still
+no new live sample with this instrumentation; neither a cause for the
+previous failure nor improved delivery is claimed.
+
+The next sample, with full catalog and adapter observation, was
+[predeclared](evidence/ga-catalog-observed-plan-2026-09-19.json), but **did not
+start**: automatic permission review rejected external transmission because
+specific authorization for content and destination was absent. Permission was requested
+for the public case, evaluation-repository fragments and Harness instructions
+to international Qwen, with one execution per candidate and original
+limits. No alternate route was attempted.
+[Separate live-evidence status](evidence/ga-catalog-observed-status-2026-09-19.json).
+Combined local observation, compaction and driver validation passes 25 tests.
+
+## Integration of the published SDK correction
+
+After operator confirmation, a public `bun info` query verifies
+Core 1.22.0, OpenAI 0.13.3 and Qwen 0.14.3. Harness now pins these versions
+in package.json and bun.lock, including the Core override. Agents 1.8.0,
+Gemini 0.12.1 and Meta 0.2.6 remain the queried versions. Batch
+documentation and its exact check were updated; previous accounts
+of OpenAI 0.13.2 are preserved as historical evidence.
+
+The `validate-openai-stream-usage.ts` probe passes with the published package:
+incomplete_arguments error, zero emitted tool calls and preserved
+12/8 usage. It uses no provider network. 559 tests, runtime
+and tooling types, build and installed-tarball smoke pass. The first smoke
+attempt failed with EPERM on the temporary directory; the repeat with permissions
+finished successfully. This closes the local-patch dependency for this acceptance,
+not SDK provenance or new live certification by itself.
+
+Pending Qwen authorization and Harness push authorization remain
+independent boundaries. Confirmation of SDK publication was not treated
+as authorization for those operations. GA remains NO-GO due to pending
+reliable delivery and final certification.
+
+Integrated acceptance also passes with workspace `runHarness` and the registry
+adapter: the run fails without executing tools and accounts for
+12 input and 8 output tokens, with usageComplete=true. It was added
+as an automatic regression in `tests/model-budget-error-usage.test.ts`; its
+10 cases and tooling types pass. The test injects local SSE without
+provider calls. [Versions, hashes and limits](evidence/ga-published-sdk-2026-09-19.json).
+
+## Authorized Qwen test with published dependencies
+
+After explicit authorization, the full-catalog sample finished with
+Harness 0/1 and mini-SWE-agent 1/1, complete grading and accounting. Harness
+consumed 64,624 input and 915 output tokens in nine calls; the control
+20,189 and 597 in eight. Harness ended at WORK_TOKEN_BUDGET, without a candidate
+or verification. All nine requests retained 13 tools and one
+system message; every returned call was offered and registered.
+There were no observation omissions. This sample does not reproduce the previous
+unknown-tool failure or demonstrate the cause of that historical failure.
+
+The [complete sanitized evidence](evidence/ga-catalog-observed-2026-09-19.json) is preserved.
+Combined dependency and observation changes prevent attributing differences to
+a single variable. This is a known development task, not holdout or GA
+acceptance. Limits and grader were unchanged. Qwen test authorization does not
+extend to Harness push or publication.
+
+The latest error fingerprint exactly matches the constant message
+REPAIR_PLAN_REQUIRED: the model attempted an edit before registering the
+verifier. The edit was rejected and the next turn blocked by
+the work budget. The boundary to investigate is late planning
+and recovery reserve; this evidence does not justify removing the
+verification precondition or expanding limits to obtain a pass.
+
+## Reserve to recover an edit rejected without a plan
+
+The observed transition was reproduced without network: after rejecting an edit without
+a verifier, the controller offered only repair_plan/read_task, but the budget
+did not consider that obligation finalization. With 70% consumed, the call
+failed before plan registration. The new regression failed before the
+fix and passes afterward, including state restoration.
+
+The planRequired obligation now enables the existing reserve for both
+restricted planning attempts. The edit prohibition,
+durable attempt limit and total token ceiling remain; a
+second test confirms rejection at that ceiling. The policy fingerprint
+advances to repair-v3-reserved-plan-recovery to distinguish checkpoints
+from the previous contract. Benchmark limits were not increased.
+
+562 tests pass after the reserve correction, as do types. This acceptance
+is deterministic: it does not yet demonstrate improved live delivery.
+
+The Qwen repeat with the correction finished: Harness 0/1 and control 1/1,
+complete grading and accounting. Harness consumed 22,916 input and
+949 output tokens in five calls. It attempted editing without a plan on turn three;
+both explicit-selection turns offered repair_plan/read_task but
+returned no calls from the adapter. The read_task observed on turn four
+is the controller's synthetic reminder, not a Qwen call.
+There was no candidate or verification. Failure occurred before reaching
+reserve, so this sample does not evaluate its live effectiveness.
+[Complete sanitized evidence](evidence/ga-plan-reserve-2026-09-19.json).
+
+A new network-free test checks the Chat body serialized by Qwen 0.14.3
+with the real controller: tool_choice explicitly selects repair_plan,
+enable_thinking=false and the catalog contains only repair_plan/read_task.
+The test and tooling types pass. This verifies local serialization;
+it neither establishes historical live-request bytes nor identifies the
+cause of missing calls in the remote response. Verification was not relaxed
+and neither attempts nor budgets were increased.
+
+## Qwen call loss when finishing with stop
+
+A minimal live diagnostic with a synthetic fixture isolated a difference between
+service and adapter. With explicit repair_plan selection, the service returned
+25 tool_calls fragments and finish_reason=stop; Qwen 0.14.3 emitted zero calls.
+With required selection, it returned 24 fragments and finish_reason=tool_calls, and the
+adapter did emit repair_plan. No tool executed.
+[Sanitized evidence](evidence/ga-qwen-tool-choice-2026-09-19.json).
+
+Adapter inspection confirms it flushes buffers only when the reason
+is tool_calls. `bun run scripts/validate-qwen-terminal-tool-call.ts` reproduces
+loss without network using complete JSON and terminal stop: exit 1, zero calls, preserved
+12/8 usage. This is an adapter defect; correction and validation
+that length, truncated streams and invalid arguments never enable execution remain pending.
+Benchmark response bytes are not inferred from the fixture.
+
+The correction is prepared on local SDK branch
+`feat/qwen-terminal-tool-calls`, based on the post-release commit
+identified in [the SDK PR](https://github.com/Zhivex/zhivex-ai-sdk/pull/103).
+209 Qwen tests, 2,424 SDK tests, types, docs and build pass. The compiled adapter
+passes the fixture that fails in Qwen 0.14.3: one emitted call, normalized
+tool-calls finish and 12/8 usage. The patch validates the entire batch before
+emitting effects; truncated or invalid cases are rejected. It includes a changeset and
+minimum Core 1.22.0. It is neither published nor installed in Harness; no
+push occurred. Local-build testing does not yet establish the published package.
+
+The Qwen correction landed in local SDK commit `35e2bb4`. Installed-consumer smoke
+passed (51 entrypoints and deterministic golden path with Bun
+1.4.2). The synthetic live diagnostic with the compiled adapter now recovers
+repair_plan both with explicit selection and terminal stop and with required and
+terminal tool_calls, preserving usage.
+[Subsequent evidence](evidence/ga-qwen-tool-choice-patched-2026-09-19.json).
+It executed no tools and evaluated no repair; published-package integration
+and repeated Harness acceptance remain pending. No push or publication occurred.
+
+## Complete repair with corrected Qwen tarball
+
+An isolated Harness copy installed the local tarball built from SDK commit
+35e2bb4, preserving catalog, policy, task, limits and grader. Frozen source
+hashes differ from baseline only in package.json and
+bun.lock; the tarball SHA-256 is bound to plan and result.
+
+Result: **Harness 1/1 and control 1/1**, complete grading and accounting.
+Harness registered a plan, verified and imported the patch, and passed the independent
+evaluator with 71,480 input and 1,252 output tokens. The control
+consumed 19,344 and 545. All previous samples and failures are preserved.
+[Evidence](evidence/ga-qwen-patched-package-2026-09-19.json).
+
+This is one known development task and a local package with the same
+version number as the published one, distinguished by hash; it is neither
+registry certification, holdout nor statistical reliability evidence.
+Main Harness still pins published Qwen 0.14.3. The next gate
+is reviewing/publishing the SDK correction, integrating it by version and verifying the
+representative cohort and holdout with the final candidate. No push occurred and
+the ledger was not promoted to GA.
+
+Final review added a regression for an explicit late provider error:
+an already complete batch must not emit if that error arrives afterward. It failed before and
+passed afterward. Local SDK commit `c850ae0` rejects it while preserving reported usage
+without propagating raw details. 2,425 tests, types, docs, build and offline
+acceptance of the compiled adapter pass. Previous live and consumer evidence
+remains bound to `35e2bb4`; it is not attributed to the new commit. Patch and
+PR text were updated; no push occurred.
+
+Installed-consumer smoke was repeated and passed on final SDK commit
+c850ae0 (51 entrypoints, Bun 1.4.2). Live evidence remains bound to the
+previous commit. Specific authorization to upload the SDK branch
+and open a PR was requested; it remains pending. The Qwen patch is unpublished and
+the final Harness candidate cannot be certified against that published version.
+
+With explicit operator authorization, version-packages ran: Qwen
+0.14.4 and changelog prepared, no Core/SDK bump. Main was incorporated, resolving
+only a range-gate comment, and 2,425 tests, types,
+docs, build and installed consumers (51 entrypoints) passed again. The branch was uploaded and
+[PR #103](https://github.com/Zhivex/zhivex-ai-sdk/pull/103) opened
+without draft, head e4cc9eb3e8218b604f58eccc3a8830f24e9fa71b. CI and CodeQL were
+running when checked. No merge or publication occurred.
+
+## Published Qwen integration and new sample
+
+PR #103 was merged externally. CI, CodeQL and Node consumers passed;
+provider conformance provenance was skipped. Release
 [35477096556](https://github.com/Zhivex/zhivex-ai-sdk/actions/runs/35477096556)
-terminó success y el registry publica Qwen 0.14.4. El Harness ahora fija esa
-versión, incluida la documentación y el gate del lote. La aceptación offline
-de terminal-stop pasa contra el paquete instalado. Pasan 563 tests, tipos,
-docs, contrato de preparación y smoke del paquete Harness instalado.
+finished successfully and the registry publishes Qwen 0.14.4. Harness now pins that
+version, including documentation and the batch gate. Offline terminal-stop acceptance
+passes against the installed package. 563 tests, types,
+docs, preparation contract and installed Harness package smoke pass.
 
-La nueva comparación live produjo **Harness 0/1 y control 1/1**, con grading y
-accounting completos. Harness terminó completed tras cinco llamadas, sin plan,
-candidato, verificación ni importación; el grader rechazó la entrega. Consumió
-32.073 tokens de entrada y 281 de salida. El control resolvió con 26.718 y 820.
-[Evidencia publicada](evidence/ga-qwen-published-2026-09-19.json).
+The new live comparison produced **Harness 0/1 and control 1/1**, with complete grading and
+accounting. Harness ended completed after five calls, without plan,
+candidate, verification or import; the grader rejected delivery. It consumed
+32,073 input and 281 output tokens. The control resolved with 26,718 and 820.
+[Published evidence](evidence/ga-qwen-published-2026-09-19.json).
 
-Se conserva el éxito anterior con tarball local, sin sustituir este fallo.
-El defecto del adapter está corregido, pero queda una frontera del Harness:
-la obligación actual sólo nace al registrar un plan o intentar/realizar una
-edición; una finalización temprana desde exploración puede quedar completed
-sin entregar una reparación. Se requiere un contrato explícito de entrega
-para tareas que la exijan, preservando usos legítimos de inspección sin edición.
-No se declara GA ni se atribuye causalidad de la variación a las dependencias.
+The previous local-tarball success is preserved without replacing this failure.
+The adapter defect is corrected, but a Harness boundary remains:
+the current obligation arises only upon plan registration or attempted/completed
+editing; early completion from exploration can remain completed
+without delivering a repair. An explicit delivery contract is required
+for tasks demanding it, while preserving legitimate inspection without editing.
+No GA or dependency-caused variation is claimed.
 
-## Contrato explícito de entrega verificada
+## Explicit verified-delivery contract
 
-Se añadió requireVerifiedDelivery, false por defecto y válido sólo con perfil
-repair. Al activarlo, la obligación nace antes del primer plan o edición; una
-finalización desde exploración no puede quedar completed sin entrega verificada.
-Persiste en el controlador y se liga al fingerprint del run. No abre por sí sola
-la reserva ni añade aprobaciones, intentos o presupuesto. El recordatorio único
-y la obligación de verificación existentes se mantienen. El driver SWE-bench
-lo activa porque su contrato exige reparación e importación. Inspección sin
-edición sigue disponible dejando false.
+Added requireVerifiedDelivery, false by default and valid only with the
+repair profile. When enabled, the obligation arises before the first plan or edit;
+completion from exploration cannot remain completed without verified delivery.
+It persists in the controller and binds to the run fingerprint. It does not itself open
+reserve or add approvals, attempts or budget. The existing one-time reminder
+and verification obligation remain. The SWE-bench driver
+enables it because its contract requires repair and import. Inspection without
+editing remains available by leaving it false.
 
-La regresión falló antes y pasa después: salida y checkpoint quedan failed
-cuando el modelo finaliza sin reparar, incluso conservando la obligación al
-restaurar con opciones por defecto. Pasan 566 tests de la suite y una prueba
-adicional de validación/fingerprint; las cuatro pruebas focales, tipos, docs,
-contratos y paquete instalado pasan. Se regeneró el snapshot de firmas por la
-nueva opción pública y sus tipos transitivos.
-[Evidencia por hash](evidence/ga-required-delivery-2026-09-19.json).
-Esto elimina un falso completed; todavía no demuestra mayor resolución live.
+The regression failed before and passes afterward: output and checkpoint become failed
+when the model finishes without repair, including preservation of the obligation when
+restoring with default options. 566 suite tests and an additional
+validation/fingerprint test pass; all four focused tests, types, docs,
+contracts and installed package pass. The signature snapshot was regenerated for the
+new public option and its transitive types.
+[Hash-bound evidence](evidence/ga-required-delivery-2026-09-19.json).
+This eliminates false completed status; it does not yet demonstrate better live resolution.
 
-La comparación con entrega requerida terminó con **Harness 0/1 y control
-1/1**, grading y accounting completos. Harness quedó failed por
-INPUT_TOKEN_BUDGET tras 96.896 tokens de entrada y 1.330 de salida en trece
-llamadas facturadas. Registró un plan, intentó editar y verificar, pero la
-verificación produjo error y la recuperación no terminó. Dos lecturas fueron
-rechazadas por REPAIR_PLAN_SCOPE y una nueva edición por REPAIR_PLAN_REQUIRED.
-El control resolvió con 16.988 tokens de entrada y 544 de salida.
-[Evidencia íntegra saneada](evidence/ga-required-delivery-live-2026-09-19.json).
+The required-delivery comparison finished with **Harness 0/1 and control
+1/1**, complete grading and accounting. Harness failed with
+INPUT_TOKEN_BUDGET after 96,896 input and 1,330 output tokens in thirteen
+billed calls. It registered a plan, attempted editing and verification, but
+verification errored and recovery did not complete. Two reads were
+rejected with REPAIR_PLAN_SCOPE and a new edit with REPAIR_PLAN_REQUIRED.
+The control resolved with 16,988 input and 544 output tokens.
+[Complete sanitized evidence](evidence/ga-required-delivery-live-2026-09-19.json).
 
-Esta muestra no terminó con respuesta final desde exploración: no prueba
-causalmente la eficacia del nuevo gate, aunque conserva correctamente el fallo.
-La regresión determinística sigue siendo la evidencia del cierre del falso
-completed. El error inicial de verificación sólo tiene un fingerprint genérico
-en esta telemetría; no se atribuye su causa sin evidencia adicional. El siguiente
-diagnóstico debe separar fallo del comando, rechazo por deriva del parche y
-error de importación para enfocar la recuperación, sin publicar logs crudos.
+This sample did not end with a final response from exploration: it does not causally
+prove effectiveness of the new gate, though it correctly preserves failure.
+The deterministic regression remains evidence of closing false
+completed status. The initial verification error has only a generic fingerprint
+in this telemetry; its cause is not attributed without further evidence. The next
+diagnosis must distinguish command failure, patch-drift rejection and
+import error to focus recovery without publishing raw logs.
 
 ### Offline verifier diagnosis and feedback regression
 

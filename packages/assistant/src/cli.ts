@@ -46,7 +46,7 @@ async function main() {
   if (calendarAction) { if (calendar) throw new Error('ASSISTANT_USAGE_INVALID'); await calendarCommand(calendarAction, values['--directory'], values['--owner'], recover); return; }
   const host = await startAssistantHost({ directory: values["--directory"], ownerId: values["--owner"], recover,
     ...(web ? { web: { port: Number(values["--web-port"] ?? 0) } } : {}),
-    ...(config ? { modules: config.modules, ...(config.assistantProvider ? { assistantProvider: config.assistantProvider } : {}), ...(config.compatibleProvider ? { compatibleProvider: config.compatibleProvider } : {}) } : {}),
+    ...(config ? { modules: config.modules, ...(config.taskMetricsPricing ? { taskMetricsPricing: config.taskMetricsPricing } : {}), ...(config.assistantProvider ? { assistantProvider: config.assistantProvider } : {}), ...(config.compatibleProvider ? { compatibleProvider: config.compatibleProvider } : {}) } : {}),
     ...(calendar ? { calendar: calendarEnvironment(values["--calendar-id"]) } : {}),
     ...(values["--telegram-owner"] ? { telegram: { token: process.env.ASSISTANT_TELEGRAM_BOT_TOKEN ?? "", expectedUserId: values["--telegram-owner"] } } : {}),
     engine: { ...(values["--provider"] ? { provider: values["--provider"] } : {}), ...(values["--model"] ? { model: values["--model"] } : {}) } });

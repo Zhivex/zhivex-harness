@@ -1,3 +1,4 @@
+import type { startAssistantHost } from '../host.js';
 import { createServer } from 'node:http';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
@@ -11,6 +12,7 @@ import type { AgendaSource } from '../automation/summary.js';
 
 export interface AssistantWebOptions { port?: number; timeZone?: string; assetsDirectory?: string; setup?: { state(): unknown; action(name: string, input: unknown): Promise<unknown> } }
 export interface WebHost {
+  taskMetrics?: Awaited<ReturnType<typeof startAssistantHost>>["taskMetrics"];
   credentialsPath: string; diagnostics(): unknown; agendaSource?: AgendaSource | undefined;
   approvalDetails?: ((run: HarnessClientRun) => Promise<unknown>) | undefined;
   reviewTools?: readonly string[] | undefined;
@@ -63,6 +65,10 @@ export async function startAssistantWeb(source: WebHost | (() => WebHost | undef
         if (setupMutation) { json(409, { error: 'SETUP_BUSY' }); return; }
         runtimeRequests++; runtimeAdmitted = true;
         const host = currentHost();
+        if (req.method === 'GET' && url.pathname === '/api/task-metrics') {
+          if (!host.taskMetrics) { json(404, { error: 'METRICS_UNAVAILABLE' }); return; }
+          json(200, await host.taskMetrics.report()); return;
+        }
         if (req.method === 'GET' && url.pathname === '/api/state') {
           const data = await command({ method: 'session.list' }); if (data.kind !== 'sessions') throw new Error('SESSION_RESPONSE_INVALID');
           const sessions = await Promise.all(data.sessions.slice(0, 20).map(async session => ({ sessionId: session.sessionId, title: session.title,
@@ -85,6 +91,15 @@ export async function startAssistantWeb(source: WebHost | (() => WebHost | undef
         if (req.method !== 'POST' || req.headers['content-type'] !== 'application/json') { json(405, { error: 'METHOD_REJECTED' }); return; }
         let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 16384) { json(413, { error: 'BODY_TOO_LARGE' }); return; } }
         const input: unknown = JSON.parse(body);
+        if (url.pathname === '/api/task-metrics/feedback' || url.pathname === '/api/task-metrics/link') {
+          if (!host.taskMetrics) { json(404, { error: 'METRICS_UNAVAILABLE' }); return; }
+          try { json(200, await (url.pathname.endsWith('/feedback') ? host.taskMetrics.feedback(input) : host.taskMetrics.link(input))); }
+          catch (error) {
+            if (error instanceof Error && ['METRICS_REVIEW_STALE', 'METRICS_TASK_PENDING', 'METRICS_LINK_INVALID', 'METRICS_TASK_NOT_FOUND', 'METRICS_RUN_NOT_FOUND'].includes(error.message)) json(409, { error: error.message });
+            else throw error;
+          }
+          return;
+        }
         if (url.pathname === '/api/message') {
           const value = z.strictObject({ prompt: z.string().trim().min(1).max(8000), sessionId: id.optional(), key }).parse(input);
           const data = value.sessionId ? await command({ method: 'session.get', sessionId: value.sessionId }) : await command({ method: 'session.create', title: 'Conversación web', idempotencyKey: `web-session-${value.key}` });

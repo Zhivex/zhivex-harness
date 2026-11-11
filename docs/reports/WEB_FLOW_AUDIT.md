@@ -48,7 +48,7 @@ A read-only run says that nothing is waiting for approval. A run with no activit
 
 ## Errors and credentials
 
-The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Haz un análisis de seguridad del repo”, made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
+The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Perform a security analysis of the repository” (translated from the original Spanish prompt), made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
 
 - A red banner, “EXECUTION FAILED” and “Read the current session state before submitting another action.” The banner had no Reconcile action.
 - The stream badge “Reconciliation required” and the line “The response was not confirmed. Reconnect before another action; nothing is retried automatically.”

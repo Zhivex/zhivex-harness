@@ -35,7 +35,7 @@ usage guides or new certification.
 - [HAR-HU-37 and HAR-HU-38 implementation evidence](HAR_HU_37_38_2026-09-28.md).
 - [HAR-HU-41 / HAR-HU-44 implementation evidence](HAR_HU_41_44_2026-09-28.md).
 - [HAR-HU-42: Gemini editing reproduction](HAR_HU_42_2026-09-29.md).
-- [HAR-HU-45 — preparación de certificación instalada](HAR_HU_45_2026-09-29.md).
+- [HAR-HU-45 — installed certification preparation](HAR_HU_45_2026-09-29.md).
 - [HAR-HU-51 — piloto competitivo reproducible](HAR_HU_51_2026-09-29.md).
 - [Performance backport assessment](PERFORMANCE_BACKPORT_2026-09-26.md).
 - [RC2 approval input validation](RC2_APPROVAL_PREFLIGHT_2026-09-28.md).

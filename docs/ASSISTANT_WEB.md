@@ -1,63 +1,63 @@
 # Assistant web
 
-La interfaz local implementa la propuesta visual aprobada: inicio con agenda,
-aprobaciones, resumen diario, conversaciones, conexiones y módulos. Es una
-instancia por propietario. No incorpora todavía un catálogo de agentes ni múltiples bots.
+The local interface implements the approved visual proposal: home with schedule,
+approvals, daily summary, conversations, connections and modules. There is one
+instance per owner. It does not yet include an agent catalog or multiple bots.
 
-## Configuración sin terminal
+## Setup without a terminal
 
-Abrir el lanzador local de macOS con doble clic. El nuevo modo administrado
-permite probar el modelo y conectar Calendar/Telegram desde la web, antes de
-crear el host. Ver [onboarding web](ASSISTANT_WEB_ONBOARDING.md) para uso,
-preparación del lanzador y límites de distribución.
+Double-click the local macOS launcher. The new managed mode lets you test the
+model and connect Calendar/Telegram from the web before creating the host.
+See [web onboarding](ASSISTANT_WEB_ONBOARDING.md) for usage,
+launcher preparation and distribution limitations.
 
-## Ejecutar el host CLI avanzado
+## Run the advanced CLI host
 
-Preparar el candidato local según `packages/assistant/README.md`, luego:
+Prepare the local candidate as described in `packages/assistant/README.md`, then:
 
 ```sh
 bun run --cwd packages/assistant build
-bun run --cwd packages/assistant start --directory "$HOME/.zhx-a" --owner local-owner --config /ruta/assistant.json --web
+bun run --cwd packages/assistant start --directory "$HOME/.zhx-a" --owner local-owner --config /path/assistant.json --web
 ```
 
-Abrir el enlace privado del registro `assistant-web`. El puerto es dinámico;
-`--web-port 4176` permite fijarlo. El servidor escucha exclusivamente en
-`127.0.0.1`. El token aleatorio viaja en el fragmento inicial, se guarda en
-sessionStorage y se retira de la URL. Cambia al reiniciar: volver a abrir el nuevo
-enlace. No publicar mediante un proxy ni compartir el enlace.
+Open the private link in the `assistant-web` log. The port is dynamic;
+`--web-port 4176` sets a fixed port. The server listens exclusively on
+`127.0.0.1`. The random token travels in the initial fragment, is saved in
+sessionStorage and removed from the URL. It changes on restart: reopen the new
+link. Do not publish through a proxy or share the link.
 
-Las conversaciones y aprobaciones conservan la persistencia del host. La web usa
-el protocolo público del Harness y vuelve a consultar la revisión al aprobar;
-una revisión cambiada o vencida exige actualizarla. Una decisión repetida no
-repite el efecto. Calendar conserva su revalidación e idempotencia existentes.
-La vista muestra las últimas 20 conversaciones y hasta 10 ejecuciones por cada una.
+Conversations and approvals retain host persistence. The web uses the public
+Harness protocol and fetches the review again when approving;
+a changed or expired revision requires a refresh. A repeated decision does not
+repeat the effect. Calendar retains its existing revalidation and idempotency.
+The view shows the latest 20 conversations and up to 10 runs per conversation.
 
-El resumen diario requiere Calendar y Telegram vinculado. Su edición, pausa y
-eliminación usan el scheduler persistente existente. La zona de la agenda toma
-la zona del sistema; una aplicación que embeba el host puede pasar `web.timeZone`.
-La zona del resumen se configura por separado desde su formulario.
+The daily summary requires Calendar and linked Telegram. Editing, pausing and
+deleting it use the existing persistent scheduler. The schedule uses the system
+time zone; an application embedding the host can pass `web.timeZone`.
+The summary time zone is configured separately in its form.
 
-En el host CLI avanzado, conexiones, proveedor y módulos muestran el estado
-real y se configuran con los flujos del host. En el modo administrado, el botón
-Configuración abre los formularios web para las credenciales y conexiones. No se modifican eventos al abrir la agenda.
+In the advanced CLI host, connections, provider and modules show their actual
+state and are configured through host flows. In managed mode, the Settings button
+opens the web forms for credentials and connections. Opening the schedule does not modify events.
 
-## Demostración visual
+## Visual demo
 
 ```sh
 bun run --cwd packages/assistant dev:web --host 127.0.0.1 --port 4175
 ```
 
-Abrir `http://127.0.0.1:4175/?demo=1`. La etiqueta indica datos de ejemplo.
-Los cambios son simulados en memoria y se reinician al recargar: no se llama al
-host, a Telegram ni a Calendar. El servidor Vite sirve para esta vista de diseño;
-para datos reales usar el host con `--web`, que sirve el build y la API juntos.
+Open `http://127.0.0.1:4175/?demo=1`. The label indicates sample data.
+Changes are simulated in memory and reset on reload: no calls are made to the
+host, Telegram or Calendar. The Vite server serves this design view;
+for real data, use the host with `--web`, which serves the build and API together.
 
-## Validación
+## Validation
 
-`bun run --cwd packages/assistant smoke:installed` construye la interfaz y valida
-el consumidor aislado. `tests/web.test.ts` cubre autenticación, Host/Origin,
-confinamiento de assets, deduplicación del envío, recuperación y rotación del
-token, revisión obsoleta, efecto único y agenda incompleta. Las regresiones
-existentes cubren reinicios reales, Telegram, Calendar y scheduler.
+`bun run --cwd packages/assistant smoke:installed` builds the interface and validates
+the isolated consumer. `tests/web.test.ts` covers authentication, Host/Origin,
+asset confinement, send deduplication, recovery and token rotation,
+stale revisions, single effects and incomplete schedules. Existing regressions
+cover real restarts, Telegram, Calendar and the scheduler.
 
-Evidencia visual y diferencias intencionales: `packages/assistant/web/design-qa.md`.
+Visual evidence and intentional differences: `packages/assistant/web/design-qa.md`.

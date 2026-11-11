@@ -1,113 +1,113 @@
-# Assistant MVP por fases
+# Assistant MVP by phase
 
-Plan acordado el 2026-11-10. Producto hermano de Code sobre Harness.
-Objetivo: un usuario, Telegram privado, Google Calendar y una sola máquina.
+Plan agreed on 2026-11-10. A sibling product to Code, built on Harness.
+Goal: one user, private Telegram, Google Calendar and one machine.
 
-> Cada mañana revisá mi agenda y avisame si hay conflictos. Si proponés cambiar
-> una reunión, mostrame el cambio y pedime aprobación.
+> Review my schedule every morning and let me know about conflicts. If you propose
+> changing a meeting, show me the change and ask for approval.
 
-Harness controla cómo se ejecuta una tarea con garantías. Assistant controla
-quién la solicita, cuándo se ejecuta, con qué aplicaciones y dónde se entrega.
-Los contratos y decisiones de fase 0 están en [ASSISTANT_CONTRACTS.md](ASSISTANT_CONTRACTS.md).
+Harness controls how a task executes with guarantees. Assistant controls
+who requests it, when it runs, which applications it uses and where results are delivered.
+Phase 0 contracts and decisions are in [ASSISTANT_CONTRACTS.md](ASSISTANT_CONTRACTS.md).
 
-## Fase 0 — Contratos y límites
+## Phase 0 — Contracts and boundaries
 
-**Harness:** inventariar APIs públicas, definir extensiones mínimas para perfiles
-y efectos externos, preservar compatibilidad con Code y estado existente.
+**Harness:** inventory public APIs, define minimal extensions for profiles
+and external effects, preserve compatibility with Code and existing state.
 
-**Assistant:** crear `@zhivex-ai/assistant` independiente; definir propietario,
-conversación, conexión, automatización y entrega; separar estado mediante IDs.
-Sin grupos, voz, navegador, marketplace ni múltiples usuarios en el MVP.
+**Assistant:** create a standalone `@zhivex-ai/assistant`; define owner,
+conversation, connection, automation and delivery; separate state using IDs.
+No groups, voice, browser, marketplace or multiple users in the MVP.
 
-**Salida:** contratos documentados y ejemplo que ejecuta una tarea consumiendo
-un paquete Harness instalado sin imports internos. No requiere cambiar el motor.
+**Exit criteria:** documented contracts and an example that executes a task using
+an installed Harness package without internal imports. No engine changes required.
 
-## Fase 1 — Asistente general y host persistente
+## Phase 1 — General assistant and persistent host
 
-**Harness:** perfil configurable de instrucciones/herramientas; perfil general
-sin programación; identidad y versión del perfil ligadas a recuperación;
-perfil actual predeterminado para Code.
+**Harness:** configurable instruction/tool profile; general profile
+without coding; profile identity and version bound to recovery;
+current default profile preserved for Code.
 
-**Assistant:** proceso permanente, inicio/apagado/recuperación, directorio propio,
-conversaciones y serialización por conversación, configuración/logs/diagnóstico.
-Conservar el workspace interno en este MVP.
+**Assistant:** persistent process, startup/shutdown/recovery, dedicated directory,
+conversations and per-conversation serialization, configuration/logs/diagnostics.
+Keep the internal workspace in this MVP.
 
-**Salida:** conversación de prueba recuperable tras reinicio, con aprobaciones
-pendientes intactas y sin repetir acciones completadas.
+**Exit criteria:** a test conversation recoverable after restart, with pending
+approvals intact and completed actions never repeated.
 
-## Fase 2 — Telegram e identidad
+## Phase 2 — Telegram and identity
 
-**Harness:** reutilizar comandos, eventos, cancelación y aprobaciones; completar
-solo datos genéricos faltantes para presentar decisiones fuera de la terminal.
+**Harness:** reuse commands, events, cancellation and approvals; add only
+missing generic data needed to present decisions outside the terminal.
 
-**Assistant:** vincular propietario, persistir/deduplicar entradas, asociar chats
-y sesiones, responder/cancelar/aprobar, persistir entregas y reintentos. Cada
-decisión queda ligada a propietario, acción, revisión y vencimiento.
+**Assistant:** link the owner, persist/deduplicate inputs, associate chats
+and sessions, reply/cancel/approve, persist deliveries and retries. Each
+decision is bound to its owner, action, revision and expiry.
 
-**Salida:** entradas duplicadas producen una tarea; decisiones repetidas no
-duplican efectos; usuarios ajenos no pueden operar el asistente.
+**Exit criteria:** duplicate inputs produce one task; repeated decisions do not
+duplicate effects; other users cannot operate the assistant.
 
-## Fase 3 — Calendar y autorización
+## Phase 3 — Calendar and authorization
 
-**Harness:** evaluar contratos existentes de efectos externos y completar
-estados pendiente/confirmado/fallido/incierto; políticas acotadas de lectura;
-aprobación ligada a argumentos exactos para escrituras.
+**Harness:** evaluate existing external-effect contracts and complete
+pending/confirmed/failed/uncertain states; bounded read policies;
+write approvals bound to exact arguments.
 
-**Assistant:** OAuth, credenciales protegidas y renovación, herramientas Calendar,
-propuesta con reunión/horarios/asistentes, reconciliación específica del proveedor.
-Revalidar el evento al ejecutar; cualquier cambio relevante invalida la propuesta.
+**Assistant:** OAuth, protected credentials and refresh, Calendar tools,
+proposals with meeting/times/attendees, provider-specific reconciliation.
+Revalidate the event at execution; any relevant change invalidates the proposal.
 
-**Salida:** leer agenda y modificar una reunión aprobada; reconciliar cortes sin
-repetir escrituras a ciegas. Las notificaciones a asistentes también son efectos
-que deben aparecer en la propuesta.
+**Exit criteria:** read the schedule and modify an approved meeting; reconcile
+interruptions without blindly repeating writes. Attendee notifications are also
+effects that must appear in the proposal.
 
-## Fase 4 — Automatizaciones y memoria personal
+## Phase 4 — Automations and personal memory
 
-**Harness:** reutilizar ejecución durable y presupuestos; interfaz genérica de
-contexto con procedencia si falta; memoria nunca equivale a permiso.
+**Harness:** reuse durable execution and budgets; add a generic context interface
+with provenance if missing; memory never grants permission.
 
-**Assistant:** scheduler persistente, zona horaria y política de horarios perdidos,
-identidad por ocurrencia, entregas persistentes, límites de frecuencia/consumo.
-Preferencias explícitas: horario, calendario y definición de conflicto; listar,
-corregir y olvidar. Sin búsqueda semántica ni consolidación automática inicial.
+**Assistant:** persistent scheduler, time zone and missed-time policy,
+per-occurrence identity, persistent deliveries, frequency/usage limits.
+Explicit preferences: time, calendar and conflict definition; list,
+correct and forget. No semantic search or automatic consolidation initially.
 
-**Salida:** resumen diario tras reinicio, zona horaria correcta, pausa/eliminación.
+**Exit criteria:** daily summary after restart, correct time zone, pause/deletion.
 
-## Fase 5 — Validación y piloto
+## Phase 5 — Validation and pilot
 
-**Harness:** regresiones de Code y contratos; aislamiento de scopes, cancelación,
-vencimientos, recuperación y contenido externo sin autoridad sobre políticas.
+**Harness:** Code and contract regressions; scope isolation, cancellation,
+expiry, recovery and external content with no authority over policies.
 
-**Assistant:** onboarding completo, diagnóstico, desconexión/revocación, pruebas
-de reinicios, duplicados, credenciales vencidas y eventos modificados en paralelo.
+**Assistant:** complete onboarding, diagnostics, disconnection/revocation, tests
+for restarts, duplicates, expired credentials and concurrently modified events.
 
-**Salida:** piloto de varios días con trazabilidad mensaje → ejecución → resultado.
+**Exit criteria:** a multi-day pilot with message → execution → result traceability.
 
-## Secuencia y estado
+## Sequence and status
 
-Conversación → canal → acciones aprobadas → proactividad. Cada fase requiere sus
-criterios de salida antes de habilitar la siguiente para usuarios.
+Conversation → channel → approved actions → proactivity. Each phase must meet its
+exit criteria before enabling the next phase for users.
 
-- Fase 0: completada; contratos, scaffold y aceptación de paquete instalado.
-  Evidencia y límites en el documento de contratos.
-- Fase 1: implementada; perfil general aditivo, host local persistente y recuperación
-  probada con procesos Node separados. Ver [guía y límites](ASSISTANT_HOST.md).
-- Fase 2: integración Telegram implementada y validada offline; vinculación,
-  deduplicación, entregas y aprobaciones persistentes. Ver [Telegram](ASSISTANT_TELEGRAM.md).
-  La validación con un bot real queda para el despliegue.
-- Fase 3: Calendar y OAuth implementados y validados con APIs simuladas; aprobación
-  Telegram, revalidación e idempotencia persistente. Ver [Calendar](ASSISTANT_CALENDAR.md).
-  Pendiente validación con cuentas reales; no hay migración automática del perfil anterior.
-- Fase 4: implementada; scheduler diario persistente, preferencias explícitas con
-  procedencia, zonas/DST, recuperación y outbox Telegram. Ver [automatizaciones](ASSISTANT_AUTOMATIONS.md).
-  Resumen determinista de solo lectura; validación con APIs simuladas.
-- Fase 5: validación local y preparación del piloto implementadas; onboarding,
-  preflight offline y matriz de aceptación en [piloto](ASSISTANT_PILOT.md).
-  El piloto de varios días y la certificación con cuentas reales siguen pendientes.
-- Este trabajo no autoriza publicación, despliegue ni merge a `main`.
+- Phase 0: complete; contracts, scaffold and installed-package acceptance.
+  Evidence and limitations are in the contracts document.
+- Phase 1: implemented; additive general profile, persistent local host and recovery
+  tested with separate Node processes. See [guide and limitations](ASSISTANT_HOST.md).
+- Phase 2: Telegram integration implemented and validated offline; linking,
+  deduplication, deliveries and persistent approvals. See [Telegram](ASSISTANT_TELEGRAM.md).
+  Validation with a real bot remains a deployment task.
+- Phase 3: Calendar and OAuth implemented and validated with simulated APIs; Telegram
+  approval, revalidation and persistent idempotency. See [Calendar](ASSISTANT_CALENDAR.md).
+  Real-account validation is pending; no automatic migration of the previous profile.
+- Phase 4: implemented; persistent daily scheduler, explicit preferences with
+  provenance, time zones/DST, recovery and Telegram outbox. See [automations](ASSISTANT_AUTOMATIONS.md).
+  Deterministic read-only summary; validation with simulated APIs.
+- Phase 5: local validation and pilot preparation implemented; onboarding,
+  offline preflight and acceptance matrix in the [pilot guide](ASSISTANT_PILOT.md).
+  The multi-day pilot and real-account certification remain pending.
+- This work does not authorize publication, deployment or merging into `main`.
 
-## Extensión posterior al MVP
+## Post-MVP extension
 
-Proveedores OpenAI compatibles configurables y módulos componibles implementados
-en Assistant, manteniendo una instancia por propietario. Calendar es el primer
-módulo y puede combinarse con herramientas MCP. Ver [contrato, ejemplos y evidencia](ASSISTANT_EXTENSIONS.md).
+Configurable OpenAI-compatible providers and composable modules are implemented
+in Assistant, keeping one instance per owner. Calendar is the first
+module and can be combined with MCP tools. See [contract, examples and evidence](ASSISTANT_EXTENSIONS.md).

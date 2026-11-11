@@ -1,3 +1,4 @@
+import { openTaskMetrics, taskUsageSchema, type TaskMetrics, type TaskRunSnapshot } from './task-metrics.js';
 import { createAssistantProvider, type AssistantProviderConfig } from './providers/provider.js';
 import { startAssistantWeb, type AssistantWebOptions } from './web/server.js';
 import type { AgendaSource } from './automation/summary.js';
@@ -17,6 +18,8 @@ import { createTelegramApi, type TelegramApi } from "./telegram/api.js";
 
 export interface AssistantHostOptions {
   directory: string;
+  /** Explicit dated token prices; missing/stale prices remain unknown. */
+  taskMetricsPricing?: NonNullable<CreateProfiledHarnessOptions["usageAccounting"]>["pricing"];
   web?: AssistantWebOptions;
   ownerId: string;
   /** Explicit dead-process recovery. Never steals a live service. */
@@ -87,19 +90,40 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
     if (await file.readFile("utf8") !== binding) throw new Error("ASSISTANT_HOST_BINDING_MISMATCH");
   } finally { await file.close(); }
   const harness = await createProfiledHarness({
-    ...options.engine, agentProfile: profile, workspace, stateDirectory: path.join(workspace, ".zhivex-harness"),
+    ...options.engine, usageAccounting: { ...(options.taskMetricsPricing ? { pricing: options.taskMetricsPricing } : {}) }, agentProfile: profile, workspace, stateDirectory: path.join(workspace, ".zhivex-harness"),
     tenantId: "assistant-local", userId: options.ownerId, namespace: "assistant-v1", storeBackend: "sqlite",
     executionBackend: "none", subagentProfiles: [], projectContext: false, projectMemory: false,
     timeoutMs: options.engine?.timeoutMs ?? 60_000, maxSteps: options.engine?.maxSteps ?? 16,
     maxToolCalls: options.engine?.maxToolCalls ?? 16
   });
   let serviceOwnsHarness = false;
+  let metrics: TaskMetrics | undefined;
+  const observeRun = async (sessionId: string, runId: string) => {
+    const run = await harness.store.load(runId, harness.config.scope);
+    // Use the public durable usage ledger, never sum streaming/cumulative receipts.
+    let usage: TaskRunSnapshot['usage'] = null;
+    try { usage = taskUsageSchema.parse(harness.usageLedger?.summary(runId)); } catch { /* A pre-initialization failure has no usage receipt. */ }
+    if (!run || run.startedAt === undefined || run.updatedAt === undefined) return; // Preserve an uncertain observation rather than invent a finish time.
+    metrics?.observe({ runId, sessionId, status: run.status,
+      startedAt: run.startedAt, updatedAt: run.updatedAt, usage });
+  };
+  const refreshMetrics = async () => {
+    for (const ref of metrics?.references() ?? []) await observeRun(ref.sessionId, ref.runId);
+  };
   try {
     if (options.recover) await recoverHarnessLocalService(harness, transport);
-    const service = await startHarnessLocalService(harness, { directory: transport });
+    const service = await startHarnessLocalService(harness, { directory: transport,
+      onPrompt: (sessionId, runId) => { const timestamp = Date.now(); metrics!.observe({ runId, sessionId,
+        status: 'running', startedAt: timestamp, updatedAt: timestamp, usage: null }); },
+      onCheckpoint: (sessionId, runId) => observeRun(sessionId, runId)
+    });
     serviceOwnsHarness = true;
+    service.pauseAdmission();
     let telegram: Awaited<ReturnType<typeof createTelegramBridge>> | undefined;
     try {
+      metrics = await openTaskMetrics(state);
+      await refreshMetrics();
+      service.resumeAdmission();
       if (options.telegram) {
         telegram = await createTelegramBridge({ stateDirectory: state, credentialsPath: service.credentialsPath,
           ownerId: options.ownerId, expectedTelegramUserId: options.telegram.expectedUserId,
@@ -107,10 +131,15 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
           ...(approvalDetails ? { approvalDetails } : {}), ...(reviewTools ? { reviewTools } : {}), ...(agendaSource ? { agendaSource } : {}), api: options.telegram.api ?? createTelegramApi(options.telegram.token), recover: options.recover ?? false });
         telegram.start();
       }
-    } catch (error) { await service.close(); throw error; }
+    } catch (error) { try { await service.close(); } finally { metrics?.close(); } throw error; }
     let closePromise: Promise<void> | undefined;
     let web: Awaited<ReturnType<typeof startAssistantWeb>> | undefined;
     const host = {
+      taskMetrics: {
+        async report() { await refreshMetrics(); return metrics!.report(); },
+        async feedback(input: unknown) { await refreshMetrics(); return metrics!.feedback(input); },
+        async link(input: unknown) { await refreshMetrics(); return metrics!.link(input); }
+      },
       credentialsPath: service.credentialsPath,
       pairingCode: telegram?.pairingCode,
       approvalDetails, agendaSource, reviewTools, automation: telegram?.automation,
@@ -122,7 +151,7 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
         ...(options.calendar ? { calendar: { enabled: true, calendarId: options.calendar.calendarId ?? 'primary' } } : {}) }),
       // In-process trusted UI only; remote callbacks must use the ordinary protocol.
       dispatchReviewed: service.dispatchReviewed.bind(service),
-      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { await closeModules?.(); } } } })()
+      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { try { metrics?.close(); } finally { await closeModules?.(); } } } } })()
     };
     try { if (options.web) web = await startAssistantWeb(host, options.web); }
     catch (error) { await host.close(); throw error; }

@@ -16,7 +16,7 @@ cancellation; it does not promise a resumable pause or financial reservation.
 ## Visual comparison
 
 Compared actual PNG pixels with the reference at **1487 × 1058**, same open-modal
-state: Próxima tarea selected, Gasto estimado expanded, unchecked activation,
+state: Next task selected, Estimated spend expanded, unchecked activation,
 empty disabled amount, remaining sections collapsed. The real modal retains the
 688px width, charcoal surfaces, violet scope/save buttons, heading hierarchy,
 accordion rows, separate permission note and recorded-consumption footer.

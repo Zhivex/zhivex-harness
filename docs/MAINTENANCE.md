@@ -31,9 +31,11 @@ later releases automatically.
 
 ## Documentation policy
 
-Use English for maintained product and contributor guides. Keep one authoritative
-page per topic and link to it. Any future translations should mirror complete guides
-in a separate language directory. Preserve historical reports in their original language.
+Use English for repository documentation, including product guides, contributor guides,
+READMEs and historical reports. Keep one authoritative page per topic and link to it.
+Any future translations should mirror complete guides in a separate language directory.
+When translating historical reports, preserve their findings, measurements, artifact
+identities, evidence links and limitations. Identify translated verbatim quotations as translations.
 
 Keep the root README focused on installation, the first task, product choices and
 material limitations. Put scripts and API contracts in integration references;

@@ -60,7 +60,7 @@ The SDK team backlog in Notion's Zhivex area contains these verified-created tas
   code inspection and transport regression; the SDK task explicitly requires an
   integrated approval/compaction reproduction before implementing an upstream fix.
 
-At creation all three were tagged SDK-Typescript, priority Alta, status Sin empezar.
+At creation all three were tagged SDK-Typescript, priority High, status Not started.
 Their SDK fixes are now integrated as described above; this historical record does
 not assert their current Notion workflow status.
 

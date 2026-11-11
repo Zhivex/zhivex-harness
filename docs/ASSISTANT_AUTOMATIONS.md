@@ -1,12 +1,12 @@
-# Assistant — Automatizaciones y memoria personal (fase 4)
+# Assistant — Automations and personal memory (phase 4)
 
-Un resumen diario por propietario, sobre el calendario conectado. Se activa
-explícitamente desde el chat privado vinculado; iniciar el host no lo activa.
-Requiere Calendar y Telegram configurados según [Calendar](ASSISTANT_CALENDAR.md).
-No necesita otra clave ni cambia el perfil de fase 3: se puede reutilizar ese
-directorio, cuenta y vinculación. La migración del store Telegram es aditiva.
+One daily summary per owner, using the connected calendar. It is enabled
+explicitly from the linked private chat; starting the host does not enable it.
+Requires Calendar and Telegram configured as described in [Calendar](ASSISTANT_CALENDAR.md).
+It needs no additional key and does not change the phase 3 profile: that directory,
+account and linking can be reused. The Telegram store migration is additive.
 
-## Uso desde Telegram
+## Telegram usage
 
 ```text
 /daily 08:00 America/Argentina/Buenos_Aires
@@ -16,14 +16,14 @@ directorio, cuenta y vinculación. La migración del store Telegram es aditiva.
 /daily delete
 ```
 
-El primer comando guarda hora y zona, el calendario fijado por el host y un margen
-de conflicto inicial de cero minutos. Activa el próximo horario futuro. Pausar
-cancela lecturas/entregas pendientes; reanudar programa el próximo horario, sin
-recuperar ejecuciones canceladas. Eliminar quita la automatización, conservando
-preferencias y recibos de ocurrencias para impedir duplicados al recrearla.
-Un envío que ya empezó no puede retirarse.
+The first command saves the time and zone, the calendar fixed by the host and an initial
+conflict buffer of zero minutes. It enables the next future scheduled time. Pausing
+cancels pending reads/deliveries; resuming schedules the next time without
+recovering canceled runs. Deleting removes the automation while preserving
+preferences and occurrence receipts to prevent duplicates if it is recreated.
+A send that has already started cannot be recalled.
 
-Memoria personal explícita, limitada a preferencias de esta automatización:
+Explicit personal memory, limited to this automation's preferences:
 
 ```text
 /memory list
@@ -35,88 +35,88 @@ Memoria personal explícita, limitada a preferencias de esta automatización:
 /memory forget all
 ```
 
-Cada valor conserva procedencia del mensaje autenticado del propietario y fecha.
-Corregir una preferencia recalcula el horario futuro y cancela trabajo pendiente;
-no activa una automatización pausada. El calendario solo puede ser el configurado
-en el host, nunca una cuenta seleccionada por un mensaje. El margen admite 0–120
-minutos. Olvidar elimina la preferencia activa y pausa el resumen hasta completar
-la configuración; no borra mensajes ya enviados, inbox, historial conversacional
-ni recibos operativos. No hay extracción automática, memoria semántica ni texto
-libre convertido en instrucciones. Las preferencias nunca conceden permisos.
+Each value retains provenance from the owner's authenticated message and its date.
+Correcting a preference recalculates future scheduling and cancels pending work;
+it does not enable a paused automation. The calendar can only be the one configured
+in the host, never an account selected by a message. The buffer accepts 0–120
+minutes. Forgetting removes the active preference and pauses the summary until
+configuration is complete; it does not erase sent messages, inbox, conversation
+history or operational receipts. There is no automatic extraction, semantic memory or free
+text converted to instructions. Preferences never grant permissions.
 
-## Horario, reinicios y presupuesto
+## Scheduling, restarts and budget
 
-- Se usa la zona explícita mediante `Intl`, independientemente de la zona del SO.
-  Una hora repetida por DST se ejecuta en su primera aparición. Si la hora no
-  existe por un salto, se usa el primer minuto existente posterior de ese día.
-  Un día completo inexistente se omite. El intervalo leído respeta días de 23/25 horas.
-- El scheduler consulta cada 30 segundos con el host en ejecución. No instala un
-  servicio del SO ni puede despertar una máquina suspendida.
-- Política `catch-up-today`: tras reiniciar recupera solo la ocurrencia pendiente
-  del día local actual, si ya pasó su horario. Omite fechas anteriores; no acumula
-  un backlog. Un resumen en cola vence al terminar su día, incluso si el proceso
-  reinicia antes de que el scheduler vuelva a consultar.
-- Una ocurrencia por fecha local, con al menos 20 horas entre admisiones. Ese límite
-  también rige al cambiar zona/horario o recrear la automatización; una recuperación
-  muy tardía puede hacer que se omita el horario siguiente para evitar una ráfaga.
-- Máximo tres intentos de lectura, separados por cinco minutos, con presupuesto
-  de 60 segundos por intento y hasta diez páginas de 100 eventos. El contador
-  persiste incluso si se interrumpe la lectura. Una agenda incompleta produce un
-  aviso de fallo, nunca un resumen que afirme que no hay conflictos.
-- Hasta 3660 recibos de ocurrencia, sin borrado automático que pierda deduplicación.
-  Al alcanzar el límite se detienen nuevas admisiones y se informa fallo en
-  diagnóstico. No hay consumo de tokens de modelo en este resumen determinista.
+- The explicit time zone is used through `Intl`, independently of the OS zone.
+  A time repeated by DST executes at its first occurrence. If a time does not
+  exist because of a clock jump, the first subsequent existing minute that day is used.
+  An entirely nonexistent day is skipped. The read interval respects 23/25-hour days.
+- The scheduler polls every 30 seconds while the host runs. It does not install an
+  OS service and cannot wake a sleeping machine.
+- `catch-up-today` policy: after restart, recover only the pending occurrence
+  for the current local day if its scheduled time has passed. Skip earlier dates; do not build
+  a backlog. A queued summary expires at the end of its day, even if the process
+  restarts before the scheduler polls again.
+- One occurrence per local date, with at least 20 hours between admissions. This limit
+  also applies when changing zone/time or recreating the automation; a very late
+  recovery can cause the next scheduled time to be skipped to prevent a burst.
+- At most three read attempts, five minutes apart, with a 60-second budget
+  per attempt and up to ten pages of 100 events. The counter
+  persists even if reading is interrupted. An incomplete schedule produces a
+  failure notice, never a summary claiming there are no conflicts.
+- Up to 3660 occurrence receipts, without automatic deletion that would lose deduplication.
+  Reaching the limit stops new admissions and reports a diagnostic failure.
+  This deterministic summary consumes no model tokens.
 
-## Contenido y seguridad
+## Content and security
 
-El resumen incluye agenda, zona, calendario y conflictos. Compara intervalos
-ocupados y el margen explícito; dos eventos adyacentes no chocan con margen cero.
-Incluye eventos de día completo y excluye de conflictos eventos cancelados,
-marcados libres o rechazados por el propietario. Muestra hasta 60 eventos y 20
-pares en conflicto, indicando el total; analiza todos los eventos recuperados.
-Es una lectura informativa del momento, no una instantánea transaccional de Google.
+The summary includes schedule, time zone, calendar and conflicts. It compares
+busy intervals and the explicit buffer; adjacent events do not conflict with a zero buffer.
+It includes all-day events and excludes canceled events,
+events marked free or declined by the owner from conflict detection. It shows up to 60 events and 20
+conflicting pairs, indicating the total; it analyzes all retrieved events.
+It is an informational read at that moment, not a transactional Google snapshot.
 
-Títulos son datos, no instrucciones: se entregan como texto sin formato y sin
-pasar por el modelo. El scheduler recibe únicamente la capacidad de listar el
-calendario; no puede modificarlo. Las modificaciones conversacionales conservan
-la aprobación, revalidación e idempotencia de fase 3. No se agregan permisos,
-herramientas ni memoria al perfil de Harness.
+Titles are data, not instructions: they are delivered as plain text without
+passing through the model. The scheduler receives only the calendar-listing
+capability; it cannot modify the calendar. Conversational modifications retain
+phase 3 approval, revalidation and idempotency. No permissions,
+tools or memory are added to the Harness profile.
 
-## Persistencia y entrega
+## Persistence and delivery
 
-Assistant agrega `personal_preferences`, `daily_schedule`, `daily_occurrences`
-y vencimiento opcional de outbox a su propio `state/telegram.sqlite`. Comparte
-el lease exclusivo de Telegram y su binding propietario/bot/chat. La fuente queda
-además ligada a la conexión/calendario. No lee tablas internas de Harness.
+Assistant adds `personal_preferences`, `daily_schedule`, `daily_occurrences`
+and optional outbox expiry to its own `state/telegram.sqlite`. It shares
+Telegram's exclusive lease and owner/bot/chat binding. The source is
+also bound to the connection/calendar. It does not read internal Harness tables.
 
-La clave `daily:AAAA-MM-DD` identifica la ocurrencia dentro del propietario y
-conexión fijados. Registrar el resumen en outbox y marcarlo preparado es una sola
-transacción. Reiniciar después de ese commit entrega el texto persistido sin otra
-lectura. Si el proceso muere durante la lectura, puede repetirla dentro del
-presupuesto; nunca repite una escritura Calendar. Pausar, eliminar o corregir
-preferencias invalida los resultados en curso por revisión y estado.
+The `daily:YYYY-MM-DD` key identifies the occurrence within the fixed owner and
+connection. Recording the summary in the outbox and marking it prepared is one
+transaction. Restarting after that commit delivers the persisted text without another
+read. If the process dies during reading, it can repeat the read within
+budget; it never repeats a Calendar write. Pausing, deleting or correcting
+preferences invalidates in-flight results through revision and status checks.
 
-Las entregas usan la cola de Telegram existente: deduplicación local, reintentos
-acotados para rechazos reintentables y estado incierto si el envío pudo ocurrir.
-Un envío incierto no se repite automáticamente. `/daily status` muestra estado,
-próximo horario, últimas ocurrencias y contadores de fragmentos de entrega. Un
-resumen preparado no implica que todos sus fragmentos hayan llegado.
+Deliveries use the existing Telegram queue: local deduplication, bounded retries
+for retryable rejections and uncertain status if sending may have occurred.
+An uncertain send is not repeated automatically. `/daily status` shows status,
+next scheduled time, latest occurrences and delivery chunk counters. A
+prepared summary does not imply that all its chunks arrived.
 
-Preferencias, recibos y textos de agenda están en el store privado con permisos
-locales, sin cifrado adicional; OAuth sigue cifrado con la clave externa de fase 3.
+Preferences, receipts and schedule text are in the private store with local
+permissions, without additional encryption; OAuth remains encrypted with the external phase 3 key.
 
-## Validación
+## Validation
 
-`tests/automation.test.ts` cubre zonas y DST, recuperación del día actual, omisión
-de días anteriores, deduplicación, pausa durante lecturas, edición/olvido de
-preferencias, límites de reintentos y paginación, conflictos y expiración de envíos.
-La aceptación integrada usa host y Telegram bridge reales con APIs simuladas.
-`tests/fixtures/daily-process.mjs` prueba SIGKILL durante una lectura, recuperación
-con otro proceso Node, entrega única y un segundo reinicio sin otra lectura.
-No se enviaron mensajes reales ni se habilitó una automatización en una cuenta.
+`tests/automation.test.ts` covers time zones and DST, current-day recovery, skipping
+previous days, deduplication, pausing during reads, editing/forgetting
+preferences, retry and pagination limits, conflicts and send expiry.
+Integrated acceptance uses the real host and Telegram bridge with simulated APIs.
+`tests/fixtures/daily-process.mjs` tests SIGKILL during a read, recovery
+with another Node process, single delivery and a second restart without another read.
+No real messages were sent and no account automation was enabled.
 
-Aceptación local 2026-11-10: `smoke:installed` pasó con 39 pruebas, 204 aserciones,
-0 fallos, typecheck y ejemplo offline Node. Candidato Harness 1.6.3 no publicado,
+Local acceptance 2026-11-10: `smoke:installed` passed with 39 tests, 204 assertions,
+0 failures, typecheck and offline Node example. Unpublished Harness candidate 1.6.3,
 SHA-256 `54b1e7aaab287f3b37fa3d6194fe3b3904375956bf48507ffefdf52d5e495052`.
-También pasaron `architecture:check`, `contract:check`, `docs:check` y
-`git diff --check`. No se hizo merge ni publicación.
+`architecture:check`, `contract:check`, `docs:check` and
+`git diff --check` also passed. No merge or publication was performed.
