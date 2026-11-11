@@ -1,0 +1,126 @@
+import { startAssistantWeb, type AssistantWebOptions } from './web/server.js';
+import type { AgendaSource } from './automation/summary.js';
+import { type CalendarConnectionOptions } from "./calendar/connection.js";
+import { createCalendarModule } from "./modules/calendar.js";
+import { openAssistantModules, type AssistantModule } from "./modules/module.js";
+import { createCompatibleProvider, type CompatibleProviderConfig } from "./providers/openai-compatible.js";
+
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
+import { mkdir, lstat, realpath, open } from "node:fs/promises";
+import path from "node:path";
+import { createProfiledHarness, GENERAL_ASSISTANT_PROFILE, harnessAgentProfileSchema, type CreateProfiledHarnessOptions } from "@zhivex-ai/harness/engine";
+import { startHarnessLocalService, recoverHarnessLocalService } from "@zhivex-ai/harness/service";
+import { createTelegramBridge } from "./telegram/bridge.js";
+import { createTelegramApi, type TelegramApi } from "./telegram/api.js";
+
+export interface AssistantHostOptions {
+  directory: string;
+  web?: AssistantWebOptions;
+  ownerId: string;
+  /** Explicit dead-process recovery. Never steals a live service. */
+  recover?: boolean;
+  calendar?: CalendarConnectionOptions;
+  modules?: readonly AssistantModule[];
+  compatibleProvider?: CompatibleProviderConfig;
+  telegram?: { token: string; expectedUserId: string; api?: TelegramApi };
+  /** Trusted application configuration only; never deserialize this from channel messages. */
+  engine?: Partial<Pick<CreateProfiledHarnessOptions, "provider" | "model" | "modelInstance" | "agentProfile" |
+    "mcpConfiguration" | "mcpClients" | "toolPolicy" | "timeoutMs" | "maxSteps" | "maxToolCalls">>;
+}
+
+async function privateDirectory(directory: string) {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const stat = await lstat(directory);
+  if (!stat.isDirectory() || stat.isSymbolicLink() || stat.uid !== process.getuid?.() || (stat.mode & 0o077)) {
+    throw new Error("ASSISTANT_DIRECTORY_UNSAFE");
+  }
+  return realpath(directory);
+}
+
+/** Long-lived local host. Harness exclusively owns conversation/run/approval persistence. */
+export async function startAssistantHost(options: AssistantHostOptions) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(options.ownerId)) throw new Error('ASSISTANT_OWNER_INVALID');
+  if (options.compatibleProvider && (options.engine?.modelInstance || options.engine?.provider || options.engine?.model)) throw new Error('ASSISTANT_PROVIDER_CONFLICT');
+  const provider = options.compatibleProvider ? createCompatibleProvider(options.compatibleProvider) : undefined;
+  const definitions = [...(options.modules ?? []), ...(options.calendar ? [createCalendarModule(options.calendar)] : [])];
+  if (definitions.length && (options.engine?.agentProfile || options.engine?.mcpClients || options.engine?.mcpConfiguration)) throw new Error('ASSISTANT_MODULE_ENGINE_CONFLICT');
+  const directory = await privateDirectory(path.resolve(options.directory));
+  const modules = definitions.length ? await openAssistantModules(definitions, { directory, ownerId: options.ownerId, recover: options.recover ?? false }) : undefined;
+  try {
+    let engine = { ...options.engine, ...modules?.engine };
+    if (provider) {
+      const base = engine.agentProfile ?? GENERAL_ASSISTANT_PROFILE;
+      engine = { ...engine, provider: 'openai', model: provider.config.model, modelInstance: provider.model,
+        agentProfile: { ...base, toolNames: [...base.toolNames], instructions: base.instructions + `\nAssistant provider configuration digest: ${provider.binding}` } };
+    }
+    return await startAssistantHostOwned({ ...options, engine }, modules?.close, modules?.approvalDetails, modules?.agendaSource, modules?.reviewTools,
+      modules?.identity.map(item => ({ id: item.id, version: item.version })));
+  } catch (error) { await modules?.close().catch(() => {}); throw error; }
+}
+
+async function startAssistantHostOwned(options: AssistantHostOptions, closeModules?: () => Promise<void>, approvalDetails?: (run: import('@zhivex-ai/harness/protocol').HarnessClientRun) => Promise<unknown>, agendaSource?: AgendaSource, reviewTools?: string[], moduleIdentity?: { id: string; version: string }[]) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(options.ownerId)) throw new Error("ASSISTANT_OWNER_INVALID");
+  const profile = harnessAgentProfileSchema.parse(options.engine?.agentProfile ?? GENERAL_ASSISTANT_PROFILE);
+  const directory = await privateDirectory(path.resolve(options.directory));
+  const workspace = await privateDirectory(path.join(directory, "workspace"));
+  const transport = await privateDirectory(path.join(directory, "transport"));
+  const state = await privateDirectory(path.join(directory, "state"));
+  const binding = JSON.stringify({ schemaVersion: 1, ownerId: options.ownerId,
+    profileDigest: createHash("sha256").update(JSON.stringify({ ...profile, toolNames: [...new Set(profile.toolNames)].sort() })).digest("hex") });
+  // Exclusive creation prevents racing owners. Incomplete/corrupt state fails closed.
+  const manifestPath = path.join(state, "host.json");
+  try {
+    const file = await open(manifestPath, "wx", 0o600);
+    try { await file.writeFile(binding); await file.sync(); } finally { await file.close(); }
+    const parent = await open(state, "r");
+    try { await parent.sync(); } finally { await parent.close(); }
+  } catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+  const file = await open(manifestPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const stat = await file.stat();
+    if (!stat.isFile() || stat.uid !== process.getuid?.() || (stat.mode & 0o077) || stat.size > 4096) throw new Error("ASSISTANT_STATE_UNSAFE");
+    if (await file.readFile("utf8") !== binding) throw new Error("ASSISTANT_HOST_BINDING_MISMATCH");
+  } finally { await file.close(); }
+  const harness = await createProfiledHarness({
+    ...options.engine, agentProfile: profile, workspace, stateDirectory: ".zhivex-harness",
+    tenantId: "assistant-local", userId: options.ownerId, namespace: "assistant-v1", storeBackend: "sqlite",
+    executionBackend: "none", subagentProfiles: [], projectContext: false, projectMemory: false,
+    timeoutMs: options.engine?.timeoutMs ?? 60_000, maxSteps: options.engine?.maxSteps ?? 16,
+    maxToolCalls: options.engine?.maxToolCalls ?? 16
+  });
+  let serviceOwnsHarness = false;
+  try {
+    if (options.recover) await recoverHarnessLocalService(harness, transport);
+    const service = await startHarnessLocalService(harness, { directory: transport });
+    serviceOwnsHarness = true;
+    let telegram: Awaited<ReturnType<typeof createTelegramBridge>> | undefined;
+    try {
+      if (options.telegram) {
+        telegram = await createTelegramBridge({ stateDirectory: state, credentialsPath: service.credentialsPath,
+          ownerId: options.ownerId, expectedTelegramUserId: options.telegram.expectedUserId,
+          ...(approvalDetails ? { approvalDetails } : {}), ...(reviewTools ? { reviewTools } : {}), ...(agendaSource ? { agendaSource } : {}), api: options.telegram.api ?? createTelegramApi(options.telegram.token), recover: options.recover ?? false });
+        telegram.start();
+      }
+    } catch (error) { await service.close(); throw error; }
+    let closePromise: Promise<void> | undefined;
+    let web: Awaited<ReturnType<typeof startAssistantWeb>> | undefined;
+    const host = {
+      credentialsPath: service.credentialsPath,
+      pairingCode: telegram?.pairingCode,
+      approvalDetails, agendaSource, reviewTools, automation: telegram?.automation,
+      diagnostics: () => ({ schemaVersion: 1, product: "assistant", ownerId: options.ownerId,
+        profile: { id: profile.id, version: profile.version }, transport: "unix", persistence: "sqlite",
+        ...(telegram ? { telegram: telegram.diagnostics() } : {}),
+        modules: moduleIdentity ?? [],
+        ...(options.compatibleProvider ? { provider: { kind: "openai-compatible", model: options.compatibleProvider.model, apiMode: options.compatibleProvider.apiMode } } : {}),
+        ...(options.calendar ? { calendar: { enabled: true, calendarId: options.calendar.calendarId ?? 'primary' } } : {}) }),
+      // In-process trusted UI only; remote callbacks must use the ordinary protocol.
+      dispatchReviewed: service.dispatchReviewed.bind(service),
+      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { await closeModules?.(); } } } })()
+    };
+    try { if (options.web) web = await startAssistantWeb(host, options.web); }
+    catch (error) { await host.close(); throw error; }
+    return { ...host, webUrl: web?.url };
+  } catch (error) { if (!serviceOwnsHarness) await harness.close(); throw error; }
+}

@@ -30,6 +30,7 @@ export const sourceDependencies = (source: string): SourceDependency[] => {
 };
 
 const desktopPackageImports = new Set(["engine", "protocol", "client", "service", "models", "desktop/v1/state", "desktop/v1/providers"].map(name => `@zhivex-ai/harness/${name}`));
+const assistantPackageImports = new Set(["engine", "protocol", "client", "service"].map(name => `@zhivex-ai/harness/${name}`));
 const resolveSource = (file: string, target: string) => path.posix.normalize(path.posix.join(path.posix.dirname(file), target)).replace(/\.js$/, ".ts");
 
 export const architectureViolations = (file: string, source: string): string[] => {
@@ -40,6 +41,12 @@ export const architectureViolations = (file: string, source: string): string[] =
   for (const dependency of sourceDependencies(source)) {
     const target = dependency.target.startsWith(".") ? resolveSource(file, dependency.target) : dependency.target;
     const reject = (reason: string) => violations.push(`${file} -> ${dependency.target}: ${reason}`);
+    if (file.startsWith("packages/assistant/src/")) {
+      if (dependency.computed || (dependency.target.startsWith(".") && !target.startsWith("packages/assistant/src/")) || path.isAbsolute(target) ||
+          /^@zhivex-ai\/(?:code|code-web)(?:\/|$)/.test(target)) reject("Assistant must not import repository internals or other products");
+      if (/^@zhivex-ai\/harness(?:\/|$)/.test(target) && !assistantPackageImports.has(target)) reject("Assistant must use declared engine integration exports");
+    }
+    if (file.startsWith("src/") && /^(packages\/assistant\/|@zhivex-ai\/assistant(?:\/|$))/.test(target)) reject("Harness must not depend on Assistant");
     if (file.startsWith("desktop/src/") && (target.startsWith("src/") || target.startsWith("packages/code/") || /^@zhivex-ai\/code(?:\/|$)/.test(target))) {
       reject("Desktop must consume declared Harness package exports, never repository source or Code");
     }
@@ -108,6 +115,7 @@ export const checkArchitecture = async (root: string): Promise<string[]> => {
   };
   await visit("src");
   await visit("desktop/src");
+  await visit("packages/assistant/src");
   violations.push(...engineBoundaryViolations(sources));
   return violations;
 };

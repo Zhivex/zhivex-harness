@@ -1,0 +1,48 @@
+{
+  "name": "@zhivex-ai/assistant",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Persistent local Assistant host for Zhivex Harness",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "zhivex-assistant": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts src/cli.ts --outdir dist --target node --packages external && bun run build:web",
+    "start": "node dist/cli.js",
+    "prepare:local": "bun run scripts/prepare-local.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
+    "test": "bun run build && bun test tests",
+    "smoke": "bun run build && node examples/offline.mjs",
+    "smoke:installed": "bun run scripts/smoke-installed.ts",
+    "build:web": "vite build --config web/vite.config.ts",
+    "dev:web": "vite --config web/vite.config.ts"
+  },
+  "dependencies": {
+    "@zhivex-ai/core": "1.37.0",
+    "@zhivex-ai/harness": "1.6.3",
+    "@zhivex-ai/openai": "0.17.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@phosphor-icons/react": "2.1.10",
+    "@types/bun": "1.4.3",
+    "@types/node": "^26.6.3",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@zhivex-ai/agents": "1.12.0",
+    "playwright": "1.64.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "packageManager": "bun@1.4.3"
+}

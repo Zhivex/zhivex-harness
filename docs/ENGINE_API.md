@@ -8,6 +8,13 @@ expect the new entrypoints to exist.
 
 ## Entry points
 
+The current source candidate adds experimental `createProfiledHarness`,
+`CreateProfiledHarnessOptions`, `HarnessAgentProfile`, `harnessAgentProfileSchema`
+and `GENERAL_ASSISTANT_PROFILE` to `/engine`. These are not in the published
+1.6.3 artifact. The existing stable constructor and coding defaults are unchanged.
+See [Assistant profiles and persistent host](ASSISTANT_HOST.md) for contracts and
+local-candidate setup.
+
 | Import | Use | Runtime |
 | --- | --- | --- |
 | `@zhivex-ai/harness/engine` | Configuration, execution, policies, approvals, tools, stores, providers and historical non-terminal library APIs | Node |

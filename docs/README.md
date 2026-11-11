@@ -19,6 +19,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Integrate Harness
 
+- [Assistant MVP plan](ASSISTANT_MVP_PLAN.md), [contracts](ASSISTANT_CONTRACTS.md) and [persistent host](ASSISTANT_HOST.md) and [Telegram](ASSISTANT_TELEGRAM.md): general profiles and a separate local assistant product.
 - [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
 - [Code release procedure](CODE_RELEASE.md): independent RC publication, exact artifact, bootstrap provenance and Trusted Publishing.
 
@@ -49,3 +50,11 @@ release artifact, not automatically to later source changes.
 - [Project memory](PROJECT_MEMORY.md): experimental explicit notes, review, retrieval budgets and deletion semantics.
 
 - [Optional Web limits and interactive defaults](WEB_LIMITS.md)
+
+- [Assistant Calendar](ASSISTANT_CALENDAR.md): OAuth, propuestas aprobadas y recuperación de efectos.
+
+- [Assistant automatizaciones](ASSISTANT_AUTOMATIONS.md): resumen diario, zonas y memoria personal explícita.
+
+- [Assistant piloto](ASSISTANT_PILOT.md): onboarding, regresiones, recuperación y aceptación con cuentas reales.
+
+- [Assistant extensiones](ASSISTANT_EXTENSIONS.md): proveedores compatibles configurables y módulos Calendar/MCP.
