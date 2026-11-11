@@ -1,6 +1,7 @@
 import { parseCompatibleProvider, type CompatibleProviderConfig } from './providers/openai-compatible.js';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
+import { providerAvailability } from '@zhivex-ai/harness/engine';
 
 /** Offline configuration check. Never reads credentials/state contents, writes files, or calls providers. */
 export async function assistantDoctor(input: { directory: string; ownerId: string; calendar: boolean; telegramOwner?: string; provider?: string; compatibleProvider?: CompatibleProviderConfig }, env: NodeJS.ProcessEnv = process.env) {
@@ -37,7 +38,14 @@ export async function assistantDoctor(input: { directory: string; ownerId: strin
       check('compatible-credential', Boolean(env[config.apiKeyEnv]?.trim()), 'Set the configured API key environment variable.');
     } catch { check('compatible-provider', false, 'Invalid compatible-provider configuration.'); }
   }
-  check('provider', Boolean(input.provider || input.compatibleProvider), 'Choose --provider explicitly and configure its credential using the provider guide. Provider access is not tested offline.');
+  if (input.compatibleProvider) {
+    check('provider', !input.provider, 'A compatible provider cannot be combined with --provider.');
+  } else {
+    const provider = providerAvailability(env).find(item => item.id === input.provider?.trim().toLowerCase());
+    check('provider', Boolean(provider), 'Choose a supported --provider or configure an OpenAI-compatible provider.');
+    if (provider) check('provider-configuration', provider.configured,
+      'Configure the provider credentials and required environment using its guide. Presence does not verify remote access.');
+  }
   return { kind: 'assistant-doctor', ok: checks.every(item => item.ok), mode: 'offline', checks,
     unverified: ['OAuth consent and token validity', 'Telegram bot ownership, webhook and pairing', 'Model provider credential and access', 'Persisted profile binding and recovery', 'Live delivery and Calendar permissions'] };
 }

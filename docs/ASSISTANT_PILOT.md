@@ -4,6 +4,8 @@ Estado: candidato local, no publicado. Fases 0–4 implementadas. La fase 5 prep
 el onboarding y valida el software localmente; el piloto de varios días con
 cuentas reales tiene su propia aceptación y **todavía no está ejecutado**.
 
+Para la primera sesión de uso, seguir la [guía de pruebas de hoy](ASSISTANT_FIRST_DAY.md).
+
 ## Onboarding de punta a punta
 
 Usar una máquina local con Node >=22.13, Bun >=1.4, red y navegador local. Elegir
@@ -43,7 +45,8 @@ si se viene del perfil sin Calendar, usar un directorio nuevo.
    ```
 
    Debe terminar con `ok: true`. Valida forma de configuración, versión de Node
-   y directorio; no crea estado ni consulta servicios. No prueba credenciales,
+   y directorio, proveedor reconocido y configuración local del proveedor; no
+   crea estado ni consulta servicios. No prueba validez remota de credenciales,
    permisos Google, webhook, propietario remoto ni compatibilidad del estado
    existente. La salida enumera expresamente estas comprobaciones pendientes.
 
@@ -61,7 +64,7 @@ si se viene del perfil sin Calendar, usar un directorio nuevo.
 6. Iniciar el proceso en primer plano:
 
    ```sh
-   bun run --cwd packages/assistant start --directory "$HOME/.zhx-pilot" --owner local-owner --provider openai --calendar --calendar-id primary --telegram-owner 123456789
+   bun run --cwd packages/assistant start --directory "$HOME/.zhx-pilot" --owner local-owner --provider openai --calendar --calendar-id primary --telegram-owner 123456789 --web
    ```
 
    Debe imprimir `assistant-ready`. Desde la cuenta elegida, enviar al bot por
@@ -69,6 +72,8 @@ si se viene del perfil sin Calendar, usar un directorio nuevo.
    “Propietario vinculado”. Un usuario distinto, grupo o código vencido no vincula.
    Conservar los mismos flags al reiniciar. No ejecutar dos hosts sobre el mismo
    estado ni dos consumidores polling del mismo bot.
+   Abrir también el enlace privado `assistant-web` para probar agenda,
+   conversaciones y revisiones desde el navegador. El enlace cambia al reiniciar.
 
 7. Pedir la agenda y luego un cambio acotado sobre un evento de prueba organizado
    por la cuenta. Usar asistentes de prueba bajo control del piloto: aprobar

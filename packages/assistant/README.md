@@ -91,6 +91,9 @@ automatically. The token stays in memory, and uncertain sends are not auto-retri
 
 ## Pilot onboarding
 
+Para probar hoy con Calendar, Telegram y la web local, seguir el
+[recorrido de primera sesión](../../docs/ASSISTANT_FIRST_DAY.md).
+
 Follow the [complete pilot guide](../../docs/ASSISTANT_PILOT.md) for offline preflight
 (`--doctor`), Google consent, Telegram pairing, recovery and the three-day acceptance
 record. Local validation does not certify a live account or a completed pilot.

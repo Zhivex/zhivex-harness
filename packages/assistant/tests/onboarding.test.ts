@@ -9,11 +9,25 @@ test('offline onboarding reports missing config without revealing secrets or cre
   try {
     const input = { directory: directory + '/runtime', ownerId: 'owner', calendar: true, telegramOwner: '123', provider: 'openai' };
     const invalid = await assistantDoctor(input, {}); expect(invalid.ok).toBe(false);
-    expect(invalid.checks.filter(check => !check.ok).map(check => check.name)).toEqual(['google-client','credential-key','telegram-token']);
+    expect(invalid.checks.filter(check => !check.ok).map(check => check.name)).toEqual(['google-client','credential-key','telegram-token','provider-configuration']);
     const key = randomBytes(32).toString('base64'), token = '123:' + 'a'.repeat(30);
-    const report = await assistantDoctor(input, { ASSISTANT_CREDENTIAL_KEY: key, ASSISTANT_GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', ASSISTANT_TELEGRAM_BOT_TOKEN: token });
+    const report = await assistantDoctor(input, { OPENAI_API_KEY: 'offline-provider-secret', ASSISTANT_CREDENTIAL_KEY: key, ASSISTANT_GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com', ASSISTANT_TELEGRAM_BOT_TOKEN: token });
     expect(report.ok).toBe(true); expect(report.mode).toBe('offline'); expect(report.unverified).toContain('OAuth consent and token validity');
     expect(JSON.stringify(report)).not.toContain(key); expect(JSON.stringify(report)).not.toContain(token);
+    expect(JSON.stringify(report)).not.toContain('offline-provider-secret');
+    expect(await readdir(directory)).toEqual([]);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('preflight rejects unknown providers and blank credentials, accepting the Qwen alias without exposing it', async () => {
+  const directory = await mkdtemp('/tmp/assistant-provider-doctor-');
+  try {
+    const input = { directory, ownerId: 'owner', calendar: false };
+    expect((await assistantDoctor({ ...input, provider: 'unknown' }, {})).ok).toBe(false);
+    expect((await assistantDoctor({ ...input, provider: 'openai' }, { OPENAI_API_KEY: '  ' })).ok).toBe(false);
+    const result = await assistantDoctor({ ...input, provider: 'qwen' }, { QWEN_API_KEY: 'offline-qwen-secret' });
+    expect(result.ok).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('offline-qwen-secret');
     expect(await readdir(directory)).toEqual([]);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
