@@ -74,6 +74,19 @@ node node_modules/@zhivex-ai/code/examples/first-use.mjs
 
 The launcher creates a temporary workspace and walks through inspect, checkpoint, a per-run budget, a reviewed diff, a reviewed Node test, `/usage`, Ctrl+C, exit, reopen, and `/continue`. Model responses are synthetic. The console, persistence, approvals, file edits, and the Node check still run. The script prints the command that reopens the same workspace.
 
+## Appearance
+
+Use `/theme light`, `/theme dark`, or `/theme system` in either the direct console
+or the service console. The choice applies to this process. Set `ZHIVEX_THEME=light`
+(or `dark` / `system`) before launching to choose a default for future processes.
+System reads `COLORFGBG` when available and defaults to the dark palette otherwise.
+The terminal's background stays under your terminal application's control; Code
+adjusts the foreground colors of the welcome, composer, activity and reviewed diffs.
+`NO_COLOR`, non-TTY output and `TERM=dumb` retain their existing plain-output behavior.
+
+The web workspace has a separate Light / Dark / System preference, stored in the
+browser. It does not change the terminal's appearance.
+
 ## Commands worth knowing
 
 Approvals for reviewed edits show a per-file changed-region diff when the engine can preview it. The complete approval payload remains available via Details (`d`). Unavailable or oversized previews are labeled explicitly; the engine still rechecks preconditions when applying changes.

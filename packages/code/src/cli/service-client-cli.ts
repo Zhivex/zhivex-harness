@@ -1,3 +1,4 @@
+import { terminalThemeCommand } from "./terminal/terminal-theme.js";
 import { ActivityHistory, formatAppliedFiles } from "./terminal/activity-history.js";
 import { ToolActivity } from "./terminal/tool-activity.js";
 import { navigateConsole } from "./console/console-navigation.js";
@@ -142,7 +143,8 @@ export const runServiceCli = async (options: CliOptions, annotate: (error: unkno
               const selected=await navigateConsole(input,{entry:"menu",current:{provider:"service",model:"host"},providers:[],service:true,sessions:async()=>(await list()).map(s=>({value:s.sessionId,label:s.title??"Untitled conversation",detail:s.sessionId}))});
               if(!selected||!("command" in selected))continue;text=selected.command;
             }
-            if(text==="/help"||text==="/help all")process.stdout.write(formatConsoleHelp("service",text==="/help all"));
+            if(text==="/theme"||text.startsWith("/theme "))process.stdout.write(terminalThemeCommand(text));
+            else if(text==="/help"||text==="/help all")process.stdout.write(formatConsoleHelp("service",text==="/help all"));
             else if(text==="/activity"||text==="/activity clear"){if(text.endsWith(" clear"))history.clear();process.stdout.write(history.render());}
             else if(text==="/queue clear"){input.clearQueue();process.stdout.write("Queued tasks cleared.\n");}
             else if(text==="/queue")process.stdout.write(input.queueSummary());

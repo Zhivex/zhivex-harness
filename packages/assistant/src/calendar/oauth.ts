@@ -8,10 +8,12 @@ export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const credentialsSchema = z.object({ connectionId: z.string(), accountId: z.string(), email: z.string(), clientId: z.string(),
   accessToken: z.string(), refreshToken: z.string(), expiresAt: z.number(), scope: z.string() });
 export type CalendarCredentials = z.infer<typeof credentialsSchema>;
-export interface CalendarOAuthOptions { clientId: string; clientSecret?: string; fetcher?: CalendarFetch; now?: () => number }
+export interface CalendarOAuthOptions { clientId: string; clientSecret?: string | undefined; fetcher?: CalendarFetch; now?: () => number; requiredScopes?: readonly string[] }
 export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuthOptions) {
   if (!options.clientId.endsWith('.apps.googleusercontent.com')) throw new Error('CALENDAR_CLIENT_ID_INVALID');
   const fetcher = options.fetcher ?? fetch, now = options.now ?? Date.now;
+  const scopes = options.requiredScopes ?? [CALENDAR_SCOPE];
+  const hasScopes = (scope: string) => scopes.every(required => scope.split(' ').includes(required));
   const tokenRequest = (fields: Record<string, string>) => googleJson(fetcher, 'https://oauth2.googleapis.com/token', {
     method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ ...fields, client_id: options.clientId, ...(options.clientSecret ? { client_secret: options.clientSecret } : {}) }).toString()
@@ -19,6 +21,7 @@ export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuth
   const credentials = () => {
     const value = store.decrypt<CalendarCredentials>('credentials'); if (!value) throw new Error('CALENDAR_NOT_CONNECTED');
     const parsed = credentialsSchema.parse(value); if (parsed.clientId !== options.clientId) throw new Error('CALENDAR_CLIENT_MISMATCH');
+    if (!hasScopes(parsed.scope)) throw new Error('CALENDAR_REAUTHORIZE');
     if (store.meta('reauthorize') === 'yes') throw new Error('CALENDAR_REAUTHORIZE'); return parsed;
   };
   let refreshing: Promise<CalendarCredentials> | undefined;
@@ -28,7 +31,7 @@ export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuth
       try {
         const token = await tokenRequest({ grant_type: 'refresh_token', refresh_token: value.refreshToken });
         if (token.token_type !== 'Bearer' || typeof token.access_token !== 'string' || !Number.isFinite(token.expires_in) || token.expires_in <= 0 ||
-          (token.scope && !token.scope.split(' ').includes(CALENDAR_SCOPE))) throw new Error('CALENDAR_TOKEN_INVALID');
+          (token.scope && !hasScopes(token.scope))) throw new Error('CALENDAR_TOKEN_INVALID');
         const updated = { ...value, accessToken: token.access_token, refreshToken: token.refresh_token ?? value.refreshToken,
           expiresAt: now() + token.expires_in * 1000 };
         if (store.decrypt<CalendarCredentials>('credentials')?.connectionId !== value.connectionId) throw new Error('CALENDAR_CONNECTION_CHANGED');
@@ -45,7 +48,7 @@ export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuth
       const state = randomBytes(32).toString('base64url'), verifier = randomBytes(32).toString('base64url');
       store.encrypt('oauth', { state, verifier, redirectUri, expiresAt: now() + 10 * 60_000 });
       const params = new URLSearchParams({ client_id: options.clientId, redirect_uri: redirectUri, response_type: 'code',
-        scope: `openid email ${CALENDAR_SCOPE}`, state, access_type: 'offline', prompt: 'consent',
+        scope: `openid email ${scopes.join(' ')}`, state, access_type: 'offline', prompt: 'consent',
         code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256' });
       return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     },
@@ -55,7 +58,7 @@ export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuth
       store.run("DELETE FROM meta WHERE key='oauth'"); // one-shot before exchanging a code
       const token = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: pending.redirectUri, code_verifier: pending.verifier });
       if (token.token_type !== 'Bearer' || typeof token.access_token !== 'string' || typeof token.refresh_token !== 'string' || !Number.isFinite(token.expires_in) || token.expires_in <= 0 ||
-        typeof token.scope !== 'string' || !token.scope.split(' ').includes(CALENDAR_SCOPE)) throw new Error('CALENDAR_CONSENT_INCOMPLETE');
+        typeof token.scope !== 'string' || !hasScopes(token.scope)) throw new Error('CALENDAR_CONSENT_INCOMPLETE');
       const identity = await googleJson(fetcher, 'https://openidconnect.googleapis.com/v1/userinfo', { headers: { authorization: `Bearer ${token.access_token}` } });
       if (typeof identity.sub !== 'string' || !identity.sub || typeof identity.email !== 'string' || identity.email_verified !== true) throw new Error('CALENDAR_ACCOUNT_INVALID');
       const previous = store.decrypt<CalendarCredentials>('credentials');
@@ -79,24 +82,26 @@ export function createCalendarOAuth(store: CalendarStore, options: CalendarOAuth
 }
 
 /** Loopback callback; no auth codes/tokens are printed or sent to Telegram. */
-export async function startCalendarAuthorization(oauth: ReturnType<typeof createCalendarOAuth>) {
+export async function startCalendarAuthorization(oauth: { begin(redirectUri: string): string; complete(code: string, state: string): Promise<unknown> }, options: { hostname?: 'localhost' | '127.0.0.1'; provider?: string; errorPrefix?: string } = {}) {
   let finish!: (value: unknown) => void, fail!: (error: Error) => void;
   const result = new Promise<unknown>((resolve, reject) => { finish = resolve; fail = reject; });
-  let busy = false; let expectedHost = '';
+  let busy = false; let expectedHost = ''; let expectedState = '';
   const server = createServer((req, res) => {
     let url: URL;
     try { url = new URL(req.url ?? '/', `http://${expectedHost}`); }
     catch { res.writeHead(400); res.end('Invalid callback'); return; }
-    if (req.method !== 'GET' || req.headers.host !== expectedHost || url.pathname !== '/oauth/callback' || busy) { res.writeHead(400); res.end('Invalid callback'); return; }
+    if (req.method !== 'GET' || req.headers.host !== expectedHost || url.pathname !== '/oauth/callback' || url.searchParams.get('state') !== expectedState || busy) { res.writeHead(400); res.end('Invalid callback'); return; }
     busy = true;
     void oauth.complete(url.searchParams.get('code') ?? '', url.searchParams.get('state') ?? '').then(value => {
-      res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' }); res.end('Calendar connected. You may close this window.'); finish(value);
-    }, () => { res.writeHead(400); res.end('Authorization failed. Restart local connection setup.'); fail(new Error('CALENDAR_AUTHORIZATION_FAILED')); });
+      res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' }); res.end(`${options.provider ?? 'Google'} connected. You may close this window.`); finish(value);
+    }, () => { res.writeHead(400); res.end('Authorization failed. Restart local connection setup.'); fail(new Error(`${options.errorPrefix ?? 'CALENDAR'}_AUTHORIZATION_FAILED`)); });
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', () => resolve()); });
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('CALENDAR_CALLBACK_FAILED');
-  expectedHost = `127.0.0.1:${address.port}`;
-  const url = oauth.begin(`http://${expectedHost}/oauth/callback`);
-  const timer = setTimeout(() => fail(new Error('CALENDAR_AUTHORIZATION_TIMEOUT')), 10 * 60_000);
-  return { url, result: result.finally(() => { clearTimeout(timer); server.close(); server.closeAllConnections(); }), close() { fail(new Error('CALENDAR_AUTHORIZATION_CANCELLED')); } };
+  expectedHost = `${options.hostname ?? '127.0.0.1'}:${address.port}`;
+  let url: string;
+  try { url = oauth.begin(`http://${expectedHost}/oauth/callback`); expectedState = new URL(url).searchParams.get('state') ?? ''; }
+  catch (error) { server.close(); throw error; }
+  const timer = setTimeout(() => fail(new Error(`${options.errorPrefix ?? 'CALENDAR'}_AUTHORIZATION_TIMEOUT`)), 10 * 60_000);
+  return { url, result: result.finally(() => { clearTimeout(timer); server.close(); server.closeAllConnections(); }), close() { fail(new Error(`${options.errorPrefix ?? 'CALENDAR'}_AUTHORIZATION_CANCELLED`)); } };
 }

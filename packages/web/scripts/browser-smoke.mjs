@@ -141,6 +141,7 @@ async function createSession() {
   );
 }
 async function assertHeaderAligned() {
+  await page.waitForFunction(() => document.querySelector('.app-shell')?.getAttribute('data-sidebar') === (globalThis.innerWidth >= 1280 ? 'docked' : 'drawer'));
   const report = await page.locator("header.topbar").evaluate((header) => {
     const headerBox = header.getBoundingClientRect();
     const nodes = [...header.querySelectorAll(".brand, .crumb, .topbar-status, .topbar-actions, .topbar-actions > button, .connection-label, .connection-action, .needs-you-count, .session-title, .session-title-static, .project-crumb, .project-switch")];
@@ -178,6 +179,7 @@ async function openSessions(target = page) {
   await target.getByLabel("Search sessions").waitFor();
 }
 async function closeSessions(target = page) {
+  if ((await target.locator(".drawer-root").getAttribute("class"))?.includes("docked")) return;
   if ((await target.locator(".drawer-root").getAttribute("hidden")) === null)
     await target.getByRole("button", { name: "Close sessions", exact: true }).click();
 }
@@ -677,6 +679,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("tab", { name: "Review", exact: true }).click();
   await page.waitForFunction(() => document.activeElement?.id === "review-panel");
+  assert.equal(await page.locator('.workspace-frame').evaluate(element => globalThis.getComputedStyle(element).display), 'block');
+  assert.equal(await page.locator('.diff-handle').isVisible(), false);
   await capture("web-review-mobile.png");
   await context.setOffline(true);
   await page.waitForFunction(

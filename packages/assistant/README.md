@@ -111,6 +111,13 @@ record. Local validation does not certify a live account or a completed pilot.
 
 ## Configurable providers and modules
 
+Daily tasks, one-shot reminders, explicit notes, Gmail drafts/reads, Drive text
+search/reads, read-only GitHub MCP and provider-independent Brave search are
+available as opt-in modules. See [daily tools](../../docs/ASSISTANT_DAILY_TOOLS.md)
+for setup, credential references, approval behavior and delivery limits.
+The new-agent wizard has a **Herramientas** tab. Existing agents retain their
+original module binding; create a new agent to change its tool catalog.
+
 Use `--config /path/assistant.json` for an explicit OpenAI-compatible provider and
 composed Calendar/MCP modules. See [configuration, extension contract and compatibility](../../docs/ASSISTANT_EXTENSIONS.md).
 The instance remains single-owner. Existing Calendar-only profiles remain compatible;
@@ -164,3 +171,10 @@ pricing, authenticated report/feedback APIs, grouping semantics and scope limits
 Validate the initial 30-case suite with `bun run eval:tasks --validate` or prepare
 90 unexecuted trials with `bun run eval:tasks --plan /tmp/assistant-evaluation.json`.
 These commands do not call a model or modify external services.
+
+## Microsoft 365 / Outlook
+
+The new-agent **Herramientas** tab supports Microsoft work accounts: read/search
+mail, create approved drafts, and read/create personal calendar appointments.
+Microsoft calendar supplies the web agenda and daily summary. Integrations shows
+the account and supports reauthorization. See [Entra ID setup and scope limits](../../docs/ASSISTANT_MICROSOFT.md).

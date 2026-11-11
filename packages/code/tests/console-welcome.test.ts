@@ -81,7 +81,7 @@ test("color false and NO_COLOR emit no escapes", () => {
     else process.env.NO_COLOR = previous;
   }
   const colored = render(80, 24, { color: true });
-  expect(colored).toContain("\u001b[31m");
+  expect(colored).toMatch(/\u001b\[38;5;\d+m/);
   expect(colored).toContain(mark[0] ?? "");
 });
 

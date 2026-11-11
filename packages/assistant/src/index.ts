@@ -21,6 +21,12 @@ export type { AgendaSource, AgendaEvent } from "./automation/summary.js";
 
 export { createCalendarModule } from "./modules/calendar.js";
 export { createMcpModule } from "./modules/mcp.js";
+export { createDailyModule } from './modules/daily.js';
+export { createGoogleModule } from './modules/google.js';
+export { createGithubModule } from './modules/github.js';
+export { createWebModule } from './modules/web.js';
+export { openGoogleConnection } from './integrations/google.js';
+export type { GoogleToolsOptions } from './integrations/google.js';
 export type { AssistantModule, AssistantModuleContext, AssistantModuleInstance } from "./modules/module.js";
 export { createCompatibleProvider, parseCompatibleProvider } from "./providers/openai-compatible.js";
 export type { CompatibleProviderConfig } from "./providers/openai-compatible.js";
@@ -34,3 +40,7 @@ export { createAssistantProvider, parseAssistantProvider } from './providers/pro
 export type { AssistantProviderConfig } from './providers/provider.js';
 
 export { taskFeedbackSchema, taskLinkSchema, taskCategorySchema } from "./task-metrics.js";
+
+export { createMicrosoftModule } from './modules/microsoft.js';
+export { openMicrosoftConnection, startMicrosoftAuthorization } from './microsoft/connection.js';
+export type { MicrosoftOptions } from './microsoft/connection.js';

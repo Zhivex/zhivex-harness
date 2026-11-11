@@ -1,3 +1,4 @@
+import { paintTerminal, type TerminalTone } from "./terminal-theme.js";
 import { checkApprovalGrant } from "./session-grants.js";
 import { changeSummary, renderReviewedDiff } from "../console/review-diff.js";
 import {
@@ -432,8 +433,9 @@ export const formatVerificationSummary = (results: readonly { toolName: string; 
   return `Verification receipts: ${counts.passed} passed, ${counts.failed} failed/timed out. Only recorded commands are covered.`;
 };
 
+const activityTones: Record<number, TerminalTone> = { 31: "removed", 32: "added", 33: "pending", 36: "info", 90: "muted" };
 const paint = (text: string, code: number, color: boolean) =>
-  color ? `\u001b[${code}m${text}\u001b[0m` : text;
+  paintTerminal(text, activityTones[code] ?? "muted", color);
 
 /**
  * Produce a compact activity line from a redacted event subset. Tool inputs,

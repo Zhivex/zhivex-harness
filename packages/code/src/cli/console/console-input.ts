@@ -1,3 +1,4 @@
+import { terminalToneCode } from "../terminal/terminal-theme.js";
 import { createInterface, type Interface, type Key } from "node:readline";
 import { PassThrough, type Readable, Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
@@ -217,9 +218,9 @@ export class ConsoleInput {
   private styleReviewLine(line: string) {
     const gutter = line.length > 14 && line[13] === " " && (line[14] === "+" || line[14] === "-") ? line[14] : "";
     const mark = line.startsWith("+") || line.startsWith("-") || line.startsWith("@@") ? line[0] : gutter;
-    const code = line.startsWith("( Z )") ? "1;38;5;210" : mark === "+" ? "38;5;120"
-      : mark === "-" ? "38;5;210" : mark === "@" || line.startsWith("@@") ? "38;5;117"
-      : line.startsWith("> ") || line.startsWith("Waiting for your decision") ? "1;38;5;222" : "";
+    const code = line.startsWith("( Z )") ? `1;${terminalToneCode("accent")}` : mark === "+" ? terminalToneCode("added")
+      : mark === "-" ? terminalToneCode("removed") : mark === "@" || line.startsWith("@@") ? terminalToneCode("info")
+      : line.startsWith("> ") || line.startsWith("Waiting for your decision") ? `1;${terminalToneCode("pending")}` : "";
     const color = terminalSupportsColor(this.terminal);
     return color && code ? `\x1b[${code}m${line}\x1b[0m` : line;
   }

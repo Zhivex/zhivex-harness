@@ -1,5 +1,6 @@
 import { createDailyScheduler, automationHelp } from '../automation/scheduler.js';
 import type { AgendaSource } from '../automation/summary.js';
+import type { SummarySource } from '../modules/module.js';
 import { createHash, randomBytes } from 'node:crypto';
 import type { HarnessClientData, HarnessClientRun } from '@zhivex-ai/harness/protocol';
 import { connectAssistant, type AssistantCommand } from '../client.js';
@@ -34,6 +35,7 @@ export interface TelegramBridgeOptions {
   api: TelegramApi; recover?: boolean; now?: () => number;
   /** Trusted host lookup of digest-bound external operation details, never supplied by a channel message. */
   agendaSource?: AgendaSource;
+  summarySources?: SummarySource[];
   reviewTools?: readonly string[];
   approvalDetails?: (run: HarnessClientRun) => Promise<unknown>;
 }
@@ -75,7 +77,7 @@ export async function createTelegramBridge(options: TelegramBridgeOptions) {
             ...(i === parts.length - 1 && buttons ? { reply_markup: buttons } : {}) }), expiresAt ?? null);
       }
     };
-    const scheduler = options.agendaSource ? createDailyScheduler(store, options.agendaSource, (key, text, expiresAt) => enqueue(key, text, undefined, expiresAt), now) : undefined;
+    const scheduler = options.agendaSource || options.summarySources?.length ? createDailyScheduler(store, options.agendaSource ?? { binding: 'summary-only-v1', calendarId: 'personal', async list() { return { events: [], nextPageToken: null, complete: true }; } }, (key, text, expiresAt) => enqueue(key, text, undefined, expiresAt), now, options.summarySources) : undefined;
     const finish = (row: Inbox, text: string) => store.transaction(() => {
       enqueue(`input:${row.id}`, text); store.run("UPDATE inbox SET status='done' WHERE id=?", row.id);
     });
@@ -211,7 +213,7 @@ export async function createTelegramBridge(options: TelegramBridgeOptions) {
       if (!text) { finish(row, 'Por ahora solo puedo recibir texto; no descargué el adjunto.'); return; }
       if (/^\/(daily|memory)(?:\s|$)/.test(text)) {
         store.transaction(() => {
-          const response = scheduler ? scheduler.command(text, row.id) : 'El host necesita Calendar para configurar el resumen y sus preferencias.';
+          const response = scheduler ? scheduler.command(text, row.id) : 'El host necesita Calendar, tareas o Gmail para configurar el resumen y sus preferencias.';
           enqueue(`input:${row.id}`, response); store.run("UPDATE inbox SET status='done' WHERE id=?", row.id);
         }); return;
       }
@@ -285,6 +287,14 @@ export async function createTelegramBridge(options: TelegramBridgeOptions) {
       const end = () => { clearTimeout(timer); controller.signal.removeEventListener('abort', end); resolve(); };
       const timer = setTimeout(end, Math.min(ms, 2_147_483_647)); controller.signal.addEventListener('abort', end, { once: true }); });
     return {
+      notifications: {
+        ready: () => !controller.signal.aborted && Boolean(store.meta('chatId')),
+        async send(text: string, signal: AbortSignal) {
+          const chatId = store.meta('chatId'); if (!chatId || controller.signal.aborted) throw new Error('TELEGRAM_NOT_LINKED');
+          const result = await options.api.call('sendMessage', { chat_id: chatId, text, protect_content: true }, signal) as { message_id?: number; chat?: { id?: number } };
+          if (!Number.isSafeInteger(result.message_id) || String(result.chat?.id) !== chatId) throw new Error('TELEGRAM_DELIVERY_UNCERTAIN');
+        }
+      },
       automation: scheduler ? { status: scheduler.status, command(text: string) {
         if (!store.meta('chatId')) throw new Error('TELEGRAM_NOT_LINKED');
         return store.transaction(() => scheduler.command(text, `web-owner:${randomBytes(12).toString('hex')}`));

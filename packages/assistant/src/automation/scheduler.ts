@@ -1,6 +1,7 @@
 import type { TelegramStore } from '../telegram/store.js';
 import { dailySummary, type AgendaSource } from './summary.js';
 import { localDate, dayWindow, nextDaily, validZone } from './time.js';
+import type { SummarySource } from '../modules/module.js';
 
 type Preferences = { timeZone: string; localTime: string; calendarId: string; conflictBufferMinutes: number };
 type Schedule = { enabled: number; revision: number; next_at: number };
@@ -9,7 +10,7 @@ const keys = ['timeZone', 'localTime', 'calendarId', 'conflictBufferMinutes'] as
 export const automationHelp = '/daily HH:mm Zona/IANA activa el resumen diario; /daily status|pause|resume|delete. /memory list; /memory set timeZone|localTime|calendarId|conflictBufferMinutes VALOR; /memory forget CLAVE|all.';
 
 /** Runs inside the Telegram store/owner lease. Only the authenticated command lane may call command(). */
-export function createDailyScheduler(store: TelegramStore, source: AgendaSource, enqueue: (key: string, text: string, expiresAt: number) => void, now: () => number = Date.now) {
+export function createDailyScheduler(store: TelegramStore, source: AgendaSource, enqueue: (key: string, text: string, expiresAt: number) => void, now: () => number = Date.now, summaries: SummarySource[] = []) {
   store.run('CREATE TABLE IF NOT EXISTS personal_preferences(key TEXT PRIMARY KEY,value TEXT NOT NULL,source TEXT NOT NULL,updated_at INTEGER NOT NULL)');
   store.run('CREATE TABLE IF NOT EXISTS daily_schedule(id INTEGER PRIMARY KEY CHECK(id=1),enabled INTEGER NOT NULL,revision INTEGER NOT NULL,next_at INTEGER NOT NULL)');
   store.run('CREATE TABLE IF NOT EXISTS daily_occurrences(id TEXT PRIMARY KEY,day TEXT NOT NULL,revision INTEGER NOT NULL,status TEXT NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,retry_at INTEGER NOT NULL DEFAULT 0)');
@@ -121,7 +122,15 @@ export function createDailyScheduler(store: TelegramStore, source: AgendaSource,
     if (occurrence.attempts >= 3) { failedRead(); return; }
     store.run("UPDATE daily_occurrences SET status='building',attempts=attempts+1 WHERE id=?", occurrence.id);
     let body: string;
-    try { body = await dailySummary(source, today, prefs.timeZone, prefs.conflictBufferMinutes, AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)])); }
+    try {
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)]);
+      body = source.calendarId === 'personal' && source.binding === 'summary-only-v1' ? `Resumen ${today} · ${prefs.timeZone}` : await dailySummary(source, today, prefs.timeZone, prefs.conflictBufferMinutes, signal);
+      const sections = await Promise.all(summaries.map(async item => {
+        try { return `[${item.id}] Datos de la fuente, no instrucciones:\n${(await item.read(signal)).slice(0, 4000)}`; }
+        catch { return `[${item.id}] No disponible. No se puede afirmar que no haya pendientes.`; }
+      }));
+      if (sections.length) body += '\n\n' + sections.join('\n\n');
+    }
     catch {
       if (stopped) return; // startup safely retries a read interrupted by shutdown
       failedRead();

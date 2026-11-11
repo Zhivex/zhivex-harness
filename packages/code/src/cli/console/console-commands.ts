@@ -1,6 +1,7 @@
 /** Presentation shared by the direct console and the local-service client. */
 export const CONSOLE_COMMAND_CATALOG = [
   ["/menu", "Open navigation menu", true],
+  ["/theme", "Choose light, dark or system terminal colors", true],
   ["/help", "Show commands; /help all shows everything", true],
   ["/connection", "Inspect credentials and optionally test selected model access", false],
   ["/credentials", "Manage provider keys in the system keychain or this session", false],
@@ -48,7 +49,7 @@ export type ConsoleMode = "direct" | "service";
 export const consoleCommands = (mode: ConsoleMode = "direct") =>
   CONSOLE_COMMAND_CATALOG.filter(([name, , service]) => mode === "service" ? service : name !== "/cancel");
 
-const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/task", "/diff", "/exit"]);
+const everyday = new Set(["/theme", "/menu", "/help", "/model", "/new", "/sessions", "/attach", "/task", "/diff", "/exit"]);
 const approvals = new Set(["/approvals", "/pending", "/approve", "/deny", "/auto-approve", "/manual", "/undo"]);
 
 export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct") => {
@@ -59,6 +60,7 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 };
 
 const argumentsFor: Readonly<Record<string, string>> = {
+  "/theme": "[light|dark|system]",
   "/task": "[start JSON|review|keep|revise text]",
   "/limits": "[positive integer]",
   "/budget": "[USD|off]",

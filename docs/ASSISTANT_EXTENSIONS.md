@@ -57,13 +57,16 @@ if the file does not define a provider.
 Calendar and an HTTP MCP module. Replace endpoint, tools and credential reference
 with values from your own integration. Run with `--config` and, if
 JSON does not define a provider, the usual `--provider`/`--model` flags.
-Do not combine `--config` with `--calendar` or OAuth actions in one command.
+Do not combine `--config` with `--calendar` or Calendar OAuth actions in one command.
+The independent Google mail/Drive module uses `--google-connect` with `--config`.
 
 Each module declares identity/version, instructions, an exact tool list,
 permissions and configuration. Server names must start with `id_`;
 exposed tools are `server_tool`. Open catalogs,
 collisions, alternative prefixes and MCP resources are unsupported in this first contract.
-The file accepts only `calendar` and `mcp` types; a declarative MCP module uses
+The file accepts `calendar`, `daily`, `google`, `github`, `web` and `mcp` types;
+see [daily tools](ASSISTANT_DAILY_TOOLS.md) for the additional adapters and credentials.
+A declarative MCP module uses
 HTTP and `ZHIVEX_MCP_*` header references. It never loads JavaScript paths,
 shell commands or packages supplied by a message.
 

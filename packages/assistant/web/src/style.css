@@ -183,3 +183,12 @@
 @media(max-width:720px){.agent-tab-panel>form{flex-direction:column;align-items:stretch}.agent-tab-panel>form>.field{width:100%;min-width:0}.agent-tab-panel>form>button{margin:0}}
 
 .setup-wizard{overflow:hidden}.setup-wizard .setup-wizard-tabs{padding:12px 16px 0;gap:4px;background:#f6f6f0}.setup-wizard-tabs [role=tab]{display:flex;align-items:center;gap:8px}.setup-tab-optional{font-size:10px;font-weight:400;color:var(--muted)}.setup-wizard .setup-wizard-panel{padding:24px;border:0}.setup-wizard-panel[hidden]{display:none}.setup-wizard-panel:focus-visible{outline:2px solid #74a66d;outline-offset:-4px}.setup-wizard-panel>p{margin:12px 0 20px;color:var(--muted);line-height:1.5}.setup-wizard-panel h2{font-size:22px}@media(max-width:720px){.setup-wizard .setup-wizard-tabs{padding:8px 8px 0}.setup-wizard-tabs .setup-tab-optional{display:none}.setup-page .setup-wizard-tabs [role=tab]{padding:12px 10px;font-size:13px}.setup-wizard .setup-wizard-panel{padding:20px 16px}}
+.daily-tools-setup fieldset{min-width:0;margin:20px 0;padding:18px;border:1px solid var(--line);border-radius:12px}
+.daily-tools-setup legend{padding:0 6px;font-weight:600}
+.daily-tools-setup p{line-height:1.5;color:var(--muted);margin:12px 0 20px}
+.daily-tools-setup h3{margin-top:28px}
+.daily-panel{margin-top:24px;overflow-wrap:anywhere}
+.daily-panel ul{padding-left:20px}.daily-panel li{margin:12px 0}.daily-panel li p{font-size:13px;color:var(--muted)}
+@media(max-width:720px){.setup-wizard .setup-wizard-tabs{flex-wrap:wrap}.daily-tools-setup fieldset{padding:12px}}
+
+.microsoft-setup code { overflow-wrap: anywhere; white-space: normal; }

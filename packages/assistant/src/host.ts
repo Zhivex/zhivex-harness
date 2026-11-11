@@ -62,11 +62,11 @@ export async function startAssistantHost(options: AssistantHostOptions) {
         agentProfile: { ...base, toolNames: [...base.toolNames], instructions: base.instructions + `\nAssistant provider configuration digest: ${provider.binding}` } };
     }
     return await startAssistantHostOwned({ ...options, engine }, modules?.close, modules?.approvalDetails, modules?.agendaSource, modules?.reviewTools,
-      modules?.identity.map(item => ({ id: item.id, version: item.version })));
+      modules?.identity.map(item => ({ id: item.id, version: item.version })), modules);
   } catch (error) { await modules?.close().catch(() => {}); throw error; }
 }
 
-async function startAssistantHostOwned(options: AssistantHostOptions, closeModules?: () => Promise<void>, approvalDetails?: (run: import('@zhivex-ai/harness/protocol').HarnessClientRun) => Promise<unknown>, agendaSource?: AgendaSource, reviewTools?: string[], moduleIdentity?: { id: string; version: string }[]) {
+async function startAssistantHostOwned(options: AssistantHostOptions, closeModules?: () => Promise<void>, approvalDetails?: (run: import('@zhivex-ai/harness/protocol').HarnessClientRun) => Promise<unknown>, agendaSource?: AgendaSource, reviewTools?: string[], moduleIdentity?: { id: string; version: string }[], modules?: Awaited<ReturnType<typeof openAssistantModules>>) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(options.ownerId)) throw new Error("ASSISTANT_OWNER_INVALID");
   const profile = harnessAgentProfileSchema.parse(options.engine?.agentProfile ?? GENERAL_ASSISTANT_PROFILE);
   const directory = await privateDirectory(path.resolve(options.directory));
@@ -128,13 +128,15 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
         telegram = await createTelegramBridge({ stateDirectory: state, credentialsPath: service.credentialsPath,
           ownerId: options.ownerId, expectedTelegramUserId: options.telegram.expectedUserId,
           ...(options.telegram.confirmedPrivateChatId ? { confirmedPrivateChatId: options.telegram.confirmedPrivateChatId, ...(options.telegram.confirmedUpdateOffset !== undefined ? { confirmedUpdateOffset: options.telegram.confirmedUpdateOffset } : {}) } : {}),
-          ...(approvalDetails ? { approvalDetails } : {}), ...(reviewTools ? { reviewTools } : {}), ...(agendaSource ? { agendaSource } : {}), api: options.telegram.api ?? createTelegramApi(options.telegram.token), recover: options.recover ?? false });
+          ...(approvalDetails ? { approvalDetails } : {}), ...(reviewTools ? { reviewTools } : {}), ...(agendaSource ? { agendaSource } : {}), ...(modules?.summarySources.length ? { summarySources: modules.summarySources } : {}), api: options.telegram.api ?? createTelegramApi(options.telegram.token), recover: options.recover ?? false });
         telegram.start();
       }
     } catch (error) { try { await service.close(); } finally { metrics?.close(); } throw error; }
     let closePromise: Promise<void> | undefined;
     let web: Awaited<ReturnType<typeof startAssistantWeb>> | undefined;
+    modules?.start({ ...(telegram ? { notifications: telegram.notifications } : {}) });
     const host = {
+      daily: modules?.daily,
       taskMetrics: {
         async report() { await refreshMetrics(); return metrics!.report(); },
         async feedback(input: unknown) { await refreshMetrics(); return metrics!.feedback(input); },
@@ -151,7 +153,7 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
         ...(options.calendar ? { calendar: { enabled: true, calendarId: options.calendar.calendarId ?? 'primary' } } : {}) }),
       // In-process trusted UI only; remote callbacks must use the ordinary protocol.
       dispatchReviewed: service.dispatchReviewed.bind(service),
-      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { try { metrics?.close(); } finally { await closeModules?.(); } } } } })()
+      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await modules?.daily?.stop(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { try { metrics?.close(); } finally { await closeModules?.(); } } } } } })()
     };
     try { if (options.web) web = await startAssistantWeb(host, options.web); }
     catch (error) { await host.close(); throw error; }

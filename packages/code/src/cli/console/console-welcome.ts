@@ -1,3 +1,4 @@
+import { terminalToneCode } from "../terminal/terminal-theme.js";
 import { consoleLabel } from "./console-presentation.js";
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
 
@@ -69,10 +70,10 @@ const formatLegacyWelcome = (input: ConsoleWelcomeInput, options: ConsoleWelcome
   const right = [title, ...context];
   const titleRow = Math.max(0, Math.floor((logoLines.length - right.length) / 2));
   const header = logoLines.map((line, index) => {
-    const mark = color ? `\u001b[31m${line}\u001b[0m` : line;
+    const mark = color ? `\u001b[${terminalToneCode("accent")}m${line}\u001b[0m` : line;
     const label = titleBesideLogo ? right[index - titleRow] : undefined;
     return label
-      ? `${mark}${" ".repeat(logoWidth - line.length + 3)}${color ? (index === titleRow ? "\u001b[1m" : "\u001b[90m") : ""}${consoleLabel(label, columns - logoWidth - 3)}${color ? "\u001b[0m" : ""}`
+      ? `${mark}${" ".repeat(logoWidth - line.length + 3)}${color ? (index === titleRow ? "\u001b[1m" : `\u001b[${terminalToneCode("muted")}m`) : ""}${consoleLabel(label, columns - logoWidth - 3)}${color ? "\u001b[0m" : ""}`
       : mark;
   }).join("\n");
   return [
@@ -104,17 +105,17 @@ const formatCodeWelcome = (input: ConsoleWelcomeInput, options: ConsoleWelcomeOp
   const paint = (label: string, index: number) => {
     const bounded = consoleLabel(label, room);
     if (!color || !bounded) return bounded;
-    if (index === 0) return `\u001b[1mZhivex Code \u001b[0m\u001b[90m${version}\u001b[0m`;
-    if (index === 1) return `\u001b[90m${bounded}\u001b[0m`;
+    if (index === 0) return `\u001b[1mZhivex Code \u001b[0m\u001b[${terminalToneCode("muted")}m${version}\u001b[0m`;
+    if (index === 1) return `\u001b[${terminalToneCode("muted")}m${bounded}\u001b[0m`;
     return bounded;
   };
   if (columns < logoWidth + 3 + title.length) {
     const stacked = side.map(label => label ? consoleLabel(label, Math.max(1, columns)) : "");
-    return [logoLines.map(line => color ? `\u001b[31m${line}\u001b[0m` : line).join("\n"), ...stacked].join("\n");
+    return [logoLines.map(line => color ? `\u001b[${terminalToneCode("accent")}m${line}\u001b[0m` : line).join("\n"), ...stacked].join("\n");
   }
   const titleRow = Math.max(0, Math.floor((logoLines.length - side.length) / 2));
   return logoLines.map((line, index) => {
-    const mark = color ? `\u001b[31m${line}\u001b[0m` : line;
+    const mark = color ? `\u001b[${terminalToneCode("accent")}m${line}\u001b[0m` : line;
     const label = side[index - titleRow];
     return label ? `${mark}${" ".repeat(logoWidth - line.length + 3)}${paint(label, index - titleRow)}` : mark;
   }).join("\n");

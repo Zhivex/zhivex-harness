@@ -3,6 +3,7 @@ import { loadAssistantConfig } from './config.js';
 import { assistantDoctor } from './doctor.js';
 import { calendarCommand, calendarEnvironment } from "./calendar/cli.js";
 import { startAssistantHost } from "./host.js";
+import { googleCommand } from './integrations/google-cli.js';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -11,14 +12,18 @@ async function main() {
     await launchAssistant(args); return;
   }
   if (args.includes("--help")) {
-    console.log("zhivex-assistant --directory /absolute/private/path --owner ID [--provider NAME] [--model NAME] [--recover] [--telegram-owner NUMERIC_ID] [--calendar] [--calendar-id ID] [--web] [--web-port PORT] [--doctor] [--config /path/assistant.json]\nConfig v1: Muse / Meta, Qwen or OpenAI-compatible provider and explicit Calendar/MCP modules.\nOAuth: --calendar-connect | --calendar-status | --calendar-disconnect (host stopped)\nTelegram token: ASSISTANT_TELEGRAM_BOT_TOKEN. Pairing challenge is printed locally.\nOffline preflight: add --doctor with the intended host flags (no network or state mutation).\nAfter linking: /daily HH:mm Zone/IANA, /daily status, /memory list.\nLocal foreground service; SIGINT/SIGTERM drains accepted work and preserves pending approvals.");
+    console.log("zhivex-assistant --directory /absolute/private/path --owner ID [--provider NAME] [--model NAME] [--recover] [--telegram-owner NUMERIC_ID] [--calendar] [--calendar-id ID] [--web] [--web-port PORT] [--doctor] [--config /path/assistant.json]\nConfig v1: providers and Calendar, daily, google, github, web or MCP modules. Google OAuth with --config: --google-connect | --google-status | --google-disconnect.\nOAuth: --calendar-connect | --calendar-status | --calendar-disconnect (host stopped)\nTelegram token: ASSISTANT_TELEGRAM_BOT_TOKEN. Pairing challenge is printed locally.\nOffline preflight: add --doctor with the intended host flags (no network or state mutation).\nAfter linking: /daily HH:mm Zone/IANA, /daily status, /memory list.\nLocal foreground service; SIGINT/SIGTERM drains accepted work and preserves pending approvals.");
     return;
   }
   const values: Record<string, string> = {};
   let recover = false, calendar = false, doctor = false, web = false;
   let calendarAction: 'connect' | 'disconnect' | 'status' | undefined;
+  let googleAction: 'connect' | 'disconnect' | 'status' | undefined;
   for (let index = 0; index < args.length; index++) {
     const key = args[index]!;
+    if (['--google-connect','--google-disconnect','--google-status'].includes(key) && !googleAction) {
+      googleAction = key.slice('--google-'.length) as 'connect' | 'disconnect' | 'status'; continue;
+    }
     if (key === '--web' && !web) { web = true; continue; }
     if (key === '--doctor' && !doctor) { doctor = true; continue; }
     if (key === '--calendar' && !calendar) { calendar = true; continue; }
@@ -33,6 +38,10 @@ async function main() {
   if (values['--calendar-id'] && !calendar) throw new Error('ASSISTANT_USAGE_INVALID');
   if (values['--web-port'] && (!web || !/^\d{1,5}$/.test(values['--web-port']) || Number(values['--web-port']) > 65535)) throw new Error('ASSISTANT_USAGE_INVALID');
   const config = values['--config'] ? await loadAssistantConfig(values['--config']) : undefined;
+  if (googleAction) {
+    if (!config?.google || calendarAction || calendar || doctor || web) throw new Error('ASSISTANT_USAGE_INVALID');
+    await googleCommand(googleAction, values['--directory'], values['--owner'], config.google, recover); return;
+  }
   if (config && (calendarAction || calendar || values['--calendar-id'])) throw new Error('ASSISTANT_USAGE_INVALID');
   if ((config?.compatibleProvider || config?.assistantProvider) && (values['--provider'] || values['--model'])) throw new Error('ASSISTANT_PROVIDER_CONFLICT');
   if (doctor) {

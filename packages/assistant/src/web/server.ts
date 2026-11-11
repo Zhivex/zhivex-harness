@@ -12,6 +12,7 @@ import type { AgendaSource } from '../automation/summary.js';
 
 export interface AssistantWebOptions { port?: number; timeZone?: string; assetsDirectory?: string; setup?: { state(): unknown; action(name: string, input: unknown): Promise<unknown> } }
 export interface WebHost {
+  daily?: Awaited<ReturnType<typeof startAssistantHost>>['daily'];
   taskMetrics?: Awaited<ReturnType<typeof startAssistantHost>>["taskMetrics"];
   credentialsPath: string; diagnostics(): unknown; agendaSource?: AgendaSource | undefined;
   approvalDetails?: ((run: HarnessClientRun) => Promise<unknown>) | undefined;
@@ -65,6 +66,9 @@ export async function startAssistantWeb(source: WebHost | (() => WebHost | undef
         if (setupMutation) { json(409, { error: 'SETUP_BUSY' }); return; }
         runtimeRequests++; runtimeAdmitted = true;
         const host = currentHost();
+        if (req.method === 'GET' && url.pathname === '/api/daily') {
+          json(200, host.daily ? { enabled: true, ...host.daily.listTasks(), reminders: host.daily.listReminders() } : { enabled: false, tasks: [], reminders: [] }); return;
+        }
         if (req.method === 'GET' && url.pathname === '/api/task-metrics') {
           if (!host.taskMetrics) { json(404, { error: 'METRICS_UNAVAILABLE' }); return; }
           json(200, await host.taskMetrics.report()); return;

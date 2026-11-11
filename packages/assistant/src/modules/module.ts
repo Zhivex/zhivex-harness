@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { GENERAL_ASSISTANT_PROFILE, harnessAgentProfileSchema, normalizeHarnessMcpConfiguration, type CreateProfiledHarnessOptions, type HarnessAgentProfile } from '@zhivex-ai/harness/engine';
 import type { HarnessClientRun } from '@zhivex-ai/harness/protocol';
 import type { AgendaSource } from '../automation/summary.js';
+import type { DailyService, NotificationDelivery } from '../daily/service.js';
+export interface SummarySource { id: string; read(signal: AbortSignal): Promise<string> }
 
 export interface AssistantModuleContext { directory: string; ownerId: string; recover: boolean }
 export interface AssistantModuleInstance {
@@ -15,6 +17,9 @@ export interface AssistantModuleInstance {
   reviewTools?: readonly string[];
   approvalDetails?: (run: HarnessClientRun) => Promise<unknown[]>;
   agendaSource?: AgendaSource;
+  summarySources?: SummarySource[];
+  daily?: DailyService;
+  start?(context: { notifications?: NotificationDelivery }): void;
   close(): Promise<void>;
 }
 /** Trusted application code, not a sandbox or a module loader controlled by chat. */
@@ -40,7 +45,8 @@ export async function openAssistantModules(modules: readonly AssistantModule[], 
     const servers: ReturnType<typeof normalizeHarnessMcpConfiguration>['servers'][number][] = [];
     const clients: Record<string, NonNullable<CreateProfiledHarnessOptions['mcpClients']>[string]> = {};
     const names = new Set<string>(), toolNames = new Set<string>(), reviewTools: string[] = [];
-    let agendaSource: AgendaSource | undefined;
+    let agendaSource: AgendaSource | undefined, daily: DailyService | undefined;
+    const summarySources: SummarySource[] = [];
     for (const definition of [...modules].sort((a,b) => a.id.localeCompare(b.id))) {
       const instance = await definition.open(context); opened.push({ definition, instance });
       harnessAgentProfileSchema.parse(instance.profile);
@@ -68,6 +74,8 @@ export async function openAssistantModules(modules: readonly AssistantModule[], 
         if (!exposed.has(tool) || !instance.approvalDetails) throw new Error('ASSISTANT_MODULE_REVIEW_INVALID'); reviewTools.push(tool);
       }
       if (instance.agendaSource) { if (agendaSource) throw new Error('ASSISTANT_MODULE_AGENDA_AMBIGUOUS'); agendaSource = instance.agendaSource; }
+      if (instance.daily) { if (daily) throw new Error('ASSISTANT_MODULE_DAILY_AMBIGUOUS'); daily = instance.daily; }
+      for (const source of instance.summarySources ?? []) summarySources.push({ ...source, id: `${definition.id}:${source.id}` });
     }
     const identity = opened.map(({ definition, instance }) => ({ id: definition.id, version: definition.version, binding: instance.binding }));
     // A sole module owns its versioned profile, retaining Calendar v1 recovery compatibility.
@@ -77,7 +85,8 @@ export async function openAssistantModules(modules: readonly AssistantModule[], 
     };
     // Composite identity is bound into the profile; Calendar v1 already binds its connection.
     const binding = createHash('sha256').update(JSON.stringify(identity)).digest('hex');
-    return { profile, binding, identity, reviewTools, agendaSource, close,
+    return { profile, binding, identity, reviewTools, agendaSource, daily, summarySources, close,
+      start(context: { notifications?: NotificationDelivery }) { for (const { instance } of opened) instance.start?.(context); },
       engine: { agentProfile: profile, mcpConfiguration: { schemaVersion: 1 as const, servers }, mcpClients: clients },
       approvalDetails: async (run: HarnessClientRun) => {
         const results: unknown[] = [];

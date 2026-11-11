@@ -15,6 +15,8 @@ export async function uxBrowserJourney(context, origin, csrf) {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(origin);
     await page.getByRole("button", { name: "Sessions", exact: true }).waitFor();
+    assert.equal(await page.locator('.drawer-root.docked').isVisible(), true);
+    await page.getByRole('navigation', { name: 'Sessions by project' }).waitFor();
     await page.getByRole("button", { name: "Theme system. Switch theme" }).click();
     await page.waitForFunction(() => globalThis.localStorage.getItem("zhivex.code.theme.v1") === "light");
     assert.equal(await page.locator(".app-shell").getAttribute("data-theme"), "light");
@@ -53,6 +55,10 @@ export async function uxBrowserJourney(context, origin, csrf) {
 
     await page.getByRole("radio", { name: "Side", exact: true }).click();
     await page.setViewportSize({ width: 900, height: 800 });
+    await page.waitForFunction(() => document.querySelector('.app-shell')?.getAttribute('data-sidebar') === 'drawer');
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Sessions by project' }).waitFor();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByText("Side by side does not fit this window.", { exact: false }).waitFor();
     assert.equal(await page.getByRole("radio", { name: "Side", exact: true }).isDisabled(), true);
     assert.equal(await page.evaluate(() => JSON.parse(globalThis.localStorage.getItem("zhivex.code.diffLayout.v1")).position), "side");
