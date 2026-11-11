@@ -4,7 +4,14 @@ La interfaz local implementa la propuesta visual aprobada: inicio con agenda,
 aprobaciones, resumen diario, conversaciones, conexiones y módulos. Es una
 instancia por propietario. No incorpora todavía un catálogo de agentes ni múltiples bots.
 
-## Ejecutar
+## Configuración sin terminal
+
+Abrir el lanzador local de macOS con doble clic. El nuevo modo administrado
+permite probar el modelo y conectar Calendar/Telegram desde la web, antes de
+crear el host. Ver [onboarding web](ASSISTANT_WEB_ONBOARDING.md) para uso,
+preparación del lanzador y límites de distribución.
+
+## Ejecutar el host CLI avanzado
 
 Preparar el candidato local según `packages/assistant/README.md`, luego:
 
@@ -30,9 +37,9 @@ eliminación usan el scheduler persistente existente. La zona de la agenda toma
 la zona del sistema; una aplicación que embeba el host puede pasar `web.timeZone`.
 La zona del resumen se configura por separado desde su formulario.
 
-Conexiones, proveedor y módulos muestran el estado real; OAuth, vinculación y
-cambios de proveedor se realizan con los flujos documentados del host. No hay
-edición web de credenciales o permisos. No se modifican eventos al abrir la agenda.
+En el host CLI avanzado, conexiones, proveedor y módulos muestran el estado
+real y se configuran con los flujos del host. En el modo administrado, el botón
+Configuración abre los formularios web para las credenciales y conexiones. No se modifican eventos al abrir la agenda.
 
 ## Demostración visual
 

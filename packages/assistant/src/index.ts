@@ -29,3 +29,6 @@ export { loadAssistantConfig } from "./config.js";
 
 export { startAssistantWeb } from "./web/server.js";
 export type { AssistantWebOptions, WebHost } from "./web/server.js";
+
+export { createAssistantProvider, parseAssistantProvider } from './providers/provider.js';
+export type { AssistantProviderConfig } from './providers/provider.js';

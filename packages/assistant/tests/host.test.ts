@@ -13,8 +13,8 @@ function data<K extends HarnessClientData["kind"]>(response: HarnessClientRespon
   if (response.data.kind !== kind) throw new Error("Wrong response kind");
   return response.data as Extract<HarnessClientData, { kind: K }>;
 }
-async function boot(directory: string, mode: string, recover = false) {
-  const child = spawn(process.env.ASSISTANT_TEST_NODE ?? "node", [fixture, directory, mode, ...(recover ? ["recover"] : [])], { stdio: ["ignore", "pipe", "pipe"] });
+async function boot(directory: string, mode: string, recover = false, cwd = process.cwd()) {
+  const child = spawn(process.env.ASSISTANT_TEST_NODE ?? "node", [fixture, directory, mode, ...(recover ? ["recover"] : [])], { cwd, stdio: ["ignore", "pipe", "pipe"] });
   const ended = once(child, "exit");
   let stderr = ""; child.stderr!.on("data", chunk => { stderr += chunk; });
   let timer: ReturnType<typeof setTimeout>;
@@ -98,3 +98,17 @@ test("host identity is pinned and rejects unsafe directories", async () => {
     await expect(startAssistantHost({ directory, ownerId: "one", engine })).rejects.toThrow("DIRECTORY_UNSAFE");
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+
+test("GUI launch from filesystem root stores and restores sessions inside its own workspace", async () => {
+  const directory = await mkdtemp('/tmp/assistant-gui-cwd-');
+  let host: Awaited<ReturnType<typeof boot>> | undefined;
+  try {
+    host = await boot(directory, 'resume', false, '/');
+    const session = data(await host.client.command({ method: 'session.create', title: 'GUI session', idempotencyKey: 'gui-session' }), 'session').session;
+    expect((await stat(directory + '/workspace/.zhivex-harness')).isDirectory()).toBe(true);
+    await stop(host); host = undefined;
+    host = await boot(directory, 'resume', false, directory);
+    expect(data(await host.client.command({ method: 'session.list' }), 'sessions').sessions[0]?.sessionId).toBe(session.sessionId);
+  } finally { if (host) await stop(host); await rm(directory, { recursive: true, force: true }); }
+}, 30_000);

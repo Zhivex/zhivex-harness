@@ -53,7 +53,18 @@ and runs the offline example with Node. Host tests launch separate Node processe
 kill/recover the service, resume an exact approval and check conversation context.
 Dependency installation may require network access; no model API is called.
 
-## Run
+## Abrir y configurar desde la web
+
+Abrí `release-artifacts/Zhivex Assistant.app` con doble clic (macOS). El modo
+administrado abre el navegador, permite configurar el modelo y las conexiones,
+y guarda los secretos en el llavero del sistema. No requiere terminal durante
+el onboarding. Ver [guía web de primera sesión](../../docs/ASSISTANT_WEB_ONBOARDING.md).
+
+Para generar el lanzador desde esta copia preparada:
+`bun run --cwd packages/assistant build:launcher`. Es un lanzador local que
+requiere este checkout y Node; todavía no es una distribución autónoma firmada.
+
+## Run (host CLI avanzado)
 
 Choose a short private path because Unix sockets have a path-length limit:
 
@@ -112,3 +123,32 @@ resumen diario. Agregá `--web` al comando de inicio y abrí el enlace privado q
 imprime el host. Ver [guía web](../../docs/ASSISTANT_WEB.md) para ejecución, demo,
 seguridad local y límites del piloto. La demo visual se inicia con
 `bun run --cwd packages/assistant dev:web` y `?demo=1` en la URL.
+
+### Muse / Meta y Qwen
+
+El onboarding web ofrece Muse / Meta y Qwen con sus adaptadores nativos del
+harness. No requieren configurar el protocolo. La búsqueda web integrada sigue
+siendo exclusiva de OpenAI. Los perfiles anteriores permanecen compatibles.
+
+Para configuración CLI v1, el campo `provider` también admite:
+
+```json
+{ "kind": "meta", "model": "muse-spark-1.3", "apiKeyEnv": "MODEL_API_KEY" }
+```
+
+```json
+{ "kind": "qwen", "model": "qwen3.6-plus", "apiKeyEnv": "DASHSCOPE_API_KEY", "region": "singapore" }
+```
+
+Usá un modelo habilitado en tu cuenta. Qwen admite `workspaceId` y las regiones
+`singapore`, `beijing`, `hong-kong`, `tokyo`, `frankfurt` y `virginia`. Fuera de
+Singapur se requiere un workspace explícito; sin workspace se conserva el
+endpoint internacional del SDK. Las claves se leen de la variable indicada y
+no se incluyen en el archivo JSON. En la API TypeScript, pasá esta configuración
+como `assistantProvider` a `startAssistantHost`; `compatibleProvider` sigue
+aceptando las configuraciones OpenAI compatibles anteriores.
+
+Para QwenCloud, agregá `"service": "qwencloud"` a la configuración Qwen
+(por ejemplo con `"model": "qwen3.8-flash"`). Para una clave de Token Plan,
+usá `"service": "token-plan"`. Estas rutas no requieren región ni workspace.
+Omitir `service` conserva Model Studio y los perfiles existentes.

@@ -1,10 +1,11 @@
+import { parseAssistantProvider, type AssistantProviderConfig } from './providers/provider.js';
 import { parseCompatibleProvider, type CompatibleProviderConfig } from './providers/openai-compatible.js';
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { providerAvailability } from '@zhivex-ai/harness/engine';
 
 /** Offline configuration check. Never reads credentials/state contents, writes files, or calls providers. */
-export async function assistantDoctor(input: { directory: string; ownerId: string; calendar: boolean; telegramOwner?: string; provider?: string; compatibleProvider?: CompatibleProviderConfig }, env: NodeJS.ProcessEnv = process.env) {
+export async function assistantDoctor(input: { directory: string; ownerId: string; calendar: boolean; telegramOwner?: string; provider?: string; compatibleProvider?: CompatibleProviderConfig; assistantProvider?: AssistantProviderConfig }, env: NodeJS.ProcessEnv = process.env) {
   const checks: { name: string; ok: boolean; detail: string }[] = [];
   const check = (name: string, ok: boolean, detail: string) => checks.push({ name, ok, detail });
   check('owner', /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(input.ownerId), 'Use a stable local owner identifier.');
@@ -38,7 +39,12 @@ export async function assistantDoctor(input: { directory: string; ownerId: strin
       check('compatible-credential', Boolean(env[config.apiKeyEnv]?.trim()), 'Set the configured API key environment variable.');
     } catch { check('compatible-provider', false, 'Invalid compatible-provider configuration.'); }
   }
-  if (input.compatibleProvider) {
+  if (input.assistantProvider) {
+    try { const config = parseAssistantProvider(input.assistantProvider);
+      check('provider', !input.provider && !input.compatibleProvider, 'Choose one provider configuration.');
+      check('provider-configuration', Boolean(env[config.apiKeyEnv]?.trim()), 'Set the configured API key environment variable. Presence does not verify remote access.');
+    } catch { check('provider', false, 'Invalid provider configuration.'); }
+  } else if (input.compatibleProvider) {
     check('provider', !input.provider, 'A compatible provider cannot be combined with --provider.');
   } else {
     const provider = providerAvailability(env).find(item => item.id === input.provider?.trim().toLowerCase());

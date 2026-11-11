@@ -4,6 +4,9 @@ Objetivo: probar un recorrido útil hoy y registrar problemas reproducibles.
 Esto inicia el piloto; no sustituye los tres días de aceptación de
 [ASSISTANT_PILOT.md](ASSISTANT_PILOT.md).
 
+Para el recorrido sin terminal, usar [onboarding web](ASSISTANT_WEB_ONBOARDING.md).
+Los comandos siguientes corresponden al piloto técnico y al host CLI avanzado.
+
 ## Preparación
 
 Desde la raíz del repositorio:

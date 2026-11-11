@@ -1,9 +1,10 @@
+import { createAssistantProvider, type AssistantProviderConfig } from './providers/provider.js';
 import { startAssistantWeb, type AssistantWebOptions } from './web/server.js';
 import type { AgendaSource } from './automation/summary.js';
 import { type CalendarConnectionOptions } from "./calendar/connection.js";
 import { createCalendarModule } from "./modules/calendar.js";
 import { openAssistantModules, type AssistantModule } from "./modules/module.js";
-import { createCompatibleProvider, type CompatibleProviderConfig } from "./providers/openai-compatible.js";
+import { type CompatibleProviderConfig } from "./providers/openai-compatible.js";
 
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
@@ -23,7 +24,8 @@ export interface AssistantHostOptions {
   calendar?: CalendarConnectionOptions;
   modules?: readonly AssistantModule[];
   compatibleProvider?: CompatibleProviderConfig;
-  telegram?: { token: string; expectedUserId: string; api?: TelegramApi };
+  assistantProvider?: AssistantProviderConfig;
+  telegram?: { token: string; expectedUserId: string; confirmedPrivateChatId?: string; confirmedUpdateOffset?: number; api?: TelegramApi };
   /** Trusted application configuration only; never deserialize this from channel messages. */
   engine?: Partial<Pick<CreateProfiledHarnessOptions, "provider" | "model" | "modelInstance" | "agentProfile" |
     "mcpConfiguration" | "mcpClients" | "toolPolicy" | "timeoutMs" | "maxSteps" | "maxToolCalls">>;
@@ -41,8 +43,10 @@ async function privateDirectory(directory: string) {
 /** Long-lived local host. Harness exclusively owns conversation/run/approval persistence. */
 export async function startAssistantHost(options: AssistantHostOptions) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/.test(options.ownerId)) throw new Error('ASSISTANT_OWNER_INVALID');
-  if (options.compatibleProvider && (options.engine?.modelInstance || options.engine?.provider || options.engine?.model)) throw new Error('ASSISTANT_PROVIDER_CONFLICT');
-  const provider = options.compatibleProvider ? createCompatibleProvider(options.compatibleProvider) : undefined;
+  if (options.compatibleProvider && options.assistantProvider) throw new Error('ASSISTANT_PROVIDER_CONFLICT');
+  const providerConfig = options.assistantProvider ?? options.compatibleProvider;
+  if (providerConfig && (options.engine?.modelInstance || options.engine?.provider || options.engine?.model)) throw new Error('ASSISTANT_PROVIDER_CONFLICT');
+  const provider = providerConfig ? createAssistantProvider(providerConfig) : undefined;
   const definitions = [...(options.modules ?? []), ...(options.calendar ? [createCalendarModule(options.calendar)] : [])];
   if (definitions.length && (options.engine?.agentProfile || options.engine?.mcpClients || options.engine?.mcpConfiguration)) throw new Error('ASSISTANT_MODULE_ENGINE_CONFLICT');
   const directory = await privateDirectory(path.resolve(options.directory));
@@ -51,7 +55,7 @@ export async function startAssistantHost(options: AssistantHostOptions) {
     let engine = { ...options.engine, ...modules?.engine };
     if (provider) {
       const base = engine.agentProfile ?? GENERAL_ASSISTANT_PROFILE;
-      engine = { ...engine, provider: 'openai', model: provider.config.model, modelInstance: provider.model,
+      engine = { ...engine, provider: provider.provider, model: provider.config.model, modelInstance: provider.model,
         agentProfile: { ...base, toolNames: [...base.toolNames], instructions: base.instructions + `\nAssistant provider configuration digest: ${provider.binding}` } };
     }
     return await startAssistantHostOwned({ ...options, engine }, modules?.close, modules?.approvalDetails, modules?.agendaSource, modules?.reviewTools,
@@ -83,7 +87,7 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
     if (await file.readFile("utf8") !== binding) throw new Error("ASSISTANT_HOST_BINDING_MISMATCH");
   } finally { await file.close(); }
   const harness = await createProfiledHarness({
-    ...options.engine, agentProfile: profile, workspace, stateDirectory: ".zhivex-harness",
+    ...options.engine, agentProfile: profile, workspace, stateDirectory: path.join(workspace, ".zhivex-harness"),
     tenantId: "assistant-local", userId: options.ownerId, namespace: "assistant-v1", storeBackend: "sqlite",
     executionBackend: "none", subagentProfiles: [], projectContext: false, projectMemory: false,
     timeoutMs: options.engine?.timeoutMs ?? 60_000, maxSteps: options.engine?.maxSteps ?? 16,
@@ -99,6 +103,7 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
       if (options.telegram) {
         telegram = await createTelegramBridge({ stateDirectory: state, credentialsPath: service.credentialsPath,
           ownerId: options.ownerId, expectedTelegramUserId: options.telegram.expectedUserId,
+          ...(options.telegram.confirmedPrivateChatId ? { confirmedPrivateChatId: options.telegram.confirmedPrivateChatId, ...(options.telegram.confirmedUpdateOffset !== undefined ? { confirmedUpdateOffset: options.telegram.confirmedUpdateOffset } : {}) } : {}),
           ...(approvalDetails ? { approvalDetails } : {}), ...(reviewTools ? { reviewTools } : {}), ...(agendaSource ? { agendaSource } : {}), api: options.telegram.api ?? createTelegramApi(options.telegram.token), recover: options.recover ?? false });
         telegram.start();
       }
@@ -113,7 +118,7 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
         profile: { id: profile.id, version: profile.version }, transport: "unix", persistence: "sqlite",
         ...(telegram ? { telegram: telegram.diagnostics() } : {}),
         modules: moduleIdentity ?? [],
-        ...(options.compatibleProvider ? { provider: { kind: "openai-compatible", model: options.compatibleProvider.model, apiMode: options.compatibleProvider.apiMode } } : {}),
+        ...(options.engine?.model ? { provider: { kind: options.engine.provider ?? 'configured', model: options.engine.model, apiMode: options.compatibleProvider?.apiMode ?? 'configured' } } : {}),
         ...(options.calendar ? { calendar: { enabled: true, calendarId: options.calendar.calendarId ?? 'primary' } } : {}) }),
       // In-process trusted UI only; remote callbacks must use the ordinary protocol.
       dispatchReviewed: service.dispatchReviewed.bind(service),

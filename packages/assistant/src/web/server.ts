@@ -9,7 +9,7 @@ import { connectAssistant, type AssistantCommand } from '../client.js';
 import { dayWindow, localDate, validZone } from '../automation/time.js';
 import type { AgendaSource } from '../automation/summary.js';
 
-export interface AssistantWebOptions { port?: number; timeZone?: string; assetsDirectory?: string }
+export interface AssistantWebOptions { port?: number; timeZone?: string; assetsDirectory?: string; setup?: { state(): unknown; action(name: string, input: unknown): Promise<unknown> } }
 export interface WebHost {
   credentialsPath: string; diagnostics(): unknown; agendaSource?: AgendaSource | undefined;
   approvalDetails?: ((run: HarnessClientRun) => Promise<unknown>) | undefined;
@@ -18,27 +18,31 @@ export interface WebHost {
 }
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const id = z.string().min(1).max(240), key = z.string().uuid();
-export async function startAssistantWeb(host: WebHost, options: AssistantWebOptions = {}) {
+export async function startAssistantWeb(source: WebHost | (() => WebHost | undefined), options: AssistantWebOptions = {}) {
   const zone = options.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (!validZone(zone)) throw new Error('ASSISTANT_WEB_ZONE_INVALID');
   const assets = await realpath(options.assetsDirectory ?? fileURLToPath(new URL('../web/dist', import.meta.url)));
   await stat(path.join(assets, 'index.html'));
-  const client = await connectAssistant(host.credentialsPath), token = randomBytes(32).toString('hex');
-  const command = async (input: AssistantCommand) => { const response = await client.command(input); if (!response.ok) throw new Error(response.error.code); return response.data; };
+  const currentHost = () => { const host = typeof source === 'function' ? source() : source; if (!host) throw new Error('SETUP_REQUIRED'); return host; };
+  let connectedHost: WebHost | undefined, client: Awaited<ReturnType<typeof connectAssistant>> | undefined;
+  const token = randomBytes(32).toString('hex');
+  const command = async (input: AssistantCommand) => { const host = currentHost(); if (!client || connectedHost !== host) { client = await connectAssistant(host.credentialsPath); connectedHost = host; } const response = await client.command(input); if (!response.ok) throw new Error(response.error.code); return response.data; };
   const getRun = async (sessionId: string, runId: string) => { const data = await command({ method: 'run.get', sessionId, runId, includeReview: true }); if (data.kind !== 'run') throw new Error('RUN_RESPONSE_INVALID'); return data.run; };
   const review = async (run: HarnessClientRun) => {
+    const host = currentHost();
     const requiresDetails = run.approvals.some(a => ['calendar_write_apply', ...(host.reviewTools ?? [])].includes((a.action as { name?: string }).name ?? ''));
     const details = host.approvalDetails ? await host.approvalDetails(run) : null;
     const full = { runId: run.runId, revision: run.revision, approvals: run.approvals, details };
     return { ...full, digest: hash(full), canDecide: run.status === 'waiting_approval' && run.approvals.length > 0 && (!requiresDetails || Boolean(host.approvalDetails)) &&
       run.approvals.every(a => a.expiresAt > Date.now() && (!a.filePreview || a.filePreview.status === 'complete')) && JSON.stringify(full).length <= 100_000 };
   };
-  let origin = '', active = 0;
+  let origin = '', active = 0, runtimeRequests = 0;
+  let setupMutation = false;
   const server = createServer(async (req, res) => {
     res.setHeader('cache-control', 'no-store'); res.setHeader('x-content-type-options', 'nosniff'); res.setHeader('referrer-policy', 'no-referrer');
     res.setHeader('content-security-policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
     const json = (status: number, body: unknown) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)); };
-    let admitted = false;
+    let admitted = false, runtimeAdmitted = false, setupAdmitted = false;
     try {
       if (req.headers.host !== new URL(origin).host) { json(403, { error: 'HOST_REJECTED' }); return; }
       const url = new URL(req.url ?? '/', origin);
@@ -47,6 +51,18 @@ export async function startAssistantWeb(host: WebHost, options: AssistantWebOpti
         if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) { json(401, { error: 'AUTH_REQUIRED' }); return; }
         if ((req.headers.origin && req.headers.origin !== origin) || (req.method !== 'GET' && req.headers.origin !== origin)) { json(403, { error: 'ORIGIN_REJECTED' }); return; }
         if (active >= 16) { json(429, { error: 'BUSY' }); return; } active++; admitted = true;
+        if (req.method === 'GET' && url.pathname === '/api/setup') { json(200, options.setup?.state() ?? { managed: false }); return; }
+        if (url.pathname.startsWith('/api/setup/')) {
+          if (!options.setup) { json(404, { error: 'SETUP_UNAVAILABLE' }); return; }
+          if (req.method !== 'POST' || req.headers['content-type'] !== 'application/json') { json(405, { error: 'METHOD_REJECTED' }); return; }
+          let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 16384) { json(413, { error: 'BODY_TOO_LARGE' }); return; } }
+          if (setupMutation || runtimeRequests) { json(409, { error: 'SETUP_BUSY' }); return; }
+          setupMutation = true; setupAdmitted = true;
+          json(200, await options.setup.action(url.pathname.slice('/api/setup/'.length), JSON.parse(body))); return;
+        }
+        if (setupMutation) { json(409, { error: 'SETUP_BUSY' }); return; }
+        runtimeRequests++; runtimeAdmitted = true;
+        const host = currentHost();
         if (req.method === 'GET' && url.pathname === '/api/state') {
           const data = await command({ method: 'session.list' }); if (data.kind !== 'sessions') throw new Error('SESSION_RESPONSE_INVALID');
           const sessions = await Promise.all(data.sessions.slice(0, 20).map(async session => ({ sessionId: session.sessionId, title: session.title,
@@ -104,7 +120,7 @@ export async function startAssistantWeb(host: WebHost, options: AssistantWebOpti
     } catch (error) {
       const code = error instanceof Error && /^[A-Z][A-Z0-9_]{1,90}$/.test(error.message) ? error.message : 'REQUEST_FAILED';
       if (!res.headersSent) json(400, { error: code }); else res.end();
-    } finally { if (admitted) active--; }
+    } finally { if (admitted) active--; if (runtimeAdmitted) runtimeRequests--; if (setupAdmitted) setupMutation = false; }
   });
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(options.port ?? 0, '127.0.0.1', resolve); });
   const address = server.address(); if (!address || typeof address === 'string') throw new Error('WEB_LISTEN_FAILED');

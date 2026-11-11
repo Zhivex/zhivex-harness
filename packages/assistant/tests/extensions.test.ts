@@ -161,3 +161,48 @@ for (const apiMode of ['chat', 'responses'] as const) test(`compatible ${apiMode
     await rm(directory, { recursive: true, force: true });
   }
 }, 15000);
+
+test('official OpenAI chat uses the same token budget parameter for generation and streaming', async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const fetcher = (async (_input: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)); bodies.push(body);
+    if (body.max_tokens !== undefined) return Response.json({ error: { param: 'max_tokens' } }, { status: 400 });
+    if (body.stream) return new Response('data: {"id":"r","choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":null}]}\n\ndata: {"id":"r","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } });
+    return Response.json({ id:'r', choices:[{message:{role:'assistant',content:'OK'},finish_reason:'stop'}] });
+  }) as typeof fetch;
+  const { model } = createCompatibleProvider({ ...config, baseURL:'https://api.openai.com/v1', model:'gpt-6-luna', apiMode:'chat' }, { env: { ASSISTANT_TEST_KEY:'offline-key' }, fetcher });
+  expect((await model.generate({ messages, maxTokens:64 })).text).toBe('OK');
+  const events=[]; for await(const event of await model.stream!({messages,maxTokens:64}))events.push(event);
+  expect(events).toContainEqual(expect.objectContaining({type:'text-delta',textDelta:'OK'}));
+  expect(bodies).toHaveLength(2);
+  for(const body of bodies){expect(body.max_completion_tokens).toBe(64);expect(body).not.toHaveProperty('max_tokens');}
+});
+
+test('web search is explicit, Responses-only, preserves old bindings and retains citations', async () => {
+  const official = { ...config, baseURL:'https://api.openai.com/v1', apiMode:'responses' as const };
+  const options = { env: { ASSISTANT_TEST_KEY:'offline-key' } };
+  const plain = createCompatibleProvider(official, options);
+  expect(plain.config).not.toHaveProperty('webSearch');
+  expect(() => createCompatibleProvider({ ...official, webSearch:true, apiMode:'chat' }, options)).toThrow('CONFIG_INVALID');
+  expect(() => createCompatibleProvider({ ...official, webSearch:true, baseURL:'https://proxy.test/v1' }, options)).toThrow('CONFIG_INVALID');
+  const text = 'Buenos Aires: 20 °C. Fuente';
+  const item = {id:'msg1',type:'message',role:'assistant',content:[{type:'output_text',text,annotations:[{type:'url_citation',start_index:text.indexOf('Fuente'),end_index:text.length,title:'Weather',url:'https://weather.test/current'}]}]};
+  const bodies: any[] = [];
+  const fetcher = (async (_: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)); bodies.push(body);
+    const response = {id:'r1',status:'completed',output:[item],usage:{input_tokens:1,output_tokens:1,total_tokens:2}};
+    if (!body.stream) return Response.json(response);
+    return new Response([
+      {type:'response.output_text.delta',delta:text,output_index:0,content_index:0,item_id:'msg1'},
+      {type:'response.output_item.done',output_index:0,item},
+      {type:'response.completed',response}
+    ].map(event => `data: ${JSON.stringify(event)}\n\n`).join(''),{headers:{'content-type':'text/event-stream'}});
+  }) as typeof fetch;
+  const searched = createCompatibleProvider({...official,webSearch:true},{...options,fetcher});
+  expect(searched.binding).not.toBe(plain.binding);
+  const expected = 'Buenos Aires: 20 °C. [Weather](https://weather.test/current)';
+  expect((await searched.model.generate({messages})).text).toBe(expected);
+  let streamed=''; for await (const event of await searched.model.stream!({messages})) if(event.type==='text-delta')streamed+=event.textDelta;
+  expect(streamed).toBe(expected);
+  for(const body of bodies)expect(body.tools).toContainEqual({type:'web_search'});
+});

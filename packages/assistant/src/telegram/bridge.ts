@@ -28,6 +28,9 @@ function renderReview(run: HarnessClientRun) {
 }
 export interface TelegramBridgeOptions {
   stateDirectory: string; credentialsPath: string; ownerId: string; expectedTelegramUserId: string;
+  /** Trusted local setup only: private challenge already proved and explicitly confirmed by the owner. */
+  confirmedPrivateChatId?: string;
+  confirmedUpdateOffset?: number;
   api: TelegramApi; recover?: boolean; now?: () => number;
   /** Trusted host lookup of digest-bound external operation details, never supplied by a channel message. */
   agendaSource?: AgendaSource;
@@ -38,6 +41,7 @@ export interface TelegramBridgeOptions {
 /** One local owner, one bot, one private conversation. No channel payload grants host authority. */
 export async function createTelegramBridge(options: TelegramBridgeOptions) {
   if (!/^[1-9][0-9]{0,15}$/.test(options.expectedTelegramUserId) || !Number.isSafeInteger(Number(options.expectedTelegramUserId))) throw new Error('TELEGRAM_OWNER_INVALID');
+  if (options.confirmedPrivateChatId !== undefined && (options.confirmedPrivateChatId !== options.expectedTelegramUserId || !Number.isSafeInteger(options.confirmedUpdateOffset) || options.confirmedUpdateOffset! < 0)) throw new Error('TELEGRAM_OWNER_INVALID');
   const now = options.now ?? Date.now;
   const me = await options.api.call('getMe', {}) as { id?: number; is_bot?: boolean };
   if (!Number.isSafeInteger(me.id) || !me.is_bot) throw new Error('TELEGRAM_BOT_INVALID');
@@ -48,6 +52,7 @@ export async function createTelegramBridge(options: TelegramBridgeOptions) {
     const binding = JSON.stringify({ botId: me.id, ownerId: options.ownerId, telegramUserId: options.expectedTelegramUserId });
     if (store.meta('binding') && store.meta('binding') !== binding) throw new Error('TELEGRAM_BINDING_MISMATCH');
     store.set('binding', binding);
+    if (options.confirmedPrivateChatId && !store.meta('chatId')) { store.set('chatId', options.confirmedPrivateChatId); store.set('pairHash', 'used'); store.set('offset', String(options.confirmedUpdateOffset)); }
     const client = await connectAssistant(options.credentialsPath);
     const pairingCode = store.meta('chatId') ? undefined : randomBytes(16).toString('hex');
     if (pairingCode) { store.set('pairHash', hash(pairingCode)); store.set('pairExpires', String(now() + 10 * 60_000)); }
