@@ -3,6 +3,19 @@
 The interactive console keeps project context, task editing and consequential
 approval decisions distinguishable within normal terminal scrollback.
 
+## Code terminal presentation
+
+The Code console reserves a status area during execution for the current phase,
+elapsed time, step and background draft. Small or non-interactive terminals use
+the fallback presentation. Approval review keeps rejection, exact approval,
+payload inspection and deciding later separate; returning to a pending review
+does not grant authority by itself.
+
+For current controls and restart behavior, use the
+[Code package guide](../packages/code/README.md#continue). The original
+[compact-flow implementation snapshot](reports/CODE_COMPACT_FLOW.md) preserves
+its earlier labels, scope and installed validation; it is not a current release claim.
+
 ## Reference patterns
 
 Reviewed on 2026-09-21:

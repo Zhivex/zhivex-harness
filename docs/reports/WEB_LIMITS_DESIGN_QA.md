@@ -1,3 +1,11 @@
+# Web limits design QA
+
+Archived from `design-qa.md` on 2026-11-11. The original snapshot follows unchanged;
+its UI descriptions, unreleased status and validation counts apply to that work,
+not automatically to the current product. Current documentation: [Web limits](../WEB_LIMITS.md).
+Referenced local captures or external design references are not necessarily bundled
+with this historical record.
+
 # Optional limits: visual and functional QA
 
 Approved reference: Library `libfile_bcc0c7c053f881918c51335c67b4dc3e`,

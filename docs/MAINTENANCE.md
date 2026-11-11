@@ -8,10 +8,12 @@ usage, start with [First use](FIRST_USE.md).
 - [Contributing](../CONTRIBUTING.md) and [roadmap](../ROADMAP.md).
 - [Console UX rationale](CLI_UX.md).
 - [Desktop development](../desktop/DEVELOPMENT.md) and [architecture](DESKTOP_ARCHITECTURE.md).
+- [Gradual Code-to-Assistant migration](CODE_TO_ASSISTANT_MIGRATION.md).
 
 ## Release and evidence
 
 - [Release procedure](RELEASE.md) and [rollback](ROLLBACK.md).
+- [Historical release preparations and decisions](reports/RELEASE_HISTORY_THROUGH_1_6_2.md).
 - [Live certification](LIVE_CERTIFICATION.md) and [GA readiness](GA_READINESS.md).
 - [Security review requirements](SECURITY_REVIEW_EVIDENCE.md).
 - [RC14 delegated review decision](RC14_DELEGATED_SECURITY_DECISION.md).

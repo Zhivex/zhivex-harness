@@ -1,3 +1,11 @@
+# Web workspace flow audit
+
+Archived from `docs/ux/web-flow-audit.md` on 2026-11-11. The original snapshot follows unchanged;
+its UI descriptions, unreleased status and validation counts apply to that work,
+not automatically to the current product. Current documentation: [Web guide](../../packages/web/README.md).
+Referenced local captures or external design references are not necessarily bundled
+with this historical record.
+
 # Web workspace flow
 
 The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.10.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.

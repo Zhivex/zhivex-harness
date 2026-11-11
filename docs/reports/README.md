@@ -14,6 +14,37 @@ this archive rather than bundling development journals. Personal paths in copied
 upstream tracebacks are anonymized in this repository copy; evaluation outcomes
 and recorded artifact hashes are unchanged.
 
+## Release and UI archive navigation
+
+- [Release preparation and decision history through 1.6.2](RELEASE_HISTORY_THROUGH_1_6_2.md): moved out of the operational release guide; original failures and pending states retained.
+- [Harness 1.6.3 / Code 0.4.2 preparation](RELEASE_1_6_3_CODE_0_4_2.md) and [verified publication](PUBLICATION_1_6_3_CODE_0_4_2.md): distinct preparation and protected release artifacts.
+- [Web limits design QA](WEB_LIMITS_DESIGN_QA.md): original visual and offline validation snapshot.
+- [Web workspace flow audit](WEB_FLOW_AUDIT.md): historical UI changes, session diagnosis and SDK proposals.
+- [Code compact terminal flow](CODE_COMPACT_FLOW.md): original implementation and installed validation snapshot; current usage is in the [Code guide](../../packages/code/README.md).
+- [Assistant web design QA](../../packages/assistant/web/design-qa.md): retained with its desktop and mobile captures beside the implementation.
+
+The 2026-11-11 reorganization retains these records in the checkout. It does not
+remove result JSON, security evidence, artifact hashes or failed attempts.
+
+## Additional retained implementation and diagnostic evidence
+
+These dated reports retain their original scope, incomplete acceptance and failed
+attempts. They supplement the consolidated reports below; they are not current
+usage guides or new certification.
+
+- [HAR-HU-37 and HAR-HU-38 implementation evidence](HAR_HU_37_38_2026-09-28.md).
+- [HAR-HU-41 / HAR-HU-44 implementation evidence](HAR_HU_41_44_2026-09-28.md).
+- [HAR-HU-42: Gemini editing reproduction](HAR_HU_42_2026-09-29.md).
+- [HAR-HU-45 — preparación de certificación instalada](HAR_HU_45_2026-09-29.md).
+- [HAR-HU-51 — piloto competitivo reproducible](HAR_HU_51_2026-09-29.md).
+- [Performance backport assessment](PERFORMANCE_BACKPORT_2026-09-26.md).
+- [RC2 approval input validation](RC2_APPROVAL_PREFLIGHT_2026-09-28.md).
+- [RC2 recovery validation — 2026-09-28](RC2_RECOVERY_VALIDATION_2026-09-28.md).
+- [RC3: runtime-owned edit references](RC3_MODEL_EDIT_REFERENCES_2026-09-25.md).
+- [Qwen 0.16.2 adoption — 2026-09-26](qwen-0162-adoption-2026-09-26.md).
+
+- [RC14 automated security review](../../security-reviews/rc14-automated-review-2026-09-19.md) and [remediation](../../security-reviews/rc14-remediation-2026-09-19.md): historical supporting records; the final security dossier and machine-readable review retain their separate roles.
+
 ## Archived audits and implementation notes
 
 | Snapshot | Follow-up |

@@ -13,13 +13,14 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Azure OpenAI](AZURE_OPENAI.md): provisional endpoint, deployment, and API-key route.
 - [Credentials](CREDENTIALS.md): system keychain, temporary keys and automation.
 - [Project instructions and context](CONTEXT_ENGINEERING.md).
+- [Project memory](PROJECT_MEMORY.md): explicit notes, retrieval budgets and deletion semantics.
+- [Optional Web limits](WEB_LIMITS.md): interactive defaults and observed thresholds.
 - [Execution environments](EXECUTION_ENVIRONMENTS.md): isolated command execution.
 - [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md): separate macOS alpha application.
 - [Support](../SUPPORT.md), [support matrix](SUPPORT_MATRIX.md), [security policy](../SECURITY.md).
 
 ## Integrate Harness
 
-- [Assistant MVP plan](ASSISTANT_MVP_PLAN.md), [contracts](ASSISTANT_CONTRACTS.md) and [persistent host](ASSISTANT_HOST.md) and [Telegram](ASSISTANT_TELEGRAM.md): general profiles and a separate local assistant product.
 - [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
 - [Code release procedure](CODE_RELEASE.md): independent RC publication, exact artifact, bootstrap provenance and Trusted Publishing.
 
@@ -34,27 +35,23 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Audit pack](AUDIT_PACK.md): experimental signed export of one run or guided task.
 - [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).
 
+## Assistant
+
+- [MVP scope and phase status](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_MVP_PLAN.md) and [contracts](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CONTRACTS.md).
+- [Persistent host](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_HOST.md), [Telegram](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_TELEGRAM.md) and [Calendar](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CALENDAR.md).
+- [Automations](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_AUTOMATIONS.md), [extensions](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_EXTENSIONS.md) and [pilot acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PILOT.md).
+- [Web interface](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_WEB.md) and [first-day setup](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_FIRST_DAY.md).
+
 ## Contribute and maintain
 
 - [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.
 
 [Contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
 [Maintenance and release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md) ·
+[Historical reports](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md) ·
 [Changelog](../CHANGELOG.md)
 
 Primary guides are maintained in English. Historical reports preserve their original
 language and evidence. Maintainer procedures and reports remain in the repository
 and are excluded from the npm package. Published validation applies to the exact
 release artifact, not automatically to later source changes.
-
-- [Project memory](PROJECT_MEMORY.md): experimental explicit notes, review, retrieval budgets and deletion semantics.
-
-- [Optional Web limits and interactive defaults](WEB_LIMITS.md)
-
-- [Assistant Calendar](ASSISTANT_CALENDAR.md): OAuth, propuestas aprobadas y recuperación de efectos.
-
-- [Assistant automatizaciones](ASSISTANT_AUTOMATIONS.md): resumen diario, zonas y memoria personal explícita.
-
-- [Assistant piloto](ASSISTANT_PILOT.md): onboarding, regresiones, recuperación y aceptación con cuentas reales.
-
-- [Assistant extensiones](ASSISTANT_EXTENSIONS.md): proveedores compatibles configurables y módulos Calendar/MCP.
