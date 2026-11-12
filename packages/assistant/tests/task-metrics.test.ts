@@ -8,6 +8,27 @@ const snapshot = (runId: string, overrides: Partial<TaskRunSnapshot> = {}): Task
   runId, sessionId: 'session', startedAt: 1000, updatedAt: 2000, status: 'completed',
   usage: { calls: 1, inputTokens: 100, outputTokens: 20, usageComplete: true, estimatedUsd: 0.01 }, ...overrides
 });
+test('timeouts finalize elapsed time, accept feedback and retain cost through correction and restart', async () => {
+  const directory = await mkdtemp('/tmp/task-metrics-timeout-');
+  let now = 5000;
+  let store = await openTaskMetrics(directory, () => now);
+  try {
+    store.observe(snapshot('timeout', { status: 'timed_out' }));
+    expect(store.get('timeout')).toMatchObject({ endedAt: 2000, durationMs: 1000, elapsedMs: 1000, costComplete: true, estimatedUsd: 0.01 });
+    for (const outcome of ['failure', 'abandoned'] as const) {
+      expect(store.feedback({ taskId: 'timeout', expectedRevision: store.get('timeout').revision, outcome, category: 'general' }).outcome).toBe(outcome);
+    }
+    store.close();
+    now = 20000;
+    store = await openTaskMetrics(directory, () => now);
+    expect(store.get('timeout')).toMatchObject({ elapsedMs: 1000, outcome: 'abandoned' });
+    store.observe(snapshot('fix', { startedAt: 3000, updatedAt: 4000 }));
+    const linked = store.link({ taskId: 'timeout', runId: 'fix', kind: 'correction' });
+    expect(linked).toMatchObject({ endedAt: 4000, elapsedMs: 3000, corrections: 1, estimatedUsd: 0.02, costComplete: true });
+    store.feedback({ taskId: 'timeout', expectedRevision: linked.revision, outcome: 'success', category: 'general' });
+    expect(store.report().summary).toMatchObject({ tasks: 1, success: 1, totalEstimatedUsd: 0.02, estimatedUsdPerSuccess: 0.02, costComplete: true });
+  } finally { store.close(); await rm(directory, { recursive: true, force: true }); }
+});
 test('task grouping, explicit verification and aggregate cost retain failed attempts without double counting', async () => {
   const directory = await mkdtemp('/tmp/task-metrics-');
   const store = await openTaskMetrics(directory, () => 5000);

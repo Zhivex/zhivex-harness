@@ -38,7 +38,7 @@ const runSchema = z.strictObject({ runId: id, sessionId: id, status: z.string().
 export type TaskRunSnapshot = z.infer<typeof runSchema>;
 type RunRow = { run_id: string; task_id: string; kind: string; snapshot: string };
 type TaskRow = { id: string; category: z.infer<typeof taskCategorySchema>; outcome: 'success' | 'failure' | 'abandoned' | 'unverified'; reviewed_at: number | null; reviewed_revision: string | null };
-const terminal = (status: string) => ['completed', 'failed', 'cancelled', 'interrupted', 'max_steps', 'budget_exceeded'].includes(status);
+const terminal = (status: string) => ['completed', 'failed', 'timed_out', 'cancelled', 'interrupted', 'max_steps', 'budget_exceeded'].includes(status);
 
 /** Assistant-owned observations only. Never stores prompts, outputs, tool payloads or credentials. */
 export async function openTaskMetrics(directory: string, now = Date.now) {

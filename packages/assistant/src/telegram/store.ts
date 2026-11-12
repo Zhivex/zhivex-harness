@@ -1,3 +1,4 @@
+import { syncPrivateDirectory } from '../private-directory.js';
 import { DatabaseSync } from 'node:sqlite';
 import { constants } from 'node:fs';
 import { lstat, open, unlink } from 'node:fs/promises';
@@ -59,8 +60,7 @@ export async function openTelegramStore(directory: string, recover = false) {
     if (meta('schemaVersion') && meta('schemaVersion') !== '1') throw new Error('TELEGRAM_SCHEMA_UNSUPPORTED');
     set('schemaVersion', '1');
     run("UPDATE outbox SET status='uncertain' WHERE status='sending'");
-    const parent = await open(directory, 'r');
-    try { await parent.sync(); } finally { await parent.close(); }
+    await syncPrivateDirectory(directory, 'TELEGRAM_STATE_UNSAFE', directoryStat);
     let closed = false;
     return { get, all, run, transaction, meta, set,
       async close() { if (closed) return; closed = true; database.close(); await unlink(lockPath); } };

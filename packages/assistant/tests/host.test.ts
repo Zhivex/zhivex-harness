@@ -91,6 +91,15 @@ test("host identity is pinned and rejects unsafe directories", async () => {
     expect(data(await client.command({ method: "session.list" }), "sessions").sessions).toHaveLength(3);
     await host.close();
     await expect(startAssistantHost({ directory, ownerId: "two", engine })).rejects.toThrow("BINDING_MISMATCH");
+    const manifest = directory + '/state/host.json';
+    const contents = await readFile(manifest, 'utf8');
+    await writeFile(directory + '/manifest-copy.json', contents, { mode: 0o600 });
+    await rm(manifest);
+    await symlink(directory + '/manifest-copy.json', manifest);
+    await expect(startAssistantHost({ directory, ownerId: "one", engine })).rejects.toThrow();
+    expect(await readFile(directory + '/manifest-copy.json', 'utf8')).toBe(contents);
+    await rm(manifest);
+    await writeFile(manifest, contents, { mode: 0o600 });
     await symlink(directory, directory + "-link");
     try { await expect(startAssistantHost({ directory: directory + "-link", ownerId: "one", engine })).rejects.toThrow("DIRECTORY_UNSAFE"); }
     finally { await rm(directory + "-link"); }

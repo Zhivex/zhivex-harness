@@ -1,3 +1,4 @@
+import { syncPrivateDirectory } from './private-directory.js';
 import { openTaskMetrics, taskUsageSchema, type TaskMetrics, type TaskRunSnapshot } from './task-metrics.js';
 import { createAssistantProvider, type AssistantProviderConfig } from './providers/provider.js';
 import { startAssistantWeb, type AssistantWebOptions } from './web/server.js';
@@ -77,17 +78,23 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
     profileDigest: createHash("sha256").update(JSON.stringify({ ...profile, toolNames: [...new Set(profile.toolNames)].sort() })).digest("hex") });
   // Exclusive creation prevents racing owners. Incomplete/corrupt state fails closed.
   const manifestPath = path.join(state, "host.json");
+  let created = false;
+  const file = await open(manifestPath, "wx", 0o600).then(handle => {
+    created = true;
+    return handle;
+  }).catch(error => {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    return open(manifestPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+  });
   try {
-    const file = await open(manifestPath, "wx", 0o600);
-    try { await file.writeFile(binding); await file.sync(); } finally { await file.close(); }
-    const parent = await open(state, "r");
-    try { await parent.sync(); } finally { await parent.close(); }
-  } catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
-  const file = await open(manifestPath, constants.O_RDONLY | constants.O_NOFOLLOW);
-  try {
+    if (created) {
+      await file.writeFile(binding);
+      await file.sync();
+      await syncPrivateDirectory(state, "ASSISTANT_DIRECTORY_UNSAFE");
+    }
     const stat = await file.stat();
     if (!stat.isFile() || stat.uid !== process.getuid?.() || (stat.mode & 0o077) || stat.size > 4096) throw new Error("ASSISTANT_STATE_UNSAFE");
-    if (await file.readFile("utf8") !== binding) throw new Error("ASSISTANT_HOST_BINDING_MISMATCH");
+    if (!created && await file.readFile("utf8") !== binding) throw new Error("ASSISTANT_HOST_BINDING_MISMATCH");
   } finally { await file.close(); }
   const harness = await createProfiledHarness({
     ...options.engine, usageAccounting: { ...(options.taskMetricsPricing ? { pricing: options.taskMetricsPricing } : {}) }, agentProfile: profile, workspace, stateDirectory: path.join(workspace, ".zhivex-harness"),

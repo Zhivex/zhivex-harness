@@ -1,3 +1,4 @@
+import { syncPrivateDirectory } from '../private-directory.js';
 import { DatabaseSync } from 'node:sqlite';
 import { constants } from 'node:fs';
 import { open, lstat, mkdir, unlink } from 'node:fs/promises';
@@ -61,7 +62,7 @@ export async function openCalendarStore(directory: string, encodedKey: string, r
       } catch { throw new Error('CALENDAR_CREDENTIAL_DECRYPT_FAILED'); }
     };
     if (meta('keyCheck')) { if (decrypt<string>('keyCheck') !== 'calendar') throw new Error('CALENDAR_KEY_INVALID'); } else encrypt('keyCheck', 'calendar');
-    const parent = await open(directory, 'r'); try { await parent.sync(); } finally { await parent.close(); }
+    await syncPrivateDirectory(directory, 'CALENDAR_STATE_UNSAFE', root);
     let closed = false;
     return { get, run, meta, set, encrypt, decrypt, async close() { if (!closed) { closed = true; database.close(); key.fill(0); await unlink(lockPath); } } };
   } catch (error) { db?.close(); key.fill(0); await unlink(lockPath); throw error; }
