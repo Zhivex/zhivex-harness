@@ -12,7 +12,7 @@
     "zhivex-assistant": "./dist/cli.js"
   },
   "scripts": {
-    "build": "bun build src/index.ts src/cli.ts --outdir dist --target node --packages external && bun run build:web",
+    "build": "bun build src/index.ts src/cli.ts src/desktop.ts --outdir dist --target node --packages external && bun run build:web",
     "start": "node dist/cli.js",
     "prepare:local": "bun run scripts/prepare-local.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
@@ -24,7 +24,12 @@
     "dev:web": "vite --config web/vite.config.ts",
     "build:launcher": "bun run build && bun run scripts/build-launcher.ts",
     "eval:tasks": "bun run scripts/evaluate-tasks.ts",
-    "smoke:microsoft-web": "bun run scripts/smoke-microsoft-web.ts"
+    "smoke:microsoft-web": "bun run scripts/smoke-microsoft-web.ts",
+    "prepare:desktop": "bun run scripts/prepare-desktop.ts",
+    "dev:desktop": "bun run prepare:desktop && tauri dev",
+    "build:desktop": "bun run prepare:desktop && tauri build",
+    "test:desktop": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "smoke:desktop": "bun run scripts/smoke-desktop.ts"
   },
   "dependencies": {
     "@zhivex-ai/core": "1.37.0",
@@ -43,7 +48,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "typescript": "7.0.2",
-    "vite": "8.3.5"
+    "vite": "8.3.5",
+    "@tauri-apps/cli": "^2.11.0"
   },
   "engines": {
     "node": ">=22.13.0"

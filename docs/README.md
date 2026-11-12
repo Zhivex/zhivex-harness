@@ -57,3 +57,5 @@ Primary guides are maintained in English. Historical reports preserve their orig
 language and evidence. Maintainer procedures and reports remain in the repository
 and are excluded from the npm package. Published validation applies to the exact
 release artifact, not automatically to later source changes.
+
+- [Assistant native desktop preview](ASSISTANT_DESKTOP.md): Tauri build, lifecycle, verification and platform limits.
