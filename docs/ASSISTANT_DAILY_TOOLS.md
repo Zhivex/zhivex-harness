@@ -190,3 +190,6 @@ Fuentes de los contratos externos:
 La sincronización con Google Tasks sigue siendo una extensión posterior: las tareas
 implementadas son locales. El campo `due` de Google Tasks representa una fecha y
 no reemplazaría el scheduler con hora/zona de Assistant.
+
+La [primera versión proactiva](ASSISTANT_PROACTIVE.md) agrega avisos opt-in de conflictos,
+tareas por vencer y respuestas pendientes, con políticas y seguimientos persistentes.

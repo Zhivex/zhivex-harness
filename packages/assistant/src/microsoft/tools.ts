@@ -93,6 +93,27 @@ export function createMicrosoftTools(connection: Awaited<ReturnType<typeof openM
       const proposal = review(input);
       return proposal.kind === 'draft' ? service.createDraft(proposal.args, signal) : service.createEvent(proposal.args, signal);
     },
+    async readReplyThread(threadId: string, signal: AbortSignal) {
+      requireMail(); id.parse(threadId);
+      const query = JSON.stringify({ threadId });
+      const params = new URLSearchParams({ '$top': '100', '$select': 'id,conversationId,from,receivedDateTime,isDraft', '$filter': `conversationId eq '${threadId}'` });
+      let url = `${graph}/me/messages?${params}`;
+      const messages: { id: string; from: string; at: number; draft: boolean }[] = [], seen = new Set<string>();
+      for (let page = 0; page < 10; page++) {
+        if (seen.has(url)) throw new Error('PROACTIVE_THREAD_INCOMPLETE'); seen.add(url);
+        const result = await microsoftJson(fetcher, url, { headers: await headers() }, signal);
+        if (!Array.isArray(result.value) || result.value.length > 100) throw new Error('PROACTIVE_THREAD_INCOMPLETE');
+        for (const m of result.value) {
+          const at = Date.parse(m.receivedDateTime);
+          if (m.conversationId !== threadId || typeof m.id !== 'string' || typeof m.from?.emailAddress?.address !== 'string' || !Number.isFinite(at) || typeof m.isDraft !== 'boolean') throw new Error('PROACTIVE_THREAD_INVALID');
+          messages.push({ id: m.id, from: m.from.emailAddress.address, at, draft: m.isDraft });
+        }
+        const token = continuation(result['@odata.nextLink'], 'reply', query, '/v1.0/me/messages');
+        if (!token) return { complete: true, messages };
+        url = pageUrl(token, 'reply', query, url);
+      }
+      throw new Error('PROACTIVE_THREAD_INCOMPLETE');
+    },
     async listMail(input: unknown, signal?: AbortSignal) {
       requireMail(); const args = mailListSchema.parse(input);
       if (args.query && args.unreadOnly) throw new Error('MICROSOFT_SEARCH_FILTER_UNSUPPORTED');

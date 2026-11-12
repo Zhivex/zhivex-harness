@@ -12,8 +12,7 @@ The following commands apply to the technical pilot and advanced CLI host.
 From the repository root:
 
 ```sh
-bun run build
-bun run --cwd packages/assistant prepare:local
+bun run prepare:assistant
 bun run --cwd packages/assistant build
 bun run --cwd packages/assistant typecheck
 ```

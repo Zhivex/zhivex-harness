@@ -42,6 +42,8 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Automations](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_AUTOMATIONS.md), [extensions](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_EXTENSIONS.md) and [pilot acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PILOT.md).
 - [Web interface](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_WEB.md) and [first-day setup](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_FIRST_DAY.md).
 
+- [Daily tools](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_DAILY_TOOLS.md), [Microsoft](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_MICROSOFT.md) and [proactive notices](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PROACTIVE.md).
+
 ## Contribute and maintain
 
 - [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.

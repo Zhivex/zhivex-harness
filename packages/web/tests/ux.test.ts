@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, expect, test } from "bun:test";
@@ -149,7 +149,7 @@ test("shared tool policy is rejected when more than one workspace is explicit", 
 });
 
 test("project registry confirms the real path, stays private and plans live sync", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "zhivex-registry-"));
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), "zhivex-registry-")));
   directories.push(root);
   const folder = path.join(root, "atlas");
   const missing = path.join(root, "gone");
@@ -186,7 +186,7 @@ test("project registry confirms the real path, stays private and plans live sync
 });
 
 test("project add confirms the typed path and does not ask the browser for a folder", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "zhivex-project-cli-"));
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), "zhivex-project-cli-")));
   directories.push(root);
   const folder = path.join(root, "shop");
   const file = path.join(root, "projects.json");
@@ -217,7 +217,7 @@ test("project add confirms the typed path and does not ask the browser for a fol
 });
 
 test("a registry policy change is reopened and the web runtime lists the new policy", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "zhivex-policy-runtime-"));
+  const root = await realpath(await mkdtemp(path.join(tmpdir(), "zhivex-policy-runtime-")));
   directories.push(root);
   const folder = path.join(root, "atlas");
   const assets = path.join(root, "assets");

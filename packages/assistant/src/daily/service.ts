@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { createProactiveService } from '../proactive/service.js';
 import { openTelegramStore } from '../telegram/store.js';
 import { dayWindow, validZone } from '../automation/time.js';
 
@@ -47,6 +48,7 @@ export async function openDailyService(directory: string, ownerId: string, recov
       const total = store.get<{ n: number }>("SELECT COUNT(*) n FROM tasks WHERE status='pending'")!.n;
       return { tasks: store.all("SELECT * FROM tasks WHERE status='pending' ORDER BY due_date IS NULL,due_date,created_at,id LIMIT ? OFFSET ?", limit, offset), total, nextOffset: offset + limit < total ? offset + limit : null };
     };
+    const proactive = createProactiveService(store, now);
     const listReminders = () => store.all<Reminder>('SELECT * FROM reminders ORDER BY due_at DESC,id LIMIT 100');
     const due = (input: ReminderInput) => {
       const window = dayWindow(input.date, input.timeZone, input.localTime);
@@ -73,8 +75,8 @@ export async function openDailyService(directory: string, ownerId: string, recov
       }
     })().finally(() => { flight = undefined; });
     return {
-      listTasks, listReminders, tick,
-      start(notifications?: NotificationDelivery) { if (timer || stopped) return; delivery = notifications; timer = setInterval(() => { void tick().catch(() => {}); }, 1000); timer.unref(); },
+      listTasks, listReminders, tick, proactive,
+      start(notifications?: NotificationDelivery) { if (timer || stopped) return; delivery = notifications; proactive.setDelivery(notifications); timer = setInterval(() => { void tick().catch(() => {}); void proactive.tick().catch(() => {}); }, 1000); timer.unref(); },
       createTask(input: unknown) { const args = taskCreateSchema.parse(input); return once('task.create', args, () => {
         store.run("INSERT INTO tasks VALUES(?,?,?,'pending',?)", args.requestId, args.title, args.dueDate ?? null, now()); return { taskId: args.requestId, status: 'pending' };
       }); },
@@ -106,8 +108,8 @@ export async function openDailyService(directory: string, ownerId: string, recov
         return { notes: store.all('SELECT id,title,created_at FROM notes WHERE instr(lower(title || body),lower(?))>0 ORDER BY created_at,id LIMIT ? OFFSET ?', args.query, args.limit, args.offset), total, nextOffset: args.offset + args.limit < total ? args.offset + args.limit : null };
       },
       readNote(input: unknown) { const { noteId } = z.strictObject({ noteId: z.string().uuid() }).parse(input); const note = store.get('SELECT * FROM notes WHERE id=?', noteId); if (!note) throw new Error('NOTE_NOT_FOUND'); return note; },
-      async stop() { stopped = true; if (timer) clearInterval(timer); controller.abort(); await flight; },
-      async close() { stopped = true; if (timer) clearInterval(timer); controller.abort(); await flight; await store.close(); }
+      async stop() { stopped = true; if (timer) clearInterval(timer); controller.abort(); await proactive.stop(); await flight; },
+      async close() { stopped = true; if (timer) clearInterval(timer); controller.abort(); await proactive.stop(); await flight; await store.close(); }
     };
   } catch (error) { await store.close(); throw error; }
 }

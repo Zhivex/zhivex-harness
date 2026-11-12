@@ -10,12 +10,12 @@ import { createWebModule } from './web.js';
 import type { AssistantModule } from './module.js';
 
 const environment = z.string().regex(/^[A-Z][A-Z0-9_]{0,127}$/);
-export const dailyIntegrationSchema = z.strictObject({ daily: z.boolean().default(false),
+export const dailyIntegrationSchema = z.strictObject({ daily: z.boolean().default(false), proactive: z.boolean().optional(),
   github: z.strictObject({ account: z.string().regex(/^[A-Za-z0-9-]{1,100}$/), authorizationEnv: z.string().regex(/^ZHIVEX_MCP_[A-Z0-9_]{1,100}$/) }).optional(),
   web: z.strictObject({ apiKeyEnv: environment }).optional() });
 export const moduleConfigSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('calendar'), calendarId: z.string().min(1).max(320).default('primary') }),
-  z.strictObject({ kind: z.literal('daily') }),
+  z.strictObject({ kind: z.literal('daily'), proactive: z.boolean().optional() }),
   z.strictObject({ kind: z.literal('google'), mail: z.boolean().default(false), drive: z.boolean().default(false) }).refine(v => v.mail || v.drive),
   z.strictObject({ kind: z.literal('github'), ...dailyIntegrationSchema.shape.github.unwrap().shape }),
   z.strictObject({ kind: z.literal('web'), apiKeyEnv: environment }),
@@ -28,7 +28,7 @@ export function configuredModules(input: z.infer<typeof moduleConfigSchema>[]): 
     if (ids.has(id)) throw new Error('ASSISTANT_MODULE_ID_INVALID'); ids.add(id);
     switch (module.kind) {
       case 'calendar': return createCalendarModule(calendarEnvironment(module.calendarId));
-      case 'daily': return createDailyModule();
+      case 'daily': return createDailyModule({ proactive: module.proactive ?? false });
       case 'google': return createGoogleModule({ ...calendarEnvironment(), mail: module.mail, drive: module.drive });
       case 'github': return createGithubModule(module);
       case 'web': return createWebModule(module);

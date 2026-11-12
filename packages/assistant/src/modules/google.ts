@@ -20,7 +20,7 @@ export function createGoogleModule(options: GoogleToolsOptions): AssistantModule
         { name: 'knowledge_read', description: 'Read a Google Doc or text/Markdown/CSV file, up to 256 KiB. Returns at most 24000 characters and a truncation flag.', schema: fileSchema, execute: service.readFile }
       );
       return { ...moduleTools('google', service.binding, 'Use Gmail and Drive only for the connected account. Cite source links. Read the thread before preparing a reply. Draft approval must include all recipients, subject, body and thread. Never claim an uncertain draft succeeded or create another one to compensate.', definitions), close: connection.close,
-        ...(options.mail ? { summarySources: [{ id: 'mail', async read(signal: AbortSignal) {
+        ...(options.mail ? { replySource: { id: 'google', binding: service.binding, read: service.readReplyThread }, summarySources: [{ id: 'mail', async read(signal: AbortSignal) {
           const page = await service.searchMail({ query: 'in:inbox is:unread' }, signal);
           const ids = [...new Set<string>(page.messages.map((m: { threadId: string }) => m.threadId))].slice(0, 5);
           const threads = await Promise.all(ids.map(threadId => service.readThread({ threadId }, signal)));

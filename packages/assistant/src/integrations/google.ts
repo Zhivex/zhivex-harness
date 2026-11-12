@@ -55,6 +55,16 @@ export function createGoogleTools(connection: Awaited<ReturnType<typeof openGoog
   const rawThread = (id: string, signal?: AbortSignal) => get(`${mail}/threads/${encodeURIComponent(id)}?format=full`, signal);
   return {
     binding,
+    async readReplyThread(threadId: string, signal: AbortSignal) {
+      if (!options.mail) throw new Error('GOOGLE_MAIL_DISABLED');
+      googleId.parse(threadId);
+      const result = await get(`${mail}/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From`, signal);
+      if (!Array.isArray(result.messages) || result.messages.length > 1000) throw new Error('PROACTIVE_THREAD_INCOMPLETE');
+      return { complete: true, messages: result.messages.map((m: any) => {
+        if (typeof m.id !== 'string' || typeof m.internalDate !== 'string' || !/^\d+$/.test(m.internalDate) || !Number.isFinite(Number(m.internalDate)) || !Array.isArray(m.labelIds) || !headerValue(m, 'from')) throw new Error('PROACTIVE_THREAD_INVALID');
+        return { id: m.id, from: headerValue(m, 'from'), at: Number(m.internalDate), draft: m.labelIds.includes('DRAFT') };
+      }) };
+    },
     async searchMail(input: unknown, signal?: AbortSignal) {
       const args = mailSearchSchema.parse(input), params = new URLSearchParams({ q: args.query, maxResults: '20', ...(args.pageToken ? { pageToken: args.pageToken } : {}) });
       const result = await get(`${mail}/messages?${params}`, signal);

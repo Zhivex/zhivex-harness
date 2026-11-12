@@ -214,7 +214,10 @@
     "typecheck:code": "bun run --cwd packages/code typecheck",
     "evaluate:tasks": "bun run scripts/task-acceptance.ts",
     "prepare:desktop": "bun run build && bun pm pack --ignore-scripts --quiet --filename desktop/.harness-candidate.tgz && bun run desktop/scripts/prepare-harness.ts desktop/.harness-candidate.tgz",
-    "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts"
+    "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts",
+    "prepare:assistant": "bun run build && bun install --cwd packages/assistant --frozen-lockfile --ignore-scripts && bun run --cwd packages/assistant prepare:local",
+    "check:assistant": "bun run --cwd packages/assistant typecheck && bun run --cwd packages/assistant test && bun run --cwd packages/assistant smoke && bun run --cwd packages/assistant smoke:installed",
+    "smoke:assistant:web": "bun run --cwd packages/assistant build && bun run --cwd packages/assistant smoke:daily-web && bun run --cwd packages/assistant smoke:microsoft-web"
   },
   "dependencies": {
     "@zhivex-ai/agents": "1.12.0",

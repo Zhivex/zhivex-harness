@@ -19,7 +19,7 @@ async function fixture() {
     expect(new Headers(init.headers).get('authorization')).toBe('Bearer access-private'); expect(init.redirect).toBe('error');
     if (u.pathname.endsWith('/messages')) return Response.json({ messages: [{ id: 'message1', threadId: 'thread1' }], nextPageToken: u.searchParams.has('pageToken') ? undefined : 'next', resultSizeEstimate: 2 });
     if (u.pathname.endsWith('/threads/thread1')) return Response.json({ messages: [
-      { id: 'message1', payload: { mimeType: 'text/plain', headers: [{ name: 'Subject', value: 'Planning' }, { name: 'Message-ID', value: '<message1@example.com>' }, { name: 'References', value: '<older@example.com>' }], body: { data: Buffer.from('Meet tomorrow').toString('base64url') } } },
+      { id: 'message1', internalDate: '1794384000000', labelIds: ['SENT'], payload: { mimeType: 'text/plain', headers: [{ name: 'From', value: 'owner@example.com' }, { name: 'Subject', value: 'Planning' }, { name: 'Message-ID', value: '<message1@example.com>' }, { name: 'References', value: '<older@example.com>' }], body: { data: Buffer.from('Meet tomorrow').toString('base64url') } } },
       ...(changed ? [{ id: 'message2' }] : [])
     ] });
     if (u.pathname.endsWith('/drafts')) {
@@ -97,5 +97,15 @@ test('Drive search escapes query literals, preserves source links and reads only
       expect(module.profile.toolNames.some(name => name.includes('send'))).toBe(false);
       expect(JSON.stringify(module.mcpConfiguration)).not.toContain('access-private');
     } finally { await module.close(); }
+  } finally { await f.close(); }
+});
+
+
+test('proactive Gmail uses metadata for the full thread and rejects incomplete message metadata', async () => {
+  const f = await fixture();
+  try {
+    expect(await f.service.readReplyThread('thread1', AbortSignal.timeout(1000))).toMatchObject({ complete: true, messages: [{ id: 'message1', at: 1794384000000, draft: false }] });
+    expect(f.posts).toBe(0);
+    f.changeThread(); await expect(f.service.readReplyThread('thread1', AbortSignal.timeout(1000))).rejects.toThrow('THREAD_INVALID');
   } finally { await f.close(); }
 });

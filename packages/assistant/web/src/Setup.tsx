@@ -6,7 +6,7 @@ import SettingsWorkspace from './SettingsWorkspace';
 import { CaretDown, Robot, Plus } from '@phosphor-icons/react';
 
 export type SetupState = { managed: boolean; setupRevision?: number; canStop?: boolean; ready: boolean; busy: boolean; error: string | null; locked: boolean; configured: boolean; editing: boolean; draftName?: string;
-  tools?: { daily: boolean; github?: { account: string; authorizationEnv: string }; web?: { apiKeyEnv: string } };
+  tools?: { daily: boolean; proactive?: boolean; github?: { account: string; authorizationEnv: string }; web?: { apiKeyEnv: string } };
   microsoft?: { connected: boolean; email?: string; clientId?: string; tenantId?: string; mail: boolean; calendar: boolean };
   google?: { connected: boolean; email?: string; mail: boolean; drive: boolean };
   provider: { kind?: string; model: string; webSearch: boolean; canEnableWebSearch: boolean } | null; calendar: { connected: boolean; email?: string; pending: boolean; available: boolean };

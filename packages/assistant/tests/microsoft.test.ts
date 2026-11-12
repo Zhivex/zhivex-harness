@@ -22,6 +22,7 @@ async function fixture() {
       expect(new Headers(init.headers).get('authorization')).toBe('Bearer secret-access');
       if (url.pathname === '/v1.0/me') return Response.json({ id: account, mail: 'owner@company.test' });
       if (init.method === 'POST') { posts++; payloads.push(JSON.parse(String(init.body))); if (lost) throw new Error('lost'); return Response.json({ id: `created${posts}`, isDraft: true, webLink: 'https://outlook.office.com/' }); }
+      if (url.pathname === '/v1.0/me/messages' && (url.searchParams.has('$filter') && url.searchParams.get('$filter')!.includes('conversationId') || url.searchParams.get('$skip') === '100')) return Response.json({ value: [{ id: url.searchParams.has('$skip') ? 'reply2' : 'sent1', conversationId: 'thread1', from: { emailAddress: { address: 'them@example.com' } }, receivedDateTime: '2026-11-11T10:00:00Z', isDraft: false }], ...(!url.searchParams.has('$skip') ? { '@odata.nextLink': badPage ? 'https://evil.test/v1.0/me/messages' : 'https://graph.microsoft.com/v1.0/me/messages?$skip=100' } : {}) });
       if (url.pathname === '/v1.0/me/messages') return Response.json({ value: [{ id: 'msg1', subject: 'Planning' }], ...(!url.searchParams.has('$skip') ? { '@odata.nextLink': badPage ? 'https://evil.test/v1.0/me/messages' : 'https://graph.microsoft.com/v1.0/me/messages?$skip=20' } : {}) });
       if (url.pathname === '/v1.0/me/messages/msg1') return Response.json({ id: 'msg1', body: { contentType: 'text', content: 'x'.repeat(25000) }, hasAttachments: true });
       if (url.pathname === '/v1.0/me/calendarView') return Response.json({ value: [{ id: 'event1', subject: 'Planning', start: { dateTime: '2026-11-12T12:00:00.0000000', timeZone: 'UTC' }, end: { dateTime: '2026-11-12T13:00:00.0000000', timeZone: 'UTC' }, showAs: 'free' }] });
@@ -152,5 +153,18 @@ test('encrypted Microsoft proposals reject edits, forged references and expirati
     const db = await readFile(f.directory + '/microsoft/state/calendar.sqlite'); expect(db.includes(Buffer.from(args.to[0]!))).toBe(false);
     await f.restart(); expect(f.service.review(reference)).toMatchObject({ args: { to: args.to }, account: 'owner@company.test' });
     f.expire(); expect(() => f.service.apply(reference)).toThrow('PROPOSAL_EXPIRED'); expect(f.posts).toBe(0);
+  } finally { await f.close(); }
+});
+
+
+test('proactive Outlook reads a complete conversation and rejects untrusted continuation URLs', async () => {
+  const f = await fixture();
+  try {
+    const thread = await f.service.readReplyThread('thread1', AbortSignal.timeout(1000));
+    expect(thread.complete).toBe(true); expect(thread.messages.map(m => m.id)).toEqual(['sent1', 'reply2']);
+    expect(f.posts).toBe(0);
+    f.badPage(); await expect(f.service.readReplyThread('thread1', AbortSignal.timeout(1000))).rejects.toThrow('PAGE_INVALID');
+    expect(f.calls.some(v => v.startsWith('https://evil'))).toBe(false);
+    await expect(f.service.readReplyThread("thread' or true", AbortSignal.timeout(1000))).rejects.toThrow();
   } finally { await f.close(); }
 });

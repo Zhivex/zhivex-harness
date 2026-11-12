@@ -30,12 +30,16 @@ been published or silently claimed compatible with that older artifact.
 From the repository root:
 
 ```sh
-bun run build
-bun run --cwd packages/assistant prepare:local
-bun run --cwd packages/assistant typecheck
-bun run --cwd packages/assistant test
-bun run --cwd packages/assistant smoke
+bun run prepare:assistant
+bun run check:assistant
+bun run smoke:assistant:web
 ```
+
+`prepare:assistant` builds Harness, installs locked Assistant dependencies and installs
+the local candidate. `check:assistant` runs types, tests, the offline example and
+the isolated installed-consumer smoke. The browser checks require Chromium
+(`cd packages/assistant && bun x playwright install chromium`). CI runs these checks
+on every pull request; the installed consumer also runs with Node 22.13 and 24.
 
 `prepare:local` packs the existing build and installs the artifact with Bun
 `--no-save --ignore-scripts`; it does not rewrite package.json or bun.lock.
@@ -178,3 +182,13 @@ The new-agent **Herramientas** tab supports Microsoft work accounts: read/search
 mail, create approved drafts, and read/create personal calendar appointments.
 Microsoft calendar supplies the web agenda and daily summary. Integrations shows
 the account and supports reauthorization. See [Entra ID setup and scope limits](../../docs/ASSISTANT_MICROSOFT.md).
+
+## Proactive alerts
+
+Opt-in detection of calendar conflicts, due tasks and explicitly tracked Gmail or
+Outlook replies is available with the daily module. Configure quiet hours, timezone,
+channel and notification budget in **Tareas y recordatorios → Configurar avisos**.
+For conversational configuration and reply tracking, select proactive tools when
+creating an agent or use `{ "kind": "daily", "proactive": true }` in a fresh CLI
+profile. Existing daily profiles retain their tool catalog. See the
+[proactive guide](../../docs/ASSISTANT_PROACTIVE.md) for behavior and limits.

@@ -4,6 +4,7 @@ import type { SetupState } from './Setup';
 
 export default function DailyToolsSetup({ state, busy, act }: { state: SetupState; busy: boolean; act(route: string, input: unknown): Promise<boolean> }) {
   const [daily, setDaily] = useState(Boolean(state.tools?.daily));
+  const [proactive, setProactive] = useState(Boolean(state.tools?.proactive));
   const [github, setGithub] = useState(Boolean(state.tools?.github)), [account, setAccount] = useState(state.tools?.github?.account ?? '');
   const [githubEnv, setGithubEnv] = useState(state.tools?.github?.authorizationEnv ?? 'ZHIVEX_MCP_GITHUB_AUTH');
   const [web, setWeb] = useState(Boolean(state.tools?.web)), [webEnv, setWebEnv] = useState(state.tools?.web?.apiKeyEnv ?? 'BRAVE_SEARCH_API_KEY');
@@ -12,10 +13,11 @@ export default function DailyToolsSetup({ state, busy, act }: { state: SetupStat
   return <div className="daily-tools-setup">
     <h2>Herramientas para tu día</h2>
     <p>Elegí qué podrá usar este agente. Las escrituras se revisan desde la conversación antes de ejecutarse.</p>
-    <form onSubmit={async event => { event.preventDefault(); setSaved(false); if (await act('tools', { daily, ...(github ? { github: { account, authorizationEnv: githubEnv } } : {}), ...(web ? { web: { apiKeyEnv: webEnv } } : {}) })) setSaved(true); }}>
+    <form onSubmit={async event => { event.preventDefault(); setSaved(false); if (await act('tools', { daily, proactive: daily && proactive, ...(github ? { github: { account, authorizationEnv: githubEnv } } : {}), ...(web ? { web: { apiKeyEnv: webEnv } } : {}) })) setSaved(true); }}>
       <fieldset disabled={busy || state.calendar.pending} onChange={() => setSaved(false)}>
         <legend>Capacidades</legend>
         <label className="check-label"><input type="checkbox" checked={daily} onChange={e => setDaily(e.target.checked)}/>Tareas, recordatorios y notas locales</label>
+        {daily ? <label className="check-label"><input type="checkbox" checked={proactive} onChange={e => setProactive(e.target.checked)}/>Configurar avisos proactivos y seguimientos desde el chat</label> : null}
         <p>Guardá pendientes, consultá notas y recibí avisos en esta web o en tu Telegram vinculado. Assistant debe permanecer abierto.</p>
         <label className="check-label"><input type="checkbox" checked={github} onChange={e => setGithub(e.target.checked)}/>GitHub · issues, PR y CI de lectura</label>
         {github ? <><label className="field">Cuenta de GitHub<input required value={account} onChange={e => setAccount(e.target.value)} maxLength={100}/></label><label className="field">Variable de autorización<input required value={githubEnv} onChange={e => setGithubEnv(e.target.value)} pattern="ZHIVEX_MCP_[A-Z0-9_]+"/></label><p>La variable del host debe contener «Bearer» seguido del token de esa cuenta. Se verifica la presencia; el acceso se comprueba al usar GitHub.</p></> : null}

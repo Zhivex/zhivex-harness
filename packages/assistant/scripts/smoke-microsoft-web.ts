@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import { createMockLanguageModel } from '@zhivex-ai/agents/testing';
 import { startManagedAssistant } from '../src/web/setup.js';
 import { startAssistantHost } from '../src/host.js';
@@ -15,8 +15,9 @@ const integrationFetch = Object.assign(async (input: unknown) => {
 }, { preconnect: fetch.preconnect });
 const app = await startManagedAssistant(directory, { integrationFetch, assetsDirectory: fileURLToPath(new URL('../web/dist', import.meta.url)), secrets: { async read() { return stored; }, async write(value) { stored = value; } }, validateProvider: async () => {},
   startHost: input => startAssistantHost({ ...input, engine: { ...input.engine, modelInstance: createMockLanguageModel({ streamEvents: [[{ type: 'text-delta', textDelta: 'Ready' }, { type: 'finish', finishReason: 'stop' }]] }) } }) });
-const browser = await chromium.launch({ headless: true });
+let browser: Browser | undefined;
 try {
+  browser = await chromium.launch({ headless: true });
   const headers = { authorization: `Bearer ${new URLSearchParams(new URL(app.url).hash.slice(1)).get('token')}`, origin: app.origin, 'content-type': 'application/json' };
   for (const [route, body] of [['begin', { name: 'Microsoft test' }], ['provider', { baseURL: 'https://example.test/v1', apiKey: 'offline-test', model: 'test', apiMode: 'chat' }]] as const) {
     const response = await fetch(app.origin + '/api/setup/' + route, { method: 'POST', headers, body: JSON.stringify(body) });
@@ -45,4 +46,4 @@ try {
   if (!state.ready || !state.profiles[0].integrations.outlookCalendar) throw new Error('MICROSOFT_MODULE_MISSING');
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('Microsoft form, OAuth callback, connected account, agent activation and mobile layout passed.');
-} finally { await browser.close(); await app.close(); await rm(directory, { recursive: true, force: true }); }
+} finally { await browser?.close(); await app.close(); await rm(directory, { recursive: true, force: true }); }

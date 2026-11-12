@@ -44,3 +44,5 @@ export { taskFeedbackSchema, taskLinkSchema, taskCategorySchema } from "./task-m
 export { createMicrosoftModule } from './modules/microsoft.js';
 export { openMicrosoftConnection, startMicrosoftAuthorization } from './microsoft/connection.js';
 export type { MicrosoftOptions } from './microsoft/connection.js';
+
+export type { ReplySource } from './proactive/service.js';

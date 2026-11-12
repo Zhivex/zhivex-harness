@@ -1,3 +1,4 @@
+import type { ReplySource } from '../proactive/service.js';
 import { createHash } from 'node:crypto';
 import { GENERAL_ASSISTANT_PROFILE, harnessAgentProfileSchema, normalizeHarnessMcpConfiguration, type CreateProfiledHarnessOptions, type HarnessAgentProfile } from '@zhivex-ai/harness/engine';
 import type { HarnessClientRun } from '@zhivex-ai/harness/protocol';
@@ -19,6 +20,7 @@ export interface AssistantModuleInstance {
   agendaSource?: AgendaSource;
   summarySources?: SummarySource[];
   daily?: DailyService;
+  replySource?: ReplySource;
   start?(context: { notifications?: NotificationDelivery }): void;
   close(): Promise<void>;
 }
@@ -47,6 +49,7 @@ export async function openAssistantModules(modules: readonly AssistantModule[], 
     const names = new Set<string>(), toolNames = new Set<string>(), reviewTools: string[] = [];
     let agendaSource: AgendaSource | undefined, daily: DailyService | undefined;
     const summarySources: SummarySource[] = [];
+    const replySources: ReplySource[] = [];
     for (const definition of [...modules].sort((a,b) => a.id.localeCompare(b.id))) {
       const instance = await definition.open(context); opened.push({ definition, instance });
       harnessAgentProfileSchema.parse(instance.profile);
@@ -74,9 +77,11 @@ export async function openAssistantModules(modules: readonly AssistantModule[], 
         if (!exposed.has(tool) || !instance.approvalDetails) throw new Error('ASSISTANT_MODULE_REVIEW_INVALID'); reviewTools.push(tool);
       }
       if (instance.agendaSource) { if (agendaSource) throw new Error('ASSISTANT_MODULE_AGENDA_AMBIGUOUS'); agendaSource = instance.agendaSource; }
+      if (instance.replySource) replySources.push(instance.replySource);
       if (instance.daily) { if (daily) throw new Error('ASSISTANT_MODULE_DAILY_AMBIGUOUS'); daily = instance.daily; }
       for (const source of instance.summarySources ?? []) summarySources.push({ ...source, id: `${definition.id}:${source.id}` });
     }
+    daily?.proactive.bind({ ...(agendaSource ? { agenda: agendaSource } : {}), replies: replySources });
     const identity = opened.map(({ definition, instance }) => ({ id: definition.id, version: definition.version, binding: instance.binding }));
     // A sole module owns its versioned profile, retaining Calendar v1 recovery compatibility.
     const profile = opened.length === 1 && opened[0]!.definition.id === 'calendar' && opened[0]!.definition.version === '1' && opened[0]!.instance.preserveProfile ? opened[0]!.instance.profile : {
