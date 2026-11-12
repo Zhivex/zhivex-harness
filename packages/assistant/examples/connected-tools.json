@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    { "kind": "daily" },
+    { "kind": "google", "mail": true, "drive": true },
+    { "kind": "github", "account": "replace-with-your-account", "authorizationEnv": "ZHIVEX_MCP_GITHUB_AUTH" },
+    { "kind": "web", "apiKeyEnv": "BRAVE_SEARCH_API_KEY" }
+  ]
+}

@@ -1,3 +1,11 @@
+# Web workspace flow audit
+
+Archived from `docs/ux/web-flow-audit.md` on 2026-11-11. The original snapshot follows unchanged;
+its UI descriptions, unreleased status and validation counts apply to that work,
+not automatically to the current product. Current documentation: [Web guide](../../packages/web/README.md).
+Referenced local captures or external design references are not necessarily bundled
+with this historical record.
+
 # Web workspace flow
 
 The Zhivex chat reference was used for the model library, composer, message and tool-activity layout, header, empty-state suggestions, theme surfaces, and appearance selector. Those patterns are reimplemented here on the Harness palette and `@zhivex-ai/react` 0.10.0. The chat purple accent is not copied: light accent stays `#c30500`, and the dark accent stays off `#fa0100`. Approvals, file-view gates, and per-operation limits are unchanged.
@@ -40,7 +48,7 @@ A read-only run says that nothing is waiting for approval. A run with no activit
 
 ## Errors and credentials
 
-The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Haz un análisis de seguridad del repo”, made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
+The attached session is the repro. On the zhivex-ai-sdk workspace, qwen3.6-flash ran “Perform a security analysis of the repository” (translated from the original Spanish prompt), made 135 read-only calls, and reported 1,803,551 tokens. The screen then showed:
 
 - A red banner, “EXECUTION FAILED” and “Read the current session state before submitting another action.” The banner had no Reconcile action.
 - The stream badge “Reconciliation required” and the line “The response was not confirmed. Reconnect before another action; nothing is retried automatically.”

@@ -7,6 +7,31 @@
       "environment": "node",
       "exports": [
         {
+          "name": "createProfiledHarness",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CreateProfiledHarnessOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
+          "name": "GENERAL_ASSISTANT_PROFILE",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "harnessAgentProfileSchema",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "HarnessAgentProfile",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
           "name": "HARNESS_PROJECT_MEMORY_SCHEMA_VERSION",
           "kind": "runtime",
           "tier": "experimental"

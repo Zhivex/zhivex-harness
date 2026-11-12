@@ -1,3 +1,4 @@
+import { paintTerminal } from "../terminal/terminal-theme.js";
 import { sanitizeTerminalText, terminalSupportsColor } from "../terminal/terminal-ui.js";
 import { terminalCellWidth } from "../terminal/terminal-table.js";
 
@@ -46,7 +47,7 @@ export interface ConsoleComposerInput {
 }
 
 export const consoleWidth = (columns = 80) => Math.max(1, Math.min((columns || 80) - 1, 100));
-const muted = (text: string, color: boolean) => color ? `\u001b[38;5;250m${text}\u001b[0m` : text;
+const muted = (text: string, color: boolean) => paintTerminal(text, "muted", color);
 const usd = (value: number | null | undefined) => typeof value === "number" ? `$${value.toFixed(6)}` : "unknown";
 const money = (value: number) => `$${value.toFixed(6)}`;
 const pendingDecision = (status: string) => status.startsWith("Waiting for your decision") || status.startsWith("approval pending");
@@ -140,7 +141,7 @@ export const formatComposer = (input: ConsoleComposerInput, columns = 80,
   const title = input.title ? muted(consoleLabel(input.title, width), color) + "\n" : "";
   if (layout === "focus") return `\n${title}${muted("─".repeat(width), color)}\n`;
   const status = consoleLabel(input.status, width);
-  const painted = color && pendingDecision(input.status) ? `\u001b[33m${status}\u001b[0m` : status;
+  const painted = color && pendingDecision(input.status) ? paintTerminal(status, "pending", color) : status;
   return `\n${title}${legacyStateLines(input, columns).map(line => muted(line, color)).join("\n")}\n${painted}\n${muted("─".repeat(width), color)}\n`;
 };
 
@@ -154,7 +155,7 @@ export const formatComposerFooter = (columns = 80, color = false, focus?: Consol
   }
   const hints = width >= 32 ? "/ commands · ? shortcuts" : "?";
   const text = consoleStatusText(focus);
-  const paint = (line: string) => color && pendingDecision(focus.status) ? `\u001b[33m${line}\u001b[0m` : muted(line, color);
+  const paint = (line: string) => color && pendingDecision(focus.status) ? paintTerminal(line, "pending", color) : muted(line, color);
   const hintWidth = terminalCellWidth(hints);
   if (terminalCellWidth(text) + 2 + hintWidth <= width) {
     return [rule, `${paint(text)}${" ".repeat(width - terminalCellWidth(text) - hintWidth)}${muted(hints, color)}`];

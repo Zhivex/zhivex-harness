@@ -1,3 +1,4 @@
+import { terminalThemeCommand } from "./terminal/terminal-theme.js";
 import { runHarnessTask as runHarness } from '@zhivex-ai/harness/code-support';
 import { approvalFileDiff } from "./terminal/file-diff.js";
 import { openAutoApproveController } from "./auto-approve-setup.js";
@@ -729,6 +730,10 @@ export const chat = async (options: CliOptions) => {
           if (!file) { process.stderr.write("Usage: /attach <workspace-relative path>\n"); continue; }
           const attached = await attachments.add(harness.workspace, file);
           process.stderr.write(`Attached ${sanitizeTerminalText(attached.path)} (${attached.startLine}-${attached.endLine}/${attached.totalLines} lines${attached.truncated ? "; excerpt" : ""}). Sent with your next task.\n`);
+          continue;
+        }
+        if (command === "/theme" || command.startsWith("/theme ")) {
+          process.stderr.write(terminalThemeCommand(command));
           continue;
         }
         if (command === "/help" || command === "/help all") {

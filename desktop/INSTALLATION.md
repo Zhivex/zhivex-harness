@@ -49,5 +49,5 @@ Close tasks and the app, then move only Zhivex Harness.app to Trash. Preserve
 `userData` path), original repositories, task worktrees and project `.zhivex-harness`
 state. Do not delete state directories or Keychains during uninstallation.
 
-Keys remain in Keychain. To remove them, use **Eliminar clave del llavero** before
+Keys remain in Keychain. To remove them, use **Remove key from keychain** before
 removing the app. Keep a verified backup of state before migrations or version changes.

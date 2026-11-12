@@ -1,4 +1,4 @@
-# Reevaluación de Qwen tras las mejoras del harness — 2026-09-09
+# Qwen reevaluation after Harness improvements — 2026-09-09
 
 > Historical snapshot: findings and outcomes apply to the checkout and attempt
 > recorded below. For the subsequent stable release outcome, see
@@ -7,50 +7,50 @@
 
 > Historical snapshot: versions, findings and measurements below describe the recorded run, not the current checkout. See the [report index](README.md) for follow-up work and the [documentation index](../README.md) for maintained guides.
 
-La [revisión estructural posterior](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md)
-contrasta estas trazas con el controlador y añade reproductores offline de los
-problemas pendientes. No modifica los resultados congelados de esta corrida.
+The [subsequent structural review](https://github.com/Zhivex/zhivex-harness/blob/ca3c3e85df8de39d0df325ff81a3b10c8c08d3b5/docs/reports/HARNESS_ARCHITECTURE_REVIEW_2026-09-09.md)
+compares these traces with the controller and adds offline reproductions of
+pending problems. It does not modify this run's frozen results.
 
-Zhivex terminó con **0/10 reparaciones entregadas**, frente a **4/10 de
-mini-SWE-agent**. Las mejoras no aumentaron la tasa final respecto de la corrida
-anterior (0/5 frente a 2/5). La captura independiente detectó tres parches
-correctos de Zhivex que quedaron sin verificar ni importar al agotarse el
-presupuesto. No cuentan como éxitos finales ni como mejora frente a una
-medición anterior que no capturaba ese dato.
+Zhivex finished with **0/10 delivered repairs**, versus **4/10 for
+mini-SWE-agent**. Improvements did not raise the final rate over the previous
+run (0/5 versus 2/5). Independent capture detected three correct
+Zhivex patches left unverified and unimported when the budget
+ran out. They count neither as final successes nor as improvement over a
+previous measurement that did not capture this data.
 
-## Diseño y evidencia
+## Design and evidence
 
-- Modelo solicitado: `qwen3.8-flash`, proveedor Qwen, endpoint internacional de
-  DashScope, Chat Completions, thinking desactivado en ambos candidatos.
-- SWE-bench Verified, revisión `c104f840cc67f8b6eec6f759ebc8b2693d585d4a`:
-  cinco tareas conocidas, dos repeticiones por candidato, veinte intentos.
-  Es una reevaluación de desarrollo; no es un nuevo holdout ni veinte tareas
-  independientes. No permite afirmar superioridad general ni aislar causalmente
-  el efecto de cada mejora.
+- Requested model: `qwen3.8-flash`, Qwen provider, international DashScope
+  endpoint, Chat Completions, thinking disabled for both candidates.
+- SWE-bench Verified, revision `c104f840cc67f8b6eec6f759ebc8b2693d585d4a`:
+  five known tasks, two repetitions per candidate, twenty attempts.
+  This is a development reevaluation, not a fresh holdout or twenty independent
+  tasks. It supports neither general superiority claims nor causal isolation
+  of each improvement's effect.
 - Harness `1.0.0-rc.13`, Core `1.14.0`, Agents `1.4.0`, Qwen `0.11.4`;
-  mini-SWE-agent `2.4.6`, evaluador SWE-bench `4.1.0`.
-- Límites: 24 pasos, 2.048 tokens de salida por respuesta, 100.000 de entrada
-  acumulada, 16.000 de salida acumulada, 300 segundos, 2 CPU y 2.048 MiB.
-  El límite acumulado se comprueba entre peticiones y puede sobrepasarse en una
-  respuesta. Los límites de herramientas y pasos no son idénticos entre loops.
-- Ambos usan las mismas imágenes de tarea, sin red dentro del contenedor.
-  Zhivex usa raíz de solo lectura, `/workspace`, aprobaciones automáticas del
-  operador y cierre con verificación/importación; mini conserva su loop y
-  `/testbed` escribible. El perfil repair limita salida OCI a 20.000 bytes;
-  el adaptador mini recorta a 100.000 caracteres. Son diferencias declaradas.
-- Preflight aprobado en cinco imágenes, sin llamadas al modelo. Veinte
-  muestras únicas, ninguna faltante ni fallo de evaluación. Uso completo en
-  las veinte. Los 60 hashes de fuentes coinciden con el checkout y la copia
-  archivada al terminar: no se modificó el runtime durante la comparación.
+  mini-SWE-agent `2.4.6`, SWE-bench evaluator `4.1.0`.
+- Limits: 24 steps, 2,048 output tokens per response, 100,000 cumulative input,
+  16,000 cumulative output, 300 seconds, 2 CPUs and 2,048 MiB.
+  The cumulative limit is checked between requests and can be exceeded by one
+  response. Tool and step limits are not identical between loops.
+- Both use identical task images, without container networking.
+  Zhivex uses a read-only root, `/workspace`, automatic operator approvals
+  and verification/import finalization; mini retains its loop and
+  writable `/testbed`. The repair profile limits OCI output to 20,000 bytes;
+  the mini adapter truncates at 100,000 characters. These differences are declared.
+- Preflight passed on five images without model calls. Twenty unique
+  samples, none missing and no evaluation failures. Complete usage in
+  all twenty. All 60 source hashes match the checkout and archived
+  copy at completion: runtime was not modified during comparison.
 
-La [baseline pública](../../benchmarks/baselines/external-qwen-remediation-2026-09-09.json)
-conserva configuración, hashes, métricas y diagnósticos sanitizados. Los parches,
-predicciones y logs oficiales permanecen en el directorio local ignorado
+The [public baseline](../../benchmarks/baselines/external-qwen-remediation-2026-09-09.json)
+preserves configuration, hashes, metrics and sanitized diagnostics. Patches,
+predictions and official logs remain in the ignored local directory
 `results/swebench/qwen-remediation-2026-09-09/`.
 
-## Resultados
+## Results
 
-| Tarea | Zhivex final | Zhivex candidato correcto | Mini final |
+| Task | Zhivex final | Zhivex correct candidate | Mini final |
 | --- | ---: | ---: | ---: |
 | sympy-21930 | 0/2 | 0/2 | 0/2 |
 | scikit-learn-10908 | 0/2 | 1/2 | 2/2 |
@@ -59,89 +59,89 @@ predicciones y logs oficiales permanecen en el directorio local ignorado
 | django-11265 | 0/2 | 0/2 | 0/2 |
 | Total | **0/10** | **3/10** | **4/10** |
 
-La captura de candidatos funcionó en los veinte intentos; capturar un candidato
-vacío no significa producir un parche. Zhivex produjo tres candidatos no vacíos,
-y los tres pasaron la evaluación independiente. Mini produjo ocho no vacíos y
-cuatro pasaron. La diferencia final por tarea es −40 puntos porcentuales;
-el intervalo bootstrap exploratorio del reporte es [−80, 0], con solo cinco
-tareas como unidades de remuestreo.
+Candidate capture worked in all twenty attempts; capturing an empty
+candidate does not mean producing a patch. Zhivex produced three nonempty candidates,
+and all three passed independent evaluation. Mini produced eight nonempty candidates and
+four passed. The final per-task difference is −40 percentage points;
+the report's exploratory bootstrap interval is [−80, 0], with only five
+tasks as resampling units.
 
-| Métrica (10 intentos por candidato) | Zhivex | Mini |
+| Metric (10 attempts per candidate) | Zhivex | Mini |
 | --- | ---: | ---: |
-| Tokens de entrada | 943.192 | 734.184 |
-| Tokens de salida | 10.327 | 12.184 |
-| Llamadas al modelo | 117 | 133 |
-| Mediana de duración del driver | 36,51 s | 41,50 s |
-| Agotamientos de presupuesto | 9 | 4 |
-| Otro fallo terminal | 1 | 0 |
+| Input tokens | 943,192 | 734,184 |
+| Output tokens | 10,327 | 12,184 |
+| Model calls | 117 | 133 |
+| Median driver duration | 36.51 s | 41.50 s |
+| Budget exhaustion | 9 | 4 |
+| Other terminal failure | 1 | 0 |
 
-La mediana incluye fracasos y excluye el evaluador externo; no demuestra mayor
-velocidad para resolver. No hay tiempo a reparación exitosa de Zhivex. No se
-suministraron precios: costo USD y costo por solución permanecen desconocidos.
-La corrida anterior tenía uso incompleto de Zhivex y una sola repetición; no se
-deduce ahorro de tokens comparando sus totales con estos resultados.
+The median includes failures and excludes the external evaluator; it does not demonstrate
+faster solving. There is no time-to-successful-repair for Zhivex. No pricing
+was supplied: USD cost and cost per solution remain unknown.
+The previous run had incomplete Zhivex usage and one repetition; token savings
+cannot be inferred by comparing its totals with these results.
 
-## Qué sigue fallando en el harness
+## What still fails in Harness
 
-**El cierre no dispone de una reserva efectiva.** Nueve intentos entraron en
-modo de cierre, pero hubo cero bloqueos de llamadas amplias y cero bloqueos por
-fase. Ninguno solicitó la verificación del harness. Los tres parches correctos
-se quedaron dentro del entorno de ejecución; la evaluación posterior es solo
-diagnóstica y no sustituye aprobación, verificación ni importación.
+**Finalization lacks an effective reserve.** Nine attempts entered
+finalization mode, but there were zero broad-call blocks and zero phase
+blocks. None requested Harness verification. All three correct patches
+stayed inside the execution environment; subsequent evaluation is only
+diagnostic and does not replace approval, verification or import.
 
-En scikit-learn-10908 repetición 2, la edición gobernada terminó a los 74,23 s;
-el agente siguió solicitando comandos y acabó con 102.299 tokens de entrada.
-En scikit-learn-14141 las ediciones gobernadas terminaron a los 41,78 y 21,98 s,
-pero tampoco hubo transición a verificación antes del corte. Hay capacidad de
-resolver esos casos; falta convertirla en una entrega dentro del presupuesto.
+In scikit-learn-10908 repetition 2, governed editing finished at 74.23 s;
+the agent continued requesting commands and ended with 102,299 input tokens.
+In scikit-learn-14141, governed edits finished at 41.78 and 21.98 s,
+but no transition to verification occurred before cutoff either. There is capacity
+to solve these cases; it still needs to become delivery within budget.
 
-**El catálogo añadido consume contexto en cada petición.** Las definiciones de
-herramientas pasaron de 6.629 a 8.995 caracteres (+35,7%); sistema más catálogo
-pasó de 11.157 a 13.755 (+23,3%). La media de resultados de herramientas presentes
-en cada petición bajó de 10.225,85 a 9.486,09 caracteres (−7,2%), sobre 66 y 117
-peticiones respectivamente. Son mediciones de caracteres serializados, no
-tokens facturados ni una ablación controlada. Las ayudas de memoria y planificación
-tienen un costo fijo que debe medirse frente al beneficio que aportan.
+**The added catalog consumes context on every request.** Tool definitions
+increased from 6,629 to 8,995 characters (+35.7%); system plus catalog
+increased from 11,157 to 13,755 (+23.3%). Mean tool results present
+per request fell from 10,225.85 to 9,486.09 characters (−7.2%), over 66 and 117
+requests respectively. These measure serialized characters, not
+billed tokens or a controlled ablation. Memory and planning aids
+have a fixed cost that must be measured against their benefit.
 
-Las siguientes intervenciones a validar son:
+Next interventions to validate:
 
-1. Reservar presupuesto para verificar/importar y hacer explícita la transición
-   posterior a una edición, manteniendo permisos y controles de integridad.
-   La reserva debe considerar el tamaño de la siguiente petición y del catálogo;
-   rechazar únicamente búsquedas amplias no alcanza.
-2. Exponer un catálogo pequeño por fase, conservando las herramientas necesarias
-   para corregir una reparación o un fallo de verificación. Medir la reducción
-   real de tokens y su efecto sobre las soluciones entregadas.
-3. Ajustar compacción e historial con el costo completo de cada petición, y
-   reducir exploración que continúa dentro de comandos de shell aprobados.
-4. Comparar esas variantes por separado en la cohorte de desarrollo y después
-   evaluar una cohorte nueva, sin modificar la métrica para contar candidatos
-   sin entregar. Esta corrida no incluye esas futuras intervenciones.
+1. Reserve budget for verification/import and make the post-edit transition
+   explicit while preserving permissions and integrity checks.
+   Reserve must account for the next request and catalog size;
+   rejecting only broad searches is insufficient.
+2. Expose a small catalog per phase, preserving tools needed
+   to correct a repair or verification failure. Measure actual token
+   reduction and its effect on delivered solutions.
+3. Adjust compaction and history using full request cost, and
+   reduce exploration continuing inside approved shell commands.
+4. Compare these variants separately in the development cohort, then
+   evaluate a fresh cohort without changing the metric to count undelivered
+   candidates. This run does not include those future interventions.
 
-## Hallazgo del SDK y HU
+## SDK finding and user story
 
-Un intento de SymPy falló tras una respuesta por una herramienta no registrada.
-El nombre exacto no quedó en el diagnóstico sanitizado, por lo que no se atribuye
-un nombre concreto a esa llamada. La reproducción offline con Core 1.14.0 muestra
-que el modelo entrega uso (100 entrada, 10 salida), pero el estado durable queda
-fallido con cero pasos, cero resultados y uso ausente. El middleware del harness
-sí conservó los 4.132 tokens de entrada del intento live.
+One SymPy attempt failed after a response with an unregistered tool.
+The exact name was absent from sanitized diagnostics, so no specific
+name is attributed to that call. Offline reproduction with Core 1.14.0 shows
+that the model returns usage (100 input, 10 output), but durable state ends
+failed with zero steps, zero results and missing usage. Harness middleware
+did preserve the live attempt's 4,132 input tokens.
 
-Creada y verificada en el área Zhivex, prioridad Alta, estado Sin empezar:
-[SDK-HU — Conservar uso y diagnóstico ante herramientas no registradas; recuperación explícita acotada](https://app.notion.com/p/3d7777b104f681248ed3cecffe9328d2).
+Created and verified in the Zhivex area, priority High, status Not started:
+[SDK-HU — Preserve usage and diagnostics for unregistered tools; bounded explicit recovery](https://app.notion.com/p/3d7777b104f681248ed3cecffe9328d2).
 
-La pérdida de uso/diagnóstico durable es el defecto reproducido. Recuperar
-herramientas desconocidas es una petición de funcionalidad optativa: la HU
-anterior de validación de argumentos no incluía ese caso. No se propone ejecutar
-herramientas desconocidas, remapear nombres ni eludir aprobaciones.
+Loss of durable usage/diagnostics is the reproduced defect. Unknown-tool
+recovery is an optional feature request: the earlier argument-validation
+HU did not include that case. Executing unknown tools,
+remapping names or bypassing approvals is not proposed.
 
-Reproducción sin red, con cero ejecuciones de herramientas:
+Reproduction without networking, with zero tool executions:
 
 ```sh
 bun --no-env-file run evaluations/audits/sdk-unknown-tool-2026-09-09.ts
 ```
 
-El `../../evaluations/audits/sdk-unknown-tool-2026-09-09.ts` (source checkout) pasó typecheck
-independiente. El reporte y la baseline se validaron contra las veinte muestras
-y los hashes congelados. No se efectuó una nueva matriz paga, publicación ni
-cambio del runtime como parte del cierre de esta reevaluación.
+`../../evaluations/audits/sdk-unknown-tool-2026-09-09.ts` (source checkout) passed independent
+typecheck. Report and baseline were validated against all twenty samples
+and frozen hashes. No new paid matrix, publication or
+runtime change was performed as part of closing this reevaluation.

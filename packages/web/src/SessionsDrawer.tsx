@@ -1,3 +1,4 @@
+import { FolderIcon, PlusIcon } from "@phosphor-icons/react";
 import { useEffect, useRef } from "react";
 import type { HarnessClientSession } from "./contracts.js";
 import type { WebWorkspace } from "./contracts.js";
@@ -10,6 +11,9 @@ export interface DrawerProject extends WebWorkspace {
 
 export function SessionsDrawer(props: {
   open: boolean;
+  docked: boolean;
+  onNew: () => void;
+  canCreate: boolean;
   grouped: boolean;
   projects: DrawerProject[];
   currentKey: string;
@@ -35,8 +39,8 @@ export function SessionsDrawer(props: {
   const searchRef = useRef<HTMLInputElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (props.open) searchRef.current?.focus();
-  }, [props.open]);
+    if (props.open && !props.docked) searchRef.current?.focus();
+  }, [props.open, props.docked]);
   const query = props.search.trim().toLowerCase();
   const projects = props.projects.filter(project => {
     if (!query) return true;
@@ -47,13 +51,17 @@ export function SessionsDrawer(props: {
   function items() {
     return [...treeRef.current?.querySelectorAll<HTMLElement>("[data-tree-item]") ?? []];
   }
-  return <div className={props.open ? "drawer-root open" : "drawer-root"} hidden={!props.open}>
-    <button type="button" className="drawer-backdrop" aria-label="Close sessions" onClick={props.onClose} />
-    <aside className="drawer" role="dialog" aria-label={props.grouped ? "Sessions by project" : "Sessions"}>
+  return <div className={`drawer-root${props.open ? " open" : ""}${props.docked ? " docked" : ""}`} hidden={!props.open}>
+    {!props.docked && <button type="button" className="drawer-backdrop" aria-label="Close sessions" onClick={props.onClose} />}
+    <aside className="drawer" role={props.docked ? "navigation" : "dialog"} aria-label={props.grouped ? "Sessions by project" : "Sessions"}>
       <header>
-        <h2>{props.grouped ? "Sessions" : "Sessions"}</h2>
-        <button type="button" onClick={props.onClose}>Close</button>
+        <h2 className="sidebar-brand">Zhivex <span>Code</span></h2>
+        {!props.docked && <button type="button" onClick={props.onClose}>Close</button>}
       </header>
+      <div className="sidebar-project"><FolderIcon size={18} aria-hidden="true" /><span>{props.projects.find(project => project.key === props.currentKey)?.name ?? "Project"}</span></div>
+      <button type="button" className="sidebar-new" aria-label="Create a new session" disabled={!props.canCreate} onClick={props.onNew}><PlusIcon size={18} aria-hidden="true" />New session</button>
+      <p className="sidebar-section-label">Recent sessions</p>
+      {props.statusFilter && <p className="session-empty" role="status">Showing sessions that need you</p>}
       <input ref={searchRef} aria-label="Search sessions" placeholder="Find a session or project" value={props.search}
         onChange={event => props.onSearch(event.target.value)}
         onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); props.onClose(); props.returnFocus.current?.focus(); } }} />

@@ -6,6 +6,15 @@ test("source boundaries hold across runtime and Desktop", async () => {
   expect(await checkArchitecture(path.resolve(import.meta.dir, ".."))).toEqual([]);
 });
 
+test("Assistant uses public engine exports and Harness never depends on Assistant", () => {
+  for (const target of ["../../../src/runtime/harness.js", "../../code/src/cli.js", "@zhivex-ai/harness", "@zhivex-ai/harness/dist/engine/index.js", "@zhivex-ai/code"]) {
+    expect(architectureViolations("packages/assistant/src/host.ts", `export { host } from "${target}";`).length).toBeGreaterThan(0);
+  }
+  expect(architectureViolations("packages/assistant/src/host.ts", 'const runtime = import(userPath);')).toHaveLength(1);
+  expect(architectureViolations("packages/assistant/src/host.ts", 'import { createProfiledHarness } from "@zhivex-ai/harness/engine";')).toEqual([]);
+  expect(architectureViolations("src/runtime/example.ts", 'import { host } from "@zhivex-ai/assistant";')).toHaveLength(1);
+});
+
 test("Desktop cannot bypass the surface with direct, dynamic, or re-exported imports", () => {
   for (const source of [
     'import { createHarness } from "../../src/runtime/harness.js";',

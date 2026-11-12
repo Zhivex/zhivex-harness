@@ -1,3 +1,11 @@
+# Code compact terminal flow implementation snapshot
+
+Archived from `docs/CODE_COMPACT_FLOW.md` on 2026-11-11. The original snapshot follows unchanged;
+its UI descriptions, unreleased status and validation counts apply to that work,
+not automatically to the current product. Current documentation: [Code package guide](../../packages/code/README.md) and [console UX rationale](../CLI_UX.md).
+Referenced local captures or external design references are not necessarily bundled
+with this historical record.
+
 # Code compact terminal flow (unreleased)
 
 The local Code console keeps its flowing conversation and adds a small working

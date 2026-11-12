@@ -25,8 +25,8 @@ prints only the base URL. If browser opening fails, startup shuts down with
 `WEB_BROWSER_OPEN_FAILED`; fix the OS opener and relaunch. `--no-open` is for
 supervision; it intentionally does not print a pairing capability.
 
-Only CLI-allowlisted canonical workspaces can be selected. Sessions live in a
-drawer, grouped by project when more than one project is open. A single project
+Only CLI-allowlisted canonical workspaces can be selected. Sessions appear in a permanent 240px sidebar at widths of 1280px and above,
+and in a drawer on smaller screens, grouped by project when more than one project is open. A single project
 has no group headings and no project switcher. `zhivex-code project add`, run
 inside the project folder, confirms the full path and writes
 `~/.zhivex/projects.json` (mode 0600, or `ZHIVEX_PROJECT_REGISTRY`). A running
@@ -36,7 +36,8 @@ and does not load the registry. Removing a project drops the registry entry and
 does not delete files. At most eight projects are served; extras stay listed as
 Unavailable with a cause and do not stop the others.
 
-The review column is nearly the full width of the workspace. Its position is
+The task workspace keeps the conversation beside a 600px default review column.
+Resizing accounts for the desktop sidebar so the conversation stays readable. Its position is
 Side, Bottom, or Fullscreen, and it can be minimized. The choice is stored in
 `localStorage` under `zhivex.code.diffLayout.v1`. Below 1024px, Side is disabled
 and the review moves under the chat without overwriting the saved choice.
@@ -113,11 +114,12 @@ interaction, and reimplemented here without copying that private tree. Harness u
 and durable activity pages. `useZhivexChat` and its fetch transport would add a
 second state and approval model, so they are not used.
 
-This client reuses `ChatRoot`, `Message`, `Composer`, `ChatEmptyState` and
-`ReviewCard` (presentation only, with no decision callback). It does not import
-chat hooks, provider clients, or SDK transport. `ReviewCard` cannot require every
-file to be viewed or ignore Enter, so the authoritative approve and reject
-buttons stay in the change-review panel. The model picker stays local because
+This client reuses `ChatRoot`, `Composer` and `ChatEmptyState`. User prompts
+render as escaped text in a plain conversation row. A compact review link focuses
+the authoritative change-review panel; no secondary rejection form is shown in
+the conversation. It does not import chat hooks, provider clients, or SDK transport.
+Approve and reject stay in the change-review panel with the existing viewed-file
+and keyboard guards. The model picker stays local because
 0.10.0 does not export one. Desktop's existing `FileDiff`, `applyActivityPage`,
 `projectApprovalReview`, `ReviewTickets` and renderer redactor are reused unchanged.
 They are bundled at build time; Electron and Desktop credential/OS bridges are
@@ -226,6 +228,17 @@ analysis job: the workflow can finish successfully while an open alert fails the
 security check. Verify its summary and accessible PR alert state; resolving a
 review thread does not fix or dismiss a code-scanning alert. Record any source
 that could not be accessed.
+
+### Task workspace appearance
+
+Light, Dark and System use the same layout and controls, including budget,
+approval and task-evidence dialogs. The appearance selector is at the foot of
+the sessions sidebar/drawer; the header shortcut still cycles all three modes.
+The conversation history, activity and optional task evidence scroll together;
+the composer remains available at desktop sizes. Budget details are expandable,
+while limit warnings stay in their existing status/control flows. On phones,
+Chat and Review switch between full-width content with no empty split-pane rows.
+The new session action in the sidebar uses the same host operation as the header.
 
 ### State, drafts and recovery
 

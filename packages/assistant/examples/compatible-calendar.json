@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "provider": {
+    "kind": "openai-compatible",
+    "baseURL": "https://models.example.com/v1",
+    "apiKeyEnv": "ASSISTANT_MODEL_API_KEY",
+    "model": "your-tool-capable-model",
+    "apiMode": "chat",
+    "capabilities": {
+      "streaming": true,
+      "tools": true,
+      "toolChoice": true,
+      "parallelToolCalls": false
+    }
+  },
+  "modules": [{ "kind": "calendar", "calendarId": "primary" }]
+}

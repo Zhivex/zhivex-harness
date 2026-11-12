@@ -8,7 +8,7 @@ import { clampDiffHeight, clampDiffWidth, defaultDiffLayout, DIFF_LAYOUT_KEY, DI
 import { altShiftAction, isTextField } from "./shortcuts.js";
 import { choiceKey } from "./model-choice.js";
 import type { WebProjectOverview } from "./contracts.js";
-import { ChatEmptyState, ChatRoot, Composer, Message, ReviewCard } from "@zhivex-ai/react/components";
+import { ChatEmptyState, ChatRoot, Composer } from "@zhivex-ai/react/components";
 import { useViewedFiles, reviewConsequence, preventDecisionEnter } from "../../../desktop/src/review-ui.js";
 import { FileDiff } from "../../../desktop/src/FileDiff.js";
 import {
@@ -134,6 +134,8 @@ export function App() {
   const [statusFilter, setStatusFilter] = useState(false);
   const [diffLayout, setDiffLayout] = useState<DiffLayoutPreference>(() => readDiffLayout(globalThis.localStorage?.getItem(DIFF_LAYOUT_KEY) ?? null));
   const [viewport, setViewport] = useState({ width: globalThis.innerWidth || 1440, height: globalThis.innerHeight || 900 });
+  const dockedSessions = viewport.width >= 1280;
+  const workspaceWidth = viewport.width - (dockedSessions ? 240 : 0);
   const [modelOpen, setModelOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState<"chat" | "review">("chat");
   const [announce, setAnnounce] = useState("");
@@ -795,7 +797,7 @@ export function App() {
         if (modelOpen) { setModelOpen(false); return; }
         if (drawerOpen) { setDrawerOpen(false); drawerButton.current?.focus(); return; }
         if (addProjectOpen) { setAddProjectOpen(false); return; }
-        if (effectiveDiffPosition(diffLayout.position, viewport.width) === "full" && !diffLayout.minimized) {
+        if (effectiveDiffPosition(diffLayout.position, workspaceWidth) === "full" && !diffLayout.minimized) {
           saveDiff({ ...diffLayout, position: previousPosition.current });
           return;
         }
@@ -817,9 +819,9 @@ export function App() {
       if (actionName === "minimize") { event.preventDefault(); saveDiff({ ...diffLayout, minimized: !diffLayout.minimized }); return; }
       if (actionName === "position") {
         event.preventDefault();
-        const current = effectiveDiffPosition(diffLayout.position, viewport.width);
+        const current = effectiveDiffPosition(diffLayout.position, workspaceWidth);
         if (current !== "full") previousPosition.current = current;
-        saveDiff({ ...diffLayout, position: nextDiffPosition(current, viewport.width), minimized: false });
+        saveDiff({ ...diffLayout, position: nextDiffPosition(current, workspaceWidth), minimized: false });
         return;
       }
       const reviewFocused = document.getElementById("review-panel")?.contains(document.activeElement);
@@ -881,11 +883,11 @@ export function App() {
     })),
   );
   const checks = tools.filter((t) => t.name === "run_check");
-  const position = effectiveDiffPosition(diffLayout.position, viewport.width);
+  const position = effectiveDiffPosition(diffLayout.position, workspaceWidth);
   const reviewWaiting = run?.status === "waiting_approval";
   const emptyReview = !reviewWaiting;
   const narrow = viewport.width < NARROW_TABS;
-  const diffWidth = emptyReview || diffLayout.minimized ? EMPTY_DIFF_WIDTH : clampDiffWidth(diffLayout.widthPx, viewport.width);
+  const diffWidth = emptyReview || diffLayout.minimized ? EMPTY_DIFF_WIDTH : clampDiffWidth(diffLayout.widthPx, workspaceWidth);
   const diffHeight = clampDiffHeight(diffLayout.heightPx, viewport.height);
   const remaining = Math.max(0, reviewDeadline - now);
   const expiresLabel = `${Math.floor(remaining / 60000)}:${String(Math.floor((remaining / 1000) % 60)).padStart(2, "0")}`;
@@ -947,9 +949,9 @@ export function App() {
     .sort()
     .join("\n");
   useEffect(() => {
-    if (!drawerOpen) return;
+    if (!drawerOpen && !dockedSessions) return;
     for (const key of expandedOtherProjects.split("\n")) loadProjectSessions(key);
-  }, [drawerOpen, expandedOtherProjects]);
+  }, [drawerOpen, dockedSessions, expandedOtherProjects]);
   function chooseTheme(next: ThemeChoice) {
     localStorage.setItem(THEME_KEY, next);
     setThemeChoice(next);
@@ -958,12 +960,12 @@ export function App() {
   const assistantName = currentChoice?.name ?? workspace?.model ?? "Assistant";
   const assistantProvider = currentChoice?.provider ?? workspace?.provider ?? "host";
   return (
-    <div className="app-shell" data-theme={resolvedTheme}>
+    <div className="app-shell" data-theme={resolvedTheme} data-sidebar={dockedSessions ? "docked" : "drawer"}>
       <a className="skip-link" href="#task-workspace">Skip to task workspace</a>
       <header className="topbar">
         <a href="/" className="brand" aria-label="Zhivex Code home">
           <img className="brand-mark" src="/zhivex-icon.png" alt="" width={28} height={28} />
-          <span>ZHIVEX</span>
+          <span>Zhivex <em>Code</em></span>
         </a>
         <div className="crumb">
           {grouped ? <button type="button" className="project-switch" aria-haspopup="dialog" onClick={() => { setDrawerOpen(true); setStatusFilter(false); }}>
@@ -987,7 +989,7 @@ export function App() {
           <button type="button" className="subtle topbar-chip approval-mode" aria-label={`Approvals: ${approvalLabel}. Press m for Manual.`} title="Approvals. Press m for Manual." onClick={() => setApprovalOpen(true)}>{approvalLabel}</button>
         </div>
         <div className="topbar-actions">
-          <button ref={drawerButton} type="button" className="subtle topbar-chip" aria-expanded={drawerOpen} onClick={() => { setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
+          <button ref={drawerButton} type="button" className="subtle topbar-chip" aria-expanded={drawerOpen || dockedSessions} onClick={() => { if (dockedSessions) document.querySelector<HTMLInputElement>('[aria-label="Search sessions"]')?.focus(); else setDrawerOpen(open => !open); setStatusFilter(false); }}>Sessions</button>
           <button className="limits-launcher topbar-chip" aria-label={limitsLabel} title={limitsLabel} disabled={!workspaceKey || !connected || !limitsInfo || limitsInfo.workspaceKey !== workspaceKey || needsReconcile}
             onClick={() => { setLimitsError(""); setLimitsOpen(true); }}>
             <SlidersHorizontalIcon size={16} /><span>{limitsLabel}</span>
@@ -1017,8 +1019,8 @@ export function App() {
             <div className="section-heading"><span>Task stream</span><span className={`pill ${reviewWaiting ? "attention" : run?.status === "failed" || !connected || needsReconcile || runUnavailable || Boolean(error) ? "warning" : ""}`}>{stateLabel}</span></div>
             <p className="state-guidance" id="composer-help">{composerHelp}</p>
             {sessionsLoading && <p className="session-empty" role="status">Loading sessions…</p>}
-            {runLimits && <div className="run-limits-summary" aria-label="Limits for the current task">
-              <span>{runLimits.origin === "task" ? "Limits for this task" : runLimits.origin === "project" ? "Project limits" : "Default budgets"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")}.</span>
+            {runLimits && <details className="run-limits-summary" aria-label="Limits for the current task" open={Boolean(runLimits.observationError || runLimits.notices.length)}>
+              <summary>{runLimits.origin === "task" ? "Limits for this task" : runLimits.origin === "project" ? "Project limits" : "Default budgets"}. {counted(runLimits.consumption.steps, "step")} · {counted(runLimits.consumption.toolCalls, "tool call")} · {counted(runLimits.consumption.tokens, "token")}.</summary>
               <div className="budget-meters">
                 {(["toolCalls", "tokens", "steps", "durationMinutes"] as const).map(name => {
                   const max = runLimits.settings[name].value ?? limitsInfo?.host[name] ?? null;
@@ -1041,7 +1043,7 @@ export function App() {
                 {({ costUsd: "Estimated spend", tokens: "Tokens", steps: "Steps", toolCalls: "Tool calls", durationMinutes: "Time" })[notice.name]} reached {notice.actual.toFixed(notice.name === "costUsd" || notice.name === "durationMinutes" ? 2 : 0)} of {notice.threshold}.
                 {notice.action === "notify" ? " The task can continue." : runLimits.cancellationRequested ? " Stop requested. Recorded work is kept. Send a new message to continue." : " The task had already finished."}
               </p>)}
-            </div>}
+            </details>}
             {hasTask && <a className="task-jump subtle" href="#task-evidence">View task and evidence</a>}
             <div className="messages" role="log" aria-label="Run activity" aria-live="off">
               {!activity.order.length && loading && <p className="loading-state" role="status">Loading durable activity…</p>}
@@ -1065,7 +1067,7 @@ export function App() {
                 const item = runUnavailable && session?.runs.at(-1)?.runId === id ? { ...retained, status: "state unavailable" } : retained;
                 const working = active(item.status) && !item.text;
                 return <div className="turn" key={id}>
-                  {item.prompt && <div className="user-turn"><Message showActions={false} showStatus={false} message={{ id: `user-${id}`, role: "user", parts: [{ type: "text", text: item.prompt }], createdAt: 0, status: "complete" }} /></div>}
+                  {item.prompt && <article className="user-turn" aria-label="You message"><h3>You</h3><p>{item.prompt}</p></article>}
                   <article className="assistant-response" aria-label="Assistant response" aria-busy={active(item.status)}>
                     <div className="assistant-heading">
                       <ProviderMark provider={assistantProvider} />
@@ -1081,14 +1083,16 @@ export function App() {
                 </div>;
               })}
               {activity.recovered && <p className="recovery-note">Earlier messages were restored from the saved session.</p>}
-            </div>
-            {reviewWaiting && run && <ReviewCard reviewId={`${run.runId}:${run.revision}`} heading="Change review" description="Use the change review panel to approve or reject. Approval stays off until every file has been viewed." />}
-            {workspace && session && <TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(":")}
+            {reviewWaiting && run && <button type="button" className="review-notice" onClick={() => {
+              saveDiff({ ...diffLayout, minimized: false }); setMobilePane("review");
+              requestAnimationFrame(() => reviewHeading.current?.focus());
+            }}>Review proposed changes <ArrowUpRightIcon size={16} aria-hidden="true" /></button>}
+            {workspace && session && <details className="task-evidence-disclosure" open={hasTask || !session.runs.length}><summary>Task evidence</summary><TaskPanel key={[workspace.key, session.sessionId, workspace.taskProtocol?.connectionId].join(":")}
               workspace={workspace} session={session} {...(run ? { run } : {})} enabled={canMutate} connected={connected && !needsReconcile}
               prompt={prompt} perform={perform} onTask={setHasTask} onResult={(data) => {
                 if (data.kind === "run") { setRun(data.run); setSession(data.session); }
                 setRefresh(n => n + 1);
-              }} />}
+              }} /></details>}
             {!tools.length ? null : <div className="tool-activity">
               <p className="tool-activity-label"><WrenchIcon size={14} aria-hidden="true" /> Runtime tools</p>
               <ul className="tool-list" aria-label="Activity and checks">
@@ -1101,6 +1105,7 @@ export function App() {
               </ul>
             </div>}
             {checks.length > 0 && <p className="check-summary">{checks.filter(check => check.exitCode === 0 && !check.timedOut).length}/{checks.length} checks passed</p>}
+            </div>
             {diffLayout.minimized && <div className="restore-bar" role="status">
               <span>{reviewWaiting ? `Needs you · ${viewed.approveLabel.replace(/^Approve /, "")} · Expires in ${expiresLabel}` : "Review is minimized"}</span>
               <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: false })}>Restore review</button>
@@ -1129,9 +1134,9 @@ export function App() {
           aria-orientation={position === "side" ? "vertical" : "horizontal"}
           aria-valuenow={position === "side" ? diffWidth : diffHeight}
           aria-valuemin={position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}
-          aria-valuemax={position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}
+          aria-valuemax={position === "side" ? maxDiffWidth(workspaceWidth) : maxDiffHeight(viewport.height)}
           aria-label={position === "side" ? "Diff width" : "Diff height"}
-          title={`${position === "side" ? diffWidth : diffHeight} px. Minimum ${position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}. Maximum ${position === "side" ? maxDiffWidth(viewport.width) : maxDiffHeight(viewport.height)}.`}
+          title={`${position === "side" ? diffWidth : diffHeight} px. Minimum ${position === "side" ? DIFF_MIN_WIDTH : DIFF_MIN_HEIGHT}. Maximum ${position === "side" ? maxDiffWidth(workspaceWidth) : maxDiffHeight(viewport.height)}.`}
           onPointerDown={event => {
             if (event.pointerType === "mouse" && event.button !== 0) return;
             event.preventDefault();
@@ -1141,7 +1146,7 @@ export function App() {
             const origin = horizontal ? event.clientX : event.clientY;
             const initial = horizontal ? diffWidth : diffHeight;
             const layout = diffLayout;
-            const viewportWidth = viewport.width;
+            const viewportWidth = workspaceWidth;
             const viewportHeight = viewport.height;
             handle.setPointerCapture(pointerId);
             const move = (ev: PointerEvent) => {
@@ -1167,7 +1172,7 @@ export function App() {
             const keys = horizontal ? ["ArrowLeft", "ArrowRight", "Home", "End"] : ["ArrowUp", "ArrowDown", "Home", "End"];
             if (!keys.includes(event.key)) return;
             event.preventDefault();
-            if (horizontal) saveDiff({ ...diffLayout, widthPx: nudgeDiffSize(diffWidth, event.key, event.shiftKey, DIFF_MIN_WIDTH, maxDiffWidth(viewport.width)) });
+            if (horizontal) saveDiff({ ...diffLayout, widthPx: nudgeDiffSize(diffWidth, event.key, event.shiftKey, DIFF_MIN_WIDTH, maxDiffWidth(workspaceWidth)) });
             else saveDiff({ ...diffLayout, heightPx: nudgeDiffSize(diffHeight, event.key, event.shiftKey, DIFF_MIN_HEIGHT, maxDiffHeight(viewport.height)) });
           }}><span /></div>}
         {!diffLayout.minimized && <aside className="diff-column" id="review-panel" tabIndex={-1} aria-label="Pending review">
@@ -1175,13 +1180,13 @@ export function App() {
             <h2 id="review-heading" ref={reviewHeading} tabIndex={-1}>{workspace?.name ?? "Project"} · Change review</h2>
             <div role="radiogroup" aria-label="Review position">
               {(["side", "bottom", "full"] as const).map(value => <button key={value} type="button" role="radio" aria-checked={diffLayout.position === value}
-                disabled={value === "side" && !sideFits(viewport.width)} className={value === "side" && !sideFits(viewport.width) ? "struck" : undefined}
+                disabled={value === "side" && !sideFits(workspaceWidth)} className={value === "side" && !sideFits(workspaceWidth) ? "struck" : undefined}
                 onClick={() => { if (position !== "full") previousPosition.current = position; saveDiff({ ...diffLayout, position: value, minimized: false }); }}>{value === "side" ? "Side" : value === "bottom" ? "Bottom" : "Fullscreen"}</button>)}
             </div>
-            <button type="button" onClick={() => saveDiff({ ...diffLayout, minimized: !diffLayout.minimized })}>{diffLayout.minimized ? "Restore" : "Minimize"}</button>
+            <button type="button" onClick={() => { saveDiff({ ...diffLayout, minimized: !diffLayout.minimized }); if (narrow) setMobilePane("chat"); }}>{diffLayout.minimized ? "Restore" : "Minimize"}</button>
             {position === "full" && <button type="button" onClick={() => saveDiff({ ...diffLayout, position: previousPosition.current === "full" ? "side" : previousPosition.current })}>Exit fullscreen</button>}
           </div>
-          {diffLayout.position === "side" && !sideFits(viewport.width) && <p className="layout-note">Side by side does not fit this window. The review moves below the chat. Your saved preference returns when the window is wider.</p>}
+          {diffLayout.position === "side" && !sideFits(workspaceWidth) && <p className="layout-note">Side by side does not fit this window. The review moves below the chat. Your saved preference returns when the window is wider.</p>}
           {reviewWaiting ? <div className="review-content" aria-label="Approval review">
             <button type="button" className="subtle" disabled={!canMutate} onClick={() => void loadReview()}>{review ? "Reload review" : "Reload review"}</button>
             {reviewInvalid && <p className="restriction" role="status">{reviewInvalid}</p>}
@@ -1226,7 +1231,7 @@ export function App() {
           <p className="local-note">This browser is paired with a local process on this computer. Files stay in this project.</p>
         </aside>}
       </div>
-      <SessionsDrawer open={drawerOpen} grouped={grouped} projects={projects} currentKey={workspaceKey} collapsed={collapsed} sessions={sessionMap}
+      <SessionsDrawer docked={dockedSessions} onNew={() => { void create(); setDrawerOpen(false); }} canCreate={canMutate} open={drawerOpen || dockedSessions} grouped={grouped} projects={projects} currentKey={workspaceKey} collapsed={collapsed} sessions={sessionMap}
         loadingKey={sessionsLoading ? workspaceKey : ""} sessionId={session?.sessionId} search={search} statusFilter={statusFilter}
         statusFor={(projectKey, item) => sessionStatusLabel(item.runs.at(-1)?.status, projectKey === workspaceKey && item.sessionId === session?.sessionId && reviewInvalid.startsWith("The run changed"))}
         canSwitch={canSwitch} onSearch={setSearch} onClose={() => { setDrawerOpen(false); setStatusFilter(false); drawerButton.current?.focus(); }}

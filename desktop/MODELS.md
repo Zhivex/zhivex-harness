@@ -6,9 +6,9 @@ provisional. Choosing a model does not establish remote availability or account 
 ## Choose a model
 
 Open a repository and click the model name below the editor (**Choose a model**).
-Search by name or provider, select a card, then choose **Usar modelo**. For a custom
-ID, open **Configurar otro modelo**, choose the provider and **Otro modelo…**.
-**Volver** or Escape discards unconfirmed changes.
+Search by name or provider, select a card, then choose **Use model**. For a custom
+ID, open **Configure another model**, choose the provider and **Other model…**.
+**Back** or Escape discards unconfirmed changes.
 
 The selection persists per project across restarts. A new worktree task initially
 inherits the source project's selection and then keeps its own. Changes affect

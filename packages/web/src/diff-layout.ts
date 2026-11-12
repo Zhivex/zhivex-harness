@@ -7,7 +7,7 @@ export const DIFF_CHROME_RESERVE = 200;
 export const EMPTY_DIFF_WIDTH = 340;
 export const SIDE_MIN_VIEWPORT = 1024;
 export const NARROW_TABS = 640;
-export const DEFAULT_DIFF_WIDTH = 960;
+export const DEFAULT_DIFF_WIDTH = 600;
 export const DEFAULT_DIFF_HEIGHT = 360;
 
 export type DiffPosition = "side" | "bottom" | "full";
