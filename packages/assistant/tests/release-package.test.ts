@@ -8,6 +8,10 @@ import {writePilotManifest,verifyPilotManifest} from '../src/pilot/manifest.js';
 import {signReleaseManifest} from '../src/release/publish-manifest.js';
 import {verifyUpdateManifest,type UpdateManifest} from '../src/release/update-manifest.js';
 
+// Bundle manifests deliberately reject unsupported hosts. CI runs these
+// contracts in its macOS arm64 job, including the simulated signing commands.
+const macTest = test.skipIf(process.platform !== 'darwin' || process.arch !== 'arm64');
+
 async function fixture(run:(f:{root:string;app:string;config:ReturnType<typeof config>;calls:string[][];command:Command})=>Promise<void>){
  const root=await mkdtemp('/tmp/assistant-release-'),app=path.join(root,'Source.app');
  const runtime=path.join(app,'Contents/Resources/runtime');
@@ -33,7 +37,7 @@ async function fixture(run:(f:{root:string;app:string;config:ReturnType<typeof c
 }
 function config(root:string,app:string){return {application:app,outputDirectory:path.join(root,'release'),version:'0.2.0',teamId:'ABCDEFGHIJ',signingIdentity:'A'.repeat(40),notaryProfile:'fixture'};}
 
-test('release signs every native module before inventory and outer seal, notarizes, staples and assesses',()=>fixture(async f=>{
+macTest('release signs every native module before inventory and outer seal, notarizes, staples and assesses',()=>fixture(async f=>{
  const before=await readFile(path.join(f.app,'Contents/Resources/runtime/node'));
  expect((await nativeFiles(f.app)).length).toBe(3);
  const result=await packageMacRelease(f.config,f.command);
@@ -45,7 +49,7 @@ test('release signs every native module before inventory and outer seal, notariz
  expect(f.calls.filter(c=>c[1]==='notarytool').length).toBe(2);
  await expect(packageMacRelease(f.config,f.command)).rejects.toThrow();
 }));
-test('missing certificate, rejected notarization and altered bundle fail closed',()=>fixture(async f=>{
+macTest('missing certificate, rejected notarization and altered bundle fail closed',()=>fixture(async f=>{
  const missing:Command=async(b,a)=>b.endsWith('security')?{stdout:'0 valid identities found',stderr:''}:f.command(b,a);
  expect((await inspectRelease(f.config,missing)).identityPresent).toBe(false);
  await expect(packageMacRelease(f.config,missing)).rejects.toThrow('RELEASE_DEVELOPER_ID_MISSING');
@@ -55,7 +59,7 @@ test('missing certificate, rejected notarization and altered bundle fail closed'
  await appendFile(path.join(f.app,'Contents/Resources/runtime/node'),'tamper');
  await expect(inspectRelease(f.config,f.command)).rejects.toThrow('RELEASE_INTEGRITY_FAILED');
 }));
-test('native verifier rejects signature, version, architecture, hardened runtime and Gatekeeper overrides',()=>fixture(async f=>{
+macTest('native verifier rejects signature, version, architecture, hardened runtime and Gatekeeper overrides',()=>fixture(async f=>{
  for(const failure of ['signature','version','architecture','runtime','gatekeeper']){
   const command:Command=async(b,a)=>{
    if(failure==='signature'&&a.includes('--verify'))throw Error('fixture failure');

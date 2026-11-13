@@ -35,13 +35,14 @@ jobs:
       - name: Install immutable root dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Build and prepare the exact local engine
-        run: bun run prepare:assistant
-      - name: Validate types, tests and isolated installed consumer
-        run: bun run check:assistant
+        run: |
+          bun run prepare:assistant
+          bun run packages/code/scripts/link-local-engine.ts
       - name: Install Chromium
-        if: matrix.node == '24'
         working-directory: packages/assistant
         run: bun x playwright install --with-deps chromium
+      - name: Validate types, tests and isolated installed consumer
+        run: bun run check:assistant
       - name: Exercise setup, integrations and proactive notices in the browser
         if: matrix.node == '24'
         run: bun run smoke:assistant:web
@@ -73,6 +74,11 @@ jobs:
           bun run prepare:assistant
       - name: Validate native PTY and lifecycle contracts
         run: cargo test --locked --manifest-path packages/assistant/src-tauri/Cargo.toml
+      - name: Validate macOS release and bundle integrity contracts
+        working-directory: packages/assistant
+        run: |
+          brew install sqlite
+          bun test --preload ../../tests/preload-runtime.ts tests/release-package.test.ts tests/pilot.test.ts
       - name: Build native application with bundled Node runtime
         run: bun run --cwd packages/assistant build:desktop
       - name: Exercise the packaged runtime, authentication and restart
