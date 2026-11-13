@@ -24,6 +24,7 @@ Environment: macOS arm64, Bun 1.4.3, Node 22.21.0. `TMPDIR=/private/tmp` avoids 
 | `CI=1 ZHIVEX_HARNESS_OCI_REQUIRED=1 bun run check` | Passed: 2,376 tests, zero failures, one platform skip; architecture, documentation, stable contracts, runtime/tooling types, migrations, 8 offline evaluations, benchmarks, MCP and installed package smoke |
 | Required Docker OCI | Passed, Docker 29.9.2; image `sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9` |
 | Release preflight regression tests after adding workflow gates | 16 passed, zero failures |
+| Final preflight, release status and changelog tests | 28 passed, zero failures |
 | Web types, lint and tests | Passed; 97 tests |
 | Code types/build and tests | Passed; 170 tests |
 | Web browser journey with forced BUSY rejection | Passed; zero browser errors |
@@ -33,6 +34,7 @@ Environment: macOS arm64, Bun 1.4.3, Node 22.21.0. `TMPDIR=/private/tmp` avoids 
 | Bun installed consumers, both installation orders | Passed with the retained Harness and Code tarballs |
 | Installed Code terminal journeys | Passed with the retained tarballs |
 | Installed Web CLI smoke | Passed with the retained tarballs; provider fetch denied, zero attempts |
+| Clean-source installed task UI and recovery | Passed on `c2a2819915eed22ef1330a311eac9681a1899df4`; exact artifact bytes verified, recovery/projection/browser scenarios passed, cleanup completed |
 | Desktop candidate binding and types | Passed against the retained Harness tarball |
 | SDK redaction gate | Passed |
 | Dependency audits | No vulnerabilities reported: root 160, Web 379, Assistant 203, Desktop 141 packages |
@@ -49,8 +51,7 @@ Local preparation artifacts and logs are retained under ignored `release-artifac
 
 ## Remaining release gates
 
-- Complete the clean-source installed task UI/recovery journey after committing this preparation locally; its first attempt correctly refused the uncommitted source.
 - Review and integrate the candidate, then require all five workflows on the exact final main SHA. Existing green checks for the base commit do not certify these changes.
-- From clean main, repeat the read-only release preparation and registry-absence checks. Local readiness on the uncommitted candidate reported only the expected dirty-worktree condition.
+- From clean main, repeat the read-only release preparation and registry-absence checks. Local readiness on the committed preparation branch reports only the expected requirement to run from main. The clean-source task UI journey passed after its initial refusal of uncommitted source; this final documentation update does not change the validated runtime or tarball bytes.
 - Obtain fresh six-provider live and 42-case representative evidence bound to the final source and artifact through the protected release process. Local protected credentials are absent; no live-provider campaign was run. The 1.6.3 certification remains historical.
 - Publish Harness only after separate authorization and all protected gates pass, then validate actual registry resolution before any Code publication. No tags, pushes, registry changes or publication dispatches were performed during this preparation.
