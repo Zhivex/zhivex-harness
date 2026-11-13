@@ -1,5 +1,9 @@
 # Assistant web
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 The local interface implements the approved visual proposal: home with schedule,
 approvals, daily summary, conversations, connections and modules. There is one
 instance per owner. It does not yet include an agent catalog or multiple bots.

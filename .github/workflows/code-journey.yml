@@ -35,8 +35,6 @@ jobs:
           bun install --frozen-lockfile --ignore-scripts
           bun run build
           bun run packages/code/scripts/link-local-engine.ts
-      - name: Install immutable browser build dependencies
-        run: bun install --cwd packages/web --frozen-lockfile --ignore-scripts
       - name: Types, regression tests and independent build
         working-directory: packages/code
         run: |

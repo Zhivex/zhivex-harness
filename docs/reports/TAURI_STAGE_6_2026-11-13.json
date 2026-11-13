@@ -1,0 +1,52 @@
+{
+  "stage": 6,
+  "date": "2026-11-13",
+  "scope": "Reviewed immutable static-output previews, bounded approved browser verification, persistent artifacts and feedback",
+  "validation": {
+    "assistant_source_tests": {
+      "passed": 201,
+      "failed": 0
+    },
+    "assistant_installed_tests": {
+      "passed": 200,
+      "skipped": 1,
+      "failed": 0,
+      "skip_reason": "The separate Code product is not included in the installed consumer."
+    },
+    "browser_ui": "Passed real Chromium UI flow, separate publication/browser approval, screenshot, anchored feedback, stale evidence and mobile viewport.",
+    "agent": "Passed actual Code composition: preview_verify waits for stage-3 reviewed approval; cancellation closes Chromium and persists failure.",
+    "native": "Passed temporary app fixture: native publication and browser reviews, screenshot displayed, controlled quit, host and preview ports closed. Native visual check preceded final cancellation/persistence polish; final source, browser UI and packaged Node were retested afterwards.",
+    "bundle": "Final Tauri release build passed. Production Playwright, bundled static worker and real Chromium verified using bundled Node. Host authentication, duplicate lock, restart and parent EOF smoke passed.",
+    "exact_bundle_asset_count": 13,
+    "architecture": "passed",
+    "documentation": "passed"
+  },
+  "local_changes": {
+    "baseline_dirty_files": 103,
+    "preserved_byte_identically": 93,
+    "extended_files": [
+      "docs/README.md",
+      "packages/assistant/bun.lock",
+      "packages/assistant/src/review/review-tickets.ts",
+      "packages/assistant/web/src/ProjectWorkspace.tsx",
+      "packages/assistant/src/web/workspace.ts",
+      "packages/assistant/src/review/approval-review.ts",
+      "packages/assistant/package.json",
+      "docs/ASSISTANT_DESKTOP.md",
+      "docs/ASSISTANT_TAURI_AGENT_PLAN.md",
+      "packages/assistant/src/application.ts"
+    ],
+    "missing": [],
+    "commit_created": false,
+    "pushed": false
+  },
+  "limitations": [
+    "Static HTML/compiled exports only; no attachment to arbitrary framework servers, HMR or backend-dependent previews.",
+    "Chromium must already be installed for the bundled Playwright version; no automatic download.",
+    "Existing runtimes retain their original tool fingerprint and pending approvals. Agent browser tools are enabled only for newly initialized local runtimes; manual checks remain available.",
+    "Observed source provenance is not a certification that the build incorporated that source. Unknown or changed revisions are marked stale.",
+    "No real provider request or public deployment was performed."
+  ],
+  "logs_directory": "/tmp/tauri-stage6",
+  "bundle_path": "packages/assistant/src-tauri/target/release/bundle/macos/Zhivex Assistant.app"
+}

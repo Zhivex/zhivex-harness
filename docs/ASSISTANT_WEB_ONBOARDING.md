@@ -1,5 +1,9 @@
 # Assistant: web setup
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 The local macOS launcher lets you open Assistant with a double click and configure
 the model, Calendar and Telegram from the browser. No commands are needed during
 the first session or to reopen it. The service listens only on loopback.

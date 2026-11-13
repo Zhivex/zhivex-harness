@@ -1,4 +1,6 @@
 export { createProfiledHarness } from "../runtime/harness.js";
+export { createCodingHarness } from "../runtime/coding-composition.js";
+export type { CreateCodingHarnessOptions } from "../runtime/coding-composition.js";
 export type { CreateProfiledHarnessOptions } from "../runtime/harness.js";
 /** Terminal-free host engine surface. Named aliases retain their historical stability tiers. */
 export { GENERAL_ASSISTANT_PROFILE, harnessAgentProfileSchema } from "../runtime/agent-profile.js";

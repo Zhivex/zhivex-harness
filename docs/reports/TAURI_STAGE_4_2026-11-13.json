@@ -1,0 +1,88 @@
+{
+  "stage": 4,
+  "date": "2026-11-13",
+  "status": "implemented-local",
+  "reused": [
+    "Code coding composition and persistent Harness sessions",
+    "Desktop pause/drain/cancel admission policy",
+    "Stage-3 review and checkpoint recovery",
+    "Existing native private stdio bridge and authenticated loopback host"
+  ],
+  "checks": {
+    "assistantSource": {
+      "passed": 165
+    },
+    "assistantInstalled": {
+      "passed": 164,
+      "skipped": 1,
+      "skipReason": "Separate Code checkout absent in standalone consumer"
+    },
+    "newStage4Tests": {
+      "passed": 9
+    },
+    "rust": {
+      "passed": 5,
+      "realPty": [
+        "tty detection",
+        "resize",
+        "input/output",
+        "shell exit",
+        "foreground Ctrl+C",
+        "background process cleanup"
+      ]
+    },
+    "typechecks": [
+      "Assistant",
+      "web"
+    ],
+    "architecture": "passed",
+    "nativeReleaseBundle": "built macOS arm64",
+    "productionDesktopSmoke": "passed",
+    "nativeUi": [
+      "real project PTY opens",
+      "typed shell command and stty output",
+      "nonce-authorized readable xterm rendering",
+      "Ctrl+C interrupts foreground sleep",
+      "window closes while delayed offline task continues",
+      "Dock reopen shows completed task",
+      "Command-Q displays modal decision",
+      "return to app",
+      "drain displays waiting state during active task",
+      "controlled exit terminates native app"
+    ],
+    "settingsShutdownRegression": {
+      "result": "passed",
+      "renderer": "assets from final macOS app bundle",
+      "scenarios": [
+        "native quit remains a request until a decision",
+        "return to settings preserves usable UI",
+        "second quit and drain succeeds",
+        "standalone web shutdown still shows stopped state"
+      ],
+      "nativeBridge": "test double; existing native UI acceptance remains recorded separately"
+    },
+    "finalBundleVerification": {
+      "result": "passed",
+      "matchingHostAndWebFiles": 12,
+      "nativeExecutableSha256": "8a82a7f76935f490c9f2c2fb5e3974e43ed987079ad671831c078de875152474",
+      "runtimeSmoke": "executed against Contents/Resources/runtime in final app bundle"
+    }
+  },
+  "preservation": {
+    "initialDirtyOrUntrackedFiles": 68,
+    "initialFilesUnchanged": 48,
+    "initialFilesExtendedForStage4": 20,
+    "initialFilesMissing": 0,
+    "committed": false,
+    "pushed": false
+  },
+  "limits": [
+    "Native PTY preview is macOS-only",
+    "No real provider calls; native task used an offline delayed model",
+    "Actual OS notification prompt/delivery was not enabled during verification; permission outcomes and notification transitions are tested with a bridge double",
+    "Terminal processes and output are not restored after process restart",
+    "Deliberately detached daemons are outside PTY session ownership",
+    "OS force termination follows interrupted-work reconciliation rather than controlled drain",
+    "No claim of native Windows/Linux validation"
+  ]
+}

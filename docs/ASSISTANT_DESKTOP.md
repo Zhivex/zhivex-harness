@@ -1,4 +1,9 @@
-# Assistant native desktop preview (Tauri 2)
+# Assistant primary graphical interface (Tauri 2)
+
+The standalone browser entrypoints are retired; see [the retirement policy](WEB_RETIREMENT.md).
+
+For the proposed project coding experience and reuse of Code/Electron Desktop, see the
+[Tauri agent workspace implementation plan](ASSISTANT_TAURI_AGENT_PLAN.md).
 
 This preview opens the existing Assistant React UI in a native window. Harness
 remains the engine, the CLI remains available, and Code is **not removed**. The
@@ -46,8 +51,7 @@ ASSISTANT_DESKTOP_DIRECTORY="$(mktemp -d)" \
 
 Complete the normal setup in the window to use a real provider. Saving/testing
 a provider can consume quota; offline verification does not certify a live
-provider, OAuth, Telegram, microphone, or notifications. There is no new voice
-or OS notification integration in this preview.
+provider, OAuth, Telegram, microphone, or notifications. There is no new voice integration; system notifications are opt-in.
 
 ## Lifecycle and security
 
@@ -58,9 +62,8 @@ or OS notification integration in this preview.
 - The native webview has no Tauri capabilities, filesystem commands, shell plugin,
   or JavaScript-to-native command interface. Navigation stays on the selected
   loopback origin. HTTPS external links/OAuth open in the system browser.
-- Closing the application stops its host (and therefore scheduled background
-  work). Settings → Shut down Assistant also exits the native app. Keep the app
-  open for automations. There is no tray/background-service mode yet.
+- Closing the window hides it and keeps tasks running; reopen it from the Dock.
+  Quit and Settings → Shut down Assistant use the controlled lifecycle.
 - Normal closure sends a cooperative stop, waits up to five seconds, then kills
   an unresponsive child. A lost parent pipe also stops Node. Startup has a
   90-second budget for Keychain/restoration. An unexpected host exit presents a
@@ -111,3 +114,34 @@ between operating systems or architectures.
 Before distribution: native CI on each target, license/notice inventory,
 signing/notarization, installer/uninstaller behavior, upgrade/recovery testing,
 OAuth round trips, and an explicit background-work policy are still required.
+
+## Stage 4 terminal and background operation
+
+The macOS preview now includes a real project terminal and a persistent activity queue.
+Closing the window keeps tasks and terminal jobs running; use the Dock to reopen it.
+Quit offers wait/cancel handling and ends terminal jobs. Restart reconciles saved agent
+state without replaying interrupted effects; terminal sessions are not restarted.
+System notifications are opt-in. See [stage 4](ASSISTANT_TAURI_STAGE_4.md) for ownership,
+recovery, permission, and verification details.
+
+## Stage 5 tasks and Git delivery
+
+The workspace now offers managed tasks on separate worktrees and reviewed local
+commit, GitHub HTTPS push, and draft PR flows. Task creation starts from committed
+HEAD and excludes source changes that have not been committed. Two task runtimes
+can remain open concurrently; removal requires a clean, integrated, unlocked
+worktree and a fresh review. See [stage 5](ASSISTANT_TAURI_STAGE_5.md) for execution
+limits, recovery, transport prerequisites, and the boundary with child delegation.
+
+## Preview and browser evidence
+
+The project workspace includes reviewed static previews, bounded Chromium checks and
+artifact-linked feedback. See [stage 6](ASSISTANT_TAURI_STAGE_6.md) for the supported
+static-output flow, browser prerequisite, compatibility with existing approvals and limits.
+
+## Packaged local pilot
+
+Stage 7 adds bundle integrity checks, prerequisite diagnostics and conservative migration
+preflight. Code remains available; production distribution is still gated. See the
+[stage-7 pilot runbook](ASSISTANT_TAURI_STAGE_7.md) for supported architecture, migration,
+credential references and rollback boundaries.

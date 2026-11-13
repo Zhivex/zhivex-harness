@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { sdkFixture } from "../../web/scripts/sdk-fixture.mjs";
+import { sdkFixture } from "./sdk-fixture.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const scratch = await mkdtemp(path.join(os.tmpdir(), "code-installed-journey-"));

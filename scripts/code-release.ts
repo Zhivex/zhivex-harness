@@ -71,7 +71,7 @@ export async function assertCodeReleaseIdentity(options: {
   assert.equal(run(["git", "rev-list", "-n", "1", tag]), sha);
   run(["git", "merge-base", "--is-ancestor", sha, "origin/main"]);
   assert.equal(run(["git", "status", "--porcelain=v1", "--untracked-files=all"]), "", "Release source must be clean");
-  for (const workflow of ["ci.yml", "codeql.yml", "code-journey.yml", "web.yml"]) {
+  for (const workflow of ["ci.yml", "codeql.yml", "code-journey.yml"]) {
     const response = await api(`actions/workflows/${workflow}/runs?head_sha=${sha}&branch=main&event=push&per_page=100`);
     const latest = response.workflow_runs?.[0];
     assert(latest?.head_sha === sha && latest.status === "completed" && latest.conclusion === "success", `${workflow} latest main push must pass for the exact release SHA`);
@@ -140,22 +140,15 @@ function npmUrl(url: string): string {
 const codePayloadFiles = [
   "package/package.json", "package/README.md", "package/CHANGELOG.md", "package/LICENSE", "package/dist/cli.js",
   "package/examples/first-use.mjs", "package/examples/offline-provider.mjs", "package/docs/TASK_DELIVERY.md",
-  "package/dist/web-assets/index.html",
-  "package/dist/web-assets/zhivex-icon.png",
 ];
 export function assertCodePayload(names: string[]): void {
   assert.equal(new Set(names).size, names.length, "Duplicate Code payload entries");
   for (const name of names) {
     assert(codePayloadFiles.includes(name) || ["package/", "package/dist/", "package/examples/", "package/docs/"].includes(name) ||
-      /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name) ||
-      ["package/dist/web-assets/", "package/dist/web-assets/assets/", "package/dist/web-assets/index.html"].includes(name) ||
-      /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2)$/.test(name), `Unexpected Code payload: ${name}`);
+      /^package\/dist\/[A-Za-z0-9_-]+\.js$/.test(name), `Unexpected Code payload: ${name}`);
   }
   for (const name of codePayloadFiles) assert(names.includes(name), `Missing ${name}`);
-  for (const extension of ["js", "css", "woff2"]) {
-    assert(names.some(name => /^package\/dist\/web-assets\/assets\/[A-Za-z0-9_-]+\.(?:js|css|woff2)$/.test(name) &&
-      name.endsWith(`.${extension}`)), `Missing compiled web ${extension} asset`);
-  }
+
 }
 export async function inspectCodeArtifact(artifact: string, manifest: Manifest) {
   const bytes = await readFile(artifact);
@@ -170,21 +163,6 @@ export async function inspectCodeArtifact(artifact: string, manifest: Manifest) 
   assertCodeManifest(packed);
   assert.deepEqual(packed, manifest, "Packed manifest differs from checked-out release");
   assert(run(["tar", "-xOf", artifact, "package/dist/cli.js"]).startsWith("#!/usr/bin/env node"));
-  const html = run(["tar", "-xOf", artifact, "package/dist/web-assets/index.html"]);
-  const references = [...html.matchAll(/\b(?:src|href)=["']([^"']+)["']/g)].map(match => match[1]!);
-  for (const extension of ["js", "css"]) {
-    assert(references.some(name => name.endsWith(`.${extension}`)), `Missing web index ${extension} reference`);
-  }
-  for (const reference of references) {
-    assert(/^\/assets\/[A-Za-z0-9_-]+\.(?:js|css)$/.test(reference), `Invalid web asset reference: ${reference}`);
-    const entry = `package/dist/web-assets${reference}`;
-    assert(names.includes(entry), `Missing referenced web asset: ${entry}`);
-    assert(run(["tar", "-xOf", artifact, entry]).length, `Empty web asset: ${entry}`);
-  }
-  const logo = spawnSync("tar", ["-xOf", artifact, "package/dist/web-assets/zhivex-icon.png"], { timeout: 10_000 });
-  assert.equal(logo.status, 0, "Missing bundled Zhivex icon");
-  assert.equal(createHash("sha256").update(logo.stdout).digest("hex"),
-    "b4e2b4da0a8a2866e2c27bac3165e4e86510fd8dc0d50b02c0a9c8374150a96f", "Invalid bundled Zhivex icon");
   const sha512Hex = createHash("sha512").update(bytes).digest("hex");
   return { sha512Hex, integrity: `sha512-${Buffer.from(sha512Hex, "hex").toString("base64")}` };
 }
@@ -199,7 +177,7 @@ async function main() {
   if (mode === "identity") {
     await assertCodeReleaseIdentity({ version: manifest.version, channel: process.env.RELEASE_CHANNEL ?? "", tag: process.env.RELEASE_TAG ?? "", sha: process.env.GITHUB_SHA ?? "", ref: process.env.GITHUB_REF ?? "", repository: process.env.GITHUB_REPOSITORY ?? "", run,
       api: endpoint => json(`https://api.github.com/repos/${repository}/${endpoint}`, false, true) });
-    console.log("Code release identity and exact main CI/CodeQL/installed/web workflows verified."); return;
+    console.log("Code release identity and exact main CI/CodeQL/installed workflows verified."); return;
   }
   if (mode === "engine") {
     assert(input, "Provide destination for exact registry engine tarball");

@@ -1,5 +1,9 @@
 # Code web tasks — CODE-HU-05
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 Canonical story: https://app.notion.com/p/3ef777b104f681309854c8f1e73803f1.
 This screen sits on the experimental task evidence read (`task.get` /
 `task.projection.v1`) and the experimental task controls (`task.control.v1`).

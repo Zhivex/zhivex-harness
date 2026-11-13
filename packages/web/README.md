@@ -1,5 +1,8 @@
 # Local Code browser workspace
 
+> Retired standalone product. Sources are retained for reference and are excluded
+> from active Code builds and CI. Use [Tauri](../../docs/WEB_RETIREMENT.md) for the GUI.
+
 Run `zhivex-code web` from a repository. The installed Code package contains the
 compiled React + TypeScript + Vite assets and a small Node host; users do not
 install Vite or run a frontend build. macOS/Linux, Node 22.13+ are supported by

@@ -1,0 +1,130 @@
+{
+  "stage": 3,
+  "date": "2026-11-13",
+  "status": "implemented-local",
+  "reused": [
+    "Code shared coding composition and task control contracts",
+    "Desktop approval projection and single-use review tickets",
+    "Desktop checkpoint review and recovery adapter",
+    "Desktop full-file diff fallback and invisible-character display"
+  ],
+  "checks": {
+    "assistantSource": {
+      "passed": 156
+    },
+    "assistantInstalled": {
+      "passed": 155,
+      "skipped": 1,
+      "skipReason": "Separate Code checkout absent in standalone consumer"
+    },
+    "engineFocused": {
+      "passed": 35,
+      "assertions": 217
+    },
+    "architectureComposition": {
+      "passed": 19,
+      "assertions": 834
+    },
+    "rust": {
+      "passed": 2
+    },
+    "typechecks": [
+      "Assistant",
+      "web",
+      "root"
+    ],
+    "architecture": "passed",
+    "nativeReleaseBundle": "built macOS arm64",
+    "productionDesktopSmoke": "passed",
+    "browserSmoke": [
+      "Code CLI start",
+      "HTTP reviewed edit and actual package check",
+      "saved exact diff",
+      "Code CLI continuation in same session",
+      "checkpoint restoration and derived conversation",
+      "new clean-baseline task",
+      "content-bound check and explicit acceptance",
+      "external edit produces stale evidence and disables acceptance",
+      "responsive layout"
+    ]
+  },
+  "faultEvidence": {
+    "realProcessTermination": "SIGKILL after file effect before journal completion",
+    "fileEffectPreserved": true,
+    "journalOutcome": "unknown",
+    "completeAppliedDiffWithheld": true,
+    "duplicateApprovalRejected": true,
+    "transportFailure": "single-use receipt unit tests verify consumption before I/O"
+  },
+  "nativeEvidence": {
+    "surface": "actual Tauri release webview on macOS",
+    "fixture": "temporary copy of app with real host/composition and offline model; Code CLI started pending edit",
+    "observed": [
+      "complete before/after preview",
+      "acknowledged edit approval",
+      "exact package command review",
+      "exit code zero and output",
+      "reverse checkpoint diff",
+      "restoration completed with derived-conversation action"
+    ],
+    "capture": "native accessibility/screenshot evidence in this task transcript",
+    "productionProfilesTouched": false,
+    "temporaryAppClosed": true
+  },
+  "preservation": {
+    "initialFiles": 50,
+    "initialFilesChangedIntentionally": [
+      "packages/assistant/src/client.ts",
+      "packages/assistant/src/application.ts",
+      "packages/assistant/src/application-contracts.ts",
+      "docs/README.md",
+      "packages/assistant/web/src/project-workspace.css",
+      "packages/assistant/web/src/ProjectWorkspace.tsx",
+      "packages/assistant/src/web/workspace.ts"
+    ],
+    "missingFiles": [],
+    "snapshot": "/tmp/tauri-stage3/original",
+    "reset": false,
+    "stash": false,
+    "commit": false,
+    "push": false
+  },
+  "limits": [
+    "Task control inherits clean Git baseline, new session and local backend prerequisites",
+    "No hunk-level acceptance or interactive PTY",
+    "No live provider evaluation or signed/notarized release",
+    "Native manual test covered approval/checkpoint review; full task acceptance covered in browser",
+    "Local unpublished Harness candidate still required"
+  ],
+  "artifacts": {
+    "logs": "/tmp/tauri-stage3",
+    "screenshots": [
+      "/tmp/tauri-stage3/review-desktop.png",
+      "/tmp/tauri-stage3/restore-desktop.png",
+      "/tmp/tauri-stage3/task-acceptance.png",
+      "/tmp/tauri-stage3/review-mobile.png"
+    ]
+  },
+  "sourceSha256": {
+    "docs/README.md": "6b1f7c766ad43d696825d8554aae5e00f8b4a83132af4d04086f82bc2db13244",
+    "packages/assistant/scripts/review-fixture.ts": "8c440dc1c5ea4bf7d6364858a1f2c76ab9c273b2d6f1493ec9224d2a547d7b58",
+    "packages/assistant/scripts/smoke-review.ts": "824f3848ae32e6dfb077bb77b80f3a70ba38339938042ebf3b8177c8b03130e0",
+    "packages/assistant/src/application-contracts.ts": "b49fe9d5aa2f7f7f2d8abe72710bec51bacec8bb4b333caf4f2122353826d8f5",
+    "packages/assistant/src/application.ts": "bf6e28ae255322ccbb98669614e7f2af05a12655e4428b4cb4e9ecb1cef059c6",
+    "packages/assistant/src/client.ts": "ccd35ec69bbedbf52246d540e61e4773be960f22ce35ccad7638d5f90291e8f2",
+    "packages/assistant/src/review/approval-review.ts": "9d9dad29eec904b2c06f218c8b4135ef027cc6e16e83358331322f367e21a75a",
+    "packages/assistant/src/review/checkpoint-review.ts": "a3efca0f4779f89d8abb8dd59343baf4f8f265037618bd1c17ce65ed4737605e",
+    "packages/assistant/src/review/review-tickets.ts": "47bd05d2e311291d84a89c746bd3dbca480554603599fe879ed0cb806dadf22c",
+    "packages/assistant/src/review/workspace-review.ts": "5cdbf8d1a7035101a11bfe35f3c40ea39109695beb9503732fc035d8e8cf529f",
+    "packages/assistant/src/web/workspace.ts": "9b6b351ff13f72416b139748a58ac98ba532d992025ce098f6293d9de03ea713",
+    "packages/assistant/tests/fixtures/review-effect-crash.mjs": "8ca0b71054e64ed1c16de853519a82a793b1489c91eefb4617434a940ad18e18",
+    "packages/assistant/tests/review-recovery.test.ts": "41564581dad8fd77ebed0057767d41c265d471483dd81cfb5b8b7a9fab411436",
+    "packages/assistant/tests/workspace-review.test.ts": "c83897889bdaf63c56361024e2bf52abae1f3ea742cbd54c823d09960c0a3bed",
+    "packages/assistant/web/src/CheckpointPanel.tsx": "e1e90c40f9d87b89da774f82ff2c37b5cbc20bfaa8b0f36b959d9f7f405e4728",
+    "packages/assistant/web/src/FileDiff.tsx": "f46562ff6ed40a249e92e133834b878ee32b86b4369db80fc2fd0470cf98abec",
+    "packages/assistant/web/src/ProjectWorkspace.tsx": "40c26a08c411f55f085ca404a80695316fa5f8d56a3071757f96f389f43c4b76",
+    "packages/assistant/web/src/WorkspaceReview.tsx": "b68f3fbe814b024e28fde043466df7ceb3c0dfa999bc30ba09486d866ead7734",
+    "packages/assistant/web/src/project-workspace.css": "49258be72565a0603dd22c2d59952350b281a6b464defef3975dbf8f9e2acb78",
+    "packages/assistant/web/src/reveal-invisible.ts": "725d350b0cf43c8d84a9aaffeba5f1da0e16986f6ecfd218d757745146691cfd"
+  }
+}

@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { readHarnessLocalCredentials, requestHarnessLocalService } from "@zhivex-ai/harness/service";
-import type { HarnessClientCommand } from "@zhivex-ai/harness/protocol";
+import type { HarnessClientCommand, HarnessClientResponse } from "@zhivex-ai/harness/protocol";
 
 type WithoutProject<T> = T extends unknown ? Omit<T, "projectId"> : never;
 export type AssistantCommand = WithoutProject<HarnessClientCommand>;
 
 /** Local trusted client; reconnect after restart, then inspect before any mutation retry. */
-export async function connectAssistant(credentialsPath: string) {
+export async function connectAssistant(credentialsPath: string, options: { serialize?: boolean; reviewed?: (request: unknown) => Promise<HarnessClientResponse> } = {}) {
   const credentials = await readHarnessLocalCredentials(credentialsPath);
   const hello = await requestHarnessLocalService(credentials, "hello", { versions: [1] });
   if (!hello.ok) throw new Error(hello.error.code);
@@ -17,7 +17,12 @@ export async function connectAssistant(credentialsPath: string) {
   });
   return {
     projectId: hello.projectId,
+    reviewed(command: AssistantCommand) {
+      if (!options.reviewed) throw new Error('EXPLICIT_REVIEW_UNAVAILABLE');
+      return options.reviewed({ protocolVersion: 1, requestId: randomUUID(), connectionId: hello.connectionId, command: { ...command, projectId: hello.projectId } });
+    },
     command(command: AssistantCommand) {
+      if (options.serialize === false) return dispatch(command);
       // Reads/cancellation must stay available while a mutation waits on a provider.
       if (command.method.endsWith(".get") || command.method.endsWith(".list") || command.method === "run.cancel") return dispatch(command);
       const result = pending.then(() => dispatch(command));

@@ -12,7 +12,7 @@
     "zhivex-assistant": "./dist/cli.js"
   },
   "scripts": {
-    "build": "bun build src/index.ts src/cli.ts src/desktop.ts --outdir dist --target node --packages external && bun run build:web",
+    "build": "bun build src/index.ts src/cli.ts src/desktop.ts src/preview/preview-server.ts src/pilot/cli.ts --outdir dist --target node --packages external && bun run build:web",
     "start": "node dist/cli.js",
     "prepare:local": "bun run scripts/prepare-local.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
@@ -22,34 +22,37 @@
     "smoke:installed": "bun run scripts/smoke-installed.ts",
     "build:web": "vite build --config web/vite.config.ts",
     "dev:web": "vite --config web/vite.config.ts",
-    "build:launcher": "bun run build && bun run scripts/build-launcher.ts",
     "eval:tasks": "bun run scripts/evaluate-tasks.ts",
     "smoke:microsoft-web": "bun run scripts/smoke-microsoft-web.ts",
     "prepare:desktop": "bun run scripts/prepare-desktop.ts",
     "dev:desktop": "bun run prepare:desktop && tauri dev",
     "build:desktop": "bun run prepare:desktop && tauri build",
     "test:desktop": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "smoke:desktop": "bun run scripts/smoke-desktop.ts"
+    "smoke:desktop": "bun run scripts/smoke-desktop.ts",
+    "pilot": "node dist/pilot/cli.js"
   },
   "dependencies": {
     "@zhivex-ai/core": "1.37.0",
     "@zhivex-ai/harness": "1.6.3",
     "@zhivex-ai/openai": "0.17.0",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "playwright": "1.64.1"
   },
   "devDependencies": {
     "@phosphor-icons/react": "2.1.10",
+    "@tauri-apps/cli": "^2.11.0",
     "@types/bun": "1.4.3",
     "@types/node": "^26.6.3",
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
     "@zhivex-ai/agents": "1.12.0",
-    "playwright": "1.64.1",
+    "@zhivex-ai/react": "0.10.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "typescript": "7.0.2",
-    "vite": "8.3.5",
-    "@tauri-apps/cli": "^2.11.0"
+    "vite": "8.3.5"
   },
   "engines": {
     "node": ">=22.13.0"

@@ -1,5 +1,7 @@
 # Documentation
 
+Current interface policy: [Tauri and standalone web retirement](WEB_RETIREMENT.md).
+
 ## Use Harness
 
 Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversations.
@@ -21,6 +23,9 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Integrate Harness
 
+- [Assistant Tauri workspace](ASSISTANT_TAURI_STAGE_2.md): native projects, scoped files and live coding activity.
+- [Assistant Tauri review](ASSISTANT_TAURI_STAGE_3.md): approvals, exact changes, content-bound checks and checkpoint recovery.
+
 - [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
 - [Code release procedure](CODE_RELEASE.md): independent RC publication, exact artifact, bootstrap provenance and Trusted Publishing.
 
@@ -37,6 +42,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Assistant
 
+- [Tauri agent workspace plan](ASSISTANT_TAURI_AGENT_PLAN.md): staged coding journey, Code/Desktop reuse and acceptance gates.
 - [MVP scope and phase status](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_MVP_PLAN.md) and [contracts](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CONTRACTS.md).
 - [Persistent host](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_HOST.md), [Telegram](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_TELEGRAM.md) and [Calendar](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CALENDAR.md).
 - [Automations](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_AUTOMATIONS.md), [extensions](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_EXTENSIONS.md) and [pilot acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PILOT.md).
@@ -59,3 +65,9 @@ and are excluded from the npm package. Published validation applies to the exact
 release artifact, not automatically to later source changes.
 
 - [Assistant native desktop preview](ASSISTANT_DESKTOP.md): Tauri build, lifecycle, verification and platform limits.
+- [Assistant Tauri stage 4: terminal and persistent operation](ASSISTANT_TAURI_STAGE_4.md)
+- [Assistant Tauri stage 5: isolated tasks and Git delivery](ASSISTANT_TAURI_STAGE_5.md)
+
+- [Tauri stage 6: previews and browser evidence](ASSISTANT_TAURI_STAGE_6.md) — isolated static previews, approved browser checks and persistent artifacts.
+
+- [Tauri stage 7: packaged local pilot](ASSISTANT_TAURI_STAGE_7.md) — installed checks, migration preflight and gradual cutover gates.

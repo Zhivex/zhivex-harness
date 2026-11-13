@@ -1,4 +1,8 @@
+import { pilotDiagnostics } from '../pilot/diagnostics.js';
+import { createTerminalHost, type NativeBridge } from '../terminal.js';
+import type { DesktopLifecycle } from '../desktop-lifecycle.js';
 import type { startAssistantHost } from '../host.js';
+import { workspaceRequest } from './workspace.js';
 import { createServer } from 'node:http';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
@@ -10,6 +14,10 @@ import { connectAssistant, type AssistantCommand } from '../client.js';
 import { dayWindow, localDate, validZone } from '../automation/time.js';
 import type { AgendaSource } from '../automation/summary.js';
 export interface AssistantWebOptions {
+  native?: NativeBridge;
+  lifecycle?: Pick<DesktopLifecycle, 'state' | 'action'>;
+  /** Trusted native selector; a browser may request a dialog, never supply a root path. */
+  chooseProject?: () => Promise<string | null>;
   port?: number;
   timeZone?: string;
   assetsDirectory?: string;
@@ -19,8 +27,10 @@ export interface AssistantWebOptions {
   };
 }
 export interface WebHost {
+  application?: Awaited<ReturnType<typeof import('../application.js').openAssistantApplication>> | undefined;
   daily?: Awaited<ReturnType<typeof startAssistantHost>>['daily'];
   taskMetrics?: Awaited<ReturnType<typeof startAssistantHost>>['taskMetrics'];
+  runPrompt?: (runId: string) => Promise<string | undefined>;
   credentialsPath: string;
   diagnostics(): unknown;
   agendaSource?: AgendaSource | undefined;
@@ -51,6 +61,7 @@ export async function startAssistantWeb(
     if (!host) throw new Error('SETUP_REQUIRED');
     return host;
   };
+  const terminals = options.native ? createTerminalHost(options.native, () => currentHost().application) : undefined;
   let connectedHost: WebHost | undefined,
     client: Awaited<ReturnType<typeof connectAssistant>> | undefined;
   const token = randomBytes(32).toString('hex');
@@ -100,13 +111,15 @@ export async function startAssistantWeb(
     active = 0,
     runtimeRequests = 0;
   let setupMutation = false;
+  let closing = false;
   const server = createServer(async (req, res) => {
+    const styleNonce = randomBytes(18).toString('base64');
     res.setHeader('cache-control', 'no-store');
     res.setHeader('x-content-type-options', 'nosniff');
     res.setHeader('referrer-policy', 'no-referrer');
     res.setHeader(
       'content-security-policy',
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+      `default-src 'self'; script-src 'self'; style-src 'self' 'nonce-${styleNonce}'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
     );
     const json = (status: number, body: unknown) => {
       res.writeHead(status, { 'content-type': 'application/json' });
@@ -141,6 +154,16 @@ export async function startAssistantWeb(
         }
         active++;
         admitted = true;
+        if (req.method === 'GET' && url.pathname === '/api/lifecycle') { json(200, options.lifecycle?.state() ?? { native: false }); return; }
+        if (req.method === 'POST' && ['/api/lifecycle/action', '/api/terminal'].includes(url.pathname)) {
+          if (req.headers['content-type'] !== 'application/json') throw new Error('CONTENT_TYPE_INVALID');
+          let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 65536) throw new Error('BODY_TOO_LARGE'); }
+          const input: unknown = JSON.parse(body);
+          if (url.pathname === '/api/lifecycle/action') { if (!options.lifecycle) throw new Error('NATIVE_REQUIRED'); json(200, await options.lifecycle.action(input)); }
+          else { if (!terminals) throw new Error('NATIVE_REQUIRED'); terminals.pause(['draining', 'cancelling', 'closing'].includes(options.lifecycle?.state().phase ?? 'running')); json(200, await terminals.action(input)); }
+          return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/pilot') { json(200,await pilotDiagnostics());return; }
         if (req.method === 'GET' && url.pathname === '/api/setup') {
           json(200, options.setup?.state() ?? { managed: false });
           return;
@@ -178,9 +201,12 @@ export async function startAssistantWeb(
           json(409, { error: 'SETUP_BUSY' });
           return;
         }
-        runtimeRequests++;
-        runtimeAdmitted = true;
+        if (url.pathname !== '/api/workspace/events') { runtimeRequests++; runtimeAdmitted = true; }
         const host = currentHost();
+        if (url.pathname.startsWith('/api/workspace/')) {
+          await workspaceRequest(req, res, url, host, { chooseProject: options.chooseProject, current: currentHost, closing: () => closing, terminalBusy: key=>terminals?.hasProject(key)??false });
+          return;
+        }
         if (req.method === 'GET' && url.pathname === '/api/daily') {
           json(
             200,
@@ -217,6 +243,7 @@ export async function startAssistantWeb(
                     runId: run.runId,
                     status: run.status,
                     output: run.output,
+                    prompt: await host.runPrompt?.(run.runId),
                     revision: run.revision,
                     ...(run.status === 'waiting_approval' ? { review: await review(run) } : {}),
                   };
@@ -440,7 +467,8 @@ export async function startAssistantWeb(
       res.writeHead(200, {
         'content-type': mime[path.extname(canonical)] ?? 'application/octet-stream',
       });
-      res.end(await readFile(canonical));
+      const content = await readFile(canonical);
+      res.end(path.extname(canonical) === '.html' ? content.toString('utf8').replace('<head>', `<head><meta name="terminal-style-nonce" content="${styleNonce}">`) : content);
     } catch (error) {
       const code =
         error instanceof Error && /^[A-Z][A-Z0-9_]{1,90}$/.test(error.message)
@@ -465,6 +493,8 @@ export async function startAssistantWeb(
     url: `${origin}/#token=${token}`,
     origin,
     async close() {
+      closing = true;
+      await terminals?.close();
       server.closeIdleConnections();
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),

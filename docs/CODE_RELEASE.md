@@ -1,5 +1,9 @@
 # Code release procedure
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 ## Published patch: Code 0.4.2
 
 Code `0.4.2` is published and verified on npm `latest`, pinned exactly to Harness `1.6.3`. Annotated `code-v0.4.2` resolves to `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a`, the same commit as `v1.6.3`. The [protected OIDC workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) passed actual registry resolution of the already verified Harness release, retained-artifact terminal/Web journeys and four-manager acceptance before publication. Independent verification confirmed the published bytes, `latest` and source-bound provenance. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).

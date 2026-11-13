@@ -1,5 +1,9 @@
 # Gradual Code-to-Assistant migration
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 Status: proposed implementation plan, 2026-11-11. No runtime migration has been performed.
 
 ## Objective and boundaries

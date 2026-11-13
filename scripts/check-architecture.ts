@@ -32,6 +32,8 @@ export const sourceDependencies = (source: string): SourceDependency[] => {
 const desktopPackageImports = new Set(["engine", "protocol", "client", "service", "models", "desktop/v1/state", "desktop/v1/providers"].map(name => `@zhivex-ai/harness/${name}`));
 const assistantPackageImports = new Set(["engine", "protocol", "client", "service"].map(name => `@zhivex-ai/harness/${name}`));
 const resolveSource = (file: string, target: string) => path.posix.normalize(path.posix.join(path.posix.dirname(file), target)).replace(/\.js$/, ".ts");
+const applicationContract = "packages/assistant/src/application-contracts.ts";
+const browserDependencies = /^(?:react(?:\/|$)|react-dom(?:\/|$)|@xterm\/(?:xterm(?:\/|$)|addon-fit$)|@phosphor-icons\/react$|@zhivex-ai\/react(?:\/|$))/;
 
 export const architectureViolations = (file: string, source: string): string[] => {
   const violations: string[] = [];
@@ -41,6 +43,28 @@ export const architectureViolations = (file: string, source: string): string[] =
   for (const dependency of sourceDependencies(source)) {
     const target = dependency.target.startsWith(".") ? resolveSource(file, dependency.target) : dependency.target;
     const reject = (reason: string) => violations.push(`${file} -> ${dependency.target}: ${reason}`);
+    if (file === applicationContract && !(dependency.typeOnly && target === "@zhivex-ai/harness/protocol")) {
+      reject("Assistant application contracts may import only engine protocol types");
+    }
+    if (file.startsWith("packages/assistant/web/src/")) {
+      const localView = dependency.target.startsWith(".") && target.startsWith("packages/assistant/web/src/");
+      const contract = target === applicationContract;
+      if (dependency.computed || !(localView || contract || browserDependencies.test(target))) {
+        reject("Assistant renderer must use browser dependencies and application contracts, never privileged implementation");
+      }
+    }
+    if (file.startsWith("packages/assistant/src/") && /^(?:electron(?:\/|$)|@electron\/|@zhivex-ai\/desktop(?:\/|$))/.test(target)) {
+      reject("Assistant must not depend on Electron implementation");
+    }
+    if (file.startsWith("packages/code/src/") && /^(?:desktop\/|packages\/assistant\/|electron(?:\/|$)|@electron\/)/.test(target)) {
+      reject("Code must not load Desktop or Assistant implementation; use public application contracts");
+    }
+    if (file.startsWith("packages/code/src/") && (target.startsWith("packages/web/") || /^@zhivex-ai\/code-web(?:\/|$)/.test(target))) {
+      reject("Code must not depend on the retired standalone web application");
+    }
+    if (file.startsWith("packages/code/src/") && /^@zhivex-ai\/assistant(?:\/|$)/.test(target)) {
+      reject("Code application integration requires an explicitly published client-safe entrypoint");
+    }
     if (file.startsWith("packages/assistant/src/")) {
       if (dependency.computed || (dependency.target.startsWith(".") && !target.startsWith("packages/assistant/src/")) || path.isAbsolute(target) ||
           /^@zhivex-ai\/(?:code|code-web)(?:\/|$)/.test(target)) reject("Assistant must not import repository internals or other products");
@@ -116,6 +140,8 @@ export const checkArchitecture = async (root: string): Promise<string[]> => {
   await visit("src");
   await visit("desktop/src");
   await visit("packages/assistant/src");
+  await visit("packages/assistant/web/src");
+  await visit("packages/code/src");
   violations.push(...engineBoundaryViolations(sources));
   return violations;
 };

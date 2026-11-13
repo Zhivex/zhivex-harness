@@ -5,6 +5,7 @@ export { startAssistantHost } from "./host.js";
 export type { AssistantHostOptions } from "./host.js";
 export { connectAssistant } from "./client.js";
 export type { AssistantCommand } from "./client.js";
+export type { AssistantCodingOptions } from "./application.js";
 export { createTelegramBridge } from "./telegram/bridge.js";
 export type { TelegramBridgeOptions } from "./telegram/bridge.js";
 export { createTelegramApi, TelegramFailure } from "./telegram/api.js";

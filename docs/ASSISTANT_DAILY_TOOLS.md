@@ -1,5 +1,9 @@
 # Assistant: herramientas para el día a día
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 Implementación del 2026-11-11. Módulos opcionales sobre las APIs públicas de
 Harness; las acciones conservan su aprobación exacta en web y Telegram.
 No conecta cuentas ni habilita automatizaciones por instalar o construir el paquete.

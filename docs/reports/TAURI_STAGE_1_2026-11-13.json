@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-13",
+  "stage": 1,
+  "baseHead": "eebddf0c61b2ee6bdb332e067fb5834f94532d36",
+  "scope": "Opt-in project host, shared Code composition and existing terminal service integration; no Tauri UI change",
+  "implementationSha256": {
+    "src/runtime/coding-composition.ts": "b9dc06ade5a64e36de59c70da52036a5b993db5c7f55df84daf35e2d638641d9",
+    "src/engine/index.ts": "e529a37f7159aa63248fa9a1c0a6cf196e06c5451768b967437e52bf7d6e6b9e",
+    "contracts/engine-api.json": "1147287a9fb6154d57d48244377c90990c5e3b276f0ccbcbb0f372b92bc2baef",
+    "packages/code/src/cli/configured-harness.ts": "625467eb1fa8c858e6e7de02ac77cefb25555271544281c013ba76e7cf876cb0",
+    "packages/assistant/src/projects.ts": "1c27502b5699161d9c2402c194ce9f7baebb5b13669a1eec6bdcf0717982456f",
+    "packages/assistant/src/application.ts": "a244d84d8b0937440fa8a9a4757df4f320816591cde4acb772bcf1a99ca176b7",
+    "packages/assistant/src/application-contracts.ts": "e39e1388622a2d59533a7ec8f5232003f0fb60ac6e5669b4fc98d9c596ee8c84",
+    "packages/assistant/src/host.ts": "e7c830a9bae13435316f9afce4643f1d54c3ada29ca457edccddc43eca71da4d",
+    "packages/assistant/src/client.ts": "2b4f484eabe1fd489622ee27bb762d53b1a4c4f2cef53e28944b26f129398e94",
+    "packages/assistant/src/cli.ts": "c71803ba1adb70b9085b19553606ef36a2279a2e0a5d1ef7afd59413c1617fc2",
+    "packages/assistant/src/index.ts": "8b811a10db467b7f9341e6e41eda2c44ec1297b68349165eca2aeb03d8c2d18e",
+    "packages/assistant/tests/application.test.ts": "0bf7fa7067bb12a1a680c475b27ab23c021c03a1281146112d47501bf05589dc",
+    "packages/assistant/tests/fixtures/project-process.mjs": "0fa8be93990784629c9476371e36f6f00bc629954e32311e7918369b8a3ebbaa",
+    "tests/coding-composition.test.ts": "ad111406ff07ec893cb2736e057a63a119e8a900fec258e26b5c81c3a0c085f7"
+  },
+  "initialLocalChangesSha256": {
+    "docs/ASSISTANT_TAURI_AGENT_PLAN.md": "b64da659c009ec841c9e3514ccd6fc2c9adb0a02a1717109732fda0cbf3d5a37",
+    "docs/ASSISTANT_TAURI_STAGE_0.md": "be40b358a83b1aab96504e3510c328c6e06ab42614aff6299fa9048d8eb70c4e",
+    "docs/reports/TAURI_STAGE_0_2026-11-13.json": "311313220f4f3dda0565ccaca71cc521529a16d02938a6d3b9d9bb77b89dbafa",
+    "packages/assistant/src/application-contracts.ts": "7a09e8b14b4969811f80d0050d0f8711bcaced9fcee5b83c053076e0562f7bee",
+    "packages/assistant/tests/application-contracts.test.ts": "33ec535ea514f325bd319de04eca262b794662b1eefd7326d13e997bd5671fc1",
+    "packages/assistant/web/src/Conversations.tsx": "8de7028bc50afeb62bf48be454b33008fdd58c585111b8e5efec0a401a88a593",
+    "docs/ASSISTANT_DESKTOP.md": "c0c4056047f7994f27727a7062f90b2dfeada99cba2941876b533535bab896b6",
+    "docs/README.md": "91ed9d850f68b9caa78686bf05eda0f5685c967ebd105fc296af40bac2099e1c",
+    "packages/assistant/bun.lock": "902d4b0871506eeae3a8aed6a494c54df699fd36fafc8a95859b99c49a685426",
+    "packages/assistant/package.json": "485d98a9dde03aae1ced6ae00691f3c456e46abd18bf9d68e2a7710672bc3cfd",
+    "packages/assistant/src/host.ts": "04e8c3df436917d51e41cc6335de1ff0daa430c1c7ad74454f7294521b9dc8be",
+    "packages/assistant/src/web/server.ts": "6c1ee69401ef0d894733989b6f2783ce2457b3855859ee2253579ae5d626aff8",
+    "packages/assistant/tests/web.test.ts": "9354e11a15aa51f7bdbad9f85bf1ce94f2a3f14ae9c97c1a1613ec78719d959a",
+    "packages/assistant/web/src/App.tsx": "8741fe93e4b02a65da49887fdb0c39dbe7a878a83b1c5eee6e58159a036d9878",
+    "packages/assistant/web/src/api.ts": "af848f4874ca69acc74b6cf4c16398f8e67c825a2d93b580470eb110376c4e81",
+    "packages/assistant/web/src/demo.ts": "d3d254044a60e2b1f39782b2f9499365a6a03b18be2e1b3376bc4b60939e7d61",
+    "packages/assistant/web/src/style.css": "898eb461bc9f7c15a8ac33df00ec7ec3fb37bc1d0d27b0059e8d694f68952a6f",
+    "scripts/check-architecture.ts": "409774aca94bf0c1e6ec76ea1d12d95550ae49813978e40ac47b18252792be99",
+    "tests/architecture.test.ts": "9d74359ae2bd7fb914b7bd5b27978d80939b3100a9f13321034ec34c82ebf480"
+  },
+  "preservation": {
+    "byteIdenticalFiles": [
+      "docs/ASSISTANT_TAURI_AGENT_PLAN.md",
+      "docs/ASSISTANT_TAURI_STAGE_0.md",
+      "docs/reports/TAURI_STAGE_0_2026-11-13.json",
+      "packages/assistant/tests/application-contracts.test.ts",
+      "packages/assistant/web/src/Conversations.tsx",
+      "docs/ASSISTANT_DESKTOP.md",
+      "docs/README.md",
+      "packages/assistant/bun.lock",
+      "packages/assistant/package.json",
+      "packages/assistant/src/web/server.ts",
+      "packages/assistant/tests/web.test.ts",
+      "packages/assistant/web/src/App.tsx",
+      "packages/assistant/web/src/api.ts",
+      "packages/assistant/web/src/demo.ts",
+      "packages/assistant/web/src/style.css",
+      "scripts/check-architecture.ts",
+      "tests/architecture.test.ts"
+    ],
+    "extendedExistingFiles": {
+      "packages/assistant/src/host.ts": "All original locally added lines verified present; project lifecycle added around existing general host",
+      "packages/assistant/src/application-contracts.ts": "Removing the single added EXECUTION_UNAVAILABLE union member reproduces the initial SHA-256"
+    },
+    "initialPatchLocalPath": "/tmp/tauri-stage1/initial.patch",
+    "initialPatchSha256": "951d726255f87ca72854f11b40c41612cff5a01f91135b8309a355ca9e4ddcc4"
+  },
+  "checks": [
+    {
+      "command": "bun run typecheck",
+      "result": "passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/root-types.log",
+      "logSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "command": "bun run --cwd packages/assistant typecheck",
+      "result": "passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/types.log",
+      "logSha256": "3626417173270fc7c9260fc7fb7c5472719843f48f33c014de8214e21cc2412c"
+    },
+    {
+      "command": "bun run architecture:check",
+      "result": "passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/boundaries.log",
+      "logSha256": "82c9087ff424c7d190bdb2fdb8b43c1f9de23eac0e3ed390c1859ccb5d9f02e9"
+    },
+    {
+      "command": "bun test tests/coding-composition.test.ts tests/architecture.test.ts",
+      "result": "19 passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/shared-tests.log",
+      "logSha256": "c48cfed97df32130a1b706e66d8b7c252580a190cb50807120e4db74478c9950"
+    },
+    {
+      "command": "bun run --cwd packages/code typecheck",
+      "result": "passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/code-types.log",
+      "logSha256": "91d54ffbee73a3ac72294d090e58d77745f8b93edbf94b862807698273a6505a"
+    },
+    {
+      "command": "bun run --cwd packages/code test",
+      "result": "170 passed",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/code-tests.log",
+      "logSha256": "f739fea85ffcf5fa934369eaff0eacc0e6d3b5891e0731711c39b694686cf23d"
+    },
+    {
+      "command": "bun run check:assistant",
+      "result": "138 source tests passed; offline smoke passed; installed consumer: 137 passed, 1 skipped (Code is a separate product)",
+      "exitCode": 0,
+      "logPath": "/tmp/tauri-stage1/assistant-final.log",
+      "logSha256": "f2b9225a1f117932f856ecca1356e242845c72e96970e02ec0b592e7256713d7"
+    }
+  ],
+  "assistantInstalledArtifact": {
+    "check": "assistant-installed",
+    "engineVersion": "1.6.3",
+    "artifactSha256": "bf8c16786ff6e9ca2c4ff4a3b258dac8d0221712fa24405195fc7640017ecdbb",
+    "provider": "offline-mock",
+    "published": false
+  },
+  "projectScenarios": [
+    "general plus two projects and restart",
+    "canonical alias selection and one-use tokens",
+    "bounded runtimes",
+    "cross-session/project rejection and stale revisions",
+    "Code terminal approved edit and real package check",
+    "configuration binding mismatch",
+    "simulated OCI failure without fallback",
+    "multiple clients and cancellation",
+    "actual Node crash and pending approval recovery"
+  ],
+  "limitations": [
+    "Model responses are offline fixtures; no live provider certification",
+    "OCI failure tested with an injected adapter; no real container validation",
+    "No native Tauri workspace UI or signed bundle built",
+    "No automatic migration of legacy Code/Desktop stores",
+    "Desktop stage-0 baseline issues unchanged",
+    "Registry release/pin update required before distributing the new engine exports"
+  ],
+  "notes": [
+    "The full Assistant run includes the final project-host implementation and shutdown draining.",
+    "Local diagnostic logs are not committed release evidence.",
+    "No commit, publication, reset or dependency-lockfile edit performed."
+  ]
+}

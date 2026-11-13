@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-13",
+  "scope": "Stage 0 only; contracts and static boundaries, no runtime feature enabled",
+  "baseHead": "eebddf0c61b2ee6bdb332e067fb5834f94532d36",
+  "baselineSourceIdentity": {
+    "description": "HEAD plus the following initial modified/untracked file contents; hashes identify but do not reconstruct uncommitted bytes",
+    "initialFilesSha256": {
+      "docs/ASSISTANT_TAURI_AGENT_PLAN.md": "b64da659c009ec841c9e3514ccd6fc2c9adb0a02a1717109732fda0cbf3d5a37",
+      "packages/assistant/web/src/Conversations.tsx": "8de7028bc50afeb62bf48be454b33008fdd58c585111b8e5efec0a401a88a593",
+      "docs/ASSISTANT_DESKTOP.md": "c0c4056047f7994f27727a7062f90b2dfeada99cba2941876b533535bab896b6",
+      "docs/README.md": "91ed9d850f68b9caa78686bf05eda0f5685c967ebd105fc296af40bac2099e1c",
+      "packages/assistant/bun.lock": "902d4b0871506eeae3a8aed6a494c54df699fd36fafc8a95859b99c49a685426",
+      "packages/assistant/package.json": "485d98a9dde03aae1ced6ae00691f3c456e46abd18bf9d68e2a7710672bc3cfd",
+      "packages/assistant/src/host.ts": "04e8c3df436917d51e41cc6335de1ff0daa430c1c7ad74454f7294521b9dc8be",
+      "packages/assistant/src/web/server.ts": "6c1ee69401ef0d894733989b6f2783ce2457b3855859ee2253579ae5d626aff8",
+      "packages/assistant/tests/web.test.ts": "9354e11a15aa51f7bdbad9f85bf1ce94f2a3f14ae9c97c1a1613ec78719d959a",
+      "packages/assistant/web/src/App.tsx": "8741fe93e4b02a65da49887fdb0c39dbe7a878a83b1c5eee6e58159a036d9878",
+      "packages/assistant/web/src/api.ts": "af848f4874ca69acc74b6cf4c16398f8e67c825a2d93b580470eb110376c4e81",
+      "packages/assistant/web/src/demo.ts": "d3d254044a60e2b1f39782b2f9499365a6a03b18be2e1b3376bc4b60939e7d61",
+      "packages/assistant/web/src/style.css": "898eb461bc9f7c15a8ac33df00ec7ec3fb37bc1d0d27b0059e8d694f68952a6f"
+    },
+    "trackedPatchSha256": "b19b8ff31ec4de86452f50972097d10caf97b453c9474188417f8ed08d6554bf",
+    "trackedPatchLocalPath": "/tmp/tauri-stage0/preexisting.patch"
+  },
+  "stage0ImplementationSha256": {
+    "scripts/check-architecture.ts": "409774aca94bf0c1e6ec76ea1d12d95550ae49813978e40ac47b18252792be99",
+    "tests/architecture.test.ts": "9d74359ae2bd7fb914b7bd5b27978d80939b3100a9f13321034ec34c82ebf480",
+    "packages/assistant/src/application-contracts.ts": "7a09e8b14b4969811f80d0050d0f8711bcaced9fcee5b83c053076e0562f7bee",
+    "packages/assistant/tests/application-contracts.test.ts": "33ec535ea514f325bd319de04eca262b794662b1eefd7326d13e997bd5671fc1"
+  },
+  "preexistingFilesPreserved": true,
+  "installedAssistantCandidate": {
+    "engineVersion": "1.6.3",
+    "sha256": "02d32e839e8ca5a6770eb0d8270d0d8d849f7ceb6da35fdef89c78537238160e",
+    "provider": "offline-mock",
+    "published": false
+  },
+  "desktopCandidateDirectory": "28d04150b4cec95a25f1330de82ee42fd2fe06c2f05763480ad5ad5bd7f1cb2a",
+  "checks": [
+    {
+      "id": "baseline-architecture",
+      "command": "bun test tests/architecture.test.ts",
+      "exitCode": 0,
+      "result": "13 pass; 0 fail",
+      "logPath": "/tmp/tauri-stage0/baseline-architecture.log",
+      "logSha256": "0968ff77a2cf5a0bd1eb38fa7dd9073a6eb07b8fcf8de778a87e64c2b3e1f31e"
+    },
+    {
+      "id": "baseline-code-types",
+      "command": "bun run --cwd packages/code typecheck",
+      "exitCode": 0,
+      "result": "pass",
+      "logPath": "/tmp/tauri-stage0/baseline-code-types.log",
+      "logSha256": "91d54ffbee73a3ac72294d090e58d77745f8b93edbf94b862807698273a6505a"
+    },
+    {
+      "id": "baseline-code-tests",
+      "command": "bun run --cwd packages/code test",
+      "exitCode": 0,
+      "result": "170 pass; 0 fail",
+      "logPath": "/tmp/tauri-stage0/baseline-code-tests.log",
+      "logSha256": "29e1cad8f599c23c4d5b258c9482c491cafd3f905794a39f42969716f1e7b6b8"
+    },
+    {
+      "id": "baseline-assistant",
+      "command": "bun run check:assistant",
+      "exitCode": 1,
+      "result": "84 pass; 46 fail; sandbox denies local socket binds",
+      "logPath": "/tmp/tauri-stage0/baseline-assistant.log",
+      "logSha256": "18329c752226ba7746ab6315d6a3550dfe96e09d07772680996d137e7e4cc690"
+    },
+    {
+      "id": "baseline-assistant-local",
+      "command": "bun run check:assistant",
+      "exitCode": 0,
+      "result": "130 pass; 0 fail; offline smoke and installed candidate pass; sockets allowed",
+      "logPath": "/tmp/tauri-stage0/baseline-assistant-local.log",
+      "logSha256": "365b7f4e9cd1bd66be1dc9922f1ab0651510140d2910ac559e442bdc505741c0"
+    },
+    {
+      "id": "baseline-desktop-types",
+      "command": "bun run --cwd desktop typecheck",
+      "exitCode": 1,
+      "result": "pre-existing installed candidate/provider export and type incompatibilities",
+      "logPath": "/tmp/tauri-stage0/baseline-desktop-types.log",
+      "logSha256": "e9b65e77141807642696359774161e7c7f365b4872c40e6c05510f238866ec7d"
+    },
+    {
+      "id": "baseline-desktop-tests",
+      "command": "bun test desktop/tests",
+      "exitCode": 1,
+      "result": "183 pass; 1 skip; 7 fail (including 4 load errors); socket restriction also observed",
+      "logPath": "/tmp/tauri-stage0/baseline-desktop-tests.log",
+      "logSha256": "a3c6c4a96f64e01a5a51911ee536c7d48c389b4cd21df4c3ba8b86be032bc122"
+    },
+    {
+      "id": "baseline-desktop-local",
+      "command": "bun test desktop/tests",
+      "exitCode": 1,
+      "result": "184 pass; 1 skip; 6 fail (including 4 load errors); two database backup failures remain with sockets allowed",
+      "logPath": "/tmp/tauri-stage0/baseline-desktop-local.log",
+      "logSha256": "5a4672bdd01c90b1294c92d58ea62d9d570092b15f92d0c68b834b98300404e4"
+    },
+    {
+      "id": "stage0-architecture",
+      "command": "bun test tests/architecture.test.ts",
+      "exitCode": 0,
+      "result": "17 pass; 0 fail; includes browser bundling",
+      "logPath": "/tmp/tauri-stage0/stage0-architecture.log",
+      "logSha256": "064e52c36db7c288a8b7caacdf15f6f72e7fbade472fe7eadd31fb6925842b0b"
+    },
+    {
+      "id": "stage0-types",
+      "command": "bun run --cwd packages/assistant typecheck",
+      "exitCode": 0,
+      "result": "host and renderer pass, including compile-time contract assertions",
+      "logPath": "/tmp/tauri-stage0/stage0-types.log",
+      "logSha256": "3626417173270fc7c9260fc7fb7c5472719843f48f33c014de8214e21cc2412c"
+    },
+    {
+      "id": "stage0-root-types",
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "result": "pass",
+      "logPath": "/tmp/tauri-stage0/stage0-root-types.log",
+      "logSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "id": "stage0-contracts",
+      "command": "bun test packages/assistant/tests/application-contracts.test.ts",
+      "exitCode": 0,
+      "result": "1 pass; 0 fail",
+      "logPath": "/tmp/tauri-stage0/stage0-contracts.log",
+      "logSha256": "afa32d34544a7f3444cf404a0af850670c3ca0650b2b82a9f85304b29c43e109"
+    },
+    {
+      "id": "stage0-boundaries",
+      "command": "bun run architecture:check",
+      "exitCode": 0,
+      "result": "all scanned source boundaries pass",
+      "logPath": "/tmp/tauri-stage0/stage0-boundaries.log",
+      "logSha256": "82c9087ff424c7d190bdb2fdb8b43c1f9de23eac0e3ed390c1859ccb5d9f02e9"
+    }
+  ],
+  "preexistingIssues": [
+    {
+      "id": "desktop-candidate-drift",
+      "evidence": "Missing azureOpenAIEnvironment export at module load and provider/type errors in desktop typecheck",
+      "nextAction": "Reconcile installed Desktop candidate and dependency versions in an explicit follow-up before certifying extraction parity"
+    },
+    {
+      "id": "desktop-backup-failures",
+      "evidence": "Two database-backup tests fail with DESKTOP_BACKUP_FAILED even with local sockets allowed",
+      "nextAction": "Investigate against a deliberately prepared candidate; root cause not established in stage 0"
+    }
+  ],
+  "notValidated": [
+    "Native Tauri UI",
+    "Real providers/OAuth",
+    "Signed production bundle",
+    "Future project runtime or coding journey"
+  ],
+  "notes": [
+    "Logs are local diagnostics, not committed portable release evidence.",
+    "No dependency relinking, source reset, runtime cutover or commit performed."
+  ]
+}

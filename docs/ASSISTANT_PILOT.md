@@ -1,5 +1,9 @@
 # Assistant — validation and pilot preparation
 
+> Historical standalone-web instructions below are superseded by the
+> [Tauri interface and web retirement policy](WEB_RETIREMENT.md). CLI and
+> shared embedded UI capabilities remain available as described there.
+
 Status: unpublished local candidate. Phases 0–4 implemented. Phase 5 prepares
 onboarding and validates the software locally; the multi-day pilot with
 real accounts has its own acceptance criteria and **has not yet been run**.

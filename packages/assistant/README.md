@@ -57,16 +57,13 @@ and runs the offline example with Node. Host tests launch separate Node processe
 kill/recover the service, resume an exact approval and check conversation context.
 Dependency installation may require network access; no model API is called.
 
-## Open and configure from the web
+## Open and configure in Tauri
 
-Double-click `release-artifacts/Zhivex Assistant.app` (macOS). Managed mode opens
-the browser, lets you configure the model and connections,
-and saves secrets in the system keychain. No terminal is required during
-onboarding. See the [first-session web guide](../../docs/ASSISTANT_WEB_ONBOARDING.md).
-
-To generate the launcher from this prepared checkout:
-`bun run --cwd packages/assistant build:launcher`. It is a local launcher that
-requires this checkout and Node; it is not yet a signed standalone distribution.
+Build with `bun run --cwd packages/assistant build:desktop`, then open
+`packages/assistant/src-tauri/target/release/bundle/macos/Zhivex Assistant.app`.
+Setup, connections and conversations run in the native window. See the
+[native guide](../../docs/ASSISTANT_DESKTOP.md) and
+[web retirement policy](../../docs/WEB_RETIREMENT.md).
 
 ## Run (advanced CLI host)
 
@@ -106,7 +103,7 @@ automatically. The token stays in memory, and uncertain sends are not auto-retri
 
 ## Pilot onboarding
 
-To try Calendar, Telegram and the local web today, follow the
+To try Calendar, Telegram and Assistant today, follow the
 [first-session walkthrough](../../docs/ASSISTANT_FIRST_DAY.md).
 
 Follow the [complete pilot guide](../../docs/ASSISTANT_PILOT.md) for offline preflight
@@ -127,17 +124,15 @@ composed Calendar/MCP modules. See [configuration, extension contract and compat
 The instance remains single-owner. Existing Calendar-only profiles remain compatible;
 changing provider or composing additional modules requires a fresh runtime directory.
 
-## Local web
+## Embedded interface development
 
-The web interface includes schedule, conversations, action review and daily
-summary editing. Add `--web` to the start command and open the private link
-printed by the host. See the [web guide](../../docs/ASSISTANT_WEB.md) for execution, demo,
-local security and pilot limitations. Start the visual demo with
-`bun run --cwd packages/assistant dev:web` and `?demo=1` in the URL.
+Tauri uses the React interface and authenticated loopback server in this package.
+Browser checks remain useful for this shared UI. `dev:web` with `?demo=1` is a
+visual development fixture; independent browser product entrypoints are retired.
 
 ### Muse / Meta and Qwen
 
-Web onboarding offers Muse / Meta and Qwen through their native Harness
+Tauri onboarding offers Muse / Meta and Qwen through their native Harness
 adapters. Protocol configuration is unnecessary. Integrated web search remains
 exclusive to OpenAI. Previous profiles remain compatible.
 

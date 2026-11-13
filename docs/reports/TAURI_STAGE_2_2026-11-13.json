@@ -1,0 +1,91 @@
+{
+  "stage": 2,
+  "date": "2026-11-13",
+  "status": "implemented-local",
+  "checks": {
+    "assistantSource": {
+      "passed": 141
+    },
+    "assistantInstalled": {
+      "passed": 140,
+      "skipped": 1,
+      "reason": "Separate Code checkout absent from standalone consumer"
+    },
+    "applicationCrossProduct": {
+      "passed": 7,
+      "assertions": 44
+    },
+    "architectureComposition": {
+      "passed": 19,
+      "assertions": 834
+    },
+    "rust": {
+      "passed": 2
+    },
+    "typecheck": "passed (Assistant, web and root)",
+    "nativeBundle": "release macOS arm64 built",
+    "productionRuntimeSmoke": "passed",
+    "browserSmoke": "project selection, files, attachments, tools, navigation, file links, replay, cancellation and responsive layout"
+  },
+  "nativeEvidence": {
+    "shell": "release Tauri macOS webview",
+    "fixture": "temporary copied app, shared host and built UI, offline model, temporary Git repository",
+    "observed": [
+      "NSOpenPanel selection",
+      "scoped file inspection",
+      "context attachment rendered as file reference",
+      "read_file completed and streamed response",
+      "session navigation",
+      "follow-up cancellation reached cancelled"
+    ],
+    "reload": "Chromium smoke; no native reload shortcut claimed",
+    "capture": "Actual native accessibility and screenshot evidence in this task transcript"
+  },
+  "limits": [
+    "No live provider evaluation",
+    "No signed/notarized distribution",
+    "Native chooser macOS only",
+    "Approval UI/diffs/checkpoint review deferred to stage 3",
+    "Interactive PTY deferred to stage 4",
+    "Local unpublished Harness candidate required"
+  ],
+  "preservation": {
+    "initialFiles": 33,
+    "initialFilesChangedIntentionally": [
+      "packages/assistant/src/application-contracts.ts",
+      "packages/assistant/src/application.ts",
+      "packages/assistant/tests/application.test.ts",
+      "docs/README.md",
+      "packages/assistant/src/host.ts",
+      "packages/assistant/src/web/server.ts",
+      "packages/assistant/web/src/App.tsx",
+      "packages/assistant/web/src/api.ts"
+    ],
+    "initialFilesMissing": [],
+    "snapshot": "/tmp/tauri-stage2/original",
+    "noResetOrStash": true
+  },
+  "artifacts": {
+    "browserDesktop": "/tmp/tauri-stage2/workspace-desktop.png",
+    "browserMobile": "/tmp/tauri-stage2/workspace-mobile.png",
+    "logs": "/tmp/tauri-stage2"
+  },
+  "sourceSha256": {
+    "packages/assistant/src/application.ts": "b390b18256c7d384ab16b94e0de62a012c660b148ba6c1e729796f3f0ddd36d8",
+    "packages/assistant/src/application-contracts.ts": "2f8f60dd63f5a88a1e9ff48ef3a67daee2e04b7bec2923013d7b2f24284dd799",
+    "packages/assistant/src/native-selection.ts": "03e9855fe227a4e93b781fc8d50aabc92de3cb14fd5a72dab495b3190e993fc2",
+    "packages/assistant/src/desktop.ts": "8f3eb3cd17dc04045a2498f1eef9575397d8c39a0a474bee6fb363f78fead80a",
+    "packages/assistant/src/web/server.ts": "1b067d87ecca7e5e4ff2ad31334c3fc390fc5e9d6af2dce3cc38cd2bb15d9369",
+    "packages/assistant/src/web/workspace.ts": "2a578e809bdf562b31e61a5a673ce20ce7a89422a42cf3c0e7257ab387415ce0",
+    "packages/assistant/src/web/setup.ts": "f2b218c40d956bac2d82b48a5d9bf7b61ee6019efe4fd30343a61b632b368968",
+    "packages/assistant/src-tauri/src/main.rs": "88b91008378030f70f94080f2452d19c999a45643f0bd2ae6659345db4a8c8b0",
+    "packages/assistant/web/src/ProjectWorkspace.tsx": "61d3797917fae327ce45dc7dfa3c052069dfe87d296606d016141375b79a8330",
+    "packages/assistant/web/src/WorkspaceFiles.tsx": "312f13c047874a8134793baeb92a0c5ee0dbfeb8802874b1ade5d99a5e667655",
+    "packages/assistant/web/src/workspace-activity.ts": "377f09d32abad72b0cd008fca9f5194b24d8da8d70636c11c573c8698d73237c",
+    "packages/assistant/web/src/RunOutput.tsx": "d3d5043c13c37e57dde8c6ea04a9aba922b5b50c43674ee9c009a4db4071e989",
+    "packages/assistant/scripts/workspace-fixture.ts": "8dbb766a829acdb81b02b7aca3f1ca487e0288a1fa45576359d0e56b3b420a1e",
+    "packages/assistant/scripts/smoke-workspace.ts": "c6db7208dc48d124e4aa24f3ad79d30d91c97acf6ed3d3ea7bb83fb75d69d35a",
+    "packages/assistant/tests/workspace.test.ts": "068bc8b5e1932006f6687f57fee499d6e6f6d1f4d85fad273a12773012731797",
+    "packages/assistant/tests/application.test.ts": "127574a7e8c433327353779c49246f5e16ea6614faa875a9dd4e2ed055517bbe"
+  }
+}
