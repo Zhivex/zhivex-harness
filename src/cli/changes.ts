@@ -1,18 +1,6 @@
 import path from "node:path";
-import {
-  canonicalizeChangeEnvelope,
-  changeEnvelopePreconditionsSchema,
-  createChangeEnvelope,
-  digestChangeEnvelopeArtifact,
-  verifyChangeEnvelope,
-  type ChangeEnvelopePreconditions
-} from "../workspace/change-envelope.js";
-import {
-  FileChangedWhileReadingError,
-  FileSizeLimitError,
-  readRegularFileNoFollow,
-  UnsafeFileTypeError
-} from "../workspace/file-security.js";
+import { canonicalizeChangeEnvelope, changeEnvelopePreconditionsSchema, createChangeEnvelope, digestChangeEnvelopeArtifact, verifyChangeEnvelope, type ChangeEnvelopePreconditions } from "../engine/index.js";
+import { FileChangedWhileReadingError, FileSizeLimitError, readRegularFileNoFollow, UnsafeFileTypeError } from "../compat/code-support.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 import { CLI_EXIT_CODES } from "./errors.js";
 

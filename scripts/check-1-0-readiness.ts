@@ -218,14 +218,14 @@ if ([...classifiedTypeExports].sort().join("\n") !== expectedTypeExports.join("\
   );
 }
 const cliDocumentation = (
-  await readRegularFileNoFollow(path.join(workspace, "docs", "CLI.md"), {
+  await readRegularFileNoFollow(path.join(workspace, "docs", "cli/CLI.md"), {
     label: "CLI documentation",
     maxBytes: 2 * 1024 * 1024
   })
 ).contents.toString("utf8");
 for (const option of CLI_OPTION_NAMES) {
   if (!CLI_FULL_HELP_TEXT.includes(option)) failures.push(`CLI help omits declared option ${option}`);
-  if (!cliDocumentation.includes(option)) failures.push(`docs/CLI.md omits declared option ${option}`);
+  if (!cliDocumentation.includes(option)) failures.push(`docs/cli/CLI.md omits declared option ${option}`);
 }
 const cli = contract.cli as JsonObject | undefined;
 const subcommands = cli?.subcommands as JsonObject | undefined;

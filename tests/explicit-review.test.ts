@@ -92,6 +92,20 @@ test('terminal explicit confirmation produces host evidence and durable interact
   expect(await Bun.file(path.join(root, 'approved.txt')).text()).toBe('reviewed');
 }));
 
+test('terminal auto-edit policy cannot bypass host-required explicit review', () => fixture(async (harness, root) => {
+  let prompts = 0;
+  const result = await runHarness(harness, { prompt: 'write file' }, {
+    resolveApprovals: terminalApprovalResolver('ask', async () => { prompts++; return 'n'; }, {
+      autoApprove: () => ({ mode: 'auto-edits', commandAllowlist: [], rootDir: root })
+    }, harness)
+  });
+  expect(prompts).toBe(1);
+  expect(result.state.metadata?.clientApprovalDecisionsV1).toMatchObject([
+    { approved: false, provenance: { origin: 'interactive', channel: 'cli-terminal' } }
+  ]);
+  expect(await Bun.file(path.join(root, 'approved.txt')).exists()).toBe(false);
+}));
+
 for (const resumed of [false, true]) test(`terminal explicit denial persists before continuation (resume=${resumed})`, () => fixture(async (harness, root) => {
   const resolve = terminalApprovalResolver('ask', async () => 'n', undefined, harness);
   const save = harness.store.save.bind(harness.store);

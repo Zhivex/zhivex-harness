@@ -92,4 +92,4 @@ checks after merge. The release operator must:
 4. Publish only its retained, inspected, PTY-tested artifact after the protected
    environment approval, then verify registry bytes, `latest` and provenance.
 
-The existing [Code release procedure](../CODE_RELEASE.md) is authoritative.
+The existing [Code release procedure](../maintenance/CODE_RELEASE.md) is authoritative.

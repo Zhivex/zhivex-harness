@@ -16,11 +16,11 @@ bun add --exact --ignore-scripts @zhivex-ai/harness@1.6.3
 
 Version must print `1.6.3`; help lists commands. Doctor does not contact a provider. Without `OPENAI_API_KEY`, it reports the missing credential and exits with code `3`; inspect the JSON checks before proceeding. A directory without Git initialization can also produce a diagnostic warning. No paid model call is required for these checks. Both `zhx` and `zhivex-harness` are installed aliases; Bun manages installation, and their shebang runs Node.
 
-To continue in your actual project, use the [global installation and credential setup](../README.md#quick-start), then `zhx init --profile daily --provider openai` and `zhx doctor --profile daily`. Real tasks require the selected provider credential in the process environment. Profiles store provider/model choices, never credentials. See [CLI](../docs/CLI.md) and [support](../SUPPORT.md).
+To continue in your actual project, use the [global installation and credential setup](../README.md#quick-start), then `zhx init --profile daily --provider openai` and `zhx doctor --profile daily`. Real tasks require the selected provider credential in the process environment. Profiles store provider/model choices, never credentials. See [CLI](../docs/cli/CLI.md) and [support](../SUPPORT.md).
 
 ## Configuration and change examples
 
-- [MCP configuration](./mcp-config.json): optional bounded network MCP integration; see [extensibility](../docs/EXTENSIBILITY.md).
-- [Change envelope input](./change-envelope-input.json) and [patch](./change.patch): illustrative data for [change envelopes](../docs/CHANGE_ENVELOPES.md). Digests and timestamps are sample evidence, not certification of a current workspace; generate fresh evidence for real changes.
+- [MCP configuration](mcp-config.json): optional bounded network MCP integration; see [extensibility](../docs/architecture/EXTENSIBILITY.md).
+- [Change envelope input](change-envelope-input.json) and [patch](change.patch): illustrative data for [change envelopes](../docs/architecture/CHANGE_ENVELOPES.md). Digests and timestamps are sample evidence, not certification of a current workspace; generate fresh evidence for real changes.
 
 Earlier versions and RC evidence belong to the [changelog](../CHANGELOG.md) and [historical reports](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md), not the first-run installation path.

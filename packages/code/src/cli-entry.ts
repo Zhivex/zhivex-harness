@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { nodeEngineError } from "./cli/node-engine.js";
+import { nodeEngineError } from "@zhivex-ai/harness/terminal/node-engine";
 import { shortCliHelp } from "./cli/cli-help.js";
 import { CODE_VERSION, NODE_ENGINE_RANGE } from "./version.js";
 
@@ -33,6 +33,6 @@ if (argv.length === 1 && ["--version", "-v", "version"].includes(argv[0]!)) {
     process.exitCode = 1;
   }
 } else {
-  const { runCli } = await import("./cli.js");
-  await runCli(argv);
+  const { runCli } = await import("@zhivex-ai/harness/terminal");
+  await runCli(argv, CODE_VERSION);
 }

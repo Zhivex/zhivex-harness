@@ -33,7 +33,7 @@ zhivex-code
 
 Choose a provider and model. Enter an API key in the hidden prompt, or rely on an environment variable you already exported. Save the key in the system keychain or keep it for this session. Review each edit and check before you approve it. Provider calls can cost money. `/usage` and `/budget` report estimates for each run. They are not invoices, and they are not a cap across a whole session.
 
-Credential details, including Vertex Application Default Credentials, are in [Credentials](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CREDENTIALS.md). The [first-use guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/FIRST_USE.md) shows the same prompts with the engine command `zhx`.
+Credential details, including Vertex Application Default Credentials, are in [Credentials](https://github.com/Zhivex/zhivex-harness/blob/main/docs/providers/CREDENTIALS.md). The [first-use guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/getting-started/FIRST_USE.md) shows the same prompts with the engine command `zhx`.
 
 ```sh
 zhivex-code --help
@@ -105,18 +105,18 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 
 ## Limits
 
-- Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
+- Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/SUPPORT_MATRIX.md).
 - Anthropic uses `ANTHROPIC_API_KEY` or `/credentials`. Vertex uses host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not store a Vertex API key.
 - Amazon Bedrock Converse uses the AWS credential chain with `AWS_REGION` or `AWS_DEFAULT_REGION`. `BEDROCK_RUNTIME=openai` uses `BEDROCK_OPENAI_BASE_URL` and `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`. Azure OpenAI uses `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`, with optional `AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS`.
 - MCP in the default CLI is bounded Streamable HTTP. stdio is not enabled from workspace JSON.
-- The graphical interface is [Zhivex Assistant (Tauri)](../../docs/ASSISTANT_DESKTOP.md). The standalone `zhivex-code web` entrypoint is retired; terminal commands and existing history remain available.
+- The graphical interface is [Zhivex Assistant (Tauri)](../../docs/assistant/ASSISTANT_DESKTOP.md). The standalone `zhivex-code web` entrypoint is retired; terminal commands and existing history remain available.
 - The default runtime exposes no shell tools. Isolated commands need Docker or Podman, configured explicitly.
 
 ## Releases
 
 npm `latest` is the stable channel (Code `0.4.2`, pinned exactly to published Harness `1.6.3`). npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
 
-Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
+Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
 
 ## Contributors
 

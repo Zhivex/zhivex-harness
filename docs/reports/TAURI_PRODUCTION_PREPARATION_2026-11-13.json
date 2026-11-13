@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-13",
+  "status": "production-preparation-validated; distribution-and-runtime-coordinator-pending",
+  "target": "darwin-arm64",
+  "existing_local_files": 124,
+  "existing_local_files_unchanged": 123,
+  "existing_local_files_extended": [
+    "docs/README.md"
+  ],
+  "validation": {
+    "assistant_tests": {
+      "passed": 225,
+      "failed": 0,
+      "new_release_tests": 21,
+      "log": "/tmp/tauri-production-baseline/tests-unsandboxed.log"
+    },
+    "typecheck": "passed",
+    "architecture": "passed",
+    "docs": "passed",
+    "diff_check": "passed",
+    "real_bundle_inspection": {
+      "version": "0.1.0",
+      "native_files": 3,
+      "identity_present": false,
+      "uploaded_to_apple": false
+    }
+  },
+  "limits": [
+    "Signing and notarization command behavior tested with fixtures only; no valid local signing identities.",
+    "No production update key, configured feed, or publication.",
+    "Update download and bundle recovery primitives are not connected to the native app.",
+    "Exclusive surviving installer/recovery coordinator, state compatibility probes and signed two-version clean-machine tests remain required.",
+    "No automatic state restoration across incompatible schemas."
+  ],
+  "changes": [
+    "Release packaging CLI copies source, signs nested Mach-O, refreshes runtime inventory, seals app, submits to Apple, staples, validates and creates a notarized DMG.",
+    "Adapted Desktop Ed25519 manifests, bounded authenticated downloads, native publisher verification and journaled bundle swaps.",
+    "Offline manifest signer verifies artifact bytes and private-key permissions.",
+    "Rollback requires stopped owners and target-version state readability."
+  ],
+  "preservation": {
+    "source_bundle_modified": false,
+    "user_state_modified": false,
+    "provider_calls": 0,
+    "commits": 0,
+    "pushes": 0,
+    "publication": false
+  }
+}

@@ -1,6 +1,6 @@
 # RC.14 security review dossier
 
-Current decision: the [delegated AI review](../../RC14_DELEGATED_SECURITY_DECISION.md) is complete, with no identified open critical/high findings. Its machine-readable result is `rc14-review.json` in the source checkout. This is an explicitly authorized exception to human authorship, not a human signature. The original preparation instructions and pending draft below are retained as history.
+Current decision: the [delegated AI review](../../security/RC14_DELEGATED_SECURITY_DECISION.md) is complete, with no identified open critical/high findings. Its machine-readable result is `rc14-review.json` in the source checkout. This is an explicitly authorized exception to human authorship, not a human signature. The original preparation instructions and pending draft below are retained as history.
 
 ## Historical preparation instructions
 
@@ -23,7 +23,7 @@ The release completed successfully. Meta, Qwen, and OpenAI each passed the compl
 
 ## Reviewer work
 
-1. Inspect the exact tag and published artifact; verify its hash and provenance. Review [the threat model](../../THREAT_MODEL.md), [control map](../../../contracts/security-controls.json), and [schema requirements](../../SECURITY_REVIEW_EVIDENCE.md).
+1. Inspect the exact tag and published artifact; verify its hash and provenance. Review [the threat model](../../security/THREAT_MODEL.md), [control map](../../../contracts/security-controls.json), and [schema requirements](../../security/SECURITY_REVIEW_EVIDENCE.md).
 2. Review all controls, trust boundaries, and authority-bearing tools enumerated in the draft. For every entry record the mitigation actually reviewed, regression evidence, and residual risk. Check approval replay/substitution, hostile repository instructions, protected files and symlinks, SQLite scope/concurrency, subprocess/OCI boundaries, MCP, delegation, credentials, and supply-chain identity.
 3. Review the RC.14 changes: cross-process mutation locks; full replacement review; complete OCI scope identity; required verified delivery; bounded tool selection, planning and verifier recovery; durable usage and closure reserves; terminal provider usage/tool-call fixes; task memory and candidate export scope. Inspect implementations and regression evidence, including [the tagged security regressions](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/rc14-security-regressions-2026-09-20.json), rather than relying solely on green CI.
 4. Record all findings, including resolved ones. Non-informational findings require owner, disposition, rationale, and HTTPS follow-up. Critical/high findings must be mitigated and resolved, not merely accepted. If a fix changes runtime code, create and certify a new immutable candidate before final review.

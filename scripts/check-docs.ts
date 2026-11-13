@@ -76,7 +76,7 @@ const changelog = await readFile(path.join(workspace, "CHANGELOG.md"), "utf8");
 const support = await readFile(path.join(workspace, "SUPPORT.md"), "utf8");
 // Active install guides must follow the source candidate as well as stable releases.
 // Historical release reports retain their original versions.
-for (const file of ["README.md", "docs/FIRST_USE.md", "examples/README.md"]) {
+for (const file of ["README.md", "docs/getting-started/FIRST_USE.md", "examples/README.md"]) {
   const contents = await readFile(path.join(workspace, file), "utf8");
   for (const match of contents.matchAll(/@zhivex-ai\/harness@(\d+\.\d+\.\d+(?:-rc\.\d+)?)/g)) {
     if (match[1] !== manifest.version) failures.push(`${file}: install version ${match[1]} differs from ${manifest.version}`);
@@ -84,24 +84,24 @@ for (const file of ["README.md", "docs/FIRST_USE.md", "examples/README.md"]) {
 }
 // Stable onboarding is distinct from archived release and migration evidence.
 if (/^1\.\d+\.\d+$/.test(manifest.version)) {
-  for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/CLI.md", "docs/SUPPORT_MATRIX.md", "docs/FIRST_USE.md", "docs/FIRST_USE_EXAMPLE.md",
+  for (const file of ["README.md", "SUPPORT.md", "docs/README.md", "docs/cli/CLI.md", "docs/maintenance/SUPPORT_MATRIX.md", "docs/getting-started/FIRST_USE.md", "docs/getting-started/FIRST_USE_EXAMPLE.md",
     ...markdownFiles.filter((file) => file.startsWith(path.join(workspace, "examples") + path.sep))
       .map((file) => path.relative(workspace, file))]) {
     failures.push(...checkOnboardingDocument(file, await readFile(path.join(workspace, file), "utf8"), manifest.version));
   }
-  const firstUse = await readFile(path.join(workspace, "docs/FIRST_USE.md"), "utf8");
+  const firstUse = await readFile(path.join(workspace, "docs/getting-started/FIRST_USE.md"), "utf8");
   for (const command of ["--version", "--help", "doctor"]) {
     if (!firstUse.includes(`bunx @zhivex-ai/harness@${manifest.version} ${command}`)) {
-      failures.push(`docs/FIRST_USE.md: missing stable Bun onboarding command ${command}`);
+      failures.push(`docs/getting-started/FIRST_USE.md: missing stable Bun onboarding command ${command}`);
     }
   }
 }
 const security = await readFile(path.join(workspace, "SECURITY.md"), "utf8");
-const releaseDocumentation = await readFile(path.join(workspace, "docs", "RELEASE.md"), "utf8");
+const releaseDocumentation = await readFile(path.join(workspace, "docs", "maintenance/RELEASE.md"), "utf8");
 if (manifest.version.includes("-rc.") && !releaseDocumentation.includes(`The source version is \`${manifest.version}\``)) {
-  failures.push("docs/RELEASE.md must identify the current source candidate.");
+  failures.push("docs/maintenance/RELEASE.md must identify the current source candidate.");
 }
-const publicSecurity = await readFile(path.join(workspace, "docs", "PUBLIC_SECURITY.md"), "utf8");
+const publicSecurity = await readFile(path.join(workspace, "docs", "security/PUBLIC_SECURITY.md"), "utf8");
 let packageRelease: ReturnType<typeof parseHarnessReleaseVersion> | undefined;
 try {
   packageRelease = parseHarnessReleaseVersion(manifest.version);
@@ -123,7 +123,7 @@ const expandedTimeToSafeFixTasks = (await readFile(
   path.join(workspace, "evaluations", "time-to-safe-fix-expanded.jsonl"),
   "utf8"
 )).split(/\r?\n/).filter((line) => line.trim()).map((line) => JSON.parse(line) as { task_id?: string });
-const liveCertification = await readFile(path.join(workspace, "docs", "LIVE_CERTIFICATION.md"), "utf8");
+const liveCertification = await readFile(path.join(workspace, "docs", "maintenance/LIVE_CERTIFICATION.md"), "utf8");
 const gaReadiness = JSON.parse(await readFile(
   path.join(workspace, "docs", "ga-readiness.json"),
   "utf8"
@@ -147,7 +147,7 @@ for (const candidate of gaReadiness.releaseCandidates ?? []) {
 const providerConfig = `${await readFile(path.join(workspace, "src", "runtime", "config.ts"), "utf8")}\n${
   await readFile(path.join(workspace, "src", "providers", "providers.ts"), "utf8")
 }`;
-const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
+const extensibility = await readFile(path.join(workspace, "docs", "architecture/EXTENSIBILITY.md"), "utf8");
 const expectedCurrentSdkDependencies = {
   "@zhivex-ai/agents": "1.12.0",
   "@zhivex-ai/anthropic": "0.15.0",
@@ -165,7 +165,7 @@ for (const [packageName, expectedVersion] of Object.entries(expectedCurrentSdkDe
     failures.push(`The coordinated SDK batch must pin ${packageName}@${expectedVersion}.`);
   }
   if (!extensibility.includes(`\`${packageName}@${expectedVersion}\``)) {
-    failures.push(`docs/EXTENSIBILITY.md must document ${packageName}@${expectedVersion}.`);
+    failures.push(`docs/architecture/EXTENSIBILITY.md must document ${packageName}@${expectedVersion}.`);
   }
 }
 if (manifest.overrides?.["@zhivex-ai/core"] !== expectedCurrentSdkDependencies["@zhivex-ai/core"]) {
@@ -196,7 +196,7 @@ if (releaseStatus) {
     for (const [file, contents, required] of [
       ["README.md", readme, `Version \`${releaseStatus.version}\` is the current public npm release`],
       ["ROADMAP.md", roadmap, "Status: published on npm as `latest`"],
-      ["docs/RELEASE.md", releaseDocumentation, `@zhivex-ai/harness@${releaseStatus.version}\` is the latest public npm release`],
+      ["docs/maintenance/RELEASE.md", releaseDocumentation, `@zhivex-ai/harness@${releaseStatus.version}\` is the latest public npm release`],
       ["SUPPORT.md", support, `Zhivex Harness \`${minor}\` is the latest supported`],
       ["SECURITY.md", security, `latest published \`${minor}\` patch`]
     ] as const) {
@@ -208,7 +208,7 @@ if (releaseStatus) {
       ["README.md", readme, `Version \`${releaseStatus.version}\` is the current source release candidate`],
       ["ROADMAP.md", roadmap, `Version \`${releaseStatus.version}\` is the local source release candidate`],
       ["ROADMAP.md", roadmap, "It is not yet tagged or published as a new artifact"],
-      ["docs/RELEASE.md", releaseDocumentation, `Version \`${releaseStatus.version}\` is the current local source release candidate`]
+      ["docs/maintenance/RELEASE.md", releaseDocumentation, `Version \`${releaseStatus.version}\` is the current local source release candidate`]
     ] as const) {
       if (contents.includes(stale)) {
         failures.push(`${file} still contains stale candidate state: ${stale}.`);
@@ -228,17 +228,17 @@ for (const required of [
   "only maintainers can create"
 ]) {
   if (!publicSecurity.includes(required)) {
-    failures.push(`docs/PUBLIC_SECURITY.md is missing: ${required}.`);
+    failures.push(`docs/security/PUBLIC_SECURITY.md is missing: ${required}.`);
   }
 }
 
 if (manifest.version.startsWith("0.3.")) {
-  const repositoryEditingPath = path.join(workspace, "docs", "REPOSITORY_EDITING.md");
+  const repositoryEditingPath = path.join(workspace, "docs", "architecture/REPOSITORY_EDITING.md");
   let repositoryEditing = "";
   try {
     repositoryEditing = await readFile(repositoryEditingPath, "utf8");
   } catch {
-    failures.push("docs/REPOSITORY_EDITING.md is required for the 0.3.x editing contract.");
+    failures.push("docs/architecture/REPOSITORY_EDITING.md is required for the 0.3.x editing contract.");
   }
 
   for (const required of [
@@ -249,7 +249,7 @@ if (manifest.version.startsWith("0.3.")) {
     "## Known limits"
   ]) {
     if (repositoryEditing && !repositoryEditing.includes(required)) {
-      failures.push(`docs/REPOSITORY_EDITING.md is missing ${required}.`);
+      failures.push(`docs/architecture/REPOSITORY_EDITING.md is missing ${required}.`);
     }
   }
 
@@ -266,12 +266,12 @@ if (manifest.version.startsWith("0.3.")) {
 }
 
 if (manifest.version.startsWith("0.4.")) {
-  const durableOperationsPath = path.join(workspace, "docs", "DURABLE_OPERATIONS.md");
+  const durableOperationsPath = path.join(workspace, "docs", "architecture/DURABLE_OPERATIONS.md");
   let durableOperations = "";
   try {
     durableOperations = await readFile(durableOperationsPath, "utf8");
   } catch {
-    failures.push("docs/DURABLE_OPERATIONS.md is required for the 0.4.x operations contract.");
+    failures.push("docs/architecture/DURABLE_OPERATIONS.md is required for the 0.4.x operations contract.");
   }
   for (const required of [
     "## Scope and identity",
@@ -283,7 +283,7 @@ if (manifest.version.startsWith("0.4.")) {
     "## Evaluation gate"
   ]) {
     if (durableOperations && !durableOperations.includes(required)) {
-      failures.push(`docs/DURABLE_OPERATIONS.md is missing ${required}.`);
+      failures.push(`docs/architecture/DURABLE_OPERATIONS.md is missing ${required}.`);
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 2")) {
@@ -321,12 +321,12 @@ if (manifest.version.startsWith("0.4.")) {
 }
 
 if (manifest.version.startsWith("0.5.")) {
-  const extensibilityPath = path.join(workspace, "docs", "EXTENSIBILITY.md");
+  const extensibilityPath = path.join(workspace, "docs", "architecture/EXTENSIBILITY.md");
   let extensibility = "";
   try {
     extensibility = await readFile(extensibilityPath, "utf8");
   } catch {
-    failures.push("docs/EXTENSIBILITY.md is required for the 0.5.x orchestration contract.");
+    failures.push("docs/architecture/EXTENSIBILITY.md is required for the 0.5.x orchestration contract.");
   }
   for (const required of [
     "## Capability gate",
@@ -340,7 +340,7 @@ if (manifest.version.startsWith("0.5.")) {
     "## Known limits"
   ]) {
     if (extensibility && !extensibility.includes(required)) {
-      failures.push(`docs/EXTENSIBILITY.md is missing ${required}.`);
+      failures.push(`docs/architecture/EXTENSIBILITY.md is missing ${required}.`);
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 3")) {
@@ -419,19 +419,19 @@ if (manifest.version.startsWith("0.5.")) {
 }
 
 if (manifest.version.startsWith("0.6.")) {
-  const executionPath = path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md");
-  const hostileDemoPath = path.join(workspace, "docs", "HOSTILE_REPOSITORY_DEMO.md");
+  const executionPath = path.join(workspace, "docs", "architecture/EXECUTION_ENVIRONMENTS.md");
+  const hostileDemoPath = path.join(workspace, "docs", "getting-started/HOSTILE_REPOSITORY_DEMO.md");
   let execution = "";
   let hostileDemo = "";
   try {
     execution = await readFile(executionPath, "utf8");
   } catch {
-    failures.push("docs/EXECUTION_ENVIRONMENTS.md is required for the 0.6.x isolation contract.");
+    failures.push("docs/architecture/EXECUTION_ENVIRONMENTS.md is required for the 0.6.x isolation contract.");
   }
   try {
     hostileDemo = await readFile(hostileDemoPath, "utf8");
   } catch {
-    failures.push("docs/HOSTILE_REPOSITORY_DEMO.md is required for the 0.6.x product proof.");
+    failures.push("docs/getting-started/HOSTILE_REPOSITORY_DEMO.md is required for the 0.6.x product proof.");
   }
   for (const required of [
     "## Trust boundary",
@@ -444,7 +444,7 @@ if (manifest.version.startsWith("0.6.")) {
     "## Known limits"
   ]) {
     if (execution && !execution.includes(required)) {
-      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing ${required}.`);
+      failures.push(`docs/architecture/EXECUTION_ENVIRONMENTS.md is missing ${required}.`);
     }
   }
   if (!providerConfig.includes("HARNESS_CONFIG_SCHEMA_VERSION = 4")) {
@@ -502,13 +502,13 @@ if (manifest.version.startsWith("0.6.")) {
 }
 
 if (manifest.version.startsWith("0.8.")) {
-  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
-  const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
-  const extensibility = await readFile(path.join(workspace, "docs", "EXTENSIBILITY.md"), "utf8");
+  const cli = await readFile(path.join(workspace, "docs", "cli/CLI.md"), "utf8");
+  const durableOperations = await readFile(path.join(workspace, "docs", "architecture/DURABLE_OPERATIONS.md"), "utf8");
+  const extensibility = await readFile(path.join(workspace, "docs", "architecture/EXTENSIBILITY.md"), "utf8");
   for (const [file, contents, headings] of [
-    ["docs/CLI.md", cli, ["## Interactive console", "## JSON Lines", "## Command compatibility"]],
-    ["docs/DURABLE_OPERATIONS.md", durableOperations, ["## Durable CLI sessions", "## Provider handoff safety", "## Migration from 0.7.x"]],
-    ["docs/EXTENSIBILITY.md", extensibility, ["## Provider registry", "## Per-role model routing", "## Routing limits"]]
+    ["docs/cli/CLI.md", cli, ["## Interactive console", "## JSON Lines", "## Command compatibility"]],
+    ["docs/architecture/DURABLE_OPERATIONS.md", durableOperations, ["## Durable CLI sessions", "## Provider handoff safety", "## Migration from 0.7.x"]],
+    ["docs/architecture/EXTENSIBILITY.md", extensibility, ["## Provider registry", "## Per-role model routing", "## Routing limits"]]
   ] as const) {
     for (const heading of headings) {
       if (!contents.includes(heading)) failures.push(`${file} is missing ${heading}.`);
@@ -530,7 +530,7 @@ if (manifest.version.startsWith("0.8.")) {
       failures.push(`0.8.x must pin ${packageName}@${expectedVersion}.`);
     }
     if (!extensibility.includes(`\`${packageName}@${expectedVersion}\``)) {
-      failures.push(`docs/EXTENSIBILITY.md must document ${packageName}@${expectedVersion}.`);
+      failures.push(`docs/architecture/EXTENSIBILITY.md must document ${packageName}@${expectedVersion}.`);
     }
   }
   if (manifest.overrides?.["@zhivex-ai/core"] !== expectedSdkDependencies["@zhivex-ai/core"]) {
@@ -541,10 +541,10 @@ if (manifest.version.startsWith("0.8.")) {
   }
   for (const modelId of ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"]) {
     if (!liveCertification.includes(`\`${modelId}\``)) {
-      failures.push(`docs/LIVE_CERTIFICATION.md must record the local OpenAI base-gate result for ${modelId}.`);
+      failures.push(`docs/maintenance/LIVE_CERTIFICATION.md must record the local OpenAI base-gate result for ${modelId}.`);
     }
     if (!extensibility.includes(`\`${modelId}\``)) {
-      failures.push(`docs/EXTENSIBILITY.md must document the GPT-5.6 OpenAI model ${modelId}.`);
+      failures.push(`docs/architecture/EXTENSIBILITY.md must document the GPT-5.6 OpenAI model ${modelId}.`);
     }
   }
   if (
@@ -571,10 +571,10 @@ if (manifest.version.startsWith("0.8.")) {
 }
 
 if (manifest.version.startsWith("0.9.")) {
-  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
-  const changeEnvelopes = await readFile(path.join(workspace, "docs", "CHANGE_ENVELOPES.md"), "utf8");
-  const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
-  const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const cli = await readFile(path.join(workspace, "docs", "cli/CLI.md"), "utf8");
+  const changeEnvelopes = await readFile(path.join(workspace, "docs", "architecture/CHANGE_ENVELOPES.md"), "utf8");
+  const repositoryEditing = await readFile(path.join(workspace, "docs", "architecture/REPOSITORY_EDITING.md"), "utf8");
+  const executionEnvironments = await readFile(path.join(workspace, "docs", "architecture/EXECUTION_ENVIRONMENTS.md"), "utf8");
   const source = `${await readFile(path.join(workspace, "src", "runtime", "harness.ts"), "utf8")}\n${
     await readFile(path.join(workspace, "src", "workspace", "change-envelope.ts"), "utf8")
   }\n${await readFile(path.join(workspace, "src", "cli.ts"), "utf8")}`;
@@ -587,7 +587,7 @@ if (manifest.version.startsWith("0.9.")) {
     "## Known limits"
   ]) {
     if (!changeEnvelopes.includes(heading)) {
-      failures.push(`docs/CHANGE_ENVELOPES.md is missing ${heading}.`);
+      failures.push(`docs/architecture/CHANGE_ENVELOPES.md is missing ${heading}.`);
     }
   }
   for (const required of [
@@ -596,16 +596,16 @@ if (manifest.version.startsWith("0.9.")) {
     "change-envelope-verification",
     "authenticity: \"not-verified\""
   ]) {
-    if (!cli.includes(required)) failures.push(`docs/CLI.md is missing the 0.9.x contract text: ${required}.`);
+    if (!cli.includes(required)) failures.push(`docs/cli/CLI.md is missing the 0.9.x contract text: ${required}.`);
   }
   for (const required of ["topology-only index", "`read_files`", "`search_many`"]) {
     if (!repositoryEditing.includes(required)) {
-      failures.push(`docs/REPOSITORY_EDITING.md is missing the 0.9.x contract text: ${required}.`);
+      failures.push(`docs/architecture/REPOSITORY_EDITING.md is missing the 0.9.x contract text: ${required}.`);
     }
   }
   for (const required of ["copy-on-write", "changed files", "`environment_status`"]) {
     if (!executionEnvironments.includes(required)) {
-      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.9.x optimization text: ${required}.`);
+      failures.push(`docs/architecture/EXECUTION_ENVIRONMENTS.md is missing the 0.9.x optimization text: ${required}.`);
     }
   }
   for (const required of [
@@ -655,11 +655,11 @@ if (manifest.version.startsWith("0.9.")) {
 }
 
 if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")) {
-  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
-  const durableOperations = await readFile(path.join(workspace, "docs", "DURABLE_OPERATIONS.md"), "utf8");
-  const repositoryEditing = await readFile(path.join(workspace, "docs", "REPOSITORY_EDITING.md"), "utf8");
-  const executionEnvironments = await readFile(path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"), "utf8");
-  const timeToSafeFix = await readFile(path.join(workspace, "docs", "TIME_TO_SAFE_FIX.md"), "utf8");
+  const cli = await readFile(path.join(workspace, "docs", "cli/CLI.md"), "utf8");
+  const durableOperations = await readFile(path.join(workspace, "docs", "architecture/DURABLE_OPERATIONS.md"), "utf8");
+  const repositoryEditing = await readFile(path.join(workspace, "docs", "architecture/REPOSITORY_EDITING.md"), "utf8");
+  const executionEnvironments = await readFile(path.join(workspace, "docs", "architecture/EXECUTION_ENVIRONMENTS.md"), "utf8");
+  const timeToSafeFix = await readFile(path.join(workspace, "docs", "maintenance/TIME_TO_SAFE_FIX.md"), "utf8");
   const timeToSafeFixBaseline = JSON.parse(await readFile(
     path.join(workspace, "benchmarks", "baselines", "time-to-safe-fix-live-smoke-2026-08-21.json"),
     "utf8"
@@ -739,7 +739,7 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
   }
   for (const required of ["node:24-bookworm-slim", "Migration from 0.9.x", "2026-08-21-v3"]) {
     if (!executionEnvironments.includes(required)) {
-      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.10.x contract: ${required}.`);
+      failures.push(`docs/architecture/EXECUTION_ENVIRONMENTS.md is missing the 0.10.x contract: ${required}.`);
     }
   }
   for (const workflow of [ciWorkflow, releaseWorkflow, liveCertificationWorkflow]) {
@@ -819,13 +819,13 @@ if (manifest.version.startsWith("0.10.") || manifest.version.startsWith("0.11.")
 }
 
 if (manifest.version.startsWith("0.11.")) {
-  const cli = await readFile(path.join(workspace, "docs", "CLI.md"), "utf8");
+  const cli = await readFile(path.join(workspace, "docs", "cli/CLI.md"), "utf8");
   const contextEngineering = await readFile(
-    path.join(workspace, "docs", "CONTEXT_ENGINEERING.md"),
+    path.join(workspace, "docs", "cli/CONTEXT_ENGINEERING.md"),
     "utf8"
   );
   const executionEnvironments = await readFile(
-    path.join(workspace, "docs", "EXECUTION_ENVIRONMENTS.md"),
+    path.join(workspace, "docs", "architecture/EXECUTION_ENVIRONMENTS.md"),
     "utf8"
   );
   const contextSource = await readFile(path.join(workspace, "src", "context", "context-engineering.ts"), "utf8");
@@ -839,7 +839,7 @@ if (manifest.version.startsWith("0.11.")) {
     "## Durable compatibility"
   ]) {
     if (!contextEngineering.includes(heading)) {
-      failures.push(`docs/CONTEXT_ENGINEERING.md is missing ${heading}.`);
+      failures.push(`docs/cli/CONTEXT_ENGINEERING.md is missing ${heading}.`);
     }
   }
   for (const required of [
@@ -849,11 +849,11 @@ if (manifest.version.startsWith("0.11.")) {
     "--no-project-context",
     "--oci-shell <deny|ask>"
   ]) {
-    if (!cli.includes(required)) failures.push(`docs/CLI.md is missing the 0.11.x contract text: ${required}.`);
+    if (!cli.includes(required)) failures.push(`docs/cli/CLI.md is missing the 0.11.x contract text: ${required}.`);
   }
   for (const required of ["2026-08-21-v4", "run_environment_shell", "sh -lc", "host import approval"]) {
     if (!executionEnvironments.includes(required)) {
-      failures.push(`docs/EXECUTION_ENVIRONMENTS.md is missing the 0.11.x contract text: ${required}.`);
+      failures.push(`docs/architecture/EXECUTION_ENVIRONMENTS.md is missing the 0.11.x contract text: ${required}.`);
     }
   }
   for (const required of [

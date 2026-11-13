@@ -2,7 +2,7 @@
 
 > Historical snapshot: findings and outcomes apply to the checkout and attempt
 > recorded below. For the subsequent stable release outcome, see
-> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> [current release evidence](../maintenance/LIVE_CERTIFICATION.md#current-public-status).
 > Later publication does not change failed evaluation results.
 
 **Verdict: NO-GO for RC.14 / promotion to 1.0.0.** A functional blocker

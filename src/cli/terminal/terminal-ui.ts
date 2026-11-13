@@ -1,4 +1,14 @@
+import { paintTerminal, type TerminalTone } from "./terminal-theme.js";
 import { checkApprovalGrant } from "./session-grants.js";
+import { changeSummary, renderReviewedDiff } from "../console/review-diff.js";
+import {
+  appendAutoApproval,
+  approvalFacts,
+  buildSnapshots,
+  classifyApproval,
+  createAutoApprovalEntry,
+  type AutoApprovePolicy,
+} from "../../approvals/auto-approve.js";
 import type {
   AgentApprovalRequest,
   AgentApprovalResponse,
@@ -121,18 +131,28 @@ export const formatApproval = (
 };
 
 export interface TerminalApprovalResolverOptions {
+  requireCompleteReview?: boolean;
+  onDecisionOrigin?: (origin: "interactive" | "automatic") => void;
   ask(question: string): Promise<string>;
   select?: import("../cli-credentials.js").CredentialInput["select"];
+  review?: (review: { title: string; body: string; summary?: string; fileList?: string; banner?: string; headerRight?: string; files?: number; layout?: (width: number) => { lines: readonly string[]; hunks: readonly number[] } }, items: readonly {value: string; label: string; detail?: string; key?: string}[]) => Promise<string | undefined>;
+  /** Read each call so a one-key drop to manual applies to the next approval. */
+  autoApprove?: () => AutoApprovePolicy;
+  readText?: (relativePath: string) => Promise<{ text: string | null; undoable: boolean }>;
+  /** Persist one audit record after an automatic approval is returned. */
+  auditRoot?: string;
   workspace?: string;
+  /** Startup or /resume of a session that was actually restored. */
+  restored?: boolean;
+  /** `~/project · provider/model` for the review header. */
+  projectLabel?: string;
+  fileDiff?: (approval: AgentApprovalRequest) => Promise<string | undefined>;
+  fileDiffFull?: (approval: AgentApprovalRequest) => Promise<string | undefined>;
   sessionGrants?: Set<string>;
   write(text: string): void;
   maxSummaryCharacters?: number;
   approvedReason?: string;
   deniedReason?: string;
-  /** Host policy: complete bounded payload, no cached session grants. */
-  requireCompleteReview?: boolean;
-  /** Host-only observation; never determines approval or grants explicit review. */
-  onDecisionOrigin?: (origin: 'interactive' | 'automatic') => void;
 }
 
 const promptEnded = (error: unknown) => {
@@ -145,6 +165,53 @@ const promptEnded = (error: unknown) => {
 
 const normalizedDecision = (answer: string) => answer.trim().toLowerCase();
 
+const STALE_DIFF = "File diff unavailable: preconditions";
+const OVERSIZED_DIFF = "File diff unavailable: exceeds terminal preview limit";
+
+const FILE_EDIT_TOOLS = new Set([
+  "apply_patch",
+  "apply_reviewed_edits",
+  "apply_reviewed_replacement",
+  "verify_and_apply_reviewed_edits",
+  "apply_environment_patch",
+  "verify_and_apply_environment_patch",
+]);
+
+const approvalFiles = (approval: AgentApprovalRequest) => {
+  try {
+    const args = JSON.parse(approval.arguments) as { changes?: unknown; path?: unknown };
+    if (Array.isArray(args.changes)) {
+      return args.changes.flatMap(change => {
+        if (!change || typeof change !== "object") return [];
+        const record = change as { path?: unknown; expectedDigest?: unknown; content?: unknown };
+        if (typeof record.path !== "string") return [];
+        const op = record.expectedDigest === null ? "add" : record.content === null ? "delete" : "modify";
+        return [{ path: record.path, op }];
+      });
+    }
+    if (FILE_EDIT_TOOLS.has(approval.name) && typeof args.path === "string" && args.path) {
+      return [{ path: args.path, op: "modify" }];
+    }
+    return [];
+  } catch { return []; }
+};
+
+const diffStats = (diff: string) => ({
+  added: diff.split("\n").filter(line => line.startsWith("+") && !line.startsWith("+++")).length,
+  removed: diff.split("\n").filter(line => line.startsWith("-") && !line.startsWith("---")).length,
+});
+
+const fileSummary = (approval: AgentApprovalRequest, diffBody: string) => {
+  const files = approvalFiles(approval);
+  if (!files.length) return { files, text: "" };
+  const chunks = diffBody.split(/\n(?=--- )/);
+  const lines = files.map((file, index) => {
+    const stats = diffStats(chunks[index] ?? diffBody);
+    return `${sanitizeTerminalText(file.path)}  ${file.op}  +${stats.added} −${stats.removed}`;
+  });
+  return { files, text: `${lines.join("\n")}\n` };
+};
+
 /**
  * Resolve approvals one at a time. Returning undefined deliberately leaves the
  * complete durable approval batch pending; earlier answers are never returned
@@ -155,20 +222,45 @@ export const resolveTerminalApprovals = async (
   options: TerminalApprovalResolverOptions
 ): Promise<readonly AgentApprovalResponse[] | undefined> => {
   if (options.requireCompleteReview && approvals.reduce((bytes, approval) => bytes + Buffer.byteLength(approval.arguments), 0) > 256 * 1024) {
-    options.write('Explicit review exceeds the complete payload limit; approvals remain pending.\n');
+    options.write("Explicit review exceeds the complete payload limit; approvals remain pending.\n");
     return undefined;
   }
   const responses: AgentApprovalResponse[] = [];
+  const pendingAudit: { approval: AgentApprovalRequest; reason: "edit-in-root" | "allowlisted-command"; mode: "auto-edits" | "auto-limits"; snapshots: ReturnType<typeof buildSnapshots> }[] = [];
   const staged = new Set(options.sessionGrants);
   for (let index = 0; index < approvals.length; index += 1) {
     const approval = approvals[index]!;
     const grant = !options.requireCompleteReview && options.sessionGrants && options.workspace ? checkApprovalGrant(approval, options.workspace) : undefined;
     if (grant && staged.has(grant)) {
       responses.push({ provider: approval.provider, approvalRequestId: approval.id, approve: true, reason: "Exact check approved for this CLI session." });
-      options.onDecisionOrigin?.('automatic');
+      options.onDecisionOrigin?.("automatic");
       continue;
     }
-    options.write(
+    const policy = options.requireCompleteReview ? undefined : options.autoApprove?.();
+    if (policy && policy.mode !== "manual") {
+      const facts = approvalFacts(approval.name, approval.arguments);
+      const classified = classifyApproval(facts, policy);
+      if (classified.decision === "auto") {
+        const reads = new Map<string, { text: string | null; undoable: boolean }>();
+        if (options.readText) {
+          for (const file of facts.paths) reads.set(file.path, await options.readText(file.path));
+        }
+        const snapshots = buildSnapshots(approval.arguments, relative => reads.get(relative) ?? { text: null, undoable: false });
+        responses.push({
+          provider: approval.provider,
+          approvalRequestId: approval.id,
+          approve: true,
+          reason: `Auto-approved (${policy.mode}): ${classified.reason}.`,
+        });
+        options.onDecisionOrigin?.("automatic");
+        pendingAudit.push({ approval, reason: classified.reason, mode: policy.mode, snapshots });
+        continue;
+      }
+    }
+    let diff = await options.fileDiff?.(approval);
+    let compactDiff = diff;
+    let full = false;
+    if (!options.review || options.requireCompleteReview) options.write(
       `\nApproval required ${index + 1}/${approvals.length}:\n` +
       `${formatApproval(approval, {
         detail: options.requireCompleteReview ? "full" : "summary",
@@ -178,17 +270,65 @@ export const resolveTerminalApprovals = async (
       })}\n`
     );
 
-    if (options.workspace) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
+    if (diff && !options.review) options.write(`\n${diff}\n`);
+
+    if (options.workspace && !options.review) options.write(`Workspace: ${sanitizeTerminalText(options.workspace)}\n`);
+    let technical = Boolean(options.requireCompleteReview);
     for (;;) {
       let answer: string;
       try {
-        const received = options.select ? await options.select("Permission required", [
-          { value: "n", label: "Reject" },
-          { value: "y", label: "Allow once", detail: "Only the action shown above" },
-          ...(grant ? [{ value: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again" }] : []),
-          { value: "v", label: "View technical details" },
-          { value: "q", label: "Leave pending" },
-        ]) : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
+        const stale = Boolean(diff?.startsWith(STALE_DIFF));
+        const files = approvalFiles(approval);
+        const commandReview = approval.name === "run_check"
+          || approval.name === "run_environment_command"
+          || approval.name === "run_environment_shell";
+        const approveLabel = commandReview ? "Approve this command" : "Approve this change";
+        const rejectDetail = commandReview ? "This command does not run." : "This change is not applied.";
+        const approveDetail = commandReview ? "Run only this command, once." : "Apply only the change shown above, once.";
+        const items = [
+          { value: "n", key: "r", label: "Reject", detail: rejectDetail },
+          ...(!stale ? [{ value: "y", key: "a", label: approveLabel, detail: approveDetail }] : []),
+          ...(grant ? [{ value: "s", key: "s", label: "Allow this exact check for this session", detail: "Changing the script requires approval again." }] : []),
+          { value: "full", key: "f", label: full ? "Show compact diff" : "Show full diff", detail: full ? "Return to the changed lines." : "Show unchanged lines around this change." },
+          { value: "v", key: "d", label: technical ? "Back to review" : "View payload", detail: "Show the exact request the engine will check." },
+          ...(stale ? [{ value: "l", key: "l", label: "Reload review" }] : []),
+          { value: "q", key: "Esc", label: "Decide later", detail: "Leave it pending. Nothing is applied. /pending opens this review again." },
+        ];
+        // Only a validated local preview can replace the exact payload in the
+        // primary view. Unknown tools and failed previews keep it fully visible.
+        const trustedDiff = approval.kind === "local-tool" && diff?.startsWith("Reviewed file diff · ");
+        const diffBody = diff?.replace(/^Reviewed file diff · [^\n]+\n/, "") ?? "";
+        const summary = fileSummary(approval, diffBody);
+        const checkSummary = approval.kind === "local-tool" && approval.name === "run_check"
+          ? formatApproval(approval, {detail: "summary"}) : undefined;
+        const conditional = approval.name.startsWith("verify_and_apply_");
+        const restored = options.restored && !technical
+          ? "● Restored: this conversation was waiting for your decision.\n" : "";
+        const staleBody = "▲ This review is out of date\nA file may have been edited after the change was proposed.\nA file may have been moved, deleted, or can't be read.\nThe proposed change may not be valid for this workspace.\nNothing has been applied.\n";
+        const primary = stale ? staleBody
+          : diff?.startsWith(OVERSIZED_DIFF) ? `This change is too large to preview here.\n${formatApproval(approval, {detail: "full"})}\n`
+          : trustedDiff ? `${conditional ? "Checks pending · conditional apply\n" : ""}${summary.text}${diffBody}\n` +
+            (conditional ? formatApproval(approval, {detail: "full"}) : "")
+          : checkSummary?.startsWith("Run check: ") ? checkSummary
+          : `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}`;
+        const body = technical
+          ? `${formatApproval(approval, {detail: "full"})}${diff ? `\n${diff}` : ""}${options.workspace ? `\nWorkspace: ${sanitizeTerminalText(options.workspace)}` : ""}`
+          : `${restored}${primary}`;
+        const position = approvals.length > 1 ? ` · ${index + 1} of ${approvals.length}` : "";
+        const summaryText = changeSummary(approval, diffBody);
+        const received = options.review ? await options.review({
+          title: `Waiting for your decision${position}${technical ? " · details" : ""}`,
+          summary: summaryText,
+          ...(summary.text ? { fileList: summary.text.trim() } : {}),
+          body,
+          ...(!technical && trustedDiff ? {
+            layout: (width: number) => renderReviewedDiff(diffBody, width),
+            ...(restored ? { banner: restored.trimEnd() } : {}),
+          } : {}),
+          ...(options.projectLabel ? { headerRight: options.projectLabel } : {}),
+          files: files.length,
+        }, items) : options.select ? await options.select("Waiting for your decision", items)
+          : await options.ask(`Approve? [y]es/${grant ? "[s]ession/" : ""}[n]o/[v]iew/[q]uit (default: no) `);
         if (typeof received !== "string") return undefined;
         answer = normalizedDecision(received);
       } catch (error) {
@@ -196,8 +336,21 @@ export const resolveTerminalApprovals = async (
         throw error;
       }
 
-      if (answer === "v" || answer === "view") {
-        options.write(`\nComplete approval payload:\n${formatApproval(approval, { detail: "full" })}\n`);
+      if (answer === "l" || answer === "reload") {
+        diff = await options.fileDiff?.(approval);
+        compactDiff = diff;
+        full = false;
+        continue;
+      }
+      if (answer === "full") {
+        full = !full;
+        if (full && options.fileDiffFull) diff = await options.fileDiffFull(approval) ?? compactDiff;
+        else diff = compactDiff;
+        continue;
+      }
+      if (answer === "v" || answer === "view" || answer === "d") {
+        if (options.review) technical = !technical;
+        else options.write(`\nComplete approval payload:\n${formatApproval(approval, { detail: "full" })}\n`);
         continue;
       }
       if (answer === "q" || answer === "quit") {
@@ -211,7 +364,7 @@ export const resolveTerminalApprovals = async (
           approve: true,
           reason: options.approvedReason ?? "Approved interactively."
         });
-        options.onDecisionOrigin?.('interactive');
+        options.onDecisionOrigin?.("interactive");
         break;
       }
       if (answer === "" || answer === "n" || answer === "no") {
@@ -221,13 +374,24 @@ export const resolveTerminalApprovals = async (
           approve: false,
           reason: options.deniedReason ?? "Denied by the operator."
         });
-        options.onDecisionOrigin?.('interactive');
+        options.onDecisionOrigin?.("interactive");
         break;
       }
       options.write("Choose y, n, v, or q.\n");
     }
   }
   for (const key of staged) options.sessionGrants?.add(key);
+  if (options.auditRoot) {
+    for (const item of pendingAudit) {
+      await appendAutoApproval(options.auditRoot, createAutoApprovalEntry({
+        approvalId: item.approval.id,
+        name: item.approval.name,
+        mode: item.mode,
+        reason: item.reason,
+        snapshots: item.snapshots,
+      }));
+    }
+  }
   return responses;
 };
 
@@ -260,18 +424,28 @@ const verificationReceipt = (name: string, output: unknown) => {
   return { exitCode: receipt.exitCode as number, timedOut: receipt.timedOut === true, check };
 };
 
-export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
-  const receipts = results.flatMap(result => {
+const verificationReceipts = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) =>
+  results.flatMap(result => {
     const receipt = verificationReceipt(result.toolName, result.output);
     return receipt ? [{ ...receipt, failed: Boolean(result.isError) || receipt.timedOut || receipt.exitCode !== 0 }] : [];
   });
-  if (!receipts.length) return "Verification: no check receipts recorded; completion does not certify checks.";
+
+/** Counts only recorded check receipts. Callers must not imply checks that did not run. */
+export const verificationCounts = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
+  const receipts = verificationReceipts(results);
   const failed = receipts.filter(receipt => receipt.failed).length;
-  return `Verification receipts: ${receipts.length - failed} passed, ${failed} failed/timed out. Only recorded commands are covered.`;
+  return { total: receipts.length, passed: receipts.length - failed, failed };
 };
 
+export const formatVerificationSummary = (results: readonly { toolName: string; output?: unknown; isError?: boolean }[]) => {
+  const counts = verificationCounts(results);
+  if (!counts.total) return "Verification: no check receipts recorded; completion does not certify checks.";
+  return `Verification receipts: ${counts.passed} passed, ${counts.failed} failed/timed out. Only recorded commands are covered.`;
+};
+
+const activityTones: Record<number, TerminalTone> = { 31: "removed", 32: "added", 33: "pending", 36: "info", 90: "muted" };
 const paint = (text: string, code: number, color: boolean) =>
-  color ? `\u001b[${code}m${text}\u001b[0m` : text;
+  paintTerminal(text, activityTones[code] ?? "muted", color);
 
 /**
  * Produce a compact activity line from a redacted event subset. Tool inputs,

@@ -400,7 +400,7 @@ describe("GA release-candidate evidence", () => {
     expect(parseGaSecurityReviewEvidencePath("security-reviews/1.0.0.json"))
       .toBe("security-reviews/1.0.0.json");
     expect(() => parseGaSecurityReviewEvidencePath("")).toThrow("under security-reviews");
-    expect(() => parseGaSecurityReviewEvidencePath("docs/GA_READINESS.md"))
+    expect(() => parseGaSecurityReviewEvidencePath("docs/maintenance/GA_READINESS.md"))
       .toThrow("under security-reviews");
   });
 });

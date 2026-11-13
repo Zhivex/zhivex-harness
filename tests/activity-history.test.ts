@@ -7,7 +7,7 @@ test("retrospective history is bounded and excludes model reasoning and raw tool
  history.observe({type:"text-delta",textDelta:"SECRET"} as never);
  history.observe({type:"tool-call",toolCall:{name:"SECRET",arguments:"SECRET"}} as never);
  expect(history.render()).not.toContain("SECRET");
- for(let i=0;i<210;i++)history.observe({type:"tool-result",toolResult:{toolName:"read_file",output:"SECRET"}} as never);
+ for(let i=0;i<210;i++)history.observe({type:"agent-step-start",stepIndex:i} as never);
  expect(history.render()).toContain("earlier entries omitted");
  expect(history.render().split("\n")).toHaveLength(202);
  history.clear();expect(history.render()).toContain("No activity");

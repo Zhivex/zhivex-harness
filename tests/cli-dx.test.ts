@@ -63,7 +63,7 @@ test("profile update preserves the original on invalid input and rejects linked 
         throw new Error("Expected a missing profile error");
       } catch (error) {
         expect(error).toBeInstanceOf(HarnessConfigError);
-        expect((error as Error).message).toContain("Create it with zhx init");
+        expect((error as Error).message).toContain("Create it with zhivex-code init");
         expect(cliExitCodeForError(error)).toBe(2);
       }
     }
@@ -72,7 +72,7 @@ test("profile update preserves the original on invalid input and rejects linked 
 
 test("usage recovery is actionable and independent from provider or OCI diagnostics", () => {
   const hint = cliRecoveryHint(new CliUsageError("Unknown option"), ["run", "--bad"]);
-  expect(hint).toContain("zhx run --help");
+  expect(hint).toContain("zhivex-code run --help");
   expect(hint).not.toContain("credentials");
   expect(cliRecoveryHint(new HarnessProviderError("unavailable"), [])).toContain("/credentials");
 });

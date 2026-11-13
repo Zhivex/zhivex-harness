@@ -1,9 +1,9 @@
-import { modelReasoningEfforts } from "../providers/reasoning.js";
+import { modelReasoningEfforts } from "../compat/code-support.js";
 import { ConsoleInput } from "./console/console-input.js";
 import { navigateConsole } from "./console/console-navigation.js";
-import { parseProvider, providerAvailability, providerDescriptor, type HarnessProvider } from "../runtime/config.js";
+import { parseProvider, providerAvailability, providerDescriptor, type HarnessProvider } from "../engine/index.js";
 import { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
-import type { CliInitDocument } from "../client/json-contracts.js";
+import type { CliInitDocument } from "../engine/index.js";
 import { createCliProfile, loadCliProfile, updateCliProfile } from "./cli-profiles.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
@@ -40,7 +40,7 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
           providers, sessions: async () => [],
         });
         if (!selected || "command" in selected) {
-          process.stdout.write("Setup cancelled. No profile was changed. Run zhx to try again.\n");
+          process.stdout.write("Setup cancelled. No profile was changed. Run zhivex-code to try again.\n");
           return false;
         }
         provider = parseProvider(selected.provider);
@@ -55,8 +55,8 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
   }
   const created = await (options.updateProfile ? updateCliProfile : createCliProfile)(profileName, { provider, model, ...(reasoningEffort ? { reasoningEffort } : {}) });
   const availability = providerAvailability().find((candidate) => candidate.id === provider);
-  const doctorCommand = `zhx doctor --profile ${profileName}`;
-  const runCommand = `zhx --profile ${profileName} "inspect this repository"`;
+  const doctorCommand = `zhivex-code doctor --profile ${profileName}`;
+  const runCommand = `zhivex-code --profile ${profileName} "inspect this repository"`;
   const document: CliInitDocument = {
     schemaVersion: CLI_JSON_SCHEMA_VERSION,
     kind: "init",
@@ -94,11 +94,11 @@ export const initializeCli = async (options: CliOptions, context: { onboarding?:
       ? "Azure OpenAI needs an https AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY. Optional AZURE_OPENAI_API_VERSION and AZURE_OPENAI_DEPLOYMENTS stay in the environment. Route presence does not verify account access."
       : availability?.configured
       ? "Provider credential detected; no secret value was stored or printed."
-      : `Open zhx to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
+      : `Open zhivex-code to configure a managed key, or set ${availability?.credentialNames.join(" or ") || "the provider credential"} for automation.`,
     "Next:",
     `  ${doctorCommand}`,
     `  ${runCommand}`,
-    "Profiles contain provider, model and optional reasoning effort. A later bare interactive console uses the default profile automatically. Change it with zhx init --update."
+    "Profiles contain provider, model and optional reasoning effort. A later bare interactive console uses the default profile automatically. Change it with zhivex-code init --update."
   ].join("\n") + "\n");
   return true;
 };

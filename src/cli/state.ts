@@ -1,5 +1,5 @@
-import { resolveHarnessConfig } from "../runtime/config.js";
-import { exportHarnessStateBackup, importHarnessStateBackupFile, inspectHarnessState } from "../persistence/state-backup.js";
+import { resolveHarnessConfig } from "../engine/index.js";
+import { exportHarnessStateBackup, importHarnessStateBackupFile, inspectHarnessState } from "../engine/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
 export const manageState = async (options: CliOptions) => {

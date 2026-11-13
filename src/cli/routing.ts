@@ -1,5 +1,5 @@
-import { type HarnessConfig, type HarnessSubagentProfile } from "../runtime/config.js";
-import { resolveHarnessModelRoutes, type HarnessModelRoute } from "../providers/routing.js";
+import { type HarnessConfig, type HarnessSubagentProfile } from "../engine/index.js";
+import { resolveHarnessModelRoutes, type HarnessModelRoute } from "../engine/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
 export const resolvedRouting = (options: CliOptions) => {

@@ -124,7 +124,7 @@ Desktop pins and verifies its own compatible engine version.
 
 Retiring legacy exports/binaries requires a subsequent Harness major, a documented
 migration and changelog notice for at least one minor release beforehand, and
-installed-consumer proof under [the existing policy](../DEPRECATIONS.md). Transfer
+installed-consumer proof under [the existing policy](../maintenance/DEPRECATIONS.md). Transfer
 of `zhx` to Code is not decided by this ADR: old Harness 1.x installations remain
 possible even after a major. A later decision must handle co-installation or keep
 the unique Code name. No bin takeover is implied by a version bump.

@@ -2,7 +2,7 @@
 
 Archived from `design-qa.md` on 2026-11-11. The original snapshot follows unchanged;
 its UI descriptions, unreleased status and validation counts apply to that work,
-not automatically to the current product. Current documentation: [Web limits](../WEB_LIMITS.md).
+not automatically to the current product. Current documentation: [Web limits](WEB_LIMITS.md).
 Referenced local captures or external design references are not necessarily bundled
 with this historical record.
 
@@ -74,7 +74,7 @@ violation. Its receipt-based observation semantics remain unchanged. Terminal's
 separate 20-error default remains unchanged.
 
 Installed Web and CLI packages pass their offline consumer suites using the
-versioned, digest-verified SDK fixture described in `docs/WEB_LIMITS.md`. No paid
+versioned, digest-verified SDK fixture described in `docs/reports/WEB_LIMITS.md`. No paid
 provider calls or real session/database changes were used. After publication, official npm Core/SDK 1.31.0 and Agents 1.11.0 were verified
 against registry digests and release provenance (`a7905584`). Their dist bytes match
 the fixture. Minimal Core/Agents consumer pins are updated; final checks use real

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest published `1.6.x` patch of Harness and the latest stable Code `0.4.x` patch. The verified current versions are Harness `1.6.3` and Code `0.4.2`. RCs on `next` are validation candidates; older minors and private checkpoints are not supported release channels. Desktop remains a separate private alpha. Beta and experimental features retain their documented limitations. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/LIVE_CERTIFICATION.md).
+Security fixes are provided for the latest published `1.6.x` patch of Harness and the latest stable Code `0.4.x` patch. The verified current versions are Harness `1.6.3` and Code `0.4.2`. RCs on `next` are validation candidates; older minors and private checkpoints are not supported release channels. Desktop remains a separate private alpha. Beta and experimental features retain their documented limitations. Registry integrity and provenance do not substitute for the separate provider and execution evidence recorded in [docs/maintenance/LIVE_CERTIFICATION.md](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/LIVE_CERTIFICATION.md).
 
 ## Reporting a vulnerability
 
@@ -16,7 +16,7 @@ Do not open a public issue for a suspected vulnerability. Use [GitHub private vu
 
 Private vulnerability reporting is enabled for this public repository. If GitHub reports that the channel is unavailable, do not disclose exploit details in a public issue; wait for the maintainers to restore the private channel.
 
-The enabled no-cost public controls and the explicitly cost-gated features left disabled are recorded in [docs/PUBLIC_SECURITY.md](./docs/PUBLIC_SECURITY.md).
+The enabled no-cost public controls and the explicitly cost-gated features left disabled are recorded in [docs/security/PUBLIC_SECURITY.md](docs/security/PUBLIC_SECURITY.md).
 
 ## Scope
 

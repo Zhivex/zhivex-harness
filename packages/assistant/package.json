@@ -16,7 +16,7 @@
     "start": "node dist/cli.js",
     "prepare:local": "bun run scripts/prepare-local.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
-    "test": "bun run build && bun test tests",
+    "test": "bun run build && bun test --preload ../../tests/preload-runtime.ts tests",
     "smoke": "bun run build && node examples/offline.mjs",
     "smoke:daily-web": "bun run build && bun run scripts/smoke-daily-web.ts",
     "smoke:installed": "bun run scripts/smoke-installed.ts",

@@ -88,7 +88,7 @@ it requests capture directly with the window visible and awake.
 ## Requirements after the PR
 
 1. Configure Anthropic/Gemini secrets and Vertex variables in `live-certification`
-   as specified in `docs/RELEASE.md`, with the authorized federated identity.
+   as specified in `docs/maintenance/RELEASE.md`, with the authorized federated identity.
    The inspected inventory does not contain them; local credentials were not copied.
 2. Review/integrate the change and obtain remote CI/CodeQL on the final commit.
 3. Run protected release, representative evaluation and publication with

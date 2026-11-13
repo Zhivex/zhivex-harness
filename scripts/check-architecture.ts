@@ -37,7 +37,7 @@ const browserDependencies = /^(?:react(?:\/|$)|react-dom(?:\/|$)|@xterm\/(?:xter
 
 export const architectureViolations = (file: string, source: string): string[] => {
   const violations: string[] = [];
-  if (/^src\/[^/]+\.tsx?$/.test(file) && !["src/index.ts", "src/cli.ts", "src/cli-entry.ts", "src/service-cli.ts", "src/acp-cli.ts", "src/version.ts"].includes(file)) {
+  if (/^src\/[^/]+\.tsx?$/.test(file) && !["src/index.ts", "src/cli.ts", "src/cli-entry.ts", "src/terminal.ts", "src/service-cli.ts", "src/acp-cli.ts", "src/version.ts"].includes(file)) {
     violations.push(`${file}: place implementation modules in their responsibility folder`);
   }
   for (const dependency of sourceDependencies(source)) {
@@ -138,7 +138,6 @@ export const checkArchitecture = async (root: string): Promise<string[]> => {
     }
   };
   await visit("src");
-  await visit("desktop/src");
   await visit("packages/assistant/src");
   await visit("packages/assistant/web/src");
   await visit("packages/code/src");

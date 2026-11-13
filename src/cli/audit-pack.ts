@@ -1,10 +1,9 @@
 import path from "node:path";
-import type { HarnessConfig } from "../runtime/config.js";
-import { resolveHarnessConfig } from "../runtime/config.js";
-import { openHarnessPersistence } from "../persistence/operations.js";
-import { validateStateDirectory } from "../persistence/state-directory.js";
-import { openCliSessionStore } from "../persistence/sessions.js";
-import { openHarnessActivityStore } from "../client/service-events.js";
+import { resolveHarnessConfig } from "../engine/index.js";
+import { openHarnessPersistence } from "../engine/index.js";
+import { validateStateDirectory } from "../engine/index.js";
+import { openCliSessionStore } from "../engine/index.js";
+import { openHarnessActivityStore } from "../engine/index.js";
 import { exportHarnessAuditPack, loadAuditSigningKey, verifyHarnessAuditPack } from "../audit/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
@@ -22,7 +21,7 @@ const signingKey = async (file: string | undefined) => {
   }
 };
 
-/** Experimental operator command. Verification reads the pack and key only. Export reads durable state and writes a new directory. */
+/** Same experimental pack as Harness, using the pinned engine's audit subpath. Verification does not resolve runtime configuration. */
 export async function auditPackCli(options: CliOptions) {
   const key = await signingKey(options.signingKeyFile);
   if (options.command === "verify-audit") {
@@ -32,7 +31,7 @@ export async function auditPackCli(options: CliOptions) {
       : `Audit pack verified: ${result.subject.kind} ${result.subject.id} (${result.fileCount} files, key ${result.keyId}).\n`);
     return result;
   }
-  const config: HarnessConfig = resolveHarnessConfig(options);
+  const config = resolveHarnessConfig(options);
   await validateStateDirectory(config.workspace, config.stateDirectory);
   const persistence = await openHarnessPersistence(config);
   let index: Awaited<ReturnType<typeof openCliSessionStore>> | undefined;

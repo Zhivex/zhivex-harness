@@ -17,7 +17,7 @@ and local artifact hashes, per-item coverage, residual risks and results.
 
 ### SEC-04 — High: OCI snapshots shared across different scopes
 
-In [execution-environment.ts](../src/execution-environment.ts), acquisition
+In [execution-environment.ts](https://github.com/Zhivex/zhivex-harness/blob/28723ff3350b7572d5bd68f2d40b6feef1e0e6b4/src/execution-environment.ts), acquisition
 selects `environments/<hash(runId)>`. Metadata checks run, workspace and image,
 but not `tenantId`, `userId` or `namespace` (lines 1633–1650 of the reviewed commit).
 Environment identity does not incorporate these fields either.
@@ -46,7 +46,7 @@ across scopes; that operational mitigation does not close the finding.
 
 ### SEC-01 — Medium: two incompatible writes accept the same digest
 
-In [workspace.ts](../src/workspace.ts), the last digest check and `rename`
+In [workspace.ts](https://github.com/Zhivex/zhivex-harness/blob/28723ff3350b7572d5bd68f2d40b6feef1e0e6b4/src/workspace.ts), the last digest check and `rename`
 are separated by asynchronous operations, including `assertActive`
 (lines 1226–1232). There is no workspace mutual exclusion between the two writers.
 
@@ -69,7 +69,7 @@ including concurrent OCI imports.
 
 ### SEC-02 — Medium: replacement approval hides new text
 
-[terminal-ui.ts](../src/terminal-ui.ts) omits `apply_reviewed_replacement` from
+[terminal-ui.ts](https://github.com/Zhivex/zhivex-harness/blob/28723ff3350b7572d5bd68f2d40b6feef1e0e6b4/src/terminal-ui.ts) omits `apply_reviewed_replacement` from
 `EXACT_REVIEW_TOOLS` (lines 9–22). With a 2,000-character `oldText`,
 the default card truncates before showing `newText`.
 

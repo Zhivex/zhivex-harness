@@ -34,7 +34,7 @@ semantic dependency changes.
 Limitations: locking coordinates Harness writers on Linux/macOS, not arbitrary
 programs under the same user or atomic multi-file writes during power
 loss. Host, daemon and image remain trusted. Snapshot migration
-is documented in `docs/EXECUTION_ENVIRONMENTS.md`; old scopeless state
+is documented in `docs/architecture/EXECUTION_ENVIRONMENTS.md`; old scopeless state
 is not adopted. Execution contracts and paused approvals change
 deliberately with the new policy.
 

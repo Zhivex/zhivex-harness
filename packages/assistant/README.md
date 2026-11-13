@@ -1,9 +1,9 @@
 # Zhivex Assistant — phase 5
 
 Private, unpublished local product. Consumes only named public Harness exports.
-See the [MVP plan](../../docs/ASSISTANT_MVP_PLAN.md),
-[contracts](../../docs/ASSISTANT_CONTRACTS.md) and
-[phase 1 guide](../../docs/ASSISTANT_HOST.md).
+See the [MVP plan](../../docs/plans/ASSISTANT_MVP_PLAN.md),
+[contracts](../../docs/assistant/ASSISTANT_CONTRACTS.md) and
+[phase 1 guide](../../docs/assistant/ASSISTANT_HOST.md).
 
 Implemented: general assistant profile, foreground persistent host, private Unix
 transport, SQLite conversations/runs/approvals, durable activity replay, explicit
@@ -12,11 +12,11 @@ The default profile exposes no tools. A trusted embedding application can supply
 an explicit profile/catalog and MCP configuration; ordinary messages cannot.
 
 Telegram private-chat integration, explicit owner pairing, persistent input/output
-queues and chat approvals are implemented. See the [Telegram guide](../../docs/ASSISTANT_TELEGRAM.md).
+queues and chat approvals are implemented. See the [Telegram guide](../../docs/assistant/ASSISTANT_TELEGRAM.md).
 Google Calendar OAuth, durable proposals and Telegram-approved conditional event
-updates are implemented. See the [Calendar guide](../../docs/ASSISTANT_CALENDAR.md)
+updates are implemented. See the [Calendar guide](../../docs/assistant/ASSISTANT_CALENDAR.md)
 for setup, profile-directory compatibility and recovery limits. A persistent daily agenda scheduler and explicit personal preferences are implemented;
-see [automations](../../docs/ASSISTANT_AUTOMATIONS.md). Activate from the paired chat
+see [automations](../../docs/assistant/ASSISTANT_AUTOMATIONS.md). Activate from the paired chat
 with `/daily 08:00 America/Argentina/Buenos_Aires`; use `/daily status` and `/memory list`.
 This is a single-owner local host, not a remote gateway or an OS-managed daemon.
 
@@ -62,8 +62,8 @@ Dependency installation may require network access; no model API is called.
 Build with `bun run --cwd packages/assistant build:desktop`, then open
 `packages/assistant/src-tauri/target/release/bundle/macos/Zhivex Assistant.app`.
 Setup, connections and conversations run in the native window. See the
-[native guide](../../docs/ASSISTANT_DESKTOP.md) and
-[web retirement policy](../../docs/WEB_RETIREMENT.md).
+[native guide](../../docs/assistant/ASSISTANT_DESKTOP.md) and
+[web retirement policy](../../docs/architecture/WEB_RETIREMENT.md).
 
 ## Run (advanced CLI host)
 
@@ -104,9 +104,9 @@ automatically. The token stays in memory, and uncertain sends are not auto-retri
 ## Pilot onboarding
 
 To try Calendar, Telegram and Assistant today, follow the
-[first-session walkthrough](../../docs/ASSISTANT_FIRST_DAY.md).
+[first-session walkthrough](../../docs/reports/ASSISTANT_WEB_HISTORY.md#first-session).
 
-Follow the [complete pilot guide](../../docs/ASSISTANT_PILOT.md) for offline preflight
+Follow the [complete pilot guide](../../docs/assistant/ASSISTANT_PILOT.md) for offline preflight
 (`--doctor`), Google consent, Telegram pairing, recovery and the three-day acceptance
 record. Local validation does not certify a live account or a completed pilot.
 
@@ -114,13 +114,13 @@ record. Local validation does not certify a live account or a completed pilot.
 
 Daily tasks, one-shot reminders, explicit notes, Gmail drafts/reads, Drive text
 search/reads, read-only GitHub MCP and provider-independent Brave search are
-available as opt-in modules. See [daily tools](../../docs/ASSISTANT_DAILY_TOOLS.md)
+available as opt-in modules. See [daily tools](../../docs/assistant/ASSISTANT_DAILY_TOOLS.md)
 for setup, credential references, approval behavior and delivery limits.
 The new-agent wizard has a **Herramientas** tab. Existing agents retain their
 original module binding; create a new agent to change its tool catalog.
 
 Use `--config /path/assistant.json` for an explicit OpenAI-compatible provider and
-composed Calendar/MCP modules. See [configuration, extension contract and compatibility](../../docs/ASSISTANT_EXTENSIONS.md).
+composed Calendar/MCP modules. See [configuration, extension contract and compatibility](../../docs/assistant/ASSISTANT_EXTENSIONS.md).
 The instance remains single-owner. Existing Calendar-only profiles remain compatible;
 changing provider or composing additional modules requires a fresh runtime directory.
 
@@ -164,7 +164,7 @@ Omitting `service` preserves Model Studio and existing profiles.
 Conversation runs now produce private, durable task observations for duration,
 explicit corrections, operator-verified outcomes and estimated token cost.
 Completed runs remain unverified until reviewed. Missing usage or pricing remains
-unknown. Read the [task metrics guide](../../docs/ASSISTANT_TASK_METRICS.md) for
+unknown. Read the [task metrics guide](../../docs/assistant/ASSISTANT_TASK_METRICS.md) for
 pricing, authenticated report/feedback APIs, grouping semantics and scope limits.
 
 Validate the initial 30-case suite with `bun run eval:tasks --validate` or prepare
@@ -176,7 +176,7 @@ These commands do not call a model or modify external services.
 The new-agent **Herramientas** tab supports Microsoft work accounts: read/search
 mail, create approved drafts, and read/create personal calendar appointments.
 Microsoft calendar supplies the web agenda and daily summary. Integrations shows
-the account and supports reauthorization. See [Entra ID setup and scope limits](../../docs/ASSISTANT_MICROSOFT.md).
+the account and supports reauthorization. See [Entra ID setup and scope limits](../../docs/assistant/ASSISTANT_MICROSOFT.md).
 
 ## Proactive alerts
 
@@ -186,4 +186,4 @@ channel and notification budget in **Tareas y recordatorios → Configurar aviso
 For conversational configuration and reply tracking, select proactive tools when
 creating an agent or use `{ "kind": "daily", "proactive": true }` in a fresh CLI
 profile. Existing daily profiles retain their tool catalog. See the
-[proactive guide](../../docs/ASSISTANT_PROACTIVE.md) for behavior and limits.
+[proactive guide](../../docs/assistant/ASSISTANT_PROACTIVE.md) for behavior and limits.

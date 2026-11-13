@@ -1,1 +1,2 @@
-export { harnessToolExecution as cliToolExecution } from "@zhivex-ai/harness/code-support";
+/** Compatibility source facade for the single terminal implementation. */
+export * from "@zhivex-ai/harness/terminal/tool-execution";

@@ -87,12 +87,6 @@ jobs:
       - name: Install immutable dependencies with Bun
         run: bun install --frozen-lockfile --ignore-scripts
 
-      - name: Install immutable desktop test dependencies
-        run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
-
-      - name: Prepare installed Harness candidate for Desktop tests
-        run: bun run prepare:desktop
-
       - name: Validate release identity before expensive gates
         run: |
           bun run release:preflight

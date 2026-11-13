@@ -12,7 +12,7 @@ test("composer distinguishes approval policy and pending actions, and bounds hos
 
 test("Focus keeps pending decisions and attachments visible with long model and session labels", () => {
  const text=formatComposer({model:"m".repeat(200),reasoning:"high",title:"t".repeat(200),status:"approval pending · /pending",approvalMode:"restricted",attachments:2},80,false);
- expect(text).toContain("approval pending · /pending · restricted approvals · 2 attached");
+ for (const value of ["approval pending · /pending", "restricted approvals", "2 attached"]) expect(text).toContain(value);
  expect(text.split("\n").every(line=>Array.from(line).length<80)).toBe(true);
  expect(text).not.toContain("Ctrl+R");
  for(const columns of [12,30,45,80,140]) {

@@ -71,8 +71,8 @@ routes do not become stable. Desktop keeps `0.1.0-alpha.1` and private distribut
 
 Stable 1.3.0 passed all protected live gates and 42/42 representative cases;
 Code 0.1.0 passed real registry dependency resolution, installed acceptance and
-registry/provenance verification. See [release evidence](docs/LIVE_CERTIFICATION.md)
-and the [release procedure](docs/RELEASE.md) for scope and the historical attempts.
+registry/provenance verification. See [release evidence](docs/maintenance/LIVE_CERTIFICATION.md)
+and the [release procedure](docs/maintenance/RELEASE.md) for scope and the historical attempts.
 Earlier preparation and failed attempts remain historical evidence.
 
 ## Planning principles
@@ -90,7 +90,7 @@ This roadmap takes the harness from its `0.1.0` MVP to a stable CLI and library 
 
 RC.13 was published to npm `next` with 42/42 representative cases, protected live certification, and independently verified registry integrity and SLSA provenance. Its [reviewer dossier](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/security/RC13_SECURITY_REVIEW.md) remains historical context.
 
-RC.14 was published to npm `next` with all protected live gates and 42/42 representative cases passed; independent verification matched registry integrity and SLSA provenance. RC.14 now has a completed Codex security review under an explicit [user-delegated AI exception](docs/RC14_DELEGATED_SECURITY_DECISION.md), with no identified open critical/high findings. This is not an independent human audit; use the [RC.14 reviewer dossier](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/security/RC14_SECURITY_REVIEW.md). The separate failed exploratory SWE-bench cohort is preserved and does not become passing evidence.
+RC.14 was published to npm `next` with all protected live gates and 42/42 representative cases passed; independent verification matched registry integrity and SLSA provenance. RC.14 now has a completed Codex security review under an explicit [user-delegated AI exception](docs/security/RC14_DELEGATED_SECURITY_DECISION.md), with no identified open critical/high findings. This is not an independent human audit; use the [RC.14 reviewer dossier](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/security/RC14_SECURITY_REVIEW.md). The separate failed exploratory SWE-bench cohort is preserved and does not become passing evidence.
 
 ## Historical baseline: 0.2.0
 
@@ -164,7 +164,7 @@ Exit criteria:
 
 Goal: let the agent make realistic multi-file changes while every mutation remains bounded, reviewable, conflict-safe, and recoverable.
 
-Status: validated private candidate. It is not configured for registry publication. Contract and migration details live in [docs/REPOSITORY_EDITING.md](./docs/REPOSITORY_EDITING.md).
+Status: validated private candidate. It is not configured for registry publication. Contract and migration details live in [docs/architecture/REPOSITORY_EDITING.md](docs/architecture/REPOSITORY_EDITING.md).
 
 Scope:
 
@@ -196,14 +196,14 @@ Validation summary:
 
 - the trusted-editing implementation is merged into `main`;
 - deterministic, installed-package, and package-inspection CI gates pass on Linux and macOS;
-- the date-bound Meta, Qwen, and OpenAI proposal/approval/restart matrix is recorded in [docs/LIVE_CERTIFICATION.md](./docs/LIVE_CERTIFICATION.md);
+- the date-bound Meta, Qwen, and OpenAI proposal/approval/restart matrix is recorded in [docs/maintenance/LIVE_CERTIFICATION.md](docs/maintenance/LIVE_CERTIFICATION.md);
 - publication, registry integrity, and provenance have not been attempted or claimed.
 
 ## 0.4.0 — Durable operations and evaluation
 
 Goal: make runs supportable over time instead of only executable from one terminal.
 
-Status: validated private candidate. Operations and migration details live in [docs/DURABLE_OPERATIONS.md](./docs/DURABLE_OPERATIONS.md).
+Status: validated private candidate. Operations and migration details live in [docs/architecture/DURABLE_OPERATIONS.md](docs/architecture/DURABLE_OPERATIONS.md).
 
 Scope:
 
@@ -234,7 +234,7 @@ Validation summary:
 
 Goal: support larger tasks through governed external tools and bounded delegation without weakening workspace policy.
 
-Status: published on npm. Configuration, migration, MCP, and orchestration contracts live in [docs/EXTENSIBILITY.md](./docs/EXTENSIBILITY.md). Its Trusted Publisher/OIDC release path is the baseline for later immutable versions.
+Status: published on npm. Configuration, migration, MCP, and orchestration contracts live in [docs/architecture/EXTENSIBILITY.md](docs/architecture/EXTENSIBILITY.md). Its Trusted Publisher/OIDC release path is the baseline for later immutable versions.
 
 Scope:
 
@@ -442,15 +442,15 @@ Exit criteria:
 
 Goal: freeze a supportable public contract after the pre-1.0 safety and operational surfaces have been exercised in real repositories.
 
-Status: published on npm as `latest`; see the [1.0 publication evidence](docs/LIVE_CERTIFICATION.md#current-public-status). The final candidate review used the documented [delegated-AI exception](docs/RC14_DELEGATED_SECURITY_DECISION.md).
+Status: published on npm as `latest`; see the [1.0 publication evidence](docs/maintenance/LIVE_CERTIFICATION.md#current-public-status). The final candidate review used the documented [delegated-AI exception](docs/security/RC14_DELEGATED_SECURITY_DECISION.md).
 
 ### Historical prerelease checkpoints
 
 The following checkpoints describe the state before GA and do not supersede the stable release above.
 
-Historical release evidence checkpoint: RC.13 was published to npm `next` with protected live certification and 42/42 representative cases. At that checkpoint the final human security review remained open; see the [release evidence](docs/LIVE_CERTIFICATION.md) and [reviewer dossier](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/security/RC13_SECURITY_REVIEW.md).
+Historical release evidence checkpoint: RC.13 was published to npm `next` with protected live certification and 42/42 representative cases. At that checkpoint the final human security review remained open; see the [release evidence](docs/maintenance/LIVE_CERTIFICATION.md) and [reviewer dossier](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/security/RC13_SECURITY_REVIEW.md).
 
-Historical status: RC.1 through RC.6 did not complete every protected gate, so every publication was skipped. RC.6 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with 12/14 safe resolutions in both the original run and one retry. RC.7 retained the Core, Agents, and OpenAI corrections, restored Qwen to the last adapter certified by this matrix, passed exact-artifact, live-provider, and all three 14-case representative gates, and was published to npm `next` with verified SHA-512 integrity and SLSA provenance. RC.8 carried the coordinated Core `1.11.0`, Qwen `0.11.1`, and Gemini `0.11.0` refresh and passed exact-tag readiness, but its manual protected workflow packed before building `dist/`; artifact binding failed, OCI and provider gates were skipped, and npm publication was not dispatched. RC.9 corrected that workflow and passed manual protected certification, but its release-bound deterministic job exposed an environment-sensitive early-diagnostic test before packing; no release tarball was created and every downstream job was skipped. RC.10 isolated that fixture and produced a valid exact tarball, then failed closed because OpenAI returned retryable HTTP 500 failures and Qwen resolved 13/14 representative cases; npm publication was skipped. RC.11 preserved its fail-closed first attempt, then reran every protected gate from scratch; Meta, Qwen, and OpenAI each completed 14/14 representative cases, and the exact validated artifact was published to npm `next` with verified SHA-512 integrity and SLSA provenance. RC.12 then passed the complete deterministic, installed-artifact, OCI, live-provider, and three-provider representative matrix and was published to `next` with verified integrity and provenance. RC.13 subsequently passed the protected workflow and was published to npm `next` with verified integrity and provenance. Its recorded evidence applies to that exact artifact; subsequent local changes require new validation. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. The required historical passing candidates are recorded; at that checkpoint GA remained blocked on a security review of the final candidate, tracked in [`docs/ga-readiness.json`](./docs/ga-readiness.json).
+Historical status: RC.1 through RC.6 did not complete every protected gate, so every publication was skipped. RC.6 passed release-bound live certification and Meta's complete representative matrix, then failed closed at Qwen with 12/14 safe resolutions in both the original run and one retry. RC.7 retained the Core, Agents, and OpenAI corrections, restored Qwen to the last adapter certified by this matrix, passed exact-artifact, live-provider, and all three 14-case representative gates, and was published to npm `next` with verified SHA-512 integrity and SLSA provenance. RC.8 carried the coordinated Core `1.11.0`, Qwen `0.11.1`, and Gemini `0.11.0` refresh and passed exact-tag readiness, but its manual protected workflow packed before building `dist/`; artifact binding failed, OCI and provider gates were skipped, and npm publication was not dispatched. RC.9 corrected that workflow and passed manual protected certification, but its release-bound deterministic job exposed an environment-sensitive early-diagnostic test before packing; no release tarball was created and every downstream job was skipped. RC.10 isolated that fixture and produced a valid exact tarball, then failed closed because OpenAI returned retryable HTTP 500 failures and Qwen resolved 13/14 representative cases; npm publication was skipped. RC.11 preserved its fail-closed first attempt, then reran every protected gate from scratch; Meta, Qwen, and OpenAI each completed 14/14 representative cases, and the exact validated artifact was published to npm `next` with verified SHA-512 integrity and SLSA provenance. RC.12 then passed the complete deterministic, installed-artifact, OCI, live-provider, and three-provider representative matrix and was published to `next` with verified integrity and provenance. RC.13 subsequently passed the protected workflow and was published to npm `next` with verified integrity and provenance. Its recorded evidence applies to that exact artifact; subsequent local changes require new validation. Public API/CLI/schema baselines, config `4 → 5` migration, historical tarball fixtures, support/security/rollback policy, RC channel enforcement, representative-evaluation generation, and evidence requirements remain machine-checked. The required historical passing candidates are recorded; at that checkpoint GA remained blocked on a security review of the final candidate, tracked in [`docs/ga-readiness.json`](docs/ga-readiness.json).
 
 Scope:
 

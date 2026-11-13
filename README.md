@@ -8,6 +8,9 @@ An open-source coding agent for your terminal. It asks before it edits or runs a
 
 **Zhivex Code** ([`@zhivex-ai/code`](https://www.npmjs.com/package/@zhivex-ai/code)) is the product you install and run. **Zhivex Harness** ([`@zhivex-ai/harness`](https://www.npmjs.com/package/@zhivex-ai/harness)) is the engine underneath: a governed, provider-portable TypeScript runtime with durable approvals and isolated execution. MIT licensed.
 
+The supported solution is Harness core, the Code CLI and Assistant (Tauri).
+[Product boundaries and existing histories](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/PRODUCT_CONSOLIDATION.md).
+
 ## Approval survives a restart
 
 <!-- Recorded with zhivex-code. Scene: ask for a change, review the diff, leave the approval pending, quit,
@@ -35,7 +38,7 @@ cd /path/to/your/project
 zhivex-code
 ```
 
-On first launch, choose a provider and model. If no key is already available, enter one in the hidden prompt and save it in the system keychain, or keep it for this session only. An existing environment variable takes precedence. The same prompts are documented for the engine command `zhx` in [First use](docs/FIRST_USE.md) and [Credentials](docs/CREDENTIALS.md).
+On first launch, choose a provider and model. If no key is already available, enter one in the hidden prompt and save it in the system keychain, or keep it for this session only. An existing environment variable takes precedence. The same prompts are documented for the engine command `zhx` in [First use](docs/getting-started/FIRST_USE.md) and [Credentials](docs/providers/CREDENTIALS.md).
 
 Try: “Explain this repository and suggest a small improvement.”
 
@@ -109,19 +112,19 @@ Use `/credentials` later to replace or remove a saved key. `zhivex-code doctor` 
 | Commands | The default runtime exposes no shell tools. Isolated commands need an explicitly configured Docker or Podman environment. |
 | Where it runs | On your machine. Linux and macOS. |
 
-From a source checkout, `bun run demo:hostile` runs a reproducible hostile-repository demo (a malicious README and a decoy `.env`, with network denied). See [Hostile repository demonstration](docs/HOSTILE_REPOSITORY_DEMO.md). That demo needs a local build, Docker or Podman, and a preloaded image.
+From a source checkout, `bun run demo:hostile` runs a reproducible hostile-repository demo (a malicious README and a decoy `.env`, with network denied). See [Hostile repository demonstration](docs/getting-started/HOSTILE_REPOSITORY_DEMO.md). That demo needs a local build, Docker or Podman, and a preloaded image.
 
 ## Providers and platforms
 
-Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional**: the integrations exist, and they do not yet have the same end-to-end release evidence. Details: [support matrix](docs/SUPPORT_MATRIX.md), [Anthropic](docs/ANTHROPIC.md), [Vertex](docs/VERTEX.md), [Bedrock](docs/BEDROCK.md), [Azure OpenAI](docs/AZURE_OPENAI.md).
+Release-gated providers are OpenAI, Qwen, and Meta. **Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional**: the integrations exist, and they do not yet have the same end-to-end release evidence. Details: [support matrix](docs/maintenance/SUPPORT_MATRIX.md), [Anthropic](docs/providers/ANTHROPIC.md), [Vertex](docs/providers/VERTEX.md), [Bedrock](docs/providers/BEDROCK.md), [Azure OpenAI](docs/providers/AZURE_OPENAI.md).
 
 | Area | Status |
 | --- | --- |
 | Operating systems | Linux and macOS. Windows is unsupported. |
 | Runtime | Node.js 22.13 or newer. Bun is contributor tooling. |
-| MCP | Bounded Streamable HTTP is supported. stdio is outside the default CLI. An experimental host-only path can launch stdio servers in Docker; see [Isolated MCP stdio](docs/MCP_STDIO.md). |
-| Editor protocol | `zhx-acp` is an experimental ACP subset: text sessions, one-time permissions, and cancellation. Output is buffered until the run finishes. ACP cannot load or resume a session. See [ACP](docs/ACP.md). |
-| Isolated commands | Docker on Linux is supported. Podman is provisional. See [Execution environments](docs/EXECUTION_ENVIRONMENTS.md). |
+| MCP | Bounded Streamable HTTP is supported. stdio is outside the default CLI. An experimental host-only path can launch stdio servers in Docker; see [Isolated MCP stdio](docs/architecture/MCP_STDIO.md). |
+| Editor protocol | `zhx-acp` is an experimental ACP subset: text sessions, one-time permissions, and cancellation. Output is buffered until the run finishes. ACP cannot load or resume a session. See [ACP](docs/architecture/ACP.md). |
+| Isolated commands | Docker on Linux is supported. Podman is provisional. See [Execution environments](docs/architecture/EXECUTION_ENVIRONMENTS.md). |
 | Desktop | Separate private alpha for macOS Apple Silicon. Unsigned, and not part of the npm package. See [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md). |
 
 ## Use the engine as a library
@@ -146,14 +149,14 @@ try {
 }
 ```
 
-Contracts, stability tiers, and the experimental ACP and MCP entry points are in the [engine API](docs/ENGINE_API.md).
+Contracts, stability tiers, and the experimental ACP and MCP entry points are in the [engine API](docs/architecture/ENGINE_API.md).
 
 ## Documentation
 
-- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md), [first use](docs/FIRST_USE.md), [daily workflow](docs/CLI.md#interactive-daily-workflow), [usage reference](docs/USAGE.md), [Tauri interface and web retirement](docs/WEB_RETIREMENT.md).
-- **Integrating Harness:** [engine API](docs/ENGINE_API.md), [CLI contracts](docs/CLI.md), [experimental task projection](docs/CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73), [extensibility](docs/EXTENSIBILITY.md), [API stability](docs/STABILITY.md).
-- **Limits:** [support matrix](docs/SUPPORT_MATRIX.md), [security policy](SECURITY.md).
-- **Contributing:** [development](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) and [maintenance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md).
+- **Using Code:** [Code package notes](https://github.com/Zhivex/zhivex-harness/blob/main/packages/code/README.md), [first use](docs/getting-started/FIRST_USE.md), [daily workflow](docs/cli/CLI.md#interactive-daily-workflow), [usage reference](docs/getting-started/USAGE.md), [Tauri interface and web retirement](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/WEB_RETIREMENT.md).
+- **Integrating Harness:** [engine API](docs/architecture/ENGINE_API.md), [CLI contracts](docs/cli/CLI.md), [experimental task projection](docs/architecture/CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73), [extensibility](docs/architecture/EXTENSIBILITY.md), [API stability](docs/maintenance/STABILITY.md).
+- **Limits:** [support matrix](docs/maintenance/SUPPORT_MATRIX.md), [security policy](SECURITY.md).
+- **Contributing:** [development](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) and [maintenance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/MAINTENANCE.md).
 
 [Browse the documentation index](docs/README.md).
 
@@ -161,4 +164,4 @@ Contracts, stability tiers, and the experimental ACP and MCP entry points are in
 
 Version `1.6.3` is the current public npm release. The Code package on npm `latest` is `0.4.2`, pinned exactly to Harness `1.6.3`. The quick start above follows the published `latest` tag. npm `next` is Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. Confirm dist-tags on the [Code versions](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) and [Harness versions](https://www.npmjs.com/package/@zhivex-ai/harness?activeTab=versions) pages before you install a prerelease.
 
-Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md). Releases are verified with npm provenance. See the [verified 1.6.3 / 0.4.2 publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md). Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).
+Release channels, publication, and certification records are in the [release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/RELEASE.md). Releases are verified with npm provenance. See the [verified 1.6.3 / 0.4.2 publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md). Source in this checkout can be newer than the public package. See the [changelog](CHANGELOG.md) and the [repository release status](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json).

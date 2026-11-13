@@ -1,2 +1,2 @@
-/** Harness 1.x compatibility bridge; implementation belongs to the engine. */
+/** Shared wire projection; terminal clients use the same schema. */
 export * from "../client/stream.js";
