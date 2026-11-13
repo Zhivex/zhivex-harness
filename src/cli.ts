@@ -3,6 +3,7 @@ import { formatCliHelp } from "./cli/cli-help.js";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { HARNESS_VERSION } from "./version.js";
+import { setTerminalVersion } from "./cli/identity.js";
 import { harnessErrorDocument } from "./runtime/errors.js";
 import { applyCliProfile, resolveCliDefaults } from "./cli/cli-profiles.js";
 import { parseCliArgs } from "./cli/arguments.js";
@@ -26,7 +27,8 @@ export { runResultDocument } from "./cli/run-document.js";
 
 export { CLI_JSON_SCHEMA_VERSION } from "./cli/cli-stream.js";
 
-export const main = async (argv = process.argv.slice(2)) => {
+export const main = async (argv = process.argv.slice(2), version = HARNESS_VERSION) => {
+  setTerminalVersion(version);
   let parsedOptions = parseCliArgs(argv);
   const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const openConsole = interactive && !parsedOptions.json && !parsedOptions.jsonl &&
@@ -60,10 +62,10 @@ export const main = async (argv = process.argv.slice(2)) => {
       await initializeCli(options);
       return;
     case "help":
-      process.stdout.write(`${formatCliHelp(options.helpTopic, HARNESS_VERSION, CLI_FULL_HELP_TEXT)}\n`);
+      process.stdout.write(`${formatCliHelp(options.helpTopic, version, CLI_FULL_HELP_TEXT)}\n`);
       return;
     case "version":
-      process.stdout.write(`${HARNESS_VERSION}\n`);
+      process.stdout.write(`${version}\n`);
       return;
     case "providers":
       listProviders(options.json);
@@ -123,8 +125,8 @@ const isMainModule = (() => {
   }
 })();
 
-export const runCli = async (argv = process.argv.slice(2)) => {
-  await main(argv).catch((error: unknown) => {
+export const runCli = async (argv = process.argv.slice(2), version = HARNESS_VERSION) => {
+  await main(argv, version).catch((error: unknown) => {
     const document = harnessErrorDocument(error);
     if (argv.includes("--jsonl")) {
       process.stdout.write(`${JSON.stringify({

@@ -29,6 +29,8 @@ import { HARNESS_VERSION } from "../src/version.js";
 const runCli = async (arguments_: string[], env: Record<string, string> = {}) => {
   const child = Bun.spawn([
     process.execPath,
+    "--preload",
+    path.resolve(import.meta.dir, "preload-runtime.ts"),
     path.resolve(import.meta.dir, "../src/cli.ts"),
     ...arguments_
   ], {
@@ -869,7 +871,7 @@ describe("CLI process contract", () => {
           reasoningEffort: "low"
         },
         credential: { configured: true },
-        next: { doctor: "zhx doctor --profile daily" }
+        next: { doctor: "zhivex-code doctor --profile daily" }
       });
       const profilePath = path.join(configDirectory, "profiles", "daily.json");
       expect((await stat(profilePath)).mode & 0o777).toBe(0o600);

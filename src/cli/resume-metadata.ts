@@ -1,6 +1,6 @@
 import { type AgentRunInput, type AgentRunState } from "@zhivex-ai/agents";
-import { type HarnessConfig, type HarnessConfigInput, type HarnessSubagentProfile } from "../runtime/config.js";
-import { resolveHarnessModelRoutes, serializeHarnessModelRoutes, type HarnessModelRoute } from "../providers/routing.js";
+import { type HarnessConfig, type HarnessConfigInput, type HarnessSubagentProfile } from "../engine/index.js";
+import { resolveHarnessModelRoutes, serializeHarnessModelRoutes, type HarnessModelRoute } from "../engine/index.js";
 import { type CliOptions } from "./arguments.js";
 
 export const HARNESS_RESUME_METADATA_KEY = "zhivexHarnessResume" as const;
@@ -22,10 +22,10 @@ export const harnessConfigInput = (config: HarnessConfig): HarnessConfigInput =>
   maxSteps: config.maxSteps,
   timeoutMs: config.timeoutMs,
   ...(config.unlimitedDuration === undefined ? {} : { unlimitedDuration: config.unlimitedDuration }),
-  maxToolCalls: config.budget.maxToolCalls,
-  maxToolErrors: config.budget.maxToolErrors,
   ...(config.budget.unlimitedSteps === undefined ? {} : { unlimitedSteps: config.budget.unlimitedSteps }),
   ...(config.budget.unlimitedToolCalls === undefined ? {} : { unlimitedToolCalls: config.budget.unlimitedToolCalls }),
+  maxToolCalls: config.budget.maxToolCalls,
+  maxToolErrors: config.budget.maxToolErrors,
   ...(config.budget.unlimitedTokens !== undefined ? { unlimitedTokens: config.budget.unlimitedTokens } : {}),
   maxInputTokens: config.budget.maxInputTokens,
   maxOutputTokens: config.budget.maxOutputTokens,
@@ -151,7 +151,7 @@ export const readHarnessResumeRoutes = (
 const shellArgument = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`;
 
 export const resumeCommand = (runId: string, config: HarnessConfig, approve = true) => [
-  "zhivex-harness",
+  "zhivex-code",
   "resume",
   shellArgument(runId),
   approve ? "--approve" : "--deny",

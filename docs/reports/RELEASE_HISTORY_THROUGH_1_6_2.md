@@ -1,9 +1,9 @@
 # Release preparation and decision history through 1.6.2
 
-Archived from `docs/RELEASE.md` on 2026-11-11. The sections below preserve
+Archived from `docs/maintenance/RELEASE.md` on 2026-11-11. The sections below preserve
 their original versions, pending states, authorizations, failures and validation
 limits. They are historical records, not instructions or authorization for a new
-release. Use the [current release procedure](../RELEASE.md) for operations and
+release. Use the [current release procedure](../maintenance/RELEASE.md) for operations and
 the [report index](README.md) for publication evidence.
 
 ## Published patch: 1.6.2
@@ -21,7 +21,7 @@ the `v1.6.2` representative mapping with the same Meta, Qwen and OpenAI models
 as `v1.6.1`. Annotated `v1.6.2` on the reviewed main SHA, `channel=latest`, ran
 through the unchanged protected workflow and its environment approvals (run
 40100307698, completed 2026-10-24). Code `0.4.1`, pinned exactly to Harness
-`1.6.2`, was then published on `latest`; see [CODE_RELEASE.md](../CODE_RELEASE.md).
+`1.6.2`, was then published on `latest`; see [CODE_RELEASE.md](../maintenance/CODE_RELEASE.md).
 
 ## Previous preparation: 1.6.1
 
@@ -145,8 +145,8 @@ Annotated tags `v1.4.0-rc.8` and `code-v0.3.0-rc.8` both resolve to
   ([PR203](https://github.com/Zhivex/zhivex-harness/pull/203)) and the same
   B-lite review scope ([PR211](https://github.com/Zhivex/zhivex-harness/pull/211)).
 - Packaged Harness docs also differ: `README.md`
-  ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)) and `docs/CLI.md`
-  ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)). `docs/CLI_UX.md`
+  ([PR200](https://github.com/Zhivex/zhivex-harness/pull/200)) and `docs/cli/CLI.md`
+  ([PR210](https://github.com/Zhivex/zhivex-harness/pull/210)). `docs/cli/CLI_UX.md`
   and `docs/images/approval-survives-restart.gif` differ and are outside the
   Harness `files` list.
 
@@ -306,7 +306,7 @@ the existing 2 MiB UI snapshot budget by compacting previews with truncation
 markers while preserving run identities/statuses. Already-redacted streamed text
 is split into bounded Unicode-safe events. Policy/event journals, retention,
 approval authority, pairing, Host/Origin/CSRF/session protections and provider/API
-tiers are unchanged; see [durable activity](../LOCAL_SERVICE.md). Retain all SDK/model
+tiers are unchanged; see [durable activity](../architecture/LOCAL_SERVICE.md). Retain all SDK/model
 pins, budgets and protected gates. Deferred performance work remains separate.
 
 [RC.5 attempt 1](https://github.com/Zhivex/zhivex-harness/actions/runs/37384044231)
@@ -418,7 +418,7 @@ and web acceptance, four-manager checks and provenance verification. Keep stable
 `latest` unchanged. The older publication records below are historical.
 
 
-`@zhivex-ai/harness@1.3.0` is the latest public npm release. The verified `v1.3.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](../LIVE_CERTIFICATION.md).
+`@zhivex-ai/harness@1.3.0` is the latest public npm release. The verified `v1.3.0` publication and its exact source, registry integrity, SLSA provenance, annotated GitHub tag and release-bound live evidence are recorded in the mutable repository [release-status.json](https://raw.githubusercontent.com/Zhivex/zhivex-harness/main/release-status.json), excluded from immutable npm artifacts. See [LIVE_CERTIFICATION.md](../maintenance/LIVE_CERTIFICATION.md).
 
 ## Verified stable publication on 2026-10-02
 

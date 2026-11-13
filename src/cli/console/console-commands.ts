@@ -1,6 +1,7 @@
 /** Presentation shared by the direct console and the local-service client. */
 export const CONSOLE_COMMAND_CATALOG = [
   ["/menu", "Open navigation menu", true],
+  ["/theme", "Choose light, dark or system terminal colors", true],
   ["/help", "Show commands; /help all shows everything", true],
   ["/connection", "Inspect credentials and optionally test selected model access", false],
   ["/credentials", "Manage provider keys in the system keychain or this session", false],
@@ -10,12 +11,19 @@ export const CONSOLE_COMMAND_CATALOG = [
   ["/route", "Configure specialist model routes", false],
   ["/status", "Inspect the current session and run", true],
   ["/diff", "Review workspace changes", false],
+  ["/task", "Define, review, keep or revise a bounded task", false],
+  ["/checkpoint", "Capture, review and restore selected text files", false],
+  ["/budget", "Set estimated USD policy for each next run", false],
+  ["/pricing", "Inspect advisory model prices and their source", false],
   ["/review", "Review a task", false],
   ["/resume", "Reopen a conversation by session ID", true],
   ["/pending", "Inspect pending approvals", true],
   ["/approve", "Approve the pending actions", true],
   ["/deny", "Deny the pending actions", true],
   ["/approvals", "Change approval mode for this CLI session", false],
+  ["/auto-approve", "Set Manual, Auto-edits, or Auto with limits for this session", false],
+  ["/manual", "Drop auto-approve back to Manual for this session", true],
+  ["/undo", "Revert the latest auto-approved file change", false],
   ["/continue", "Continue an interrupted task with retained results in a new run", false],
   ["/compact", "Compact conversation context", false],
   ["/compaction", "Choose a compaction model or inspect recommendations", false],
@@ -41,8 +49,8 @@ export type ConsoleMode = "direct" | "service";
 export const consoleCommands = (mode: ConsoleMode = "direct") =>
   CONSOLE_COMMAND_CATALOG.filter(([name, , service]) => mode === "service" ? service : name !== "/cancel");
 
-const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/diff", "/exit"]);
-const approvals = new Set(["/approvals", "/pending", "/approve", "/deny"]);
+const everyday = new Set(["/menu", "/help", "/model", "/new", "/sessions", "/attach", "/task", "/diff", "/exit"]);
+const approvals = new Set(["/approvals", "/pending", "/approve", "/deny", "/auto-approve", "/manual", "/undo"]);
 
 export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct") => {
   const search = query.replace(/^\//, "").toLowerCase();
@@ -52,9 +60,15 @@ export const searchConsoleCommands = (query: string, mode: ConsoleMode = "direct
 };
 
 const argumentsFor: Readonly<Record<string, string>> = {
+  "/theme": "[light|dark|system]",
+  "/task": "[start JSON|review|keep|revise text]",
   "/limits": "[positive integer]",
+  "/budget": "[USD|off]",
+  "/checkpoint": "[capture|list|review|restore|retry]",
   "/compaction": "[provider:model|off|recommend]",
   "/approvals": "[ask|auto|restricted]",
+  "/auto-approve": "[manual|auto-edits|auto-limits|workspace <mode>]",
+  "/undo": "[audit id]",
   "/provider": "[id]", "/model": "[id]", "/route": "[role=provider[:model] | clear [role]]",
   "/review": "<task>", "/resume": "[last|sessionId]", "/new": "[title]",
   "/rename": "<title>", "/attach": "<path>", "/detach": "[path]", "/sessions": "[search]",

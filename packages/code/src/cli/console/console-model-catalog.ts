@@ -1,8 +1,2 @@
-// Compatibility snapshot. The shared catalog is administered in src/models/catalog.json.
-import { bundledModelCatalog } from "@zhivex-ai/harness/code-support";
-export const CONSOLE_MODEL_CATALOG = {
-  providers: Object.fromEntries(bundledModelCatalog.providers.map(provider => [provider.id, {
-    revision: bundledModelCatalog.revision,
-    models: provider.models.map(model => model.id),
-  }])),
-};
+/** Compatibility source facade for the single terminal implementation. */
+export * from "@zhivex-ai/harness/terminal/console/console-model-catalog";

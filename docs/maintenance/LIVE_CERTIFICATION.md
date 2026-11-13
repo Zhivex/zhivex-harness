@@ -1,0 +1,179 @@
+# Live provider certification
+
+Live certification is an explicit release gate because it makes billable upstream requests. It is separate from deterministic tests, installed-artifact validation, and registry publication.
+
+## Stable 1.6.3 cohort
+
+Harness `v1.6.3` at `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a` passed the [protected release workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42865111096) on 2026-11-10. Exact-artifact validation, OCI, base approval/restart, compaction, reviewer orchestration, mixed routing, model-directed execution and multi-process continuity all passed. Meta, Qwen, OpenAI, Anthropic, Gemini and Vertex each passed continuity on the first attempt. The Meta/Qwen/OpenAI representative matrix passed 42/42 cases (14 per provider), with zero failures or omissions.
+
+Code `0.4.2` was subsequently [published and verified](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) against the actual published Harness dependency. Both registry tarballs, `latest` tags and source-bound SLSA provenance were independently verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md). This evidence applies only to the exact tagged artifacts. Provider stability tiers and default model selections are unchanged; the provisional routes do not acquire three-provider representative coverage.
+
+## Stable 1.3.0 cohort
+
+Harness RC7 passed exact-artifact, all six live-provider gates and the 42-case
+Meta/Qwen/OpenAI representative matrix in [run 36852432470](https://github.com/Zhivex/zhivex-harness/actions/runs/36852432470).
+The release used Meta `muse-spark-1.3-contributor`, Qwen `qwen3.8-flash`, OpenAI
+`gpt-6-luna`, Anthropic `claude-sonnet-5-5`, Gemini API `gemini-3.6-flash` and
+Vertex `gemini-3.7-flash`. Four mixed routing edges cover OpenAI to
+Vertex/Anthropic/Gemini and Qwen to Meta. Anthropic/Gemini/Vertex have live gate
+evidence but do not have the separate three-provider representative matrix;
+these routes remain provisional. No provider parity or universal reliability is
+implied. Earlier failed campaigns remain historical failures.
+
+Stable 1.3.0 retained those pins and passed its own source-bound campaign in
+[run 37031040747](https://github.com/Zhivex/zhivex-harness/actions/runs/37031040747): all six-provider live gates and 42/42
+Meta/Qwen/OpenAI representative cases passed on the exact stable tarball.
+Code 0.1.0 passed real registry acceptance after Harness stable publication in
+[run 37036369187](https://github.com/Zhivex/zhivex-harness/actions/runs/37036369187). Both packages are published and verified on
+latest. Code's propagation-only recovery reused the original tarball and skipped
+publication of identical bytes. No paid reruns occurred. See [Release process](RELEASE.md)
+for the publication record, authorized scope and historical preparation.
+CLI/Desktop defaults and saved model selections remain unchanged.
+
+## Prepared 1.2.0 cohort
+
+RC13 passed exact-artifact validation, all live gates, the complete 42-case
+representative matrix and publication in [workflow 36291748057](https://github.com/Zhivex/zhivex-harness/actions/runs/36291748057).
+Its npm `next` artifact, SHA-512 integrity and SLSA source/workflow provenance were
+independently verified against `v1.2.0-rc.13` at `d9b619e6c67ee831d246f9c0c08d0edc2143b584`.
+
+The stable 1.2.0 preparation changes release metadata and documentation only.
+It retains Meta `muse-spark-1.3-contributor`, Qwen `qwen3.8-flash` and OpenAI
+`gpt-6-luna`. Its protected workflow validates the stable artifact before
+publication to `latest`; RC evidence remains bound to the original RC artifact.
+User-session defaults and saved model selections are unchanged.
+
+## What it proves
+
+For each selected provider, the base gate:
+
+1. creates one digest-bound proposal with a real model;
+2. pauses before the mutation and persists the approval request;
+3. restarts against the same scoped durable store;
+4. approves and resumes the saved run; and
+5. verifies exact completion, patch contents, and exactly-once journal evidence.
+
+Separate gates exercise reviewer delegation, mixed-provider routing, model-directed OCI execution, and the real container boundary. Passing one gate never implies that another provider or execution path is certified.
+
+The default mixed-provider route uses OpenAI as parent and Qwen as reviewer, keeping the release gate inside the certified cohort. Set `ZHIVEX_HARNESS_LIVE_PARENT_PROVIDER` and `ZHIVEX_HARNESS_LIVE_REVIEWER_PROVIDER` explicitly to certify another pair; selecting Gemini remains provisional and requires its credential plus every provider gate.
+
+## Running the gates
+
+The package exposes dedicated Bun scripts for:
+
+- the base provider approval/restart matrix;
+- bounded reviewer delegation and persistence;
+- mixed-provider parent/child routing;
+- model-directed command, review, and import; and
+- real OCI boundary enforcement.
+
+Live scripts require an explicit network opt-in and explicit local credentials. Provider selection and model or endpoint overrides use the normal configuration contract. The scripts fail closed when prerequisites are missing and print the required invocation without revealing configured values.
+
+The manual workflow and the release-bound live job both wait for a no-permission resolver loaded from the dispatched ref. That resolver is defense in depth, not the trust boundary. The boundary is the `live-certification` environment, which must allow deployments only from selected `v*` tags, together with the maintainer-only tag ruleset in [Public repository security](../security/PUBLIC_SECURITY.md). When the resolver still runs, it requires the workflow ref to be exactly `refs/tags/vX.Y.Z` or `refs/tags/vX.Y.Z-rc.N` and accepts only an annotated tag whose commit is the dispatched workflow commit and an ancestor of `main`. Later steps check out that SHA. A dispatch from `main` is rejected and cannot enter the environment, including when that commit equals the tag. Provider secrets and Vertex `id-token: write` are granted only to the certification job, and only when that environment rule allows the ref.
+
+Keep credentials and account-specific configuration only in the ignored local environment file. Never commit that file or copy its contents into prompts, fixtures, evidence, or issue reports.
+
+## Support labels
+
+The default live matrix contains only providers marked `certified` by the registry. A provisional provider must be selected explicitly and remains provisional until all required provider, delegation, routing, and execution gates pass for the release candidate.
+
+Gemini is integrated as a provisional provider in `0.7.0`. Deterministic adapter tests or independent SDK certification are insufficient to promote it.
+
+## Evidence contract
+
+Certification evidence is provider-, model-, endpoint-, account-, artifact-, and date-bound. A valid record contains only:
+
+- provider and model identifiers;
+- pass/fail status for each required boundary;
+- approval, restart, persistence, journal, routing, and execution checks;
+- the source commit and exact artifact identity; and
+- a timestamp suitable for determining staleness.
+
+Evidence must not contain credential values, custom endpoints, workspace or account identifiers, raw prompts, tool arguments, provider payloads, durable messages, stack traces, or repository contents. Operator-specific evidence belongs in protected CI artifacts with bounded retention; public documentation records only the support conclusion and its limits.
+
+## Redaction and failure behavior
+
+Public workflow errors are projected onto stable code, category, retryability, optional numeric HTTP status, allowlisted diagnostic code, and a deterministic fingerprint. Messages, response bodies, stacks, prompts, model output, provider payloads, headers, credentials, and raw request/run identifiers are omitted rather than merely pattern-redacted. The release-gate wrapper drains bounded child output for classification but never relays that raw stdout/stderr to Actions. Every live and OCI phase, including OCI image preload, writes one strict diagnostic document bound to the tag, source commit, exact tarball SHA-512, workflow run URL, and `github.run_attempt`; the `always()` upload retains only those projected documents. Each document records every selected provider outcome, including successful siblings of a failed provider. The complete matrix continues after an individual provider, credential, or gate failure, writes a sanitized Actions summary naming the provider or phase, and exits non-zero from one final aggregate gate when any required entry fails. A missing, malformed, cross-run, or identity-mismatched document is reported as `diagnostic unavailable` and fails closed.
+
+A missing credential, unavailable container runtime, upstream failure, incomplete tool sequence, routing mismatch, stale artifact, or redaction failure leaves the affected path uncertified. Deterministic tests, successful package installation, or credential presence are never substitutes for live evidence.
+
+Mixed-routing failures also retain an optional strict `routing` projection with
+finite stage, assertion, parent/reviewer provider identities and at most two
+typed cleanup failures. The driver retains the first recognized typed operational
+error from runtime events or the terminal returned/rejected failure, using the
+first generic error only as a fallback. This includes artifact errors with a
+different class identity. Model output and serialized human-readable error
+messages never become assertion evidence. Cleanup still runs after a failure and cannot replace
+the primary failure; success is emitted only after cleanup succeeds. The summary
+includes the stage/assertion, route and available numeric HTTP status. These
+fields do not change routing acceptance, model pins, budgets or retry policy.
+Older documents without this optional projection remain valid and cannot be
+used to reconstruct a missing failure stage or attribute a historical failure
+to a provider. Offline fault injection validates diagnostic behavior only; it
+does not certify a live route or authorize another campaign.
+
+## Current public status
+
+Harness `1.3.0` and Code `0.1.0` are verified on npm `latest` as of 2026-10-02,
+from `aa86de8d700f893253559b00c1f7191e7dab48b9`. The mutable `release-status.json` records Harness 1.3.0;
+[publication evidence](../reports/evidence/stable-publication-2026-10-02.json) records both package digests, source-bound SLSA
+provenance, successful workflows and the Code propagation-only recovery.
+Harness RC7 and Code RC2 remain on `next`. The representative matrix covers only
+Meta/Qwen/OpenAI; Anthropic/Gemini/Vertex remain provisional. Desktop remains
+private alpha and beta/experimental API tiers are unchanged.
+
+## Historical public status on 2026-09-24
+
+`@zhivex-ai/harness@1.1.1` was the npm `latest` version recorded on 2026-09-24. Its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35941193290) passed exact-artifact validation, live-provider certification, the complete representative matrix and publication. At that time, the mutable `release-status.json` record had not been refreshed from 1.0.0 and did not establish 1.1.1 evidence. The failed `v1.1.2` and `v1.1.3` attempts did not publish.
+
+### Historical 1.0.0 publication evidence
+
+`@zhivex-ai/harness@1.0.0` was published on `latest` at `2026-09-20T14:33:51.271Z`, from annotated tag `v1.0.0` and commit `69c8a4b0b3e62c3f492257a792670ce6ce8f4298`. The [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/35514103845) passed artifact validation and all six live/OCI gates in attempt 1. Its first representative matrix had one failed Qwen case and publication was skipped. The authorized second attempt reran the entire 42-case matrix: Meta, Qwen and OpenAI each passed 14/14, with no omissions, before npm publication. The [first-attempt report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/GA_PUBLICATION_ATTEMPT_1_2026-09-20.md) remains authoritative for that failure.
+
+Independent verification matched published bytes, `latest`, SHA-512 `sha512-wIotQy/Az7UsfSfQyQusQZ5PJFBuOTWJoylLVRMsYnDKtF1MNuOVALgNFSAmrfdzEOUrUhU4EmWBpf8RC8UVyA==` and SLSA source/workflow provenance. See the [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/ga-publication-verified-2026-09-20.json) and [complete representative evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/evidence/ga-representative-2026-09-20.json). Live evidence belongs to attempt 1; representative and publication evidence belong to attempt 2 of the same workflow and immutable artifact.
+
+The failed RC.10 campaign did not publish or certify its artifact; its release-bound failure is preserved below. RC.14's completed security review used the explicit [delegated-AI exception](../security/RC14_DELEGATED_SECURITY_DECISION.md), not an independent human audit. Gemini remains provisional. The separate exploratory SWE-bench result remains Harness 0/5 versus control 1/5. The prior stable `0.11.1` remains an immutable historical release and rollback reference.
+
+The release workflow fails closed on the base, orchestration, routing, and model-directed execution gates before npm publication. The protected `live-certification` environment receives only maintainer-approved provider secrets; credentials are never committed or exposed in evidence.
+
+The controlled and official-SDK MCP interoperability gates remain separate transport evidence. They certify only the tested protocol, implementation, and compatibility mode, not every MCP server or future protocol version.
+
+## Historical release-bound evidence
+
+The protected [RC.12 release workflow 33695876968](https://github.com/Zhivex/zhivex-harness/actions/runs/33695876968) completed on 2026-09-02 against annotated tag `v1.0.0-rc.12` at `eb288bd3a0ef76dfbe630939d64e679437703bcb`, exact tarball SHA-512 `sha512-Qpo7W9VmGvKmnX08Zr4NK15AWUuHRoMaYA9f0iAksGKxeQ3gGP2ntLv3xSwth1uJnknoT1XMMS7CtTFdy5i/eg==`, and pinned OCI image `sha256:83ca6283f2764b04276b866e3520bc239be90c44d96157d6da0ba1d4d9aeef74`. The exact installed artifact passed deterministic validation, OCI enforcement, base provider behavior, bounded reviewer orchestration, mixed-provider routing, and model-directed execution. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each completed 14/14 representative cases with zero failed or omitted runs. The exact artifact was published to `next` at `2026-09-02T23:54:47.041Z` with registry SHA-512 agreement and verified SLSA provenance.
+
+The protected [RC.11 release workflow 33592828351](https://github.com/Zhivex/zhivex-harness/actions/runs/33592828351) completed on 2026-09-02 against annotated tag `v1.0.0-rc.11` at `0deb3e3f103eac5b4ccf38c585d8149b8472a356`, exact tarball SHA-512 `sha512-U/wCcN0wWpfZdyDu8zOkrU6abTnHigGa6hEt9ivSxrc8q/ev8oIvKMszzt4B9P4sO6s6naAUQz5jruASNpWNTA==`, and pinned OCI image `sha256:57680088e83f4bbb344350e70f6b4f4e90292efaebc4177bb0aec9770cfe59b6`. Its first attempt failed closed when one Qwen representative case returned `EXECUTION_FAILED`; Meta and OpenAI completed 14/14, Qwen completed 13/14, no unauthorized effects were observed, and npm publication was skipped for that attempt. A complete second attempt reran every deterministic, artifact, OCI, live-provider, representative, and publication gate from scratch. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each completed 14/14 representative cases with zero failed or omitted runs, every live boundary passed, and the exact validated artifact was published to `next` with verified npm integrity and SLSA provenance.
+
+The protected [RC.10 release workflow 33564054752](https://github.com/Zhivex/zhivex-harness/actions/runs/33564054752) ran on 2026-09-01 against annotated tag `v1.0.0-rc.10` at `a6cb74e99f9f449592187663d53a40f4f7a186db` and exact tarball SHA-512 `sha512-UheGnKl0z6U8To2r/IeFvj27ZVynGE8OnSu9IKPNk2zcCzVi2s5nfNLqXie8Ly+U1BblLs4dt/26tJKlV4GSbA==`. OCI preload and enforcement passed, as did Meta and Qwen base gates. OpenAI returned retryable HTTP 500 failures across base, orchestration, execution, and every representative case; the mixed route also failed. Meta completed 14/14 representative cases and Qwen completed 13/14 with zero unauthorized effects. The workflow failed closed before npm, so RC.10 is not published and is not certified.
+
+On 2026-08-23, protected [release workflow 32648233081](https://github.com/Zhivex/zhivex-harness/actions/runs/32648233081) checked out annotated tag `v0.11.1` at `d7e3e87a64999bc9244b55c398f1ef49b89d5a29`. Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna` each passed proposal/approval/restart/exactly-once, bounded reviewer delegation with persisted child state, and model-directed command/review/separate-import execution against the pinned no-network OCI image. The same run passed the OpenAI-parent/Qwen-reviewer route before publishing the exact validated tarball.
+
+The public package is bound to SHA-512 integrity `sha512-lF1ZzWi4HKsAUAdrpFb6Gf3afsrv89Mkm6tnqA/EGCHGWKZ7c1qQaM2opxrKFQIFQhfWJO4BrYMWQLDWC840kA==` and SLSA provenance for the release workflow, tag, and source commit. Gemini was not part of the certified release cohort and remains provisional.
+
+## Historical local tag-source evidence
+
+On 2026-08-22, a clean checkout of annotated tag `v0.11.0` at `652a299e2d6997ca4001dd9931ef2a82645f7204` passed the base proposal/approval/restart/exactly-once matrix for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna`. The same checkout passed bounded reviewer delegation and persistence for all three providers plus the OpenAI-parent/Qwen-reviewer mixed route.
+
+This evidence is source/tag-bound and date-bound, not a successful protected GitHub run or an installed-artifact provider certification. Model-directed OCI execution was not rerun locally because no Docker daemon was available; deterministic OCI enforcement passed on the exact published commit in CI. Gemini remains provisional.
+
+## Current security-hardening worktree evidence
+
+On 2026-08-23 UTC, the pre-commit security-hardening worktree passed the complete local live matrix for Meta `muse-spark-1.2`, Qwen `qwen3.8-max`, and OpenAI `gpt-5.6-luna`: proposal/approval/restart/exactly-once, bounded reviewer delegation with SQLite reopen, OpenAI-parent/Qwen-reviewer routing, and model-directed command/review/separate-import execution against the pinned OCI image. This confirms the changed worktree behavior only; it is not tag-, installed-artifact-, protected-environment-, registry-, or provenance-bound evidence.
+
+The same worktree passed Gemini `gemini-3.7-flash` proposal/approval/restart/exactly-once and bounded reviewer delegation after the create-only digest field was made explicitly required in the tool schema and certification prompt. Its model-directed OCI execution did not complete: the two bounded attempts stopped on provider HTTP `429 RESOURCE_EXHAUSTED` and `503 UNAVAILABLE` before a successful execution sequence. Gemini therefore remains provisional until execution and any required routing gates pass against an exact release candidate.
+
+## Historical local pre-release evidence
+
+On 2026-08-20, the uncommitted `0.8.0` source worktree with `@zhivex-ai/core@1.7.0` and `@zhivex-ai/openai@0.9.6` passed the base proposal/approval/restart/exactly-once gate for the GPT-5.6 family used by the Harness:
+
+| Provider | Model | Result |
+| --- | --- | --- |
+| OpenAI | `gpt-5.6-luna` | Passed |
+| OpenAI | `gpt-5.6-terra` | Passed |
+| OpenAI | `gpt-5.6-sol` | Passed |
+
+Every run persisted the `apply_patch` approval, restarted against the same scoped durable store, executed the approved mutation exactly once, and recorded exactly one completed journal entry.
+
+The `0.8.0`-bound runs completed at `2026-08-20T20:13:24.151Z` for Luna, `2026-08-20T20:13:25.211Z` for Terra, and `2026-08-20T20:13:27.441Z` for Sol. The Luna run omitted the model override and resolved to `gpt-5.6-luna` through the provider registry default.
+
+This is local pre-release evidence, not public release certification: the worktree is not committed, the exact `0.8.0` artifact is not published, and the source-commit/provenance requirement is therefore unsatisfied. It certifies only the shared Harness edit-and-resume path. It does not certify GPT-5.6 Programmatic Tool Calling, Multi-agent, hosted tools, long-context pricing, model-directed OCI execution, or mixed-provider routing.

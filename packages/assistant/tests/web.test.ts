@@ -28,6 +28,7 @@ test('local web authenticates, rejects cross-origin mutations and persists conve
     await fetch(web.origin + '/api/message', { method: 'POST', headers, body });
     const state = await (await fetch(web.origin + '/api/state', { headers })).json() as any;
     expect(state.sessions).toHaveLength(1); expect(state.sessions[0].runs).toHaveLength(1);
+    expect(state.sessions[0].runs[0].prompt).toBe('Hello from the web');
     expect(state.timeZone).toBe('America/Argentina/Buenos_Aires');
     expect((await fetch(web.origin + '/api/task-metrics')).status).toBe(401);
     const metrics = await (await fetch(web.origin + '/api/task-metrics', { headers })).json() as any;
@@ -47,6 +48,7 @@ test('local web authenticates, rejects cross-origin mutations and persists conve
     expect((await fetch(web.origin + '/api/state', { headers: { authorization: headers.authorization } })).status).toBe(401);
     const newToken = new URLSearchParams(new URL(web.url).hash.slice(1)).get('token');
     const restored = await (await fetch(web.origin + '/api/state', { headers: { authorization: `Bearer ${newToken}` } })).json() as any;
+    expect(restored.sessions[0].runs[0].prompt).toBe('Hello from the web');
     expect(restored.sessions[0].sessionId).toBe(state.sessions[0].sessionId);
   } finally { await web?.close(); await host?.close(); await rm(directory, { recursive: true, force: true }); }
 }, 30_000);

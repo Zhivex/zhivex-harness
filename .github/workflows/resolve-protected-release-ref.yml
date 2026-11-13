@@ -65,7 +65,7 @@ jobs:
           # main can match the tagged commit and still be excluded from
           # tag-only environments and Vertex identity. This check is defense
           # in depth, not the trust boundary: the dispatched ref loads this
-          # file and can omit it. See docs/PUBLIC_SECURITY.md.
+          # file and can omit it. See docs/security/PUBLIC_SECURITY.md.
           if [[ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]]; then
             printf 'dispatch the workflow from the exact annotated tag ref\n' >&2
             exit 1

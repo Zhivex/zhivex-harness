@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import pty
+import re
 import select
 import shutil
 import struct
@@ -27,13 +28,15 @@ class Console:
         self.pending = b""
     def read(self, marker):
         deadline = time.monotonic() + 15
-        while marker.encode() not in self.pending:
+        def match():
+            return re.search(rb"(?:\n|\x1b\[0J)> ", self.pending) if marker == "\n> " else re.search(re.escape(marker.encode()), self.pending)
+        while not match():
             if time.monotonic() > deadline: raise AssertionError((marker, self.pending[-2000:]))
             if select.select([self.master], [], [], .1)[0]:
                 try: chunk = os.read(self.master, 65536)
                 except OSError: raise AssertionError((marker, self.pending[-2000:]))
                 self.pending += chunk
-        end = self.pending.index(marker.encode()) + len(marker.encode())
+        end = match().end()
         result, self.pending = self.pending[:end], self.pending[end:]
         return result
     def read_selection(self):
@@ -84,8 +87,8 @@ try:
         hidden_output = setup.read("\n> ")
         assert b"opaque-setup-fixture" not in hidden_output
         assert hidden_output.count(b"Welcome") == 1
-        assert b"Ready" in hidden_output and b"credential: temporary" in hidden_output
-        assert b"Changes require your approval" in hidden_output
+        assert b"API key is available only for this CLI session" in hidden_output
+        assert b"Zhivex asks before it changes files" in hidden_output
         assert b"Open zhx" not in hidden_output
         setup.send("/credentials\n")
         setup.read("Credentials / Provider")
@@ -113,7 +116,10 @@ try:
     detected = Console([], dict(env, ZHIVEX_HARNESS_CONFIG_DIR=str(root / "detected"), DASHSCOPE_API_KEY="fixture-only"))
     try:
         output = detected.read("\n> ")
-        assert b"qwen/" in output and b"credential: environment" in output, output
+        assert b"qwen/" in output, output
+        detected.send("/status\n")
+        detected.read("Credential: environment")
+        detected.read("\n> ")
         assert b"First-time setup" not in output and b"Credentials / openai" not in output
         detected.send("/exit\n")
         assert detected.wait_exit() == 0
@@ -141,12 +147,12 @@ try:
             output = preferred.read("\n> ")
             assert b"Use default profile" not in output
             if "--approval-mode" in args:
-                assert (b"Restricted mode:" if args[-1] == "restricted" else b"Automatic approvals are enabled") in output
+                assert (b"Restricted mode:" if args[-1] == "restricted" else b"Automatic approvals are on") in output
             assert b"qwen" in output.lower(), output
             assert json.loads(profile_path.read_text())["model"] == qwen_profile["model"]
             preferred.send("/context\n")
             context_output = preferred.read("Active retained conversation:") + preferred.read("\n> ")
-            expected = b"Cumulative token limits per run:" if "--token-budget" in args else b"Cumulative token budget: unlimited"
+            expected = b"Cumulative token limits per run:" if "--token-budget" in args else b"Cumulative token budget per run: unlimited"
             assert expected in context_output, context_output
             if "--context-tokens" in args:
                 assert b"100000 estimated tokens" in context_output
@@ -220,10 +226,14 @@ try:
         direct.send("\x03")
         direct.read("Input interrupted")
         direct.read("\n> ")
+        request_count = len((root / "requests.jsonl").read_text().splitlines()) if (root / "requests.jsonl").exists() else 0
         direct.send("WAIT_FIXTURE\n")
-        direct.read("Waiting for model response")
+        deadline = time.monotonic() + 5
+        while not (root / "requests.jsonl").exists() or len((root / "requests.jsonl").read_text().splitlines()) <= request_count:
+            assert time.monotonic() < deadline, direct.pending[-4000:]
+            if select.select([direct.master], [], [], .02)[0]:
+                direct.pending += os.read(direct.master, 65536)
         direct.send("queued follow-up\r")
-        direct.read("1 queued")
         direct.read("Fixture done")
         direct.read("Queued task > queued follow-up")
         direct.read("Fixture done")
@@ -232,10 +242,14 @@ try:
         direct.read("Activity history")
         direct.read("Run completed")
         direct.read("\n> ")
+        request_count = len((root / "requests.jsonl").read_text().splitlines())
         direct.send("WAIT_FIXTURE draft restoration\r")
-        direct.read("Waiting for model response")
+        deadline = time.monotonic() + 5
+        while not (root / "requests.jsonl").exists() or len((root / "requests.jsonl").read_text().splitlines()) <= request_count:
+            assert time.monotonic() < deadline, direct.pending[-4000:]
+            if select.select([direct.master], [], [], .02)[0]:
+                direct.pending += os.read(direct.master, 65536)
         direct.send("unsent background draft")
-        direct.read("draft: unsent background draft")
         direct.read("Fixture done")
         direct.read("\n> ")
         direct.read("unsent background draft")
@@ -298,14 +312,15 @@ try:
         direct.send("\x1b")
         direct.read("\n> ")
         direct.send("EDIT_FIXTURE\n")
-        approval_card = direct.read("Permission required")
+        approval_card = direct.read("Waiting for your decision")
         assert b"approval approval_" not in approval_card and b"input sha256:" not in approval_card
-        direct.read_selection()
-        direct.send("View technical\n")
-        direct.read("Complete approval payload:")
-        direct.read("Permission required")
-        direct.read_selection()
-        direct.send("Allow once\n")
+        direct.read("No action highlighted")
+        direct.send("d")
+        payload = direct.read("Waiting for your decision · details")
+        assert b"apply_reviewed_edits" in payload and b'"changes"' in payload
+        assert b"approval approval_" in payload
+        direct.read("No action highlighted")
+        direct.send("\x1b[B\x1b[Ba")
         direct.read("Fixture done")
         direct.read("\n> ")
         assert (root / "result.txt").read_text() == "approved fixture edit\n"

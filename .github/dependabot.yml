@@ -13,21 +13,17 @@ updates:
       - dependencies
       - security
 
-  # Desktop is paused. Keep the directory entry so the pause is explicit,
-  # and open no dependency update pull requests for it.
   - package-ecosystem: bun
-    directory: /desktop
+    directory: /packages/assistant
     schedule:
       interval: weekly
-      day: monday
-      time: "09:15"
-      timezone: America/Argentina/Buenos_Aires
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
-    labels:
-      - dependencies
-      - security
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: cargo
+    directory: /packages/assistant/src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
     directory: /

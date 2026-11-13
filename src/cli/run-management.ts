@@ -1,16 +1,10 @@
-import { governanceReportCli } from './governance-report.js';
-import { inspectRuntimeDiagnostics } from "../runtime/runtime-diagnostics.js";
-import { formatUsageLedger } from "../runtime/usage-ledger.js";
-import { resolveHarnessConfig } from "../runtime/config.js";
-import {
-  cancelHarnessRun,
-  cleanupHarnessRuns,
-  inspectHarnessRun,
-  listHarnessRuns,
-  openHarnessPersistence
-} from "../persistence/operations.js";
-import { validateStateDirectory } from "../persistence/state-directory.js";
-import { CliOciRuntimeAdapter, cleanupHarnessExecutionArtifacts } from "../execution/execution-environment.js";
+import { inspectRuntimeDiagnostics } from "../compat/code-support.js";
+import { formatUsageLedger } from "../compat/code-support.js";
+import { checkEvidence } from "../compat/code-support.js";
+import { resolveHarnessConfig } from "../engine/index.js";
+import { cancelHarnessRun, cleanupHarnessRuns, inspectHarnessRun, listHarnessRuns, openHarnessPersistence } from "../engine/index.js";
+import { validateStateDirectory } from "../engine/index.js";
+import { CliOciRuntimeAdapter, cleanupHarnessExecutionArtifacts } from "../engine/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
 const printRunsDocument = (document: unknown, json: boolean) => {
@@ -61,16 +55,13 @@ export const manageRuns = async (options: CliOptions) => {
         });
         break;
       case "inspect":
-        document = await inspectHarnessRun(persistence.store, config, options.runId!);
+        document = { ...await inspectHarnessRun(persistence.store, config, options.runId!),
+          verification: checkEvidence((await persistence.store.listToolCalls?.(options.runId!, config.scope) ?? []).filter(row => row.status === 'completed').map(row => ({toolName:row.toolName,output:row.output}))) };
         break;
-      case "report": {
-        const report = await governanceReportCli(options, config, persistence.store);
-        process.stdout.write(report);
-        return;
-      }
       case "export": {
         const inspection = await inspectHarnessRun(persistence.store, config, options.runId!);
-        document = { ...inspection, kind: "run-export" as const };
+        document = { ...inspection, kind: "run-export" as const,
+          verification: checkEvidence((await persistence.store.listToolCalls?.(options.runId!, config.scope) ?? []).filter(row => row.status === 'completed').map(row => ({toolName:row.toolName,output:row.output}))) };
         break;
       }
       case "cancel":

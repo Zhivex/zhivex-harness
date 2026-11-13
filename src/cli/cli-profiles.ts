@@ -1,4 +1,4 @@
-import { reasoningEffortSchema, type HarnessReasoningEffort } from "../providers/reasoning.js";
+import { reasoningEffortSchema, type HarnessReasoningEffort } from "../compat/code-support.js";
 import { constants as fsConstants } from "node:fs";
 import { lstat, mkdir, open, unlink, rename } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
@@ -7,19 +7,9 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import {
-  PROVIDERS,
-  providerAvailability,
-  type HarnessConfigInput,
-  type HarnessProvider
-} from "../runtime/config.js";
-import { HarnessConfigError } from "../runtime/errors.js";
-import {
-  FileChangedWhileReadingError,
-  FileSizeLimitError,
-  UnsafeFileTypeError,
-  readRegularFileNoFollow
-} from "../workspace/file-security.js";
+import { PROVIDERS, providerAvailability, type HarnessConfigInput, type HarnessProvider } from "../engine/index.js";
+import { HarnessConfigError } from "../engine/index.js";
+import { FileChangedWhileReadingError, FileSizeLimitError, UnsafeFileTypeError, readRegularFileNoFollow } from "../compat/code-support.js";
 
 export const CLI_PROFILE_SCHEMA_VERSION = 1 as const;
 export const CLI_PROFILE_CONFIG_DIRECTORY_ENV = "ZHIVEX_HARNESS_CONFIG_DIR" as const;
@@ -146,7 +136,7 @@ const profileReadError = (profilePath: string, error: unknown): never => {
     : undefined;
   if (code === "ENOENT") {
     throw new HarnessConfigError(
-      `CLI profile was not found: ${profilePath}. Create it with zhx init --profile <name>.`
+      `CLI profile was not found: ${profilePath}. Create it with zhivex-code init --profile <name>.`
     );
   }
   throw error;
@@ -224,7 +214,7 @@ export const createCliProfile = async (
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new HarnessConfigError(
-        `CLI profile already exists: ${profilePath}. Use zhx init --profile ${name} --update, or choose another --profile name.`
+        `CLI profile already exists: ${profilePath}. Use zhivex-code init --profile ${name} --update, or choose another --profile name.`
       );
     }
     throw error;

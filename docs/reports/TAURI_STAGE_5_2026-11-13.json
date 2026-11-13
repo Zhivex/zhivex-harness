@@ -1,0 +1,68 @@
+{
+  "stage": 5,
+  "date": "2026-11-13",
+  "status": "implemented-local",
+  "reused": [
+    "Code createCodingHarness composition and scoped local services",
+    "Desktop managed worktrees and fresh removal tickets",
+    "Desktop reviewed commit with index preservation and journal",
+    "Desktop GitHub HTTPS transport, push and PR reconciliation",
+    "Stage-3 effect review and complete FileDiff renderer",
+    "Stage-4 admission and controlled shutdown"
+  ],
+  "checks": {
+    "assistantSource": {
+      "passed": 196
+    },
+    "assistantInstalled": {
+      "passed": 195,
+      "skipped": 1,
+      "skipReason": "Separate Code checkout absent in standalone consumer"
+    },
+    "deliveryAdapters": {
+      "passed": 30,
+      "assertions": 197
+    },
+    "hostIsolation": "two simultaneous task runs, distinct stores/project IDs, cross-task approval rejected, third runtime refused, dirty source preserved, dirty removal rejected, clean removal succeeds, terminal blocks closure, branch identity change rejected",
+    "browser": "committed-HEAD creation, source exclusions, selected staging, complete local commit review, dropped commit response, reconcile with exactly one commit, unintegrated removal blocked, mobile layout; closing selected idle task returns to source project",
+    "nativeUi": "temporary macOS app: created task, selected stage, reviewed exact before/after, confirmed local commit, controlled quit",
+    "typechecks": [
+      "Assistant",
+      "web"
+    ],
+    "nativeReleaseBundle": "built macOS arm64",
+    "packagedHostAndWebMatch": 12,
+    "architecture": "passed",
+    "documentation": "passed",
+    "nativeExecutableSha256": "8a82a7f76935f490c9f2c2fb5e3974e43ed987079ad671831c078de875152474",
+    "productionDesktopSmoke": "passed against final app Contents/Resources/runtime"
+  },
+  "preservation": {
+    "initialDirtyOrUntrackedFiles": 82,
+    "initialFilesUnchanged": 72,
+    "initialFilesExtended": [
+      "docs/README.md",
+      "packages/assistant/web/src/ProjectWorkspace.tsx",
+      "packages/assistant/src/web/server.ts",
+      "docs/ASSISTANT_DESKTOP.md",
+      "docs/ASSISTANT_TAURI_AGENT_PLAN.md",
+      "packages/assistant/src/web/workspace.ts",
+      "packages/assistant/src/application.ts",
+      "packages/assistant/web/src/project-workspace.css",
+      "packages/assistant/src/terminal.ts",
+      "packages/assistant/src/projects.ts"
+    ],
+    "initialFilesMissing": [],
+    "committed": false,
+    "pushed": false
+  },
+  "limits": [
+    "No authenticated real push or PR; remote transports and ambiguous responses validated with offline fixtures",
+    "Native UI used an isolated temporary app/repository; no real provider calls",
+    "Two open managed task runtimes per host; idle task environments must be explicitly closed to free slots",
+    "Step/token/tool/duration limits apply per execution within a task, not to cumulative money over all follow-ups",
+    "Worktrees isolate Git working directories, not OS authority of the local command backend",
+    "Child-agent delegation remains disabled and distinct from independent tasks/profiles",
+    "Windows/Linux not validated"
+  ]
+}

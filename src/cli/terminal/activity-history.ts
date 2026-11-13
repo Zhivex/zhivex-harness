@@ -1,8 +1,7 @@
 import type { AgentStreamEvent } from "@zhivex-ai/agents";
 import { createRedactionPolicy } from "@zhivex-ai/agents";
-import type { MutationAuditEntry } from "../../workspace/edit-contracts.js";
+import type { MutationAuditEntry } from "../../engine/index.js";
 import { sanitizeTerminalText } from "./terminal-ui.js";
-import { compactToolResult } from "./tool-activity.js";
 
 const redaction = createRedactionPolicy({ includeEmails: true });
 const toolNames = new Set(["read_file", "read_files", "read_dependency", "search_files", "search_many", "list_files", "git_diff", "run_check", "run_environment_command", "propose_edits", "apply_patch", "apply_reviewed_edits", "apply_reviewed_replacement", "apply_environment_patch", "verify_and_apply_patch", "verify_and_apply_replacement", "move_file", "quarantine_file", "restore_file"]);
@@ -23,8 +22,6 @@ export class ActivityHistory {
     if (event.type === "agent-run-start") this.add("Run started / resumed");
     else if (event.type === "agent-step-start") this.add("Waiting for model response");
     else if (event.type === "agent-compaction") this.add("Updating context");
-    else if (event.type === "tool-call") this.add(`Preparing ${safeName(event.toolCall.name)}`);
-    else if (event.type === "tool-result") this.add(compactToolResult(event.toolResult) ?? `${event.toolResult.isError ? "Failed" : "Finished"} ${safeName(event.toolResult.toolName)}`);
     else if (event.type === "tool-approval-request") this.add(`Waiting for approval: ${safeName(event.approval.name)}`);
     else if (event.type === "agent-approval-resolved") this.add(event.approval.approve ? "Approval granted" : "Approval denied");
     else if (event.type === "agent-run-finish") this.add(`Run ${event.status}`);
@@ -45,8 +42,13 @@ export class ActivityHistory {
 }
 
 /** Only workspace-owned committed mutation receipts may supply file labels. */
-export const formatAppliedFiles = (entries: readonly Pick<MutationAuditEntry, "operation" | "path" | "destination">[], reviewHint = "/diff to review"): string => {
+export const formatAppliedFiles = (entries: readonly Pick<MutationAuditEntry, "operation" | "path" | "destination">[], reviewHint = "/diff to review", presentation: "block" | "line" = "block"): string => {
   if (!entries.length) return "";
+  if (presentation === "line") {
+    const shown = entries.slice(0, 3).map(entry => safePath(entry.path)).join(", ");
+    const more = entries.length > 3 ? `, +${entries.length - 3} more` : "";
+    return `✓ Applied ${entries.length} file change${entries.length === 1 ? "" : "s"} · ${shown}${more} · ${reviewHint}\n`;
+  }
   const lines = entries.slice(0, 20).map(entry => `  ${entry.operation} ${safePath(entry.path)}${entry.destination ? ` → ${safePath(entry.destination)}` : ""}`);
   if (entries.length > 20) lines.push(`  … ${entries.length - 20} more files`);
   return `✓ Applied ${entries.length} file change${entries.length === 1 ? "" : "s"}\n${lines.join("\n")}\n  ${reviewHint} · verification reported separately\n`;

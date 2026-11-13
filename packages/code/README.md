@@ -33,7 +33,7 @@ zhivex-code
 
 Choose a provider and model. Enter an API key in the hidden prompt, or rely on an environment variable you already exported. Save the key in the system keychain or keep it for this session. Review each edit and check before you approve it. Provider calls can cost money. `/usage` and `/budget` report estimates for each run. They are not invoices, and they are not a cap across a whole session.
 
-Credential details, including Vertex Application Default Credentials, are in [Credentials](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CREDENTIALS.md). The [first-use guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/FIRST_USE.md) shows the same prompts with the engine command `zhx`.
+Credential details, including Vertex Application Default Credentials, are in [Credentials](https://github.com/Zhivex/zhivex-harness/blob/main/docs/providers/CREDENTIALS.md). The [first-use guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/getting-started/FIRST_USE.md) shows the same prompts with the engine command `zhx`.
 
 ```sh
 zhivex-code --help
@@ -84,8 +84,7 @@ The terminal's background stays under your terminal application's control; Code
 adjusts the foreground colors of the welcome, composer, activity and reviewed diffs.
 `NO_COLOR`, non-TTY output and `TERM=dumb` retain their existing plain-output behavior.
 
-The web workspace has a separate Light / Dark / System preference, stored in the
-browser. It does not change the terminal's appearance.
+Tauri has its own interface preferences; the terminal appearance remains independent.
 
 ## Commands worth knowing
 
@@ -106,18 +105,18 @@ Restore shows current contents, captured contents, and current digests. Type `pr
 
 ## Limits
 
-- Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/SUPPORT_MATRIX.md).
+- Gemini, Anthropic, Vertex, Amazon Bedrock, and Azure OpenAI are provisional. See the [support matrix](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/SUPPORT_MATRIX.md).
 - Anthropic uses `ANTHROPIC_API_KEY` or `/credentials`. Vertex uses host Application Default Credentials with `GOOGLE_CLOUD_PROJECT` and `VERTEX_LOCATION`. Code does not store a Vertex API key.
 - Amazon Bedrock Converse uses the AWS credential chain with `AWS_REGION` or `AWS_DEFAULT_REGION`. `BEDROCK_RUNTIME=openai` uses `BEDROCK_OPENAI_BASE_URL` and `BEDROCK_API_KEY` or `AWS_BEARER_TOKEN_BEDROCK`. Azure OpenAI uses `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_API_KEY`, with optional `AZURE_OPENAI_API_VERSION` and `AZURE_OPENAI_DEPLOYMENTS`.
 - MCP in the default CLI is bounded Streamable HTTP. stdio is not enabled from workspace JSON.
-- `zhivex-code web` opens an experimental local browser workspace on macOS or Linux. Configure credentials in the CLI first. Sessions open from a drawer, and `zhivex-code project add` registers another folder without restarting the server. The task and evidence panel lets an operator define a bounded task, review artifacts and checks, and explicitly accept a snapshot before continuation. See [Code web tasks](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_WEB_TASKS.md), [local web client](https://github.com/Zhivex/zhivex-harness/blob/main/packages/web/README.md), and `zhivex-code web --help`.
+- The graphical interface is [Zhivex Assistant (Tauri)](../../docs/assistant/ASSISTANT_DESKTOP.md). The standalone `zhivex-code web` entrypoint is retired; terminal commands and existing history remain available.
 - The default runtime exposes no shell tools. Isolated commands need Docker or Podman, configured explicitly.
 
 ## Releases
 
 npm `latest` is the stable channel (Code `0.4.2`, pinned exactly to published Harness `1.6.3`). npm `next` is Code `0.3.0-rc.8` with Harness `1.4.0-rc.8`. Confirm dist-tags on [npm](https://www.npmjs.com/package/@zhivex-ai/code?activeTab=versions) before you install a prerelease.
 
-Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
+Channels, publication, and certification records: [Harness release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/RELEASE.md) and [Code release procedure](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/CODE_RELEASE.md). Releases are verified with npm provenance. Package history is in the [changelog](CHANGELOG.md).
 
 ## Contributors
 
@@ -126,7 +125,6 @@ Bun is contribution tooling. The published tarball runs on Node.js 22.13 or newe
 From this directory, after a compatible Harness package and the declared dependencies are installed:
 
 ```sh
-bun install --cwd ../web --frozen-lockfile --ignore-scripts
 bun run build
 bun run typecheck
 bun test tests

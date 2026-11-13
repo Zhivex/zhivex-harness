@@ -1,0 +1,20 @@
+/** Offline packaged PTY/lifecycle fixture; uses the production host and bridge. */
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import { createMockLanguageModel } from '@zhivex-ai/core/testing';
+import { startAssistantHost } from '../src/host.js';
+import { startAssistantWeb } from '../src/web/server.js';
+import { nativeProjectSelection } from '../src/native-selection.js';
+import { createDesktopLifecycle } from '../src/desktop-lifecycle.js';
+const root=await mkdtemp('/tmp/persistent-smoke-'),repo=root+'/sample-project';await mkdir(repo);execFileSync('git',['init','-q',repo]);await writeFile(repo+'/note.txt','Terminal fixture\n');
+const model=createMockLanguageModel({});
+model.stream=async()=> (async function*(){yield {type:'text-delta' as const,textDelta:'Working in the background… '};await new Promise(r=>setTimeout(r,20000));yield {type:'text-delta' as const,textDelta:'Background task completed.'};yield {type:'finish' as const,finishReason:'stop' as const};})();
+const host=await startAssistantHost({directory:root+'/state',ownerId:'persistent-smoke',engine:{modelInstance:model,model:'offline-persistent'},coding:{execution:'local',configurationId:'persistent-smoke-v1'}});
+const app=host.application!;const registered=await app.client.registerProject(await app.selectProject(repo));if(!registered.ok)throw new Error(registered.error.code);
+const binding=await app.client.createConversation({context:{kind:'project',projectKey:registered.data.projectKey},title:'Persistent task',idempotencyKey:randomUUID()});if(!binding.ok)throw new Error(binding.error.code);
+const native=nativeProjectSelection(process.stdin,process.stdout,()=>void host.close().then(()=>process.exit(0)),()=>lifecycle.requestQuit());
+const lifecycle=await createDesktopLifecycle({directory:root,native,control:operation=>host.controlClose(operation),work:()=>app.work(),close:async()=>{await web.close();await host.close();process.exit(0);}});
+const web=await startAssistantWeb(host,{assetsDirectory:fileURLToPath(new URL('../web/dist',import.meta.url)),native,lifecycle,chooseProject:native.choose});
+await writeFile('/tmp/tauri-stage4/native-fixture.json',JSON.stringify({root,repo,url:web.url,projectKey:registered.data.projectKey,conversationId:binding.data.conversationId}),{mode:0o600});process.stdout.write(JSON.stringify({url:web.url})+'\n');process.stdin.resume();

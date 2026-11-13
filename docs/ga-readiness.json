@@ -4,12 +4,12 @@
   "phase": "ready",
   "evidenceMaxAgeDays": 30,
   "contractManifest": "contracts/public-api.json",
-  "stabilityPolicy": "docs/STABILITY.md",
+  "stabilityPolicy": "docs/maintenance/STABILITY.md",
   "supportMatrix": "docs/support-matrix.json",
   "securityControls": "contracts/security-controls.json",
-  "threatModel": "docs/THREAT_MODEL.md",
-  "rollbackPolicy": "docs/ROLLBACK.md",
-  "deprecationPolicy": "docs/DEPRECATIONS.md",
+  "threatModel": "docs/security/THREAT_MODEL.md",
+  "rollbackPolicy": "docs/maintenance/ROLLBACK.md",
+  "deprecationPolicy": "docs/maintenance/DEPRECATIONS.md",
   "representativeEvaluation": "evaluations/representative-matrix.json",
   "migrationGuarantee": {
     "configSchemas": [
@@ -325,7 +325,7 @@
       "status": "closed",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/30",
       "evidence": [
-        "docs/CLI.md",
+        "docs/cli/CLI.md",
         "src/persistence/state-backup.ts",
         "tests/state-backup.test.ts"
       ]
@@ -335,7 +335,7 @@
       "status": "closed",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/31",
       "evidence": [
-        "docs/LIVE_CERTIFICATION.md",
+        "docs/maintenance/LIVE_CERTIFICATION.md",
         "evaluations/representative-matrix.json"
       ]
     },
@@ -344,7 +344,7 @@
       "status": "closed",
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/32",
       "evidence": [
-        "docs/RC14_DELEGATED_SECURITY_DECISION.md",
+        "docs/security/RC14_DELEGATED_SECURITY_DECISION.md",
         "security-reviews/rc14-review.json"
       ]
     },
@@ -354,9 +354,9 @@
       "issue": "https://github.com/Zhivex/zhivex-harness/issues/33",
       "evidence": [
         ".github/workflows/release.yml",
-        "docs/GA_READINESS.md",
-        "docs/GEMINI_1_0_DECISION.md",
-        "docs/LIVE_CERTIFICATION.md",
+        "docs/maintenance/GA_READINESS.md",
+        "docs/maintenance/LIVE_CERTIFICATION.md",
+        "docs/reports/GEMINI_1_0_DECISION.md",
         "docs/support-matrix.json",
         "evaluations/representative-matrix.json",
         "src/providers/providers.ts"

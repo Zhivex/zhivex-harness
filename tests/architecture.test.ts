@@ -2,8 +2,43 @@ import { expect, test } from "bun:test";
 import path from "node:path";
 import { architectureViolations, checkArchitecture, sourceDependencies, engineBoundaryViolations } from "../scripts/check-architecture.js";
 
-test("source boundaries hold across runtime and Desktop", async () => {
+test("source boundaries hold across runtime, Desktop, Code and Assistant renderer", async () => {
   expect(await checkArchitecture(path.resolve(import.meta.dir, ".."))).toEqual([]);
+});
+
+test("Assistant renderer rejects host code through imports, re-exports and helpers", () => {
+  for (const target of ["../../src/host.js", "../../src/client.js", "@zhivex-ai/assistant", "@zhivex-ai/harness/engine", "@zhivex-ai/harness/service", "node:fs", "fs", "electron", "@tauri-apps/plugin-shell", "/tmp/host.ts"]) {
+    for (const source of [`import x from "${target}";`, `export { x } from "${target}";`, `const x = import("${target}");`, `type X = import("${target}").X;`]) {
+      expect(architectureViolations("packages/assistant/web/src/helper.ts", source).length).toBeGreaterThan(0);
+    }
+  }
+  expect(architectureViolations("packages/assistant/web/src/helper.ts", 'const x = require(target);')).toHaveLength(1);
+  expect(architectureViolations("packages/assistant/web/src/helper.ts", 'import type { AssistantApplicationClient } from "../../src/application-contracts.js";')).toEqual([]);
+  expect(architectureViolations("packages/assistant/web/src/App.tsx", 'import { useState } from "react"; import "./style.css";')).toEqual([]);
+});
+
+test("client contracts cannot hide privileged transitive imports, including erased types", () => {
+  for (const source of ['export * from "./host.js";', 'import type { X } from "./client.js";', 'import { x } from "@zhivex-ai/harness/protocol";', 'const x = import(target);']) {
+    expect(architectureViolations("packages/assistant/src/application-contracts.ts", source).length).toBeGreaterThan(0);
+  }
+  expect(architectureViolations("packages/assistant/src/application-contracts.ts", 'import type { HarnessClientCommand } from "@zhivex-ai/harness/protocol";')).toEqual([]);
+});
+
+test("Assistant and Code cannot import Electron implementation", () => {
+  for (const file of ["packages/assistant/src/adapter.ts", "packages/code/src/adapter.ts"]) {
+    for (const target of ["electron", "@electron/remote", "../../../desktop/src/main.js"]) {
+      expect(architectureViolations(file, `export { x } from "${target}";`).length).toBeGreaterThan(0);
+    }
+  }
+  expect(architectureViolations("packages/code/src/adapter.ts", 'import { host } from "@zhivex-ai/assistant";')).toHaveLength(1);
+});
+
+test("application contracts bundle for browsers without loading the host", async () => {
+  const result = await Bun.build({ entrypoints: [path.resolve(import.meta.dir, "../packages/assistant/src/application-contracts.ts")], target: "browser" });
+  expect(result.success).toBe(true);
+  expect(result.logs).toEqual([]);
+  const output = await result.outputs[0]!.text();
+  expect(output).not.toMatch(/node:|electron|startAssistantHost|createHarness/);
 });
 
 test("Assistant uses public engine exports and Harness never depends on Assistant", () => {
@@ -149,4 +184,8 @@ test("engine closure cannot bypass isolation through self-package aliases or ter
       expect(violations[0]).toContain(`src/engine/index.ts -> src/runtime/bridge.ts -> ${target}`);
     }
   }
+});
+
+test("Code cannot reintroduce the retired standalone web dependency", () => {
+  expect(architectureViolations("packages/code/src/cli-entry.ts", 'import { runWeb } from "../../web/src/cli.js";')).toHaveLength(1);
 });

@@ -28,3 +28,8 @@ desktop/.harness/
 /tests/private/minimum-evals/
 /.private-minimum-evals/
 /private-minimum-evals/
+
+# Assistant native preview build outputs
+packages/assistant/src-tauri/target/
+packages/assistant/src-tauri/runtime/
+packages/assistant/src-tauri/gen/

@@ -2,13 +2,13 @@ import { expect, jest, spyOn, test } from "bun:test";
 import { ToolActivity } from "../src/cli/terminal/tool-activity.js";
 import { terminalRunFailure } from "../src/cli/terminal/terminal-ui.js";
 
-test("completed tools produce one grouped summary without terminal controls", () => {
+test("transient activity leaves persistent summaries to the activity stream", () => {
   let output = "";
   const activity = new ToolActivity(text => { output += text; }, false);
   for (let i = 0; i < 24; i++) { activity.start(); activity.finish("read_file"); }
   expect(output).toBe("");
   activity.flush(); activity.flush();
-  expect(output).toContain("reads: 24");
+  expect(output).toBe("");
   expect(output).not.toContain("\x1b");
 });
 
@@ -17,9 +17,9 @@ test("TTY activity stays on one narrow line and is erased at boundaries", () => 
   const activity = new ToolActivity(text => { writes.push(text); }, true, () => 20);
   activity.start(); activity.start(); activity.finish("search_many"); activity.flush();
   expect(writes.slice(1, -1).every(text => text.startsWith("\r\x1b[2K") && text.length <= 24)).toBe(true);
-  expect(writes.join("")).toContain("searches: 1");
+  expect(writes.at(-1)).toBe("\r\x1b[2K");
   activity.finish("read_file"); activity.flush();
-  expect(writes.join("")).toContain("reads: 1");
+  expect(writes.at(-1)).toBe("\r\x1b[2K");
 });
 
 test("runtime limits are classified without exposing arbitrary provider errors", () => {
@@ -57,8 +57,8 @@ test("compact stream keeps conversation, approvals and failed checks visible", a
     await send({ type: "tool-approval-request", approval: { id: "a", name: "apply_patch" } });
     flushToolActivity(tracker);
     expect(output).toContain("Reading sources.");
-    expect(output).toContain("✓ Activity · reads: 24 · searches: 1\n");
-    expect(output.match(/✓ Activity/g)).toHaveLength(1);
+    expect(output).toContain("Explored 24 files · 1 search");
+    expect(output).not.toContain("✓ Activity");
     expect(output).toContain("Here is the answer.");
     expect(output).toContain("exit 1");
     expect(output).not.toContain("approval ·");
@@ -91,14 +91,15 @@ test("duplicate error events render once per run while JSONL retains both", asyn
 });
 
 
-test("repeated model steps leave one activity summary at the conversation boundary", () => {
+test("repeated model steps erase transient progress without duplicating the activity stream", () => {
   let output = "";
   const activity = new ToolActivity(text => { output += text; }, true);
   for (let i = 0; i < 30; i++) { activity.start("read_file"); activity.finish("read_file"); activity.phase("Waiting for model response", i); }
   activity.flush();
   expect(output).not.toContain("\n\n");
-  expect(output.match(/✓ Activity/g)).toHaveLength(1);
-  expect(output).toContain("reads: 30");
+  expect(output).not.toContain("✓ Activity");
+  expect(output).toContain("30 tools done");
+  expect(output.endsWith("\r\x1b[2K")).toBe(true);
 });
 
 
@@ -155,7 +156,8 @@ test("prose pauses transient progress without losing exploration or leaving a he
     expect(output).toBe(paused);
     expect(output).not.toContain("✓ Activity");
     activity.start("search_files"); activity.finish("search_files"); activity.flush();
-    expect(output).toContain("✓ Activity · reads: 1 · searches: 1\n");
+    expect(output).toContain("2 tools done");
+    expect(output.endsWith("\r\x1b[2K")).toBe(true);
   } finally { activity.flush(); jest.useRealTimers(); }
 });
 
@@ -178,12 +180,12 @@ test("interleaved narration and tool results leave one summary and safe actionab
     await sink({ type: "tool-result", toolResult: { toolName: "apply_patch", output: "PRIVATE" } } as never);
     expect(output).toContain("invalid arguments");
     expect(output).toContain("file not found");
-    expect(output).toContain("✓ Edits applied");
+    expect(output).not.toContain("✓ Edits applied");
     expect(output).not.toContain("✓ Activity");
     await sink({ type: "agent-run-finish", status: "waiting_approval" } as never);
     flushToolActivity(tracker);
-    expect(output.match(/✓ Activity/g)).toHaveLength(1);
-    expect(output).toContain("dependency inspections: 8");
+    expect(output).not.toContain("✓ Activity");
+    expect(output.match(/Inspected a dependency/g)).toHaveLength(8);
     expect(output).not.toContain("PRIVATE");
     expect(output).not.toContain("SECRET");
     expect(output).not.toContain("edits: 1");

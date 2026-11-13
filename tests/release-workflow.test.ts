@@ -139,53 +139,13 @@ describe("release workflow version source", () => {
     expect(workflow).not.toMatch(/HARNESS_VERSION !== "\d+\.\d+\.\d+"/);
   });
 
-  test("CI and Dependabot cover the desktop dependency boundary", async () => {
-    const [workflow, dependabot] = await Promise.all([
-      readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8"),
-      readFile(path.join(workspace, ".github/dependabot.yml"), "utf8")
-    ]);
-
-    expect(workflow).toContain("desktop-security:");
-    expect(workflow).toContain("bun install --cwd desktop --frozen-lockfile --ignore-scripts");
-    expect(workflow).toContain("working-directory: desktop");
-    expect(workflow).toContain("bun test desktop/tests");
-    expect(workflow).toContain("bun run --cwd desktop package");
-    expect(workflow).toContain("bun run --cwd desktop smoke:packaged --empty-start");
-    expect(dependabot).toMatch(/package-ecosystem: bun\n\s+directory: \/desktop/);
-  });
-
-  test("macOS CI prepares the Electron binary before native tests", async () => {
-    const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
-      jobs: Record<string, { steps: { name: string; run?: string; if?: string }[] }>;
-    };
-    for (const [job, testCommand] of [["desktop-security", "bun test desktop/tests"], ["verify", "bun run check"]] as const) {
-      const steps = workflow.jobs[job]!.steps;
-      const installIndex = steps.findIndex(step => step.run?.includes("node desktop/node_modules/electron/install.js"));
-      const testIndex = steps.findIndex(step => step.run?.includes(testCommand));
-      expect(installIndex).toBeGreaterThanOrEqual(0);
-      expect(testIndex).toBeGreaterThan(installIndex);
-      expect(steps.slice(0, installIndex + 1).some(step =>
-        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"))).toBe(true);
-      if (job === "verify") expect(steps[installIndex]!.if).toBe("runner.os == 'macOS'");
+  test("core CI and release do not install or package retired products", async () => {
+    for (const file of ["ci.yml", "release.yml"]) {
+      const workflow = await readFile(path.join(workspace, ".github/workflows", file), "utf8");
+      expect(workflow).not.toMatch(/electron|cwd desktop|prepare:desktop|desktop-security/);
     }
-  });
-
-  test("full-suite jobs install Desktop renderer dependencies on every platform", async () => {
-    for (const [file, job, command] of [
-      ["ci.yml", "verify", "bun run check"],
-      ["release.yml", "validate", "bun run release:check"],
-    ] as const) {
-      const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows", file), "utf8")) as {
-        jobs: Record<string, { steps: { run?: string; if?: string }[] }>;
-      };
-      const steps = workflow.jobs[job]!.steps;
-      const testIndex = steps.findIndex(step => step.run?.includes(command));
-      const installIndex = steps.findIndex(step =>
-        step.run?.includes("bun install --cwd desktop --frozen-lockfile --ignore-scripts"));
-      expect(installIndex).toBeGreaterThanOrEqual(0);
-      expect(testIndex).toBeGreaterThan(installIndex);
-      expect(steps[installIndex]!.if).toBeUndefined();
-    }
+    const manifest = JSON.parse(await readFile(path.join(workspace, "package.json"), "utf8"));
+    expect(manifest.scripts.test).not.toContain("desktop/tests");
   });
 
   test("release artifact transfer actions are pinned to immutable commit SHAs", async () => {
@@ -427,21 +387,15 @@ test("all live release gates select the checked artifact and prohibit source fal
   }
 });
 
-test("Desktop CI exercises packaged restart, uncertain effects and worktree delivery", async () => {
-  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/ci.yml"), "utf8")) as {
-    jobs: Record<string, { steps: { run?: string }[] }>;
+test("Tauri CI tests Rust and the actual packaged runtime on arm64", async () => {
+  const workflow = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/assistant.yml"), "utf8")) as {
+    jobs: Record<string, { "runs-on": string; steps: { run?: string }[] }>;
   };
-  const steps = workflow.jobs["desktop-security"]!.steps;
-  const packaged = steps.find(step => step.run?.includes("bun run --cwd desktop package"))!.run!;
-  // Restart/history checks invoke the root CLI; Desktop packaging does not build it.
-  const commands = steps.flatMap(step => (step.run ?? "").split("\n").map(line => line.trim()));
-  const cliBuild = commands.indexOf("bun run prepare:desktop");
-  const manifest = await Bun.file(new URL("../package.json", import.meta.url)).json();
-  expect(manifest.scripts["prepare:desktop"]).toStartWith("bun run build && bun pm pack");
-  expect(manifest.scripts["prepare:desktop"]).toContain("desktop/scripts/prepare-harness.ts");
-  expect(cliBuild).toBeGreaterThanOrEqual(0);
-  expect(cliBuild).toBeLessThan(commands.indexOf("bun run --cwd desktop smoke:restart:packaged"));
-  for (const scenario of ["smoke:restart:packaged", "smoke:restart:packaged --effect-crash", "smoke:restart:packaged --active-close", "smoke:worktrees:packaged"]) {
-    expect(packaged).toContain(`bun run --cwd desktop ${scenario}`);
-  }
+  const native = workflow.jobs["tauri-native"]!;
+  expect(native["runs-on"]).toBe("macos-15");
+  const commands = native.steps.map(step => step.run ?? "").join("\n");
+  expect(commands).toContain("cargo test --locked");
+  expect(commands).toContain("build:desktop");
+  expect(commands).toContain("Contents/Resources/runtime");
+  expect(commands.indexOf("prepare:assistant")).toBeLessThan(commands.indexOf("build:desktop"));
 });

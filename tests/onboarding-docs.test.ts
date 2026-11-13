@@ -13,7 +13,7 @@ describe("stable onboarding documentation", () => {
     expect(checkOnboardingDocument("README.md", "bunx @zhivex-ai/harness@1.0.0 --help\nHistorical RC.13: [changelog](CHANGELOG.md).", "1.0.0")).toEqual([]);
   });
   test("rejects stale onboarding status and a planned stable roadmap", () => {
-    expect(checkOnboardingDocument("docs/CLI.md", "The `1.0` candidate is Node-first.", "1.0.0")).toHaveLength(1);
+    expect(checkOnboardingDocument("docs/cli/CLI.md", "The `1.0` candidate is Node-first.", "1.0.0")).toHaveLength(1);
     expect(checkOnboardingDocument("README.md", "## What RC.13 adds", "1.0.0")).toHaveLength(1);
     expect(checkStableRoadmap("| `1.0.0` | Stable contract | Planned |", "1.0.0")).toHaveLength(1);
     expect(checkStableRoadmap("| `1.0.0` | Stable contract | Published on npm as `latest` |", "1.0.0")).toEqual([]);

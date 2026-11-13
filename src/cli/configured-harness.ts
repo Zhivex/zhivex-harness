@@ -1,11 +1,8 @@
 import { CliCredentials, credentialModel } from "./cli-credentials.js";
-import { usagePricingSchema } from "../runtime/usage-ledger.js";
 import { ConsoleInput } from "./console/console-input.js";
-import path from "node:path";
-import { createProviderModel, resolveHarnessConfig, type HarnessSubagentProfile } from "../runtime/config.js";
-import { createHarness } from "../runtime/harness.js";
-import { createHarnessRouteModels, type HarnessModelRoute } from "../providers/routing.js";
-import { readRegularFileNoFollow } from "../workspace/file-security.js";
+import { createProviderModel, resolveHarnessConfig, type HarnessSubagentProfile } from "../engine/index.js";
+import { createCodingHarness } from "../engine/index.js";
+import { createHarnessRouteModels, type HarnessModelRoute } from "../engine/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 import { assertRoutePricingIsSafe, resolvedRouting } from "./routing.js";
 import { orchestrationObserver } from "./presentation.js";
@@ -49,13 +46,8 @@ export const createConfiguredHarness = async (
   const compactionModelInstance = resolvedConfig.compaction.model && compactionEnv
     ? await credentialModel(resolvedConfig.compaction.model, compactionEnv)
     : undefined;
-  const harness = await createHarness({
+  const harness = await createCodingHarness({
     ...options,
-    ...{ projectMemory: options.projectMemory ?? true },
-    usageAccounting: {
-      ...(options.pricingFile ? { pricing: usagePricingSchema.parse(JSON.parse((await readRegularFileNoFollow(path.resolve(options.pricingFile), { maxBytes: 128 * 1024, label: "Usage pricing" })).contents.toString("utf8"))) } : {}),
-      ...(options.usageLimitUsd !== undefined ? { limitUsd: options.usageLimitUsd } : {})
-    },
     subagentProfiles: profiles,
     subagentModels: routeModels,
     ...(compactionModelInstance ? { compactionModelInstance } : {}),

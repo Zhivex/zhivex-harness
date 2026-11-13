@@ -14,6 +14,19 @@ this archive rather than bundling development journals. Personal paths in copied
 upstream tracebacks are anonymized in this repository copy; evaluation outcomes
 and recorded artifact hashes are unchanged.
 
+## Consolidated product history
+
+- [Tauri implementation stages 0–6](ASSISTANT_TAURI_IMPLEMENTATION.md): original stage boundaries, verification results and remaining limits. The current [native guide](../assistant/ASSISTANT_DESKTOP.md) and [stage-7 pilot runbook](../assistant/ASSISTANT_TAURI_STAGE_7.md) remain separate.
+- [Assistant standalone web history](ASSISTANT_WEB_HISTORY.md): former interface, managed onboarding/settings and first-session walkthrough, consolidated with one retirement notice.
+- [Retired Desktop architecture](DESKTOP_ARCHITECTURE.md), [Code web tasks](CODE_WEB_TASKS.md) and [web limits](WEB_LIMITS.md).
+- [Gemini 1.0 support decision](GEMINI_1_0_DECISION.md).
+
+The 2026-11-13 reorganization preserves report outcomes, failed attempts and
+limitations. JSON run evidence and commit-pinned links retain their original paths
+and identities. Use the [path map](../path-map.json) to locate documentation named
+in those historical records. Moving a guide does not reproduce its historical
+bytes or recertify the original source digest.
+
 ## Release and UI archive navigation
 
 - [Release preparation and decision history through 1.6.2](RELEASE_HISTORY_THROUGH_1_6_2.md): moved out of the operational release guide; original failures and pending states retained.
@@ -81,7 +94,7 @@ Release, security, acceptance and benchmark evidence remains in the working tree
 - [Model comparison — September 9](MODEL_COMPARISON_2026-09-09.md): frozen model comparisons and recovery studies.
 - [Qwen reevaluation — September 9](QWEN_REMEDIATION_COMPARISON_2026-09-09.md): results after the then-current remediation, followed by structural findings.
 
-Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-to-Safe-Fix guide](../TIME_TO_SAFE_FIX.md). Each report links its preserved baseline evidence.
+Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-to-Safe-Fix guide](../maintenance/TIME_TO_SAFE_FIX.md). Each report links its preserved baseline evidence.
 
 ## Release validation
 
@@ -120,8 +133,8 @@ Their removal does not change failed outcomes or certify the next candidate.
 The nine 1.1.0 RC.1–RC.9 preparation notes are preserved in the
 [release-note archive](https://github.com/Zhivex/zhivex-harness/tree/d3d059f3259b46e58724f9de3503b7dcb5c28a5e/docs/releases).
 Their pending states and recorded failures describe those historical candidates.
-For maintained release procedures and evidence, use [Release](../RELEASE.md) and
-[Live certification](../LIVE_CERTIFICATION.md).
+For maintained release procedures and evidence, use [Release](../maintenance/RELEASE.md) and
+[Live certification](../maintenance/LIVE_CERTIFICATION.md).
 
 The exploratory rebranding analysis, concepts and screenshots are preserved in
 the [design archive](https://github.com/Zhivex/zhivex-harness/tree/d3d059f3259b46e58724f9de3503b7dcb5c28a5e/output/ux-rebranding).

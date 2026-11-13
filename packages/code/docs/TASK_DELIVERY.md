@@ -89,7 +89,7 @@ Task authority currently requires the native single-writer SQLite host and a
 vetted built-in transport. Direct Code tasks support OpenAI, Anthropic, Gemini
 and Vertex. Direct Qwen tasks lack explicit Chat-mode admission and are blocked;
 Meta and arbitrary custom transports are also blocked in this opt-in flow.
-See the [Harness CLI guide](../../../docs/CLI.md) for the transport contract.
+See the [Harness CLI guide](../../../docs/cli/CLI.md) for the transport contract.
 Cancellation requests cooperative stopping and retains any unresolved prior
 invocation. A new run cannot take over while that invocation is pending, even
 when its token receipts are complete. Complete late usage remains charged.

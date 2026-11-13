@@ -47,7 +47,7 @@ test("legacy saved limits never inherit an unlimited console default", () => {
 
 test("usage display separates cumulative consumption and remaining budget without inventing unknown usage", () => {
   expect(formatConsoleBudget(resolveHarnessConfig({ unlimitedTokens: true }), { inputTokens: 250000, outputTokens: 5000 }))
-    .toContain("Cumulative token budget: unlimited");
+    .toContain("Cumulative token budget per run: unlimited");
   const bounded = formatConsoleBudget(resolveHarnessConfig({}), { inputTokens: 87526, outputTokens: 1356 });
   expect(bounded).toContain("total 88882");
   expect(bounded).toContain("remaining: input 12474");

@@ -1,59 +1,120 @@
 # Documentation
 
-## Use Harness
+Start with [First use](getting-started/FIRST_USE.md) for the terminal or the
+[Assistant native guide](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_DESKTOP.md)
+for the graphical application. Harness owns the engine, Code the terminal and
+Assistant the Tauri interface. See the
+[current interface policy](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/WEB_RETIREMENT.md).
 
-Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversations.
+Guides below are grouped by topic. Plans describe intended work; historical
+reports preserve results and limitations from specific revisions, not current
+certification. Repository-only documents use GitHub links so this index also works
+inside the npm package.
 
-- [Daily console workflow](CLI.md#interactive-daily-workflow): editing, files, approvals and recovery.
-- [Worked example](FIRST_USE_EXAMPLE.md): a small change with approval and restart recovery.
-- [Usage reference](USAGE.md): scripts, providers and security boundaries.
-- [Model catalog administration](MODEL_CATALOG.md): shared CLI/Desktop recommendations and remote distribution.
-- [Anthropic direct API](ANTHROPIC.md): provisional setup and continuity contract.
-- [Amazon Bedrock](BEDROCK.md): provisional Converse and OpenAI-compatible routes.
-- [Azure OpenAI](AZURE_OPENAI.md): provisional endpoint, deployment, and API-key route.
-- [Credentials](CREDENTIALS.md): system keychain, temporary keys and automation.
-- [Project instructions and context](CONTEXT_ENGINEERING.md).
-- [Project memory](PROJECT_MEMORY.md): explicit notes, retrieval budgets and deletion semantics.
-- [Optional Web limits](WEB_LIMITS.md): interactive defaults and observed thresholds.
-- [Execution environments](EXECUTION_ENVIRONMENTS.md): isolated command execution.
-- [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/desktop/README.md): separate macOS alpha application.
-- [Support](../SUPPORT.md), [support matrix](SUPPORT_MATRIX.md), [security policy](../SECURITY.md).
+## Getting started
 
-## Integrate Harness
-
-- [Engine API and Code integration](ENGINE_API.md): terminal-independent imports and local candidate validation.
-- [Code release procedure](CODE_RELEASE.md): independent RC publication, exact artifact, bootstrap provenance and Trusted Publishing.
-
-- [CLI reference](CLI.md): command options, JSON/JSONL and exit codes.
-- [Extensibility](EXTENSIBILITY.md): providers, MCP, routing and subagents.
-- [API stability](STABILITY.md) and [deprecations](DEPRECATIONS.md).
-- [Local service](LOCAL_SERVICE.md) and [client protocol](CLIENT_PROTOCOL.md), including the experimental [task evidence read](CLIENT_PROTOCOL.md#task-projection-v1-har-hu-73).
-- [Code web tasks](CODE_WEB_TASKS.md): operator review and explicit snapshot acceptance before continuation.
-- [Installed recovery laboratory](https://github.com/Zhivex/zhivex-harness/blob/main/docs/TASK_RECOVERY_LAB.md): contributor fixtures for the evidence read. The laboratory guide stays in the repository and is not part of the published package.
-- [Experimental ACP text sessions](ACP.md) and [workspace checkpoint restoration](WORKSPACE_CHECKPOINTS.md).
-- [Durable operations](DURABLE_OPERATIONS.md), [repository editing](REPOSITORY_EDITING.md) and [change envelopes](CHANGE_ENVELOPES.md).
-- [Audit pack](AUDIT_PACK.md): experimental signed export of one run or guided task.
-- [Threat model](THREAT_MODEL.md) and [public repository security](PUBLIC_SECURITY.md).
+- [First use](getting-started/FIRST_USE.md).
+- [Worked example: approvals and recovery](getting-started/FIRST_USE_EXAMPLE.md).
+- [Hostile repository demonstration](getting-started/HOSTILE_REPOSITORY_DEMO.md).
+- [Usage reference](getting-started/USAGE.md).
 
 ## Assistant
 
-- [MVP scope and phase status](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_MVP_PLAN.md) and [contracts](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CONTRACTS.md).
-- [Persistent host](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_HOST.md), [Telegram](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_TELEGRAM.md) and [Calendar](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_CALENDAR.md).
-- [Automations](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_AUTOMATIONS.md), [extensions](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_EXTENSIONS.md) and [pilot acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PILOT.md).
-- [Web interface](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_WEB.md) and [first-day setup](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_FIRST_DAY.md).
+- [Assistant — Automations and personal memory (phase 4)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_AUTOMATIONS.md).
+- [Assistant — Calendar (phase 3)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_CALENDAR.md).
+- [Assistant: contracts and Harness boundary](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_CONTRACTS.md).
+- [Assistant: herramientas para el día a día](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_DAILY_TOOLS.md).
+- [Assistant primary graphical interface (Tauri 2)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_DESKTOP.md).
+- [Assistant: configurable providers and composable modules](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_EXTENSIONS.md).
+- [Assistant phase 1: profiles and persistent local host](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_HOST.md).
+- [Microsoft 365 / Outlook in Assistant](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_MICROSOFT.md).
+- [Assistant — validation and pilot preparation](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_PILOT.md).
+- [Assistant: primera versión proactiva](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_PROACTIVE.md).
+- [Assistant task metrics and initial evaluations](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_TASK_METRICS.md).
+- [Tauri production preparation](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_TAURI_PRODUCTION.md).
+- [Tauri stage 7: packaged local pilot and gradual cutover](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_TAURI_STAGE_7.md).
+- [Assistant phase 2 — Telegram](https://github.com/Zhivex/zhivex-harness/blob/main/docs/assistant/ASSISTANT_TELEGRAM.md).
 
-- [Daily tools](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_DAILY_TOOLS.md), [Microsoft](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_MICROSOFT.md) and [proactive notices](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ASSISTANT_PROACTIVE.md).
+## Terminal
 
-## Contribute and maintain
+- [Opt-in auto-approve](cli/AUTO_APPROVE.md).
+- [CLI reference](cli/CLI.md).
+- [Console UX rationale](https://github.com/Zhivex/zhivex-harness/blob/main/docs/cli/CLI_UX.md).
+- [Context engineering](cli/CONTEXT_ENGINEERING.md).
+- [Project memory (experimental, RC candidate)](cli/PROJECT_MEMORY.md).
+- [Reviewed workspace checkpoints](cli/WORKSPACE_CHECKPOINTS.md).
 
-- [Harness/Code boundary proposal (ADR 0001)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/adr/0001-harness-code-public-boundary.md): ownership, public APIs and the proposed 1.x transition.
+## Architecture and integration
 
-[Contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
-[Maintenance and release evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/MAINTENANCE.md) ·
-[Historical reports](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md) ·
-[Changelog](../CHANGELOG.md)
+- [Experimental ACP text sessions](architecture/ACP.md).
+- [Source architecture](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/ARCHITECTURE.md).
+- [Change envelopes](architecture/CHANGE_ENVELOPES.md).
+- [Shared client protocol v1 (experimental)](architecture/CLIENT_PROTOCOL.md).
+- [Durable operations](architecture/DURABLE_OPERATIONS.md).
+- [Engine API and Code integration](architecture/ENGINE_API.md).
+- [Enforced execution environments](architecture/EXECUTION_ENVIRONMENTS.md).
+- [Extensibility and orchestration](architecture/EXTENSIBILITY.md).
+- [Local runtime service and durable activity](architecture/LOCAL_SERVICE.md).
+- [Isolated MCP stdio for trusted hosts](architecture/MCP_STDIO.md).
+- [Minimum task authority (Experimental, unreleased)](architecture/MINIMUM_TASK_AUTHORITY.md).
+- [Harness, terminal and Tauri](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/PRODUCT_CONSOLIDATION.md).
+- [Trusted repository editing](architecture/REPOSITORY_EDITING.md).
+- [Standalone web retirement](https://github.com/Zhivex/zhivex-harness/blob/main/docs/architecture/WEB_RETIREMENT.md).
 
-Primary guides are maintained in English. Historical reports preserve their original
-language and evidence. Maintainer procedures and reports remain in the repository
-and are excluded from the npm package. Published validation applies to the exact
-release artifact, not automatically to later source changes.
+## Providers and credentials
+
+- [Anthropic direct API (provisional)](providers/ANTHROPIC.md).
+- [Azure OpenAI (provisional)](providers/AZURE_OPENAI.md).
+- [Amazon Bedrock (provisional)](providers/BEDROCK.md).
+- [API keys](providers/CREDENTIALS.md).
+- [Model catalog administration](providers/MODEL_CATALOG.md).
+- [Google Cloud Vertex AI (provisional)](providers/VERTEX.md).
+
+## Security
+
+- [Audit pack](security/AUDIT_PACK.md).
+- [Public repository security](security/PUBLIC_SECURITY.md).
+- [RC14 delegated security decision](https://github.com/Zhivex/zhivex-harness/blob/main/docs/security/RC14_DELEGATED_SECURITY_DECISION.md).
+- [Security review evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/security/SECURITY_REVIEW_EVIDENCE.md).
+- [Threat model](security/THREAT_MODEL.md).
+- [Trusted tool policy (experimental)](security/TOOL_POLICY.md).
+
+## Maintenance and evaluation
+
+- [Code release procedure](maintenance/CODE_RELEASE.md).
+- [Competitive pilot protocol (HU51)](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/COMPETITIVE_PILOT.md).
+- [Compatibility and deprecations](maintenance/DEPRECATIONS.md).
+- [1.0 readiness](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/GA_READINESS.md).
+- [Live provider certification](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/LIVE_CERTIFICATION.md).
+- [Maintenance and release](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/MAINTENANCE.md).
+- [Minimum offline evaluation preparation](maintenance/MINIMUM_OFFLINE_EVALS.md).
+- [Release process](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/RELEASE.md).
+- [Release rollback and recovery](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/ROLLBACK.md).
+- [API stability](maintenance/STABILITY.md).
+- [Support matrix for 1.0](maintenance/SUPPORT_MATRIX.md).
+- [Support matrix for 1.1](maintenance/SUPPORT_MATRIX_1_1.md).
+- [Common task acceptance](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/TASK_ACCEPTANCE.md).
+- [HAR-HU-75: installed failure laboratory, phase one](https://github.com/Zhivex/zhivex-harness/blob/main/docs/maintenance/TASK_RECOVERY_LAB.md).
+- [Time-to-Safe-Fix benchmark](maintenance/TIME_TO_SAFE_FIX.md).
+
+## Plans
+
+- [Assistant MVP by phase](https://github.com/Zhivex/zhivex-harness/blob/main/docs/plans/ASSISTANT_MVP_PLAN.md).
+- [Tauri agent workspace implementation plan](https://github.com/Zhivex/zhivex-harness/blob/main/docs/plans/ASSISTANT_TAURI_AGENT_PLAN.md).
+- [Gradual Code-to-Assistant migration](https://github.com/Zhivex/zhivex-harness/blob/main/docs/plans/CODE_TO_ASSISTANT_MIGRATION.md).
+
+## Decisions and history
+
+- [Architecture decisions](https://github.com/Zhivex/zhivex-harness/tree/main/docs/adr).
+- [Historical report index](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/README.md).
+- [Tauri implementation history, stages 0–6](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/ASSISTANT_TAURI_IMPLEMENTATION.md).
+- [Retired Assistant web interface, onboarding and first session](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/ASSISTANT_WEB_HISTORY.md).
+- [Former documentation paths](https://github.com/Zhivex/zhivex-harness/blob/main/docs/path-map.json).
+
+[Contributing](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md) ·
+[Support](../SUPPORT.md) · [Security policy](../SECURITY.md) · [Changelog](../CHANGELOG.md)
+
+All repository documentation, including historical reports, is maintained in
+English. Keep one authoritative guide per topic; add related sections there
+instead of creating a new top-level document. Maintainer procedures, plans and
+historical evidence stay in the repository and are excluded from the npm package.

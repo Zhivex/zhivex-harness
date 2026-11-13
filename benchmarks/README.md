@@ -31,7 +31,7 @@ all siblings before propagating failure; publication still follows completed
 validation. No snapshot reuse across independent runs was introduced.
 
 For competitive evaluation, use the existing `--dataset`, `--dataset-revision`,
-`--driver-command`, and repeated-run contract in [Time-to-Safe-Fix](../docs/TIME_TO_SAFE_FIX.md).
+`--driver-command`, and repeated-run contract in [Time-to-Safe-Fix](../docs/maintenance/TIME_TO_SAFE_FIX.md).
 Keep a held-out external task set, pin both implementations and images, and report
 all failures. Run one matched-model/budget comparison to isolate harness behavior
 and a separately labeled best-configuration comparison to compare products. Record

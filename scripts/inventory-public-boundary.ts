@@ -50,7 +50,6 @@ const visit = async (directory: string): Promise<void> => {
   }
 };
 await visit("src");
-await visit("desktop/src");
 process.stdout.write(`${JSON.stringify({
   schemaVersion: 1,
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),

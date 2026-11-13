@@ -65,6 +65,6 @@ describe("console context", () => {
     expect(output).not.toContain("hidden-content");
     const diff = "+new\u001b[2J\n-old\n@@ 1 @@";
     expect(formatConsoleDiff(diff, false)).not.toContain("\u001b");
-    expect(formatConsoleDiff(diff, true)).toContain("\u001b[32m+new\\u001b[2J\u001b[0m");
+    expect(formatConsoleDiff(diff, true)).toContain("\u001b[38;5;120m+new\\u001b[2J\u001b[0m");
   });
 });

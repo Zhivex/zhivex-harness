@@ -78,7 +78,7 @@ export function formatCliHelp(topic: string | undefined, version: string, full: 
         "  --session <id>                 Include the redacted activity journal (export only)\n" +
         "  --json                         Print the manifest or verification document\n\n" +
         "The key must be 32 to 4096 bytes and is not written into the pack.\n" +
-        "See docs/AUDIT_PACK.md.\n";
+        "See docs/security/AUDIT_PACK.md.\n";
     }
     return `Zhivex Harness — ${topic}\n\n` + Object.entries(usage)
       .filter(([key]) => key.startsWith(`${topic}:`)).map(([, command]) => `  ${command}`).join("\n") +

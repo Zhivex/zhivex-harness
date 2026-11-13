@@ -1,1 +1,1 @@
-export { harnessToolExecution as cliToolExecution } from "../runtime/tool-execution.js";
+export { harnessToolExecution as cliToolExecution } from "../compat/code-support.js";

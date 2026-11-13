@@ -2,7 +2,7 @@
 
 > Historical snapshot: findings and outcomes apply to the checkout and attempt
 > recorded below. For the subsequent stable release outcome, see
-> [current release evidence](../LIVE_CERTIFICATION.md#current-public-status).
+> [current release evidence](../maintenance/LIVE_CERTIFICATION.md#current-public-status).
 > Later publication does not change failed evaluation results.
 
 > Historical snapshot: versions, findings and measurements below describe the recorded run, not the current checkout. See the [report index](README.md) for follow-up work and the [documentation index](../README.md) for maintained guides.
@@ -20,7 +20,7 @@ have been removed. The SDK preserves complete interaction groups and assistant
 roles; the harness no longer drops orphan observations or changes summary roles.
 The new runtime identity requires older paused runs to use their matching artifact.
 Those checks are installed-package evidence. The subsequent live
-[repeated-cohort comparison](./EXTERNAL_COMPARISON.md#sdk-upgrade-reevaluation--2026-09-08)
+[repeated-cohort comparison](EXTERNAL_COMPARISON.md#sdk-upgrade-reevaluation--2026-09-08)
 resolved 2/5 cases for Zhivex and 3/5 for mini-SWE-agent, with 19.4% fewer Zhivex
 input tokens than its previous run. It does not establish general superiority.
 The sections below describe the earlier development evidence and task creation.

@@ -1,4 +1,5 @@
 import { syncPrivateDirectory } from './private-directory.js';
+import { openAssistantApplication, type AssistantCodingOptions } from './application.js';
 import { openTaskMetrics, taskUsageSchema, type TaskMetrics, type TaskRunSnapshot } from './task-metrics.js';
 import { createAssistantProvider, type AssistantProviderConfig } from './providers/provider.js';
 import { startAssistantWeb, type AssistantWebOptions } from './web/server.js';
@@ -19,6 +20,8 @@ import { createTelegramApi, type TelegramApi } from "./telegram/api.js";
 
 export interface AssistantHostOptions {
   directory: string;
+  /** Opt-in coding registry; never populated from Telegram or web messages. */
+  coding?: AssistantCodingOptions;
   /** Explicit dated token prices; missing/stale prices remain unknown. */
   taskMetricsPricing?: NonNullable<CreateProfiledHarnessOptions["usageAccounting"]>["pricing"];
   web?: AssistantWebOptions;
@@ -62,7 +65,8 @@ export async function startAssistantHost(options: AssistantHostOptions) {
       engine = { ...engine, provider: provider.provider, model: provider.config.model, modelInstance: provider.model,
         agentProfile: { ...base, toolNames: [...base.toolNames], instructions: base.instructions + `\nAssistant provider configuration digest: ${provider.binding}` } };
     }
-    return await startAssistantHostOwned({ ...options, engine }, modules?.close, modules?.approvalDetails, modules?.agendaSource, modules?.reviewTools,
+    const coding = options.coding && provider ? { ...options.coding, configurationId: createHash("sha256").update(JSON.stringify([options.coding.configurationId, provider.binding])).digest("hex") } : options.coding;
+    return await startAssistantHostOwned({ ...options, ...(coding ? { coding } : {}), engine }, modules?.close, modules?.approvalDetails, modules?.agendaSource, modules?.reviewTools,
       modules?.identity.map(item => ({ id: item.id, version: item.version })), modules);
   } catch (error) { await modules?.close().catch(() => {}); throw error; }
 }
@@ -141,13 +145,27 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
     } catch (error) { try { await service.close(); } finally { metrics?.close(); } throw error; }
     let closePromise: Promise<void> | undefined;
     let web: Awaited<ReturnType<typeof startAssistantWeb>> | undefined;
+    let application: Awaited<ReturnType<typeof openAssistantApplication>> | undefined;
     modules?.start({ ...(telegram ? { notifications: telegram.notifications } : {}) });
     const host = {
+      get application() { return application; },
+      async controlClose(operation: 'pause' | 'resume' | 'cancel') {
+        const projectBusy = await application?.controlClose(operation) ?? false;
+        if (operation === 'resume') { service.resumeAdmission(); return false; }
+        if (operation === 'cancel') await service.cancelActive();
+        return service.pauseAdmission() || projectBusy;
+      },
       daily: modules?.daily,
       taskMetrics: {
         async report() { await refreshMetrics(); return metrics!.report(); },
         async feedback(input: unknown) { await refreshMetrics(); return metrics!.feedback(input); },
         async link(input: unknown) { await refreshMetrics(); return metrics!.link(input); }
+      },
+      async runPrompt(runId: string) {
+        const run = await harness.store.load(runId, harness.config.scope);
+        const message = run?.messages.slice().reverse().find(message => message.role === 'user');
+        if (!message) return undefined;
+        return message.parts.filter(part => part.type === 'text').map(part => part.text).join('\n');
       },
       credentialsPath: service.credentialsPath,
       pairingCode: telegram?.pairingCode,
@@ -160,10 +178,19 @@ async function startAssistantHostOwned(options: AssistantHostOptions, closeModul
         ...(options.calendar ? { calendar: { enabled: true, calendarId: options.calendar.calendarId ?? 'primary' } } : {}) }),
       // In-process trusted UI only; remote callbacks must use the ordinary protocol.
       dispatchReviewed: service.dispatchReviewed.bind(service),
-      close: () => closePromise ??= (async () => { try { await web?.close(); } finally { try { await modules?.daily?.stop(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { try { metrics?.close(); } finally { await closeModules?.(); } } } } } })()
+      close: () => closePromise ??= (async () => { try { await application?.close(); } finally { try { await web?.close(); } finally { try { await modules?.daily?.stop(); } finally { try { await telegram?.close(); } finally { try { await service.close(); } finally { try { metrics?.close(); } finally { await closeModules?.(); } } } } } } })()
     };
-    try { if (options.web) web = await startAssistantWeb(host, options.web); }
+    try {
+      if (options.coding) application = await openAssistantApplication({ directory, ownerId: options.ownerId, generalCredentialsPath: service.credentialsPath, recover: options.recover ?? false,
+        coding: { ...options.coding, engine: {
+          ...(options.engine?.provider ? { provider: options.engine.provider } : {}),
+          ...(options.engine?.model ? { model: options.engine.model } : {}),
+          ...(options.engine?.modelInstance ? { modelInstance: options.engine.modelInstance } : {}),
+          ...options.coding.engine,
+        } } });
+      if (options.web) web = await startAssistantWeb(host, options.web);
+    }
     catch (error) { await host.close(); throw error; }
-    return { ...host, webUrl: web?.url };
+    return { ...host, application, webUrl: web?.url };
   } catch (error) { if (!serviceOwnsHarness) await harness.close(); throw error; }
 }

@@ -18,12 +18,19 @@ try {
   const artifact = path.join(temporary, "harness.tgz");
   run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", artifact], repository);
   const consumer = path.join(temporary, "consumer");
-  await cp(packageRoot, consumer, { recursive: true, filter: source => !["node_modules", "dist", ".git"].includes(path.basename(source)) });
+  await cp(packageRoot, consumer, { recursive: true, filter: source =>
+    !["node_modules", "dist", ".git"].includes(path.basename(source)) &&
+    !["target", "runtime", "gen"].some(name => source === path.join(packageRoot, "src-tauri", name))
+  });
   const manifestPath = path.join(consumer, "package.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const engine = JSON.parse(await readFile(path.join(repository, "package.json"), "utf8"));
   if (manifest.dependencies["@zhivex-ai/harness"] !== engine.version) throw new Error("Assistant engine pin differs from candidate");
   manifest.dependencies["@zhivex-ai/harness"] = "file:../harness.tgz";
+  // The isolated package has no repository-level test tooling. Copy the exact
+  // test-only SQLite setup instead of accidentally resolving outside this fixture.
+  await cp(path.join(repository, "tests/preload-runtime.ts"), path.join(consumer, "tests/preload-runtime.ts"));
+  manifest.scripts.test = manifest.scripts.test.replace("../../tests/preload-runtime.ts", "./tests/preload-runtime.ts");
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
   // The committed lock describes the registry pin; this temporary consumer tests a candidate.
   await rm(path.join(consumer, "bun.lock"), { force: true });

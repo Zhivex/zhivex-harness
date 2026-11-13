@@ -230,11 +230,11 @@ test("published documentation resolves only archive-local files and directories"
   expect(missingPackageLinks("package/README.md", "[missing](./src/private.ts) [escape](../../outside.md)", entries)).toEqual(["./src/private.ts", "../../outside.md"]);
   expect(missingPackageLinks("package/README.md", "```md\n[example](absent.md)\n```\n[site](https://example.com)", entries)).toEqual([]);
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")) as { files: string[] };
-  const cli = await readFile(new URL("../docs/CLI.md", import.meta.url), "utf8");
+  const cli = await readFile(new URL("../docs/cli/CLI.md", import.meta.url), "utf8");
   expect(cli).toContain("](AUTO_APPROVE.md)");
-  expect(manifest.files).toContain("docs/AUTO_APPROVE.md");
+  expect(manifest.files).toContain("docs/cli/AUTO_APPROVE.md");
   const packed = new Set(manifest.files.map(file => `package/${file}`));
-  expect(missingPackageLinks("package/docs/CLI.md", cli, packed)).not.toContain("AUTO_APPROVE.md");
+  expect(missingPackageLinks("package/docs/cli/CLI.md", cli, packed)).not.toContain("AUTO_APPROVE.md");
 });
 
 for (const payload of [

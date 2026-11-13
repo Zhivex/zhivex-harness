@@ -1,0 +1,42 @@
+{
+  "gate": "real-provider-coding",
+  "status": "passed",
+  "model": "gpt-6-luna",
+  "approvals": 2,
+  "editedOnlyFixture": true,
+  "checkExitCode": 0,
+  "requests": [
+    {
+      "status": 200
+    },
+    {
+      "status": 200
+    },
+    {
+      "status": 200
+    },
+    {
+      "status": 200
+    }
+  ],
+  "usage": {
+    "inputTokens": 5816,
+    "outputTokens": 480,
+    "totalTokens": 6296
+  },
+  "maxTotalTokens": 16000,
+  "stage": 7,
+  "validated_at": "2026-11-13T18:37:47.213243+00:00",
+  "destination": "https://api.openai.com/v1",
+  "authorization": "Explicit user approval in this chat for the saved key, a synthetic temporary project and at most 16000 tokens.",
+  "runtime": "Source Assistant host under Bun; packaged Node/native validation remains separately recorded in the stage-7 report.",
+  "input_limit": 13000,
+  "output_limit": 3000,
+  "retries": 0,
+  "hosted_web_search": false,
+  "process_exit_code": 0,
+  "cleanup": "Host closed and temporary project removed in finally before process exited.",
+  "credential_handling": "Read existing keychain credential; no credential printed, copied or modified.",
+  "real_projects_modified": false,
+  "log_sha256": "965185810d53bc35740e2e688a0a50e54894c19ed4d99e730c5199f5880dab70"
+}

@@ -191,6 +191,7 @@ export async function startManagedAssistant(
     secrets?: SecretStore;
     validateProvider?: typeof testProvider;
     startHost?: typeof startAssistantHost;
+    coding?: import('../application.js').AssistantCodingOptions;
     integrationFetch?: typeof fetch;
     onStop?: () => void;
   } = {},
@@ -359,6 +360,7 @@ export async function startManagedAssistant(
     return (options.startHost ?? startAssistantHost)({
       directory: runtime(p),
       ownerId: 'local-owner',
+      ...(options.coding ? { coding: { ...options.coding, sensitiveValues: [p.provider.apiKey, ...(options.coding.sensitiveValues ?? [])], configurationId: createHash('sha256').update(JSON.stringify([options.coding.configurationId, p.profileBinding ?? provider.binding])).digest('hex') } } : {}),
       ...(modules.length ? { modules } : {}),
       ...(p.telegram
         ? {
@@ -393,6 +395,16 @@ export async function startManagedAssistant(
   };
   const ensureIdle = async () => {
     if (!host) return;
+    if (host.application) {
+      const conversations = await host.application.client.conversations();
+      if (!conversations.ok) throw new Error('SETUP_STATE_UNAVAILABLE');
+      for (const conversation of conversations.data) {
+        if (conversation.context.kind !== 'project') continue;
+        const snapshot = await host.application.client.snapshot(conversation.conversationId);
+        if (!snapshot.ok) throw new Error('SETUP_STATE_UNAVAILABLE');
+        if (snapshot.data.runs.some(run => !['completed', 'failed', 'cancelled', 'timed_out'].includes(run.status))) throw new Error('SETUP_PENDING_RUNS');
+      }
+    }
     const client = await connectAssistant(host.credentialsPath),
       response = await client.command({ method: 'session.list' });
     if (!response.ok || response.data.kind !== 'sessions')
@@ -497,7 +509,9 @@ export async function startManagedAssistant(
       provider: providerSummary(p.provider),
     })),
   });
+  let shutdownPaused = false;
   const action = async (name: string, input: unknown): Promise<unknown> => {
+    if (shutdownPaused) throw new Error('APPLICATION_DRAINING');
     if (oauth && !saved.draft && !['calendar-cancel', 'shutdown'].includes(name))
       throw new Error('SETUP_OAUTH_PENDING');
     if (busy) throw new Error('SETUP_BUSY');
@@ -512,7 +526,7 @@ export async function startManagedAssistant(
         if (!loaded) throw new Error('SETUP_KEYCHAIN_UNAVAILABLE');
         if (name === 'shutdown' && options.onStop) {
           setTimeout(options.onStop, 100);
-          return { stopped: true };
+          return { stopped: !options.lifecycle };
         } else if (name === 'begin') {
           if (oauth) throw new Error('SETUP_OAUTH_PENDING');
           await ensureIdle();
@@ -1200,12 +1214,18 @@ export async function startManagedAssistant(
     });
     return {
       ...web,
+      async controlClose(operation: 'pause' | 'resume' | 'cancel') {
+        shutdownPaused = operation !== 'resume';
+        if (busy && operation !== 'resume') throw new Error('SETUP_BUSY');
+        return await host?.controlClose(operation) ?? false;
+      },
+      async work() { return await host?.application?.work() ?? []; },
       async close() {
-        await web.close();
-        oauth?.close();
-        await oauthWork;
-        await host?.close();
-        release();
+        try { await web.close(); }
+        finally {
+          oauth?.close();
+          try { await oauthWork; await host?.close(); } finally { release(); }
+        }
       },
     };
   } catch (error) {

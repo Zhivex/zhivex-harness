@@ -12,6 +12,16 @@
           "tier": "experimental"
         },
         {
+          "name": "createCodingHarness",
+          "kind": "runtime",
+          "tier": "experimental"
+        },
+        {
+          "name": "CreateCodingHarnessOptions",
+          "kind": "type",
+          "tier": "experimental"
+        },
+        {
           "name": "CreateProfiledHarnessOptions",
           "kind": "type",
           "tier": "experimental"

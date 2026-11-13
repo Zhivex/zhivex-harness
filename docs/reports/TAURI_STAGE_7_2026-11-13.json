@@ -1,0 +1,85 @@
+{
+  "stage": 7,
+  "date": "2026-11-13",
+  "status": "local-pilot-validated; production-distribution-gates-pending",
+  "target": {
+    "platform": "macOS",
+    "version_tested": "27.2.1",
+    "architecture": "arm64",
+    "unsupported": [
+      "darwin-x64",
+      "win32",
+      "linux"
+    ]
+  },
+  "checks": {
+    "source_tests": {
+      "passed": 204,
+      "failed": 0
+    },
+    "installed_consumer_tests": {
+      "passed": 203,
+      "skipped": 1,
+      "failed": 0,
+      "skip_reason": "Separate Code checkout is absent from the installed consumer."
+    },
+    "migration": "Passed read-only preflight, exact backup preservation, empty-target import, refusal of scope mismatch, changed checksum, symlink and active Assistant owner; repeated adoption refused.",
+    "bundle": "Built and copied outside the checkout; exact inventory of 18420 files matched after omitting dependency .bin shims.",
+    "installed_journey": "Passed under packaged Node: temporary real keychain entry created/read/deleted, offline provider, reviewed edit/check, pending approval retained across normal restart, public Code service attachment, real Chromium preview and process cleanup.",
+    "fresh_bootstrap": "Passed authentication, duplicate-owner refusal, controlled stop, restart and parent EOF.",
+    "native": "Temporary offline fixture used the current native binary/web assets. Prerequisite panel rendered correctly; PTY produced PILOT_TERMINAL_OK; controlled quit closed the app and local host. Fixture replaces only the temporary host bootstrap, not the deliverable bundle.",
+    "tamper": "An extra file in the disposable installed copy blocked native-host startup before any user state directory was created; copy restored and inventory rechecked.",
+    "architecture": "passed",
+    "documentation": "passed (136 files)"
+  },
+  "release_gates": {
+    "real_provider_coding": "passed after explicit user authorization: gpt-6-luna, 4 HTTP 200 requests, 2 reviewed approvals, successful edit/check, 6296 total tokens out of 16000",
+    "keychain": "Real temporary fixture passed; existing provider key later read for authorized OpenAI validation and left unchanged.",
+    "developer_id_signing": "not-complete; observed ad-hoc linker signature",
+    "notarization": "unverified; spctl assessment returned an internal Code Signing subsystem error",
+    "trusted_updates": "not-implemented; no updater installed",
+    "cross_version_schema_rollback": "unverified; this stage changes no engine state schema",
+    "authenticated_push_pr": "unverified"
+  },
+  "migration_policy": {
+    "automatic_adoption": false,
+    "scope_rewriting": false,
+    "credentials_copied": false,
+    "code_command_retained": true,
+    "desktop_retired": false
+  },
+  "local_changes": {
+    "baseline_dirty_files": 112,
+    "byte_identical": 104,
+    "extended": [
+      "packages/assistant/src/desktop.ts",
+      "packages/assistant/package.json",
+      "packages/assistant/src/web/server.ts",
+      "docs/README.md",
+      "docs/ASSISTANT_TAURI_AGENT_PLAN.md",
+      "packages/assistant/web/src/ProjectWorkspace.tsx",
+      "packages/assistant/web/src/Setup.tsx",
+      "docs/ASSISTANT_DESKTOP.md"
+    ],
+    "missing": [],
+    "commit_created": false,
+    "pushed": false
+  },
+  "logs_directory": "/tmp/tauri-stage7",
+  "bundle": "packages/assistant/src-tauri/target/release/bundle/macos/Zhivex Assistant.app",
+  "live_provider_authorization": {
+    "destination": "https://api.openai.com/v1",
+    "credential": "Existing configured OpenAI key from the system keychain",
+    "data": "Synthetic temporary coding fixture and runtime instructions; no real project content",
+    "bounds": {
+      "max_steps": 8,
+      "max_total_tokens": 16000,
+      "timeout_ms": 90000,
+      "max_input_tokens": 13000,
+      "max_output_tokens": 3000
+    },
+    "prepared_script": "packages/assistant/scripts/verify-pilot-provider.ts",
+    "status": "explicitly granted by the user and exercised"
+  },
+  "live_provider_evidence": "TAURI_STAGE_7_LIVE_PROVIDER_2026-11-13.json"
+}

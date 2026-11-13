@@ -11,7 +11,7 @@ bun run dev
 `dev` builds and starts the console under Node, loading `.env` when present.
 `bun run start` opens the existing build without rebuilding or loading `.env`.
 See [Desktop development](desktop/DEVELOPMENT.md) for the separate app.
-See [Source architecture](docs/ARCHITECTURE.md) for module ownership, Desktop
+See [Source architecture](docs/architecture/ARCHITECTURE.md) for module ownership, Desktop
 integration surfaces and the enforced dependency rules.
 
 ## Validation
@@ -55,11 +55,11 @@ its v3 lockfile format.
 
 Live provider and MCP checks are opt-in and must be reported separately from deterministic and installed-artifact proof. Never commit credentials, `.env`, provider outputs containing secrets, or local `.zhivex-harness` state.
 
-Publishing is performed only through the protected `release.yml` GitHub Actions workflow after an annotated tag, exact-artifact verification, and explicit maintainer confirmation. Do not publish from a development checkout. CI lints workflow files with actionlint and shellcheck. The trust boundary is the `npm` and `live-certification` deployment-tag rules plus the maintainer-only tag ruleset in [Public repository security](docs/PUBLIC_SECURITY.md). The in-repo tag resolver is defense in depth, not the trust boundary.
+Publishing is performed only through the protected `release.yml` GitHub Actions workflow after an annotated tag, exact-artifact verification, and explicit maintainer confirmation. Do not publish from a development checkout. CI lints workflow files with actionlint and shellcheck. The trust boundary is the `npm` and `live-certification` deployment-tag rules plus the maintainer-only tag ruleset in [Public repository security](docs/security/PUBLIC_SECURITY.md). The in-repo tag resolver is defense in depth, not the trust boundary.
 
 ## Documentation and maintenance
 
-See the [maintenance index](docs/MAINTENANCE.md) for design notes, benchmarks,
+See the [maintenance index](docs/maintenance/MAINTENANCE.md) for design notes, benchmarks,
 release procedures and the documentation language and packaging policy.
 
 ## Credential storage checks

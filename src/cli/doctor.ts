@@ -3,17 +3,17 @@ import { sanitizeTerminalText } from "./terminal/terminal-ui.js";
 import { constants as fsConstants } from "node:fs";
 import { access, lstat, stat } from "node:fs/promises";
 import path from "node:path";
-import { providerAvailability, resolveHarnessConfig, type HarnessProvider } from "../runtime/config.js";
-import { loadHarnessMcpConfiguration } from "../integrations/mcp.js";
-import { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "../version.js";
-import { resolvePackageManager } from "../execution/package-manager.js";
-import { CliOciRuntimeAdapter, type HarnessOciRuntimeAdapter } from "../execution/execution-environment.js";
+import { providerAvailability, resolveHarnessConfig, type HarnessProvider } from "../engine/index.js";
+import { loadHarnessMcpConfiguration } from "../engine/index.js";
+import { BUN_ENGINE_RANGE, HARNESS_VERSION, NODE_ENGINE_RANGE } from "../engine/index.js";
+import { resolvePackageManager } from "../compat/code-support.js";
+import { CliOciRuntimeAdapter, type HarnessOciRuntimeAdapter } from "../engine/index.js";
 import { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
-import { readRegularFileNoFollow } from "../workspace/file-security.js";
-import { runPortableProcess } from "../execution/process-runtime.js";
-import { SqliteDatabase } from "../persistence/sqlite-database.js";
-import { DEFAULT_HARNESS_CONTEXT_MANIFEST, loadHarnessProjectContext } from "../context/context-engineering.js";
-import { Workspace } from "../workspace/workspace.js";
+import { readRegularFileNoFollow } from "../compat/code-support.js";
+import { runPortableProcess } from "../compat/code-support.js";
+import { inspectCodeStateDatabase } from "../compat/code-support.js";
+import { DEFAULT_HARNESS_CONTEXT_MANIFEST, loadHarnessProjectContext } from "../engine/index.js";
+import { Workspace } from "../engine/index.js";
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail";
 
@@ -319,12 +319,9 @@ const inspectOperationsStore = async (
         safe: false
       });
     }
-    const database = new SqliteDatabase(databasePath, { create: false, readonly: true, strict: true });
-    try {
-      const integrity = database.query<{ quick_check: string }, []>("PRAGMA quick_check").get()?.quick_check;
-      const tables = new Set(database.query<{ name: string }, []>(
-        "SELECT name FROM sqlite_master WHERE type = 'table'"
-      ).all().map((row) => row.name));
+    const snapshot = inspectCodeStateDatabase(databasePath);
+    const { integrity, sessionVersion } = snapshot;
+    const tables = new Set(snapshot.tables);
       const requiredOperationsTables = [
         "zhivex_agent_runs",
         "zhivex_agent_runs_idempotency",
@@ -340,11 +337,6 @@ const inspectOperationsStore = async (
           ? 1
           : "unsupported";
       const operationsCompatible = operationsSchema !== "unsupported";
-      const sessionVersion = tables.has("zhivex_cli_session_schema")
-        ? database.query<{ version: number }, []>(
-            "SELECT version FROM zhivex_cli_session_schema WHERE singleton = 1"
-          ).get()?.version
-        : undefined;
       const sessionCompatible = sessionVersion === undefined || sessionVersion === 1;
       const compatible = integrity === "ok" && operationsCompatible && sessionCompatible;
       return diagnostic(
@@ -363,9 +355,6 @@ const inspectOperationsStore = async (
           compatible
         }
       );
-    } finally {
-      database.close(false);
-    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return diagnostic("operations-store", "pass", "SQLite durable operations store will be created on first use.", {
@@ -432,7 +421,7 @@ const inspectExecutionEnvironment = async (
       shellAvailable: true
     });
   } catch (error) {
-    return diagnostic("execution-environment", "fail", "OCI execution was requested, but the runtime or preloaded image is unavailable. Start Docker/Podman, preload the configured immutable image, then rerun zhx doctor; do not disable isolation to bypass this check.", {
+    return diagnostic("execution-environment", "fail", "OCI execution was requested, but the runtime or preloaded image is unavailable. Start Docker/Podman, preload the configured immutable image, then rerun zhivex-code doctor; do not disable isolation to bypass this check.", {
       backend: "oci",
       runtime: execution.runtime,
       imageReference: execution.image,
@@ -722,7 +711,7 @@ export const createDoctorReport = async (
     const message = provider.id === "vertex"
       ? configured
         ? "Vertex project/location configured; host ADC and model access have not been checked. Live support is provisional."
-        : "Vertex requires GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION plus host Application Default Credentials. No API key is stored by zhx."
+        : "Vertex requires GOOGLE_CLOUD_PROJECT and VERTEX_LOCATION plus host Application Default Credentials. No API key is stored by zhivex-code."
       : provider.id === "bedrock"
       ? bedrockDoctorMessage(provider, configured, env)
       : provider.id === "azure-openai"
@@ -736,12 +725,12 @@ export const createDoctorReport = async (
           ? `${provider.name} credential present (${credential.source}); account access has not been checked.${provider.support === "provisional" ? " Live support is provisional." : ""}`
           : credential.source === "blocked"
             ? `${provider.name} managed credentials require the default endpoint. Remove endpoint overrides or provide an environment key.`
-            : `${provider.name} credential ${credential.source === "unavailable" ? "could not be checked: keychain unavailable or locked" : "is missing"}. Run zhx to configure a key, or set ${provider.credentialNames.join(" or ")} for automation.`
+            : `${provider.name} credential ${credential.source === "unavailable" ? "could not be checked: keychain unavailable or locked" : "is missing"}. Run this CLI without arguments to configure a key, or set ${provider.credentialNames.join(" or ")} for automation.`
       : provider.configured
         ? provider.support === "provisional"
           ? `${provider.name} credentials are present, but live support is provisional.`
           : `${provider.name} credentials are present.`
-        : `${provider.name} credentials are missing. Set ${provider.credentialNames.join(" or ")} in the environment and rerun zhx doctor.`;
+        : `${provider.name} credentials are missing. Set ${provider.credentialNames.join(" or ")} in the environment and rerun zhivex-code doctor.`;
     checks.push(diagnostic(`provider:${provider.id}`, status, message, {
       provider: provider.id,
       selected,

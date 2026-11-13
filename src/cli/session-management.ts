@@ -1,9 +1,9 @@
 import { type AgentStatus } from "@zhivex-ai/agents";
-import { resolveHarnessConfig, type HarnessConfig } from "../runtime/config.js";
-import { openHarnessPersistence } from "../persistence/operations.js";
+import { resolveHarnessConfig, type HarnessConfig } from "../engine/index.js";
+import { openHarnessPersistence } from "../engine/index.js";
 import { CLI_JSON_SCHEMA_VERSION } from "./cli-stream.js";
-import { openCliSessionStore, type CliSession, type SessionRunStatus } from "../persistence/sessions.js";
-import { HarnessStateConflictError } from "../runtime/errors.js";
+import { openCliSessionStore, type CliSession, type SessionRunStatus } from "../engine/index.js";
+import { HarnessStateConflictError } from "../engine/index.js";
 import { CliUsageError, type CliOptions } from "./arguments.js";
 
 export const openSessionStoreForConfig = (config: HarnessConfig) => openCliSessionStore({

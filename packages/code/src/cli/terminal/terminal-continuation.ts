@@ -1,1 +1,2 @@
-export { terminalContinuationMessages } from "@zhivex-ai/harness/client";
+/** Compatibility source facade for the single terminal implementation. */
+export * from "@zhivex-ai/harness/terminal/terminal/terminal-continuation";
