@@ -40,7 +40,7 @@
     "electron"
   ],
   "harness": {
-    "version": "1.6.3"
+    "version": "1.7.0"
   },
   "overrides": {
     "glob": "14.0.3",

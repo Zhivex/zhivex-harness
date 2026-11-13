@@ -21,6 +21,11 @@ desktop/build/
 desktop/out/
 desktop/.harness/
 
+# Local Assistant native-shell generated artifacts (not distribution sources)
+packages/assistant/src-tauri/target/
+packages/assistant/src-tauri/runtime/
+packages/assistant/src-tauri/gen/
+
 # Local working notes and intermediate diagnostics
 /.local-docs/
 

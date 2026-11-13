@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.4.3 - 2026-11-13
+
+- Prepare Code 0.4.3 with an exact Harness 1.7.0 dependency. Publish only after that engine is published and verified; both publications remain pending.
+- Refine terminal presentation and the web sessions sidebar, workspace layout and review panel responsiveness. Approval authority and task contracts remain unchanged.
+- Exercise confirmed `BUSY` session-creation rejection in the offline browser journey, with bounded explicit UI attempts and no retry of uncertain responses.
+
 ## 0.4.2 - 2026-11-10
 
 - Pin exactly Harness 1.6.3 and Core 1.37.0. Include the local Web dependency security updates without changing terminal or approval contracts.

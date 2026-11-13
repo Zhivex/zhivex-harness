@@ -1,5 +1,11 @@
 # Release process
 
+## Prepared minor: 1.7.0
+
+The source candidate is Harness `1.7.0`, with Code `0.4.3` pinned exactly to it and private Desktop bound to the same engine. The new experimental profiled engine API is additive. Assistant remains private; its real-account pilot is not certified by offline checks. See the [preparation report](reports/RELEASE_1_7_0_CODE_0_4_3.md) for validation and remaining gates.
+
+This preparation creates no tag, dispatches no publication workflow and changes no registry channel. `release-status.json` continues to describe the verified `1.6.3` publication below. New release-bound live and representative evidence is required for the final source commit and exact artifact.
+
 ## Published patch: 1.6.3
 
 `@zhivex-ai/harness@1.6.3` is the latest public npm release, published and verified on 2026-11-10. Annotated `v1.6.3` resolves to `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a`. The [protected Harness workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42865111096) passed exact-artifact, mandatory OCI, all six-provider live gates and 42/42 representative cases before publishing. Registry bytes, `latest` and SLSA source/workflow provenance were independently verified.
@@ -127,7 +133,7 @@ absence before pulling the OCI image or running the deterministic suite.
 Dependency audits use the same bounded transient-outage retry policy as CI;
 vulnerabilities and other errors still fail immediately.
 
-From a clean `main` checkout at the intended remote commit, after CI and CodeQL:
+From a clean `main` checkout at the intended remote commit, after CI, CodeQL, Web, Code installed journeys and Assistant:
 
 ```bash
 # Read-only; replace the placeholder with the full reviewed main commit SHA.
@@ -137,7 +143,7 @@ bun run release:prepare --sha <full-main-sha> --publish
 ```
 
 The command derives version and channel from `package.json`, requires the latest
-main push runs of CI and CodeQL to have passed for that exact SHA, and rejects
+main push runs of CI, CodeQL, Web, Code installed journeys and Assistant to have passed for that exact SHA, and rejects
 an active release for the same SHA. It never moves existing tags: an existing
 annotated tag must resolve to the same commit. Creation uses an atomic ref create;
 a competing creation fails rather than overwriting it. Dispatch uses the exact tag

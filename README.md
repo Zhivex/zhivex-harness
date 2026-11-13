@@ -1,5 +1,7 @@
 # Zhivex Code
 
+Version `1.7.0` is the Harness source candidate, paired with Code `0.4.3`; publication is pending. Published versions remain Harness `1.6.3` and Code `0.4.2`. See [preparation evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_7_0_CODE_0_4_3.md).
+
 [![npm @zhivex-ai/code](https://img.shields.io/npm/v/@zhivex-ai/code?label=npm%20%40zhivex-ai%2Fcode)](https://www.npmjs.com/package/@zhivex-ai/code)
 [![CI](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Zhivex/zhivex-harness/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/Zhivex/zhivex-harness)](LICENSE)
