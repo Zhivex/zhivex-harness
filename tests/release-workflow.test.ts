@@ -445,3 +445,39 @@ test("Desktop CI exercises packaged restart, uncertain effects and worktree deli
     expect(packaged).toContain(`bun run --cwd desktop ${scenario}`);
   }
 });
+
+
+test("certification is the safe default and publication requires explicit confirmation", async () => {
+  const workflow = await readWorkflow("release.yml");
+  const raw = Bun.YAML.parse(await readFile(path.join(workspace, ".github/workflows/release.yml"), "utf8")) as { on: { workflow_dispatch: { inputs: { confirm_publication: { default: boolean; type: string } } } } };
+  expect(raw.on.workflow_dispatch.inputs.confirm_publication).toMatchObject({ default: false, type: "boolean" });
+  for (const name of ["resolve-release-commit", "validate", "certify-live", "representative-evaluation"]) {
+    expect(workflow.jobs[name]!.if).not.toContain("inputs.confirm_publication");
+  }
+  expect(workflow.jobs.publish!.if).toBe("${{ inputs.confirm_publication && needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}");
+  const guard = workflow.jobs.publish!.steps[0]!;
+  expect(guard.env?.PUBLICATION_CONFIRMED).toBe("${{ inputs.confirm_publication }}");
+  for (const confirmation of ["false", "", "yes", "true"]) {
+    const child = Bun.spawn(["bash", "-c", guard.run!], { env: { ...process.env, PUBLICATION_CONFIRMED: confirmation }, stdout: "pipe", stderr: "pipe" });
+    expect(await child.exited).toBe(confirmation === "true" ? 0 : 1);
+  }
+});
+
+test("summary only reports complete certification when every gate passed without publication", async () => {
+  const job = (await readWorkflow("release.yml")).jobs.summary!;
+  const step = job.steps.find(step => step.run?.includes("Certification complete"))!;
+  expect(step.env?.PUBLICATION_CONFIRMED).toBe("${{ inputs.confirm_publication }}");
+  const directory = await mkdtemp(path.join(os.tmpdir(), "certification-summary-"));
+  try {
+    for (const failedGate of [undefined, "VALIDATION", "LIVE", "REPRESENTATIVE"]) {
+      const summary = path.join(directory, "summary.md");
+      await writeFile(summary, "");
+      const env = { ...process.env, GITHUB_STEP_SUMMARY: summary, SOURCE_COMMIT: "candidate-sha", RELEASE_TAG: "v1.7.0", RELEASE_CHANNEL: "latest", VALIDATION: "success", LIVE: "success", REPRESENTATIVE: "success", PUBLICATION: "skipped", PUBLICATION_CONFIRMED: "false", ...(failedGate ? { [failedGate]: "failure" } : {}) };
+      const child = Bun.spawn(["bash", "-eu", "-c", step.run!], { env, stdout: "pipe", stderr: "pipe" });
+      expect(await child.exited).toBe(0);
+      const result = await readFile(summary, "utf8");
+      expect(result.includes("Certification complete.")).toBe(!failedGate);
+      if (!failedGate) expect(result).toContain("no package was published");
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

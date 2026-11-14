@@ -161,7 +161,7 @@ rebuilding an already accepted version.
 
 ## Tag and dispatch
 
-After review and merge, maintainers create an annotated `v<package.json version>` tag from the exact release commit and dispatch the protected workflow on that tag ref (`refs/tags/vX.Y.Z` or `refs/tags/vX.Y.Z-rc.N`) with the same tag input plus an explicit publication confirmation. The workflow YAML contains no release-version default: `package.json` is the source of version truth, and the required tag input is validated against it before publication. Dispatch from `main`, or from any ref other than that exact tag, is rejected, including when the branch commit equals the tag. The preparation command dispatches the exact annotated tag after proving it matches reviewed remote `main`.
+After review and merge, maintainers create an annotated `v<package.json version>` tag from the exact release commit and dispatch the protected workflow on that tag ref (`refs/tags/vX.Y.Z` or `refs/tags/vX.Y.Z-rc.N`) with the same tag input. Publication additionally requires explicit confirmation. The workflow YAML contains no release-version default: `package.json` is the source of version truth, and the required tag input is validated against it before publication. Dispatch from `main`, or from any ref other than that exact tag, is rejected, including when the branch commit equals the tag. The preparation command dispatches the exact annotated tag after proving it matches reviewed remote `main`.
 
 The first job has empty permissions and no secrets. It calls the resolver with a relative `./` path, so GitHub loads that file from the dispatched ref. The call is defense in depth, not the trust boundary: an off-main ref can rewrite or skip it. The boundary is the `npm` and `live-certification` environment deployment-tag rules and the maintainer-only tag ruleset in [Public repository security](PUBLIC_SECURITY.md). When the resolver still runs, it requires `GITHUB_REF` to equal `refs/tags/<input tag>`, peels the annotated tag to a full commit SHA, and requires that commit to be the workflow commit and an ancestor of `main`. Validation, live certification, representative evaluation, and publication then check out that SHA. Provider secrets and `id-token: write` are present only on later jobs, and only when the environment allows that tag ref. Provenance generation, registry verification, and reruns of a failed publish job keep the retained tarball. Existing provenance statements recorded from `refs/heads/main` remain verifiable; new dispatches use the tag ref.
 
@@ -331,3 +331,26 @@ stdout alone is not successful driver completion.
 Desktop smoke retains a 90-second watchdog and records phase timing in
 `progress.json`; renderer operations and failure snapshots have bounded waits.
 A watchdog failure must include its evidence directory and last phase.
+
+
+## Certify without publishing
+
+Dispatch the canonical release workflow with `confirm_publication=false` (the default)
+to validate the exact tarball, all six protected provider routes and all 42 representative
+cases. The annotated tag must already identify the reviewed commit on `main`; the
+same tag resolver, model pins, environment review and artifact bindings apply.
+
+```sh
+gh workflow run release.yml --repo Zhivex/zhivex-harness --ref v1.7.0 -f tag=v1.7.0 -f channel=latest -F confirm_publication=false
+```
+
+Approve the `live-certification` environment when requested. The `publish` job is
+skipped and does not enter the `npm` environment. A successful summary reports
+certification complete with no package published; failed or skipped validation gates
+never count as certification. Retained artifacts and sanitized diagnostics identify
+this run, source commit and tarball. Certification does not update `release-status.json`
+or registry channels. Do not use `release:prepare --publish` for this operation.
+
+A later publication requires a separate, explicitly authorized dispatch with
+`confirm_publication=true`. That run repeats all certification gates before publishing;
+this mode does not introduce cross-run reuse of certification evidence.
