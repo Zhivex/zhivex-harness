@@ -1,8 +1,10 @@
 # Code release procedure
 
-## Prepared patch: Code 0.4.3
+## Published patch: Code 0.4.3
 
-The source candidate is Code `0.4.3`, pinned exactly to Harness `1.7.0`. Publication remains pending and must follow verification of the new Harness registry artifact. The private Web development pin remains `1.6.2` for reproducible bootstrap installation; offline validation explicitly links the built candidate. See the [preparation report](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/RELEASE_1_7_0_CODE_0_4_3.md).
+Code `0.4.3` is published and verified on npm `latest`, pinned exactly to Harness `1.7.0`. Annotated `code-v0.4.3` resolves to `80618dedc023168d777ca530dab76959ad491687`, the same commit as `v1.7.0`. The [protected OIDC workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/43625033978) passed real registry resolution of the verified Harness release, retained-artifact terminal/Web journeys and four-manager acceptance. Independent verification confirmed exact registry bytes, `latest` and source-bound provenance. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md).
+
+The private Web bootstrap pin remains `1.6.2`, separate from Code's published engine dependency. npm `next` remains Code `0.3.0-rc.8` and Harness `1.4.0-rc.8`.
 
 ## Published patch: Code 0.4.2
 

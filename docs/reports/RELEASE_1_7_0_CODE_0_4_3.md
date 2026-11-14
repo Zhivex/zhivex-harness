@@ -1,7 +1,7 @@
 # Harness 1.7.0 / Code 0.4.3 preparation
 
 Date: 2026-11-13. Base: `e8df3cd4f3f1e35eb7245f185584903128d98767`.
-Target channel: `latest`. Status: local preparation; publication pending.
+Target channel: `latest`. Historical status at preparation: publication pending. Both packages were subsequently [published and verified](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md) on 2026-11-14; the preparation results below remain historical.
 
 Harness 1.7.0 introduces the additive experimental profiled engine API. Code 0.4.3 pins this engine exactly and includes the terminal/web presentation changes since Code 0.4.2. Private Desktop binds to Harness 1.7.0. Default models, provider tiers, stable coding APIs and storage formats remain unchanged.
 

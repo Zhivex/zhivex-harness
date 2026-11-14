@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "kind": "verified-coordinated-publication",
+  "sourceCommit": "80618dedc023168d777ca530dab76959ad491687",
+  "verifiedAt": "2026-11-14T18:28:46.407Z",
+  "releases": [
+    {
+      "name": "@zhivex-ai/harness",
+      "version": "1.7.0",
+      "latest": "1.7.0",
+      "next": "1.4.0-rc.8",
+      "publishedAt": "2026-11-14T18:07:35.009Z",
+      "integrity": "sha512-eDAe0mP3Rg1qkayIubF8P6znoXF0qm4hX8WZTAu4eNOB7lSeTYDkxhn16hGZY11iw7Qfvb12Y/bIC39bgpmFFA==",
+      "engine": null,
+      "provenance": "https://slsa.dev/provenance/v1",
+      "registryMetadata": "https://registry.npmjs.org/@zhivex-ai%2Fharness/1.7.0",
+      "verifiedAt": "2026-11-14T18:10:03.065Z",
+      "tag": "v1.7.0",
+      "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43619969669",
+      "workflowConclusion": "success",
+      "workflowCompletedAt": "2026-11-14T18:07:57Z",
+      "retainedArtifact": "npm-release-80618dedc023168d777ca530dab76959ad491687"
+    },
+    {
+      "name": "@zhivex-ai/code",
+      "version": "0.4.3",
+      "latest": "0.4.3",
+      "next": "0.3.0-rc.8",
+      "publishedAt": "2026-11-14T18:22:41.125Z",
+      "integrity": "sha512-4v0Wb+o9DJOROo2prZlnoTbbJ+Dwf9v+eCO8OqH+wvCTtqChnFL2aUHuUnSjR9dwQrGkgw/SQiUnIeIDMQv1iw==",
+      "engine": "1.7.0",
+      "provenance": "https://slsa.dev/provenance/v1",
+      "registryMetadata": "https://registry.npmjs.org/@zhivex-ai%2Fcode/0.4.3",
+      "verifiedAt": "2026-11-14T18:28:46.407Z",
+      "tag": "code-v0.4.3",
+      "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43625033978",
+      "workflowConclusion": "success",
+      "workflowCompletedAt": "2026-11-14T18:27:56Z",
+      "retainedArtifact": "code-release-80618dedc023168d777ca530dab76959ad491687"
+    }
+  ],
+  "mergedPullRequests": [
+    "https://github.com/Zhivex/zhivex-harness/pull/277",
+    "https://github.com/Zhivex/zhivex-harness/pull/278"
+  ],
+  "mainWorkflows": {
+    "ci": "https://github.com/Zhivex/zhivex-harness/actions/runs/43615306890",
+    "codeJourneys": "https://github.com/Zhivex/zhivex-harness/actions/runs/43615306855",
+    "web": "https://github.com/Zhivex/zhivex-harness/actions/runs/43615306849",
+    "assistant": "https://github.com/Zhivex/zhivex-harness/actions/runs/43615306865",
+    "codeql": "https://github.com/Zhivex/zhivex-harness/actions/runs/43615306857"
+  },
+  "liveCertification": {
+    "status": "passed",
+    "providers": [
+      "meta",
+      "qwen",
+      "openai",
+      "anthropic",
+      "gemini",
+      "vertex"
+    ],
+    "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43619969669"
+  },
+  "representativeMatrix": {
+    "passed": 42,
+    "failed": 0,
+    "omitted": 0,
+    "perProvider": {
+      "meta": 14,
+      "qwen": 14,
+      "openai": 14
+    },
+    "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43619969669"
+  },
+  "priorCertification": {
+    "workflowRun": "https://github.com/Zhivex/zhivex-harness/actions/runs/43616223922",
+    "attempt": 2,
+    "publication": "skipped",
+    "recovery": "Attempt 1 stopped on Anthropic HTTP 401. After protected credential correction, attempt 2 passed all gates using the retained artifact."
+  }
+}
