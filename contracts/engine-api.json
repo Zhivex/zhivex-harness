@@ -2865,6 +2865,11 @@
           "name": "HarnessTaskRunOptions",
           "kind": "type",
           "tier": "experimental"
+        },
+        {
+          "name": "KnownFilePreload",
+          "kind": "type",
+          "tier": "experimental"
         }
       ]
     },
