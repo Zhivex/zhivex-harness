@@ -39,3 +39,5 @@ export { createTaskTelemetry } from '../runtime/task-telemetry.js';
 
 export { runHarnessTask } from '../runtime/harness.js';
 export type { HarnessTaskRunOptions } from '../runtime/harness.js';
+
+export type { KnownFilePreload } from "../runtime/known-file-preload.js";

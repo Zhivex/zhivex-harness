@@ -85,7 +85,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   search_files: tool({
     name: "search_files",
-    description: "Search for a literal string in text files using a stable cursor.",
+    description: "Search for a literal string in text files using a stable cursor. For several known independent queries over the same scope, prefer search_many to scan each file once.",
     schema: z.object({
       query: z.string().min(1).max(200),
       path: z.string().min(1).default("."),
@@ -103,7 +103,7 @@ export const createWorkspaceTools = (workspace: Workspace, allowedChecks: readon
   }),
   search_many: tool({
     name: "search_many",
-    description: "Search up to 10 independent literal queries in a single file or directory. Prefer an exact file path once known; directory searches include descendants. At most 500 aggregate matches.",
+    description: "Search up to 10 independent literal queries in a single file or directory with one shared scan. Prefer this over separate search_files calls when multiple queries are already known. Prefer an exact file path once known; directory searches include descendants. At most 500 aggregate matches.",
     schema: z.object({
       queries: z.array(z.object({
         query: z.string().min(1).max(200),

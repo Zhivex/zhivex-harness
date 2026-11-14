@@ -44,6 +44,19 @@ const fixture = async (options: Partial<Parameters<typeof openCliSessionStore>[0
 };
 
 describe("durable CLI sessions", () => {
+  test("paged summaries agree with hydrated histories including empty and multi-run sessions", async () => {
+    const { store }=await fixture();
+    await store.create({title:"empty"});
+    const populated=await store.create({title:"populated",initialRun:{runId:"summary-first",provider:"openai",model:"fixture",status:"completed"}});
+    await store.appendRun(populated.sessionId,{runId:"summary-last",provider:"openai",model:"fixture",status:"failed"});
+    for(const row of await store.list()){
+      const full=await store.get(row.sessionId);
+      expect(row.runCount).toBe(full!.runs.length);
+      expect(row.latestRun).toEqual(full!.runs.at(-1));
+    }
+    expect((await store.list({search:"populated",limit:1}))[0]?.latestRun?.runId).toBe("summary-last");
+    expect(await store.list({search:"missing"})).toEqual([]);
+  });
   test("searches literal titles before limiting and survives rename/restart", async () => {
     const { store, workspace, stateDirectory } = await fixture();
     const old = await store.create({ title: "Fix 100% parser" });

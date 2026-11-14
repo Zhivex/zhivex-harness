@@ -132,9 +132,10 @@ export const refreshHarnessScopedContext = async (
  * Root AGENTS.md belongs to the initial project bundle and is not duplicated.
  * Persist the returned state with the run; callers must serialize state updates.
  */
-export const discoverHarnessScopedContext = async (
+const discoverScopedContext = async (
   workspace: Pick<Workspace, "root">,
-  options: { paths: readonly string[]; state?: HarnessScopedContextState }
+  options: { paths: readonly string[]; state?: HarnessScopedContextState },
+  refresh = false
 ) => {
   if (options.paths.length > MAX_HARNESS_SCOPED_CONTEXT_PATHS) throw new Error("Too many scoped context target paths.");
   const candidates = new Set<string>();
@@ -146,9 +147,10 @@ export const discoverHarnessScopedContext = async (
     }
   }
   const state = harnessScopedContextStateSchema.parse(options.state ?? createEmptyHarnessScopedContextState());
-  const prior = await validateHarnessScopedContext(workspace, state);
+  const refreshed = refresh ? await refreshHarnessScopedContext(workspace, state) : undefined;
+  const prior = refreshed?.sources ?? await validateHarnessScopedContext(workspace, state);
   const sourcesByPath = new Map(prior.map((source) => [source.path, source]));
-  const entries = new Map(state.entries.map((entry) => [entry.path, entry]));
+  const entries = new Map((refreshed?.state ?? state).entries.map((entry) => [entry.path, entry]));
   for (const candidate of candidates) {
     if (entries.has(candidate)) continue;
     const source = await readSource(workspace, candidate);
@@ -164,3 +166,11 @@ export const discoverHarnessScopedContext = async (
   }).sort((a, b) => a.scope.split("/").length - b.scope.split("/").length || a.path.localeCompare(b.path));
   return { state: nextState, sources, instructions: renderHarnessScopedContext(sources) };
 };
+
+export const discoverHarnessScopedContext = (workspace: Pick<Workspace, "root">,
+  options: { paths: readonly string[]; state?: HarnessScopedContextState }) => discoverScopedContext(workspace, options);
+
+/** Conversational discovery accepts refreshed guidance and reuses those verified
+ * sources only within this operation. Durable strict validation stays separate. */
+export const refreshAndDiscoverHarnessScopedContext = (workspace: Pick<Workspace, "root">,
+  options: { paths: readonly string[]; state?: HarnessScopedContextState }) => discoverScopedContext(workspace, options, true);

@@ -1081,17 +1081,20 @@ export class Workspace {
     if (this.auditPath && this.auditEntries.length + count > 10000) throw new HarnessWorkspaceError("Mutation audit capacity exceeded; retain evidence and start a new run.");
   }
 
-  private async audit(entry: Omit<MutationAuditEntry, "id" | "timestamp">): Promise<MutationAuditEntry> {
-    const record = { id: randomUUID(), timestamp: new Date().toISOString(), ...entry } as MutationAuditEntry;
-    this.auditEntries.push(record);
+  private async audit(entries: readonly Omit<MutationAuditEntry, "id" | "timestamp">[]): Promise<MutationAuditEntry[]> {
+    if (entries.length === 0) return [];
+    const records = entries.map(entry => ({ id: randomUUID(), timestamp: new Date().toISOString(), ...entry } as MutationAuditEntry));
     if (this.auditPath) {
       const temporary = `${this.auditPath}.${randomUUID()}.tmp`;
-      const handle = await open(temporary, "wx", 0o600);
-      try { await handle.writeFile(JSON.stringify(this.auditEntries)); await handle.sync(); }
-      finally { await handle.close(); }
-      try { await rename(temporary, this.auditPath); } finally { await unlink(temporary).catch(() => {}); }
+      try {
+        const handle = await open(temporary, "wx", 0o600);
+        try { await handle.writeFile(JSON.stringify([...this.auditEntries, ...records])); await handle.sync(); }
+        finally { await handle.close(); }
+        await rename(temporary, this.auditPath);
+      } finally { await unlink(temporary).catch(() => {}); }
     }
-    return record;
+    this.auditEntries.push(...records);
+    return records;
   }
 
   mutationAudit(): readonly MutationAuditEntry[] {
@@ -1335,13 +1338,12 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const changes: MutationAuditEntry[] = [];
-    for (const item of prepared) changes.push(await this.audit({
+    const changes = await this.audit(prepared.map(item => ({
       operation: item.before ? "update" : "create",
       path: item.change.path,
       ...(item.before ? { beforeDigest: item.before.digest } : {}),
       afterDigest: digestBytes(item.change.content)
-    }));
+    })));
     return { proposalId: proposal.proposalId, changes };
   }
 
@@ -1399,7 +1401,7 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = await this.audit({ operation: "move", path: parsed.source, destination: parsed.destination, beforeDigest: source.digest, afterDigest: source.digest });
+    const audit = (await this.audit([{ operation: "move", path: parsed.source, destination: parsed.destination, beforeDigest: source.digest, afterDigest: source.digest }]))[0]!;
     return { source: parsed.source, destination: parsed.destination, digest: source.digest, audit };
   }
 
@@ -1482,7 +1484,7 @@ export class Workspace {
       throw error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = await this.audit({ operation: "quarantine", path: parsed.path, beforeDigest: source.digest, quarantineId });
+    const audit = (await this.audit([{ operation: "quarantine", path: parsed.path, beforeDigest: source.digest, quarantineId }]))[0]!;
     return { quarantineId, path: parsed.path, digest: source.digest, audit };
   }
 
@@ -1598,7 +1600,7 @@ export class Workspace {
         : error;
     }
     this.invalidateWorkspaceIndex();
-    const audit = await this.audit({ operation: "restore", path: destinationPath, afterDigest: digest, quarantineId: parsed.quarantineId });
+    const audit = (await this.audit([{ operation: "restore", path: destinationPath, afterDigest: digest, quarantineId: parsed.quarantineId }]))[0]!;
     return { quarantineId: parsed.quarantineId, path: destinationPath, digest, audit };
   }
 

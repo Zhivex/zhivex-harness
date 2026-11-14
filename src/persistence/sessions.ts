@@ -659,16 +659,23 @@ export const openCliSessionStore = async (options: OpenSessionStoreOptions): Pro
         ORDER BY activity_seq DESC
         LIMIT ?3
       `).all(workspaceKey, scopeKey, limit, search);
-      return rows.map((row) => {
-        const latest = latestRunRow(row.session_id);
-        const runCount = database.query<CountRow, [string]>(
-          "SELECT COUNT(*) AS count FROM zhivex_cli_session_runs WHERE session_id = ?1"
-        ).get(row.session_id)?.count ?? 0;
-        return {
-          ...sessionBase(row),
-          runCount,
-          ...(latest ? { latestRun: toRunReference(latest) } : {})
-        };
+      if (rows.length === 0) return [];
+      // Only aggregate runs for the selected page. One statement replaces two
+      // prepared statements per session and returns no historical run payloads.
+      const summaries = database.query<RunRow & { session_id: string; run_count: number }>(`
+        WITH totals AS (
+          SELECT session_id, COUNT(*) AS run_count, MAX(ordinal) AS latest_ordinal
+          FROM zhivex_cli_session_runs WHERE session_id IN (SELECT value FROM json_each(?))
+          GROUP BY session_id
+        )
+        SELECT r.*, totals.run_count FROM totals JOIN zhivex_cli_session_runs r
+          ON r.session_id=totals.session_id AND r.ordinal=totals.latest_ordinal
+      `).all(JSON.stringify(rows.map(row => row.session_id)));
+      const bySession = new Map(summaries.map(row => [row.session_id, row]));
+      return rows.map(row => {
+        const latest = bySession.get(row.session_id);
+        return { ...sessionBase(row), runCount: latest?.run_count ?? 0,
+          ...(latest ? { latestRun: toRunReference(latest) } : {}) };
       });
     },
 
