@@ -126,6 +126,8 @@ test("protected release workflows bind the tag before secrets and id-token", asy
   expect(ci).toContain("8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8");
 });
 
+// This integration fixture starts many Git and shell processes; hosted macOS
+// runners can exceed the unit-test default without a resolver failure.
 test("annotated tag resolution accepts only the workflow commit on main", async () => {
   const script = await resolverScript();
   const directory = await mkdtemp(path.join(os.tmpdir(), "zhivex-release-ref-"));
@@ -203,4 +205,4 @@ test("annotated tag resolution accepts only the workflow commit on main", async 
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
-});
+}, 30_000);
