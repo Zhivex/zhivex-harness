@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "a87499d4cd78ae5edcf18c22f2e97f9828e8099f",
+  "local": {
+    "bun": {
+      "baseline": {
+        "sessions": 14.818166999999903,
+        "context": 0.7577919999994265,
+        "audit": 15.807958999999755,
+        "activity0": 0.1566660000000013,
+        "activity40": 1.5356250000000387,
+        "activity80": 3.240707999999813
+      },
+      "candidate-final": {
+        "sessions": 0.45316700000012133,
+        "context": 0.4619999999999891,
+        "audit": 12.070666999999958,
+        "activity0": 0.15504200000000878,
+        "activity40": 1.230624999999975,
+        "activity80": 2.6890409999999747
+      }
+    },
+    "node": {
+      "baseline": {
+        "sessions": 18.601958000000195,
+        "context": 1.146541999999954,
+        "audit": 206.22299999999996,
+        "activity0": 0.26779200000001424,
+        "activity40": 3.8094999999998436,
+        "activity80": 7.429374999999709
+      },
+      "candidate-final": {
+        "sessions": 0.9037089999999353,
+        "context": 0.6409590000000662,
+        "audit": 128.11812499999996,
+        "activity0": 0.2732499999999902,
+        "activity40": 1.4676249999999982,
+        "activity80": 3.2554159999999683
+      }
+    }
+  },
+  "live": {
+    "baseline": {
+      "runs": 3,
+      "completed": 3,
+      "model": "gpt-6-luna",
+      "medianWallMs": 6543.9964169999985,
+      "medianActivityMs": 423.37804300001153,
+      "totalTokens": 5670,
+      "cachedInputTokens": 0
+    },
+    "candidate": {
+      "runs": 3,
+      "completed": 3,
+      "model": "gpt-6-luna",
+      "medianWallMs": 5781.876166,
+      "medianActivityMs": 283.5263269999923,
+      "totalTokens": 5608,
+      "cachedInputTokens": 0
+    },
+    "discarded-sql-json": {
+      "runs": 3,
+      "completed": 3,
+      "model": "gpt-6-luna",
+      "medianWallMs": 6925.081667,
+      "medianActivityMs": 330.1224580000089,
+      "totalTokens": 5698,
+      "cachedInputTokens": 0
+    }
+  },
+  "artifactSha256": {
+    "baseline.js": "be88f9ea552cc05af4ba736730bf0308e490ff15bf0848cc29382dbb468e9718",
+    "candidate.js": "7c1f6b761bea38d82ae844beeee6b8aaa88e086f8314dba226dd8e90b22465d7",
+    "candidate-final.js": "62d46569ff204e74d422ef755b7f83945a29fc9cc6597115fe4975e0e6626fae"
+  },
+  "evidenceSha256": {
+    "after-live.json": "12a6df003992a4b84f38d44e80081bf21b7667425d3f7bae7027d134efdbf628",
+    "after-local.json": "a87f1442472eb16fdb48a81b6ca1d7bde9af6f43e0aac86a0af2ff2b5bb985a5",
+    "baseline-1.json": "1be5518c95712d12d5c5b79cf4f04cb2373d359877613349ec93a67dc24535aa",
+    "baseline-2.json": "bb3afd05806042894f98026a756aa10bcc33d7f80d2c7e3ab3faf1ced327b7c7",
+    "baseline-3.json": "43c2d0516ce54519f92c503c85320e0b1219027d347404ab775424ed33f8a4cf",
+    "before-live.json": "e083e4a2d2db449e7cb089da5b43b8ea1e3e14a6926d972768eabf4b188d7cf0",
+    "before-local.json": "16c137c5a45b1ab993453afe448bff35de97513e9c0c3d3f0e56548aaf5c565a",
+    "candidate-1.json": "6d69a1d6e3a2d4521a9b3363207133dff3d7b708c2e21794e00a4c7f8e84b278",
+    "candidate-2.json": "f53a5c2dac08365b21dd75c905de9e1b7d3cdc4d169809c0920847244f674cd9",
+    "candidate-3.json": "8cbad8880c4072d630eca0f204cf0e412d821321439b9aa618883bbfa0cbf909",
+    "experimental-sql-json-live.json": "927518020f207541976b703a814898193d29225eb65664c0de77a60f5f896b7a",
+    "final-bun-baseline-1.json": "549ade25ea146bf106110ae46ad37f75837d1f6fa2cbd8e93ee9947850e3fd67",
+    "final-bun-baseline-2.json": "ba85dd7ba0a3ac4cb34e4349a09fa8b7e358ac94897624621477a40bb37fef8b",
+    "final-bun-baseline-3.json": "0380a3c32b4d65dde0bbad69b933ae82549855f0b95df5c2780591610234e51a",
+    "final-bun-candidate-final-1.json": "62fc0990d7cec1bec03657fb23bd241a38a291f2c8a3c8ac3e1b0d7f83a4d525",
+    "final-bun-candidate-final-2.json": "51e16bd461a0265d4a5c61f7768f49b193432eb731a7d650b03d79a0dc15c754",
+    "final-bun-candidate-final-3.json": "25f4bac1c2160ba897ab5a69829e36d4dec59c0df9fef75a7a5466ea14d33df8",
+    "final-node-baseline-1.json": "c8ce93ca29f904ad0ec17d7113bbac3b9616e81cc9f827ae08ea8c3fe27508a6",
+    "final-node-baseline-2.json": "35c8a844cd7eb7958747cfa4756690f508daba0c49df4abfaffa4dad071000c2",
+    "final-node-baseline-3.json": "3985dbd124394f3a46c3e2548758a7c8606ae17ed9c6218517ddfe3761f9d3cc",
+    "final-node-candidate-final-1.json": "d63c5378b1a3522a4f49e0151e4f7292bfc8229331428ab5ebda3f488198ac04",
+    "final-node-candidate-final-2.json": "c85e6c39db29c10416efd6392f0259a972da81e5e0becebb27e2465cc5497871",
+    "final-node-candidate-final-3.json": "864852f2b112affe6b38967346a5f6a793fe56db3cfc5ec00bcd4b484f1f0c38",
+    "openai-approval-smoke.json": "3abb8256ba8dd7b4596cbc74c63cbf37d588f24a5855ba2ad86b7b63f44de41f"
+  }
+}
