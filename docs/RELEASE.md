@@ -1,16 +1,12 @@
 # Release process
 
-## Prepared minor: 1.7.0
+## Published minor: 1.7.0
 
-The source candidate is Harness `1.7.0`, with Code `0.4.3` pinned exactly to it and private Desktop bound to the same engine. The new experimental profiled engine API is additive. Assistant remains private; its real-account pilot is not certified by offline checks. See the [preparation report](reports/RELEASE_1_7_0_CODE_0_4_3.md) for validation and remaining gates.
+`@zhivex-ai/harness@1.7.0` is the latest public npm release, published and verified on 2026-11-14. Annotated `v1.7.0` resolves to `80618dedc023168d777ca530dab76959ad491687`. The [protected Harness workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/43619969669) passed exact-artifact validation, mandatory OCI, all six-provider live gates and 42/42 representative cases before publishing. Registry bytes, `latest` and SLSA source/workflow provenance were independently verified.
 
-This preparation creates no tag, dispatches no publication workflow and changes no registry channel. `release-status.json` continues to describe the verified `1.6.3` publication below. New release-bound live and representative evidence is required for the final source commit and exact artifact.
+Code `0.4.3`, pinned exactly to Harness `1.7.0`, was published and verified afterward in its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/43625033978) from the same commit. The experimental profiled engine API remains additive; runtime defaults and provider tiers are unchanged. Private Desktop remains alpha and Assistant remains private. `release-status.json` records the verified Harness publication. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md) and the [historical preparation](https://github.com/Zhivex/zhivex-harness/blob/80618dedc023168d777ca530dab76959ad491687/docs/reports/RELEASE_1_7_0_CODE_0_4_3.md).
 
-## Published patch: 1.6.3
-
-`@zhivex-ai/harness@1.6.3` is the latest public npm release, published and verified on 2026-11-10. Annotated `v1.6.3` resolves to `7ba14a08e4a3fd60f3ea50263cb0bebdd5fc125a`. The [protected Harness workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42865111096) passed exact-artifact, mandatory OCI, all six-provider live gates and 42/42 representative cases before publishing. Registry bytes, `latest` and SLSA source/workflow provenance were independently verified.
-
-Code `0.4.2`, pinned exactly to Harness `1.6.3`, was published and verified afterward in its [protected workflow](https://github.com/Zhivex/zhivex-harness/actions/runs/42873027805) on the same source commit. Private Desktop retains its alpha status and engine binding. Public contracts, default models and provider tiers are unchanged. `release-status.json` now records this verified Harness publication. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md) for times, hashes, CI and certification links; the [preparation report](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md) remains historical.
+The earlier [certification-only run](https://github.com/Zhivex/zhivex-harness/actions/runs/43616223922) completed without publishing. Publication used a separate explicit dispatch and repeated every gate. Previous release: [Harness 1.6.3 / Code 0.4.2](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).
 
 ## Navigation
 

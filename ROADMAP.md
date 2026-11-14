@@ -1,11 +1,13 @@
 # Zhivex Harness Roadmap
 
-- Source candidate: Harness `1.7.0` / Code `0.4.3`; Pending stable publication. No tag or publication has been requested.
+- Status: published on npm as `latest`: Harness `1.7.0` and Code `0.4.3`.
+- Current publication date: 2026-11-14.
 
-- Status: Harness `1.6.3` and Code `0.4.2` published and verified on npm `latest`
-- Current publication date: 2026-11-10
+Published npm `next` remains Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. `release-status.json` records Harness 1.7.0 and its release-bound certification.
 
-Published npm `next` remains Harness `1.4.0-rc.8` and Code `0.3.0-rc.8`. `release-status.json` records the verified Harness 1.6.3 artifact and release-bound certification.
+## Published: 1.7.0 / Code 0.4.3
+
+Both packages were published from `80618dedc023168d777ca530dab76959ad491687` after exact-main checks and protected artifact validation. Harness passed six-provider live certification and 42/42 representative cases; Code pins Harness 1.7.0 exactly and passed real registry installation before publication. Registry bytes, dist-tags and source-bound provenance were independently verified. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_7_0_CODE_0_4_3.md). Runtime defaults, provider tiers and private Desktop alpha status are unchanged.
 
 ## Published: 1.6.3 / Code 0.4.2
 
@@ -136,7 +138,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Tagged; not published, superseded by 1.6.2 | S |
 | `1.6.2` | Patch | One continuity retry per provider in the release gate | Published on npm as `latest` | S |
 | `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Published on npm as `latest` | S |
-| `1.7.0` | Minor | Experimental profiled engine API; private Assistant integration; matched Code 0.4.3 | Pending stable publication | M |
+| `1.7.0` | Minor | Experimental profiled engine API; private Assistant integration; matched Code 0.4.3 | Published on npm as `latest` | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 
