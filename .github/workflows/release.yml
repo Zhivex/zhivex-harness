@@ -1,4 +1,4 @@
-name: Publish npm package
+name: Certify or publish Harness
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ on:
           - latest
           - next
       confirm_publication:
-        description: I confirm this immutable public npm publication
+        description: Publish after all gates pass; false certifies only and never publishes
         required: true
         default: false
         type: boolean
@@ -32,7 +32,7 @@ concurrency:
 jobs:
   resolve-release-commit:
     name: Resolve annotated tag on main
-    if: ${{ inputs.confirm_publication && github.repository == 'Zhivex/zhivex-harness' }}
+    if: ${{ github.repository == 'Zhivex/zhivex-harness' }}
     permissions: {}
     # Local reusable workflow: defense in depth, not the trust boundary.
     # GitHub loads this file from the dispatched ref, which can rewrite or omit it.
@@ -45,7 +45,7 @@ jobs:
   validate:
     name: Build and validate exact tarball
     needs: resolve-release-commit
-    if: ${{ inputs.confirm_publication && github.repository == 'Zhivex/zhivex-harness' && needs.resolve-release-commit.result == 'success' }}
+    if: ${{ github.repository == 'Zhivex/zhivex-harness' && needs.resolve-release-commit.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -131,7 +131,8 @@ jobs:
           bun run build:code
           bun run typecheck:code
           bun run test:code
-          npm install --prefix "$RUNNER_TEMP/code-package-managers" --ignore-scripts --no-audit --no-fund pnpm@11.25.0 yarn@1.22.22
+          mkdir -p "$RUNNER_TEMP/code-package-managers"
+          bun add --cwd "$RUNNER_TEMP/code-package-managers" --ignore-scripts pnpm@11.25.0 yarn@1.22.22
           HARNESS_CODE_HARNESS_ARTIFACT="$ARTIFACT" bun run smoke:engine-code
           CODE_JOURNEY_OUTPUT="$RUNNER_TEMP/engine-code-release-evidence" node packages/code/scripts/installed-journey.mjs "$RUNNER_TEMP/engine-code-release-evidence/code.tgz" --candidate-engine "$ARTIFACT"
           CODE_CANDIDATE_ENGINE="$GITHUB_WORKSPACE/$ARTIFACT" CODE_WEB_ARTIFACT="$RUNNER_TEMP/engine-code-release-evidence/code.tgz" node packages/web/scripts/installed-smoke.mjs
@@ -169,7 +170,7 @@ jobs:
       - validate
       - certify-live
       - representative-evaluation
-    if: ${{ needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}
+    if: ${{ inputs.confirm_publication && needs.resolve-release-commit.result == 'success' && needs.validate.result == 'success' && needs.certify-live.result == 'success' && needs.representative-evaluation.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: npm
@@ -182,6 +183,13 @@ jobs:
       RELEASE_CHANNEL: ${{ inputs.channel }}
 
     steps:
+      - name: Require explicit publication confirmation
+        env:
+          PUBLICATION_CONFIRMED: ${{ inputs.confirm_publication }}
+        run: |
+          set -euo pipefail
+          [[ "$PUBLICATION_CONFIRMED" == true ]] || { echo "Publication was not requested" >&2; exit 1; }
+
       - name: Require trusted release commit
         env:
           RELEASE_SHA: ${{ needs.resolve-release-commit.outputs.sha }}
@@ -804,6 +812,7 @@ jobs:
           LIVE: ${{ needs.certify-live.result }}
           REPRESENTATIVE: ${{ needs.representative-evaluation.result }}
           PUBLICATION: ${{ needs.publish.result }}
+          PUBLICATION_CONFIRMED: ${{ inputs.confirm_publication }}
         run: |
           {
             printf '## Release %s → %s\n\n' "$RELEASE_TAG" "$RELEASE_CHANNEL"
@@ -812,6 +821,8 @@ jobs:
             printf '| Validation | %s |\n| Live | %s |\n| Representative | %s |\n| Publication and verification | %s |\n' "$VALIDATION" "$LIVE" "$REPRESENTATIVE" "$PUBLICATION"
             if [ "$PUBLICATION" = success ]; then
               printf '\nRegistry integrity and provenance verified.\n'
+            elif [ "$PUBLICATION_CONFIRMED" = false ] && [ "$VALIDATION" = success ] && [ "$LIVE" = success ] && [ "$REPRESENTATIVE" = success ] && [ "$PUBLICATION" = skipped ]; then
+              printf '\nCertification complete. Publication was not requested; no package was published.\n'
             else
               printf '\nRelease incomplete. Inspect the failed gate and registry transaction summary before retrying; do not rebuild an accepted version.\n'
             fi
