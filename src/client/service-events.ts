@@ -57,16 +57,27 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
   if(!Number.isSafeInteger(maxEvents)||maxEvents<1||maxEvents>100_000||!Number.isSafeInteger(retentionMs)||retentionMs<1) {db.close();throw new Error("ACTIVITY_LIMIT_INVALID");}
   db.exec(`CREATE TABLE IF NOT EXISTS client_activity_events(sequence INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, session TEXT NOT NULL, run TEXT NOT NULL, at INTEGER NOT NULL, activity TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS client_activity_scope ON client_activity_events(scope, session, sequence);
+    CREATE INDEX IF NOT EXISTS client_activity_sequence ON client_activity_events(scope, sequence);
+    CREATE INDEX IF NOT EXISTS client_activity_age ON client_activity_events(scope, at);
     CREATE TABLE IF NOT EXISTS client_activity_snapshots(scope TEXT NOT NULL, session TEXT NOT NULL, sequence INTEGER NOT NULL, expired_through INTEGER NOT NULL DEFAULT 0, snapshot TEXT NOT NULL, PRIMARY KEY(scope,session));`);
   // Reuse preparation; each invocation still validates private database access
   // and persistence-secret rules in SqliteDatabase.
   const readSnapshot = db.query<{snapshot:string;expired_through:number}>("SELECT snapshot,expired_through FROM client_activity_snapshots WHERE scope=? AND session=?");
-  const expiredEvents = db.query<{session:string;seq:number}>(`SELECT session,MAX(sequence) AS seq FROM client_activity_events WHERE scope=? AND (at < ? OR sequence NOT IN (SELECT sequence FROM client_activity_events WHERE scope=? ORDER BY sequence DESC LIMIT ?)) GROUP BY session`);
+  const retentionCutoff = db.query<{sequence:number}>("SELECT sequence FROM client_activity_events WHERE scope=? ORDER BY sequence DESC LIMIT 1 OFFSET ?");
+  const expiredEvents = db.query<{session:string;seq:number}>(`SELECT session,MAX(sequence) AS seq FROM (
+    SELECT session,sequence FROM client_activity_events WHERE scope=? AND at < ?
+    UNION ALL SELECT session,sequence FROM client_activity_events WHERE scope=? AND sequence<=?
+  ) GROUP BY session`);
   const markExpired = db.query("UPDATE client_activity_snapshots SET expired_through=MAX(expired_through,?) WHERE scope=? AND session=?");
   const deleteExpired = db.query("DELETE FROM client_activity_events WHERE scope=? AND session=? AND sequence<=?");
   const insertEvent = db.query("INSERT INTO client_activity_events(scope,session,run,at,activity) VALUES(?,?,?,?,?)");
   const lastSequence = db.query<{seq:number}>("SELECT last_insert_rowid() AS seq");
   const saveSnapshot = db.query("INSERT INTO client_activity_snapshots(scope,session,sequence,snapshot) VALUES(?,?,?,?) ON CONFLICT(scope,session) DO UPDATE SET sequence=excluded.sequence,snapshot=excluded.snapshot");
+  // A single bounded projection cache avoids reparsing and reserializing old
+  // runs on each token. data_version detects writes by other SQLite handles,
+  // including legacy clients; cache publication happens only after COMMIT.
+  const dataVersion = db.query<{data_version:number}>("PRAGMA data_version");
+  let cached: { sessionId:string; version:number; runs:Record<string,string> } | undefined;
   const readEvents = db.query<{sequence:number;session:string;run:string;at:number;activity:string}>("SELECT sequence,session,run,at,activity FROM client_activity_events WHERE scope=? AND session=? AND sequence>? ORDER BY sequence LIMIT 201");
   const redaction = createRedactionPolicy({includeEmails:true});
   const redact=(text:string)=>{
@@ -98,16 +109,21 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     return { state:row?JSON.parse(row.snapshot) as HarnessActivitySnapshot:{schemaVersion:1 as const,sessionId,sequence:0,runs:{}}, expiredThrough:row?.expired_through??0 };
   };
   const prune=()=>{
-    const expired=expiredEvents.all(scope,now()-retentionMs,scope,maxEvents);
+    const cutoff=retentionCutoff.get(scope,maxEvents)?.sequence??0;
+    const expired=expiredEvents.all(scope,now()-retentionMs,scope,cutoff);
     for(const row of expired){markExpired.run(row.seq,scope,row.session);deleteExpired.run(scope,row.session,row.seq);}
   };
   const write=(sessionId:string,runId:string,activity:Record<string,unknown>)=>{
     if(!/^[A-Za-z0-9._:-]{1,128}$/.test(sessionId)||!/^[A-Za-z0-9._:-]{1,128}$/.test(runId))throw new Error("ACTIVITY_ID_INVALID");
     const at=now();const encoded=JSON.stringify(activity);if(Buffer.byteLength(encoded)>64*1024)throw new Error("ACTIVITY_TOO_LARGE");
     db.exec("BEGIN IMMEDIATE");try{
-      const current=snapshot(sessionId).state;
-      const runs=Object.keys(current.runs);if(!current.runs[runId]&&runs.length>=1000)throw new Error("ACTIVITY_RUN_LIMIT");
-      const state:HarnessActivityRun=current.runs[runId]??{text:"",status:"running",truncated:false};
+      const version=dataVersion.get()!.data_version;
+      const runs = cached?.sessionId===sessionId && cached.version===version
+        ? { ...cached.runs }
+        : Object.fromEntries(Object.entries(snapshot(sessionId).state.runs).map(([id,run])=>[id,JSON.stringify(run)]));
+      const previous=Object.hasOwn(runs,runId)?runs[runId]:undefined;
+      if(!previous&&Object.keys(runs).length>=1000)throw new Error("ACTIVITY_RUN_LIMIT");
+      const state:HarnessActivityRun=previous?JSON.parse(previous):{text:"",status:"running",truncated:false};
       if(typeof activity.textDelta==="string") {state.text+=activity.textDelta;if(state.text.length>256*1024){state.text=state.text.slice(-256*1024);state.truncated=true;}}
       if(activity.type==="user-message"&&typeof activity.prompt==="string")state.prompt=activity.prompt;
       if(typeof activity.toolCallId==="string"&&typeof activity.toolName==="string"){
@@ -120,15 +136,22 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       if(typeof activity.status==="string"&&(activity.type==="checkpoint"||activity.type==="agent-run-finish"))state.status=activity.status;
       if(activity.type==="agent-run-start")state.status="running";
       if(activity.type==="tool-approval-request"||activity.type==="agent-approval-request")state.status="waiting_approval";
-      current.runs[runId]=state;
       insertEvent.run(scope,sessionId,runId,at,encoded);
-      current.sequence=lastSequence.get()!.seq;
+      const sequence=lastSequence.get()!.seq;
       // Include the final sequence in the byte bound. Compaction never deletes
       // journal events or claims that a retained cursor lost policy evidence.
-      const bounded = serializeBoundedSnapshot(current, runId);
-      saveSnapshot.run(scope,sessionId,current.sequence,bounded);
+      Object.defineProperty(runs,runId,{value:JSON.stringify(state),enumerable:true,configurable:true,writable:true});
+      const header=JSON.stringify({schemaVersion:1,sessionId,sequence});
+      let bounded=header.slice(0,-1)+',"runs":{'+Object.entries(runs).map(([id,run])=>JSON.stringify(id)+":"+run).join(",")+"}}";
+      if(Buffer.byteLength(bounded)>MAX_SNAPSHOT_BYTES){
+        bounded=serializeBoundedSnapshot(JSON.parse(bounded) as HarnessActivitySnapshot,runId);
+        const compacted=JSON.parse(bounded) as HarnessActivitySnapshot;
+        for(const [id,run] of Object.entries(compacted.runs)) runs[id]=JSON.stringify(run);
+      }
+      saveSnapshot.run(scope,sessionId,sequence,bounded);
       prune();db.exec("COMMIT");
-    }catch(e){db.exec("ROLLBACK");throw e;}
+      cached={sessionId,version,runs};
+    }catch(e){cached=undefined;db.exec("ROLLBACK");throw e;}
   };
   const writeText = (sessionId: string, runId: string, text: string) => {
     // Only already-redacted text reaches this splitter. In particular, never
@@ -181,7 +204,7 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
     checkpoint(sessionId,runId,status){const key=`${sessionId}:${runId}`;const textDelta=flush(key,"",true);writeText(sessionId,runId,textDelta);tails.delete(key);write(sessionId,runId,{type:"checkpoint",status});},
     replay(sessionId,after=0){
       if(!Number.isSafeInteger(after)||after<0)throw new Error("ACTIVITY_CURSOR_INVALID");
-      db.exec("BEGIN IMMEDIATE");try{prune();db.exec("COMMIT");}catch(e){db.exec("ROLLBACK");throw e;}
+      db.exec("BEGIN IMMEDIATE");try{prune();db.exec("COMMIT");}catch(e){cached=undefined;db.exec("ROLLBACK");throw e;}
       const current=snapshot(sessionId);const expired=after<current.expiredThrough;
       if(after>current.state.sequence)throw new Error("ACTIVITY_CURSOR_AHEAD");
       if(expired)return {schemaVersion:1,cursorExpired:true,hasMore:false,policyEvidenceIncomplete:true,nextCursor:current.state.sequence,events:[],snapshot:current.state};
@@ -189,6 +212,6 @@ export const openHarnessActivityStore = async (config: HarnessConfig, options: H
       const events=rows.slice(0,200).map(row=>({schemaVersion:1 as const,eventId:createHash("sha256").update(`${scope}:${row.sequence}`).digest("hex"),sequence:row.sequence,sessionId:row.session,runId:row.run,at:row.at,activity:JSON.parse(row.activity)}));
       return {schemaVersion:1,cursorExpired:false,hasMore:rows.length>200,policyEvidenceIncomplete:current.expiredThrough>0,nextCursor:events.at(-1)?.sequence??after,events};
     },
-    close(){db.close();tails.clear();discard.clear();}
+    close(){db.close();cached=undefined;tails.clear();discard.clear();}
   };
 };

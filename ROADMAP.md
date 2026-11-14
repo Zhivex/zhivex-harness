@@ -1,5 +1,7 @@
 # Zhivex Harness Roadmap
 
+- Source candidate: Harness `1.7.0` / Code `0.4.3`; Pending stable publication. No tag or publication has been requested.
+
 - Status: Harness `1.6.3` and Code `0.4.2` published and verified on npm `latest`
 - Current publication date: 2026-11-10
 
@@ -134,6 +136,7 @@ The `0.6.0` dependency batch pins and overrides `@zhivex-ai/core@1.6.0`, retaini
 | `1.6.1` | Patch | Compaction chronology fix for the continuity gate | Tagged; not published, superseded by 1.6.2 | S |
 | `1.6.2` | Patch | One continuity retry per provider in the release gate | Published on npm as `latest` | S |
 | `1.6.3` | Patch | SDK and dependency maintenance; matched Code 0.4.2 | Published on npm as `latest` | S |
+| `1.7.0` | Minor | Experimental profiled engine API; private Assistant integration; matched Code 0.4.3 | Pending stable publication | M |
 
 Relative size is for sequencing only; dates require a capacity decision.
 

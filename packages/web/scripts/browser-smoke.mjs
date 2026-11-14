@@ -135,10 +135,27 @@ async function reconnectState() {
   await page.getByRole("button", { name: label, exact: true }).waitFor({ state: "hidden" });
 }
 async function createSession() {
-  await page.getByRole("button", { name: "New session", exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector(".pill")?.textContent === "Ready",
-  );
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const response = page.waitForResponse(response =>
+      response.url().endsWith("/api/action") &&
+      response.request().postDataJSON()?.action === "create");
+    await page.getByRole("button", { name: "New session", exact: true }).click();
+    const result = await (await response).json();
+    if (result?.ok === false && result.error?.code === "BUSY") {
+      // The host rejected admission: no session was created. Wait for the UI
+      // to consume that receipt before another explicit click. Never repeat
+      // a lost/non-JSON response or any other failure, nor retry indefinitely.
+      await page.getByRole("alert").filter({ hasText: "BUSY" }).waitFor();
+      continue;
+    }
+    assert.equal(result?.ok, true, `Session creation failed: ${JSON.stringify(result)}`);
+    assert.equal(result.data?.kind, "session");
+    await page.waitForFunction(
+      () => document.querySelector(".pill")?.textContent === "Ready",
+    );
+    return;
+  }
+  assert.fail("Session creation remained BUSY after 10 explicit attempts");
 }
 async function assertHeaderAligned() {
   await page.waitForFunction(() => document.querySelector('.app-shell')?.getAttribute('data-sidebar') === (globalThis.innerWidth >= 1280 ? 'docked' : 'drawer'));
@@ -837,7 +854,14 @@ try {
   await openSessions();
   assert.equal(await page.getByRole("button", { name: "Open project beacon", exact: true }).isEnabled(), true);
   await closeSessions();
+  // A poll or a cancelling run can still own the host's mutation admission.
+  // Force its definitive pre-admission response instead of relying on CI timing.
+  const createsBeforeBusy = commands.filter(command => command === "create").length;
+  const sessionsBeforeBusy = await page.locator('.session-row').count();
+  fault = {action:"create",mode:"rejected",code:"BUSY"};
   await createSession();
+  assert(commands.filter(command => command === "create").length >= createsBeforeBusy + 2);
+  assert.equal(await page.locator('.session-row').count(), sessionsBeforeBusy + 1);
   steps.push("definitive unconfigured model rejection keeps workspace/session actions available");
 
   const switchesBeforeLoss = commands.filter(c => c === "selectModel").length;

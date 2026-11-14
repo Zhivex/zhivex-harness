@@ -1,0 +1,98 @@
+{
+  "migrated_on": "2026-11-13",
+  "source_commit": "a87499d4cd78ae5edcf18c22f2e97f9828e8099f",
+  "notion_index": "https://app.notion.com/p/418777b104f681959506f9aba73e2b12?pvs=204",
+  "reports": [
+    {
+      "path": "docs/reports/ASSISTANT_MERGE_READINESS_2026-11-11.md",
+      "name": "ASSISTANT_MERGE_READINESS_2026-11-11.md",
+      "sha256": "c43dd7dac65884ad8dc4cb0064bb2fd2bd5174ff1bc39f29de0e24e68d668a44",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/ASSISTANT_MERGE_READINESS_2026-11-11.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681febb18e5f53f9ffbe8?pvs=204"
+    },
+    {
+      "path": "docs/reports/CODE_0_2_0_READINESS_2026-10-03.md",
+      "name": "CODE_0_2_0_READINESS_2026-10-03.md",
+      "sha256": "85c87df67bcf14cc1bfe721d2d9128678da3d50692299a1a0690370ec8a930e8",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_0_2_0_READINESS_2026-10-03.md",
+      "notion_url": "https://app.notion.com/p/418777b104f6819ead0ec52091f77b7c?pvs=204"
+    },
+    {
+      "path": "docs/reports/RELEASE_1_6_3_CODE_0_4_2.md",
+      "name": "RELEASE_1_6_3_CODE_0_4_2.md",
+      "sha256": "1bf54083d50a67b3bd25ce34489802f1a331bf971feca6399215deed1bf50418",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md",
+      "notion_url": "https://app.notion.com/p/418777b104f68195ab2dfea4c33fd3ca?pvs=204"
+    },
+    {
+      "path": "docs/reports/CODE_COMPACT_FLOW.md",
+      "name": "CODE_COMPACT_FLOW.md",
+      "sha256": "62f5de520f1b69e528b04430cdd731169d915b9fad13ba5e7d33e3dd4046082f",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_COMPACT_FLOW.md",
+      "notion_url": "https://app.notion.com/p/418777b104f6813bb98cd8c2b785a3b6?pvs=204"
+    },
+    {
+      "path": "docs/reports/WEB_FLOW_AUDIT.md",
+      "name": "WEB_FLOW_AUDIT.md",
+      "sha256": "3ea9f5ee668292b9267c57f8f99d6a531ffa9b6c1e976842952c8fc9a13e5dfe",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_FLOW_AUDIT.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681659836e83a2be180d7?pvs=204"
+    },
+    {
+      "path": "docs/reports/WEB_LIMITS_DESIGN_QA.md",
+      "name": "WEB_LIMITS_DESIGN_QA.md",
+      "sha256": "31e64f6b2bf6236b8024eb7c42136ab1edae06ce9db03917aa4e419b90e7d3de",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_LIMITS_DESIGN_QA.md",
+      "notion_url": "https://app.notion.com/p/418777b104f6819b931dce4effa4dac4?pvs=204"
+    },
+    {
+      "path": "docs/reports/assistant-settings/design-qa.md",
+      "name": "assistant-settings/design-qa.md",
+      "sha256": "13617f30fa6245eec78f84585af13a2fcee4dd737a5771da213667d43413ca36",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/assistant-settings/design-qa.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681c58971efcc534ead2b?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_12_2026-09-20.md",
+      "name": "HAR_HU_12_2026-09-20.md",
+      "sha256": "6c1a8557fe7df0852e0daeb476be93201e26a8b0695b6f89eb65a4e41d48dcea",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_12_2026-09-20.md",
+      "notion_url": "https://app.notion.com/p/418777b104f68153922bdcd74dde13f0?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_37_38_2026-09-28.md",
+      "name": "HAR_HU_37_38_2026-09-28.md",
+      "sha256": "d982a63470da1ebeb5efac92ae944d5a1bbf019f7c26ea506bc4d5f5d83b0ad5",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_37_38_2026-09-28.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681b49c52e072853f57f0?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_39_2026-09-29.md",
+      "name": "HAR_HU_39_2026-09-29.md",
+      "sha256": "d14fa3a455fd325c707f5cd83039ec6e365179ea6602a6435be9de02ba244c2f",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_39_2026-09-29.md",
+      "notion_url": "https://app.notion.com/p/418777b104f68197928ec71c735d57d5?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_41_44_2026-09-28.md",
+      "name": "HAR_HU_41_44_2026-09-28.md",
+      "sha256": "90ceae3e08e92d388ab694ea845a110aba3d7f6158683cdf6e4328ded1c3d398",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_41_44_2026-09-28.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681738200df1905416f2b?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_42_2026-09-29.md",
+      "name": "HAR_HU_42_2026-09-29.md",
+      "sha256": "0d8e9e24aac712438d7b4692c8ee8b09d1e5cbf5bca39750d834ca90e66b9e89",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_42_2026-09-29.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681e39946d8448b19c7ea?pvs=204"
+    },
+    {
+      "path": "docs/reports/HAR_HU_51_2026-09-29.md",
+      "name": "HAR_HU_51_2026-09-29.md",
+      "sha256": "b7885fcc4872b57518a8b88afe108bff128c8e52cc56bf3578b0a6778315eedd",
+      "source_url": "https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_51_2026-09-29.md",
+      "notion_url": "https://app.notion.com/p/418777b104f681a882e6e8d99cb6b48f?pvs=204"
+    }
+  ]
+}

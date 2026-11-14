@@ -51,6 +51,7 @@ jobs:
           path: |
             packages/web/.test-output/*.png
             packages/web/.test-output/*-report.json
+            packages/web/.test-output/browser-failure.txt
             ${{ runner.temp }}/code-task-evidence/
           include-hidden-files: true
           if-no-files-found: error

@@ -1,3 +1,4 @@
+import { parseKnownFilePreload, readKnownFilePreload, type KnownFilePreload } from "./known-file-preload.js";
 import { TaskBudget, TASK_BUDGET_KEY, inspectTaskBudgetSummary } from './task-budget.js';
 import { readTaskContinuity } from './task-continuity.js';
 import { compileTaskAcceptanceContract } from './task-acceptance.js';
@@ -313,6 +314,8 @@ export interface HarnessRunOptions {
 
 /** Experimental Code host options; the Stable runHarness contract remains unchanged. */
 export interface HarnessTaskRunOptions extends HarnessRunOptions {
+  /** Opt-in bounded file snapshots for new local runs; never grants read permissions. */
+  preloadFiles?: KnownFilePreload;
   taskBudgetExisting?: boolean;
   taskBudgetContinue?: boolean;
   /** Trusted host consent binding, rechecked during durable admission. Never metadata or model input. */
@@ -320,8 +323,10 @@ export interface HarnessTaskRunOptions extends HarnessRunOptions {
   telemetryTemperature?: 'cold' | 'warm' | 'unknown';
   onTaskTelemetry?: (telemetry: TaskTelemetrySnapshot) => void;
 }
+const preloadReaders = new WeakMap<ZhivexHarness, unknown>();
 const taskInvocationOptions = new WeakMap<HarnessRunOptions, HarnessTaskRunOptions>();
 export const runHarnessTask = (harness: ZhivexHarness, input: AgentRunInput<LanguageModel>, options: HarnessTaskRunOptions = {}): Promise<AgentRunOutput> => {
+  options = { ...options, ...(options.preloadFiles ? { preloadFiles: parseKnownFilePreload(options.preloadFiles) } : {}) };
   const stableOptions: HarnessRunOptions = { ...options };
   taskInvocationOptions.set(stableOptions, options);
   return runHarness(harness, input, stableOptions);
@@ -747,6 +752,7 @@ const createHarnessOwned = async (options: CreateHarnessOptions, agentProfile?: 
     }
   };
   policyRuntime = runtime;
+  if (!executionEnvironment && !isolated && !Object.hasOwn(mcpTools, "read_files")) preloadReaders.set(runtime, toToolSet(agent.tools)?.read_files);
   bindHarnessTaskBudget(runtime, options.usageAccounting);
   bindTaskAcceptanceHost(runtime,{config,tools,...(options.toolPolicy?{policy:options.toolPolicy}:{})});
   bindHarnessPolicyInspection(runtime, { config, tools, ...(options.toolPolicy ? { policy: options.toolPolicy } : {}), operatorFile: options.toolPolicyFile !== undefined, hasOciEnvironment: executionEnvironment !== undefined });
@@ -1167,6 +1173,14 @@ export const runHarness = async (
     telemetry.observeEvent(event);
     await options.onEvent?.(event);
   } };
+  if (taskOptions?.preloadFiles) {
+    if ('state' in input || input.tools || input.executionEnvironment || harness.executionEnvironment || harness.agent.executionEnvironment ||
+        input.toolApprovalPolicy || requiresExplicitHostReview(harness) ||
+        !preloadReaders.has(harness) || !preloadReaders.get(harness) ||
+        toToolSet(harness.agent.tools)?.read_files !== preloadReaders.get(harness))
+      throw new HarnessConfigError('PRELOAD_UNSUPPORTED_CONTEXT: requires a new local run with the original read_files tool and no approval override');
+    taskInvocationOptions.set(eventOptions, taskOptions);
+  }
   let invocation='state'in input?input:{...input,runId:input.runId??`run_${randomUUID()}`};
   try {
     const durableState = 'state' in invocation ? await harness.store.load(invocation.state.runId, harness.config.scope) : undefined;
@@ -1438,7 +1452,7 @@ const runHarnessInternal = async (
   input = withFreshSystemInstructions(input, typeof harness.agent.instructions === "string" ? harness.agent.instructions : undefined);
   if (taskBudget) {
     const middleware = taskBudget.middleware({ closure: () => policyController?.closure() ?? false, closeOnBudget: !harness.config.requireVerifiedDelivery });
-    const tools = telemetry ? telemetry.tools(toToolSet(harness.agent.tools) ?? {}) : toToolSet(harness.agent.tools) ?? {};
+    const tools = toToolSet(harness.agent.tools) ?? {};
     harness = { ...harness, agent: new Agent({
       ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
       tools, model: wrapLanguageModel(harness.agent.model, [middleware])
@@ -1478,7 +1492,16 @@ const runHarnessInternal = async (
       part.type === "tool-call" && rejected.has(part.toolCall.id) && canRecoverEditReferences(part.toolCall, rejected.get(part.toolCall.id)!) ? [part.toolCall] : []));
   });
   const nativeTools = nativeTaskTools(contextRuntime.wrapTools(toToolSet(input.tools ?? harness.agent.tools) ?? {}));
-  const runtimeTools = taskBudget ? taskBudget.wrapTools(nativeTools) : nativeTools;
+  const governedTools = taskBudget ? taskBudget.wrapTools(nativeTools) : nativeTools;
+  const runtimeTools = telemetry ? telemetry.tools(governedTools) : governedTools;
+  const preload = taskInvocationOptions.get(options)?.preloadFiles;
+  if (preload && !("state" in input)) {
+    const snapshot = await readKnownFilePreload(preload, runtimeTools, harness.agent.model, combinedSignal, harness.agent.toolApprovalPolicy);
+    const messages: ModelMessage[] = input.messages ?? (input.prompt ? [{ role: "user", parts: [{ type: "text", text: input.prompt }] }] : []);
+    const { prompt: _preloadPrompt, ...withoutPrompt } = input;
+    input = { ...withoutPrompt, messages: [...messages, { role: "user", parts: [{ type: "text", text: snapshot.text }] }],
+      metadata: { ...input.metadata, zhivexKnownFilePreload: serializeJsonValue(snapshot.receipt) } };
+  }
   harness = { ...harness, store: contextStore, agent: new Agent({
     ...Object.fromEntries(Object.entries(harness.agent).filter(([, value]) => value !== undefined)),
     tools: runtimeTools, store: contextStore, model: wrapLanguageModel(harness.agent.model, [createModelEditReferences(toToolSet(harness.agent.tools) ?? {}, failedEditCalls), contextRuntime.middleware,

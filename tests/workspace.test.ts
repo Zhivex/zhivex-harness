@@ -10,6 +10,18 @@ import { Workspace } from "../src/workspace/workspace.js";
 
 const temporaryDirectories: string[] = [];
 
+test("multi-file patch publishes a complete durable audit readable on reopen",async()=>{
+  const root=await mkdtemp(path.join(os.tmpdir(),"harness-audit-batch-"));temporaryDirectories.push(root);
+  const auditPath=path.join(root,"audit.json");
+  const workspace=await Workspace.open(root,{auditPath});
+  const changes=Array.from({length:20},(_,i)=>({path:`file-${i}.txt`,expectedDigest:null,content:`file ${i}\n`}));
+  const result=await workspace.applyPatch({proposalId:createEditProposal({changes}).proposalId,changes});
+  expect(result.changes).toHaveLength(20);
+  expect(new Set(result.changes.map(entry=>entry.id)).size).toBe(20);
+  expect(JSON.parse(await readFile(auditPath,"utf8"))).toEqual(result.changes);
+  expect((await Workspace.open(root,{auditPath})).mutationAudit()).toEqual(result.changes);
+});
+
 const fixture = async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-harness-test-"));
   temporaryDirectories.push(root);

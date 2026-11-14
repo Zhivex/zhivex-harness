@@ -6,6 +6,13 @@ The project follows Semantic Versioning. During `0.x`, minor releases may change
 
 ## Unreleased
 
+## 1.7.0 - 2026-11-13
+
+- Prepare Harness 1.7.0 for `latest`, with Code 0.4.3 pinned to this engine and the private Desktop binding updated. Publication and release-bound live certification remain pending; `release-status.json` retains the verified 1.6.3 publication.
+- Add experimental host-owned agent profiles through `createProfiledHarness`, `GENERAL_ASSISTANT_PROFILE` and profile schemas/types on `@zhivex-ai/harness/engine`. Profiles restrict the exposed tool catalog and participate in the runtime fingerprint; they do not grant permissions. The stable coding constructor, approval authority, storage formats, default models and provider tiers remain unchanged.
+- Add the private local Assistant integration with persistent conversations, approval-gated tools, proactive notices and offline CI coverage. Its real-account pilot and evaluation campaign remain pending; it is not a public Assistant release. Contributors must prepare the local engine because the published 1.6.3 bootstrap dependency lacks the profiled API.
+- Include Code terminal and web presentation refinements. Make the web browser smoke handle an explicit pre-admission `BUSY` rejection during session creation with a bounded new UI attempt; uncertain outcomes are never retried.
+
 ## 1.6.3 - 2026-11-10
 
 - Published and verified on npm `latest`, paired with Code 0.4.2 and the private Desktop engine binding. Exact-artifact, OCI, six-provider live and 42/42 representative gates passed. Existing public APIs, storage formats, model defaults and provider tiers are unchanged. See [publication evidence](https://github.com/Zhivex/zhivex-harness/blob/main/docs/reports/PUBLICATION_1_6_3_CODE_0_4_2.md).

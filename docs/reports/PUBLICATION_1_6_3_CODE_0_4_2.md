@@ -19,7 +19,7 @@ The [machine-readable publication evidence](evidence/publication-1.6.3-code-0.4.
 
 ## Published artifact integrity
 
-These are the protected release artifacts, distinct from the local preparation tarballs in the [historical preparation report](RELEASE_1_6_3_CODE_0_4_2.md).
+These are the protected release artifacts, distinct from the local preparation tarballs in the [historical preparation report](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md).
 
 ```text
 sha512-GPqUqeBb4oylmTSzJG4qPsSLqiUoSLFlH1xHm2BIgVQHZDUjtcBZ2UI68+NQptJ6hp78m5P4Lf3+3KpKrXZTbA==  @zhivex-ai/harness@1.6.3

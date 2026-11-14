@@ -1,6 +1,6 @@
 {
   "name": "@zhivex-ai/harness",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "description": "Governed, provider-portable runtime for coding agents with durable approvals and isolated repository execution.",
   "type": "module",
   "license": "MIT",
@@ -168,6 +168,7 @@
     "test": "bun test --preload ./tests/preload-bedrock-mock.ts ./tests ./desktop/tests",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
+    "benchmark:harness": "bun run scripts/benchmark-harness-overhead.ts",
     "benchmark:workspace:ci": "bun run scripts/benchmark-workspace.ts --files 1000 --page-size 100 --repetitions 3 --warmups 0",
     "benchmark:oci": "bun run scripts/benchmark-oci.ts",
     "benchmark:safe-fix": "bun run scripts/benchmark-time-to-safe-fix.ts",

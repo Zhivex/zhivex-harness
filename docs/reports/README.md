@@ -1,8 +1,9 @@
 # Historical reports
 
-Internal working notes, diagnostic plans and intermediate investigations belong
-in the Git-ignored `.local-docs/docs/reports/` directory at the repository root.
-That local archive is not available in a fresh clone or in the published package.
+Internal UX notes, candidate preparation and HU tracking live in the
+[Notion archive](INTERNAL_ARCHIVE.md). Its migration manifest retains original
+paths, source hashes and immutable Git links for technical evidence. Local-only
+working notes are not a shared or durable archive.
 Keep final acceptance, release, security and consolidated campaign evidence here,
 along with any evidence referenced by maintained documentation or validation gates.
 
@@ -14,29 +15,43 @@ this archive rather than bundling development journals. Personal paths in copied
 upstream tracebacks are anonymized in this repository copy; evaluation outcomes
 and recorded artifact hashes are unchanged.
 
-## Release and UI archive navigation
+## Release and archive navigation
 
+- [Low versus default reasoning with native JSON Schema](PRELOAD_SCHEMA_EFFORT_2026-11-14.md): eight paired trials with preload and 4,096 output tokens, latency/token savings and semantic quality failures.
+
+- [Native JSON Schema with preload](PRELOAD_STRUCTURED_OUTPUT_2026-11-14.md): eight cache-controlled pairs at 4,096 output tokens, format validity, executable quality and retained exhaustion failure.
+
+- [One-retry recovery of preload failures](PRELOAD_RETRY_ONCE_2026-11-14.md): two exact failed answers, one accepted recovery, cumulative latency and complete incremental usage.
+- [Direct 2,048 versus 4,096 preload comparison](PRELOAD_CAP_AB_2026-11-14.md): harder repository tasks, cache-controlled paired truncation, executable quality and latency results.
+- [Preload output budget and cache-controlled comparison](PRELOAD_OUTPUT_BUDGET_2026-11-14.md): 4,096-token experimental ceiling, eight cold-cache pairs, retained failure analysis and full usage ledger.
+- [Known-file preload implementation and repository validation](KNOWN_FILE_PRELOAD_2026-11-14.md): opt-in governed API, preserved pilot failures, executable repair checks and combined token ledger.
+- [Known-file preload comparison, 2026-11-14](PRELOAD_CONTEXT_2026-11-14.md): 18 balanced OpenAI pairs, per-call timings, bounded consumption and quality evidence.
+- [OpenAI low versus default reasoning, 2026-11-13](REASONING_EFFORT_2026-11-13.md): 18 balanced pairs, per-call instrumentation, token budget and quality checks.
+
+- [Expanded real OpenAI latency comparison, 2026-11-13](OPENAI_LATENCY_2026-11-13.md): 20 balanced pairs, paired confidence intervals, and the full consumption ledger.
+- [Harness performance comparison, 2026-11-13](HARNESS_PERFORMANCE_2026-11-13.md): local Bun/Node before-and-after measurements, real OpenAI checks, and compatibility boundaries.
 - [Release preparation and decision history through 1.6.2](RELEASE_HISTORY_THROUGH_1_6_2.md): moved out of the operational release guide; original failures and pending states retained.
-- [Harness 1.6.3 / Code 0.4.2 preparation](RELEASE_1_6_3_CODE_0_4_2.md) and [verified publication](PUBLICATION_1_6_3_CODE_0_4_2.md): distinct preparation and protected release artifacts.
-- [Web limits design QA](WEB_LIMITS_DESIGN_QA.md): original visual and offline validation snapshot.
-- [Web workspace flow audit](WEB_FLOW_AUDIT.md): historical UI changes, session diagnosis and SDK proposals.
-- [Code compact terminal flow](CODE_COMPACT_FLOW.md): original implementation and installed validation snapshot; current usage is in the [Code guide](../../packages/code/README.md).
+- [Harness 1.6.3 / Code 0.4.2 preparation](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/RELEASE_1_6_3_CODE_0_4_2.md) and [verified publication](PUBLICATION_1_6_3_CODE_0_4_2.md): distinct preparation and protected release artifacts.
+- [Web limits design QA](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_LIMITS_DESIGN_QA.md): original visual and offline validation snapshot.
+- [Web workspace flow audit](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/WEB_FLOW_AUDIT.md): historical UI changes, session diagnosis and SDK proposals.
+- [Code compact terminal flow](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/CODE_COMPACT_FLOW.md): original implementation and installed validation snapshot; current usage is in the [Code guide](../../packages/code/README.md).
 - [Assistant web design QA](../../packages/assistant/web/design-qa.md): retained with its desktop and mobile captures beside the implementation.
 
-The 2026-11-11 reorganization retains these records in the checkout. It does not
-remove result JSON, security evidence, artifact hashes or failed attempts.
+The 2026-11-13 migration moves thirteen internal narratives to Notion; their
+originals remain available through frozen Git links in the archive index.
+Result JSON, security evidence, artifact hashes and failed outcomes are preserved.
 
-## Additional retained implementation and diagnostic evidence
+## Additional implementation and diagnostic evidence
 
-These dated reports retain their original scope, incomplete acceptance and failed
+These dated reports and frozen source links retain their original scope, incomplete acceptance and failed
 attempts. They supplement the consolidated reports below; they are not current
 usage guides or new certification.
 
-- [HAR-HU-37 and HAR-HU-38 implementation evidence](HAR_HU_37_38_2026-09-28.md).
-- [HAR-HU-41 / HAR-HU-44 implementation evidence](HAR_HU_41_44_2026-09-28.md).
-- [HAR-HU-42: Gemini editing reproduction](HAR_HU_42_2026-09-29.md).
+- [HAR-HU-37 and HAR-HU-38 implementation evidence](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_37_38_2026-09-28.md).
+- [HAR-HU-41 / HAR-HU-44 implementation evidence](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_41_44_2026-09-28.md).
+- [HAR-HU-42: Gemini editing reproduction](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_42_2026-09-29.md).
 - [HAR-HU-45 — installed certification preparation](HAR_HU_45_2026-09-29.md).
-- [HAR-HU-51 — piloto competitivo reproducible](HAR_HU_51_2026-09-29.md).
+- [HAR-HU-51 — piloto competitivo reproducible](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_51_2026-09-29.md).
 - [Performance backport assessment](PERFORMANCE_BACKPORT_2026-09-26.md).
 - [RC2 approval input validation](RC2_APPROVAL_PREFLIGHT_2026-09-28.md).
 - [RC2 recovery validation — 2026-09-28](RC2_RECOVERY_VALIDATION_2026-09-28.md).
@@ -87,7 +102,7 @@ Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-
 
 - [Verified Harness 1.6.3 / Code 0.4.2 publication](PUBLICATION_1_6_3_CODE_0_4_2.md): protected workflows, six-provider certification, 42/42 representative cases and registry/provenance verification. [Machine-readable evidence](evidence/publication-1.6.3-code-0.4.2-2026-11-10.json).
 
-- [HAR-HU-12 stable onboarding — September 20](HAR_HU_12_2026-09-20.md): published 1.0.0 installation, version/help/doctor, documentation guards and evidence limits.
+- [HAR-HU-12 stable onboarding — September 20](https://github.com/Zhivex/zhivex-harness/blob/a87499d4cd78ae5edcf18c22f2e97f9828e8099f/docs/reports/HAR_HU_12_2026-09-20.md): published 1.0.0 installation, version/help/doctor, documentation guards and evidence limits.
 
 - [RC14 validation and publication hold — September 10](RC14_VALIDATION_2026-09-10.md): new live cohort, frozen source identity, validation boundaries and conditions to resume publication.
 

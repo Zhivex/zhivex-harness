@@ -1,13 +1,13 @@
 # First use
 
-This guide targets stable `1.6.3`, published and verified on npm `latest`.
+This guide targets stable `1.7.0`, prepared for npm `latest`; publication is pending. Registry commands below become available after publication.
 
 ## Install and start
 
 Install Node.js 22.13.0 or newer and Git. Then:
 
 ```sh
-npm install -g @zhivex-ai/harness@1.6.3
+npm install -g @zhivex-ai/harness@1.7.0
 cd /path/to/your/project
 zhx
 ```
@@ -82,16 +82,16 @@ For command execution, configure [OCI isolation](EXECUTION_ENVIRONMENTS.md).
 With Bun 1.4.0 or newer and a supported Node runtime:
 
 ```sh
-bun add --global @zhivex-ai/harness@1.6.3
+bun add --global @zhivex-ai/harness@1.7.0
 zhx
 ```
 
 For a disposable version/help/environment check without a global installation:
 
 ```sh
-bunx @zhivex-ai/harness@1.6.3 --version
-bunx @zhivex-ai/harness@1.6.3 --help
-bunx @zhivex-ai/harness@1.6.3 doctor
+bunx @zhivex-ai/harness@1.7.0 --version
+bunx @zhivex-ai/harness@1.7.0 --help
+bunx @zhivex-ai/harness@1.7.0 doctor
 ```
 
 For source development, use the [contributor guide](https://github.com/Zhivex/zhivex-harness/blob/main/CONTRIBUTING.md).

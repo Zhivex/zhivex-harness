@@ -510,3 +510,69 @@ Qwen routes are excluded from this option until an output-cap route is certified
 It does not add a service/wire-protocol field or enable this token pool for
 application-owned review groups. Monetary accounting and its existing output
 clamp remain separate. No provider calls are required by the regression suite.
+
+## Explicit known-file preload (experimental)
+
+Hosts that already know which local files a task needs can opt in through
+`runHarnessTask` from `@zhivex-ai/harness/code-support`. Omission preserves the
+ordinary model-directed read flow. There is no automatic file selection or CLI
+flag, and `runHarness`'s stable options are unchanged.
+
+```ts
+import { createHarness } from "@zhivex-ai/harness";
+import { runHarnessTask } from "@zhivex-ai/harness/code-support";
+
+const harness = await createHarness({ workspace: process.cwd(), provider: "openai" });
+try {
+  const result = await runHarnessTask(harness, {
+    prompt: "Review billing logic against its documented contract."
+  }, {
+    preloadFiles: {
+      files: [
+        { path: "src/billing.ts", startLine: 1, endLine: 120 },
+        { path: "docs/billing.md" }
+      ],
+      maxBytes: 16_000
+    }
+  });
+} finally {
+  await harness.close();
+}
+```
+
+`files` accepts 1–20 explicit path/range requests with inclusive positive line
+numbers. The existing workspace reader enforces protected paths, regular-file
+and no-symlink checks, source-size and batch-size limits, and bounded rendered
+slices. `maxBytes` caps the serialized snapshot (default 32,000; maximum 64,000);
+it cannot raise any workspace limit. An exceeded cap fails before model use,
+rather than silently dropping requested files. Existing rendered slices can
+still report truncation; select smaller ranges when full content is required.
+The model input remains subject to normal token admission and compaction limits.
+
+Preload calls the original policy-wrapped `read_files` executor through the
+runtime's context, task-budget and telemetry wrappers. A successful read
+triggers normal scoped `AGENTS.md` discovery before the first model request.
+Tool policies can deny it; approval-required reads are refused and must use the
+ordinary approval flow. The option is not consent to bypass an approval.
+
+This first version supports **new local runs only**. Resumes with `preloadFiles`,
+OCI/isolated MCP sessions, execution-environment overrides, tool catalog
+overrides, explicit-review mode and custom tool guards are rejected before
+preload. The original agent approval policy is evaluated; an approval override
+is unsupported. No environment falls back silently to reading the host tree.
+
+Snapshots are supplied as a separate user-context message, labelled as untrusted
+file data, not as a system instruction or fabricated model/tool exchange. The
+message contains bounded content and file digests. State metadata under
+`zhivexKnownFilePreload` records selected ranges, serialized bytes and aggregate
+SHA-256. The host read is measured as a tool operation but is not a model-issued
+tool call and does not appear in `result.toolResults`. Failure before SDK run
+admission need not produce a durable run state. Do not treat caller-supplied
+metadata as an authorization receipt.
+
+Files are read afresh for each explicit new invocation. On resume, omit this
+option: saved snapshots are historical context, not a freshness guarantee or
+permission to edit. Normal tools can reread changed files; existing edit
+validation remains authoritative. Snapshot labels do not establish resistance
+to prompt injection. Preloading irrelevant or large context can increase cost,
+so callers should select only files needed by the task.

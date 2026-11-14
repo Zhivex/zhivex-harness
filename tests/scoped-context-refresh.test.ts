@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { link, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { discoverHarnessScopedContext, refreshHarnessScopedContext, validateHarnessScopedContext,
+import { discoverHarnessScopedContext, refreshHarnessScopedContext, refreshAndDiscoverHarnessScopedContext, validateHarnessScopedContext,
   type HarnessScopedContextState } from "../src/context/scoped-context.js";
 import { MAX_HARNESS_CONTEXT_FILE_BYTES } from "../src/context/context-engineering.js";
 
@@ -10,6 +10,20 @@ const fixture = async (run: (workspace: { root: string }) => Promise<void>) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "zhivex-scoped-refresh-"));
   try { await run({ root }); } finally { await rm(root, { recursive: true, force: true }); }
 };
+
+test("combined discovery refreshes prior guidance without weakening strict durable validation",()=>fixture(async workspace=>{
+  await mkdir(path.join(workspace.root,"src/nested"),{recursive:true});
+  await writeFile(path.join(workspace.root,"src/AGENTS.md"),"Old guidance.");
+  const prior=await discoverHarnessScopedContext(workspace,{paths:["src/a.ts"]});
+  const original=structuredClone(prior.state);
+  await writeFile(path.join(workspace.root,"src/AGENTS.md"),"Updated guidance.");
+  await writeFile(path.join(workspace.root,"src/nested/AGENTS.md"),"Nested guidance.");
+  await expect(validateHarnessScopedContext(workspace,prior.state)).rejects.toThrow("changed");
+  const next=await refreshAndDiscoverHarnessScopedContext(workspace,{paths:["src/nested/b.ts"],state:prior.state});
+  expect(next.sources.map(source=>source.content)).toEqual(["Updated guidance.","Nested guidance."]);
+  expect(prior.state).toEqual(original);
+  expect(await validateHarnessScopedContext(workspace,next.state)).toHaveLength(2);
+}));
 
 test("small scoped guidance is not limited by historical file or directory counts", () => fixture(async workspace => {
   let state: HarnessScopedContextState = { schemaVersion: 1, entries: [] };

@@ -18,7 +18,7 @@ export async function prepareRelease(options: {
   if ((await api("commits/main")).sha !== sha) throw new Error("Requested SHA must be current remote main");
   // Includes registry absence, dated changelog, release policy and clean/main checkout.
   await run(["bun", "run", "scripts/check-release-readiness.ts", "--channel", channel, "--registry"]);
-  for (const workflow of ["ci.yml", "codeql.yml"]) {
+  for (const workflow of ["ci.yml", "codeql.yml", "web.yml", "code-journey.yml", "assistant.yml"]) {
     const response = await api(`actions/workflows/${workflow}/runs?head_sha=${sha}&branch=main&event=push&per_page=100`);
     const latest = response.workflow_runs?.[0];
     if (latest?.head_sha !== sha || latest?.status !== "completed" || latest?.conclusion !== "success") {

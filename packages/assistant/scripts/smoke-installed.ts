@@ -18,11 +18,12 @@ try {
   const artifact = path.join(temporary, "harness.tgz");
   run("bun", ["pm", "pack", "--ignore-scripts", "--quiet", "--filename", artifact], repository);
   const consumer = path.join(temporary, "consumer");
-  await cp(packageRoot, consumer, { recursive: true, filter: source => !["node_modules", "dist", ".git"].includes(path.basename(source)) });
+  await cp(packageRoot, consumer, { recursive: true, filter: source => !["node_modules", "dist", ".git", "src-tauri"].includes(path.basename(source)) });
   const manifestPath = path.join(consumer, "package.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const engine = JSON.parse(await readFile(path.join(repository, "package.json"), "utf8"));
-  if (manifest.dependencies["@zhivex-ai/harness"] !== engine.version) throw new Error("Assistant engine pin differs from candidate");
+  // The registry pin bootstraps frozen installs before the candidate is published.
+  // Install the exact packed candidate and verify its runtime version below.
   manifest.dependencies["@zhivex-ai/harness"] = "file:../harness.tgz";
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
   // The committed lock describes the registry pin; this temporary consumer tests a candidate.
@@ -33,6 +34,8 @@ import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { HARNESS_VERSION } from '@zhivex-ai/harness/engine';
+assert.equal(HARNESS_VERSION, ${JSON.stringify(engine.version)});
 const resolved = realpathSync(fileURLToPath(import.meta.resolve('@zhivex-ai/harness/engine')));
 assert.ok(resolved.startsWith(realpathSync('node_modules') + path.sep), resolved);
 console.log('Installed public export resolved inside isolated consumer');

@@ -8,7 +8,7 @@ import { readFile } from "node:fs/promises";
 test("Stable certification retains Flash and Contributor without changing historical pins or user defaults", async () => {
   const input = await loadReleaseMetadata(path.resolve(import.meta.dir, ".."));
   validateReleaseMetadata(input, false, "latest");
-  expect(input.version).toBe("1.6.3");
+  expect(input.version).toBe("1.7.0");
   expect(input.matrix.expectedModels.find(row => row.releaseTag === `v${input.version}`)?.models)
     .toEqual({meta: "muse-spark-1.3-contributor", qwen: "qwen3.8-flash", openai: "gpt-6-luna"});
   expect(input.matrix.expectedModels.find(row => row.releaseTag === "v1.2.0")?.models)
@@ -84,6 +84,20 @@ test("dry run performs no remote mutation", async () => {
   const f = fixture(); await prepareRelease({ sha, version: "1.1.0-rc.3", publish: false, run: f.run });
   expect(f.calls.some(args => args.includes("POST") || args[1] === "workflow")).toBe(false);
 });
+for (const workflow of ["web.yml", "code-journey.yml", "assistant.yml"]) {
+  test(`failed ${workflow} blocks release preparation before any mutation`, async () => {
+    const f = fixture();
+    const run: Command = async args => {
+      if (args[2]?.includes(`actions/workflows/${workflow}/runs`)) {
+        return JSON.stringify({ workflow_runs: [{ head_sha: sha, status: "completed", conclusion: "failure" }] });
+      }
+      return f.run(args);
+    };
+    await expect(prepareRelease({ sha, version: "1.1.0-rc.3", publish: true, run }))
+      .rejects.toThrow(`${workflow} must pass`);
+    expect(f.calls.some(args => args.includes("POST") || args[1] === "workflow")).toBe(false);
+  });
+}
 test("publication creates annotated tag then dispatches exact tag, never forces refs", async () => {
   const f = fixture(); await prepareRelease({ sha, version: "1.1.0-rc.3", publish: true, run: f.run });
   const writes = f.calls.filter(args => args.includes("POST"));

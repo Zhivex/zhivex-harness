@@ -2,7 +2,7 @@ import type { AgentRunStore } from "@zhivex-ai/agents/ops";
 import type { LanguageModelMiddleware, ModelGenerateInput, ToolSet } from "@zhivex-ai/core";
 import type { Workspace } from "../workspace/workspace.js";
 import { createProgressMonitor, PROGRESS_MONITOR_KEY } from "./progress-monitor.js";
-import { createEmptyHarnessScopedContextState, discoverHarnessScopedContext, refreshHarnessScopedContext,
+import { createEmptyHarnessScopedContextState, refreshAndDiscoverHarnessScopedContext, refreshHarnessScopedContext,
   harnessScopedContextStateSchema } from "../context/scoped-context.js";
 import { harnessExecutionSession } from "../execution/execution-environment.js";
 
@@ -28,8 +28,7 @@ export async function createContextRuntime(workspace: Workspace, metadata: Recor
       const paths = (data.files ?? [data]).flatMap(file => typeof file.path === "string" ? [file.path] : []);
       const currentWorkspace = harnessExecutionSession(context)?.workspace ?? workspace;
       const next = discovery.then(async () => {
-        const refreshed = await refreshHarnessScopedContext(currentWorkspace, state);
-        const discovered = await discoverHarnessScopedContext(currentWorkspace, { paths, state: refreshed.state });
+        const discovered = await refreshAndDiscoverHarnessScopedContext(currentWorkspace, { paths, state });
         state = discovered.state;
         scopedWorkspace = currentWorkspace;
         instructions = discovered.instructions;

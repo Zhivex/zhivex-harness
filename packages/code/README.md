@@ -1,5 +1,7 @@
 # Zhivex Code
 
+Source candidate: Code `0.4.3` pins Harness `1.7.0`. Publication is pending; published channels below are unchanged.
+
 The terminal product for [Zhivex Harness](https://github.com/Zhivex/zhivex-harness). Code is what you install and use. Harness is the governed, provider-portable runtime underneath: durable approvals and isolated execution.
 
 <!-- Same GIF as the repository README: docs/images/approval-survives-restart.gif.

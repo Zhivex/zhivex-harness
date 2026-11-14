@@ -3,6 +3,27 @@ import {mkdtemp,rm,readFile} from "node:fs/promises";
 import {resolveHarnessConfig} from "../src/runtime/config.js";
 import {openHarnessActivityStore} from "../src/client/service-events.js";
 
+test("projection cache observes interleaved writers, literal run IDs and backwards clocks",async()=>{
+ const root=await mkdtemp("/tmp/har-events-writers-");const config=resolveHarnessConfig({workspace:root});
+ let now=100;
+ const a=await openHarnessActivityStore(config,{maxEvents:3,retentionMs:20,now:()=>now});
+ const b=await openHarnessActivityStore(config,{maxEvents:3,retentionMs:20,now:()=>now});
+ try{
+  a.append("s","r.dot:1",{type:"text-delta",textDelta:"first "});
+  b.append("s","r.dot:1",{type:"text-delta",textDelta:"second "});
+  a.append("s","__proto__",{type:"text-delta",textDelta:"literal "});
+  b.checkpoint("s","r.dot:1","completed");
+  const page=a.replay("s");
+  expect(page.cursorExpired).toBe(true);
+  expect(page.snapshot?.runs["r.dot:1"]).toMatchObject({text:"first second ",status:"completed"});
+  expect(Object.hasOwn(page.snapshot!.runs,"__proto__")).toBe(true);
+  now=50;a.append("s","r.dot:1",{type:"text-delta",textDelta:"older timestamp "});
+  now=100;b.checkpoint("s","__proto__","completed");
+  expect(a.replay("s",page.nextCursor).cursorExpired).toBe(true);
+  expect(a.replay("s").snapshot?.runs["r.dot:1"]?.text).toBe("first second older timestamp ");
+ }finally{a.close();b.close();await rm(root,{recursive:true,force:true});}
+});
+
 test("cursor replay is durable and duplicate delivery has stable identities",async()=>{
  const root=await mkdtemp("/tmp/har-events-");const config=resolveHarnessConfig({workspace:root});
  try{

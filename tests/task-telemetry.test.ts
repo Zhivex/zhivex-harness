@@ -14,6 +14,25 @@ import { createTextMessage, wrapLanguageModel } from '@zhivex-ai/core';
 
 const context = () => ({ input: { messages: [] }, model: createMockLanguageModel() });
 
+test('ordinary runs measure actual tools without requiring a task budget', async () => {
+  const root = await mkdtemp('/tmp/telemetry-tools-integration-');
+  await writeFile(root + '/a.txt', 'fixture');
+  const model = createMockLanguageModel({ streamEvents: [[
+    { type: 'tool-call', toolCall: { id: 'read', name: 'read_files', input: { files: [{ path: 'a.txt', startLine: 1 }] } } },
+    { type: 'finish', finishReason: 'tool-calls' }
+  ], [{ type: 'text-delta', textDelta: 'done' }, { type: 'finish', finishReason: 'stop' }]] });
+  const harness = await createHarness({ workspace: root, provider: 'openai', modelInstance: model,
+    store: createInMemoryAgentRunStore(), toolNames: ['read_files'], subagentProfiles: [] });
+  let snapshot: TaskTelemetrySnapshot | undefined;
+  try {
+    const result = await runHarnessTask(harness, { prompt: 'Read a.txt', maxSteps: 3 }, { onTaskTelemetry: s => { snapshot = s; } });
+    expect(result.status).toBe('completed');
+    expect(result.toolResults[0]?.isError).not.toBe(true);
+    expect(snapshot!.operationTotals.tool).toMatchObject({ count: 1, errors: 0 });
+    expect(snapshot!.operationTotals.model.count).toBe(2);
+  } finally { await harness.close(); await rm(root, { recursive: true, force: true }); }
+});
+
 test('wall time remains distinct from overlapping operations; milestones are first observations', () => {
   let clock = 100;
   const telemetry = createTaskTelemetry({ now: () => clock, temperature: 'cold' });

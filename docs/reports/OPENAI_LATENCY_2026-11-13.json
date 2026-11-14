@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "campaignSha256": "aaa99178481703b5f37d8050f56374a418165c82a3cc52a9466eec2111259cf5",
+  "model": "gpt-6-luna",
+  "artifacts": {
+    "baseline": "42ab33e5f17ab02a553e33f65509d2d78fe1f6e857b8f6820826df175563a137",
+    "candidate": "9b30fb68e6e9b08b088468b9652e1b00d08e4e2ebe3ef1b95f583b21a51cc569",
+    "worker": "0c87113fcf38b70168612c9d6aa3bc1ade3f01345805e7b1dad6c5fa64804c62"
+  },
+  "plannedPairs": 20,
+  "completePairs": 20,
+  "excludedPairs": [],
+  "stopReason": "planned-completion",
+  "reportedTokens": 70401,
+  "variants": {
+    "baseline": {
+      "attempts": 20,
+      "valid": 20,
+      "requests": 40,
+      "meteredResponses": 40,
+      "incompleteResponses": 0,
+      "sdkTransportUsageAgreement": 20,
+      "responseTokenCaps": [
+        1024
+      ],
+      "inputTokens": 25290,
+      "outputTokens": 9865,
+      "totalTokens": 35155,
+      "cachedInputTokens": 0,
+      "meanReasoningTokens": 324.25,
+      "medianOutputWords": 84.5
+    },
+    "candidate": {
+      "attempts": 20,
+      "valid": 20,
+      "requests": 40,
+      "meteredResponses": 40,
+      "incompleteResponses": 0,
+      "sdkTransportUsageAgreement": 20,
+      "responseTokenCaps": [
+        1024
+      ],
+      "inputTokens": 25414,
+      "outputTokens": 9832,
+      "totalTokens": 35246,
+      "cachedInputTokens": 0,
+      "meanReasoningTokens": 322.25,
+      "medianOutputWords": 83.5
+    }
+  },
+  "comparisons": {
+    "task": {
+      "pairs": 20,
+      "beforeMeanMs": 6274.4585374,
+      "afterMeanMs": 6092.98558125,
+      "beforeMedianMs": 6249.7104375,
+      "afterMedianMs": 6159.424541,
+      "meanReductionMs": 181.47295615,
+      "medianReductionMs": -28.792854499999976,
+      "meanReduction95CI": [
+        -270.70441270000003,
+        670.9165666000001
+      ],
+      "geometricAfterBeforeRatio": 0.9657380751286676,
+      "ratio95CI": [
+        0.8852389607924099,
+        1.0449111646987173
+      ],
+      "fasterPairs": 10
+    },
+    "activityHandler": {
+      "pairs": 20,
+      "beforeMeanMs": 546.8633218999997,
+      "afterMeanMs": 333.24120154999923,
+      "beforeMedianMs": 545.3812794999984,
+      "afterMedianMs": 329.9306280000005,
+      "meanReductionMs": 213.62212035000044,
+      "medianReductionMs": 213.25923300000173,
+      "meanReduction95CI": [
+        196.18295510000036,
+        230.6604126500011
+      ],
+      "geometricAfterBeforeRatio": 0.608378530789065,
+      "ratio95CI": [
+        0.5847391221168622,
+        0.6344401784018737
+      ],
+      "fasterPairs": 20
+    },
+    "firstText": {
+      "pairs": 20,
+      "beforeMeanMs": 5112.26076055,
+      "afterMeanMs": 5065.7775937999995,
+      "beforeMedianMs": 5141.145312500001,
+      "afterMedianMs": 5168.516792,
+      "meanReductionMs": 46.483166749999874,
+      "medianReductionMs": -9.893541500000083,
+      "meanReduction95CI": [
+        -355.5590353500001,
+        460.9617063999998
+      ],
+      "geometricAfterBeforeRatio": 0.9913212016778283,
+      "ratio95CI": [
+        0.9096224473391111,
+        1.0774051380538259
+      ],
+      "fasterPairs": 10
+    },
+    "responseHeaders": {
+      "pairs": 20,
+      "beforeMeanMs": 1178.36136675,
+      "afterMeanMs": 1080.92242915,
+      "beforeMedianMs": 1069.4094795,
+      "afterMedianMs": 1061.0558125,
+      "meanReductionMs": 97.43893759999999,
+      "medianReductionMs": 41.23233349999998,
+      "meanReduction95CI": [
+        -43.16728314999996,
+        277.43620639999983
+      ],
+      "geometricAfterBeforeRatio": 0.9367160040628162,
+      "ratio95CI": [
+        0.8350358963671974,
+        1.0368542332773385
+      ],
+      "fasterPairs": 13
+    },
+    "modelStreamIncludingConsumer": {
+      "pairs": 20,
+      "beforeMeanMs": 6186.66410005,
+      "afterMeanMs": 6003.37041255,
+      "beforeMedianMs": 6162.0179794999995,
+      "afterMedianMs": 6081.4332505,
+      "meanReductionMs": 183.29368749999995,
+      "medianReductionMs": -26.944917499999974,
+      "meanReduction95CI": [
+        -270.31199170000014,
+        673.94011705
+      ],
+      "geometricAfterBeforeRatio": 0.964829547350611,
+      "ratio95CI": [
+        0.8828499670895954,
+        1.045505834613293
+      ],
+      "fasterPairs": 10
+    }
+  },
+  "byOrder": [
+    {
+      "baselinePosition": 0,
+      "comparison": {
+        "pairs": 10,
+        "beforeMeanMs": 6403.3859041000005,
+        "afterMeanMs": 5901.4674667,
+        "beforeMedianMs": 6344.934333499999,
+        "afterMedianMs": 5907.9215835,
+        "meanReductionMs": 501.91843739999985,
+        "medianReductionMs": 946.9696665000001,
+        "meanReduction95CI": [
+          -359.57047490000025,
+          1338.390629
+        ],
+        "geometricAfterBeforeRatio": 0.9117896096878653,
+        "ratio95CI": [
+          0.7845938229293006,
+          1.0596640794187098
+        ],
+        "fasterPairs": 6
+      }
+    },
+    {
+      "baselinePosition": 1,
+      "comparison": {
+        "pairs": 10,
+        "beforeMeanMs": 6145.531170700001,
+        "afterMeanMs": 6284.5036958,
+        "beforeMedianMs": 6024.6573745000005,
+        "afterMedianMs": 6253.818708000001,
+        "meanReductionMs": -138.9725250999999,
+        "medianReductionMs": -89.42170850000048,
+        "meanReduction95CI": [
+          -385.4228330999998,
+          111.81072890000023
+        ],
+        "geometricAfterBeforeRatio": 1.0228785454930769,
+        "ratio95CI": [
+          0.9822771363980021,
+          1.0637905706681046
+        ],
+        "fasterPairs": 4
+      }
+    }
+  ],
+  "pairedTaskTimes": [
+    {
+      "pair": 1,
+      "baselineFirst": true,
+      "baselineMs": 7221.067541,
+      "candidateMs": 5405.9572499999995
+    },
+    {
+      "pair": 2,
+      "baselineFirst": false,
+      "baselineMs": 5515.940542,
+      "candidateMs": 6125.762791
+    },
+    {
+      "pair": 3,
+      "baselineFirst": false,
+      "baselineMs": 5960.804625,
+      "candidateMs": 6382.988249999999
+    },
+    {
+      "pair": 4,
+      "baselineFirst": true,
+      "baselineMs": 6296.597417,
+      "candidateMs": 7315.400625
+    },
+    {
+      "pair": 5,
+      "baselineFirst": true,
+      "baselineMs": 4502.296042,
+      "candidateMs": 6068.149334000001
+    },
+    {
+      "pair": 6,
+      "baselineFirst": false,
+      "baselineMs": 5489.779542,
+      "candidateMs": 5877.87325
+    },
+    {
+      "pair": 7,
+      "baselineFirst": true,
+      "baselineMs": 5551.994583,
+      "candidateMs": 4674.459416
+    },
+    {
+      "pair": 8,
+      "baselineFirst": false,
+      "baselineMs": 5905.064416,
+      "candidateMs": 5517.086332999999
+    },
+    {
+      "pair": 9,
+      "baselineFirst": true,
+      "baselineMs": 6200.559749999999,
+      "candidateMs": 5184.155583999999
+    },
+    {
+      "pair": 10,
+      "baselineFirst": true,
+      "baselineMs": 7634.256792,
+      "candidateMs": 5747.693833
+    },
+    {
+      "pair": 11,
+      "baselineFirst": true,
+      "baselineMs": 6202.921625,
+      "candidateMs": 7416.25475
+    },
+    {
+      "pair": 12,
+      "baselineFirst": false,
+      "baselineMs": 6868.443291,
+      "candidateMs": 6314.551125
+    },
+    {
+      "pair": 13,
+      "baselineFirst": true,
+      "baselineMs": 7278.313625,
+      "candidateMs": 6204.93425
+    },
+    {
+      "pair": 14,
+      "baselineFirst": false,
+      "baselineMs": 6078.262583,
+      "candidateMs": 6193.0862910000005
+    },
+    {
+      "pair": 15,
+      "baselineFirst": true,
+      "baselineMs": 6393.27125,
+      "candidateMs": 3720.4782920000002
+    },
+    {
+      "pair": 16,
+      "baselineFirst": false,
+      "baselineMs": 5971.052166,
+      "candidateMs": 5905.916042
+    },
+    {
+      "pair": 17,
+      "baselineFirst": false,
+      "baselineMs": 6296.49925,
+      "candidateMs": 7100.721875
+    },
+    {
+      "pair": 18,
+      "baselineFirst": true,
+      "baselineMs": 6752.580416000001,
+      "candidateMs": 7277.191333000001
+    },
+    {
+      "pair": 19,
+      "baselineFirst": false,
+      "baselineMs": 6600.682125,
+      "candidateMs": 6664.701834
+    },
+    {
+      "pair": 20,
+      "baselineFirst": false,
+      "baselineMs": 6768.7831670000005,
+      "candidateMs": 6762.349167
+    }
+  ],
+  "baselineCommit": "a87499d4cd78ae5edcf18c22f2e97f9828e8099f",
+  "budgetLedger": {
+    "operationalTokenBudget": 120000,
+    "initialUnmeteredAttempts": 1,
+    "unmeteredReservationTokens": 4096,
+    "pilot512TokenAttempts": 12,
+    "pilot512Valid": 9,
+    "pilot512ReportedTokens": 20198,
+    "finalAttempts": 40,
+    "finalReportedTokens": 70401,
+    "allReportedTokens": 90599,
+    "reportedPlusReservation": 94695,
+    "unknownInitialActualTokens": true
+  },
+  "priorCampaignSha256": {
+    "paired-24": "c0995bfffce1c07ef3db59f77dc2b3e77acca189e007d44e68d739d0780a9ae8",
+    "paired-24-v2": "a03c243722e8a87f29d11f93dd2e65fb3192085a1dfddd2c1bcf5e66a6cfd754"
+  },
+  "interpretation": {
+    "totalLatencyReductionEstablished": false,
+    "activityHandlerReductionObserved": true,
+    "primaryMeanReductionCIIncludesZero": true,
+    "evidenceScope": "Read-only two-file task, 40 prior activity runs, Node 22.21.0, requested OpenAI gpt-6-luna; no inference for all harness workflows."
+  }
+}
