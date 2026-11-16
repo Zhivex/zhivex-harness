@@ -359,7 +359,7 @@
     "readiness:1.0": "bun run scripts/check-1-0-readiness.ts",
     "readiness:1.0:release": "bun run scripts/check-1-0-readiness.ts --release",
     "typecheck": "tsc --noEmit",
-    "test": "bun test --preload ./tests/preload-bedrock-mock.ts ./tests ./packages/desktop/tests",
+    "test": "bun test --preload ./tests/preload-sqlite.ts --preload ./tests/preload-bedrock-mock.ts ./tests ./packages/desktop/tests",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
     "benchmark:harness": "bun run scripts/benchmark-harness-overhead.ts",

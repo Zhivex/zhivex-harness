@@ -16,6 +16,13 @@ integration surfaces and the enforced dependency rules.
 
 ## Validation
 
+On macOS, install standard SQLite with `brew install sqlite` before running
+`bun run test`. The test preload selects Homebrew's library on Apple Silicon
+or Intel; set `HARNESS_TEST_SQLITE_LIBRARY` to an absolute dylib path for a
+custom installation. This avoids [Bun's Apple SQLite WAL read-only issue](https://github.com/oven-sh/bun/issues/45171)
+without changing the shipped Node/Electron runtime or relaxing read-only access.
+For targeted Bun tests, include `--preload ./tests/preload-sqlite.ts`.
+
 Run the complete local gate with:
 
 ```bash

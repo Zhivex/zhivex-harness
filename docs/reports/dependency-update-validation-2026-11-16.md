@@ -20,6 +20,10 @@ Smoke diagnostics now name ACP 2.7.0 and MCP 2.4.0. Electron smoke selectors wer
 
 The five baseline failures concern session metadata inspection, an orphan import lease, doctor on a session-only database, and two desktop backup scenarios. They report SQLite open/backup errors with both dependency sets.
 
+Follow-up: the [SQLite test environment correction](sqlite-test-validation-2026-11-16.md)
+resolves these five failures; the complete rerun passed with 2,744 passing tests,
+one existing skip and zero failures. The results above preserve the original run.
+
 The separate CLI onboarding smoke fails with both dependency sets because it expects a plain prompt while the current terminal emits ANSI cursor controls. The general interactive PTY smoke passes. Strict workspace inventory fails in the developer checkout because ignored legacy package directories remain, and passes in a clean source snapshot; no local directories were deleted.
 
 [Structured validation evidence](evidence/dependency-update-validation-2026-11-16.json) records the successful integration and packaged-app reports and the baseline comparison. The smoke provider was a local fixture; this update does not certify every provider against its live service.
