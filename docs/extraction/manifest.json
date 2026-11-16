@@ -407,7 +407,7 @@
       "ai.zhivex.harness.providers"
     ]
   },
-  "status": "Local standalone candidate built, tested and packaged; remote publication, installed credential continuity and cutover remain pending.",
+  "status": "Private destination created; standalone local and hosted CI passed. Existing-profile/Keychain rehearsal and Harness cutover remain pending.",
   "initialSourceCouplings": {
     "packages/desktop/scripts/backup-runtime-verification.ts": [
       {
@@ -743,19 +743,37 @@
       "packages": 183,
       "vulnerabilities": 0
     },
-    "workspaceCheck": "Pass in clean tracked-file snapshot; local ignored legacy directories preserved."
+    "workspaceCheck": "Pass in clean tracked-file snapshot; local ignored legacy directories preserved.",
+    "hostedCI": {
+      "conclusion": "success",
+      "status": "completed",
+      "headSha": "f959c4177d82e3fd75089a0efd80b3e1358607db",
+      "url": "https://github.com/Zhivex/zhivex-app/actions/runs/43928350502"
+    },
+    "runtimeNativeAssetsTrustFilesUnchanged": 125,
+    "cliArtifactSmoke": {
+      "passed": true,
+      "coreArtifactSha256": "c2b0f53d0c508edb4a013c334e6c8ed59fe950b846c015f4a7900bd595b83eb2",
+      "checks": [
+        "zhx and zhivex-harness version aliases",
+        "web migration preserves JSON and JSONL error documents and exit 2",
+        "legacy web command is rejected with migration guidance"
+      ],
+      "keychainUsed": false
+    },
+    "codeArtifactSha256": "8904308c26f9e4baceeecd971c2d3dc1196c2dd0238c8fd9141f3dffce797d56"
   },
   "localDestination": "/Users/mikeortiz/dev/zhivex-app",
   "privateBackupDirectory": "/Users/mikeortiz/dev/zhivex-app-extraction-backup",
   "remainingGates": [
     "Installed-profile rehearsal and actual Keychain access using the final executable identity",
-    "Destination hosted CI execution",
     "Harness removal/cutover after continuity approval"
   ],
   "remotePublication": {
     "destination": "Zhivex/zhivex-app",
     "visibility": "private",
-    "created": false,
-    "pushed": false
+    "created": true,
+    "pushed": true,
+    "url": "https://github.com/Zhivex/zhivex-app"
   }
 }

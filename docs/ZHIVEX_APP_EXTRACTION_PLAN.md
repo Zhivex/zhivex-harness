@@ -1,6 +1,6 @@
 # Extract Electron into zhivex-app
 
-Status: implementation started. The standalone candidate has been extracted and validated locally; installed credential continuity and Harness cutover remain pending. See [execution status](extraction/STATUS.md).
+Status: implementation started. The private zhivex-app repository has been created, and standalone local and hosted CI passed; installed credential continuity and Harness cutover remain pending. See [execution status](extraction/STATUS.md).
 
 Baseline inspected: `zhivex-harness` commit `0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3` (2026-11-16). Recheck the source revision and working tree before implementation.
 
