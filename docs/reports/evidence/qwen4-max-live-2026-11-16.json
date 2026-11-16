@@ -1,0 +1,223 @@
+{
+  "model": "qwen4-max",
+  "checkedAt": "2026-11-16T13:59:41.900Z",
+  "scope": "Installed CLI and Electron provider runtimes; not UI automation",
+  "cases": [
+    {
+      "client": "cli",
+      "apiMode": "chat",
+      "streaming": false,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 0,
+      "reasoningParts": 2,
+      "usages": [
+        {
+          "inputTokens": 226,
+          "cachedInputTokens": 0,
+          "outputTokens": 53,
+          "reasoningTokens": 26,
+          "totalTokens": 279
+        },
+        {
+          "inputTokens": 327,
+          "cachedInputTokens": 0,
+          "outputTokens": 255,
+          "reasoningTokens": 218,
+          "totalTokens": 582
+        }
+      ],
+      "durationMs": 8469
+    },
+    {
+      "client": "cli",
+      "apiMode": "chat",
+      "streaming": true,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 7,
+      "reasoningParts": 62,
+      "usages": [
+        {
+          "inputTokens": 226,
+          "cachedInputTokens": 0,
+          "outputTokens": 46,
+          "reasoningTokens": 19,
+          "totalTokens": 272
+        },
+        {
+          "inputTokens": 318,
+          "cachedInputTokens": 0,
+          "outputTokens": 223,
+          "reasoningTokens": 188,
+          "totalTokens": 541
+        }
+      ],
+      "durationMs": 8706
+    },
+    {
+      "client": "cli",
+      "apiMode": "responses",
+      "streaming": false,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 0,
+      "reasoningParts": 4,
+      "usages": [
+        {
+          "inputTokens": 235,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 41,
+          "reasoningTokens": 14,
+          "totalTokens": 276
+        },
+        {
+          "inputTokens": 306,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 109,
+          "reasoningTokens": 76,
+          "totalTokens": 415
+        }
+      ],
+      "durationMs": 8780
+    },
+    {
+      "client": "cli",
+      "apiMode": "responses",
+      "streaming": true,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 9,
+      "reasoningParts": 14,
+      "usages": [
+        {
+          "inputTokens": 235,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 27,
+          "reasoningTokens": 0,
+          "totalTokens": 262
+        },
+        {
+          "inputTokens": 311,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 64,
+          "reasoningTokens": 26,
+          "totalTokens": 375
+        }
+      ],
+      "durationMs": 6570
+    },
+    {
+      "client": "desktop",
+      "apiMode": "chat",
+      "streaming": false,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 0,
+      "reasoningParts": 2,
+      "usages": [
+        {
+          "inputTokens": 226,
+          "cachedInputTokens": 0,
+          "outputTokens": 53,
+          "reasoningTokens": 26,
+          "totalTokens": 279
+        },
+        {
+          "inputTokens": 324,
+          "cachedInputTokens": 0,
+          "outputTokens": 145,
+          "reasoningTokens": 111,
+          "totalTokens": 469
+        }
+      ],
+      "durationMs": 8581
+    },
+    {
+      "client": "desktop",
+      "apiMode": "chat",
+      "streaming": true,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 8,
+      "reasoningParts": 75,
+      "usages": [
+        {
+          "inputTokens": 226,
+          "cachedInputTokens": 0,
+          "outputTokens": 57,
+          "reasoningTokens": 30,
+          "totalTokens": 283
+        },
+        {
+          "inputTokens": 329,
+          "cachedInputTokens": 0,
+          "outputTokens": 273,
+          "reasoningTokens": 238,
+          "totalTokens": 602
+        }
+      ],
+      "durationMs": 8476
+    },
+    {
+      "client": "desktop",
+      "apiMode": "responses",
+      "streaming": false,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 0,
+      "reasoningParts": 4,
+      "usages": [
+        {
+          "inputTokens": 235,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 43,
+          "reasoningTokens": 16,
+          "totalTokens": 278
+        },
+        {
+          "inputTokens": 307,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 110,
+          "reasoningTokens": 76,
+          "totalTokens": 417
+        }
+      ],
+      "durationMs": 8695
+    },
+    {
+      "client": "desktop",
+      "apiMode": "responses",
+      "streaming": true,
+      "ok": true,
+      "toolExecutions": 1,
+      "textDeltas": 8,
+      "reasoningParts": 42,
+      "usages": [
+        {
+          "inputTokens": 235,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 27,
+          "reasoningTokens": 0,
+          "totalTokens": 262
+        },
+        {
+          "inputTokens": 310,
+          "cachedInputTokens": 256,
+          "cacheWriteTokens": 0,
+          "outputTokens": 156,
+          "reasoningTokens": 119,
+          "totalTokens": 466
+        }
+      ],
+      "durationMs": 9278
+    }
+  ]
+}

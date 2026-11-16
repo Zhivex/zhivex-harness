@@ -41,7 +41,7 @@ test("Qwen frontier models appear on the first page even with an older current m
  const input={select:async (_title:string,items:{value:unknown;label:string;detail?:string}[])=>{pages.push(items);return undefined;},question:async()=>""} as unknown as Pick<ConsoleInput,"select"|"question">;
  await navigateConsole(input,{entry:"model",providers:providerAvailability({}),current:{provider:"qwen",model:"qwen-plus"},sessions:async()=>[]});
  const ids=pages[0]!.map(item=>(item.value as {id:string}).id);
- expect(ids.slice(0,5)).toEqual(["qwen3.8-flash","qwen3.8-max","glm-5.3","deepseek-v4.1-flash","kimi-k3"]);
+ expect(ids.slice(0,6)).toEqual(["qwen4-max","qwen3.8-flash","qwen3.8-max","glm-5.3","deepseek-v4.1-flash","kimi-k3"]);
  expect(pages[0]!.find(item=>(item.value as {id:string}).id==="glm-5.3")?.detail).toContain("Zhipu");
 });
 

@@ -48,6 +48,8 @@ test("Qwen keeps Max as default while Flash is featured across Desktop and CLI",
  const {providerDescriptor}=await import("../../core/src/runtime/config.js");
  const qwen=desktopProviders().find(p=>p.id==="qwen")!;
  expect(qwen.defaultModel).toBe("qwen3.8-max");
+ expect(qwen.models!.find(m=>m.id==="qwen4-max")).toMatchObject({group:"primary",capabilities:["chat","tools","vision"]});
+ expect(modelSelectionSchema.parse({provider:"qwen",model:"qwen4-max"}).model).toBe("qwen4-max");
  expect(providerDescriptor("qwen").defaultModel).toBe(qwen.defaultModel);
  expect(qwen.models!.find(m=>m.id===qwen.defaultModel)?.group).toBe("primary");
  expect(qwen.models!.find(m=>m.id==="qwen3.8-flash")?.group).toBe("primary");

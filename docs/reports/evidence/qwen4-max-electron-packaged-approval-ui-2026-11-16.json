@@ -1,0 +1,49 @@
+{
+  "model": "qwen4-max",
+  "packaged": true,
+  "approval": true,
+  "directory": "/private/tmp/zhx-qwen4-ui-Xu0AUg",
+  "ok": true,
+  "checks": [
+    "Qwen provider and qwen4-max selected and connected through onboarding",
+    "File unchanged before approval; Viewed gate enforced; exact file content applied after explicit approval",
+    "Qwen4 model connection selected for Code project",
+    "File tool displayed and exact local receipt returned",
+    "Multiple partial responses rendered before Response complete",
+    "Quit cancellation preserves app; confirmed shutdown exits normally without forced termination"
+  ],
+  "unchangedBeforeApproval": true,
+  "writtenAfterApproval": true,
+  "tools": [
+    {
+      "name": "read_file",
+      "status": "completed"
+    },
+    {
+      "name": "apply_reviewed_replacement",
+      "status": "completed"
+    },
+    {
+      "name": "read_file",
+      "status": "completed"
+    }
+  ],
+  "partialRenderCount": 9,
+  "finalText": "ZHIVEX\n\nI'll read receipt.txt first.I've read the file (digest sha256:d540dd\u202675d). Now I'll request approval to replace the receipt token with the requested text, preserving the single trailing newline.The edit was approved and applied. Verifying the saved file now.1. I read receipt.txt before making any change. 2. The original content was an ELECTRON_RECEIPT token line. 3. I recorded the read digest sha256:d540dd\u2026cab975d. 4. I submitted the edit via apply_reviewed_replacement. 5. The replacement used that exact read digest. 6. Approval was granted by the runtime. 7. The old token was replaced with APPROVED_QWEN4_WRITE. 8. The single trailing newline was preserved. 9. The edit produced digest sha256:d09f39\u202679ba890. 10. I re-read the saved file to verify it. 11. The file now contains exactly APPROVED_QWEN4_WRITE plus one newline. 12. The task completed successfully with no other files touched.\n\nRead file\nCompleted\nEdit file\nCompleted\nRead file\nCompleted\n\nResponse complete\n\nDecisions for this turn",
+  "screenshot": "/private/tmp/zhx-qwen4-ui-Xu0AUg/electron-completed.png",
+  "quitCancellationPreservedApp": true,
+  "shutdown": {
+    "confirmed": true,
+    "exitCode": 0,
+    "signal": null,
+    "forced": false,
+    "durationMs": 169
+  },
+  "runtime": {
+    "desktopVersion": "0.1.0-alpha.1",
+    "harnessVersion": "1.7.0",
+    "harnessArtifactSha256": "006a39e66c8b16505e0d51124b89e2ab3b3d7a577a59b78e6629dce3287a65ac",
+    "electronVersion": "44.9.3"
+  },
+  "manualIntervention": false
+}

@@ -10,6 +10,7 @@ import { resolveHarnessConfig } from "../packages/core/src/runtime/config.js";
 import { harnessConfigInput } from "../packages/core/src/cli/resume-metadata.js";
 
 test("reasoning choices use SDK capabilities without provider requests", () => {
+  expect(modelReasoningEfforts("qwen", "qwen4-max")).toEqual(expect.arrayContaining(["default", "none", "low", "high", "xhigh"]));
   expect(modelReasoningEfforts("qwen", "qwen3.8-flash")).toContain("low");
   expect(modelReasoningEfforts("openai", "gpt-6-astra")).not.toContain("none");
   expect(modelReasoningEfforts("custom", "unknown")).toEqual(["default"]);
