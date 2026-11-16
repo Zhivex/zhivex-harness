@@ -1,5 +1,7 @@
 # Coordinador compartido de aplicación
 
+Electron commands referring to `packages/desktop` below run from the separate [zhivex-app repository](https://github.com/Zhivex/zhivex-app). Core and CLI commands continue to run from Harness.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 El core ofrece un coordinador por directorio de datos. Tanto el worker Electron como el launcher Node utilizan `acquireApplicationCoordinator`: primero descubren el endpoint existente y sólo intentan iniciar un gestor si no está disponible. El lease de `setup.sqlite` decide quién es propietario; el segundo launcher espera la publicación del endpoint y se conecta sin crear otro gestor.

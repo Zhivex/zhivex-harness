@@ -1,5 +1,7 @@
 # Assistant en el core y Electron autónomo
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 Implementado el 2026-11-14. El destino probado es macOS Apple Silicon.
 
 ## Abrir la aplicación

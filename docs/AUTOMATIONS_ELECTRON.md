@@ -1,5 +1,7 @@
 # Automatizaciones en Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 Assistant → Automations consulta el scheduler de resumen diario del core. Muestra disponibilidad, vinculación de Telegram, estado activo/pausado, próxima ejecución, preferencias guardadas y las últimas siete ocurrencias. Una respuesta ausente no se interpreta como un historial vacío. `enqueued` significa encolado, no recepción confirmada.

@@ -359,7 +359,7 @@
     "readiness:1.0": "bun run scripts/check-1-0-readiness.ts",
     "readiness:1.0:release": "bun run scripts/check-1-0-readiness.ts --release",
     "typecheck": "tsc --noEmit",
-    "test": "bun test --preload ./tests/preload-sqlite.ts --preload ./tests/preload-bedrock-mock.ts ./tests ./packages/desktop/tests",
+    "test": "bun test --preload ./tests/preload-sqlite.ts --preload ./tests/preload-bedrock-mock.ts ./tests",
     "evaluate": "bun run scripts/evaluate.ts",
     "benchmark:workspace": "bun run scripts/benchmark-workspace.ts",
     "benchmark:harness": "bun run scripts/benchmark-harness-overhead.ts",
@@ -409,7 +409,6 @@
     "dev:code": "bun run build && bun run packages/cli/scripts/link-local-engine.ts --replace && bun run build:code",
     "typecheck:code": "bun run --cwd packages/cli typecheck",
     "evaluate:tasks": "bun run scripts/task-acceptance.ts",
-    "prepare:desktop": "bun run build && bun pm pack --ignore-scripts --quiet --filename packages/desktop/.harness-candidate.tgz && bun run packages/desktop/scripts/prepare-harness.ts packages/desktop/.harness-candidate.tgz",
     "smoke:mcp:installed": "bun run build && bun scripts/mcp-installed-smoke.ts",
     "cli:parity": "bun run scripts/check-unified-cli.ts",
     "migration:application": "bun run scripts/migrate-application.ts",
@@ -453,7 +452,6 @@
   },
   "workspaces": [
     "packages/core",
-    "packages/cli",
-    "packages/desktop"
+    "packages/cli"
   ]
 }

@@ -407,7 +407,7 @@
       "ai.zhivex.harness.providers"
     ]
   },
-  "status": "Private destination created; standalone local and hosted CI passed. Existing-profile/Keychain rehearsal and Harness cutover remain pending.",
+  "status": "Source cutover implemented after real-profile/credential continuity validation; core and CLI source unchanged.",
   "initialSourceCouplings": {
     "packages/desktop/scripts/backup-runtime-verification.ts": [
       {
@@ -761,14 +761,29 @@
       ],
       "keychainUsed": false
     },
-    "codeArtifactSha256": "8904308c26f9e4baceeecd971c2d3dc1196c2dd0238c8fd9141f3dffce797d56"
+    "codeArtifactSha256": "8904308c26f9e4baceeecd971c2d3dc1196c2dd0238c8fd9141f3dffce797d56",
+    "cutover": {
+      "realKeychainReadEquivalent": true,
+      "legacyCredentialNamespaceEquivalent": true,
+      "realProfileProjectionEquivalent": true,
+      "conversationRunActivityFingerprintsUnchanged": true,
+      "postRemovalRealProfileStartupPassed": true,
+      "credentialWrites": false,
+      "modelRequests": false,
+      "backupObjectsVerified": true,
+      "migrationMarkerCleared": true,
+      "coreSourceChanged": false,
+      "cliSourceChanged": false,
+      "harnessTests": 2525,
+      "cliTests": 171,
+      "appTests": 227,
+      "appPlatformSkips": 1,
+      "localRealOci": "skipped: Docker unavailable; required in Linux CI"
+    }
   },
   "localDestination": "/Users/mikeortiz/dev/zhivex-app",
   "privateBackupDirectory": "/Users/mikeortiz/dev/zhivex-app-extraction-backup",
-  "remainingGates": [
-    "Installed-profile rehearsal and actual Keychain access using the final executable identity",
-    "Harness removal/cutover after continuity approval"
-  ],
+  "remainingGates": [],
   "remotePublication": {
     "destination": "Zhivex/zhivex-app",
     "visibility": "private",

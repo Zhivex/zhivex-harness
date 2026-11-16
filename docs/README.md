@@ -16,7 +16,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 - [Project memory](PROJECT_MEMORY.md): explicit notes, retrieval budgets and deletion semantics.
 - [Optional Web limits](WEB_LIMITS.md): interactive defaults and observed thresholds.
 - [Execution environments](EXECUTION_ENVIRONMENTS.md): isolated command execution.
-- [Desktop](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md): separate macOS alpha application.
+- [Desktop](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/README.md): separate macOS alpha application.
 - [Support](../SUPPORT.md), [support matrix](SUPPORT_MATRIX.md), [security policy](../SECURITY.md).
 
 ## Integrate Harness
@@ -46,7 +46,7 @@ Start with [First use](FIRST_USE.md). You only need `zhx` for everyday conversat
 
 ## Contribute and maintain
 
-- [Electron extraction into zhivex-app](ZHIVEX_APP_EXTRACTION_PLAN.md): phased repository split, history preservation, state and credential continuity, and rollback gates.
+- [Electron extraction into zhivex-app](https://github.com/Zhivex/zhivex-harness/blob/main/docs/ZHIVEX_APP_EXTRACTION_PLAN.md): phased repository split, history preservation, state and credential continuity, and rollback gates.
 
 - [Internal unification and UX archive](INTERNAL_ARCHIVE.md): historical plans, acceptance records and private original evidence.
 - [First shared CLI/Electron flow](https://github.com/Zhivex/zhivex-harness/blob/main/docs/UNIFIED_DESKTOP.md): local setup, new UX, acceptance smoke and remaining migration scope.

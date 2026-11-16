@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { expect, test } from "bun:test";
 import { revealInvisible, revealInvisibleText } from "../packages/core/src/review/reveal-invisible.js";
 
@@ -31,7 +30,4 @@ test("literal escape sequences stay as written and only real control bytes are e
   expect(revealInvisible(realNul)).not.toContain("^@");
   expect(revealInvisible(realNul)).not.toContain("\\u0000");
   expect(revealInvisibleText("context\r\nbefore\r\nlast")).toBe("context\r\nbefore\r\nlast");
-  const desktop = await readFile(new URL("../packages/desktop/src/reveal-invisible.ts", import.meta.url), "utf8");
-  const shared = await readFile(new URL("../packages/core/src/review/reveal-invisible.ts", import.meta.url), "utf8");
-  expect(desktop).toBe(shared);
 });

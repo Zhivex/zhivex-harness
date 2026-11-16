@@ -43,9 +43,6 @@ const markdownFiles = [
   path.join(workspace, "benchmarks", "README.md"),
   path.join(workspace, "results", "README.md"),
   ...await collectMarkdown(path.join(workspace, "docs")),
-  ...(await readdir(path.join(workspace, "packages/desktop"), { withFileTypes: true }))
-    .filter(entry => entry.isFile() && entry.name.endsWith(".md"))
-    .map(entry => path.join(workspace, "packages/desktop", entry.name)),
   ...await collectMarkdown(path.join(workspace, "examples"))
 ].sort();
 
@@ -55,7 +52,7 @@ for (const markdownFile of markdownFiles) {
   const relativeFile = path.relative(workspace, markdownFile).split(path.sep).join("/");
   const historical = /^docs\/(?:reports|archive|proposals)\//.test(relativeFile);
   if (!historical && /--cwd\s+desktop(?=\s|[`"']|$)/m.test(contents)) {
-    failures.push(`${relativeFile}: use --cwd packages/desktop; the desktop alias was removed.`);
+    failures.push(`${relativeFile}: Electron is maintained in zhivex-app; use its documented workspace commands.`);
   }
   const linkPattern = /!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   for (const match of contents.matchAll(linkPattern)) {

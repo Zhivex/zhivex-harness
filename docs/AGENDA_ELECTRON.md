@@ -1,5 +1,7 @@
 # Today y agenda en Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 Assistant → **Agenda** lee el calendario del agente activo. Permite elegir fecha y zona IANA, volver a la fecha actual de esa zona y refrescar explícitamente. Muestra la zona y hora de lectura, eventos de día completo y horarios locales, cancelaciones y disponibilidad libre. Desde la pantalla se accede a tareas/recordatorios o a la configuración de Calendar.

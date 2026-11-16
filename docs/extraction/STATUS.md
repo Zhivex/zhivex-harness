@@ -1,6 +1,6 @@
 # Electron extraction status
 
-The source baseline is `0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3`. Extraction is in progress; Desktop has not been removed from Harness and no existing application/profile/credential was replaced.
+The source baseline is `0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3`. The cutover is implemented and locally verified. Electron source/build/test ownership is now in zhivex-app; Harness retains the motor and CLI unchanged. Existing state and credentials were validated before removal.
 
 ## Completed
 
@@ -15,11 +15,18 @@ The source baseline is `0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3`. Extraction is
 - Passed packaged offline Assistant/Code flows, pending reviews, CLI shared context, checkpoints, worktrees, commit/restart recovery, interrupted SQLite restoration, bundled Node/SQLite startup, and temporary application replacement/rollback.
 - Harness architecture (including 16 regression tests), documentation and API-contract checks passed. The standalone dependency audit reported no vulnerabilities across 183 packages. The local Harness workspace check found ignored legacy `packages/assistant`, `packages/code` and `packages/web` directories. Those pre-existing local artifacts were preserved; no tracked files exist under those paths. The workspace check passes in a clean tracked-file snapshot with the updated lockfile.
 
-## Remaining before cutover
+## Cutover verification
 
-1. Inventory the effective existing Electron profile and all external Code state roots with the installation stopped for a coordinated rehearsal. The default identities have been preserved, but no real user database was opened or migrated during extraction.
-2. Verify the actual existing Keychain service/account access with the replacement executable identity. Offline memory secrets do not establish this; no credentials were read, exported, re-entered or deleted. Production signing/notarization and the update feed remain unconfigured.
-3. Only then remove Desktop from the current Harness tree in an ordinary commit, update Harness CI/workspaces/docs and run core/CLI and cross-client acceptance. Keep history and prior artifacts for recovery.
+- Both packaged executables read the same existing Keychain value. The legacy provider namespace was also checked. Secret values stayed in memory; no credential writes, exports or model requests were performed.
+- Both executables opened the real application directory and returned equivalent profile, connection and active-session projections. UI storage was isolated during the rehearsal. A further startup succeeded after the Harness Desktop checkout was removed.
+- Fingerprints of all persisted conversation, run and activity tables matched before and after the rehearsal. The original state path, application name, bundle ID and credential namespaces remain unchanged. Private backups and detailed account/profile evidence are not committed.
+- The existing migration routine produced a verified backup. Read-only WAL handles stabilized SQLite auxiliary files during its snapshot; no user rows or journal modes were changed. All backup objects were verified and the migration marker was cleared by the tool.
+- The retired Desktop checkout and original packaged bundle were archived outside Harness, including the older artifact-only Desktop folder. Core and CLI source trees have no changes.
+- Harness now declares only core and CLI workspaces. Its CI, release pipeline, lockfile and current documentation no longer require an Electron checkout. App recovery and UI regressions remain in zhivex-app; Harness retains engine contracts and migration tests.
+- Local `bun run check` passed: 2,525 tests, historical migrations, evaluations, benchmarks, MCP and installed-package smoke. The optional local real-OCI smoke skipped because Docker was not running; Linux CI remains configured to require OCI.
+- CLI typecheck and all 171 terminal tests passed. App typecheck, import boundaries and 227 tests passed (one platform-specific skip).
+
+Hosted verification of the final cutover is recorded in the pull request. Production signing/notarization and the disabled update feed are separate from this repository change.
 
 ## Reproduction and recovery
 
@@ -27,4 +34,4 @@ The local candidate lives at `/Users/mikeortiz/dev/zhivex-app`. The private back
 
 The extraction manifest records file hashes, artifact hashes and test evidence; App additionally keeps the old-to-new commit map. Core changes were unnecessary. The repository name does not change the installed app name, package name, bundle ID, state defaults or Keychain namespaces.
 
-Rollback before cutover means keeping Harness authoritative and discarding or repairing the extracted candidate. No personal-state rollback is needed because extraction has not modified it. See the [original migration procedure](https://github.com/Zhivex/zhivex-harness/blob/0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3/docs/APPLICATION_MIGRATION.md) for a later coordinated installed rehearsal.
+Source rollback is an ordinary revert of the cutover commit; never rewrite shared history. The archived application bundle remains available. Do not restore personal state unless needed: startup lifecycle metadata may advance, while the verified conversations and runs were preserved. See the [original migration procedure](https://github.com/Zhivex/zhivex-harness/blob/0bc3927ba57b72ab7c9e18aeef5ab8f6595073a3/docs/APPLICATION_MIGRATION.md) for a later coordinated installed rehearsal.

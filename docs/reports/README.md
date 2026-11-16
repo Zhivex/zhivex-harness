@@ -120,7 +120,7 @@ Protocols remain in the [benchmark guide](../../benchmarks/README.md) and [Time-
 ## Consolidated desktop acceptance and archived working notes
 
 - [Acceptance audit, September 21](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.md) and [criterion-level evidence](HAR_HU_13_35_ACCEPTANCE_AUDIT_2026-09-21.json) preserve the final HU13–35 assessment and its limits. These are dated snapshots, not current user guides.
-- [Desktop guide](https://github.com/Zhivex/zhivex-harness/blob/main/packages/desktop/README.md) documents current setup, behavior and validation commands.
+- [Desktop guide](https://github.com/Zhivex/zhivex-harness/blob/2c627f528b7e104292db17d6382805b3b56429f5/packages/desktop/README.md) documents current setup, behavior and validation commands.
 - [RC13 dossier](security/RC13_SECURITY_REVIEW.md) and [RC14 dossier](security/RC14_SECURITY_REVIEW.md) retain the preparatory drafts separately from the final review in `security-reviews/rc14-review.json`.
 
 Incremental HU plans, component reports and screenshots were consolidated out of

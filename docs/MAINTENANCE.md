@@ -7,7 +7,7 @@ usage, start with [First use](FIRST_USE.md).
 
 - [Contributing](../CONTRIBUTING.md) and [roadmap](../ROADMAP.md).
 - [Console UX rationale](CLI_UX.md).
-- [Desktop development](../packages/desktop/DEVELOPMENT.md) and [architecture](DESKTOP_ARCHITECTURE.md).
+- [Desktop development](https://github.com/Zhivex/zhivex-app/blob/main/packages/desktop/DEVELOPMENT.md) and [architecture](DESKTOP_ARCHITECTURE.md).
 - [Gradual Code-to-Assistant migration](INTERNAL_ARCHIVE.md).
 
 ## Release and evidence

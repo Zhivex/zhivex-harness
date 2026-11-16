@@ -1,5 +1,7 @@
 # Tareas y recordatorios en Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 El área Assistant del shell unificado incorpora **Tasks & reminders** cuando está conectada al coordinador de aplicación. La pantalla consulta el store personal del perfil activo; no contiene datos ilustrativos ni usa las tareas de Code.

@@ -1,5 +1,7 @@
 # Worktrees, checkpoints y ejecución en Electron
 
+> Historical monorepo integration guide. Electron now belongs to [zhivex-app](https://github.com/Zhivex/zhivex-app); use its README for current installation, artifact preparation and build commands. The instructions below retain their original integration context.
+
 > Las rutas históricas `reports/unification/…` citadas en este documento pertenecen al [archivo interno](INTERNAL_ARCHIVE.md); los originales se conservaron fuera del árbol publicable.
 
 Implementado el 2026-11-14 en el shell unificado. Abrir un proyecto Code habilita tres pantallas en la navegación lateral.
