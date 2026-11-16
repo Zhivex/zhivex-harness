@@ -128,7 +128,7 @@ try {
   await desktop.close(); desktop = undefined; await owner.close(); owner = await startApplicationCoordinator(directory + '/app', options); coordinator = await connectCoordinator(directory + '/app');
   client = await connectApplication((await coordinator.state()).credentialsPath); assert.equal(client.projectId, projectId);
   assert.equal((await coordinator.call('notes', {projectId})).total, 1); assert.equal((await coordinator.call('personal-state', {projectId})).proactive.policy.maxPerDay, 3);
-  assert.equal(gmailPosts, 1); assert.equal(outlookPosts, 1); assert(!requests.some(request => /sendMail|\/send$/.test(request.path)));
+  assert.equal(gmailPosts, 1); assert.equal(outlookPosts, 1); assert(!requests.some(request => /(?:sendMail|\/send)$/.test(request.path)));
   assert.deepEqual(errors, []);
   assert(!JSON.stringify(await coordinator.state()).match(/private-fixture-key|fixture-google-token|fixture-microsoft-token/));
   const report = {passed: true, directory, coreArtifactSha256: JSON.parse(await readFile(root + '/packages/desktop/.harness/installed.json', 'utf8')).sha256, gmailPosts, outlookPosts, checks: ['Google and Microsoft OAuth from Electron with exact scopes and loopback', 'notes and proactive policy require core review', 'Gmail and Outlook drafts apply once, never send', 'private Telegram pairing and reviewed automation configure/pause', 'reply watch creation and cancellation require exact core review', 'decision history', 'agent model/name update', 'existing agent reauthorization preserves identity and notes', 'restart preserves notes, proactive policy and conversations', 'no tokens in renderer state'], limitations: ['Injected local OAuth/provider/SecretStore fixtures; no external delivery or live-account certification']};

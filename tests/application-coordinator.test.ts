@@ -1,5 +1,5 @@
 import {test, expect} from 'bun:test';
-import {mkdtemp, rm, readFile, stat} from 'node:fs/promises';
+import {mkdtemp, rm, readFile, open} from 'node:fs/promises';
 import path from 'node:path';
 import {createMockLanguageModel} from '@zhivex-ai/agents/testing';
 import {acquireApplicationCoordinator} from '../packages/core/src/application/coordinator.js';
@@ -30,8 +30,12 @@ test('concurrent launchers discover one coordinator, share runtime state, and at
     await attached.close();
     expect((await (await connectCoordinator(root)).state()).state.ready).toBe(true);
     const file = path.join(root, 'coordinator.json');
-    expect((await stat(file)).mode & 0o777).toBe(0o600);
-    const credentials = JSON.parse(await readFile(file, 'utf8'));
+    const handle = await open(file, 'r');
+    let credentials;
+    try {
+      expect((await handle.stat()).mode & 0o777).toBe(0o600);
+      credentials = JSON.parse(await handle.readFile('utf8'));
+    } finally { await handle.close(); }
     expect(await requestLocalServiceDocument(credentials, 'application', {version: 2, method: 'state'})).toMatchObject({ok: false, error: 'COORDINATOR_VERSION_UNSUPPORTED', detail:{schemaVersion:1, recovery:'upgrade'}});
     await expect(requestLocalServiceDocument({...credentials, token: '0'.repeat(64)}, 'application', {version: 1, method: 'state'})).rejects.toThrow('LOCAL_SERVICE_HTTP_403');
     await expect(first.client.call('arbitrary' as never)).rejects.toThrow('COORDINATOR_REQUEST_FAILED');

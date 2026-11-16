@@ -20,7 +20,7 @@ test('lost approval response reconciles from another client without repeating th
   let decisions = 0;
   // Forward the authenticated request intact, then lose the response after the host commits.
   const proxy = createServer((incoming, outgoing) => {
-    const forwarded = request({socketPath: credentials.socketPath, path: incoming.url, method: incoming.method, headers: incoming.headers}, response => {
+    const forwarded = request({socketPath: host.socketPath, path: incoming.url, method: incoming.method, headers: incoming.headers}, response => {
       if (incoming.url === '/decision' && ++decisions === 1) {
         response.resume(); response.on('end', () => outgoing.destroy());
       } else {outgoing.writeHead(response.statusCode!, response.headers); response.pipe(outgoing);}
